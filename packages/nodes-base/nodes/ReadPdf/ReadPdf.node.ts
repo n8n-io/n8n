@@ -29,7 +29,7 @@ export class ReadPdf implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property from which to read the PDF file.',
+				description: 'Name of the binary property from which to read the PDF file',
 			},
 		],
 	};
@@ -60,7 +60,14 @@ export class ReadPdf implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

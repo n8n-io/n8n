@@ -59,16 +59,17 @@ export class ItemLists implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
-					{
-						name: 'Split Out Items',
-						value: 'splitOutItems',
-						description: 'Turn a list inside item(s) into separate items',
-					},
 					{
 						name: 'Aggregate Items',
 						value: 'aggregateItems',
 						description: 'Merge fields into a single new item',
+					},
+					{
+						name: 'Limit',
+						value: 'limit',
+						description: 'Remove items if there are too many',
 					},
 					{
 						name: 'Remove Duplicates',
@@ -81,9 +82,9 @@ export class ItemLists implements INodeType {
 						description: 'Change the item order',
 					},
 					{
-						name: 'Limit',
-						value: 'limit',
-						description: 'Remove items if there are too many',
+						name: 'Split Out Items',
+						value: 'splitOutItems',
+						description: 'Turn a list inside item(s) into separate items',
 					},
 				],
 				default: 'splitOutItems',
@@ -751,7 +752,12 @@ return 0;`,
 								newItem = { ...newItem, [destinationFieldName as string || fieldToSplitOut as string]: element };
 							}
 
-							returnData.push({ json: newItem });
+							returnData.push({
+								json: newItem,
+								pairedItem: {
+									item: i,
+								},
+							});
 						}
 					}
 				}
@@ -789,8 +795,17 @@ return 0;`,
 					}
 				}
 
+
 				let newItem: INodeExecutionData;
-				newItem = { json: {} };
+				newItem = {
+					json: {},
+					pairedItem: Array.from({length}, (_, i) => i).map(index => {
+						return {
+							item: index,
+						};
+					}),
+				};
+
 				// tslint:disable-next-line: no-any
 				const values: { [key: string]: any } = {};
 				const outputFields: string[] = [];
@@ -898,9 +913,10 @@ return 0;`,
 					}
 					keys = fieldsToCompare.map(key => (key.trim()));
 				}
+
 				// This solution is O(nlogn)
 				// add original index to the items
-				const newItems = items.map((item, index) => ({ json: { ...item['json'], __INDEX: index, }, } as INodeExecutionData));
+				const newItems = items.map((item, index) => ({ json: { ...item['json'], __INDEX: index, }, pairedItem: { item: index, } } as INodeExecutionData));
 				//sort items using the compare keys
 				newItems.sort((a, b) => {
 					let result = 0;
@@ -961,7 +977,7 @@ return 0;`,
 				let data = items.filter((_, index) => !removedIndexes.includes(index));
 
 				if (removeOtherFields) {
-					data = data.map(item => ({ json: pick(item.json, ...keys) }));
+					data = data.map((item, index) => ({ json: pick(item.json, ...keys), pairedItem: { item: index, } }));
 				}
 
 				// return the filtered items

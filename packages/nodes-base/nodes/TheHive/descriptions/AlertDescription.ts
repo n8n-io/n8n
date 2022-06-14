@@ -8,9 +8,10 @@ import {
 
 export const alertOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'loadAlertOptions',
@@ -42,7 +43,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -66,7 +67,7 @@ export const alertFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// required attributs
 	{
@@ -356,7 +357,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'if true, the alert becomes active when updated default=true',
+		description: 'If true, the alert becomes active when updated default=true',
 	},
 	{
 		displayName: 'Artifacts',
@@ -383,14 +384,14 @@ export const alertFields: INodeProperties[] = [
 				name: 'artifactValues',
 				values: [
 					{
-						displayName: 'Data Type',
+						displayName: 'Data Type Name or ID',
 						name: 'dataType',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'loadObservableTypes',
 						},
-						description: 'Type of the observable',
+						description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Data',
@@ -437,7 +438,7 @@ export const alertFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,
@@ -488,7 +489,6 @@ export const alertFields: INodeProperties[] = [
 		name: 'additionalFields',
 		placeholder: 'Add Field',
 		type: 'collection',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -506,7 +506,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -530,7 +530,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -572,7 +572,6 @@ export const alertFields: INodeProperties[] = [
 		name: 'additionalFields',
 		placeholder: 'Add Field',
 		type: 'collection',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -590,7 +589,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'caseTemplate',
 				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 		],
 	},
@@ -627,14 +626,14 @@ export const alertFields: INodeProperties[] = [
 						name: 'artifactValues',
 						values: [
 							{
-								displayName: 'Data Type',
+								displayName: 'Data Type Name or ID',
 								name: 'dataType',
 								type: 'options',
 								default: '',
 								typeOptions: {
 									loadOptionsMethod: 'loadObservableTypes',
 								},
-								description: 'Type of the observable',
+								description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Data',
@@ -700,7 +699,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -737,24 +736,22 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Case Template',
 				name: 'caseTemplate',
 				type: 'string',
-				required: false,
 				default: '',
-				description: `Case template to use when a case is created from this alert.`,
+				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'Description of the alert.',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
 				default: true,
-				description: 'if true, the alert becomes active when updated default=true.',
+				description: 'If true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',
@@ -812,15 +809,13 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'Title of the alert.',
+				description: 'Title of the alert',
 			},
 			{
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{
@@ -904,7 +899,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -928,14 +923,14 @@ export const alertFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the alert.',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
 				default: false,
-				description: 'if true, the alert becomes active when updated default=true',
+				description: 'If true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',

@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,7 +46,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {
@@ -64,7 +64,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox.',
+		description: 'The identifier of the list, unique in the user\'s mailbox. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Subject',
@@ -82,7 +82,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'A brief description of the task.',
+		description: 'A brief description of the task',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -106,14 +106,14 @@ export const taskFields: INodeProperties[] = [
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content of the task.',
+				description: 'The content of the task',
 			},
 			{
 				displayName: 'Due',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The date in the specified time zone that the task is to be finished.',
+				description: 'The date in the specified time zone that the task is to be finished',
 			},
 			{
 				displayName: 'Importance',
@@ -134,19 +134,20 @@ export const taskFields: INodeProperties[] = [
 					},
 				],
 				default: 'normal',
-				description: 'The importance of the task.',
+				description: 'The importance of the task',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Not started',
+						name: 'Not Started',
 						value: 'notStarted',
 					},
 					{
-						name: 'In progress',
+						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{
@@ -163,7 +164,7 @@ export const taskFields: INodeProperties[] = [
 					},
 				],
 				default: 'notStarted',
-				description: 'Indicates the state or progress of the task.',
+				description: 'Indicates the state or progress of the task',
 			},
 		],
 	},
@@ -172,7 +173,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:get/delete/update/getAll              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {
@@ -193,7 +194,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox.',
+		description: 'The identifier of the list, unique in the user\'s mailbox. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Task ID',
@@ -233,7 +234,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -255,7 +256,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -283,14 +284,14 @@ export const taskFields: INodeProperties[] = [
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content of the task.',
+				description: 'The content of the task',
 			},
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The date in the specified time zone that the task is to be finished.',
+				description: 'The date in the specified time zone that the task is to be finished',
 			},
 			{
 				displayName: 'Importance',
@@ -311,19 +312,20 @@ export const taskFields: INodeProperties[] = [
 					},
 				],
 				default: 'normal',
-				description: 'The importance of the task.',
+				description: 'The importance of the task',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Not started',
+						name: 'Not Started',
 						value: 'notStarted',
 					},
 					{
-						name: 'In progress',
+						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{
@@ -340,14 +342,14 @@ export const taskFields: INodeProperties[] = [
 					},
 				],
 				default: 'notStarted',
-				description: 'Indicates the state or progress of the task.',
+				description: 'Indicates the state or progress of the task',
 			},
 			{
 				displayName: 'Subject',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'A brief description of the task.',
+				description: 'A brief description of the task',
 			},
 		],
 	},

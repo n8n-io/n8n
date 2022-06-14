@@ -16,7 +16,7 @@ import {
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import * as config from '../../../config';
-import { DatabaseType, IPersonalizationSurveyAnswers } from '../..';
+import { DatabaseType, IPersonalizationSurveyAnswers, IUserSettings } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
@@ -102,6 +102,12 @@ export class User {
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 
+	@Column({
+		type: resolveDataType('json') as ColumnOptions['type'],
+		nullable: true,
+	})
+	settings: IUserSettings | null;
+
 	@ManyToOne(() => Role, (role) => role.globalForUsers, {
 		cascade: true,
 		nullable: false,
@@ -127,9 +133,13 @@ export class User {
 	@BeforeInsert()
 	@BeforeUpdate()
 	preUpsertHook(): void {
-		this.email = this.email?.toLowerCase();
+		this.email = this.email?.toLowerCase() ?? null;
 		this.updatedAt = new Date();
 	}
+
+	@Column({ type: String, nullable: true })
+	@Index({ unique: true })
+	apiKey?: string | null;
 
 	/**
 	 * Whether the user is pending setup completion.

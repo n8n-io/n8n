@@ -51,6 +51,7 @@ export class ProfitWell implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -62,7 +63,6 @@ export class ProfitWell implements INodeType {
 					},
 				],
 				default: 'metric',
-				description: 'Resource to consume.',
 			},
 			// COMPANY
 			...companyOperations,

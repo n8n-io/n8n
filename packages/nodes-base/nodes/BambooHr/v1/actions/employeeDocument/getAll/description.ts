@@ -35,14 +35,14 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 				],
 			},
 		},
-		description: 'Whether to return all results',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -62,7 +62,7 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,
@@ -76,6 +76,6 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 				],
 			},
 		},
-		description: 'Whether to simplify the output or not',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

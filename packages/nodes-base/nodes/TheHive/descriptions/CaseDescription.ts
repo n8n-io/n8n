@@ -8,10 +8,12 @@ import {
 
 export const caseOperations: INodeProperties[] = [
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Operation',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -45,7 +47,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -69,7 +71,7 @@ export const caseFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// Required fields
 	{
@@ -268,7 +270,7 @@ export const caseFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		default: '',
@@ -328,7 +330,6 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 		default: {},
 		options: [
 			{
@@ -353,7 +354,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -432,7 +433,6 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		required: false,
 		default: {},
 		options: [
 			{
@@ -457,7 +457,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -559,24 +559,24 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
+						value: 'Duplicated',
+						name: 'Duplicated',
 					},
 					{
 						value: 'FalsePositive',
 						name: 'False Positive',
 					},
 					{
-						value: 'TruePositive',
-						name: 'True Positive',
+						value: 'Indeterminate',
+						name: 'Indeterminate',
 					},
 					{
 						value: 'Other',
 						name: 'Other',
 					},
 					{
-						value: 'Duplicated',
-						name: 'Duplicated',
+						value: 'TruePositive',
+						name: 'True Positive',
 					},
 				],
 				description: 'Resolution status of the case',
@@ -709,7 +709,6 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add a Filter',
 		displayOptions: {
@@ -739,7 +738,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -812,24 +811,24 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
+						value: 'Duplicated',
+						name: 'Duplicated',
 					},
 					{
 						value: 'False Positive',
 						name: 'FalsePositive',
 					},
 					{
-						value: 'True Positive',
-						name: 'TruePositive',
+						value: 'Indeterminate',
+						name: 'Indeterminate',
 					},
 					{
 						value: 'Other',
 						name: 'Other',
 					},
 					{
-						value: 'Duplicated',
-						name: 'Duplicated',
+						value: 'True Positive',
+						name: 'TruePositive',
 					},
 				],
 			},
@@ -905,7 +904,6 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{

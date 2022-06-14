@@ -157,7 +157,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'Label for button or link that represents this action.',
+			description: 'Label for button or link that represents this action',
 		},
 		{
 			displayName: 'Icon URL',
@@ -185,7 +185,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 				},
 			],
 			default: 'default',
-			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc.',
+			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc',
 		},
 	];
 }
@@ -220,32 +220,32 @@ export function getTextBlockProperties(): INodeProperties[] {
 			},
 			options: [
 				{
-					name: 'Default',
-					value: 'default',
+					name: 'Accent',
+					value: 'accent',
+				},
+				{
+					name: 'Attention',
+					value: 'attention',
 				},
 				{
 					name: 'Dark',
 					value: 'dark',
 				},
 				{
-					name: 'Light',
-					value: 'light',
-				},
-				{
-					name: 'Accent',
-					value: 'accent',
+					name: 'Default',
+					value: 'default',
 				},
 				{
 					name: 'Good',
 					value: 'good',
 				},
 				{
-					name: 'Warning',
-					value: 'warning',
+					name: 'Light',
+					value: 'light',
 				},
 				{
-					name: 'Attention',
-					value: 'attention',
+					name: 'Warning',
+					value: 'warning',
 				},
 			],
 			default: 'default',
@@ -348,20 +348,20 @@ export function getTextBlockProperties(): INodeProperties[] {
 					value: 'default',
 				},
 				{
-					name: 'Small',
-					value: 'small',
-				},
-				{
-					name: 'Medium',
-					value: 'medium',
+					name: 'Extra Large',
+					value: 'extraLarge',
 				},
 				{
 					name: 'Large',
 					value: 'large',
 				},
 				{
-					name: 'Extra Large',
-					value: 'extraLarge',
+					name: 'Medium',
+					value: 'medium',
+				},
+				{
+					name: 'Small',
+					value: 'small',
 				},
 			],
 			default: 'default',
@@ -445,7 +445,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 					],
 				},
 			},
-			description: 'When true, draw a separating line at the top of the element.',
+			description: 'When true, draw a separating line at the top of the element',
 		},
 		{
 			displayName: 'Spacing',
@@ -464,28 +464,28 @@ export function getTextBlockProperties(): INodeProperties[] {
 					value: 'default',
 				},
 				{
-					name: 'None',
-					value: 'none',
-				},
-				{
-					name: 'Small',
-					value: 'small',
-				},
-				{
-					name: 'Medium',
-					value: 'medium',
+					name: 'Extra Large',
+					value: 'extraLarge',
 				},
 				{
 					name: 'Large',
 					value: 'large',
 				},
 				{
-					name: 'Extra Large',
-					value: 'extraLarge',
+					name: 'Medium',
+					value: 'medium',
+				},
+				{
+					name: 'None',
+					value: 'none',
 				},
 				{
 					name: 'Padding',
 					value: 'padding',
+				},
+				{
+					name: 'Small',
+					value: 'small',
 				},
 			],
 			default: 'default',

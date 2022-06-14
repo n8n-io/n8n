@@ -51,6 +51,8 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 
+const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`];
+
 export default mixins(
 	externalHooks,
 	genericHelpers,
@@ -61,6 +63,7 @@ export default mixins(
 		'parameter',
 		'path',
 		'value',
+		'eventSource',
 	],
 	components: {
 		ExpressionInput,
@@ -110,7 +113,14 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				this.$telemetry.track('User closed Expression Editor', { empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.track('User closed Expression Editor', {
+					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
+					workflow_id: this.$store.getters.workflowId,
+					source: this.eventSource,
+					session_id: this.$store.getters['ui/ndvSessionId'],
+					has_parameter: this.value.includes('$parameter'),
+					has_mapping: !!MAPPING_PARAMS.find((param) => this.value.includes(param)),
+				});
 			}
 		},
 	},

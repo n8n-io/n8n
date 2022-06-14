@@ -56,6 +56,8 @@ import {
 	faInfo,
 	faInfoCircle,
 	faKey,
+	faLink,
+	faLightbulb,
 	faMapSigns,
 	faNetworkWired,
 	faPause,
@@ -64,6 +66,7 @@ import {
 	faPencilAlt,
 	faPlay,
 	faPlayCircle,
+	faPlug,
 	faPlus,
 	faPlusCircle,
 	faPlusSquare,
@@ -90,9 +93,11 @@ import {
 	faTimes,
 	faTrash,
 	faUndo,
+	faUnlink,
 	faUserCircle,
 	faUserFriends,
 	faUsers,
+	faVideo,
 	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
 import {
@@ -158,6 +163,8 @@ addIcon(faInbox);
 addIcon(faInfo);
 addIcon(faInfoCircle);
 addIcon(faKey);
+addIcon(faLink);
+addIcon(faLightbulb);
 addIcon(faMapSigns);
 addIcon(faNetworkWired);
 addIcon(faPause);
@@ -166,6 +173,7 @@ addIcon(faPen);
 addIcon(faPencilAlt);
 addIcon(faPlay);
 addIcon(faPlayCircle);
+addIcon(faPlug);
 addIcon(faPlus);
 addIcon(faPlusCircle);
 addIcon(faPlusSquare);
@@ -194,9 +202,11 @@ addIcon(faThLarge);
 addIcon(faTimes);
 addIcon(faTrash);
 addIcon(faUndo);
+addIcon(faUnlink);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);
+addIcon(faVideo);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 

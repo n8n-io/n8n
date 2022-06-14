@@ -61,7 +61,7 @@ export class EmailReadImap implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Mark as read',
+						name: 'Mark as Read',
 						value: 'read',
 					},
 					{
@@ -94,17 +94,17 @@ export class EmailReadImap implements INodeType {
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data.',
+						description: 'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 					{
 						name: 'Simple',
 						value: 'simple',
-						description: 'Returns the full email; do not use if you wish to gather inline attachments.',
+						description: 'Returns the full email; do not use if you wish to gather inline attachments',
 					},
 				],
 				default: 'simple',
@@ -149,7 +149,7 @@ export class EmailReadImap implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Custom email rules',
+						displayName: 'Custom Email Rules',
 						name: 'customEmailConfig',
 						type: 'string',
 						default: '["UNSEEN"]',
@@ -160,14 +160,14 @@ export class EmailReadImap implements INodeType {
 						name: 'allowUnauthorizedCerts',
 						type: 'boolean',
 						default: false,
-						description: 'Do connect even if SSL certificate validation is not possible.',
+						description: 'Whether to connect even if SSL certificate validation is not possible',
 					},
 					{
-						displayName: 'Force reconnect',
+						displayName: 'Force Reconnect',
 						name: 'forceReconnect',
 						type: 'number',
 						default: 60,
-						description: 'Sets an interval (in minutes) to force a reconnection.',
+						description: 'Sets an interval (in minutes) to force a reconnection',
 					},
 				],
 			},
@@ -185,6 +185,8 @@ export class EmailReadImap implements INodeType {
 
 		const staticData = this.getWorkflowStaticData('node');
 		Logger.debug('Loaded static data for node "EmailReadImap"', {staticData});
+
+		let connection: ImapSimple;
 
 		// Returns the email text
 		const getText = async (parts: any[], message: Message, subtype: string) => { // tslint:disable-line:no-any
@@ -440,19 +442,29 @@ export class EmailReadImap implements INodeType {
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
 			return imapConnect(config).then(async conn => {
-				conn.on('error', async err => {
-					if (err.code.toUpperCase() === 'ECONNRESET') {
-						Logger.verbose('IMAP connection was reset - reconnecting.');
-						connection = await establishConnection();
-						await connection.openBox(mailbox);
+				conn.on('error', async error => {
+					const errorCode = error.code.toUpperCase();
+					if (['ECONNRESET', 'EPIPE'].includes(errorCode)) {
+						Logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, { error });
+						try {
+							connection = await establishConnection();
+							await connection.openBox(mailbox);
+							return;
+						} catch (e) {
+							Logger.error('IMAP reconnect did fail', { error: e });
+							// If something goes wrong we want to run emitError
+						}
+					} else {
+						Logger.error('Email Read Imap node encountered a connection error', { error });
 					}
-					throw err;
+
+					this.emitError(error);
 				});
 				return conn;
 			});
 		};
 
-		let connection: ImapSimple = await establishConnection();
+		connection = await establishConnection();
 
 		await connection.openBox(mailbox);
 

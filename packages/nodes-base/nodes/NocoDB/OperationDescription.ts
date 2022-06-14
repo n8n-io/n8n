@@ -108,7 +108,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -129,7 +129,7 @@ export const operationFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'The max number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Download Attachments',
@@ -143,7 +143,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
 	},
 	{
 		displayName: 'Download Fields',
@@ -161,7 +161,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
+		description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.',
 	},
 	{
 		displayName: 'Options',
@@ -275,7 +275,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
 	},
 	{
 		displayName: 'Download Fields',
@@ -293,7 +293,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
+		description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.',
 	},
 	// ----------------------------------
 	//         update
@@ -322,7 +322,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -359,7 +359,6 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},

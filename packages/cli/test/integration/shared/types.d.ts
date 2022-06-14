@@ -15,12 +15,14 @@ export type SmtpTestAccount = {
 	};
 };
 
-type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials';
+export type ApiPath = 'internal' | 'public';
+
+type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials' | 'publicApi';
 
 export type CredentialPayload = {
 	name: string;
 	type: string;
-	nodesAccess: ICredentialNodeAccess[];
+	nodesAccess?: ICredentialNodeAccess[];
 	data: ICredentialDataDecryptedObject;
 };
 
@@ -28,3 +30,7 @@ export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
 	{ user }: { user: User },
 ) => Promise<CredentialsEntity & ICredentialsDb>;
+
+export type PostgresSchemaSection = {
+	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
+};

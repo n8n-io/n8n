@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,7 +19,7 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'create a contact',
+				description: 'Create a contact',
 			},
 			{
 				name: 'Get',
@@ -37,7 +38,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -47,7 +47,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -311,24 +311,24 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Purchase Default Account Code',
+				displayName: 'Purchase Default Account Code Name or ID',
 				name: 'purchasesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountCodes',
 				},
 				default: '',
-				description: 'The default purchases account code for contacts',
+				description: 'The default purchases account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Sales Default Account Code',
+				displayName: 'Sales Default Account Code Name or ID',
 				name: 'salesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountCodes',
 				},
 				default: '',
-				description: 'The default sales account code for contacts',
+				description: 'The default sales account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Skype',
@@ -357,7 +357,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -397,7 +397,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                   contact:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -431,7 +431,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -455,7 +455,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -479,7 +479,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'includeArchived',
 				type: 'boolean',
 				default: false,
-				description: `Contacts with a status of ARCHIVED will be included in the response`,
+				description: 'Contacts with a status of ARCHIVED will be included in the response',
 			},
 			{
 				displayName: 'Order By',
@@ -522,7 +522,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
 		typeOptions: {
@@ -792,24 +792,24 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Purchase Default Account Code',
+				displayName: 'Purchase Default Account Code Name or ID',
 				name: 'purchasesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountCodes',
 				},
 				default: '',
-				description: 'The default purchases account code for contacts',
+				description: 'The default purchases account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Sales Default Account Code',
+				displayName: 'Sales Default Account Code Name or ID',
 				name: 'salesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountCodes',
 				},
 				default: '',
-				description: 'The default sales account code for contacts',
+				description: 'The default sales account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Skype',

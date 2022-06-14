@@ -12,6 +12,7 @@ export const rowOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -56,7 +57,7 @@ export const rowFields: INodeProperties[] = [
 	/*                                row:create                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
@@ -104,7 +105,7 @@ export const rowFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -146,7 +147,6 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
@@ -180,7 +180,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
 						typeOptions: {
@@ -250,7 +250,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'conditions',
 				values: [
 					{
-						displayName: 'Name',
+						displayName: 'Name or ID',
 						name: 'keyName',
 						type: 'options',
 						typeOptions: {
@@ -260,7 +260,7 @@ export const rowFields: INodeProperties[] = [
 							loadOptionsMethod: 'getTableColumns',
 						},
 						default: '',
-						description: '',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					},
 					{
 						displayName: 'Value',
@@ -291,7 +291,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -314,7 +314,7 @@ export const rowFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	...getFilters(['row'], ['getAll'], {}),
 ];

@@ -8,9 +8,10 @@ import {
 
 export const observableOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {
@@ -65,7 +66,7 @@ export const observableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,7 +91,7 @@ export const observableFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	// required attributs
 	{
@@ -115,7 +116,7 @@ export const observableFields: INodeProperties[] = [
 		description: 'ID of the observable',
 	},
 	{
-		displayName: 'Data Type',
+		displayName: 'Data Type Name or ID',
 		name: 'dataType',
 		type: 'options',
 		required: true,
@@ -134,7 +135,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Type of the observable',
+		description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Data',
@@ -348,7 +349,7 @@ export const observableFields: INodeProperties[] = [
 
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,
@@ -381,7 +382,6 @@ export const observableFields: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -398,7 +398,6 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Observable Tags',
 				name: 'tags',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'tag1,tag2',
 			},
@@ -409,7 +408,6 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -472,7 +470,7 @@ export const observableFields: INodeProperties[] = [
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
-				description: 'sighted previously',
+				description: 'Sighted previously',
 				type: 'boolean',
 				default: false,
 			},
@@ -529,7 +527,6 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
@@ -555,27 +552,25 @@ export const observableFields: INodeProperties[] = [
 				description: 'Type of the observable',
 			},
 			{
-				displayName: 'Date range',
+				displayName: 'Date Range',
 				type: 'fixedCollection',
 				name: 'range',
 				default: {},
 				options: [
 					{
-						displayName: 'Add date range inputs',
+						displayName: 'Add Date Range Inputs',
 						name: 'dateRange',
 						values: [
 							{
-								displayName: 'From date',
+								displayName: 'From Date',
 								name: 'fromDate',
 								type: 'dateTime',
-								required: false,
 								default: '',
 							},
 							{
-								displayName: 'To date',
+								displayName: 'To Date',
 								name: 'toDate',
 								type: 'dateTime',
-								required: false,
 								default: '',
 							},
 						],

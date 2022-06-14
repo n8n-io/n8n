@@ -146,7 +146,6 @@ export class FacebookTrigger implements INodeType {
 						'object',
 					],
 				},
-				required: false,
 				default: [],
 				description: 'The set of fields in this object that are subscribed to',
 			},
@@ -158,11 +157,11 @@ export class FacebookTrigger implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Include values',
+						displayName: 'Include Values',
 						name: 'includeValues',
 						type: 'boolean',
 						default: true,
-						description: 'Indicates if change notifications should include the new values.',
+						description: 'Indicates if change notifications should include the new values',
 					},
 				],
 			},

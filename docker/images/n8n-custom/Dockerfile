@@ -6,7 +6,7 @@ USER root
 
 # Install all needed dependencies
 RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates && \
-	npm_config_user=root npm install -g lerna
+	npm_config_user=root npm install -g lerna run-script-os
 
 WORKDIR /data
 
