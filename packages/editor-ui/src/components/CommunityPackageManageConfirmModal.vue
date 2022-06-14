@@ -107,40 +107,46 @@ export default mixins(showMessage).extend({
 		},
 		async onConfirmButtonClick() {
 			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
-				try {
-					await this.$store.dispatch('communityNodes/uninstallPackage', this.activePackageName);
-					this.$showMessage({
-						title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
-						message: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.message', {
-							interpolate: {
-								packageName: this.activePackageName,
-							},
-						}),
-						type: 'success',
-					});
-				} catch (error) {
-					this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.uninstall.error'));
-				} finally {
-					this.modalBus.$emit('close');
-				}
-			}else if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE) {
-				try {
-					await this.$store.dispatch('communityNodes/updatePackage', this.activePackageName);
-					this.$showMessage({
-						title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
-						message: this.$locale.baseText('settings.communityNodes.messages.update.success.message', {
-							interpolate: {
-								packageName: this.activePackageName,
-								version: this.activePackage.updateAvailable,
-							},
-						}),
-						type: 'success',
-					});
-				} catch (error) {
-					this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.update.error.title'));
-				} finally {
-					this.modalBus.$emit('close');
-				}
+				await this.onUninstall();
+			} else if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE) {
+				await this.onUpdate();
+			}
+		},
+		async onUninstall() {
+			try {
+				await this.$store.dispatch('communityNodes/uninstallPackage', this.activePackageName);
+				this.$showMessage({
+					title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
+					message: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.message', {
+						interpolate: {
+							packageName: this.activePackageName,
+						},
+					}),
+					type: 'success',
+				});
+			} catch (error) {
+				this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.uninstall.error'));
+			} finally {
+				this.modalBus.$emit('close');
+			}
+		},
+		async onUpdate() {
+			try {
+				await this.$store.dispatch('communityNodes/updatePackage', this.activePackageName);
+				this.$showMessage({
+					title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
+					message: this.$locale.baseText('settings.communityNodes.messages.update.success.message', {
+						interpolate: {
+							packageName: this.activePackageName,
+							version: this.activePackage.updateAvailable,
+						},
+					}),
+					type: 'success',
+				});
+			} catch (error) {
+				this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.update.error.title'));
+			} finally {
+				this.modalBus.$emit('close');
 			}
 		},
 	},

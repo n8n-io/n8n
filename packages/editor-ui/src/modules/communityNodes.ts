@@ -92,6 +92,7 @@ const module: Module<ICommunityNodesState, IRootState> = {
 			try {
 				const packageToUpdate = context.getters.getInstalledPackageByName(packageName);
 				await updatePackage(context.rootGetters.getRestApiContext, packageToUpdate.packageName);
+				// TODO: Use new back-end response to substitute the existing object in the store
 				packageToUpdate.installedVersion = packageToUpdate.updateAvailable;
 				delete packageToUpdate.updateAvailable;
 			} catch (error) {
