@@ -9,7 +9,7 @@
 		:showClose="!isLoading"
 	>
 		<template slot="content">
-			<div :class="$style.descriptionContainer">
+			<div :class="[$style.descriptionContainer, 'p-s']">
 				<div>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.description') }}</n8n-text
@@ -22,7 +22,7 @@
 					@click="openNPMPage"
 				/>
 			</div>
-			<div :class="$style.formContainer">
+			<div :class="[$style.formContainer, 'mt-m']">
 				<n8n-input-label
 					:class="$style.labelTooltip"
 					:label="$locale.baseText('settings.communityNodes.installModal.packageName.label')"
@@ -40,7 +40,7 @@
 						@blur="onInputBlur"
 					/>
 				</n8n-input-label>
-				<div :class="$style.infoText">
+				<div :class="[$style.infoText, 'mt-4xs']">
 					<span
 						size="small"
 						:class="[$style.infoText, infoTextErrorMessage ? $style.error : '']"
@@ -49,7 +49,7 @@
 				</div>
 				<el-checkbox
 					v-model="userAgreed"
-					:class="[$style.checkbox, checkboxWarning ? $style.error : '']"
+					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="isLoading"
 					@change="onCheckboxChecked"
 				>
@@ -87,7 +87,6 @@ import {
 import { mapGetters } from 'vuex';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { json } from 'express';
 
 export default mixins(
 	showMessage,
@@ -117,9 +116,9 @@ export default mixins(
 			window.open(NPM_KEYWORD_SEARCH_URL, '_blank');
 		},
 		async onInstallClick() {
-			if(!this.userAgreed) {
+			if (!this.userAgreed) {
 				this.checkboxWarning = true;
-			}else {
+			} else {
 				try {
 					this.infoTextErrorMessage = '';
 					await this.$store.dispatch('communityNodes/installPackage', this.packageName);
@@ -130,7 +129,6 @@ export default mixins(
 					this.modalBus.$emit('close');
 					await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 				} catch(error) {
-					console.log(JSON.stringify(error)); // eslint-disable-line no-console
 					if(error.httpStatusCode && error.httpStatusCode === 400) {
 						this.infoTextErrorMessage = error.message;
 					} else {
@@ -160,25 +158,17 @@ export default mixins(
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: var(--spacing-s);
 	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
 	border-radius: var(--border-radius-large);
 }
 
 .formContainer {
-	margin-top: var(--spacing-m);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
 	color: var(--color-text-base);
 }
 
-.infoText {
-	margin-top: var(--spacing-4xs);
-}
-
 .checkbox {
-	margin-top: var(--spacing-l);
-
 	span:nth-child(2) {
 		vertical-align: text-top;
 	}
