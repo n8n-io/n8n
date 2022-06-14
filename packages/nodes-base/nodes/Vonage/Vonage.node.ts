@@ -41,7 +41,6 @@ export class Vonage implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
@@ -405,7 +404,7 @@ export class Vonage implements INodeType {
 						description: 'Boolean indicating if you like to receive a Delivery Receipt',
 					},
 					{
-						displayName: 'TTL (in minutes)',
+						displayName: 'TTL (in Minutes)',
 						name: 'ttl',
 						type: 'number',
 						default: 4320,

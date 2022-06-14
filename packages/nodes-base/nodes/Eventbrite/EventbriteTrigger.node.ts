@@ -82,7 +82,7 @@ export class EventbriteTrigger implements INodeType {
 				default: 'privateKey',
 			},
 			{
-				displayName: 'Organization',
+				displayName: 'Organization Name or ID',
 				name: 'organization',
 				type: 'options',
 				required: true,
@@ -90,10 +90,10 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
-				description: 'The Eventbrite Organization to work on',
+				description: 'The Eventbrite Organization to work on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Event',
+				displayName: 'Event Name or ID',
 				name: 'event',
 				type: 'options',
 				required: true,
@@ -104,7 +104,7 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
-				description: 'Limit the triggers to this event',
+				description: 'Limit the triggers to this event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Actions',

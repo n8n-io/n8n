@@ -58,11 +58,11 @@ export const paymentFields: INodeProperties[] = [
 	//         payment: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer ID',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the payment is for',
+		description: 'The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -163,7 +163,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download estimate as PDF file',
+		description: 'Whether to download estimate as PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -243,7 +243,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

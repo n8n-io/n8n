@@ -259,7 +259,14 @@ export class Git implements INodeType {
 
 					await git.add(pathsToAdd.split(','));
 
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'addConfig') {
 					// ----------------------------------
@@ -275,7 +282,14 @@ export class Git implements INodeType {
 					}
 
 					await git.addConfig(key, value, append);
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'clone') {
 					// ----------------------------------
@@ -287,7 +301,14 @@ export class Git implements INodeType {
 
 					await git.clone(sourceRepository, '.');
 
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'commit') {
 					// ----------------------------------
@@ -303,7 +324,14 @@ export class Git implements INodeType {
 
 					await git.commit(message, pathsToAdd);
 
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'fetch') {
 					// ----------------------------------
@@ -311,7 +339,14 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					await git.fetch();
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'log') {
 					// ----------------------------------
@@ -331,7 +366,12 @@ export class Git implements INodeType {
 					const log = await git.log(logOptions);
 
 					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray(log.all));
+					returnItems.push(...this.helpers.returnJsonArray(log.all).map(item => {
+						return {
+							...item,
+							pairedItem: { item: itemIndex },
+						};
+					}));
 
 				} else if (operation === 'pull') {
 					// ----------------------------------
@@ -339,7 +379,14 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					await git.pull();
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'push') {
 					// ----------------------------------
@@ -370,7 +417,14 @@ export class Git implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'pushTags') {
 					// ----------------------------------
@@ -378,7 +432,14 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					await git.pushTags();
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'listConfig') {
 					// ----------------------------------
@@ -396,7 +457,12 @@ export class Git implements INodeType {
 					}
 
 					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray(data));
+					returnItems.push(...this.helpers.returnJsonArray(data).map(item => {
+						return {
+							...item,
+							pairedItem: { item: itemIndex },
+						};
+					}));
 
 				} else if (operation === 'status') {
 					// ----------------------------------
@@ -406,7 +472,12 @@ export class Git implements INodeType {
 					const status = await git.status();
 
 					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray([status]));
+					returnItems.push(...this.helpers.returnJsonArray([status]).map(item => {
+						return {
+							...item,
+							pairedItem: { item: itemIndex },
+						};
+					}));
 
 				} else if (operation === 'tag') {
 					// ----------------------------------
@@ -416,14 +487,27 @@ export class Git implements INodeType {
 					const name = this.getNodeParameter('name', itemIndex, '') as string;
 
 					await git.addTag(name);
-					returnItems.push({ json: { success: true } });
-
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				}
 
 			} catch (error) {
 
 				if (this.continueOnFail()) {
-					returnItems.push({ json: { error: error.toString() } });
+					returnItems.push({
+						json: {
+							error: error.toString(),
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 
