@@ -5,6 +5,7 @@ packages/design-system
 !packages/nodes-base/src
 !packages/nodes-base/test
 !packages/nodes-base/nodes
+!packages/nodes-base/credentials
 
 packages/nodes-base/nodes/ActionNetwork
 packages/nodes-base/nodes/ActiveCampaign
@@ -272,8 +273,6 @@ packages/nodes-base/nodes/Zendesk
 packages/nodes-base/nodes/Zoho
 packages/nodes-base/nodes/Zoom
 packages/nodes-base/nodes/Zulip
-
-!packages/nodes-base/credentials
 
 packages/nodes-base/credentials/FreshworksCrmApi.credentials.ts
 packages/nodes-base/credentials/DisqusApi.credentials.ts
