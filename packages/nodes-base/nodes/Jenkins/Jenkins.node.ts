@@ -128,7 +128,7 @@ export class Jenkins implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Job Name',
+				displayName: 'Job Name or ID',
 				name: 'job',
 				type: 'options',
 				typeOptions: {
@@ -148,7 +148,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the job',
+				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 
 			// --------------------------------------------------------------------------------------------------------
@@ -180,7 +180,7 @@ export class Jenkins implements INodeType {
 						displayName: 'Parameters',
 						values: [
 							{
-								displayName: 'Name',
+								displayName: 'Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -369,7 +369,7 @@ export class Jenkins implements INodeType {
 				noDataExpression: true,
 			},
 			{
-				displayName: 'Job Name',
+				displayName: 'Job Name or ID',
 				name: 'job',
 				type: 'options',
 				typeOptions: {
@@ -387,7 +387,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the job',
+				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Return All',

@@ -10,6 +10,7 @@ export const cardOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -45,7 +46,6 @@ export const cardOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -54,7 +54,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:create
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -72,10 +72,10 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to',
+		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -96,7 +96,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to create card in',
+		description: 'The ID of the list to create card in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Title',
@@ -118,7 +118,7 @@ export const cardFields: INodeProperties[] = [
 		description: 'The title of the card',
 	},
 	{
-		displayName: 'Swimlane ID',
+		displayName: 'Swimlane Name or ID',
 		name: 'swimlaneId',
 		type: 'options',
 		typeOptions: {
@@ -139,10 +139,10 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The swimlane ID of the new card',
+		description: 'The swimlane ID of the new card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Author ID',
+		displayName: 'Author Name or ID',
 		name: 'authorId',
 		type: 'options',
 		typeOptions: {
@@ -212,7 +212,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:delete
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -230,10 +230,10 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to',
+		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -254,10 +254,10 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Card ID',
+		displayName: 'Card Name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -279,14 +279,14 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to delete',
+		description: 'The ID of the card to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 
 	// ----------------------------------
 	//         card:get
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -304,10 +304,10 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to',
+		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -328,7 +328,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Card ID',
@@ -353,7 +353,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:getAll
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -371,7 +371,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to',
+		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'From Object',
@@ -401,7 +401,7 @@ export const cardFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -425,10 +425,10 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Swimlane ID',
+		displayName: 'Swimlane Name or ID',
 		name: 'swimlaneId',
 		type: 'options',
 		typeOptions: {
@@ -451,7 +451,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the swimlane that card belongs to',
+		description: 'The ID of the swimlane that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -499,7 +499,7 @@ export const cardFields: INodeProperties[] = [
 	//         card:update
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -517,10 +517,10 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to',
+		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -541,10 +541,10 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Card ID',
+		displayName: 'Card Name or ID',
 		name: 'cardId',
 		type: 'options',
 		typeOptions: {
@@ -566,7 +566,7 @@ export const cardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to update',
+		description: 'The ID of the card to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -586,14 +586,14 @@ export const cardFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'Update the owner of the card',
+				description: 'Update the owner of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Assignees',
@@ -611,104 +611,104 @@ export const cardFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						value: 'white',
-						name: 'White',
-					},
-					{
-						value: 'green',
-						name: 'Green',
-					},
-					{
-						value: 'yellow',
-						name: 'Yellow',
-					},
-					{
-						value: 'orange',
-						name: 'Orange',
-					},
-					{
-						value: 'red',
-						name: 'Red',
-					},
-					{
-						value: 'purple',
-						name: 'Purple',
+						value: 'black',
+						name: 'Black',
 					},
 					{
 						value: 'blue',
 						name: 'Blue',
 					},
 					{
-						value: 'sky',
-						name: 'Sky',
-					},
-					{
-						value: 'lime',
-						name: 'Lime',
-					},
-					{
-						value: 'pink',
-						name: 'Pink',
-					},
-					{
-						value: 'black',
-						name: 'Black',
-					},
-					{
-						value: 'silver',
-						name: 'Silver',
-					},
-					{
-						value: 'peachpuff',
-						name: 'Peachpuff',
-					},
-					{
 						value: 'crimson',
 						name: 'Crimson',
-					},
-					{
-						value: 'plum',
-						name: 'Plum',
 					},
 					{
 						value: 'darkgreen',
 						name: 'Darkgreen',
 					},
 					{
-						value: 'slateblue',
-						name: 'Slateblue',
-					},
-					{
-						value: 'magenta',
-						name: 'Magenta',
-					},
-					{
 						value: 'gold',
 						name: 'Gold',
-					},
-					{
-						value: 'navy',
-						name: 'Navy',
 					},
 					{
 						value: 'gray',
 						name: 'Gray',
 					},
 					{
-						value: 'saddlebrown',
-						name: 'Saddlebrown',
+						value: 'green',
+						name: 'Green',
 					},
 					{
-						value: 'paleturquoise',
-						name: 'Paleturquoise',
+						value: 'indigo',
+						name: 'Indigo',
+					},
+					{
+						value: 'lime',
+						name: 'Lime',
+					},
+					{
+						value: 'magenta',
+						name: 'Magenta',
 					},
 					{
 						value: 'mistyrose',
 						name: 'Mistyrose',
 					},
 					{
-						value: 'indigo',
-						name: 'Indigo',
+						value: 'navy',
+						name: 'Navy',
+					},
+					{
+						value: 'orange',
+						name: 'Orange',
+					},
+					{
+						value: 'paleturquoise',
+						name: 'Paleturquoise',
+					},
+					{
+						value: 'peachpuff',
+						name: 'Peachpuff',
+					},
+					{
+						value: 'pink',
+						name: 'Pink',
+					},
+					{
+						value: 'plum',
+						name: 'Plum',
+					},
+					{
+						value: 'purple',
+						name: 'Purple',
+					},
+					{
+						value: 'red',
+						name: 'Red',
+					},
+					{
+						value: 'saddlebrown',
+						name: 'Saddlebrown',
+					},
+					{
+						value: 'silver',
+						name: 'Silver',
+					},
+					{
+						value: 'sky',
+						name: 'Sky',
+					},
+					{
+						value: 'slateblue',
+						name: 'Slateblue',
+					},
+					{
+						value: 'white',
+						name: 'White',
+					},
+					{
+						value: 'yellow',
+						name: 'Yellow',
 					},
 				],
 				default: '',
@@ -743,7 +743,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The label IDs attached to the card',
 			},
 			{
-				displayName: 'List ID',
+				displayName: 'List Name or ID',
 				name: 'listId',
 				type: 'options',
 				typeOptions: {
@@ -753,7 +753,7 @@ export const cardFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The new list ID of the card (move operation)',
+				description: 'The new list ID of the card (move operation). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Members',
@@ -773,7 +773,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The new over time field of the card',
 			},
 			{
-				displayName: 'Parent ID',
+				displayName: 'Parent Name or ID',
 				name: 'parentId',
 				type: 'options',
 				typeOptions: {
@@ -784,7 +784,7 @@ export const cardFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The parent of the card',
+				description: 'The parent of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Received At',
@@ -818,7 +818,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The new start at field of the card',
 			},
 			{
-				displayName: 'Swimlane ID',
+				displayName: 'Swimlane Name or ID',
 				name: 'swimlaneId',
 				type: 'options',
 				typeOptions: {
@@ -828,7 +828,7 @@ export const cardFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The new swimlane ID of the card',
+				description: 'The new swimlane ID of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',

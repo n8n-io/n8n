@@ -12,6 +12,7 @@ export const productOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,7 +48,6 @@ export const productOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -93,7 +93,7 @@ export const productFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Attribute Set Name/ID',
+		displayName: 'Attribute Set Name or ID',
 		name: 'attributeSetId',
 		type: 'options',
 		displayOptions: {

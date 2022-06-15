@@ -7,6 +7,7 @@ export const agentGroupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -90,14 +91,14 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate to Agent Name/ID',
+				displayName: 'Escalate to Agent Name or ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
-				description: 'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Member Names/IDs',
@@ -127,36 +128,36 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '30m',
 				options: [
 					{
-						name: '30 Minutes',
-						value: '30m',
+						name: '1 Day',
+						value: '1d',
 					},
 					{
 						name: '1 Hour',
 						value: '1h',
 					},
 					{
-						name: '2 Hours',
-						value: '2h',
-					},
-					{
-						name: '8 Hours',
-						value: '8h',
-					},
-					{
 						name: '12 Hours',
 						value: '12h',
-					},
-					{
-						name: '1 Day',
-						value: '1d',
 					},
 					{
 						name: '2 Days',
 						value: '2d',
 					},
 					{
+						name: '2 Hours',
+						value: '2h',
+					},
+					{
 						name: '3 Days',
 						value: '3d',
+					},
+					{
+						name: '30 Minutes',
+						value: '30m',
+					},
+					{
+						name: '8 Hours',
+						value: '8h',
 					},
 				],
 			},
@@ -296,11 +297,11 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate to Agent Names/IDs',
+				displayName: 'Escalate to Agent Name or ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
@@ -339,36 +340,36 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '30m',
 				options: [
 					{
-						name: '30 Minutes',
-						value: '30m',
+						name: '1 Day',
+						value: '1d',
 					},
 					{
 						name: '1 Hour',
 						value: '1h',
 					},
 					{
-						name: '2 Hours',
-						value: '2h',
-					},
-					{
-						name: '8 Hours',
-						value: '8h',
-					},
-					{
 						name: '12 Hours',
 						value: '12h',
-					},
-					{
-						name: '1 Day',
-						value: '1d',
 					},
 					{
 						name: '2 Days',
 						value: '2d',
 					},
 					{
+						name: '2 Hours',
+						value: '2h',
+					},
+					{
 						name: '3 Days',
 						value: '3d',
+					},
+					{
+						name: '30 Minutes',
+						value: '30m',
+					},
+					{
+						name: '8 Hours',
+						value: '8h',
 					},
 				],
 			},

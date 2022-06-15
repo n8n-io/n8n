@@ -20,7 +20,7 @@ let testDbName = '';
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -30,8 +30,6 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	jest.mock('../../config');
-
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
 
@@ -68,6 +66,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 		password,
 		resetPasswordToken,
 		isPending,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -80,6 +79,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(resetPasswordToken).toBeUndefined();
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
+	expect(apiKey).toBeUndefined();
 
 	const storedOwner = await Db.collections.User.findOneOrFail(id);
 	expect(storedOwner.password).not.toBe(newOwnerData.password);
@@ -111,6 +111,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 
 	const { id, email } = response.body.data;
 
+	expect(id).toBe(ownerShell.id);
 	expect(email).toBe(newOwnerData.email.toLowerCase());
 
 	const storedOwner = await Db.collections.User.findOneOrFail(id);

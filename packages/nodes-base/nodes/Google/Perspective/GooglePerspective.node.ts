@@ -56,6 +56,7 @@ export class GooglePerspective implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Analyze Comment',
@@ -172,14 +173,14 @@ export class GooglePerspective implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'Languages',
+						displayName: 'Language Name or ID',
 						name: 'languages',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getLanguages',
 						},
 						default: '',
-						description: 'Languages of the text input. If unspecified, the API will auto-detect the comment language.',
+						description: 'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
 			},

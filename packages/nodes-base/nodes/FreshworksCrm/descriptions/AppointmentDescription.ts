@@ -11,6 +11,7 @@ export const appointmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -148,7 +149,7 @@ export const appointmentFields: INodeProperties[] = [
 						default: 'contact',
 					},
 					{
-						displayName: 'User ID',
+						displayName: 'User Name or ID',
 						name: 'userId',
 						type: 'options',
 						displayOptions: {
@@ -198,14 +199,14 @@ export const appointmentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user who created the appointment',
+				description: 'ID of the user who created the appointment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Is All-Day',
@@ -236,14 +237,14 @@ export const appointmentFields: INodeProperties[] = [
 				description: 'Longitude of the location when you check in for an appointment',
 			},
 			{
-				displayName: 'Outcome ID',
+				displayName: 'Outcome Name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getOutcomes',
 				},
-				description: 'ID of outcome of Appointment sales activity type',
+				description: 'ID of outcome of Appointment sales activity type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Target ID',
@@ -495,7 +496,7 @@ export const appointmentFields: INodeProperties[] = [
 								default: 'contact',
 							},
 							{
-								displayName: 'User ID',
+								displayName: 'User Name or ID',
 								name: 'userId',
 								type: 'options',
 								displayOptions: {
@@ -528,14 +529,14 @@ export const appointmentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user who created the appointment',
+				description: 'ID of the user who created the appointment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'End Date',
@@ -573,14 +574,14 @@ export const appointmentFields: INodeProperties[] = [
 				description: 'Longitude of the location when you check in for an appointment',
 			},
 			{
-				displayName: 'Outcome ID',
+				displayName: 'Outcome Name or ID',
 				name: 'outcome_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getOutcomes',
 				},
-				description: 'ID of outcome of Appointment sales activity type',
+				description: 'ID of outcome of Appointment sales activity type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Start Date',

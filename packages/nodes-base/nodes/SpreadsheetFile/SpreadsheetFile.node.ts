@@ -66,20 +66,20 @@ export class SpreadsheetFile implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Read from file',
+						name: 'Read From File',
 						value: 'fromFile',
 						description: 'Reads data from a spreadsheet file',
 					},
 					{
-						name: 'Write to file',
+						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
 					},
 				],
 				default: 'fromFile',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -391,17 +391,36 @@ export class SpreadsheetFile implements INodeType {
 					if (options.headerRow === false) {
 						// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
 						for (const rowData of sheetJson) {
-							newItems.push({ json: { row: rowData } } as INodeExecutionData);
+							newItems.push({
+								json: {
+									row: rowData,
+								},
+								pairedItem: {
+									item: i,
+								},
+							} as INodeExecutionData);
 						}
 					} else {
 						for (const rowData of sheetJson) {
-							newItems.push({ json: rowData } as INodeExecutionData);
+							newItems.push({
+								json: rowData,
+								pairedItem: {
+									item: i,
+								},
+							} as INodeExecutionData);
 						}
 					}
 
 				} catch (error) {
 					if (this.continueOnFail()) {
-						newItems.push({json:{ error: error.message }});
+						newItems.push({
+							json: {
+								error: error.message,
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 						continue;
 					}
 					throw error;
@@ -466,6 +485,9 @@ export class SpreadsheetFile implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
+					pairedItem: {
+						item: 0,
+					},
 				};
 
 				let fileName = `spreadsheet.${fileFormat}`;
@@ -478,7 +500,14 @@ export class SpreadsheetFile implements INodeType {
 				newItems.push(newItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					newItems.push({json:{ error: error.message }});
+					newItems.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: 0,
+						},
+					});
 				} else {
 					throw error;
 				}

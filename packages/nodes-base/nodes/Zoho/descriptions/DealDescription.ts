@@ -13,6 +13,7 @@ export const dealOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -53,7 +54,6 @@ export const dealOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -104,7 +104,7 @@ export const dealFields: INodeProperties[] = [
 	//          deal: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Stage',
+		displayName: 'Stage Name or ID',
 		name: 'stage',
 		type: 'options',
 		required: true,
@@ -372,7 +372,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Averge number of days to win the deal',
 			},
 			{
-				displayName: 'Stage',
+				displayName: 'Stage Name or ID',
 				name: 'Stage',
 				type: 'options',
 					typeOptions: {

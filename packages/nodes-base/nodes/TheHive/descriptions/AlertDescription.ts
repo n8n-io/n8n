@@ -8,9 +8,10 @@ import {
 
 export const alertOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'loadAlertOptions',
@@ -356,7 +357,7 @@ export const alertFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'if true, the alert becomes active when updated default=true',
+		description: 'If true, the alert becomes active when updated default=true',
 	},
 	{
 		displayName: 'Artifacts',
@@ -383,14 +384,14 @@ export const alertFields: INodeProperties[] = [
 				name: 'artifactValues',
 				values: [
 					{
-						displayName: 'Data Type',
+						displayName: 'Data Type Name or ID',
 						name: 'dataType',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'loadObservableTypes',
 						},
-						description: 'Type of the observable',
+						description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Data',
@@ -437,7 +438,7 @@ export const alertFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,
@@ -529,7 +530,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -625,14 +626,14 @@ export const alertFields: INodeProperties[] = [
 						name: 'artifactValues',
 						values: [
 							{
-								displayName: 'Data Type',
+								displayName: 'Data Type Name or ID',
 								name: 'dataType',
 								type: 'options',
 								default: '',
 								typeOptions: {
 									loadOptionsMethod: 'loadObservableTypes',
 								},
-								description: 'Type of the observable',
+								description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Data',
@@ -698,7 +699,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -750,7 +751,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'follow',
 				type: 'boolean',
 				default: true,
-				description: 'if true, the alert becomes active when updated default=true',
+				description: 'If true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',
@@ -898,7 +899,7 @@ export const alertFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -929,7 +930,7 @@ export const alertFields: INodeProperties[] = [
 				name: 'follow',
 				type: 'boolean',
 				default: false,
-				description: 'if true, the alert becomes active when updated default=true',
+				description: 'If true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',

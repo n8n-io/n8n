@@ -162,6 +162,7 @@ export class ClickUp implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Checklist',
@@ -204,16 +205,16 @@ export class ClickUp implements INodeType {
 						value: 'task',
 					},
 					{
+						name: 'Task Dependency',
+						value: 'taskDependency',
+					},
+					{
 						name: 'Task List',
 						value: 'taskList',
 					},
 					{
 						name: 'Task Tag',
 						value: 'taskTag',
-					},
-					{
-						name: 'Task Dependency',
-						value: 'taskDependency',
 					},
 					{
 						name: 'Time Entry',
@@ -225,7 +226,6 @@ export class ClickUp implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'Resource to consume.',
 			},
 			// CHECKLIST
 			...checklistOperations,

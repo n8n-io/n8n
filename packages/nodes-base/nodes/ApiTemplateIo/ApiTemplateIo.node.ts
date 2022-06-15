@@ -44,6 +44,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -59,15 +60,14 @@ export class ApiTemplateIo implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				default: 'create',
 				required: true,
-				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Create',
@@ -87,9 +87,9 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				default: 'get',
 				required: true,
-				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Get',
@@ -105,12 +105,12 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template ID',
+				displayName: 'Template Name or ID',
 				name: 'imageTemplateId',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the image template to use',
+				description: 'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
@@ -126,12 +126,12 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template ID',
+				displayName: 'Template Name or ID',
 				name: 'pdfTemplateId',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the PDF template to use',
+				description: 'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},

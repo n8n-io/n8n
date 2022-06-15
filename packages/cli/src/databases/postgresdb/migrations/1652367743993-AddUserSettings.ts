@@ -11,6 +11,8 @@ export class AddUserSettings1652367743993 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}user ADD COLUMN settings json`);
 
 		await queryRunner.query(
@@ -24,6 +26,7 @@ export class AddUserSettings1652367743993 implements MigrationInterface {
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+		await queryRunner.query(`SET search_path TO ${schema};`);
 
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}user DROP COLUMN settings`);
 	}

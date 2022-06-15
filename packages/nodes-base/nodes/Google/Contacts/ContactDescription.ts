@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -396,24 +396,28 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: 'Google Voice',
+										value: 'googleVoice',
+									},
+									{
 										name: 'Home',
 										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
 									},
 									{
 										name: 'Home Fax',
 										value: 'homeFax',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
+										name: 'Main',
+										value: 'main',
+									},
+									{
+										name: 'Mobile',
+										value: 'mobile',
+									},
+									{
+										name: 'Other',
+										value: 'other',
 									},
 									{
 										name: 'Other Fax',
@@ -424,24 +428,20 @@ export const contactFields: INodeProperties[] = [
 										value: 'pager',
 									},
 									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
+									},
+									{
 										name: 'Work Mobile',
 										value: 'workMobile',
 									},
 									{
 										name: 'Work Pager',
 										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
 									},
 								],
 								default: '',
@@ -1461,24 +1461,28 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: 'Google Voice',
+										value: 'googleVoice',
+									},
+									{
 										name: 'Home',
 										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
 									},
 									{
 										name: 'Home Fax',
 										value: 'homeFax',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
+										name: 'Main',
+										value: 'main',
+									},
+									{
+										name: 'Mobile',
+										value: 'mobile',
+									},
+									{
+										name: 'Other',
+										value: 'other',
 									},
 									{
 										name: 'Other Fax',
@@ -1489,24 +1493,20 @@ export const contactFields: INodeProperties[] = [
 										value: 'pager',
 									},
 									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
+									},
+									{
 										name: 'Work Mobile',
 										value: 'workMobile',
 									},
 									{
 										name: 'Work Pager',
 										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
 									},
 								],
 								default: '',

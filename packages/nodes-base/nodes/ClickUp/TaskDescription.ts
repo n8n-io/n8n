@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,7 +53,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -62,7 +62,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -82,7 +82,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -122,7 +122,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -148,7 +148,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -174,7 +174,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -320,7 +320,7 @@ export const taskFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -348,7 +348,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Time Estimate',
 				name: 'timeEstimate',
 				type: 'number',
-				description: 'time estimate in minutes',
+				description: 'Time estimate in minutes',
 				default: 1,
 			},
 		],
@@ -483,7 +483,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Time Estimate',
 				name: 'timeEstimate',
 				type: 'number',
-				description: 'time estimate in minutes',
+				description: 'Time estimate in minutes',
 				default: 1,
 			},
 		],
@@ -515,7 +515,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -535,7 +535,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -575,7 +575,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -601,7 +601,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -627,7 +627,7 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -745,14 +745,14 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Operator',
@@ -760,8 +760,8 @@ export const taskFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Equal',
-										value: 'equal',
+										name: '!=',
+										value: '!=',
 									},
 									{
 										name: '<',
@@ -780,16 +780,16 @@ export const taskFields: INodeProperties[] = [
 										value: '>=',
 									},
 									{
-										name: '!=',
-										value: '!=',
-									},
-									{
-										name: 'Is Null',
-										value: 'IS NULL',
+										name: 'Equal',
+										value: 'equal',
 									},
 									{
 										name: 'Is Not Null',
 										value: 'IS NOT NULL',
+									},
+									{
+										name: 'Is Null',
+										value: 'IS NULL',
 									},
 								],
 								default: 'equal',
@@ -1045,7 +1045,7 @@ export const taskFields: INodeProperties[] = [
 		description: 'The ID of the field to add custom field to',
 	},
 	{
-		displayName: 'Value is JSON',
+		displayName: 'Value Is JSON',
 		name: 'jsonParse',
 		type: 'boolean',
 		displayOptions: {

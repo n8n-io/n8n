@@ -58,14 +58,22 @@
 				</div>
 			</div>
 		</div>
-		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
-			class="node-buttons-wrapper"
+			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"
+			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div class="node-creator-button">
-				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
-				<div class="add-sticky-button" @click="nodeTypeSelected(STICKY_NODE_TYPE)">
+				<n8n-icon-button
+					size="xlarge"
+					icon="plus"
+					@click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"
+				/>
+				<div
+					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
+					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
+				>
 					<n8n-icon-button size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
 				</div>
 			</div>
@@ -161,11 +169,10 @@ import { newVersions } from '@/components/mixins/newVersions';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
-import DataDisplay from '@/components/DataDisplay.vue';
+import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
-import RunData from '@/components/RunData.vue';
 import Sticky from '@/components/Sticky.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
@@ -232,11 +239,10 @@ export default mixins(
 	.extend({
 		name: 'NodeView',
 		components: {
-			DataDisplay,
+			NodeDetailsView,
 			Node,
 			NodeCreator,
 			NodeSettings,
-			RunData,
 			Sticky,
 		},
 		errorCaptured: (err, vm, info) => {
@@ -387,6 +393,7 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				renamingActive: false,
+				showStickyButton: false,
 			};
 		},
 		beforeDestroy () {
@@ -397,6 +404,29 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
+			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
+				const buttonsWrapper = mouseinEvent.target as Element;
+
+				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
+				this.showStickyButton = true;
+				const moveCallback = (mousemoveEvent: MouseEvent) => {
+					if(buttonsWrapper) {
+						const wrapperBounds = buttonsWrapper.getBoundingClientRect();
+						const wrapperH = wrapperBounds.height;
+						const wrapperW = wrapperBounds.width;
+						const wrapperLeftNear = wrapperBounds.left;
+						const wrapperLeftFar = wrapperLeftNear + wrapperW;
+						const wrapperTopNear = wrapperBounds.top;
+						const wrapperTopFar = wrapperTopNear + wrapperH;
+						const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
+						if(!inside) {
+							this.showStickyButton = false;
+							document.removeEventListener('mousemove', moveCallback, false);
+						}
+					}
+				};
+				document.addEventListener('mousemove', moveCallback, false);
+			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -1202,7 +1232,7 @@ export default mixins(
 					workflow_id: this.$store.getters.workflowId,
 				});
 
-				return this.importWorkflowData(workflowData!);
+				return this.importWorkflowData(workflowData!, false);
 			},
 
 			// Returns the workflow data from a given URL. If no data gets found or
@@ -1229,7 +1259,7 @@ export default mixins(
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowDataUpdate): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowDataUpdate, importTags = true): Promise<void> {
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -1255,6 +1285,40 @@ export default mixins(
 							this.nodeSelectedByName(node.name);
 						});
 					});
+
+					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
+					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
+						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
+						const tagNames = new Set(allTags.map((tag) => tag.name));
+
+						const workflowTags = workflowData.tags as ITag[];
+						const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
+
+						const creatingTagPromises: Array<Promise<ITag>> = [];
+						for (const tag of notFound) {
+							const creationPromise = this.$store.dispatch('tags/create', tag.name)
+								.then((tag: ITag) => {
+									allTags.push(tag);
+									return tag;
+								});
+
+							creatingTagPromises.push(creationPromise);
+						}
+
+						await Promise.all(creatingTagPromises);
+
+						const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
+							const tag = allTags.find(tag => tag.name === imported.name);
+							if (tag) {
+								accu.push(tag.id);
+							}
+
+							return accu;
+						}, []);
+
+						this.$store.commit('addWorkflowTagIds', tagIds);
+					}
+
 				} catch (error) {
 					this.$showError(
 						error,
@@ -1851,7 +1915,7 @@ export default mixins(
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
 					// For novice users (onboardingFlowEnabled == true)
 					// Inject welcome sticky note and zoom to fit
-					if(newWorkflow.onboardingFlowEnabled) {
+					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
 						this.$nextTick(async () => {
 							await this.addNodes([
 								{
@@ -2939,6 +3003,10 @@ export default mixins(
 	bottom: 10px;
 }
 
+.no-events {
+	pointer-events: none;
+}
+
 .node-buttons-wrapper {
 	position: fixed;
 	width: 150px;
@@ -2954,10 +3022,9 @@ export default mixins(
 		transition-timing-function: linear;
 	}
 
-	&:hover {
-		.add-sticky-button {
-			opacity: 1;
-		}
+	.visible-button {
+		opacity: 1;
+		pointer-events: all;
 	}
 }
 
@@ -2966,6 +3033,7 @@ export default mixins(
 	text-align: center;
 	top: 80px;
 	right: 20px;
+	pointer-events: all !important;
 }
 
 .node-creator-button button {

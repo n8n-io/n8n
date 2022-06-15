@@ -106,12 +106,12 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign',
@@ -132,12 +132,12 @@ export class Mailchimp implements INodeType {
 				],
 				default: 'member',
 				required: true,
-				description: 'Resource to consume.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -174,12 +174,12 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -201,12 +201,12 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -223,12 +223,12 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type:'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions : {
 					show: {
@@ -271,13 +271,12 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:create                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -296,7 +295,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -333,14 +332,6 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						name: 'Subscribed',
-						value: 'subscribed',
-					},
-					{
-						name: 'Unsubscribed',
-						value: 'unsubscribed',
-					},
-					{
 						name: 'Cleaned',
 						value: 'cleaned',
 					},
@@ -349,8 +340,16 @@ export class Mailchimp implements INodeType {
 						value: 'pending',
 					},
 					{
+						name: 'Subscribed',
+						value: 'subscribed',
+					},
+					{
 						name: 'Transactional',
 						value: 'transactional',
+					},
+					{
+						name: 'Unsubscribed',
+						value: 'unsubscribed',
 					},
 				],
 				default: '',
@@ -534,7 +533,7 @@ export class Mailchimp implements INodeType {
 						},
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -544,7 +543,7 @@ export class Mailchimp implements INodeType {
 									],
 								},
 								required: true,
-								description: 'Merge Field name',
+								description: 'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -634,7 +633,7 @@ export class Mailchimp implements INodeType {
 						},
 						values: [
 							{
-								displayName: 'Category ID',
+								displayName: 'Category Name or ID',
 								name: 'categoryId',
 								type: 'options',
 								typeOptions: {
@@ -687,7 +686,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:delete                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -706,7 +705,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -730,7 +729,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:get                                 */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -749,7 +748,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -806,7 +805,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:getAll                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -825,7 +824,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Return All',
@@ -936,14 +935,6 @@ export class Mailchimp implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Subscribed',
-								value: 'subscribed',
-							},
-							{
-								name: 'Unsubscribed',
-								value: 'unsubscribed',
-							},
-							{
 								name: 'Cleaned',
 								value: 'cleaned',
 							},
@@ -952,8 +943,16 @@ export class Mailchimp implements INodeType {
 								value: 'pending',
 							},
 							{
+								name: 'Subscribed',
+								value: 'subscribed',
+							},
+							{
 								name: 'Transactional',
 								value: 'transactional',
+							},
+							{
+								name: 'Unsubscribed',
+								value: 'unsubscribed',
 							},
 						],
 						default: '',
@@ -972,7 +971,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:update                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -991,7 +990,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -1092,7 +1091,7 @@ export class Mailchimp implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Category ID',
+										displayName: 'Category Name or ID',
 										name: 'categoryId',
 										type: 'options',
 										typeOptions: {
@@ -1158,7 +1157,7 @@ export class Mailchimp implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field Name',
+										displayName: 'Field Name or ID',
 										name: 'name',
 										type: 'options',
 										typeOptions: {
@@ -1168,7 +1167,7 @@ export class Mailchimp implements INodeType {
 											],
 										},
 										required: true,
-										description: 'Merge Field name',
+										description: 'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 										default: '',
 									},
 									{
@@ -1218,14 +1217,6 @@ export class Mailchimp implements INodeType {
 						required: true,
 						options: [
 							{
-								name: 'Subscribed',
-								value: 'subscribed',
-							},
-							{
-								name: 'Unsubscribed',
-								value: 'unsubscribed',
-							},
-							{
 								name: 'Cleaned',
 								value: 'cleaned',
 							},
@@ -1234,8 +1225,16 @@ export class Mailchimp implements INodeType {
 								value: 'pending',
 							},
 							{
+								name: 'Subscribed',
+								value: 'subscribed',
+							},
+							{
 								name: 'Transactional',
 								value: 'transactional',
+							},
+							{
+								name: 'Unsubscribed',
+								value: 'unsubscribed',
 							},
 						],
 						default: '',
@@ -1372,7 +1371,7 @@ export class Mailchimp implements INodeType {
 /*                                 memberTag:create                           */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1392,7 +1391,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -1465,7 +1464,7 @@ export class Mailchimp implements INodeType {
 /*                                 member:getAll                              */
 /* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1484,10 +1483,10 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Group Category',
+				displayName: 'Group Category Name or ID',
 				name: 'groupCategory',
 				type: 'options',
 				typeOptions: {
@@ -1654,14 +1653,14 @@ export class Mailchimp implements INodeType {
 						description: 'A comma-separated list of fields to return',
 					},
 					{
-						displayName: 'List ID',
+						displayName: 'List Name or ID',
 						name: 'listId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getLists',
 						},
 						default: '',
-						description: 'List of lists',
+						description: 'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Since Create Time',

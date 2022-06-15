@@ -823,7 +823,7 @@ export function getNodeParameters(
 				Object.keys(propertyValues || {}).forEach((value) => {
 					returnValue[value] = {};
 				});
-				return { [nodeProperties.name]: returnValue };
+				nodeParameters[nodeProperties.name] = returnValue;
 			}
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
@@ -939,6 +939,7 @@ export function getNodeWebhooks(
 			'internal',
 			additionalData.timezone,
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
@@ -947,6 +948,7 @@ export function getNodeWebhooks(
 			'internal',
 			additionalData.timezone,
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
@@ -957,6 +959,7 @@ export function getNodeWebhooks(
 			mode,
 			additionalData.timezone,
 			{},
+			undefined,
 			'GET',
 		);
 

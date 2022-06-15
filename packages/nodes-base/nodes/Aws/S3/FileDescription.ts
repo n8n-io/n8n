@@ -7,6 +7,7 @@ export const fileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const fileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'download',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -288,16 +288,16 @@ export const fileFields: INodeProperties[] = [
 						value: 'deepArchive',
 					},
 					{
+						name: 'Glacier',
+						value: 'glacier',
+					},
+					{
 						name: 'Intelligent Tiering',
 						value: 'intelligentTiering',
 					},
 					{
 						name: 'One Zone IA',
 						value: 'onezoneIA',
-					},
-					{
-						name: 'Glacier',
-						value: 'glacier',
 					},
 					{
 						name: 'Standard',
@@ -641,16 +641,16 @@ export const fileFields: INodeProperties[] = [
 						value: 'deepArchive',
 					},
 					{
+						name: 'Glacier',
+						value: 'glacier',
+					},
+					{
 						name: 'Intelligent Tiering',
 						value: 'intelligentTiering',
 					},
 					{
 						name: 'One Zone IA',
 						value: 'onezoneIA',
-					},
-					{
-						name: 'Glacier',
-						value: 'glacier',
 					},
 					{
 						name: 'Standard',

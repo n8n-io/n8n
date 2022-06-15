@@ -7,6 +7,7 @@ export const tweetOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,11 +27,6 @@ export const tweetOperations: INodeProperties[] = [
 				description: 'Delete a tweet',
 			},
 			{
-				name: 'Search',
-				value: 'search',
-				description: 'Search tweets',
-			},
-			{
 				name: 'Like',
 				value: 'like',
 				description: 'Like a tweet',
@@ -40,9 +36,13 @@ export const tweetOperations: INodeProperties[] = [
 				value: 'retweet',
 				description: 'Retweet a tweet',
 			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search tweets',
+			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -262,14 +262,14 @@ export const tweetFields: INodeProperties[] = [
 				description: 'The entities node will not be included when set to false',
 			},
 			{
-				displayName: 'Language',
+				displayName: 'Language Name or ID',
 				name: 'lang',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'Restricts tweets to the given language, given by an ISO 639-1 code. Language detection is best-effort.',
+				description: 'Restricts tweets to the given language, given by an ISO 639-1 code. Language detection is best-effort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Location',

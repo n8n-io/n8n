@@ -8,6 +8,7 @@ export const userProfileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,7 +29,6 @@ export const userProfileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -69,14 +69,14 @@ export const userProfileFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'id',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getTeamFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -119,21 +119,21 @@ export const userProfileFields: INodeProperties[] = [
 				name: 'status_emoji',
 				type: 'string',
 				default: '',
-				description: 'is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
+				description: 'Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
 			},
 			{
 				displayName: 'Status Expiration',
 				name: 'status_expiration',
 				type: 'dateTime',
 				default: '',
-				description: 'is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire.',
+				description: 'Is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire.',
 			},
 			{
 				displayName: 'Status Text',
 				name: 'status_text',
 				type: 'string',
 				default: '',
-				description: 'allows up to 100 characters, though we strongly encourage brevity',
+				description: 'Allows up to 100 characters, though we strongly encourage brevity',
 			},
 			{
 				displayName: 'User ID',

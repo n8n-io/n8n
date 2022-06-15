@@ -31,7 +31,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 	{
 		displayName: 'Operation',
@@ -76,7 +75,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -442,6 +440,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -489,6 +488,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -606,6 +606,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -671,6 +672,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{

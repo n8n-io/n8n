@@ -15,6 +15,7 @@ export const ecomOrderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -50,7 +51,6 @@ export const ecomOrderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -76,7 +76,7 @@ export const ecomOrderFields: INodeProperties[] = [
 		description: 'The ID of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 	},
 	{
-		displayName: 'External checkout ID',
+		displayName: 'External Checkout ID',
 		name: 'externalcheckoutid',
 		type: 'string',
 		default: '',
@@ -93,7 +93,7 @@ export const ecomOrderFields: INodeProperties[] = [
 		description: 'The ID of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
 	},
 	{
-		displayName: 'Order source',
+		displayName: 'Order Source',
 		name: 'source',
 		type: 'number',
 		default: 0,
@@ -129,7 +129,7 @@ export const ecomOrderFields: INodeProperties[] = [
 		description: 'The email address of the customer who placed the order',
 	},
 	{
-		displayName: 'Total price',
+		displayName: 'Total Price',
 		name: 'totalPrice',
 		type: 'number',
 		default: 0,
@@ -147,7 +147,7 @@ export const ecomOrderFields: INodeProperties[] = [
 		description: 'The total price of the order in cents, including tax and shipping charges. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
 	},
 	{
-		displayName: 'Order currency',
+		displayName: 'Order Currency',
 		name: 'currency',
 		type: 'options',
 		default: 'eur',
@@ -280,7 +280,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				description: 'The quantity ordered',
 			},
 			{
-				displayName: 'Product external ID',
+				displayName: 'Product External ID',
 				name: 'externalid',
 				type: 'string',
 				default: '',
@@ -370,7 +370,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				description: 'The URL for the order in the external service',
 			},
 			{
-				displayName: 'External updated date',
+				displayName: 'External Updated Date',
 				name: 'externalUpdatedDate',
 				type: 'dateTime',
 				default: '',
@@ -416,7 +416,7 @@ export const ecomOrderFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Add Field',
+		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -440,14 +440,14 @@ export const ecomOrderFields: INodeProperties[] = [
 				description: 'The ID of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 			},
 			{
-				displayName: 'External checkout ID',
+				displayName: 'External Checkout ID',
 				name: 'externalcheckoutid',
 				type: 'string',
 				default: '',
 				description: 'The ID of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
 			},
 			{
-				displayName: 'Order source',
+				displayName: 'Order Source',
 				name: 'source',
 				type: 'number',
 				default: 0,
@@ -461,14 +461,14 @@ export const ecomOrderFields: INodeProperties[] = [
 				description: 'The email address of the customer who placed the order',
 			},
 			{
-				displayName: 'Total price',
+				displayName: 'Total Price',
 				name: 'totalPrice',
 				type: 'number',
 				default: 0,
 				description: 'The total price of the order in cents, including tax and shipping charges. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
 			},
 			{
-				displayName: 'Order currency',
+				displayName: 'Order Currency',
 				name: 'currency',
 				type: 'options',
 				default: 'eur',
@@ -533,7 +533,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				description: 'The URL for the order in the external service',
 			},
 			{
-				displayName: 'External updated date',
+				displayName: 'External Updated Date',
 				name: 'externalUpdatedDate',
 				type: 'dateTime',
 				default: '',
@@ -588,7 +588,7 @@ export const ecomOrderFields: INodeProperties[] = [
 						description: 'The quantity ordered',
 					},
 					{
-						displayName: 'Product external ID',
+						displayName: 'Product External ID',
 						name: 'externalid',
 						type: 'string',
 						default: '',

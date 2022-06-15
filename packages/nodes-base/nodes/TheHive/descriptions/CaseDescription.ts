@@ -8,10 +8,12 @@ import {
 
 export const caseOperations: INodeProperties[] = [
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Operation',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -268,7 +270,7 @@ export const caseFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
 		default: '',
@@ -352,7 +354,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -455,7 +457,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -557,24 +559,24 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
+						value: 'Duplicated',
+						name: 'Duplicated',
 					},
 					{
 						value: 'FalsePositive',
 						name: 'False Positive',
 					},
 					{
-						value: 'TruePositive',
-						name: 'True Positive',
+						value: 'Indeterminate',
+						name: 'Indeterminate',
 					},
 					{
 						value: 'Other',
 						name: 'Other',
 					},
 					{
-						value: 'Duplicated',
-						name: 'Duplicated',
+						value: 'TruePositive',
+						name: 'True Positive',
 					},
 				],
 				description: 'Resolution status of the case',
@@ -736,7 +738,7 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -809,24 +811,24 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
+						value: 'Duplicated',
+						name: 'Duplicated',
 					},
 					{
 						value: 'False Positive',
 						name: 'FalsePositive',
 					},
 					{
-						value: 'True Positive',
-						name: 'TruePositive',
+						value: 'Indeterminate',
+						name: 'Indeterminate',
 					},
 					{
 						value: 'Other',
 						name: 'Other',
 					},
 					{
-						value: 'Duplicated',
-						name: 'Duplicated',
+						value: 'True Positive',
+						name: 'TruePositive',
 					},
 				],
 			},

@@ -256,7 +256,7 @@ export const productDetailsOptions: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Product ID',
+		displayName: 'Product Name or ID',
 		name: 'id',
 		type: 'options',
 		default: [],
@@ -559,7 +559,7 @@ export const currencies = [
 	{ name: 'Romanian Leu', value: 'RON' },
 	{ name: 'Russian Ruble', value: 'RUB' },
 	{ name: 'Saudi Riyal', value: 'SAR' },
-	{ name: 'Solomon Islands Dollar	', value: 'SBD' },
+	{ name: 'Solomon Islands Dollar', value: 'SBD' },
 	{ name: 'Seychelles Rupee', value: 'SCR' },
 	{ name: 'Swedish Krona', value: 'SEK' },
 	{ name: 'Singapore Dollar', value: 'SGD' },

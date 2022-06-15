@@ -44,6 +44,7 @@ export class Spontit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Push',
@@ -51,7 +52,6 @@ export class Spontit implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
 			},
 			...pushOperations,
 			...pushFields,

@@ -7,6 +7,7 @@ export const metricOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const metricOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -84,7 +84,7 @@ export const metricFields: INodeProperties[] = [
 		description: 'Can only be the current or previous month. Format should be YYYY-MM.',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		default: true,
@@ -98,7 +98,7 @@ export const metricFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -118,14 +118,14 @@ export const metricFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Plan ID',
+				displayName: 'Plan Name or ID',
 				name: 'plan_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getPlanIds',
 				},
 				default: '',
-				description: 'Only return the metric for this Plan ID',
+				description: 'Only return the metric for this Plan ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Metrics',

@@ -7,6 +7,7 @@ export const timeEntryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,7 +53,6 @@ export const timeEntryOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -62,7 +62,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -158,7 +158,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -219,7 +219,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:create                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -239,7 +239,7 @@ export const timeEntryFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -279,7 +279,7 @@ export const timeEntryFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -305,7 +305,7 @@ export const timeEntryFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -331,7 +331,7 @@ export const timeEntryFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -374,7 +374,7 @@ export const timeEntryFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		displayOptions: {
@@ -392,7 +392,7 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'Duration in minutes',
 	},
 	{
-		displayName: 'Task ID',
+		displayName: 'Task Name or ID',
 		name: 'task',
 		type: 'options',
 		displayOptions: {
@@ -431,7 +431,7 @@ export const timeEntryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee IDs',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
 				typeOptions: {
@@ -474,7 +474,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:start                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -547,7 +547,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:stop                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -571,7 +571,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:delete                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -612,7 +612,7 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:update                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -632,7 +632,7 @@ export const timeEntryFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -672,7 +672,7 @@ export const timeEntryFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -698,7 +698,7 @@ export const timeEntryFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -724,7 +724,7 @@ export const timeEntryFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -801,7 +801,7 @@ export const timeEntryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee IDs',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
 				typeOptions: {
@@ -826,7 +826,7 @@ export const timeEntryFields: INodeProperties[] = [
 				description: 'Description of the time entry',
 			},
 			{
-				displayName: 'Duration (minutes)',
+				displayName: 'Duration (Minutes)',
 				name: 'duration',
 				type: 'number',
 				default: 0,
@@ -851,7 +851,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Task ID',
+				displayName: 'Task Name or ID',
 				name: 'task',
 				type: 'options',
 				typeOptions: {
