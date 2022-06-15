@@ -9,10 +9,13 @@
 				<div class="url-selection">
 					<el-row>
 						<el-col :span="24">
-							<el-radio-group v-model="showUrlFor" size="mini">
-								<el-radio-button label="test">{{ $locale.baseText('nodeWebhooks.testUrl') }}</el-radio-button>
-								<el-radio-button label="production">{{ $locale.baseText('nodeWebhooks.productionUrl') }}</el-radio-button>
-							</el-radio-group>
+							<n8n-radio-buttons
+								v-model="showUrlFor"
+								:options="[
+									{ label: this.$locale.baseText('nodeWebhooks.testUrl'), value: 'test'},
+									{ label: this.$locale.baseText('nodeWebhooks.productionUrl'), value: 'production'},
+								]"
+							/>
 						</el-col>
 					</el-row>
 				</div>
