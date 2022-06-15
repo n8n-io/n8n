@@ -47,7 +47,7 @@ export default {
 
 <style lang="scss" module>
 .container {
-	background-color: var(--color-foreground-base);
+	background-color: var(--color-background-base);
 }
 
 .header {
