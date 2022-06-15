@@ -6,9 +6,16 @@
 				{{ actionText }}
 			</a>
 		</div>
-		<a v-if="trailingLink" @click="$emit('trailing-link-click')">
-			{{ trailingLink }}
-		</a>
+		<n8n-link
+			v-if="trailingLinkText && trailingLinkUrl"
+			:to="trailingLinkUrl"
+			:underline="true"
+			:theme="'secondary'"
+			:size="'small'"
+			:bold="true"
+		>
+			{{ trailingLinkText }}
+		</n8n-link>
 		<n8n-icon
 			v-else-if="trailingIcon"
 			:icon="trailingIcon"
@@ -19,12 +26,14 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import N8nLink from '../N8nLink';
 import N8nIcon from '../N8nIcon';
 import N8nInfoTip from '../N8nInfoTip';
 
 export default Vue.extend({
 	name: 'n8n-header-message',
 	components: {
+		N8nLink,
 		N8nIcon,
 		N8nInfoTip,
 	},
@@ -37,7 +46,10 @@ export default Vue.extend({
 		actionText: {
 			type: String,
 		},
-		trailingLink: {
+		trailingLinkText: {
+			type: String,
+		},
+		trailingLinkUrl: {
 			type: String,
 		},
 		trailingIcon: {
@@ -71,7 +83,7 @@ export default Vue.extend({
 }
 
 .secondary {
-	--background-color: var(--color-secondary-tint-3);
+	--background-color: var(--color-secondary-tint-2);
 
 	a {
 		color: var(--color-secondary);

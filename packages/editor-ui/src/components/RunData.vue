@@ -1,5 +1,23 @@
 <template>
 	<div :class="$style.container">
+
+		<n8n-header-message
+			v-if="paneType === 'output'"
+			:class="$style['pinned-data-header-message']"
+			:theme="'secondary'"
+			:actionText="$locale.baseText('runData.pindata.unpin')"
+			@action-text-click="onClickUnpinData"
+			:trailingLinkText="$locale.baseText('runData.pindata.learnMore')"
+			:trailingLinkUrl="'https://docs.n8n.io/PENDING'"
+		>
+			<n8n-info-tip
+				:theme="'secondary'"
+				:icon="'thumbtack'"
+			>
+				{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
+			</n8n-info-tip>
+		</n8n-header-message>
+
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div :class="$style.header">
@@ -1035,6 +1053,10 @@ export default mixins(
 	background-color: var(--color-background-base);
 	display: flex;
 	flex-direction: column;
+}
+
+.pinned-data-header-message {
+	border-top-right-radius: inherit;
 }
 
 .header {
