@@ -846,28 +846,10 @@ export class Hubspot implements INodeType {
 			// Get all the ticket stages to display them to user so that he can
 			// select them easily
 			async getTicketStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const currentPipelineId = this.getCurrentNodeParameter('pipelineId') as string;
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/crm-pipelines/v1/pipelines/tickets';
-				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const pipeline of results) {
-					if (currentPipelineId === pipeline.pipelineId) {
-						for (const stage of pipeline.stages) {
-							const stageName = stage.label;
-							const stageId = stage.stageId;
-							returnData.push({
-								name: stageName,
-								value: stageId,
-							});
-						}
-					}
+				let currentPipelineId = this.getCurrentNodeParameter('pipelineId') as string;
+				if (currentPipelineId === undefined) {
+					currentPipelineId = this.getNodeParameter('updateFields.pipelineId', '') as string;
 				}
-				return returnData;
-			},
-
-			// For update operations, filter stage list by update field pipeline ID
-			async getTicketUpdateStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const currentPipelineId = this.getCurrentNodeParameter('updateFields.pipelineId') as string;
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/crm-pipelines/v1/pipelines/tickets';
 				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});

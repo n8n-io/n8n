@@ -334,7 +334,7 @@ export const ticketFields: INodeProperties[] = [
 				name: 'stageId',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getTicketUpdateStages',
+					loadOptionsMethod: 'getTicketStages',
 					loadOptionsDependsOn: [
 						'updateFields.pipelineId',
 					],
