@@ -380,6 +380,7 @@
 	"nodeCreator.mainPanel.all": "All",
 	"nodeCreator.mainPanel.regular": "Regular",
 	"nodeCreator.mainPanel.trigger": "Trigger",
+	"nodeCreator.mainPanel.communityNode.tooltip": "Community node. <a href=\"{docURL}\" target=\"_blank\" title=\"Read the n8n docs\">Learn more</a>",
 	"nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe": "Don’t worry, you can probably do it with the",
 	"nodeCreator.noResults.httpRequest": "HTTP Request",
 	"nodeCreator.noResults.node": "node",
