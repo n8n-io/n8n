@@ -3467,15 +3467,34 @@ export class Hubspot implements INodeType {
 							}
 							if (operation === 'getAll') {
 								const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+								const qs: IDataObject = {};
 
 								const endpoint = `/crm/v3/schemas`;
+
 								if (returnAll) {
 									responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
 								} else {
-									qs.limit = this.getNodeParameter('limit', 0) as number;
+									qs.limit = this.getNodeParameter('limit', i) as number;
 									responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
 									responseData = responseData.splice(0, qs.limit);
 								}
+							}
+							if (operation === 'update') {
+								const objectType = this.getNodeParameter('objectType', i) as string;
+								const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+								const body: IDataObject = {};
+
+								if (additionalFields.objectLabels) {
+									const {labels} = additionalFields.objectLabels as IDataObject;
+									body['labels'] = labels;
+									delete additionalFields.objectLabels;
+								}
+
+								Object.keys(additionalFields).forEach(key => body[key] = (additionalFields[key] as string).split(','));
+
+								const endpoint = `/crm/v3/schemas/${objectType}`;
+								responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, body);
 							}
 						}
 

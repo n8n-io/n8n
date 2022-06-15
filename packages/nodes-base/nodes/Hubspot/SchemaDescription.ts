@@ -29,6 +29,10 @@ export const schemaOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+			},
 		],
 		default: 'create',
 	},
@@ -389,7 +393,9 @@ export const schemaFields: INodeProperties[] = [
 				resource: ['schema'],
 				operation: ['getAll'],
 				schemaType: ['typeCustomObject'],
-				returnAll: [false],
+			},
+			hide: {
+				returnAll: [true],
 			},
 		},
 		typeOptions: {
@@ -400,9 +406,90 @@ export const schemaFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 
+	//  customObject:update -------------------------------------------------------
+	{
+		displayName: 'Object Type Name or ID',
+		name: 'objectType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['schema'],
+				operation: ['update'],
+				schemaType: ['typeCustomObject'],
+			},
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getUserDefinedCustomObjectTypes',
+		},
+		default: '',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['schema'],
+				operation: ['update'],
+				schemaType: ['typeCustomObject'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Labels',
+				name: 'objectLabels',
+				default: {},
+				type: 'fixedCollection',
+				placeholder: 'Add Labels',
+				required: true,
+				typeOptions: {
+					multipleValues: false,
 
-
-
+				},
+				options: [
+					{
+						displayName: 'Labels',
+						name: 'labels',
+						values: [
+							{
+								displayName: 'Singular',
+								name: 'singular',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Plural',
+								name: 'plural',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Required Properties',
+				name: 'requiredProperties',
+				type: 'string',
+				default: '',
+				description: 'Names of properties that should be required when creating an object of this type',
+				hint: 'Comma separeted values',
+			},
+			{
+				displayName: 'Searchable Properties',
+				name: 'searchableProperties',
+				type: 'string',
+				default: '',
+				description: 'Names of properties that will be indexed for this object type in by HubSpot\'s product search',
+				hint: 'Comma separeted values',
+			},
+		],
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*               schema:Association                                           */
