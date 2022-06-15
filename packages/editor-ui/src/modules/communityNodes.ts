@@ -47,38 +47,29 @@ const module: Module<ICommunityNodesState, IRootState> = {
 			}
 		},
 		async fetchInstalledPackages(context: ActionContext<ICommunityNodesState, IRootState>) {
-			context.commit('setLoading', true);
 			const installedPackages = await getInstalledCommunityNodes(context.rootGetters.getRestApiContext);
 			context.commit('setInstalledPackages', installedPackages);
 			const timeout = installedPackages.length > 0 ? 0 : LOADER_DELAY;
 			setTimeout(() => {
-				context.commit('setLoading', false);
 			}, timeout);
 		},
 		async installPackage(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
-			context.commit('setLoading', true);
 			try {
 				await installNewPackage(context.rootGetters.getRestApiContext, packageName);
 				await context.dispatch('communityNodes/fetchInstalledPackages');
 			} catch(error) {
 				throw(error);
-			} finally {
-				context.commit('setLoading', false);
 			}
 		},
 		async uninstallPackage(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
-			context.commit('setLoading', true);
 			try {
 				await uninstallPackage(context.rootGetters.getRestApiContext, packageName);
 				context.commit('removePackageByName', packageName);
 			} catch(error) {
 				throw(error);
-			} finally {
-				context.commit('setLoading', false);
 			}
 		},
 		async updatePackage(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
-			context.commit('setLoading', true);
 			try {
 				const packageToUpdate = context.getters.getInstalledPackageByName(packageName);
 				await updatePackage(context.rootGetters.getRestApiContext, packageToUpdate.packageName);
@@ -87,8 +78,6 @@ const module: Module<ICommunityNodesState, IRootState> = {
 				delete packageToUpdate.updateAvailable;
 			} catch (error) {
 				throw(error);
-			} finally {
-				context.commit('setLoading', false);
 			}
 		},
 	},
