@@ -63,7 +63,7 @@
 					</el-dropdown-menu>
 				</el-dropdown>
 				<n8n-icon-button
-					:title="$locale.baseText('runData.editValue')"
+					:title="$locale.baseText('runData.editOutput')"
 					icon="pencil-alt"
 					type="tertiary"
 					:circle="false"
@@ -534,6 +534,19 @@ export default mixins(
 				this.editMode.value = '';
 			},
 			onClickSaveEdit() {
+				try {
+					JSON.parse(this.editMode.value);
+				} catch (error) {
+					const title = this.$locale.baseText('runData.invalidPinnedData');
+
+					const toRemove = new RegExp(/JSON\.parse:|of the JSON data/, 'g');
+					const message = error.message.replace(toRemove, '').trim();
+					error.message = message.charAt(0).toUpperCase() + message.slice(1);
+
+					this.$showError(error, title);
+					return;
+				}
+
 				this.editMode.enabled = false;
 				this.$store.dispatch('workflow/pinData', { node: this.node, data: this.editMode.value });
 			},
