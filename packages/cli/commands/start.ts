@@ -219,14 +219,14 @@ export class Start extends Command {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
 
-				//si no existe in the database settings it's the first time;
-				if (databaseSettings['ACTIVE_DIRECTORY_DISABLED'] === undefined) {
-					//if config active directory enabled
-					// save it to setting table as enabled enabled
-					//set config object to enabled
-					// save all other feature settings to the other table
-					// with their initial values;
-				}
+				// //si no existe in the database settings it's the first time;
+				// if (databaseSettings['ACTIVE_DIRECTORY_DISABLED'] === undefined) {
+				// 	//if config active directory enabled
+				// 	// save it to setting table as enabled enabled
+				// 	//set config object to enabled
+				// 	// save all other feature settings to the other table
+				// 	// with their initial values;
+				// }
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
@@ -410,13 +410,13 @@ export class Start extends Command {
 
 				// console.log('sali the la function');
 
-				const data = getActiveDirectorySyncInstance();
+				// const data = getActiveDirectorySyncInstance();
 
-				data.config = {
-					seconds: 3,
-				};
+				// data.config = {
+				// 	seconds: 3,
+				// };
 
-				data.start();
+				// data.start();
 
 				// Allow to open n8n editor by pressing "o"
 				if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {

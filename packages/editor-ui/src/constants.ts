@@ -238,6 +238,7 @@ export enum VIEWS {
 	FORGOT_PASSWORD = "ForgotMyPasswordView",
 	CHANGE_PASSWORD = "ChangePasswordView",
 	USERS_SETTINGS = "UsersSettings",
+	ACTIVE_DIRECTORY_SETTINGS = "ActiveDirectorySettings",
 	PERSONAL_SETTINGS = "PersonalSettings",
 	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",

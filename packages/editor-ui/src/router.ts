@@ -8,6 +8,7 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
+import SettingsActiveDirectoryView from './views/SettingsActiveDirectoryView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
@@ -328,6 +329,23 @@ const router = new Router({
 				permissions: {
 					allow: {
 						role: [ROLE.Default, ROLE.Owner],
+					},
+					deny: {
+						um: false,
+					},
+				},
+			},
+		},
+		{
+			path: '/settings/ad',
+			name: VIEWS.ACTIVE_DIRECTORY_SETTINGS,
+			components: {
+				default: SettingsActiveDirectoryView,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						role: [ROLE.Default],
 					},
 					deny: {
 						um: false,

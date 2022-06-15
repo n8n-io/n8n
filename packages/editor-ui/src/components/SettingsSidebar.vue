@@ -25,6 +25,12 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
 			</n8n-menu-item>
+			<n8n-menu-item index="/settings/ad" v-if="canAccessApiSettings()" :class="$style.tab">
+				<i :class="$style.icon">
+					<font-awesome-icon icon="tree" />
+				</i>
+				<span slot="title">{{ "AD/LDAP" }}</span>
+			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
