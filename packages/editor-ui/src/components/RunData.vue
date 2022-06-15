@@ -11,6 +11,35 @@
 					:options="buttons"
 					@input="onDisplayModeChange"
 				/>
+				<n8n-tooltip placement="bottom-end">
+					<template #content v-if="hasPinData">
+						<div :class="$style['pin-data-tooltip']">
+							<strong>
+								{{ $locale.baseText('ndv.pinData.unpin.title') }}
+							</strong>
+							{{ $locale.baseText('ndv.pinData.unpin.description') }}
+						</div>
+					</template>
+					<template #content v-else>
+						<div :class="$style['pin-data-tooltip']">
+							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
+							<p>
+								{{ $locale.baseText('ndv.pinData.pin.description') }}
+							</p>
+							<n8n-link to="https://google.com" size="s">
+								{{ $locale.baseText('ndv.pinData.pin.link') }}
+								<n8n-icon icon="external-link-alt" size="s" />
+							</n8n-link>
+						</div>
+					</template>
+					<n8n-icon-button
+						:class="`ml-xs ${$style['pin-data-button']} ${hasPinData ? $style['pin-data-button-active'] : ''}`"
+						type="tertiary"
+						active
+						icon="thumbtack"
+						@click="onTogglePinData"
+					/>
+				</n8n-tooltip>
 			</div>
 		</div>
 
@@ -387,6 +416,9 @@ export default mixins(
 				}
 				return null;
 			},
+			hasPinData (): boolean {
+				return !!(this.node && this.node.pinData);
+			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
 					{ label: this.$locale.baseText('runData.table'), value: 'table'},
@@ -548,15 +580,14 @@ export default mixins(
 				}
 
 				this.editMode.enabled = false;
-				this.$store.dispatch('workflow/pinData', { node: this.node, data: this.editMode.value });
+				this.$store.commit('pinData', { node: this.node, data: this.editMode.value });
 			},
-			onClickPinData() {
-				// @TODO
-				this.$store.dispatch('workflow/pinData', { node: this.node, data: this.editMode.value });
-			},
-			onClickUnpinData() {
-				// @TODO
-				this.$store.commit('workflow/unpinData', { node: this.node });
+			onTogglePinData() {
+				if (this.hasPinData) {
+					this.$store.commit('unpinData', { node: this.node });
+				} else {
+					this.$store.commit('pinData', { node: this.node, data: this.jsonData });
+				}
 			},
 			switchToBinary() {
 				this.onDisplayModeChange('binary');
@@ -1137,6 +1168,31 @@ export default mixins(
 	display: flex;
 	justify-content: flex-end;
 	flex-grow: 1;
+}
+
+.pin-data-tooltip {
+	max-width: 240px;
+}
+
+.pin-data-button {
+	svg {
+		transition: transform 0.3s ease;
+	}
+}
+
+.pin-data-button-active {
+	&,
+	&:hover,
+	&:focus,
+	&:active {
+		border-color: var(--color-primary);
+		color: var(--color-primary);
+		background: var(--color-primary-tint-2);
+	}
+
+	svg {
+		transform: rotate(45deg);
+	}
 }
 
 .spinner {
