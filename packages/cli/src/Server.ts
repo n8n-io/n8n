@@ -156,9 +156,9 @@ import type {
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { workflowsController } from './api/workflows.api';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -946,50 +946,6 @@ class App {
 			}),
 		);
 
-		// Returns a specific workflow
-		this.app.get(
-			`/${this.restEndpoint}/workflows/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
-				const { id: workflowId } = req.params;
-
-				let relations = ['workflow', 'workflow.tags'];
-
-				if (config.getEnv('workflowTagsDisabled')) {
-					relations = relations.filter((relation) => relation !== 'workflow.tags');
-				}
-
-				const shared = await Db.collections.SharedWorkflow.findOne({
-					relations,
-					where: whereClause({
-						user: req.user,
-						entityType: 'workflow',
-						entityId: workflowId,
-					}),
-				});
-
-				if (!shared) {
-					LoggerProxy.info('User attempted to access a workflow without permissions', {
-						workflowId,
-						userId: req.user.id,
-					});
-					throw new ResponseHelper.ResponseError(
-						`Workflow with ID "${workflowId}" could not be found.`,
-						undefined,
-						404,
-					);
-				}
-
-				const {
-					workflow: { id, ...rest },
-				} = shared;
-
-				return {
-					id: id.toString(),
-					...rest,
-				};
-			}),
-		);
-
 		// Updates an existing workflow
 		this.app.patch(
 			`/${this.restEndpoint}/workflows/:id`,
@@ -1188,6 +1144,7 @@ class App {
 				): Promise<IExecutionPushResponse> => {
 					const { workflowData } = req.body;
 					const { runData } = req.body;
+					const { pinData } = req.body;
 					const { startNodes } = req.body;
 					const { destinationNode } = req.body;
 					const executionMode = 'manual';
@@ -1238,6 +1195,7 @@ class App {
 						destinationNode,
 						executionMode,
 						runData,
+						pinData,
 						sessionId,
 						startNodes,
 						workflowData,
@@ -1252,6 +1210,8 @@ class App {
 				},
 			),
 		);
+
+		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// Retrieves all tags, with or without usage count
 		this.app.get(

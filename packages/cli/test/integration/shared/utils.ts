@@ -57,6 +57,7 @@ interface TriggerTime {
 	[key: string]: string | number;
 }
 import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
+import { workflowsController } from '../../../src/api/workflows.api';
 
 /**
  * Initialize a test server.
@@ -94,8 +95,9 @@ export async function initTestServer({
 
 	if (routerEndpoints.length) {
 		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
-		const map: Record<string, express.Router | express.Router[]> = {
-			credentials: credentialsController,
+		const map: Record<string, express.Router | express.Router[] | any> = {
+			credentials: { controller: credentialsController, path: 'credentials' },
+			workflows: { controller: workflowsController, path: 'workflows' },
 			publicApi: apiRouters
 		};
 
@@ -103,7 +105,7 @@ export async function initTestServer({
 			if (group === 'publicApi') {
 				testServer.app.use(...(map[group] as express.Router[]));
 			} else {
-				testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+				testServer.app.use(`/${testServer.restEndpoint}/${map[group].path}`, map[group].controller);
 			}
 		}
 	}
@@ -142,10 +144,10 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
+	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi'];
+
 	endpointGroups.forEach((group) =>
-		(group === 'credentials' || group === 'publicApi' ? routerEndpoints : functionEndpoints).push(
-			group,
-		),
+		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];
