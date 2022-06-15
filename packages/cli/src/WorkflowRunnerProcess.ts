@@ -347,7 +347,12 @@ export class WorkflowRunnerProcess {
 
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.run(this.workflow, undefined, this.data.destinationNode);
+			return this.workflowExecute.run(
+				this.workflow,
+				undefined,
+				this.data.destinationNode,
+				this.data.pinData,
+			);
 		}
 		// Execute only the nodes between start and destination nodes
 		this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
@@ -356,6 +361,7 @@ export class WorkflowRunnerProcess {
 			this.data.runData,
 			this.data.startNodes,
 			this.data.destinationNode,
+			this.data.pinData,
 		);
 	}
 

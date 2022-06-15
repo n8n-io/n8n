@@ -15,6 +15,7 @@ import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserMan
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
+import { IntroducePinData1654090101303 } from './1654090101303-IntroducePinData';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -34,4 +35,5 @@ export const mysqlMigrations = [
 	LowerCaseUserEmail1648740597343,
 	AddUserSettings1652367743993,
 	AddAPIKeyColumn1652905585850,
+	IntroducePinData1654090101303,
 ];

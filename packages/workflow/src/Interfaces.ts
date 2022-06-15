@@ -808,6 +808,11 @@ export interface INode {
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
+	pinData?: IDataObject;
+}
+
+export interface PinDataPayload {
+	[nodeName: string]: IDataObject[];
 }
 
 export interface INodes {
@@ -1292,6 +1297,7 @@ export interface IRunExecutionData {
 	resultData: {
 		error?: ExecutionError;
 		runData: IRunData;
+		pinData?: PinDataPayload;
 		lastNodeExecuted?: string;
 	};
 	executionData?: {

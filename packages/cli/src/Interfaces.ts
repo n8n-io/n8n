@@ -14,6 +14,7 @@ import {
 	ITaskData,
 	ITelemetrySettings,
 	IWorkflowBase as IWorkflowBaseWorkflow,
+	PinDataPayload,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -647,6 +648,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
+	pinData?: PinDataPayload;
 	retryOf?: number | string;
 	sessionId?: string;
 	startNodes?: string[];
