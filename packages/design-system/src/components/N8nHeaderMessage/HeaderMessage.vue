@@ -56,9 +56,6 @@ export default Vue.extend({
 			type: String,
 		},
 	},
-	components: {
-		N8nIcon,
-	},
 });
 </script>
 
