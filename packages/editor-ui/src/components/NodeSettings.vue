@@ -12,7 +12,10 @@
 			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			<n8n-text>
+			<p :class="$style.warningIcon">
+				<font-awesome-icon icon="exclamation-triangle" />
+			</p>
+			<n8n-text v-if="isBaseNode">
 				{{
 					$locale.baseText(
 						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
@@ -20,6 +23,15 @@
 					)
 				}}
 			</n8n-text>
+			<div :class="$style.descriptionContainer" v-else>
+				<n8n-text :class="$style.missingNodeTitle" bold size="large">{{ $locale.baseText('nodeSettings.CommunityNodeUnknown.title') }}</n8n-text>
+				<div class="mt-s mb-l">
+					<span
+						v-html="$locale.baseText('nodeSettings.CommunityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })">
+					</span>
+				</div>
+				<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">{{ $locale.baseText('nodeSettings.CommunityNodeUnknown.installLink.text') }}</n8n-link>
+			</div>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
@@ -75,6 +87,10 @@ import {
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 } from '@/Interface';
+
+import {
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+} from '../constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
@@ -167,6 +183,9 @@ export default mixins(
 				}
 
 				return this.nodeType.properties;
+			},
+			isBaseNode(): boolean {
+				return this.node.type.startsWith('n8n-nodes-base.');
 			},
 		},
 		props: {
@@ -288,7 +307,7 @@ export default mixins(
 						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
 					},
 				] as INodeProperties[],
-
+				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 			};
 		},
 		watch: {
@@ -564,6 +583,17 @@ export default mixins(
 .header {
 	background-color: var(--color-background-base);
 }
+
+.warningIcon {
+	color: var(--color-text-lighter);
+	font-size: var(--font-size-2xl);
+	margin-top: 15% !important;
+}
+
+.descriptionContainer {
+	display: flex;
+	flex-direction: column;
+}
 </style>
 
 <style lang="scss">
@@ -594,6 +624,7 @@ export default mixins(
 
 	.node-is-not-valid {
 		padding: 10px;
+		text-align: center;
 	}
 
 	.node-parameters-wrapper {
@@ -655,5 +686,4 @@ export default mixins(
 		background-color: #793300;
 	}
 }
-
 </style>
