@@ -4,13 +4,17 @@
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">{{ "AD/LDAP" }}</n8n-heading>
 			</div>
-			<el-switch
-				v-model="activeFeature"
-				active-color="#13ce66"
-				:value=true
-				:disabled="isReadOnly"
-				@change="valueChanged"
-			/>
+
+			<div :class="$style.enableFeatureContainer" >
+				<span>Enable Feature</span>
+				<el-switch
+					v-model="activeFeature"
+					active-color="#13ce66"
+					:value=true
+					:disabled="isReadOnly"
+					@change="valueChanged"
+				/>
+			</div>
 			<div>
 				<n8n-form-inputs
 					v-if="formInputs"
@@ -250,6 +254,22 @@ export default mixins(
 	@media (max-width: $--breakpoint-2xs) {
 		display: none;
 	}
+}
+
+.enableFeatureContainer {
+	margin-bottom: var(--spacing-1xl),
+}
+
+.enableFeatureContainer > span {
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-bold);
+	padding: 0
+}
+
+.enableFeatureContainer {
+	> * {
+    padding: .5em;
+  }
 }
 
 
