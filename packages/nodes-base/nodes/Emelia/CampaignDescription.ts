@@ -54,7 +54,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: addContact
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -62,7 +62,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the campaign to add the contact to',
+		description: 'The ID of the campaign to add the contact to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -331,12 +331,12 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: duplicate
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'The ID of the campaign to duplicate',
+		description: 'The ID of the campaign to duplicate. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},

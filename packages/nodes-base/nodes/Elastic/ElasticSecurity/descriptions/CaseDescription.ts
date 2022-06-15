@@ -73,9 +73,9 @@ export const caseFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Connector Name',
+		displayName: 'Connector Name or ID',
 		name: 'connectorId',
-		description: 'Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient)',
+		description: 'Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',

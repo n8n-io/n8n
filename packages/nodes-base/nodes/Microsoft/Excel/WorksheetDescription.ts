@@ -35,7 +35,7 @@ export const worksheetFields: INodeProperties[] = [
 /*                                 worksheet:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
 		typeOptions: {
@@ -124,7 +124,7 @@ export const worksheetFields: INodeProperties[] = [
 /*                                 worksheet:getContent                       */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
 		required: true,
@@ -144,7 +144,7 @@ export const worksheetFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet',
+		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
 		required: true,

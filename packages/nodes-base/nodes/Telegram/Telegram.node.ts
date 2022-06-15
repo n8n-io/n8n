@@ -1287,16 +1287,16 @@ export class Telegram implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'None',
-						value: 'none',
-					},
-					{
 						name: 'Force Reply',
 						value: 'forceReply',
 					},
 					{
 						name: 'Inline Keyboard',
 						value: 'inlineKeyboard',
+					},
+					{
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'Reply Keyboard',
@@ -1433,7 +1433,7 @@ export class Telegram implements INodeType {
 														name: 'url',
 														type: 'string',
 														default: '',
-														description: 'HTTP or tg:// url to be opened when button is pressed',
+														description: 'HTTP or tg:// URL to be opened when button is pressed',
 													},
 												],
 											},
