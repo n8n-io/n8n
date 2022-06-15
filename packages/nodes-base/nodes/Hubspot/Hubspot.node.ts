@@ -1312,7 +1312,7 @@ export class Hubspot implements INodeType {
 						if (response.errors && !this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response.errors);
 						}
-						return [...results, ...response.errors];
+						return [...results, ...(response.errors || [])];
 					}
 
 					if (operation === 'batchDelete') {
@@ -1437,8 +1437,9 @@ export class Hubspot implements INodeType {
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: (error as JsonObject).message });
+					} else {
+						throw error;
 					}
-					throw error;
 				}
 			});
 
