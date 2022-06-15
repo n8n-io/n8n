@@ -2,7 +2,7 @@
 	<div :class="{[$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
 		<n8n-tooltip :placement="tooltipPlacement" :popper-class="$style.tooltipPopper" :disabled="type !== 'tooltip'">
 			<span :class="$style.iconText">
-				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
+				<n8n-icon :icon="getIcon" />
 				<span v-if="type === 'note'"><slot></slot></span>
 			</span>
 			<span v-if="type === 'tooltip'" slot="content"><slot></slot></span>
@@ -25,7 +25,7 @@ export default {
 			type: String,
 			default: 'info',
 			validator: (value: string): boolean =>
-				['info', 'info-light', 'warning', 'danger'].includes(value),
+				['info', 'info-light', 'warning', 'danger', 'secondary'].includes(value),
 		},
 		type: {
 			type: String,
@@ -41,7 +41,22 @@ export default {
 			type: String,
 			default: 'top',
 		},
+		icon: {
+			type: String,
+			default: '',
+		},
 	},
+	computed: {
+		getIcon(): string {
+			if (this.icon) return this.icon;
+
+			if (['info', 'info-light', 'secondary'].includes(this.theme)) return 'info-circle';
+
+			if (['warning', 'danger'].includes(this.theme)) return 'exclamation-triangle';
+
+			throw new Error(`No icon found for theme: ${this.theme}`)
+		},
+	}
 };
 </script>
 
@@ -93,5 +108,9 @@ export default {
 
 .danger {
 	color: var(--color-danger);
+}
+
+.secondary {
+	color: var(--color-secondary);
 }
 </style>
