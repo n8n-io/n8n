@@ -127,7 +127,7 @@ export default mixins(
 }
 
 .http-method {
-	background-color: green;
+	background-color: var(--color-foreground-xdark);
 	width: 40px;
 	height: 16px;
 	line-height: 16px;

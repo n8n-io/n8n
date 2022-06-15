@@ -263,13 +263,25 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 		executionsDescription(): string {
 			if (this.isWebhookNode) {
-				return this.$locale.baseText('triggerPanel.webhookNode.executionsHelp');
+				if (this.isWorkflowActive) {
+					return this.$locale.baseText('triggerPanel.webhookNode.executionsHelp.active');
+				}
+				else {
+					return this.$locale.baseText('triggerPanel.webhookNode.executionsHelp.inactive');
+				}
 			}
 
 			if (this.isWebhookBasedNode) {
-				return this.$locale.baseText('triggerPanel.webhookBasedNode.executionsHelp', {
-					interpolate: { service: this.serviceName },
-				});
+				if (this.isWorkflowActive) {
+					return this.$locale.baseText('triggerPanel.webhookBasedNode.executionsHelp.active', {
+						interpolate: { service: this.serviceName },
+					});
+				}
+				else {
+					return this.$locale.baseText('triggerPanel.webhookBasedNode.executionsHelp.inactive', {
+						interpolate: { service: this.serviceName },
+					});
+				}
 			}
 
 			if (this.isPollingNode) {
