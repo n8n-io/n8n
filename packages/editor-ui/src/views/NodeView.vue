@@ -58,7 +58,7 @@
 				</div>
 			</div>
 		</div>
-		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
 			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"

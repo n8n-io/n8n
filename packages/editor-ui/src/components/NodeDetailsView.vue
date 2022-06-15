@@ -139,6 +139,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 		TriggerPanel,
 	},
 	props: {
+		readOnly: {
+			type: Boolean,
+		},
 		renaming: {
 			type: Boolean,
 		},
@@ -196,6 +199,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 		},
 		showTriggerPanel(): boolean {
 			return Boolean(
+				!this.readOnly &&
 				this.isTriggerNode &&
 					this.activeNode &&
 					!NODES_WITHOUT_TRIGGER_PANEL.includes(this.activeNode.type) &&
