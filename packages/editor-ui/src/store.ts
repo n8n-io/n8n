@@ -202,6 +202,21 @@ export const store = new Vuex.Store({
 			Vue.set(state, 'selectedNodes', []);
 		},
 
+		// Pin data
+		pinData(state, payload: { node: INodeUi, data: IDataObject }) {
+			const node = state.workflow.nodes.find((node) => node.name === payload.node.name);
+			if (node) {
+				Vue.set(node, 'pinData', payload.data);
+			}
+		},
+		unpinData(state, payload: { node: INodeUi }) {
+			const node = state.workflow.nodes.find((node) => node.name === payload.node.name);
+			if (node) {
+				Vue.set(node, 'pinData', undefined);
+				delete node.pinData;
+			}
+		},
+
 		// Active
 		setActive (state, newActive: boolean) {
 			state.workflow.active = newActive;
