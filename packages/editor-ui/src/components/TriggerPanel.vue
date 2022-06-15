@@ -1,71 +1,73 @@
 <template>
 	<div :class="$style.container">
-		<div v-if="hasIssues"></div>
-		<div v-else-if="isListeningForEvents">
-			<div :class="$style.pulseContainer">
-				<div :class="$style.pulse">
-					<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
+		<transition name="fade" mode="out-in">
+			<div key="empty" v-if="hasIssues"></div>
+			<div key="listening" v-else-if="isListeningForEvents">
+				<div :class="$style.pulseContainer">
+					<div :class="$style.pulse">
+						<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
+					</div>
 				</div>
-			</div>
-			<div v-if="isWebhookNode">
-				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
-					$locale.baseText('triggerPanel.webhookNode.listening')
-				}}</n8n-text>
-				<n8n-text tag="div" class="mb-xs">
-					{{
-						$locale.baseText('triggerPanel.webhookNode.requestHint', {
-							interpolate: { type: this.webhookHttpMethod },
-						})
-					}}
-				</n8n-text>
-				<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('generic.copied')" class="mb-2xl" size="medium" :collapse="true"></CopyInput>
-				<n8n-text tag="div" @click="onLinkClick">
-					<span v-html="$locale.baseText('triggerPanel.webhookNode.prodRequestsHint')"></span>
-				</n8n-text>
-			</div>
-			<div v-else>
-				<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
-					$locale.baseText('triggerPanel.webhookBasedNode.listening')
-				}}</n8n-text>
-				<div :class="$style.shake">
-					<n8n-text class="mb-xs" tag="div">
+				<div v-if="isWebhookNode">
+					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+						$locale.baseText('triggerPanel.webhookNode.listening')
+					}}</n8n-text>
+					<n8n-text tag="div" class="mb-xs">
 						{{
-							$locale.baseText('triggerPanel.webhookBasedNode.serviceHint', {
-								interpolate: { service: serviceName },
+							$locale.baseText('triggerPanel.webhookNode.requestHint', {
+								interpolate: { type: this.webhookHttpMethod },
 							})
 						}}
 					</n8n-text>
-				</div>
-			</div>
-		</div>
-		<div v-else>
-			<div class="mb-xl" v-if="isActivelyPolling">
-				<n8n-spinner type="ring" />
-			</div>
-
-			<div :class="$style.action">
-				<div :class="$style.header">
-					<n8n-heading v-if="header" tag="h1" bold>
-						{{ header }}
-					</n8n-heading>
-					<n8n-text v-if="subheader">
-						<span v-html="subheader"></span>
+					<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('generic.copied')" class="mb-2xl" size="medium" :collapse="true"></CopyInput>
+					<n8n-text tag="div" @click="onLinkClick">
+						<span v-html="$locale.baseText('triggerPanel.webhookNode.prodRequestsHint')"></span>
 					</n8n-text>
 				</div>
-
-				<NodeExecuteButton
-					v-if="showExecuteButton"
-					:nodeName="nodeName"
-					@execute="onNodeExecute"
-					size="medium"
-				/>
+				<div v-else>
+					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
+						$locale.baseText('triggerPanel.webhookBasedNode.listening')
+					}}</n8n-text>
+					<div :class="$style.shake">
+						<n8n-text class="mb-xs" tag="div">
+							{{
+								$locale.baseText('triggerPanel.webhookBasedNode.serviceHint', {
+									interpolate: { service: serviceName },
+								})
+							}}
+						</n8n-text>
+					</div>
+				</div>
 			</div>
+			<div key="default" v-else>
+				<div class="mb-xl" v-if="isActivelyPolling">
+					<n8n-spinner type="ring" />
+				</div>
 
-			<n8n-text size="small" @click="onLinkClick">
-				<span v-html="activationHint"></span>
-			</n8n-text>
-			<n8n-info-accordion ref="help" v-if="executionsDescription" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsDescription" @click="onLinkClick"></n8n-info-accordion>
-		</div>
+				<div :class="$style.action">
+					<div :class="$style.header">
+						<n8n-heading v-if="header" tag="h1" bold>
+							{{ header }}
+						</n8n-heading>
+						<n8n-text v-if="subheader">
+							<span v-html="subheader"></span>
+						</n8n-text>
+					</div>
+
+					<NodeExecuteButton
+						v-if="showExecuteButton"
+						:nodeName="nodeName"
+						@execute="onNodeExecute"
+						size="medium"
+					/>
+				</div>
+
+				<n8n-text size="small" @click="onLinkClick">
+					<span v-html="activationHint"></span>
+				</n8n-text>
+				<n8n-info-accordion ref="help" v-if="executionsDescription" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsDescription" @click="onLinkClick"></n8n-info-accordion>
+			</div>
+		</transition>
 	</div>
 </template>
 
@@ -470,4 +472,17 @@ $--dark-pulse-color: hsla(
 	left: 0;
 	width: 100%;
 }
+</style>
+
+<style lang="scss" scoped>
+
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 200ms;
+}
+.fade-enter,
+.fade-leave-to {
+	opacity: 0;
+}
+
 </style>
