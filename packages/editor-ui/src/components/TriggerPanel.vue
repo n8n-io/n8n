@@ -18,7 +18,7 @@
 						})
 					}}
 				</n8n-text>
-				<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('generic.copied')" class="mb-2xl"></CopyInput>
+				<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('generic.copied')" class="mb-2xl" size="medium" :collapse="true"></CopyInput>
 				<n8n-text tag="div" @click="onLinkClick">
 					<span v-html="$locale.baseText('triggerPanel.webhookNode.prodRequestsHint')"></span>
 				</n8n-text>
