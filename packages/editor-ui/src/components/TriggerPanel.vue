@@ -285,9 +285,16 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			}
 
 			if (this.isPollingNode) {
-				return this.$locale.baseText('triggerPanel.pollingNode.executionsHelp', {
-					interpolate: { service: this.serviceName },
-				});
+				if (this.isWorkflowActive) {
+					return this.$locale.baseText('triggerPanel.pollingNode.executionsHelp.active', {
+						interpolate: { service: this.serviceName },
+					});
+				}
+				else {
+					return this.$locale.baseText('triggerPanel.pollingNode.executionsHelp.inactive', {
+						interpolate: { service: this.serviceName },
+					});
+				}
 			}
 
 			const activationHint = this.executionsActivationHint;
