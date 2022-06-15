@@ -349,7 +349,7 @@
 	"ndv.title.cancel": "Cancel",
 	"ndv.title.rename": "Rename",
 	"ndv.title.renameNode": "Rename node",
-	"ndv.trigger.stopListening": "Stop listening",
+	"ndv.trigger.stopListening": "Stop Listening",
 	"noTagsView.readyToOrganizeYourWorkflows": "Ready to organize your workflows?",
 	"noTagsView.withWorkflowTagsYouReFree": "With workflow tags, you're free to create the perfect tagging system for your flows",
 	"node.activateDeactivateNode": "Activate/Deactivate Node",
