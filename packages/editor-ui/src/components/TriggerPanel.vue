@@ -455,14 +455,14 @@ $--dark-pulse-color: hsla(
 }
 
 .shake {
-	animation: shake 7s infinite;
+	animation: shake 8s infinite;
 }
 
 @keyframes shake {
-	80% { transform: translateX(0) }
-	85% { transform: translateX(5px) }
-	90% { transform: translateX(-5px) }
-	95% { transform: translateX(5px) }
+	90% { transform: translateX(0) }
+	92.5% { transform: translateX(6px) }
+	95% { transform: translateX(-6px) }
+	97.5% { transform: translateX(6px) }
 	100% { transform: translateX(0) }
 }
 
