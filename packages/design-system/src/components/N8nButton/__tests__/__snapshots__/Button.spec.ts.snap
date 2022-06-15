@@ -1,10 +1,10 @@
 // Vitest Snapshot v1
 
-exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button aria-disabled=\\"false\\" aria-pressed=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1uqz3_239 _primary_1uqz3_411 _medium_1uqz3_314 _icon_1uqz3_299\\"><span class=\\"_icon_1uqz3_299\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
+exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button primary el-button el-button--primary medium el-button--medium _icon_9ui5g_213\\"><span class=\\"_icon_9ui5g_213\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
 
-exports[`components > N8nButton > props > loading > should render loading spinner 1`] = `"<button disabled=\\"disabled\\" aria-disabled=\\"false\\" aria-pressed=\\"false\\" aria-busy=\\"true\\" aria-live=\\"polite\\" class=\\"button _button_1uqz3_239 _primary_1uqz3_411 _loading_1uqz3_470 _medium_1uqz3_314 _icon_1uqz3_299\\"><span class=\\"_icon_1uqz3_299\\"><n8n-spinner-stub size=\\"medium\\" type=\\"dots\\"></n8n-spinner-stub></span><span>Button</span></button>"`;
+exports[`components > N8nButton > props > loading > should render loading spinner 1`] = `"<button disabled=\\"disabled\\" aria-disabled=\\"false\\" aria-busy=\\"true\\" aria-live=\\"polite\\" class=\\"button primary el-button el-button--primary medium el-button--medium _loading_9ui5g_182 _icon_9ui5g_213\\"><span class=\\"_icon_9ui5g_213\\"><n8n-spinner-stub size=\\"medium\\" type=\\"dots\\"></n8n-spinner-stub></span><span>Button</span></button>"`;
 
 exports[`components > N8nButton > should render correctly 1`] = `
-"<button aria-disabled=\\"false\\" aria-pressed=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_1uqz3_239 _primary_1uqz3_411 _medium_1uqz3_314\\">
+"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button primary el-button el-button--primary medium el-button--medium\\">
   <!----><span>Button</span></button>"
 `;
