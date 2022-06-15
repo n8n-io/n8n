@@ -13,7 +13,7 @@ let testDbName = '';
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({
+	app = await utils.initTestServer({
 		endpointGroups: ['workflows'],
 		applyAuth: true,
 	});
