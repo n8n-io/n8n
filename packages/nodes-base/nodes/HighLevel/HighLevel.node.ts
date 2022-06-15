@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './description/ContactDescription';
+import { wait } from './GenericFunctions';
 
 export class HighLevel implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,8 +55,11 @@ export class HighLevel implements INodeType {
 
 				const responseData: INodeExecutionData[] = [];
 				const returnAll = this.getNodeParameter('returnAll')
+				let responseTotal = 0;
 
 				do {
+
+					console.log(requestData.options.url);
 
 					const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
 					const items = pageResponseData[0].json[rootProperty] as []
@@ -64,8 +68,12 @@ export class HighLevel implements INodeType {
 					const meta = pageResponseData[0].json.meta as IDataObject;
 					requestData.options.url = meta.nextPageUrl as string;
 					delete requestData.options.baseURL;
+					responseTotal = meta.total as number;
 
-				} while (returnAll && requestData.options.url)
+					console.log(JSON.stringify(meta, null, 2));
+					await wait();
+
+				} while (returnAll && responseTotal > responseData.length && requestData.options.url)
 
 				return responseData;
 			},
