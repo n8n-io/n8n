@@ -44,7 +44,6 @@
 import {
 	INodeTypeDescription,
 	IWebhookDescription,
-	NodeHelpers,
 } from 'n8n-workflow';
 
 import { WEBHOOK_NODE_TYPE } from '@/constants';
