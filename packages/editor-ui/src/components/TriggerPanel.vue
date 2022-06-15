@@ -64,7 +64,7 @@
 			<n8n-text size="small" @click="onLinkClick">
 				<span v-html="activationHint"></span>
 			</n8n-text>
-			<n8n-info-accordion v-if="executionsDescription" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsDescription" @click="onLinkClick"></n8n-info-accordion>
+			<n8n-info-accordion ref="help" v-if="executionsDescription" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsDescription" @click="onLinkClick"></n8n-info-accordion>
 		</div>
 	</div>
 </template>
@@ -81,6 +81,7 @@ import CopyInput from './CopyInput.vue';
 import NodeIcon from './NodeIcon.vue';
 import { copyPaste } from './mixins/copyPaste';
 import { showMessage } from '@/components/mixins/showMessage';
+import Vue from 'vue';
 
 export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	name: 'TriggerPanel',
@@ -270,26 +271,20 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return '';
 		},
 		activationHint(): string {
+			if (this.isWebhookNode) {
+				return this.$locale.baseText('triggerPanel.webhookNode.activationHint');
+			}
+
 			if (!this.isWorkflowActive && !this.isActivelyPolling) {
-				if (this.isWebhookNode) {
-					return this.$locale.baseText('triggerPanel.webhookNode.inactiveHint');
-				}
-				else {
-					return this.$locale.baseText('triggerPanel.inactiveHint', {
-						interpolate: { service: this.serviceName },
-					});
-				}
+				return this.$locale.baseText('triggerPanel.inactiveHint', {
+					interpolate: { service: this.serviceName },
+				});
 			}
 
 			if (this.isWorkflowActive) {
-				if (this.isWebhookNode) {
-					return this.$locale.baseText('triggerPanel.webhookNode.activeHint');
-				}
-				else {
-					return this.$locale.baseText('triggerPanel.activeHint', {
-						interpolate: { service: this.serviceName },
-					});
-				}
+				return this.$locale.baseText('triggerPanel.activeHint', {
+					interpolate: { service: this.serviceName },
+				});
 			}
 
 			return '';
@@ -329,6 +324,10 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+				} else if (target.dataset.key === 'help') {
+					if (this.$refs.help) {
+						(this.$refs.help as Vue).$emit('expand');
+					}
 				}
 			}
 		},

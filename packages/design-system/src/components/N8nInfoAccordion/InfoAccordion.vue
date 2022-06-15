@@ -29,6 +29,11 @@ export default {
 			type: String,
 		},
 	},
+	mounted() {
+		this.$on('expand', () => {
+			this.expanded = true;
+		});
+	},
 	data() {
 		return {
 			expanded: false,
