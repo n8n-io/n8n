@@ -257,7 +257,7 @@ export const monitorFields: INodeProperties[] = [
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'A keyword to be matched against url and friendly name',
+				description: 'A keyword to be matched against URL and friendly name',
 			},
 			{
 				displayName: 'Statuses',
@@ -464,7 +464,7 @@ export const monitorFields: INodeProperties[] = [
 				description: 'Select monitor statuses',
 			},
 			{
-				displayName: 'Sub type',
+				displayName: 'Sub Type',
 				name: 'sub_type',
 				type: 'options',
 				default: '',

@@ -48,7 +48,7 @@ export const taskOperations: INodeProperties[] = [
 
 export const taskFields: INodeProperties[] = [
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {

@@ -187,7 +187,7 @@ export class Harvest implements INodeType {
 			...userOperations,
 
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				required: true,

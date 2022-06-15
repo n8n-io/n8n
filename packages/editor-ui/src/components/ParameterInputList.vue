@@ -1,6 +1,6 @@
 <template>
 	<div class="parameter-input-list-wrapper">
-		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{indent}">
 			<slot v-if="indexToShowSlotAt === index" />
 
 			<div
@@ -88,6 +88,8 @@
 import {
 	INodeParameters,
 	INodeProperties,
+	INodeType,
+	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -101,7 +103,6 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	genericHelpers,
@@ -131,12 +132,34 @@ export default mixins(
 				return this.$store.getters.activeNode;
 			},
 			indexToShowSlotAt (): number {
-				if (this.node.type === WEBHOOK_NODE_TYPE) return 1;
+				let index = 0;
+				const credentialsDependencies = this.getCredentialsDependencies();
 
-				return 0;
+				this.filteredParameters.forEach((prop, propIndex) => {
+					if (credentialsDependencies.has(prop.name)) {
+						index = propIndex + 1;
+					}
+				});
+
+				return index < this.filteredParameters.length ?
+					index : this.filteredParameters.length - 1;
 			},
 		},
 		methods: {
+			getCredentialsDependencies() {
+				const dependencies = new Set();
+				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+
+				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
+				if(nodeType && nodeType.credentials) {
+					for(const cred of nodeType.credentials) {
+						if(cred.displayOptions && cred.displayOptions.show) {
+							Object.keys(cred.displayOptions.show).forEach(fieldName => dependencies.add(fieldName));
+						}
+					}
+				}
+				return dependencies;
+			},
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;

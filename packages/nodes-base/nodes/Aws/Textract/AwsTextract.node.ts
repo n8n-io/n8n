@@ -19,7 +19,7 @@ import {
 	awsApiRequestREST,
 	IExpenseDocument,
 	simplify,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunctions';
 
 export class AwsTextract implements INodeType {
@@ -93,7 +93,7 @@ export class AwsTextract implements INodeType {
 		credentialTest: {
 			async awsTextractApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
 				} catch (error) {
 					return {
 						status: 'Error',

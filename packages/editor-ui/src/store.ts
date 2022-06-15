@@ -611,6 +611,10 @@ export const store = new Vuex.Store({
 			Vue.set(state.workflow, 'tags', tags);
 		},
 
+		addWorkflowTagIds (state, tags: string[]) {
+			Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
+		},
+
 		removeWorkflowTagId (state, tagId: string) {
 			const tags = state.workflow.tags as string[];
 			const updated = tags.filter((id: string) => id !== tagId);

@@ -32,7 +32,7 @@ export const mediaFields: INodeProperties[] = [
 	/*                               media:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -49,7 +49,7 @@ export const mediaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Room ID to post',
+		description: 'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{
@@ -70,7 +70,7 @@ export const mediaFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Media type',
+		displayName: 'Media Type',
 		name: 'mediaType',
 		type: 'options',
 		default: 'image',

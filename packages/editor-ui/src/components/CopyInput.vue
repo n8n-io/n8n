@@ -2,11 +2,11 @@
 	<div>
 		<n8n-input-label :label="label">
 			<div :class="$style.copyText" @click="copy">
-				<span>{{ copyContent }}</span>
+				<span>{{ value }}</span>
 				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
 			</div>
 		</n8n-input-label>
-		<div :class="$style.subtitle">{{ subtitle }}</div>
+		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
 	</div>
 </template>
 
@@ -20,26 +20,36 @@ export default mixins(copyPaste, showMessage).extend({
 		label: {
 			type: String,
 		},
-		subtitle: {
+		hint: {
 			type: String,
 		},
-		copyContent: {
+		value: {
 			type: String,
 		},
 		copyButtonText: {
 			type: String,
+			default(): string {
+				return this.$locale.baseText('generic.copy');
+			},
 		},
-		successMessage: {
+		toastTitle: {
+			type: String,
+			default(): string {
+				return this.$locale.baseText('generic.copiedToClipboard');
+			},
+		},
+		toastMessage: {
 			type: String,
 		},
 	},
 	methods: {
 		copy(): void {
-			this.copyToClipboard(this.$props.copyContent);
+			this.$emit('copy');
+			this.copyToClipboard(this.value);
 
 			this.$showMessage({
-				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
-				message: this.$props.successMessage,
+				title: this.toastTitle,
+				message: this.toastMessage,
 				type: 'success',
 			});
 		},
@@ -54,6 +64,8 @@ export default mixins(copyPaste, showMessage).extend({
 		font-family: Monaco, Consolas;
 		line-height: 1.5;
 		font-size: var(--font-size-s);
+		color: var(--color-text-base);
+		overflow-wrap: break-word;
 	}
 
 	padding: var(--spacing-xs);
@@ -86,7 +98,7 @@ export default mixins(copyPaste, showMessage).extend({
 	}
 }
 
-.subtitle {
+.hint {
 	margin-top: var(--spacing-2xs);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);

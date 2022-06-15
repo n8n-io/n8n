@@ -38,6 +38,7 @@ import N8nActionToggle from './N8nActionToggle';
 import N8nAvatar from './N8nAvatar';
 import N8nBadge from './N8nBadge';
 import N8nButton from './N8nButton';
+import N8nCard from './N8nCard';
 import N8nFormBox from './N8nFormBox';
 import N8nFormInput from './N8nFormInput';
 import N8nFormInputs from './N8nFormInputs';
@@ -76,6 +77,7 @@ export {
 	N8nAvatar,
 	N8nBadge,
 	N8nButton,
+	N8nCard,
 	N8nHeading,
 	N8nFormBox,
 	N8nFormInput,

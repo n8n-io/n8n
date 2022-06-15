@@ -6,20 +6,23 @@ import { Credentials, UserSettings } from 'n8n-core';
 
 import config from '../../../config';
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } from './constants';
-import { DatabaseType, Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
-import { randomEmail, randomName, randomString, randomValidPassword } from './random';
+import { Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
+import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
-import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 import { entities } from '../../../src/databases/entities';
 import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
 import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
 import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
 import { categorize, getPostgresSchemaSection } from './utils';
+import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
 import type { Role } from '../../../src/databases/entities/Role';
-import type { User } from '../../../src/databases/entities/User';
+import { User } from '../../../src/databases/entities/User';
 import type { CollectionName, CredentialPayload } from './types';
+import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
+import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
+import { TagEntity } from '../../../src/databases/entities/TagEntity';
 
 const exec = promisify(callbackExec);
 
@@ -55,7 +58,7 @@ export async function init() {
 				`host: ${pgOptions.host} | port: ${pgOptions.port} | schema: ${pgOptions.schema} | username: ${pgOptions.username} | password: ${pgOptions.password}`,
 				'Fix by setting correct values via environment variables:',
 				`${pgConfig.host.env} | ${pgConfig.port.env} | ${pgConfig.schema.env} | ${pgConfig.user.env} | ${pgConfig.password.env}`,
-				'Otherwise, make sure your Postgres server is running.'
+				'Otherwise, make sure your Postgres server is running.',
 			].join('\n');
 
 			console.error(message);
@@ -71,7 +74,9 @@ export async function init() {
 			await exec(`psql -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`);
 		} catch (error) {
 			if (error instanceof Error && error.message.includes('command not found')) {
-				console.error('psql command not found. Make sure psql is installed and added to your PATH.');
+				console.error(
+					'psql command not found. Make sure psql is installed and added to your PATH.',
+				);
 			}
 			process.exit(1);
 		}
@@ -227,15 +232,17 @@ export async function saveCredential(
 //           user creation
 // ----------------------------------
 
-export async function createUser(attributes: Partial<User> & { globalRole: Role }): Promise<User> {
+/**
+ * Store a user in the DB, defaulting to a `member`.
+ */
+export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
-
 	const user = {
 		email: email ?? randomEmail(),
 		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
-		globalRole,
+		globalRole: globalRole ?? (await getGlobalMemberRole()),
 		...rest,
 	};
 
@@ -254,6 +261,11 @@ export function createUserShell(globalRole: Role): Promise<User> {
 	}
 
 	return Db.collections.User.save(shell);
+}
+
+export function addApiKey(user: User): Promise<User> {
+	user.apiKey = randomApiKey();
+	return Db.collections.User.save(user);
 }
 
 // ----------------------------------
@@ -295,6 +307,180 @@ export function getAllRoles() {
 		getWorkflowOwnerRole(),
 		getCredentialOwnerRole(),
 	]);
+}
+
+// ----------------------------------
+//          Execution helpers
+// ----------------------------------
+
+export async function createManyExecutions(
+	amount: number,
+	workflow: WorkflowEntity,
+	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
+) {
+	const executionsRequests = [...Array(amount)].map((_) => callback(workflow));
+	return Promise.all(executionsRequests);
+}
+
+/**
+ * Store a execution in the DB and assign it to a workflow.
+ */
+export async function createExecution(
+	attributes: Partial<ExecutionEntity> = {},
+	workflow: WorkflowEntity,
+) {
+	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
+
+	const execution = await Db.collections.Execution.save({
+		data: data ?? '[]',
+		finished: finished ?? true,
+		mode: mode ?? 'manual',
+		startedAt: startedAt ?? new Date(),
+		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id.toString() }),
+		stoppedAt: stoppedAt ?? new Date(),
+		waitTill: waitTill ?? null,
+	});
+
+	return execution;
+}
+
+/**
+ * Store a successful execution in the DB and assign it to a workflow.
+ */
+export async function createSuccessfulExecution(workflow: WorkflowEntity) {
+	return await createExecution(
+		{
+			finished: true,
+		},
+		workflow,
+	);
+}
+
+/**
+ * Store an error execution in the DB and assign it to a workflow.
+ */
+export async function createErrorExecution(workflow: WorkflowEntity) {
+	return await createExecution(
+		{
+			finished: false,
+			stoppedAt: new Date(),
+		},
+		workflow,
+	);
+}
+
+/**
+ * Store a waiting execution in the DB and assign it to a workflow.
+ */
+export async function createWaitingExecution(workflow: WorkflowEntity) {
+	return await createExecution(
+		{
+			finished: false,
+			waitTill: new Date(),
+		},
+		workflow,
+	);
+}
+
+// ----------------------------------
+//          Tags
+// ----------------------------------
+
+export async function createTag(attributes: Partial<TagEntity> = {}) {
+	const { name } = attributes;
+
+	return await Db.collections.Tag.save({
+		name: name ?? randomName(),
+		...attributes,
+	});
+}
+
+// ----------------------------------
+//          Workflow helpers
+// ----------------------------------
+
+export async function createManyWorkflows(
+	amount: number,
+	attributes: Partial<WorkflowEntity> = {},
+	user?: User,
+) {
+	const workflowRequests = [...Array(amount)].map((_) => createWorkflow(attributes, user));
+	return Promise.all(workflowRequests);
+}
+
+/**
+ * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
+	const { active, name, nodes, connections } = attributes;
+
+	const workflow = await Db.collections.Workflow.save({
+		active: active ?? false,
+		name: name ?? 'test workflow',
+		nodes: nodes ?? [
+			{
+				name: 'Start',
+				parameters: {},
+				position: [-20, 260],
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+			},
+		],
+		connections: connections ?? {},
+		...attributes,
+	});
+
+	if (user) {
+		await Db.collections.SharedWorkflow.save({
+			user,
+			workflow,
+			role: await getWorkflowOwnerRole(),
+		});
+	}
+	return workflow;
+}
+
+/**
+ * Store a workflow in the DB (with a trigger) and optionally assign it to a user.
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflowWithTrigger(
+	attributes: Partial<WorkflowEntity> = {},
+	user?: User,
+) {
+	const workflow = await createWorkflow(
+		{
+			nodes: [
+				{
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+				{
+					parameters: { options: {} },
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [780, 300],
+				},
+			],
+			connections: { Cron: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+			...attributes,
+		},
+		user,
+	);
+
+	return workflow;
 }
 
 // ----------------------------------
@@ -420,11 +606,7 @@ export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions =
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const encryptionKey = await UserSettings.getEncryptionKey();
 
-	const coreCredential = new Credentials(
-		{ id: null, name: credential.name },
-		credential.type,
-		credential.nodesAccess,
-	);
+	const coreCredential = createCredentiasFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
 	coreCredential.setData(credential.data, encryptionKey);

@@ -182,7 +182,7 @@ export const productFields: INodeProperties[] = [
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'if the product is downloadable',
+				description: 'If the product is downloadable',
 			},
 			{
 				displayName: 'External URL',
@@ -695,7 +695,7 @@ export const productFields: INodeProperties[] = [
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'if the product is downloadable',
+				description: 'If the product is downloadable',
 			},
 			{
 				displayName: 'External URL',
@@ -1176,14 +1176,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Limit response to resources published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to products assigned a specific category ID',
+				description: 'Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Context',
@@ -1300,6 +1300,10 @@ export const productFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'Any',
+						value: 'any',
+					},
+					{
 						name: 'Draft',
 						value: 'draft',
 					},
@@ -1314,10 +1318,6 @@ export const productFields: INodeProperties[] = [
 					{
 						name: 'Publish',
 						value: 'publish',
-					},
-					{
-						name: 'Any',
-						value: 'any',
 					},
 				],
 				default: 'any',
@@ -1345,14 +1345,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tag',
+				displayName: 'Tag Name or ID',
 				name: 'tag',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to products assigned a specific tag ID',
+				description: 'Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
