@@ -1,13 +1,18 @@
 <template>
-	<n8n-button
-		:loading="nodeRunning && !isListeningForEvents"
-		:disabled="disabled"
-		:label="buttonLabel"
-		:type="type"
-		:size="size"
-		:transparentBackground="transparent"
-		@click="onClick"
-	/>
+	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
+		<div slot="content">{{ disabledHint }}</div>
+		<div>
+			<n8n-button
+				:loading="nodeRunning && !isListeningForEvents"
+				:disabled="!!disabledHint"
+				:label="buttonLabel"
+				:type="type"
+				:size="size"
+				:transparentBackground="transparent"
+				@click="onClick"
+			/>
+		</div>
+	</n8n-tooltip>
 </template>
 
 <script lang="ts">
@@ -71,7 +76,10 @@ export default mixins(
 		isListeningForEvents(): boolean {
 			const waitingOnWebhook = this.$store.getters.executionWaitingForWebhook as boolean;
 			const executedNode = this.$store.getters.executedNode as string | undefined;
+
 			return (
+				this.node &&
+				!this.node.disabled &&
 				this.isTriggerNode &&
 				waitingOnWebhook &&
 				(!executedNode || executedNode === this.nodeName)
@@ -80,16 +88,24 @@ export default mixins(
 		hasIssues (): boolean {
 			return Boolean(this.node && this.node.issues && (this.node.issues.parameters || this.node.issues.credentials));
 		},
-		disabled(): boolean {
+		disabledHint(): string {
+			if (this.isListeningForEvents) {
+				return '';
+			}
+
+			if (this.isTriggerNode && this.node.disabled) {
+				return this.$locale.baseText('ndv.execute.nodeIsDisabled');
+			}
+
+			if (this.isTriggerNode && this.hasIssues) {
+				return this.$locale.baseText('ndv.execute.requiredFieldsMissing');
+			}
+
 			if (this.workflowRunning && !this.nodeRunning) {
-				return true;
+				return this.$locale.baseText('ndv.execute.workflowAlreadyRunning');
 			}
 
-			if (this.isTriggerNode && (this.hasIssues || this.node.disabled)) {
-				return true;
-			}
-
-			return false;
+			return '';
 		},
 		buttonLabel(): string {
 			if (this.isListeningForEvents) {

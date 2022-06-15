@@ -167,6 +167,8 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			const waitingOnWebhook = this.$store.getters.executionWaitingForWebhook as boolean;
 			const executedNode = this.$store.getters.executedNode as string | undefined;
 			return (
+				!!this.node &&
+				!this.node.disabled &&
 				this.isWebhookBasedNode &&
 				waitingOnWebhook &&
 				(!executedNode || executedNode === this.nodeName)
