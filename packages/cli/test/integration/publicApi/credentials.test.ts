@@ -1,5 +1,7 @@
 import express from 'express';
+
 import { UserSettings } from 'n8n-core';
+
 import { Db } from '../../../src';
 import { randomApiKey, randomName, randomString } from '../shared/random';
 import * as utils from '../shared/utils';
@@ -9,13 +11,10 @@ import type { User } from '../../../src/databases/entities/User';
 import * as testDb from '../shared/testDb';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 
-jest.mock('../../../src/telemetry');
-
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
-let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
 
 let saveCredential: SaveCredentialFunction;
@@ -30,13 +29,12 @@ beforeAll(async () => {
 	const [
 		fetchedGlobalOwnerRole,
 		fetchedGlobalMemberRole,
-		fetchedWorkflowOwnerRole,
+		_,
 		fetchedCredentialOwnerRole,
 	] = await testDb.getAllRoles();
 
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
-	workflowOwnerRole = fetchedWorkflowOwnerRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
 	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
@@ -377,6 +375,7 @@ const credentialPayload = (): CredentialPayload => ({
 const dbCredential = () => {
 	const credential = credentialPayload();
 	credential.nodesAccess = [{ nodeType: credential.type }];
+
 	return credential;
 };
 

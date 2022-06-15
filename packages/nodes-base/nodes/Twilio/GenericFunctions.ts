@@ -59,3 +59,17 @@ export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions,
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+const XML_CHAR_MAP: { [key: string]: string } = {
+	'<': '&lt;',
+	'>': '&gt;',
+	'&': '&amp;',
+	'"': '&quot;',
+	'\'': '&apos;',
+};
+
+export function escapeXml(str: string) {
+	return str.replace(/[<>&"']/g, (ch: string) => {
+		return XML_CHAR_MAP[ch];
+	});
+}
