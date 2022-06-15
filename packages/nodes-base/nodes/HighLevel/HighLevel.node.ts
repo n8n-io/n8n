@@ -59,21 +59,22 @@ export class HighLevel implements INodeType {
 
 				do {
 
-					console.log(requestData.options.url);
+					// console.log(requestData.options.url);
 
 					const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
 					const items = pageResponseData[0].json[rootProperty] as []
 					items.forEach(item => responseData.push({ json: item }))
 
 					const meta = pageResponseData[0].json.meta as IDataObject;
-					requestData.options.url = meta.nextPageUrl as string;
-					delete requestData.options.baseURL;
+					const startAfterId = meta.startAfterId as string
+					const startAfter = meta.startAfter as number
+					requestData.options.qs = { startAfterId, startAfter }
 					responseTotal = meta.total as number;
 
-					console.log(JSON.stringify(meta, null, 2));
-					await wait();
+					// console.log(JSON.stringify(meta, null, 2));
+					// await wait();
 
-				} while (returnAll && responseTotal > responseData.length && requestData.options.url)
+				} while (returnAll && responseTotal > responseData.length)
 
 				return responseData;
 			},
