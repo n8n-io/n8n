@@ -264,6 +264,9 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return this.$locale.baseText('triggerPanel.executinosHint.disabled');
 		},
 		executionsDescription(): string {
+			if (this.isWebhookNode) {
+				return this.$locale.baseText('triggerPanel.webhookNode.executionsHelp');
+			}
 			const activationHint = this.executionsActivationHint;
 			if (activationHint) {
 				return `${this.executionsActivationHint}<br />${this.executionsHint}`;
