@@ -2,8 +2,6 @@ packages/editor-ui
 packages/design-system
 *package.json
 
-packages/nodes-base/*
-
 !packages/nodes-base/src
 !packages/nodes-base/test
 !packages/nodes-base/nodes
@@ -30,6 +28,7 @@ packages/nodes-base/nodes/Bitwarden
 packages/nodes-base/nodes/Box
 packages/nodes-base/nodes/Brandfetch
 packages/nodes-base/nodes/Bubble
+packages/nodes-base/nodes/Cal
 packages/nodes-base/nodes/Calendly
 packages/nodes-base/nodes/Chargebee
 packages/nodes-base/nodes/CircleCi
@@ -174,6 +173,7 @@ packages/nodes-base/nodes/Phantombuster
 packages/nodes-base/nodes/PhilipsHue
 packages/nodes-base/nodes/Pipedrive
 packages/nodes-base/nodes/Plivo
+packages/nodes-base/nodes/PostBin
 packages/nodes-base/nodes/Postgres
 packages/nodes-base/nodes/PostHog
 packages/nodes-base/nodes/Postmark
@@ -387,6 +387,7 @@ packages/nodes-base/credentials/GetResponseOAuth2Api.credentials.ts
 packages/nodes-base/credentials/FacebookGraphApi.credentials.ts
 packages/nodes-base/credentials/BitwardenApi.credentials.ts
 packages/nodes-base/credentials/CalendlyApi.credentials.ts
+packages/nodes-base/credentials/CalApi.credentials.ts
 packages/nodes-base/credentials/Snowflake.credentials.ts
 packages/nodes-base/credentials/GithubOAuth2Api.credentials.ts
 packages/nodes-base/credentials/Postgres.credentials.ts
