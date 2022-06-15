@@ -42,7 +42,7 @@ export default {
 			type: String,
 			default: 'primary',
 			validator: (value: string): boolean =>
-				['primary', 'danger', 'text'].includes(value),
+				['primary', 'danger', 'text', 'secondary'].includes(value),
 		},
 	},
 	components: {
@@ -104,5 +104,8 @@ export default {
 	text-decoration: underline;
 }
 
+.secondary {
+	--background-color: var(--color-secondary-tint-2);
+}
 
 </style>
