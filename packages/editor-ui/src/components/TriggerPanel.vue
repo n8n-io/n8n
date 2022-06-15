@@ -5,7 +5,9 @@
 			<div key="listening" v-else-if="isListeningForEvents">
 				<div :class="$style.pulseContainer">
 					<div :class="$style.pulse">
-						<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
+						<div :class="$style.pulse2">
+							<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
+						</div>
 					</div>
 				</div>
 				<div v-if="isWebhookNode">
@@ -432,6 +434,14 @@ $--dark-pulse-color: hsla(
 );
 
 .pulse {
+	width: 74px;
+	height: 74px;
+	border-radius: 50%;
+	box-shadow: 0 0 0 $--light-pulse-color;
+	animation: pulse 6s infinite cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.pulse2 {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -439,7 +449,7 @@ $--dark-pulse-color: hsla(
 	height: 74px;
 	border-radius: 50%;
 	box-shadow: 0 0 0 $--light-pulse-color;
-	animation: pulse 6s infinite ease-out;
+	animation: pulse2 6s infinite cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 @keyframes pulse {
@@ -448,30 +458,46 @@ $--dark-pulse-color: hsla(
 		box-shadow: 0 0 0 0 $--light-pulse-color;
 	}
 
-	20% {
+	58.33% { // 3s
 		-moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
 		box-shadow: 0 0 0 60px $--dark-pulse-color;
 	}
 
-	21% {
+	66.6% { // 4s
+		-moz-box-shadow: 0 0 0 66px transparent;
+		box-shadow: 0 0 0 66px transparent;
+	}
+
+	66.7% {
 		-moz-box-shadow: 0 0 0 0 transparent;
 		box-shadow: 0 0 0 0 transparent;
 	}
+}
 
-	23% {
+@keyframes pulse2 {
+	0% {
 		-moz-box-shadow: 0 0 0 0 $--light-pulse-color;
 		box-shadow: 0 0 0 0 $--light-pulse-color;
 	}
 
+	16.66% { // 1s
+		-moz-box-shadow: 0 0 0 0 $--light-pulse-color;
+		box-shadow: 0 0 0 0 $--light-pulse-color;
+	}
 
-	44% {
+	50% { // 3s
 		-moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
 		box-shadow: 0 0 0 60px $--dark-pulse-color;
 	}
 
-	45% {
-		-moz-box-shadow: 0 0 0 0 $--dark-pulse-color;
-		box-shadow: 0 0 0 0 $--dark-pulse-color;
+	83.3% { // 5s
+		-moz-box-shadow: 0 0 0 66px transparent;
+		box-shadow: 0 0 0 66px transparent;
+	}
+
+	83.4% {
+		-moz-box-shadow: 0 0 0 0 transparent;
+		box-shadow: 0 0 0 0 transparent;
 	}
 }
 
