@@ -32,8 +32,9 @@
 			</div>
 		</template>
 
-		<template v-slot:node-not-run v-if="!workflowRunning">
-			<n8n-text v-if="isScheduleTrigger || !isTriggerNode">{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
+		<template v-slot:node-not-run>
+			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
+			<n8n-text v-if="!workflowRunning && (isScheduleTrigger || !isTriggerNode)">{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
 		</template>
 
 		<template v-slot:no-output-data>
