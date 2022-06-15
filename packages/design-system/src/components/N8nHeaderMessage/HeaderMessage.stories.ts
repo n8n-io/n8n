@@ -1,6 +1,7 @@
 import { StoryFn } from "@storybook/vue";
 import N8nHeaderMessage from '.';
 import N8nInfoTip from '../N8nInfoTip';
+import N8nLink from '../N8nLink';
 
 export default {
 	title: 'Atoms/HeaderMessage',
@@ -24,6 +25,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nHeaderMessage,
 		N8nInfoTip,
+		N8nLink,
 	},
 	template: `
 		<n8n-header-message v-bind="$props">
@@ -38,7 +40,8 @@ withTrailingLink.args = {
 	theme: 'secondary',
 	message: 'Here is a message.',
 	actionText: 'Action',
-	trailingLink: 'Link to click',
+	trailingLinkText: 'Click me',
+	trailingLinkUrl: 'https://n8n.io',
 };
 
 export const withTrailingIcon = Template.bind({});
@@ -60,5 +63,6 @@ withInfoTip.args = {
 		</n8n-info-tip>
 	`,
 	actionText: 'Unpin',
-	trailingLink: 'Learn more',
+	trailingLinkText: 'Learn more',
+	trailingLinkUrl: 'https://n8n.io',
 };
