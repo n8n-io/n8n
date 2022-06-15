@@ -11,6 +11,7 @@ import {
 	set,
 	unset,
 } from 'lodash';
+import { options } from 'rhea';
 
 interface IRenameKey {
 	currentKey: string;
@@ -32,57 +33,6 @@ export class RenameKeys implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
-			{
-				displayName: 'Regex',
-				name: 'useRegex',
-				type: 'boolean',
-				default: false,
-				description: 'Use regex to match and replace keys',
-			},
-			{
-				displayName: 'Key search',
-				name: 'searchRegex',
-				type: 'string',
-				default: '',
-				placeholder: '',
-				description: 'Regex to match the key name',
-				displayOptions: {
-					show: {
-						useRegex: [
-							true,
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Key replace',
-				name: 'replaceRegex',
-				type: 'string',
-				default: '',
-				placeholder: '',
-				description: 'The name the key/s should be renamed to. It\'s possible to use regex captures e.g. $1, $2, ... ',
-				displayOptions: {
-					show: {
-						useRegex: [
-							true,
-						],
-					},
-				},
-			},	
-			{
-				displayName: 'Max Depth',
-				name: 'depth',
-				type: 'number',
-				default: -1,
-				description: 'Maximum depth to replace keys (-1 for unlimited, 0 for top level only)',
-				displayOptions: {
-					show: {
-						useRegex: [
-							true,
-						],
-					},
-				},
-			},
 			{
 				displayName: 'Keys',
 				name: 'keys',
@@ -119,6 +69,66 @@ export class RenameKeys implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Regex',
+				name: 'regexReplacement',
+				placeholder: 'Add new regular expression',
+				description: 'Adds a regular expressiond',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Replacement',
+						name: 'replacements',
+						values: [
+							{
+								displayName: 'Regular Expression',
+								name: 'searchRegex',
+								type: 'string',
+								default: '',
+								placeholder: '',
+								description: 'Regex to match the key name',
+								hint: 'Learn more and test RegEx <a href="https://regex101.com/">here</a>',
+							},
+							{
+								displayName: 'Replace With',
+								name: 'replaceRegex',
+								type: 'string',
+								default: '',
+								placeholder: '',
+								description: 'The name the key/s should be renamed to. It\'s possible to use regex captures e.g. $1, $2, ...',
+							},
+							{
+								displayName: 'Options',
+								name: 'options',
+								type: 'collection',
+								default: {},
+								placeholder: 'Add Option',
+								options: [
+									{
+										displayName: 'Max Depth',
+										name: 'depth',
+										type: 'number',
+										default: -1,
+										description: 'Maximum depth to replace keys (-1 for unlimited, 0 for top level only)',
+									},
+									{
+										displayName: 'Case Insensitive',
+										name: 'caseInsensitive',
+										type: 'boolean',
+										description: 'Whether to use case insensitive match',
+										default: true,
+									},
+								],
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -133,8 +143,11 @@ export class RenameKeys implements INodeType {
 		let newItem: INodeExecutionData;
 		let renameKeys: IRenameKey[];
 		let value: any; // tslint:disable-line:no-any
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
+			const regexReplacements = this.getNodeParameter('regexReplacement.replacements', itemIndex, []) as IDataObject[];
+
 			item = items[itemIndex];
 
 			// Copy the whole JSON data as data on any level can be renamed
@@ -165,16 +178,14 @@ export class RenameKeys implements INodeType {
 				unset(newItem.json, renameKey.currentKey as string);
 			});
 
-			const useRegex = this.getNodeParameter('useRegex', itemIndex) as boolean;
+			regexReplacements.forEach(replacement => {
+				const { searchRegex, replaceRegex, options } = replacement;
+				const {depth, caseInsensitive} = options as IDataObject;
 
-			if (useRegex) {
-				const maxDepth = this.getNodeParameter('depth', itemIndex, -1) as number;
-				const searchRegex = this.getNodeParameter('searchRegex', itemIndex) as string;
-				const replaceRegex = this.getNodeParameter('replaceRegex', itemIndex) as string;
-				// const uppercase = this.getNodeParameter('uppercase', itemIndex, false) as string;
-				// const lowercase = this.getNodeParameter('lowercase', itemIndex, false) as string;
-				// Replace Object keys up to certain depth
-				const regex = new RegExp(searchRegex);
+				const flags = (caseInsensitive as boolean) ?  'i' : undefined;
+
+				const regex = new RegExp(searchRegex as string, flags);
+
 				const renameObjectKeys = (obj: IDataObject, depth: number) => {
 					for (const key in obj) {
 						if (Array.isArray(obj)) {
@@ -187,12 +198,9 @@ export class RenameKeys implements INodeType {
 								renameObjectKeys(obj[key] as IDataObject, depth - 1);
 							}
 							if (key.match(regex)) {
-								const newKey = key.replace(regex, replaceRegex);
-								// newKey = uppercase ? newKey.toUpperCase() : newKey;
-								// newKey = lowercase ? newKey.toLowerCase() : newKey;
+								const newKey = key.replace(regex, replaceRegex as string);
 								if (newKey !== key) {
 									obj[newKey] = obj[key];
-									console.log(`Replacing ${key} with ${newKey}`);
 									delete obj[key];
 								}
 							}
@@ -200,8 +208,9 @@ export class RenameKeys implements INodeType {
 					}
 					return obj;
 				};
-				newItem.json = renameObjectKeys(newItem.json, maxDepth);
-			}
+				newItem.json = renameObjectKeys(newItem.json, depth as number);
+			});
+
 			returnData.push(newItem);
 		}
 
