@@ -211,12 +211,6 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				});
 			}
 
-			if (this.nodeType && this.isPollingNode) {
-				return this.$locale.baseText('triggerPanel.scheduledNode.hint', {
-					interpolate: { name: serviceName },
-				});
-			}
-
 			return '';
 		},
 		executionsActivationHint(): string {
@@ -267,6 +261,19 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			if (this.isWebhookNode) {
 				return this.$locale.baseText('triggerPanel.webhookNode.executionsHelp');
 			}
+
+			if (this.isWebhookBasedNode) {
+				return this.$locale.baseText('triggerPanel.webhookBasedNode.executionsHelp', {
+					interpolate: { service: this.serviceName },
+				});
+			}
+
+			if (this.isPollingNode) {
+				return this.$locale.baseText('triggerPanel.pollingNode.executionsHelp', {
+					interpolate: { service: this.serviceName },
+				});
+			}
+
 			const activationHint = this.executionsActivationHint;
 			if (activationHint) {
 				return `${this.executionsActivationHint}<br />${this.executionsHint}`;
