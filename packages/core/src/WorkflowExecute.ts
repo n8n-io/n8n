@@ -924,19 +924,6 @@ export class WorkflowExecute {
 								}
 							}
 
-							Logger.debug(`Running node "${executionNode.name}" started`, {
-								node: executionNode.name,
-								workflowId: workflow.id,
-							});
-							const runNodeData = await workflow.runNode(
-								executionData,
-								this.runExecutionData,
-								runIndex,
-								this.additionalData,
-								NodeExecuteFunctions,
-								this.mode,
-							);
-							nodeSuccessData = runNodeData.data;
 							const { pinData } = this.runExecutionData.resultData;
 
 							if (pinData && pinData[executionNode.name] !== undefined) {
@@ -948,8 +935,7 @@ export class WorkflowExecute {
 									workflowId: workflow.id,
 								});
 								const runNodeData = await workflow.runNode(
-									executionData.node,
-									executionData.data,
+									executionData,
 									this.runExecutionData,
 									runIndex,
 									this.additionalData,
