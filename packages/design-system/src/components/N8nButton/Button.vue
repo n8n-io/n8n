@@ -66,10 +66,6 @@ export default Vue.extend({
 		icon: {
 			type: [String, Array],
 		},
-		round: {
-			type: Boolean,
-			default: false,
-		},
 		block: {
 			type: Boolean,
 			default: false,
