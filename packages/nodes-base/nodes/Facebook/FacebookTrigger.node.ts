@@ -38,7 +38,6 @@ export class FacebookTrigger implements INodeType {
 		description: 'Starts the workflow when Facebook events occur',
 		defaults: {
 			name: 'Facebook Trigger',
-			color: '#3B5998',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -147,7 +146,6 @@ export class FacebookTrigger implements INodeType {
 						'object',
 					],
 				},
-				required: false,
 				default: [],
 				description: 'The set of fields in this object that are subscribed to',
 			},
@@ -159,11 +157,11 @@ export class FacebookTrigger implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Include values',
+						displayName: 'Include Values',
 						name: 'includeValues',
 						type: 'boolean',
 						default: true,
-						description: 'Indicates if change notifications should include the new values.',
+						description: 'Indicates if change notifications should include the new values',
 					},
 				],
 			},
@@ -248,7 +246,7 @@ export class FacebookTrigger implements INodeType {
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const credentials = await this.getCredentials('facebookGraphAppApi') as IDataObject;
+		const credentials = await this.getCredentials('facebookGraphAppApi');
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
 			if (query['hub.challenge']) {

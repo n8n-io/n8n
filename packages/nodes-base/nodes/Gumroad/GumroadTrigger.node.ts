@@ -15,6 +15,7 @@ import {
 } from './GenericFunctions';
 
 export class GumroadTrigger implements INodeType {
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'Gumroad Trigger',
 		name: 'gumroadTrigger',
@@ -24,7 +25,6 @@ export class GumroadTrigger implements INodeType {
 		description: 'Handle Gumroad events via webhooks',
 		defaults: {
 			name: 'Gumroad Trigger',
-			color: '#60c2cd',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -47,33 +47,34 @@ export class GumroadTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				default: '',
 				options: [
 					{
-						name: 'Sale',
-						value: 'sale',
-						description: `When subscribed to this resource, you will be notified of the user's sales`,
-					},
-					{
-						name: 'Refund',
-						value: 'refund',
-						description: `When subscribed to this resource, you will be notified of refunds to the user's sales`,
+						name: 'Cancellation',
+						value: 'cancellation',
+						description: 'When subscribed to this resource, you will be notified of cancellations of the user\'s subscribers',
 					},
 					{
 						name: 'Dispute',
 						value: 'dispute',
-						description: `When subscribed to this resource, you will be notified of the disputes raised against user's sales`,
+						description: 'When subscribed to this resource, you will be notified of the disputes raised against user\'s sales',
 					},
 					{
 						name: 'Dispute Won',
 						value: 'dispute_won',
-						description: `When subscribed to this resource, you will be notified of the sale disputes won`,
+						description: 'When subscribed to this resource, you will be notified of the sale disputes won',
 					},
 					{
-						name: 'Cancellation',
-						value: 'cancellation',
-						description: `When subscribed to this resource, you will be notified of cancellations of the user's subscribers`,
+						name: 'Refund',
+						value: 'refund',
+						description: 'When subscribed to this resource, you will be notified of refunds to the user\'s sales',
+					},
+					{
+						name: 'Sale',
+						value: 'sale',
+						description: 'When subscribed to this resource, you will be notified of the user\'s sales',
 					},
 				],
 				description: 'The resource is gonna fire the event',

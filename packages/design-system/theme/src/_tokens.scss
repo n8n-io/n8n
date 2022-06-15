@@ -43,6 +43,24 @@
 		var(--color-primary-shade-2-l)
 	);
 
+	--color-avatar-accent-1-h: 40;
+	--color-avatar-accent-1-s: 15.3%;
+	--color-avatar-accent-1-l: 88.4%;
+	--color-avatar-accent-1: hsl(
+		var(--color-avatar-accent-1-h),
+		var(--color-avatar-accent-1-s),
+		var(--color-avatar-accent-1-l)
+	);
+
+	--color-avatar-accent-2-h: 212;
+	--color-avatar-accent-2-s: 71%;
+	--color-avatar-accent-2-l: 48.6%;
+	--color-avatar-accent-2: hsl(
+		var(--color-avatar-accent-2-h),
+		var(--color-avatar-accent-2-s),
+		var(--color-avatar-accent-2-l)
+	);
+
 	--color-secondary-h: 247;
 	--color-secondary-s: 49%;
 	--color-secondary-l: 53%;
@@ -93,17 +111,21 @@
 		var(--color-warning-l)
 	);
 
-	--color-warning-tint-1-l: 88%;
+	--color-warning-tint-1-h: 35;
+	--color-warning-tint-1-s: 78%;
+	--color-warning-tint-1-l: 84%;
 	--color-warning-tint-1: hsl(
 		var(--color-warning-h),
 		var(--color-warning-s),
 		var(--color-warning-tint-1-l)
 	);
 
+	--color-warning-tint-2-h: 34;
+	--color-warning-tint-2-s: 80%;
 	--color-warning-tint-2-l: 96%;
 	--color-warning-tint-2: hsl(
-		var(--color-warning-h),
-		var(--color-warning-s),
+		var(--color-warning-tint-2-h),
+		var(--color-warning-tint-2-s),
 		var(--color-warning-tint-2-l)
 	);
 
@@ -260,8 +282,8 @@
 	);
 
 	--color-background-light-h: 220;
-	--color-background-light-s: 27.3%;
-	--color-background-light-l: 97.8%;
+	--color-background-light-s: 60%;
+	--color-background-light-l: 99%;
 	--color-background-light: hsl(
 		var(--color-background-light-h),
 		var(--color-background-light-s),
@@ -304,6 +326,35 @@
 		var(--color-canvas-background-l)
 	);
 
+	--color-json-default: #5045A1;
+	--color-json-null:  var(--color-danger);
+	--color-json-boolean: #1d8ce0;
+	--color-json-number: #1d8ce0;
+	--color-json-string: #5045A1;
+	--color-json-key: var(--color-text-dark);
+	--color-json-brackets: var(--color-text-dark);
+	--color-json-brackets-hover: #1890ff;
+	--color-json-line: #bfcbd9;
+	--color-json-highlight: #E2E5EE;
+
+	--color-sticky-default-background-h: 46;
+	--color-sticky-default-background-s: 100%;
+	--color-sticky-default-background-l: 92%;
+	--color-sticky-default-background: hsl(
+		var(--color-sticky-default-background-h),
+		var(--color-sticky-default-background-s),
+		var(--color-sticky-default-background-l)
+	);
+
+	--color-sticky-default-border-h: 43;
+	--color-sticky-default-border-s: 75%;
+	--color-sticky-default-border-l: 80%;
+	--color-sticky-default-border: hsl(
+		var(--color-sticky-default-border-h),
+		var(--color-sticky-default-border-s),
+		var(--color-sticky-default-border-l)
+	);
+
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;
 	--border-radius-base: 4px;
@@ -316,6 +367,7 @@
 	--border-base: var(--border-width-base) var(--border-style-base)
 		var(--color-foreground-base);
 
+	--font-size-3xs: 0.625rem;
 	--font-size-2xs: 0.75rem;
 	--font-size-xs: 0.8125rem;
 	--font-size-s: 0.875rem;
@@ -330,7 +382,6 @@
 	--font-line-height-xloose: 1.5;
 
 	--font-weight-regular: 400;
-	--font-weight-semi-bold: 500;
 	--font-weight-bold: 600;
 	--font-family: 'Open Sans', sans-serif;
 

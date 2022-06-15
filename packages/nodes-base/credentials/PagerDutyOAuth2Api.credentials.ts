@@ -12,6 +12,12 @@ export class PagerDutyOAuth2Api implements ICredentialType {
 	documentationUrl = 'pagerDuty';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
@@ -40,7 +46,6 @@ export class PagerDutyOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'header',
-			description: 'Method of authentication.',
 		},
 	];
 }

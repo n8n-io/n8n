@@ -4,20 +4,28 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	mapEndpoint,
 	serviceNowApiRequest,
+	serviceNowDownloadAttachment,
 	serviceNowRequestAllItems,
 	sortData
 } from './GenericFunctions';
+
+import {
+	attachmentFields,
+	attachmentOperations,
+} from './AttachmentDescription';
 
 import {
 	businessServiceFields,
@@ -75,7 +83,6 @@ export class ServiceNow implements INodeType {
 		description: 'Consume ServiceNow API',
 		defaults: {
 			name: 'ServiceNow',
-			color: '#81b5a1',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -83,20 +90,60 @@ export class ServiceNow implements INodeType {
 			{
 				name: 'serviceNowOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
+			{
+				name: 'serviceNowBasicApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'basicAuth',
+						],
+					},
+				},
 			},
 		],
 		properties: [
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+				description: 'Authentication method to use',
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: 'Attachment',
+						value: 'attachment',
+					},
 					{
 						name: 'Business Service',
 						value: 'businessService',
 					},
 					{
-						name: 'Configuration Items',
+						name: 'Configuration Item',
 						value: 'configurationItems',
 					},
 					{
@@ -129,9 +176,10 @@ export class ServiceNow implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume',
 			},
-
+			// ATTACHMENT SERVICE
+			...attachmentOperations,
+			...attachmentFields,
 			// BUSINESS SERVICE
 			...businessServiceOperations,
 			...businessServiceFields,
@@ -421,14 +469,124 @@ export class ServiceNow implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				if (resource === 'businessService') {
+				// https://developer.servicenow.com/dev.do#!/reference/api/rome/rest/c_AttachmentAPI
+				if (resource === 'attachment') {
+					if (operation === 'get') {
+
+						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
+						const download = this.getNodeParameter('download', i) as boolean;
+						const endpoint = `/now/attachment/${attachmentsSysId}`;
+
+						const response = await serviceNowApiRequest.call(this, 'GET', endpoint, {});
+						const fileMetadata = response.result;
+
+						responseData = {
+							json: fileMetadata,
+						};
+
+						if (download) {
+							const outputField = this.getNodeParameter('outputField', i) as string;
+							responseData = {
+								...responseData,
+								binary: {
+									[outputField]: await serviceNowDownloadAttachment.call(
+										this,
+										endpoint,
+										fileMetadata.file_name,
+										fileMetadata.content_type,
+									),
+								},
+							};
+						}
+
+					} else if (operation === 'getAll') {
+						const download = this.getNodeParameter('download', i) as boolean;
+						const tableName = this.getNodeParameter('tableName', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						qs = {} as IDataObject;
+
+						qs.sysparm_query = `table_name=${tableName}`;
+
+						if (options.queryFilter) {
+							qs.sysparm_query = `${qs.sysparm_query}^${options.queryFilter}`;
+						}
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.sysparm_limit = limit;
+							const response = await serviceNowApiRequest.call(this, 'GET', '/now/attachment', {}, qs);
+							responseData = response.result;
+						} else {
+							responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/attachment', {}, qs);
+						}
+
+						if (download) {
+							const outputField = this.getNodeParameter('outputField', i) as string;
+							const responseDataWithAttachments: IDataObject[] = [];
+
+							for (const data of responseData as IDataObject[]) {
+								responseDataWithAttachments.push({
+									json: data,
+									binary: {
+										[outputField]: await serviceNowDownloadAttachment.call(
+											this,
+											`/now/attachment/${data.sys_id}`,
+											data.file_name as string,
+											data.content_type as string,
+										),
+									},
+								});
+							}
+
+							responseData = responseDataWithAttachments;
+						} else {
+							responseData = (responseData as IDataObject[]).map( data => ({ json: data }));
+						}
+
+					} else if (operation === 'upload') {
+						const tableName = this.getNodeParameter('tableName', i) as string;
+						const recordId = this.getNodeParameter('id', i) as string;
+						const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						let binaryData: IBinaryData;
+
+						if (items[i].binary && items[i].binary![inputDataFieldName]) {
+							binaryData = items[i].binary![inputDataFieldName];
+						} else {
+							throw new NodeOperationError(this.getNode(), `No binary data property "${inputDataFieldName}" does not exists on item!`);
+						}
+
+						const headers: IDataObject = {
+							'Content-Type': binaryData.mimeType,
+						};
+
+						const qs: IDataObject = {
+							table_name: tableName,
+							table_sys_id: recordId,
+							file_name: binaryData.fileName ? binaryData.fileName : `${inputDataFieldName}.${binaryData.fileExtension}`,
+							...options,
+						};
+
+						const body = await this.helpers.getBinaryDataBuffer(i, inputDataFieldName) as Buffer;
+
+						const response = await serviceNowApiRequest.call(this, 'POST', '/now/attachment/file', body, qs, '', {headers});
+						responseData = response.result;
+					} else if (operation === 'delete') {
+						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
+						await serviceNowApiRequest.call(this, 'DELETE', `/now/attachment/${attachmentsSysId}`);
+						responseData = {'success': true};
+					}
+				} else if (resource === 'businessService') {
 
 					if (operation === 'getAll') {
 
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -449,7 +607,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -470,7 +628,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -491,7 +649,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -530,7 +688,7 @@ export class ServiceNow implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -542,7 +700,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -605,7 +763,7 @@ export class ServiceNow implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -618,7 +776,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -680,7 +838,7 @@ export class ServiceNow implements INodeType {
 						const getOption = this.getNodeParameter('getOption', i) as string;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -701,7 +859,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -731,7 +889,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -752,7 +910,7 @@ export class ServiceNow implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
-						if (qs.sysparm_fields) {
+						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
 							qs.sysparm_fields = (qs.sysparm_fields as string[]).join(',');
 						}
 
@@ -772,7 +930,7 @@ export class ServiceNow implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 
@@ -782,6 +940,12 @@ export class ServiceNow implements INodeType {
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
+		}
+
+		if (resource === 'attachment') {
+			if (operation === 'get' || operation === 'getAll') {
+				return this.prepareOutputData(returnData as INodeExecutionData[]);
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

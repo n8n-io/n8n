@@ -3,12 +3,16 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
 import {
@@ -44,8 +48,9 @@ import {
 	userGroupFields,
 	userGroupOperations,
 } from './UserGroupDescription';
+import { OptionsWithUri } from 'request';
 
-//import * as moment from 'moment';
+//import moment from 'moment';
 
 export class Discourse implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,7 +63,6 @@ export class Discourse implements INodeType {
 		description: 'Consume Discourse API',
 		defaults: {
 			name: 'Discourse',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -73,6 +77,7 @@ export class Discourse implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Category',
@@ -100,7 +105,6 @@ export class Discourse implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The resource to operate on.',
 			},
 			...categoryOperations,
 			...categoryFields,
@@ -118,6 +122,7 @@ export class Discourse implements INodeType {
 	};
 
 	methods = {
+
 		loadOptions: {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
@@ -144,7 +149,7 @@ export class Discourse implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -322,6 +327,7 @@ export class Discourse implements INodeType {
 					//https://docs.discourse.org/#tag/Posts/paths/~1posts.json/get
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const limit = this.getNodeParameter('limit', i, 0) as number;
 
 						responseData = await discourseApiRequest.call(
 							this,
@@ -330,11 +336,29 @@ export class Discourse implements INodeType {
 							{},
 							qs,
 						);
-
 						responseData = responseData.latest_posts;
 
+						//Getting all posts relying on https://github.com/discourse/discourse_api/blob/main/spec/discourse_api/api/posts_spec.rb
+						let lastPost = responseData.pop();
+						let previousLastPostID;
+						while (lastPost.id !== previousLastPostID) {
+							if (limit && responseData.length > limit) {
+								break;
+							}
+							const chunk = await discourseApiRequest.call(
+								this,
+								'GET',
+								`/posts.json?before=${lastPost.id}`,
+								{},
+								qs,
+							);
+							responseData = responseData.concat(chunk.latest_posts);
+							previousLastPostID = lastPost.id;
+							lastPost = responseData.pop();
+						}
+						responseData.push(lastPost);
+
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -496,7 +520,7 @@ export class Discourse implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

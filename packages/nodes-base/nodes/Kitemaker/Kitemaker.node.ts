@@ -55,7 +55,6 @@ export class Kitemaker implements INodeType {
 		description: 'Consume the Kitemaker GraphQL API',
 		defaults: {
 			name: 'Kitemaker',
-			color: '#662482',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -70,6 +69,7 @@ export class Kitemaker implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Organization',
@@ -90,7 +90,6 @@ export class Kitemaker implements INodeType {
 				],
 				default: 'workItem',
 				required: true,
-				description: 'Resource to operate on.',
 			},
 			...organizationOperations,
 			...spaceOperations,
@@ -119,10 +118,16 @@ export class Kitemaker implements INodeType {
 			},
 
 			async getStatuses(this: ILoadOptionsFunctions) {
+				const spaceId = this.getNodeParameter('spaceId', 0) as string;
+				if (!spaceId.length) {
+					throw new Error('Please choose a space to set for the work item to create.');
+				}
+
 				const responseData = await kitemakerRequest.call(this, { query: getStatuses });
 				const { data: { organization: { spaces } } } = responseData;
+				const space = spaces.find((e: { [x: string]: string; }) => e.id === spaceId);
 
-				return createLoadOptions(spaces[0].statuses);
+				return createLoadOptions(space.statuses);
 			},
 
 			async getUsers(this: ILoadOptionsFunctions) {

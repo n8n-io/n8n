@@ -36,7 +36,6 @@ export class WufooTrigger implements INodeType {
 		description: 'Handle Wufoo events via webhooks',
 		defaults: {
 			name: 'Wufoo Trigger',
-			color: '#c35948',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -56,7 +55,7 @@ export class WufooTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Forms',
+				displayName: 'Forms Name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,
@@ -64,14 +63,14 @@ export class WufooTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
-				description: 'The form upon which will trigger this node when a new entry is made.',
+				description: 'The form upon which will trigger this node when a new entry is made. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Only Answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Returns only the answers of the form and not any of the other data',
 			},
 		],
 	};

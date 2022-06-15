@@ -31,7 +31,6 @@ export class Contentful implements INodeType {
 		description: 'Consume Contenful API',
 		defaults: {
 			name: 'Contentful',
-			color: '#2E75D4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -64,6 +63,7 @@ export class Contentful implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					AssetDescription.resource,
 					ContentTypeDescription.resource,
@@ -72,7 +72,6 @@ export class Contentful implements INodeType {
 					SpaceDescription.resource,
 				],
 				default: 'entry',
-				description: 'The resource to operate on.',
 			},
 
 			// Operations:

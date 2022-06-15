@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
@@ -13,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
+import { replaceNullValues } from './GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -30,7 +30,7 @@ export class HttpRequest implements INodeType {
 		name: 'httpRequest',
 		icon: 'fa:at',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
 		description: 'Makes an HTTP request and returns the response data',
 		defaults: {
@@ -40,6 +40,97 @@ export class HttpRequest implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
+			// ----------------------------------
+			//            v2 creds
+			// ----------------------------------
+			{
+				name: 'httpBasicAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'httpBasicAuth',
+						],
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+			{
+				name: 'httpDigestAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'httpDigestAuth',
+						],
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+			{
+				name: 'httpHeaderAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'httpHeaderAuth',
+						],
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+			{
+				name: 'httpQueryAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'httpQueryAuth',
+						],
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+			{
+				name: 'oAuth1Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth1Api',
+						],
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+			{
+				name: 'oAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2Api',
+						],
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+
+			// ----------------------------------
+			//            v1 creds
+			// ----------------------------------
 			{
 				name: 'httpBasicAuth',
 				required: true,
@@ -47,6 +138,9 @@ export class HttpRequest implements INodeType {
 					show: {
 						authentication: [
 							'basicAuth',
+						],
+						'@version': [
+							1,
 						],
 					},
 				},
@@ -59,6 +153,9 @@ export class HttpRequest implements INodeType {
 						authentication: [
 							'digestAuth',
 						],
+						'@version': [
+							1,
+						],
 					},
 				},
 			},
@@ -69,6 +166,9 @@ export class HttpRequest implements INodeType {
 					show: {
 						authentication: [
 							'headerAuth',
+						],
+						'@version': [
+							1,
 						],
 					},
 				},
@@ -81,6 +181,9 @@ export class HttpRequest implements INodeType {
 						authentication: [
 							'queryAuth',
 						],
+						'@version': [
+							1,
+						],
 					},
 				},
 			},
@@ -91,6 +194,9 @@ export class HttpRequest implements INodeType {
 					show: {
 						authentication: [
 							'oAuth1',
+						],
+						'@version': [
+							1,
 						],
 					},
 				},
@@ -108,6 +214,87 @@ export class HttpRequest implements INodeType {
 			},
 		],
 		properties: [
+			// ----------------------------------
+			//           v2 params
+			// ----------------------------------
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				noDataExpression: true,
+				type: 'options',
+				required: true,
+				options: [
+					{
+						name: 'None',
+						value: 'none',
+					},
+					{
+						name: 'Predefined Credential Type',
+						value: 'predefinedCredentialType',
+						description: 'We\'ve already implemented auth for many services so that you don\'t have to set it up manually',
+					},
+					{
+						name: 'Generic Credential Type',
+						value: 'genericCredentialType',
+						description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
+					},
+				],
+				default: 'none',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Credential Type',
+				name: 'nodeCredentialType',
+				type: 'credentialsSelect',
+				noDataExpression: true,
+				required: true,
+				default: '',
+				credentialTypes: [
+					'extends:oAuth2Api',
+					'extends:oAuth1Api',
+					'has:authenticate',
+				],
+				displayOptions: {
+					show: {
+						authentication: [
+							'predefinedCredentialType',
+						],
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Generic Auth Type',
+				name: 'genericAuthType',
+				type: 'credentialsSelect',
+				required: true,
+				default: '',
+				credentialTypes: [
+					'has:genericAuth',
+				],
+				displayOptions: {
+					show: {
+						authentication: [
+							'genericCredentialType',
+						],
+						'@version': [
+							2,
+						],
+					},
+				},
+			},
+
+			// ----------------------------------
+			//           v1 params
+			// ----------------------------------
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -126,8 +313,8 @@ export class HttpRequest implements INodeType {
 						value: 'headerAuth',
 					},
 					{
-						name: 'Query Auth',
-						value: 'queryAuth',
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'OAuth1',
@@ -138,13 +325,24 @@ export class HttpRequest implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'None',
-						value: 'none',
+						name: 'Query Auth',
+						value: 'queryAuth',
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					},
+				},
 			},
+
+			// ----------------------------------
+			//        versionless params
+			// ----------------------------------
 			{
 				displayName: 'Request Method',
 				name: 'requestMethod',
@@ -163,6 +361,10 @@ export class HttpRequest implements INodeType {
 						value: 'HEAD',
 					},
 					{
+						name: 'OPTIONS',
+						value: 'OPTIONS',
+					},
+					{
 						name: 'PATCH',
 						value: 'PATCH',
 					},
@@ -176,7 +378,7 @@ export class HttpRequest implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The request method to use.',
+				description: 'The request method to use',
 			},
 			{
 				displayName: 'URL',
@@ -184,7 +386,7 @@ export class HttpRequest implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'http://example.com/index.html',
-				description: 'The URL to make the request to.',
+				description: 'The URL to make the request to',
 				required: true,
 			},
 			{
@@ -192,7 +394,8 @@ export class HttpRequest implements INodeType {
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
-				description: 'Still download the response even if SSL certificate validation is not possible.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
+				description: 'Whether to download the response even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Response Format',
@@ -213,7 +416,7 @@ export class HttpRequest implements INodeType {
 					},
 				],
 				default: 'json',
-				description: 'The format in which the data gets returned from the URL.',
+				description: 'The format in which the data gets returned from the URL',
 			},
 			{
 				displayName: 'Property Name',
@@ -228,7 +431,7 @@ export class HttpRequest implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the property to which to write the response data.',
+				description: 'Name of the property to which to write the response data',
 			},
 			{
 				displayName: 'Binary Property',
@@ -243,7 +446,7 @@ export class HttpRequest implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 
 			{
@@ -251,7 +454,7 @@ export class HttpRequest implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: 'If the query and/or body parameter should be set via the value-key pair UI or JSON/RAW.',
+				description: 'If the query and/or body parameter should be set via the value-key pair UI or JSON/RAW',
 			},
 
 			{
@@ -313,35 +516,35 @@ export class HttpRequest implements INodeType {
 							},
 						],
 						default: 'json',
-						description: 'Content-Type to use to send body parameters.',
+						description: 'Content-Type to use to send body parameters',
 					},
 					{
 						displayName: 'Full Response',
 						name: 'fullResponse',
 						type: 'boolean',
 						default: false,
-						description: 'Returns the full reponse data instead of only the body.',
+						description: 'Returns the full reponse data instead of only the body',
 					},
 					{
 						displayName: 'Follow All Redirects',
 						name: 'followAllRedirects',
 						type: 'boolean',
 						default: false,
-						description: 'Follow non-GET HTTP 3xx redirects.',
+						description: 'Follow non-GET HTTP 3xx redirects',
 					},
 					{
 						displayName: 'Follow GET Redirect',
 						name: 'followRedirect',
 						type: 'boolean',
 						default: true,
-						description: 'Follow GET HTTP 3xx redirects.',
+						description: 'Follow GET HTTP 3xx redirects',
 					},
 					{
 						displayName: 'Ignore Response Code',
 						name: 'ignoreResponseCode',
 						type: 'boolean',
 						default: false,
-						description: 'Succeeds also when status code is not 2xx.',
+						description: 'Succeeds also when status code is not 2xx',
 					},
 					{
 						displayName: 'MIME Type',
@@ -349,8 +552,7 @@ export class HttpRequest implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'text/xml',
-						description: 'Specify the mime type for raw/custom body type.',
-						required: false,
+						description: 'Specify the mime type for raw/custom body type',
 						displayOptions: {
 							show: {
 								'/requestMethod': [
@@ -367,14 +569,14 @@ export class HttpRequest implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'http://myproxy:3128',
-						description: 'HTTP proxy to use.',
+						description: 'HTTP proxy to use',
 					},
 					{
 						displayName: 'Split Into Items',
 						name: 'splitIntoItems',
 						type: 'boolean',
 						default: false,
-						description: 'Outputs each element of an array as own item.',
+						description: 'Outputs each element of an array as own item',
 						displayOptions: {
 							show: {
 								'/responseFormat': [
@@ -391,14 +593,14 @@ export class HttpRequest implements INodeType {
 							minValue: 1,
 						},
 						default: 10000,
-						description: 'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request.',
+						description: 'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 					},
 					{
 						displayName: 'Use Querystring',
 						name: 'useQueryString',
 						type: 'boolean',
 						default: false,
-						description: 'Set this option to true if you need arrays to be serialized as foo=bar&foo=baz instead of the default foo[0]=bar&foo[1]=baz.',
+						description: 'Set this option to true if you need arrays to be serialized as foo=bar&foo=baz instead of the default foo[0]=bar&foo[1]=baz',
 					},
 				],
 			},
@@ -426,7 +628,7 @@ export class HttpRequest implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If binary data should be send as body.',
+				description: 'If binary data should be send as body',
 			},
 			{
 				displayName: 'Binary Property',
@@ -451,7 +653,7 @@ export class HttpRequest implements INodeType {
 						],
 					},
 				},
-				description: `Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>`,
+				description: 'Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 			},
 			{
 				displayName: 'Body Parameters',
@@ -471,11 +673,12 @@ export class HttpRequest implements INodeType {
 							'PATCH',
 							'POST',
 							'PUT',
+							'DELETE',
 						],
 					},
 				},
 				default: '',
-				description: 'Body parameters as JSON or RAW.',
+				description: 'Body parameters as JSON or RAW',
 			},
 			{
 				displayName: 'Body Parameters',
@@ -494,10 +697,11 @@ export class HttpRequest implements INodeType {
 							'PATCH',
 							'POST',
 							'PUT',
+							'DELETE',
 						],
 					},
 				},
-				description: 'The body parameter to send.',
+				description: 'The body parameter to send',
 				default: {},
 				options: [
 					{
@@ -509,14 +713,14 @@ export class HttpRequest implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Name of the parameter.',
+								description: 'Name of the parameter',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the parameter.',
+								description: 'Value of the parameter',
 							},
 						],
 					},
@@ -536,7 +740,7 @@ export class HttpRequest implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Header parameters as JSON or RAW.',
+				description: 'Header parameters as JSON or RAW',
 			},
 			{
 				displayName: 'Headers',
@@ -553,7 +757,7 @@ export class HttpRequest implements INodeType {
 						],
 					},
 				},
-				description: 'The headers to send.',
+				description: 'The headers to send',
 				default: {},
 				options: [
 					{
@@ -565,14 +769,14 @@ export class HttpRequest implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Name of the header.',
+								description: 'Name of the header',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set for the header.',
+								description: 'Value to set for the header',
 							},
 						],
 					},
@@ -592,7 +796,7 @@ export class HttpRequest implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Query parameters as JSON (flat object).',
+				description: 'Query parameters as JSON (flat object)',
 			},
 			{
 				displayName: 'Query Parameters',
@@ -609,7 +813,7 @@ export class HttpRequest implements INodeType {
 						],
 					},
 				},
-				description: 'The query parameter to send.',
+				description: 'The query parameter to send',
 				default: {},
 				options: [
 					{
@@ -621,14 +825,14 @@ export class HttpRequest implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Name of the parameter.',
+								description: 'Name of the parameter',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the parameter.',
+								description: 'Value of the parameter',
 							},
 						],
 					},
@@ -636,7 +840,6 @@ export class HttpRequest implements INodeType {
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -648,17 +851,47 @@ export class HttpRequest implements INodeType {
 			'statusMessage',
 		];
 
-		// TODO: Should have a setting which makes clear that this parameter can not change for each item
-		const requestMethod = this.getNodeParameter('requestMethod', 0) as string;
-		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
+		let authentication;
+		const nodeVersion = this.getNode().typeVersion;
+
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
-		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
-		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
-		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-		const httpQueryAuth = await this.getCredentials('httpQueryAuth');
-		const oAuth1Api = await this.getCredentials('oAuth1Api');
-		const oAuth2Api = await this.getCredentials('oAuth2Api');
+		try {
+			authentication = this.getNodeParameter('authentication', 0) as 'predefinedCredentialType' | 'genericCredentialType' | 'none';
+		} catch (_) {}
+
+		let httpBasicAuth;
+		let httpDigestAuth;
+		let httpHeaderAuth;
+		let httpQueryAuth;
+		let oAuth1Api;
+		let oAuth2Api;
+		let nodeCredentialType;
+
+		if (authentication === 'genericCredentialType' || nodeVersion === 1) {
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (_) {}
+			try {
+				httpDigestAuth = await this.getCredentials('httpDigestAuth');
+			} catch (_) {}
+			try {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} catch (_) {}
+			try {
+				httpQueryAuth = await this.getCredentials('httpQueryAuth');
+			} catch (_) {}
+			try {
+				oAuth1Api = await this.getCredentials('oAuth1Api');
+			} catch (_) {}
+			try {
+				oAuth2Api = await this.getCredentials('oAuth2Api');
+			} catch (_) {}
+		} else if (authentication === 'predefinedCredentialType') {
+			try {
+				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
+			} catch (_) {}
+		}
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
@@ -683,10 +916,12 @@ export class HttpRequest implements INodeType {
 				displayName: 'Query Paramters',
 			},
 		};
-
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
+			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex) as boolean;
+
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
@@ -771,8 +1006,9 @@ export class HttpRequest implements INodeType {
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
-								const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
-								requestOptions.body = Buffer.from(binaryProperty.data, BINARY_ENCODING);
+
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+								requestOptions.body = binaryDataBuffer;
 							} else if (options.bodyContentType === 'multipart-form-data') {
 								requestOptions.body = {};
 								const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
@@ -794,9 +1030,10 @@ export class HttpRequest implements INodeType {
 									}
 
 									const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
+									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 
 									requestOptions.body[propertyName] = {
-										value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryProperty.fileName,
 											contentType: binaryProperty.mimeType,
@@ -850,6 +1087,9 @@ export class HttpRequest implements INodeType {
 									}
 								};
 								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
+							} else if (optionName === 'headers') {
+								// @ts-ignore
+								requestOptions[optionName][parameterDataName.toString().toLowerCase()] = newValue;
 							} else {
 								// @ts-ignore
 								requestOptions[optionName][parameterDataName] = newValue;
@@ -942,13 +1182,30 @@ export class HttpRequest implements INodeType {
 				this.sendMessageToUI(sendRequest);
 			} catch (e) { }
 
-			// Now that the options are all set make the actual http request
-			if (oAuth1Api !== undefined) {
-				requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
-			} else if (oAuth2Api !== undefined) {
-				requestPromises.push(this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, { tokenType: 'Bearer' }));
-			} else {
-				requestPromises.push(this.helpers.request(requestOptions));
+			if (
+				authentication === 'genericCredentialType' ||
+				authentication === 'none' ||
+				nodeVersion === 1
+			) {
+				if (oAuth1Api) {
+					requestPromises.push(
+						this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions),
+					);
+				} else if (oAuth2Api) {
+					requestPromises.push(
+						this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, { tokenType: 'Bearer' }),
+					);
+				} else {
+					// bearerAuth, queryAuth, headerAuth, digestAuth, none
+					requestPromises.push(
+						this.helpers.request(requestOptions),
+					);
+				}
+			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
+				// service-specific cred: OAuth1, OAuth2, plain
+				requestPromises.push(
+					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),
+				);
 			}
 		}
 
@@ -971,6 +1228,9 @@ export class HttpRequest implements INodeType {
 							json: {
 								error: response.reason,
 							},
+							pairedItem: {
+								item: itemIndex,
+							},
 						},
 					);
 					continue;
@@ -990,12 +1250,16 @@ export class HttpRequest implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 
 				if (items[itemIndex].binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
+					// @ts-ignore
 					Object.assign(newItem.binary, items[itemIndex].binary);
 				}
 
@@ -1034,11 +1298,19 @@ export class HttpRequest implements INodeType {
 
 						returnItem[property] = response![property];
 					}
-					returnItems.push({ json: returnItem });
+					returnItems.push({
+						json: returnItem,
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else {
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,
+						},
+						pairedItem: {
+							item: itemIndex,
 						},
 					});
 				}
@@ -1058,7 +1330,12 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: returnItem });
+					returnItems.push({
+						json: returnItem,
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else {
 					if (responseFormat === 'json' && typeof response === 'string') {
 						try {
@@ -1069,13 +1346,25 @@ export class HttpRequest implements INodeType {
 					}
 
 					if (options.splitIntoItems === true && Array.isArray(response)) {
-						response.forEach(item => returnItems.push({ json: item }));
+						response.forEach(item => returnItems.push({
+							json: item,
+							pairedItem: {
+								item: itemIndex,
+							},
+						}));
 					} else {
-						returnItems.push({ json: response });
+						returnItems.push({
+							json: response,
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
 					}
 				}
 			}
 		}
+
+		returnItems = returnItems.map(replaceNullValues);
 
 		return this.prepareOutputData(returnItems);
 	}

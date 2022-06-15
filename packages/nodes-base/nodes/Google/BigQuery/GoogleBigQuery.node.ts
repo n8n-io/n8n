@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -35,21 +36,56 @@ export class GoogleBigQuery implements INodeType {
 		description: 'Consume Google BigQuery API',
 		defaults: {
 			name: 'Google BigQuery',
-			color: '#3E87E4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'serviceAccount',
+						],
+					},
+				},
+			},
+			{
 				name: 'googleBigQueryOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Record',
@@ -57,7 +93,6 @@ export class GoogleBigQuery implements INodeType {
 					},
 				],
 				default: 'record',
-				description: 'The resource to operate on.',
 			},
 			...recordOperations,
 			...recordFields,
@@ -126,7 +161,7 @@ export class GoogleBigQuery implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -172,14 +207,22 @@ export class GoogleBigQuery implements INodeType {
 				}
 
 				body.rows = rows;
-				responseData = await googleApiRequest.call(
-					this,
-					'POST',
-					`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
-					body,
-				);
-				returnData.push(responseData);
 
+				try {
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
+						body,
+					);
+					returnData.push(responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+					} else {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
 			} else if (operation === 'getAll') {
 
 				// ----------------------------------
@@ -206,40 +249,48 @@ export class GoogleBigQuery implements INodeType {
 				}
 
 				for (let i = 0; i < length; i++) {
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					Object.assign(qs, options);
+					try {
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						Object.assign(qs, options);
 
-					// if (qs.useInt64Timestamp !== undefined) {
-					// 	qs.formatOptions = {
-					// 		useInt64Timestamp: qs.useInt64Timestamp,
-					// 	};
-					// 	delete qs.useInt64Timestamp;
-					// }
+						// if (qs.useInt64Timestamp !== undefined) {
+						// 	qs.formatOptions = {
+						// 		useInt64Timestamp: qs.useInt64Timestamp,
+						// 	};
+						// 	delete qs.useInt64Timestamp;
+						// }
 
-					if (qs.selectedFields) {
-						fields = (qs.selectedFields as string).split(',');
-					}
+						if (qs.selectedFields) {
+							fields = (qs.selectedFields as string).split(',');
+						}
 
-					if (returnAll) {
-						responseData = await googleApiRequestAllItems.call(
-							this,
-							'rows',
-							'GET',
-							`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
-							{},
-							qs,
-						);
-						returnData.push.apply(returnData, (simple) ? simplify(responseData, fields) : responseData);
-					} else {
-						qs.maxResults = this.getNodeParameter('limit', i) as number;
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
-							{},
-							qs,
-						);
-						returnData.push.apply(returnData, (simple) ? simplify(responseData.rows, fields) : responseData.rows);
+						if (returnAll) {
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'rows',
+								'GET',
+								`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
+								{},
+								qs,
+							);
+							returnData.push.apply(returnData, (simple) ? simplify(responseData, fields) : responseData);
+						} else {
+							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							responseData = await googleApiRequest.call(
+								this,
+								'GET',
+								`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
+								{},
+								qs,
+							);
+							returnData.push.apply(returnData, (simple) ? simplify(responseData.rows, fields) : responseData.rows);
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ error: error.message });
+							continue;
+						}
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			}

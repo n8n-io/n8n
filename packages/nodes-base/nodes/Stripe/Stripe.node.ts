@@ -51,7 +51,6 @@ export class Stripe implements INodeType {
 		description: 'Consume the Stripe API',
 		defaults: {
 			name: 'Stripe',
-			color: '#6772e5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -66,6 +65,7 @@ export class Stripe implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Balance',
@@ -97,7 +97,6 @@ export class Stripe implements INodeType {
 					},
 				],
 				default: 'balance',
-				description: 'Resource to consume',
 			},
 			...balanceOperations,
 			...customerCardOperations,

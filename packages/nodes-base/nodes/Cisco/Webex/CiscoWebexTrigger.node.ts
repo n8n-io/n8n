@@ -34,7 +34,6 @@ export class CiscoWebexTrigger implements INodeType {
 		description: 'Starts the workflow when Cisco Webex events occur.',
 		defaults: {
 			name: 'Webex Trigger',
-			color: '#29b6f6',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -57,7 +56,12 @@ export class CiscoWebexTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: '[All]',
+						value: 'all',
+					},
 					{
 						name: 'Attachment Action',
 						value: 'attachmentAction',
@@ -85,10 +89,6 @@ export class CiscoWebexTrigger implements INodeType {
 					{
 						name: 'Room',
 						value: 'room',
-					},
-					{
-						name: '*',
-						value: 'all',
 					},
 				],
 				default: 'meeting',
@@ -187,7 +187,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas`,
+						description: 'Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas',
 					},
 					{
 						displayName: 'Message ID',
@@ -391,7 +391,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to a particular room type`,
+						description: 'Limit to a particular room type',
 					},
 					{
 						displayName: 'Type',
@@ -419,7 +419,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to a particular room type`,
+						description: 'Limit to a particular room type',
 					},
 					// {
 					// 	displayName: 'Call Type',
@@ -602,9 +602,6 @@ export class CiscoWebexTrigger implements INodeType {
 				const resource = this.getNodeParameter('resource') as string;
 				const filters = this.getNodeParameter('filters', {}) as IDataObject;
 				const credentials = await this.getCredentials('ciscoWebexOAuth2Api');
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
-				}
 				const secret = getAutomaticSecret(credentials);
 				const filter = [];
 				for (const key of Object.keys(filters)) {

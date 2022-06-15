@@ -59,7 +59,6 @@ export class Wekan implements INodeType {
 		description: 'Consume Wekan API',
 		defaults: {
 			name: 'Wekan',
-			color: '#006581',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -74,6 +73,7 @@ export class Wekan implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Board',
@@ -101,7 +101,6 @@ export class Wekan implements INodeType {
 					},
 				],
 				default: 'card',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------

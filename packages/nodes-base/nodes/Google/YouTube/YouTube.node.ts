@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -58,7 +55,6 @@ export class YouTube implements INodeType {
 		description: 'Consume YouTube API',
 		defaults: {
 			name: 'YouTube',
-			color: '#FF0000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -73,6 +69,7 @@ export class YouTube implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -96,7 +93,6 @@ export class YouTube implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,
@@ -215,7 +211,7 @@ export class YouTube implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -427,7 +423,7 @@ export class YouTube implements INodeType {
 							mimeType = item.binary[binaryProperty].mimeType;
 						}
 
-						const body = Buffer.from(item.binary[binaryProperty].data, BINARY_ENCODING);
+						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 						const requestOptions = {
 							headers: {
@@ -914,7 +910,7 @@ export class YouTube implements INodeType {
 							mimeType = item.binary[binaryProperty].mimeType;
 						}
 
-						const body = Buffer.from(item.binary[binaryProperty].data, BINARY_ENCODING);
+						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 						const requestOptions = {
 							headers: {

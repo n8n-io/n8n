@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -34,7 +31,7 @@ import {
 	sendGridApiRequestAllItems,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,7 +44,6 @@ export class SendGrid implements INodeType {
 		description: 'Consume SendGrid API',
 		defaults: {
 			name: 'SendGrid',
-			color: '#1A82E2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -64,6 +60,7 @@ export class SendGrid implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -80,7 +77,6 @@ export class SendGrid implements INodeType {
 				],
 				default: 'list',
 				required: true,
-				description: 'Resource to consume',
 			},
 			...listOperations,
 			...listFields,
@@ -128,7 +124,7 @@ export class SendGrid implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
@@ -268,7 +264,7 @@ export class SendGrid implements INodeType {
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.message });
-					} else {	
+					} else {
 						throw error;
 					}
 				}
@@ -460,8 +456,10 @@ export class SendGrid implements INodeType {
 
 								const binaryProperty = items[i].binary![property];
 
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
+
 								attachmentsToSend.push({
-									content: binaryProperty.data,
+									content: dataBuffer.toString('base64'),
 									filename: binaryProperty.fileName || 'unknown',
 									type: binaryProperty.mimeType,
 								});

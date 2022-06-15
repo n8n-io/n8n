@@ -36,7 +36,7 @@ const ISO6391 = require('iso-639-1');
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Twitter ',
+		displayName: 'Twitter',
 		name: 'twitter',
 		icon: 'file:twitter.svg',
 		group: ['input', 'output'],
@@ -45,7 +45,6 @@ export class Twitter implements INodeType {
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Twitter',
-			color: '#1DA1F2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -60,6 +59,7 @@ export class Twitter implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Direct Message',
@@ -71,7 +71,6 @@ export class Twitter implements INodeType {
 					},
 				],
 				default: 'tweet',
-				description: 'The resource to operate on.',
 			},
 			// DIRECT MESSAGE
 			...directMessageOperations,
@@ -105,7 +104,7 @@ export class Twitter implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;

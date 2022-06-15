@@ -55,7 +55,6 @@ export class WooCommerce implements INodeType {
 		description: 'Consume WooCommerce API',
 		defaults: {
 			name: 'WooCommerce',
-			color: '#96588a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -70,6 +69,7 @@ export class WooCommerce implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Customer',
@@ -85,7 +85,6 @@ export class WooCommerce implements INodeType {
 					},
 				],
 				default: 'product',
-				description: 'Resource to consume.',
 			},
 			...customerOperations,
 			...customerFields,
@@ -134,7 +133,7 @@ export class WooCommerce implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

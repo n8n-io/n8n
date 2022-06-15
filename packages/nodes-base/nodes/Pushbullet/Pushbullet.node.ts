@@ -18,7 +18,7 @@ import {
 	pushbulletApiRequestAllItems,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Pushbullet implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,7 +31,6 @@ export class Pushbullet implements INodeType {
 		description: 'Consume Pushbullet API',
 		defaults: {
 			name: 'Pushbullet',
-			color: '#457854',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -46,6 +45,7 @@ export class Pushbullet implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Push',
@@ -53,12 +53,12 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -89,7 +89,6 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',
@@ -142,7 +141,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `Title of the push.`,
+				description: 'Title of the push',
 			},
 			{
 				displayName: 'Body',
@@ -165,7 +164,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `Body of the push.`,
+				description: 'Body of the push',
 			},
 			{
 				displayName: 'URL',
@@ -186,7 +185,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `URL of the push.`,
+				description: 'URL of the push',
 			},
 			{
 				displayName: 'Binary Property',
@@ -208,7 +207,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be created.',
+				description: 'Name of the binary property which contains the data for the file to be created',
 			},
 			{
 				displayName: 'Target',
@@ -223,7 +222,7 @@ export class Pushbullet implements INodeType {
 					{
 						name: 'Default',
 						value: 'default',
-						description: `Broadcast it to all of the user's devices`,
+						description: 'Broadcast it to all of the user\'s devices',
 					},
 					{
 						name: 'Device ID',
@@ -248,7 +247,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: 'default',
-				description: 'Define the medium that will be used to send the push.',
+				description: 'Define the medium that will be used to send the push',
 			},
 			{
 				displayName: 'Value',
@@ -272,10 +271,10 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.`,
+				description: 'The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.',
 			},
 			{
-				displayName: 'Value',
+				displayName: 'Value Name or ID',
 				name: 'value',
 				type: 'options',
 				typeOptions: {
@@ -296,7 +295,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			},
 			{
 				displayName: 'Push ID',
@@ -330,7 +329,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -354,7 +353,7 @@ export class Pushbullet implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -378,14 +377,14 @@ export class Pushbullet implements INodeType {
 						name: 'active',
 						type: 'boolean',
 						default: false,
-						description: `Don't return deleted pushes.`,
+						description: 'Don\'t return deleted pushes',
 					},
 					{
 						displayName: 'Modified After',
 						name: 'modified_after',
 						type: 'dateTime',
 						default: '',
-						description: `Request pushes modified after this timestamp.`,
+						description: 'Request pushes modified after this timestamp',
 					},
 				],
 			},
@@ -422,7 +421,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Marks a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible.',
+				description: 'Marks a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible',
 			},
 		],
 	};
@@ -447,7 +446,7 @@ export class Pushbullet implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

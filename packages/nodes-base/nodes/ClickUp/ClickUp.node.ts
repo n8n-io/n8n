@@ -101,7 +101,7 @@ import {
 	IList,
 } from './ListInterface';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class ClickUp implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,7 +114,6 @@ export class ClickUp implements INodeType {
 		description: 'Consume ClickUp API (Beta)',
 		defaults: {
 			name: 'ClickUp',
-			color: '#7B68EE',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -163,6 +162,7 @@ export class ClickUp implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Checklist',
@@ -205,16 +205,16 @@ export class ClickUp implements INodeType {
 						value: 'task',
 					},
 					{
+						name: 'Task Dependency',
+						value: 'taskDependency',
+					},
+					{
 						name: 'Task List',
 						value: 'taskList',
 					},
 					{
 						name: 'Task Tag',
 						value: 'taskTag',
-					},
-					{
-						name: 'Task Dependency',
-						value: 'taskDependency',
 					},
 					{
 						name: 'Time Entry',
@@ -226,7 +226,6 @@ export class ClickUp implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'Resource to consume.',
 			},
 			// CHECKLIST
 			...checklistOperations,
@@ -474,7 +473,7 @@ export class ClickUp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 

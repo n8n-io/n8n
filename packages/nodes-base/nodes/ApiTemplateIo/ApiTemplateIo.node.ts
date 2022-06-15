@@ -30,7 +30,6 @@ export class ApiTemplateIo implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'APITemplate.io',
-			color: '#c0c0c0',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -45,6 +44,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -60,15 +60,14 @@ export class ApiTemplateIo implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				default: 'create',
 				required: true,
-				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Create',
@@ -88,9 +87,9 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				default: 'get',
 				required: true,
-				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Get',
@@ -106,12 +105,12 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template ID',
+				displayName: 'Template Name or ID',
 				name: 'imageTemplateId',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the image template to use.',
+				description: 'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
@@ -127,12 +126,12 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template ID',
+				displayName: 'Template Name or ID',
 				name: 'pdfTemplateId',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the PDF template to use.',
+				description: 'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},
@@ -180,7 +179,7 @@ export class ApiTemplateIo implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
 				displayName: 'Binary Property',
@@ -188,7 +187,7 @@ export class ApiTemplateIo implements INodeType {
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to.',
+				description: 'Name of the binary property to which to write to',
 				displayOptions: {
 					show: {
 						resource: [
@@ -297,7 +296,7 @@ export class ApiTemplateIo implements INodeType {
 												name: 'value',
 												type: 'string',
 												default: '',
-												description: 'Value to the property.',
+												description: 'Value to the property',
 											},
 										],
 									},
@@ -346,7 +345,7 @@ export class ApiTemplateIo implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to the property.',
+								description: 'Value to the property',
 							},
 						],
 					},

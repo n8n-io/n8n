@@ -24,8 +24,7 @@ export class Sms77 implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Send SMS and make text-to-speech calls',
 		defaults: {
-			name: 'Sms77',
-			color: '#00d46a',
+			name: 'sms77',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -40,6 +39,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -51,7 +51,6 @@ export class Sms77 implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 
 			// operations
@@ -59,6 +58,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -74,12 +74,12 @@ export class Sms77 implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -95,7 +95,6 @@ export class Sms77 implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'From',
@@ -103,7 +102,6 @@ export class Sms77 implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: '+4901234567890',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [
@@ -114,7 +112,7 @@ export class Sms77 implements INodeType {
 						],
 					},
 				},
-				description: 'The caller ID displayed in the receivers display. Max 16 numeric or 11 alphanumeric characters',
+				description: 'The caller ID displayed in the receivers display. Max 16 numeric or 11 alphanumeric characters.',
 			},
 			{
 				displayName: 'To',
@@ -134,7 +132,7 @@ export class Sms77 implements INodeType {
 						],
 					},
 				},
-				description: 'The number of your recipient(s) separated by comma. Can be regular numbers or contact/groups from Sms77',
+				description: 'The number of your recipient(s) separated by comma. Can be regular numbers or contact/groups from Sms77.',
 			},
 			{
 				displayName: 'Message',
@@ -268,7 +266,7 @@ export class Sms77 implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '+4901234567890',
-						description: 'The caller ID. Please use only verified sender IDs, one of your virtual inbound numbers or one of our shared virtual numbers',
+						description: 'The caller ID. Please use only verified sender IDs, one of your virtual inbound numbers or one of our shared virtual numbers.',
 					},
 					{
 						displayName: 'XML',

@@ -25,7 +25,7 @@
 					<n8n-icon-button
 						v-if="currentCredential"
 						size="small"
-						title="Delete"
+						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
 						type="text"
 						:disabled="isSaving"
@@ -36,7 +36,9 @@
 						v-if="hasUnsavedChanges || credentialId"
 						:saved="!hasUnsavedChanges && !isTesting"
 						:isSaving="isSaving || isTesting"
-						:savingLabel="isTesting ? 'Testing' : 'Saving'"
+						:savingLabel="isTesting
+							? $locale.baseText('credentialEdit.credentialEdit.testing')
+							: $locale.baseText('credentialEdit.credentialEdit.saving')"
 						@click="saveCredential"
 					/>
 				</div>
@@ -52,11 +54,11 @@
 						defaultActive="connection"
 						:light="true"
 					>
-						<n8n-menu-item index="connection" :class="$style.credTab"
-							><span slot="title">Connection</span></n8n-menu-item
+						<n8n-menu-item index="connection"
+							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
-						<n8n-menu-item index="details" :class="$style.credTab"
-							><span slot="title">Details</span></n8n-menu-item
+						<n8n-menu-item index="details"
+							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
 					</n8n-menu>
 				</div>
@@ -106,10 +108,10 @@ import {
 	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -196,8 +198,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		if (this.credentialType) {
 			for (const property of this.credentialType.properties) {
 				if (!this.credentialData.hasOwnProperty(property.name)) {
-					this.credentialData[property.name] =
-						property.default as CredentialInformation;
+					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
 				}
 			}
 		}
@@ -278,7 +279,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return false;
 			});
 
-			return !!nodesThatCanTest.length;
+			return !!nodesThatCanTest.length || (!!this.credentialType && !!this.credentialType.test);
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
@@ -298,9 +299,17 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		isOAuthType(): boolean {
 			return !!this.credentialTypeName && (
-				['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeName) ||
-				this.parentTypes.includes('oAuth1Api') ||
-				this.parentTypes.includes('oAuth2Api')
+				(
+					(
+						this.credentialTypeName === 'oAuth2Api' ||
+						this.parentTypes.includes('oAuth2Api')
+					) && this.credentialData.grantType === 'authorizationCode'
+				)
+				||
+				(
+					this.credentialTypeName === 'oAuth1Api' ||
+					this.parentTypes.includes('oAuth1Api')
+				)
 			);
 		},
 		isOAuthConnected(): boolean {
@@ -343,32 +352,31 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 	},
 	methods: {
-		async beforeClose(done: () => void) {
+		async beforeClose() {
 			let keepEditing = false;
 
 			if (this.hasUnsavedChanges) {
 				const displayName = this.credentialType ? this.credentialType.displayName : '';
 				keepEditing = await this.confirmMessage(
-					`Are you sure you want to throw away the changes you made to the ${displayName} credential?`,
-					'Close without saving?',
+					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', { interpolate: { credentialDisplayName: displayName } }),
+					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline'),
 					null,
-					'Keep editing',
-					'Close',
+					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText'),
+					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText'),
 				);
 			}
 			else if (this.isOAuthType && !this.isOAuthConnected) {
 				keepEditing = await this.confirmMessage(
-					`You need to connect your credential for it to work`,
-					'Close without connecting?',
+					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
+					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
 					null,
-					'Keep editing',
-					'Close',
+					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText'),
+					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText'),
 				);
 			}
 
 			if (!keepEditing) {
-				done();
-				return;
+				return true;
 			}
 			else if (!this.requiredPropertiesFilled) {
 				this.showValidationWarning = true;
@@ -377,6 +385,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			else if (this.isOAuthType) {
 				this.scrollToBottom();
 			}
+
+			return false;
 		},
 
 		displayCredentialParameter(parameter: INodeProperties): boolean {
@@ -393,6 +403,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialData as INodeParameters,
 				parameter,
 				'',
+				null,
 			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
@@ -400,7 +411,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.$store.getters['credentials/getCredentialTypeByName'](name);
 
 			if (!credentialsData) {
-				throw new Error(`Could not find credentials of type: ${name}`);
+				throw new Error(
+					this.$locale.baseText('credentialEdit.credentialEdit.couldNotFindCredentialOfType') + ':' + name,
+				);
 			}
 
 			if (credentialsData.extends === undefined) {
@@ -436,7 +449,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					});
 				if (!currentCredentials) {
 					throw new Error(
-						`Could not find the credentials with the id: ${this.credentialId}`,
+						this.$locale.baseText('credentialEdit.credentialEdit.couldNotFindCredentialWithId') + ':' + this.credentialId,
 					);
 				}
 
@@ -448,11 +461,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 						this.nodeAccess[access.nodeType] = access;
 					},
 				);
-			} catch (e) {
+			} catch (error) {
 				this.$showError(
-					e,
-					'Problem loading credentials',
-					'There was a problem loading the credentials:',
+					error,
+					this.$locale.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
 				);
 				this.closeDialog();
 
@@ -548,19 +560,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 				(access) => !!access,
 			) as ICredentialNodeAccess[];
 
-			// Save only the none default data
-			const data = NodeHelpers.getNodeParameters(
-				this.credentialType!.properties,
-				this.credentialData as INodeParameters,
-				false,
-				false,
-			);
-
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
-				data: data as unknown as ICredentialDataDecryptedObject,
+				data: this.credentialData,
 				nodesAccess,
 			};
 
@@ -570,7 +574,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		async testCredential(credentialDetails: ICredentialsDecrypted) {
-			const result: NodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
+			const result: INodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
 			if (result.status === 'Error') {
 				this.authError = result.message;
 				this.testedSuccessfully = false;
@@ -603,6 +607,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialData as INodeParameters,
 				false,
 				false,
+				null,
 			);
 
 			const credentialDetails: ICredentialsDecrypted = {
@@ -631,6 +636,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
+
+					// Add the full data including defaults for testing
+					credentialDetails.data = this.credentialData;
+
 					await this.testCredential(credentialDetails);
 					this.isTesting = false;
 				}
@@ -657,8 +666,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					'Problem creating credentials',
-					'There was a problem creating the credentials:',
+					this.$locale.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
 				);
 
 				return null;
@@ -686,8 +694,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					'Problem updating credentials',
-					'There was a problem updating the credentials:',
+					this.$locale.baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
 				);
 
 				return null;
@@ -708,10 +715,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const savedCredentialName = this.currentCredential.name;
 
 			const deleteConfirmed = await this.confirmMessage(
-				`Are you sure you want to delete "${savedCredentialName}" credentials?`,
-				'Delete Credentials?',
+				this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', { interpolate: { savedCredentialName } }),
+				this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
 				null,
-				'Yes, delete!',
+				this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText'),
 			);
 
 			if (deleteConfirmed === false) {
@@ -727,8 +734,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					'Problem deleting credentials',
-					'There was a problem deleting the credentials:',
+					this.$locale.baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
 				);
 				this.isDeleting = false;
 
@@ -740,8 +746,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: 'Credentials deleted',
-				message: `The credential "${savedCredentialName}" was deleted!`,
+				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
 				type: 'success',
 			});
 			this.closeDialog();
@@ -778,8 +783,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					'OAuth Authorization Error',
-					'Error generating authorization URL:',
+					this.$locale.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
+					this.$locale.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message'),
 				);
 
 				return;
@@ -848,10 +853,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	display: flex;
 	flex-grow: 1;
 	margin-bottom: var(--spacing-s);
-}
-
-.credTab {
-	padding-left: 12px !important;
 }
 
 .credActions {

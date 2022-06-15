@@ -1,9 +1,10 @@
-import { getStyleTokenValue } from "@/components/helpers";
-import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE } from "@/constants";
+import { getStyleTokenValue, isNumber } from "@/components/helpers";
+import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
 import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
 	IConnection,
+	INode,
 	ITaskData,
 	INodeExecutionData,
 	NodeInputConnections,
@@ -45,6 +46,20 @@ export const DEFAULT_START_NODE = {
 		DEFAULT_START_POSITION_Y,
 	] as XYPosition,
 	parameters: {},
+};
+
+export const WELCOME_STICKY_NODE = {
+	name: QUICKSTART_NOTE_NAME,
+	type: STICKY_NODE_TYPE,
+	typeVersion: 1,
+	position: [
+		-260,
+		200,
+	] as XYPosition,
+	parameters: {
+		height: 300,
+		width: 380,
+	},
 };
 
 export const CONNECTOR_FLOWCHART_TYPE = ['N8nCustom', {
@@ -216,17 +231,22 @@ export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 
 export const getWorkflowCorners = (nodes: INodeUi[]): IBounds => {
 	return nodes.reduce((accu: IBounds, node: INodeUi) => {
-		if (node.position[0] < accu.minX) {
-			accu.minX = node.position[0];
+		const xOffset = node.type === STICKY_NODE_TYPE && isNumber(node.parameters.width) ? node.parameters.width : NODE_SIZE;
+		const yOffset = node.type === STICKY_NODE_TYPE && isNumber(node.parameters.height) ? node.parameters.height : NODE_SIZE;
+		const x = node.position[0];
+		const y = node.position[1];
+
+		if (x < accu.minX) {
+			accu.minX = x;
 		}
-		if (node.position[1] < accu.minY) {
-			accu.minY = node.position[1];
+		if (y < accu.minY) {
+			accu.minY = y;
 		}
-		if (node.position[0] > accu.maxX) {
-			accu.maxX = node.position[0];
+		if ((x + xOffset) > accu.maxX) {
+			accu.maxX = x + xOffset;
 		}
-		if (node.position[1] > accu.maxY) {
-			accu.maxY = node.position[1];
+		if ((y + yOffset) > accu.maxY) {
+			accu.maxY = y + yOffset;
 		}
 
 		return accu;
@@ -587,72 +607,33 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 };
 
 
-export const getZoomToFit = (nodes: INodeUi[]): {offset: XYPosition, zoomLevel: number} => {
+export const getZoomToFit = (nodes: INodeUi[], addComponentPadding = true): {offset: XYPosition, zoomLevel: number} => {
 	const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
+	const sidebarWidth = addComponentPadding? SIDEBAR_WIDTH: 0;
+	const headerHeight = addComponentPadding? HEADER_HEIGHT: 0;
+	const footerHeight = addComponentPadding? 200: 100;
 
 	const PADDING = NODE_SIZE * 4;
 
 	const editorWidth = window.innerWidth;
-	const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING;
+	const diffX = maxX - minX + sidebarWidth + PADDING;
 	const scaleX = editorWidth / diffX;
 
 	const editorHeight = window.innerHeight;
-	const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
+	const diffY = maxY - minY + headerHeight + PADDING;
 	const scaleY = editorHeight / diffY;
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
-	let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
-	xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
+	let xOffset = (minX * -1) * zoomLevel + sidebarWidth; // find top right corner
+	xOffset += (editorWidth - sidebarWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
-	let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
-	yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+	let yOffset = (minY * -1) * zoomLevel + headerHeight; // find top right corner
+	yOffset += (editorHeight - headerHeight - (maxY - minY + footerHeight) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,
 		offset: [xOffset, yOffset],
 	};
-};
-
-export const getUniqueNodeName = (nodes: INodeUi[], originalName: string, additinalUsedNames?: string[]) => {
-	// Check if node-name is unique else find one that is
-	additinalUsedNames = additinalUsedNames || [];
-
-	// Get all the names of the current nodes
-	const nodeNames = nodes.map((node: INodeUi) => {
-		return node.name;
-	});
-
-	// Check first if the current name is already unique
-	if (!nodeNames.includes(originalName) && !additinalUsedNames.includes(originalName)) {
-		return originalName;
-	}
-
-	const nameMatch = originalName.match(/(.*\D+)(\d*)/);
-	let ignore, baseName, nameIndex, uniqueName;
-	let index = 1;
-
-	if (nameMatch === null) {
-		// Name is only a number
-		index = parseInt(originalName, 10);
-		baseName = '';
-		uniqueName = baseName + index;
-	} else {
-		// Name is string or string/number combination
-		[ignore, baseName, nameIndex] = nameMatch;
-		if (nameIndex !== '') {
-			index = parseInt(nameIndex, 10);
-		}
-		uniqueName = baseName;
-	}
-
-	while (
-		nodeNames.includes(uniqueName) ||
-		additinalUsedNames.includes(uniqueName)
-	) {
-		uniqueName = baseName + (index++);
-	}
-
-	return uniqueName;
 };
 
 export const showDropConnectionState = (connection: Connection, targetEndpoint?: Endpoint) => {
@@ -726,4 +707,24 @@ export const getOutputEndpointUUID = (nodeIndex: string, outputIndex: number) =>
 
 export const getInputEndpointUUID = (nodeIndex: string, inputIndex: number) => {
 	return `${nodeIndex}${INPUT_UUID_KEY}${inputIndex}`;
+};
+
+export const getFixedNodesList = (workflowNodes: INode[]) => {
+	const nodes = [...workflowNodes];
+	const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
+
+	const leftmostTop = getLeftmostTopNode(nodes);
+
+	const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
+	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+
+	nodes.map((node) => {
+		node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
+		node.position[1] += diffY;
+	});
+
+	if (!hasStartNode) {
+		nodes.push({...DEFAULT_START_NODE});
+	}
+	return nodes;
 };

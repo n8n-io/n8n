@@ -2,32 +2,32 @@
 	<Modal
 		:name="CREDENTIAL_LIST_MODAL_KEY"
 		width="80%"
-		title="Credentials"
+		:title="$locale.baseText('credentialsList.credentials')"
 	>
 		<template v-slot:content>
-			<n8n-heading tag="h3" size="small" color="text-light">Your saved credentials:</n8n-heading>
+			<n8n-heading tag="h3" size="small" color="text-light">{{ $locale.baseText('credentialsList.yourSavedCredentials') + ':' }}</n8n-heading>
 			<div class="new-credentials-button">
 				<n8n-button
-					title="Create New Credentials"
+					:title="$locale.baseText('credentialsList.createNewCredential')"
 					icon="plus"
-					label="Add New"
+					:label="$locale.baseText('credentialsList.addNew')"
 					size="large"
 					@click="createCredential()"
 				/>
 			</div>
 
-			<el-table :data="credentialsToDisplay" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential">
-				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="type" label="Type" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="createdAt" label="Created" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="updatedAt" label="Updated" class-name="clickable" sortable></el-table-column>
+			<el-table :data="credentialsToDisplay" v-loading="loading" :default-sort = "{prop: 'name', order: 'ascending'}" stripe max-height="450" @row-click="editCredential">
+				<el-table-column property="name" :label="$locale.baseText('credentialsList.name')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="type" :label="$locale.baseText('credentialsList.type')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="createdAt" :label="$locale.baseText('credentialsList.created')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="updatedAt" :label="$locale.baseText('credentialsList.updated')" class-name="clickable" sortable></el-table-column>
 				<el-table-column
-					label="Operations"
+					:label="$locale.baseText('credentialsList.operations')"
 					width="120">
 					<template slot-scope="scope">
 						<div class="cred-operations">
-							<n8n-icon-button title="Edit Credentials" @click.stop="editCredential(scope.row)" size="small" icon="pen" />
-							<n8n-icon-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" size="small" icon="trash" />
+							<n8n-icon-button :title="$locale.baseText('credentialsList.editCredential')" @click.stop="editCredential(scope.row)" size="small" icon="pen" />
+							<n8n-icon-button :title="$locale.baseText('credentialsList.deleteCredential')" @click.stop="deleteCredential(scope.row)" size="small" icon="trash" />
 						</div>
 					</template>
 				</el-table-column>
@@ -64,11 +64,12 @@ export default mixins(
 	data() {
 		return {
 			CREDENTIAL_LIST_MODAL_KEY,
+			loading: true,
 		};
 	},
 	computed: {
 		...mapGetters('credentials', ['allCredentials']),
-		credentialsToDisplay() {
+		credentialsToDisplay(): ICredentialsResponse[] {
 			return this.allCredentials.reduce((accu: ICredentialsResponse[], cred: ICredentialsResponse) => {
 				const type = this.$store.getters['credentials/getCredentialTypeByName'](cred.type);
 
@@ -85,7 +86,17 @@ export default mixins(
 			}, []);
 		},
 	},
-	mounted() {
+	async mounted() {
+		try {
+			await Promise.all([
+				await this.$store.dispatch('credentials/fetchCredentialTypes'),
+				await this.$store.dispatch('credentials/fetchAllCredentials'),
+			]);
+		}	catch (e) {
+			this.$showError(e, this.$locale.baseText('credentialsList.errorLoadingCredentials'));
+		}
+		this.loading = false;
+
 		this.$externalHooks().run('credentialsList.mounted');
 		this.$telemetry.track('User opened Credentials panel', { workflow_id: this.$store.getters.workflowId });
 	},
@@ -103,7 +114,16 @@ export default mixins(
 		},
 
 		async deleteCredential (credential: ICredentialsResponse) {
-			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${credential.name}" credentials?`, 'Delete Credentials?', null, 'Yes, delete!');
+			const deleteConfirmed = await this.confirmMessage(
+				this.$locale.baseText(
+					'credentialsList.confirmMessage.message',
+					{ interpolate: { credentialName: credential.name }},
+				),
+				this.$locale.baseText('credentialsList.confirmMessage.headline'),
+				null,
+				this.$locale.baseText('credentialsList.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('credentialsList.confirmMessage.cancelButtonText'),
+			);
 
 			if (deleteConfirmed === false) {
 				return;
@@ -112,7 +132,10 @@ export default mixins(
 			try {
 				await this.$store.dispatch('credentials/deleteCredential', {id: credential.id});
 			} catch (error) {
-				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
+				this.$showError(
+					error,
+					this.$locale.baseText('credentialsList.showError.deleteCredential.title'),
+				);
 
 				return;
 			}
@@ -121,8 +144,7 @@ export default mixins(
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: 'Credentials deleted',
-				message: `The credential "${credential.name}" was deleted!`,
+				title: this.$locale.baseText('credentialsList.showMessage.title'),
 				type: 'success',
 			});
 		},

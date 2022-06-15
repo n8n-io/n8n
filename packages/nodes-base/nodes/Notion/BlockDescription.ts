@@ -6,11 +6,12 @@ import {
 	blocks,
 } from './Blocks';
 
-export const blockOperations: INodeProperties[] = [
+export const blockOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,28 +21,28 @@ export const blockOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Append',
+				name: 'Append After',
 				value: 'append',
 				description: 'Append a block',
 			},
 			{
-				name: 'Get All',
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
+				name: 'Get Child Blocks',
 				value: 'getAll',
 				description: 'Get all children blocks',
 			},
 		],
 		default: 'append',
-		description: 'The operation to perform.',
 	},
-];
+] as INodeProperties[];
 
-export const blockFields: INodeProperties[] = [
+export const blockFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                block:append                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Block ID',
+		displayName: 'Block ID or Link',
 		name: 'blockId',
 		type: 'string',
 		default: '',
@@ -56,14 +57,14 @@ export const blockFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of block. A page it is also considered a block. Hence, a Page ID can be used as well.`,
+		description: 'The Block URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.',
 	},
 	...blocks('block', 'append'),
 	/* -------------------------------------------------------------------------- */
 	/*                                block:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Block ID',
+		displayName: 'Block ID or Link',
 		name: 'blockId',
 		type: 'string',
 		default: '',
@@ -78,6 +79,7 @@ export const blockFields: INodeProperties[] = [
 				],
 			},
 		},
+		description: 'The Block URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.',
 	},
 	{
 		displayName: 'Return All',
@@ -94,7 +96,7 @@ export const blockFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -118,6 +120,6 @@ export const blockFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-];
+] as INodeProperties[];

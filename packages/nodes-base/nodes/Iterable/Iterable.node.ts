@@ -32,7 +32,7 @@ import {
 	userListOperations,
 } from './UserListDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Iterable implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,7 +45,6 @@ export class Iterable implements INodeType {
 		description: 'Consume Iterable API',
 		defaults: {
 			name: 'Iterable',
-			color: '#725ed8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -60,6 +59,7 @@ export class Iterable implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Event',
@@ -75,7 +75,6 @@ export class Iterable implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.',
 			},
 			...eventOperations,
 			...eventFields,
@@ -106,7 +105,7 @@ export class Iterable implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
 		let responseData;

@@ -22,14 +22,16 @@ export class Cron implements INodeType {
 		displayName: 'Cron',
 		name: 'cron',
 		icon: 'fa:calendar',
-		group: ['trigger'],
+		group: ['trigger', 'schedule'],
 		version: 1,
 		description: 'Triggers the workflow at a specific time',
 		eventTriggerDescription: '',
+		activationMessage: 'Your cron trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Cron',
 			color: '#00FF00',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
 		properties: [
@@ -53,6 +55,7 @@ export class Cron implements INodeType {
 								displayName: 'Mode',
 								name: 'mode',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Every Minute',
@@ -84,7 +87,7 @@ export class Cron implements INodeType {
 									},
 								],
 								default: 'everyDay',
-								description: 'How often to trigger.',
+								description: 'How often to trigger',
 							},
 							{
 								displayName: 'Hour',
@@ -105,7 +108,7 @@ export class Cron implements INodeType {
 									},
 								},
 								default: 14,
-								description: 'The hour of the day to trigger (24h format).',
+								description: 'The hour of the day to trigger (24h format)',
 							},
 							{
 								displayName: 'Minute',
@@ -125,7 +128,7 @@ export class Cron implements INodeType {
 									},
 								},
 								default: 0,
-								description: 'The minute of the day to trigger.',
+								description: 'The minute of the day to trigger',
 							},
 							{
 								displayName: 'Day of Month',
@@ -143,7 +146,7 @@ export class Cron implements INodeType {
 									maxValue: 31,
 								},
 								default: 1,
-								description: 'The day of the month to trigger.',
+								description: 'The day of the month to trigger',
 							},
 							{
 								displayName: 'Weekday',
@@ -156,6 +159,7 @@ export class Cron implements INodeType {
 										],
 									},
 								},
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Monday',
@@ -187,7 +191,7 @@ export class Cron implements INodeType {
 									},
 								],
 								default: '1',
-								description: 'The weekday to trigger.',
+								description: 'The weekday to trigger',
 							},
 							{
 								displayName: 'Cron Expression',
@@ -201,7 +205,7 @@ export class Cron implements INodeType {
 									},
 								},
 								default: '* * * * * *',
-								description: 'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
+								description: 'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>.',
 							},
 							{
 								displayName: 'Value',
@@ -219,7 +223,7 @@ export class Cron implements INodeType {
 									},
 								},
 								default: 2,
-								description: 'All how many X minutes/hours it should trigger.',
+								description: 'All how many X minutes/hours it should trigger',
 							},
 							{
 								displayName: 'Unit',
@@ -243,7 +247,7 @@ export class Cron implements INodeType {
 									},
 								],
 								default: 'hours',
-								description: 'If it should trigger all X minutes or hours.',
+								description: 'If it should trigger all X minutes or hours',
 							},
 						],
 					},

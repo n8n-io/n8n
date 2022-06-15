@@ -39,7 +39,6 @@ export class ERPNext implements INodeType {
 		description: 'Consume ERPNext API',
 		defaults: {
 			name: 'ERPNext',
-			color: '#7574ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -54,6 +53,7 @@ export class ERPNext implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -61,7 +61,6 @@ export class ERPNext implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'Resource to consume.',
 			},
 			...documentOperations,
 			...documentFields,

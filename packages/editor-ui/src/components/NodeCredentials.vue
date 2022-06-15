@@ -1,19 +1,31 @@
 <template>
-	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
+	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="['node-credentials', $style.container]">
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
 			<n8n-input-label
-				:label="`Credential for ${credentialTypeNames[credentialTypeDescription.name]}`"
+				:label="$locale.baseText(
+					'nodeCredentials.credentialFor',
+					{
+						interpolate: {
+							credentialType: credentialTypeNames[credentialTypeDescription.name]
+						}
+					}
+				)"
 				:bold="false"
-				size="small"
-
 				:set="issues = getIssues(credentialTypeDescription.name)"
+				size="small"
 			>
 				<div v-if="isReadOnly">
-					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
+					<n8n-input
+						:value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name"
+						disabled
+						size="small"
+					/>
 				</div>
-
-				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
-					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+				<div
+					v-else
+					:class="issues.length ? $style.hasIssues : $style.input"
+				>
+					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
 							:key="item.id"
@@ -30,13 +42,13 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+							<div slot="content" v-html="`${$locale.baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 
 					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialExisting(credentialTypeDescription.name)">
-						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" title="Update Credentials" />
+						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" :title="$locale.baseText('nodeCredentials.updateCredential')" />
 					</div>
 				</div>
 			</n8n-input-label>
@@ -66,8 +78,6 @@ import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 
-const NEW_CREDENTIALS_TEXT = '- Create New -';
-
 export default mixins(
 	genericHelpers,
 	nodeHelpers,
@@ -77,16 +87,18 @@ export default mixins(
 	name: 'NodeCredentials',
 	props: [
 		'node', // INodeUi
+		'overrideCredType', // cred type
 	],
 	data () {
 		return {
-			NEW_CREDENTIALS_TEXT,
+			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
 			newCredentialUnsubscribe: null as null | (() => void),
 		};
 	},
 	computed: {
 		...mapGetters('credentials', {
 			credentialOptions: 'allCredentialsByType',
+			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
@@ -101,7 +113,11 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			const activeNodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+			const credType = this.getCredentialTypeByName(this.overrideCredType);
+
+			if (credType) return [credType];
+
+			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}
@@ -186,14 +202,22 @@ export default mixins(
 		},
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
-			if (credentialId === NEW_CREDENTIALS_TEXT) {
+			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
 				return;
 			}
 
-			this.$telemetry.track('User selected credential from node modal', { credential_type: credentialType, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track(
+				'User selected credential from node modal',
+				{
+					credential_type: credentialType,
+					node_type: this.node.type,
+					...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
+					workflow_id: this.$store.getters.workflowId,
+				},
+			);
 
 			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
 			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
@@ -210,8 +234,16 @@ export default mixins(
 				});
 				this.updateNodesCredentialsIssues();
 				this.$showMessage({
-					title: 'Node credentials updated',
-					message: `Nodes that used credentials "${oldCredentials.name}" have been updated to use "${selected.name}"`,
+					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
+					message: this.$locale.baseText(
+						'nodeCredentials.showMessage.message',
+						{
+							interpolate: {
+								oldCredentialName: oldCredentials.name,
+								newCredentialName: selected.name,
+							},
+						},
+					),
 					type: 'success',
 				});
 			}
@@ -238,7 +270,7 @@ export default mixins(
 				// If it is not defined no need to do a proper check
 				return true;
 			}
-			return this.displayParameter(this.node.parameters, credentialTypeDescription, '');
+			return this.displayParameter(this.node.parameters, credentialTypeDescription, '', this.node);
 		},
 
 		getIssues (credentialTypeName: string): string[] {
@@ -282,10 +314,10 @@ export default mixins(
 
 <style lang="scss" module>
 .container {
-	margin: var(--spacing-xs) 0;
+	margin-top: var(--spacing-xs);
 
-	> * {
-		margin-bottom: var(--spacing-xs);
+	& > div:not(:first-child) {
+		margin-top: var(--spacing-xs);
 	}
 }
 

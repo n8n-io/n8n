@@ -49,7 +49,7 @@ import {
 	timeEntryOperations,
 } from './TimeEntryDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Clockify implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,7 +62,6 @@ export class Clockify implements INodeType {
 		description: 'Consume Clockify REST API',
 		defaults: {
 			name: 'Clockify',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -77,6 +76,7 @@ export class Clockify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Project',
@@ -96,14 +96,13 @@ export class Clockify implements INodeType {
 					},
 				],
 				default: 'project',
-				description: 'The resource to operate on.',
 			},
 			...projectOperations,
 			...tagOperations,
 			...taskOperations,
 			...timeEntryOperations,
 			{
-				displayName: 'Workspace ID',
+				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
 				typeOptions: {
@@ -232,7 +231,7 @@ export class Clockify implements INodeType {
 
 		const returnData: IDataObject[] = [];
 
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 
 		const qs: IDataObject = {};
 

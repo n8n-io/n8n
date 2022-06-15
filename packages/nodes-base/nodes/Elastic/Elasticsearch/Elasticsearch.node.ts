@@ -40,7 +40,6 @@ export class Elasticsearch implements INodeType {
 		description: 'Consume the Elasticsearch API',
 		defaults: {
 			name: 'Elasticsearch',
-			color: '#f3d337',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -55,6 +54,7 @@ export class Elasticsearch implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -66,7 +66,6 @@ export class Elasticsearch implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'Resource to consume',
 			},
 			...documentOperations,
 			...documentFields,

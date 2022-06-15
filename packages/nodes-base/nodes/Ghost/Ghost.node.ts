@@ -23,20 +23,19 @@ import {
 	postOperations,
 } from './PostDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Ghost implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ghost',
 		name: 'ghost',
-		icon: 'file:ghost.png',
+		icon: 'file:ghost.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Ghost API',
 		defaults: {
 			name: 'Ghost',
-			color: '#15212a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -92,8 +91,8 @@ export class Ghost implements INodeType {
 						value: 'post',
 					},
 				],
+				noDataExpression: true,
 				default: 'post',
-				description: 'The resource to operate on.',
 			},
 			...postOperations,
 			...postFields,
@@ -138,7 +137,7 @@ export class Ghost implements INodeType {
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
-						value: tag.id,
+						value: tag.name,
 					});
 				}
 				return returnData;
@@ -149,7 +148,7 @@ export class Ghost implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
 		let responseData;

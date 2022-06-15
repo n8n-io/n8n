@@ -32,7 +32,6 @@ export class AwsSnsTrigger implements INodeType {
 		description: 'Handle AWS SNS events via webhooks',
 		defaults: {
 			name: 'AWS-SNS-Trigger',
-			color: '#FF9900',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -52,7 +51,7 @@ export class AwsSnsTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Topic',
+				displayName: 'Topic Name or ID',
 				name: 'topic',
 				type: 'options',
 				required: true,

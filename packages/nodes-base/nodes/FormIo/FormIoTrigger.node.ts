@@ -26,7 +26,6 @@ export class FormIoTrigger implements INodeType {
 		description: 'Handle form.io events via webhooks',
 		defaults: {
 			name: 'Form.io Trigger',
-			color: '#6ad7b9',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -46,7 +45,7 @@ export class FormIoTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Project Name/ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				typeOptions: {
@@ -54,10 +53,10 @@ export class FormIoTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: `Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions"  target="_blank" >expression</a>`,
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			},
 			{
-				displayName: 'Form Name/ID',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -68,7 +67,7 @@ export class FormIoTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: `Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions"  target="_blank" >expression</a>`,
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			},
 			{
 				displayName: 'Trigger Events',
@@ -85,14 +84,14 @@ export class FormIoTrigger implements INodeType {
 					},
 				],
 				required: true,
-				default: '',
+				default: [],
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};

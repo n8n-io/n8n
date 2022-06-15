@@ -9,7 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import * as mqtt from 'mqtt';
+import mqtt from 'mqtt';
 
 import {
 	IClientOptions,
@@ -25,7 +25,6 @@ export class Mqtt implements INodeType {
 		description: 'Push messages to MQTT',
 		defaults: {
 			name: 'MQTT',
-			color: '#9b27af',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -42,14 +41,14 @@ export class Mqtt implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				description: `The topic to publish to`,
+				description: 'The topic to publish to',
 			},
 			{
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON.',
+				description: 'Send the the data the node receives as JSON',
 			},
 			{
 				displayName: 'Message',
@@ -99,7 +98,7 @@ export class Mqtt implements INodeType {
 						name: 'retain',
 						type: 'boolean',
 						default: false,
-						description: `Normally if a publisher publishes a message to a topic, and no one is subscribed to that topic the message is simply discarded by the broker. However the publisher can tell the broker to keep the last message on that topic by setting the retain flag to true.`,
+						description: 'Normally if a publisher publishes a message to a topic, and no one is subscribed to that topic the message is simply discarded by the broker. However the publisher can tell the broker to keep the last message on that topic by setting the retain flag to true.',
 					},
 				],
 			},
@@ -108,8 +107,8 @@ export class Mqtt implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
-		const credentials = await this.getCredentials('mqtt') as IDataObject;
+		const length = items.length;
+		const credentials = await this.getCredentials('mqtt');
 
 		const protocol = credentials.protocol as string || 'mqtt';
 		const host = credentials.host as string;

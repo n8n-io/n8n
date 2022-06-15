@@ -19,7 +19,7 @@
 					>
 						{{ message }}&nbsp;
 					</span>
-					<a v-if="details && !expanded" :class="$style.expandButton" @click="expand">More details</a>
+					<n8n-link v-if="details && !expanded" :bold="true" @click="expand">More details</n8n-link>
 				</div>
 			</div>
 
@@ -131,10 +131,6 @@ export default Vue.extend({
 	min-height: 26px;
 	display: flex;
 	align-items: center;
-}
-
-.expandButton {
-	font-weight: var(--font-weight-bold);
 }
 
 .details {

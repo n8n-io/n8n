@@ -51,7 +51,6 @@ export class Reddit implements INodeType {
 		description: 'Consume the Reddit API',
 		defaults: {
 			name: 'Reddit',
-			color: '#ff5700',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -75,6 +74,7 @@ export class Reddit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -98,7 +98,6 @@ export class Reddit implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'Resource to consume',
 			},
 			...postCommentOperations,
 			...postCommentFields,
@@ -353,7 +352,15 @@ export class Reddit implements INodeType {
 
 						const details = this.getNodeParameter('details', i) as string;
 						const endpoint = `api/v1/${endpoints[details]}`;
-						responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
+						let username;
+
+						if (details === 'saved') {
+							({ name: username } = await redditApiRequest.call(this, 'GET', `api/v1/me`, {}));
+						}
+
+						responseData = details === 'saved'
+							? await handleListing.call(this, i, `user/${username}/saved.json`)
+							: await redditApiRequest.call(this, 'GET', endpoint, {});
 
 						if (details === 'identity') {
 							responseData = responseData.features;

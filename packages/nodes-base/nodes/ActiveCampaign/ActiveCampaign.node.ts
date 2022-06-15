@@ -116,7 +116,6 @@ export class ActiveCampaign implements INodeType {
 		description: 'Create and edit data in ActiveCampaign',
 		defaults: {
 			name: 'ActiveCampaign',
-			color: '#356ae6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -134,6 +133,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -142,6 +142,10 @@ export class ActiveCampaign implements INodeType {
 					{
 						name: 'Account Contact',
 						value: 'accountContact',
+					},
+					{
+						name: 'Connection',
+						value: 'connection',
 					},
 					{
 						name: 'Contact',
@@ -156,23 +160,19 @@ export class ActiveCampaign implements INodeType {
 						value: 'contactTag',
 					},
 					{
-						name: 'Connection',
-						value: 'connection',
-					},
-					{
 						name: 'Deal',
 						value: 'deal',
-					},
-					{
-						name: 'E-commerce Order',
-						value: 'ecommerceOrder',
 					},
 					{
 						name: 'E-Commerce Customer',
 						value: 'ecommerceCustomer',
 					},
 					{
-						name: 'E-commerce Order Products',
+						name: 'E-Commerce Order',
+						value: 'ecommerceOrder',
+					},
+					{
+						name: 'E-Commerce Order Product',
 						value: 'ecommerceOrderProducts',
 					},
 					{
@@ -185,7 +185,6 @@ export class ActiveCampaign implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------

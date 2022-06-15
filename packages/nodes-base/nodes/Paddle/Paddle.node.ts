@@ -49,7 +49,7 @@ import {
 // 	orderFields,
 // } from './OrderDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Paddle implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,7 +62,6 @@ export class Paddle implements INodeType {
 		description: 'Consume Paddle API',
 		defaults: {
 			name: 'Paddle',
-			color: '#45567c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -77,6 +76,7 @@ export class Paddle implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Coupon',
@@ -104,7 +104,6 @@ export class Paddle implements INodeType {
 					},
 				],
 				default: 'coupon',
-				description: 'Resource to consume.',
 			},
 			// COUPON
 			...couponOperations,
@@ -185,7 +184,7 @@ export class Paddle implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const body: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

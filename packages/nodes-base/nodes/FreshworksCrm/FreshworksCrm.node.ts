@@ -60,7 +60,6 @@ export class FreshworksCrm implements INodeType {
 		description: 'Consume the Freshworks CRM API',
 		defaults: {
 			name: 'Freshworks CRM',
-			color: '#ffa800',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -75,6 +74,7 @@ export class FreshworksCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',

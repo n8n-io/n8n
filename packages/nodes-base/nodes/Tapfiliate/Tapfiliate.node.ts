@@ -43,7 +43,6 @@ export class Tapfiliate implements INodeType {
 		description: 'Consume Tapfiliate API',
 		defaults: {
 			name: 'Tapfiliate',
-			color: '#4a8de8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -58,6 +57,7 @@ export class Tapfiliate implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Affiliate',
@@ -74,7 +74,6 @@ export class Tapfiliate implements INodeType {
 				],
 				default: 'affiliate',
 				required: true,
-				description: 'Resource to consume',
 			},
 			...affiliateOperations,
 			...affiliateFields,
@@ -104,7 +103,7 @@ export class Tapfiliate implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const returnData: IDataObject[] = [];

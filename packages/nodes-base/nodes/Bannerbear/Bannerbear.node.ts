@@ -37,7 +37,6 @@ export class Bannerbear implements INodeType {
 		description: 'Consume Bannerbear API',
 		defaults: {
 			name: 'Bannerbear',
-			color: '#f9d749',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -52,6 +51,7 @@ export class Bannerbear implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Image',
@@ -63,7 +63,6 @@ export class Bannerbear implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume.',
 			},
 			// IMAGE
 			...imageOperations,
@@ -114,7 +113,7 @@ export class Bannerbear implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

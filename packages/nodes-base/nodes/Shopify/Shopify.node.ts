@@ -50,7 +50,6 @@ export class Shopify implements INodeType {
 		description: 'Consume Shopify API',
 		defaults: {
 			name: 'Shopify',
-			color: '#559922',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,6 +64,7 @@ export class Shopify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Order',
@@ -76,7 +76,6 @@ export class Shopify implements INodeType {
 					},
 				],
 				default: 'order',
-				description: 'Resource to consume.',
 			},
 			// ORDER
 			...orderOperations,
@@ -125,7 +124,7 @@ export class Shopify implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

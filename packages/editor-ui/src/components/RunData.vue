@@ -1,197 +1,222 @@
 <template>
-	<div class="run-data-view" v-loading="workflowRunning">
+	<div :class="$style.container">
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
-		<div
-			v-if="node && !isReadOnly"
-			class="execute-node-button"
-		>
-			<n8n-button
-				:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
-				:loading="workflowRunning"
-				icon="play-circle"
-				label="Execute Node"
-				@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
-			/>
+		<div :class="$style.header">
+			<slot name="header"></slot>
+
+			<div v-if="!hasRunError" @click.stop :class="$style.displayModes">
+				<n8n-radio-buttons
+					:value="displayMode"
+					:options="buttons"
+					@input="onDisplayModeChange"
+				/>
+			</div>
 		</div>
 
-		<div class="header">
-			<div class="title-text">
-				<n8n-text :bold="true" v-if="dataCount < maxDisplayItems">
-					Items: {{ dataCount }}
-				</n8n-text>
-				<div v-else class="title-text">
-					<n8n-text :bold="true">Items:</n8n-text>
-					<span class="opts">
-						<n8n-select size="mini" v-model="maxDisplayItems" @click.stop>
-							<n8n-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
-						</n8n-select>
-					</span>/
-					<n8n-text :bold="true">{{ dataCount }}</n8n-text>
-				</div>
-				<n8n-tooltip
-					v-if="runMetadata"
-					placement="right"
-				>
-					<div slot="content">
-						<n8n-text :bold="true" size="small">Start Time:</n8n-text> {{runMetadata.startTime}}<br/>
-						<n8n-text :bold="true" size="small">Execution Time:</n8n-text> {{runMetadata.executionTime}} ms
-					</div>
-					<font-awesome-icon icon="info-circle" class="primary-color" />
-				</n8n-tooltip>
-				<n8n-text :bold="true" v-if="maxOutputIndex > 0">
-					| Output:
-				</n8n-text>
-				<span class="opts" v-if="maxOutputIndex > 0" >
-					<n8n-select size="mini" v-model="outputIndex" @click.stop>
-						<n8n-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
-						</n8n-option>
-					</n8n-select>
-				</span>
+		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
+			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop>
+				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
+				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
+			</n8n-select>
 
-				<n8n-text :bold="true" v-if="maxRunIndex > 0">
-					| Data of Execution:
-				</n8n-text>
-				<span class="opts">
-					<n8n-select v-if="maxRunIndex > 0" size="mini" v-model="runIndex" @click.stop>
-						<n8n-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
-						</n8n-option>
-					</n8n-select>
-				</span>
 
-			</div>
-			<div v-if="hasNodeRun && !hasRunError" class="title-data-display-selector" @click.stop>
-				<el-radio-group v-model="displayMode" size="mini">
-					<el-radio-button label="JSON" :disabled="showData === false"></el-radio-button>
-					<el-radio-button label="Table"></el-radio-button>
-					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
-				</el-radio-group>
-			</div>
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'JSON' && state.path !== deselectedPlaceholder" class="select-button">
+			<n8n-tooltip placement="right" v-if="canLinkRuns" :content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint': 'runData.linking.hint')">
+				<n8n-icon-button v-if="linkedRuns" icon="unlink" type="text" size="small" @click="unlinkRun" />
+				<n8n-icon-button v-else icon="link" type="text" size="small" @click="linkRun" />
+			</n8n-tooltip>
+
+			<slot name="run-info"></slot>
+		</div>
+
+		<div v-if="maxOutputIndex > 0" :class="{[$style.tabs]: displayMode === 'table'}">
+			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
+		</div>
+
+		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
+			<n8n-text>
+				{{ dataCount }} {{ $locale.baseText('ndv.output.items', {adjustToNumber: dataCount}) }}
+			</n8n-text>
+		</div>
+
+		<div :class="$style.dataContainer" ref="dataContainer">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json' && state.path !== deselectedPlaceholder" :class="$style.copyButton">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
-						<n8n-icon-button title="Copy to Clipboard" icon="copy" />
+						<n8n-icon-button :title="$locale.baseText('runData.copyToClipboard')" icon="copy" />
 					</span>
 					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}">
+							{{ $locale.baseText('runData.copyItemPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">
+							{{ $locale.baseText('runData.copyParameterPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">
+							{{ $locale.baseText('runData.copyValue') }}
+						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
 			</div>
-		</div>
-		<div class="data-display-content">
-			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
-				<div v-if="workflowRunData[node.name][runIndex].error" class="error-display">
-					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
-				</div>
-				<span v-else>
-					<div v-if="showData === false" class="too-much-data">
-						<h3>
-							Node returned a large amount of data
-						</h3>
 
-						<div class="text">
-							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
-							Displaying it could cause problems!<br />
-							<br />
-							If you do decide to display it, avoid the JSON view!
+			<div v-if="isExecuting" :class="$style.center">
+				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
+				<n8n-text>{{ executingMessage }}</n8n-text>
+			</div>
+
+			<div v-else-if="!hasNodeRun" :class="$style.center">
+				<slot name="node-not-run"></slot>
+			</div>
+
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
+				<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
+			</div>
+
+			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
+				<n8n-text>
+					{{ noDataInBranchMessage }}
+				</n8n-text>
+			</div>
+
+			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
+				<slot name="no-output-data"></slot>
+			</div>
+
+			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
+				<n8n-text :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</n8n-text>
+				<n8n-text align="center" tag="div"><span v-html="$locale.baseText('ndv.output.tooMuchData.message', { interpolate: {size: dataSizeInMB }})"></span></n8n-text>
+
+				<n8n-button
+					type="outline"
+					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
+					@click="showTooMuchData"
+				/>
+			</div>
+
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0 && binaryData.length > 0" :class="$style.center">
+				<n8n-text>
+					{{ $locale.baseText('runData.switchToBinary.info') }}
+					<a @click="switchToBinary">
+						{{ $locale.baseText('runData.switchToBinary.binary') }}
+					</a>
+				</n8n-text>
+			</div>
+
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.dataDisplay">
+				<table :class="$style.table">
+					<tr>
+						<th :class="$style.emptyCell"></th>
+					</tr>
+					<tr v-for="(row, index1) in tableData.data" :key="index1">
+						<td>
+							<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
+				<table :class="$style.table">
+					<tr>
+						<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
+					</tr>
+					<tr v-for="(row, index1) in tableData.data" :key="index1">
+						<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
+					</tr>
+				</table>
+			</div>
+
+			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
+				<vue-json-pretty
+					:data="jsonData"
+					:deep="10"
+					v-model="state.path"
+					:showLine="true"
+					:showLength="true"
+					selectableType="single"
+					path=""
+					:highlightSelectedNode="true"
+					:selectOnClickNode="true"
+					@click="dataItemClicked"
+					class="json-data"
+				/>
+			</div>
+
+			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
+				<n8n-text align="center" tag="div">{{ $locale.baseText('runData.noBinaryDataFound') }}</n8n-text>
+			</div>
+
+			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
+				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
+					<div :class="$style.binaryIndex" v-if="binaryData.length > 1">
+						<div>
+							{{index + 1}}
 						</div>
-
-						<n8n-button
-							icon="eye"
-							label="Display Data Anyway"
-							@click="displayMode = 'Table';showData = true;"
-						/>
 					</div>
-					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
-						<div v-if="jsonData.length === 0" class="no-data">
-							No text data found
-						</div>
-						<div v-else-if="displayMode === 'Table'">
-							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								Entries exist but they do not contain any JSON data.
-							</div>
-							<table v-else-if="tableData !== null">
-								<tr>
-									<th v-for="column in tableData.columns" :key="column">{{column}}</th>
-								</tr>
-								<tr v-for="(row, index1) in tableData.data" :key="index1">
-									<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
-								</tr>
-							</table>
-						</div>
-						<vue-json-pretty
-							v-else-if="displayMode === 'JSON'"
-							:data="jsonData"
-							:deep="10"
-							v-model="state.path"
-							:showLine="true"
-							:showLength="true"
-							selectableType="single"
-							path=""
-							:highlightSelectedNode="true"
-							:selectOnClickNode="true"
-							@click="dataItemClicked"
-							class="json-data"
-						/>
-					</div>
-					<div v-else-if="displayMode === 'Binary'">
-						<div v-if="binaryData.length === 0" class="no-data">
-							No binary data found
-						</div>
 
-						<div v-else>
-							<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-								<div class="binary-data-row-index">
-									<div class="binary-data-cell-index">
-										{{index + 1}}
-									</div>
+					<div :class="$style.binaryRow">
+						<div :class="$style.binaryCell" v-for="(binaryData, key) in binaryDataEntry" :key="index + '_' + key">
+							<div>
+								<div :class="$style.binaryHeader">
+									{{key}}
+								</div>
+								<div v-if="binaryData.fileName">
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.fileName') }}: </n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.fileName}}</div>
+								</div>
+								<div v-if="binaryData.directory">
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.directory') }}: </n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.directory}}</div>
+								</div>
+								<div v-if="binaryData.fileExtension">
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.fileExtension') }}:</n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.fileExtension}}</div>
+								</div>
+								<div v-if="binaryData.mimeType">
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.mimeType') }}: </n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.mimeType}}</div>
 								</div>
 
-								<div class="binary-data-row">
-									<div class="binary-data-cell" v-for="(binaryData, key) in binaryDataEntry" :key="index + '_' + key">
-										<div class="binary-data-information">
-											<div class="binary-data-cell-name">
-												{{key}}
-											</div>
-											<div v-if="binaryData.fileName">
-												<div class="label">File Name: </div>
-												<div class="value">{{binaryData.fileName}}</div>
-											</div>
-											<div v-if="binaryData.directory">
-												<div class="label">Directory: </div>
-												<div class="value">{{binaryData.directory}}</div>
-											</div>
-											<div v-if="binaryData.fileExtension">
-												<div class="label">File Extension:</div>
-												<div class="value">{{binaryData.fileExtension}}</div>
-											</div>
-											<div v-if="binaryData.mimeType">
-												<div class="label">Mime Type: </div>
-												<div class="value">{{binaryData.mimeType}}</div>
-											</div>
-
-											<div class="binary-data-show-data-button-wrapper">
-												<n8n-button size="small" label="Show Binary Data" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
-											</div>
-
-										</div>
-									</div>
+								<div :class="$style.binaryButtonContainer">
+									<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+									<n8n-button v-if="isDownloadable(index, key)" size="small" type="outline" :label="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
 								</div>
 							</div>
 						</div>
 					</div>
-				</span>
-			</span>
-			<div v-else class="message">
-				<div>
-					<n8n-text :bold="true">No data</n8n-text ><br />
-					<br />
-					Data returned by this node will display here<br />
 				</div>
 			</div>
 		</div>
+		<div :class="$style.pagination" v-if="hasNodeRun && !hasRunError && dataCount > pageSize">
+			<el-pagination
+				background
+				:hide-on-single-page="true"
+				:current-page.sync="currentPage"
+				:pager-count="5"
+				:page-size="pageSize"
+				layout="prev, pager, next"
+				@current-change="onCurrentPageChange"
+				:total="dataCount">
+			</el-pagination>
+
+			<div :class="$style.pageSizeSelector">
+				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange">
+					<template slot="prepend">{{ $locale.baseText('ndv.output.pageSize') }}</template>
+					<n8n-option
+						v-for="size in pageSizes"
+						:key="size"
+						:label="size"
+						:value="size">
+					</n8n-option>
+					<n8n-option
+						:label="$locale.baseText('ndv.output.all')"
+						:value="dataCount"
+					>
+					</n8n-option>
+				</n8n-select>
+			</div>
+		</div>
+
 	</div>
 </template>
 
@@ -200,6 +225,7 @@
 import VueJsonPretty from 'vue-json-pretty';
 import {
 	GenericValue,
+	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -213,6 +239,8 @@ import {
 	IBinaryDisplayData,
 	IExecutionResponse,
 	INodeUi,
+	IRunDataDisplayMode,
+	ITab,
 	ITableData,
 } from '@/Interface';
 
@@ -222,15 +250,17 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import NodeErrorView from '@/components/Error/NodeViewError.vue';
+import WarningTooltip from '@/components/WarningTooltip.vue';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
+
+import { saveAs } from 'file-saver';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -240,7 +270,6 @@ export default mixins(
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
-	workflowRun,
 )
 	.extend({
 		name: 'RunData',
@@ -248,40 +277,100 @@ export default mixins(
 			BinaryDataDisplay,
 			NodeErrorView,
 			VueJsonPretty,
+			WarningTooltip,
+		},
+		props: {
+			nodeUi: {
+			}, // INodeUi | null
+			runIndex: {
+				type: Number,
+			},
+			linkedRuns: {
+				type: Boolean,
+			},
+			canLinkRuns: {
+				type: Boolean,
+			},
+			tooMuchDataTitle: {
+				type: String,
+			},
+			noDataInBranchMessage: {
+				type: String,
+			},
+			isExecuting: {
+				type: Boolean,
+			},
+			executingMessage: {
+				type: String,
+			},
+			sessionId: {
+				type: String,
+			},
+			paneType: {
+				type: String,
+			},
+			overrideOutputs: {
+				type: Array,
+			},
 		},
 		data () {
 			return {
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				displayMode: 'Table',
 				state: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
 				},
-				runIndex: 0,
 				showData: false,
 				outputIndex: 0,
-				maxDisplayItems: 25 as number | null,
 				binaryDataDisplayVisible: false,
 				binaryDataDisplayData: null as IBinaryDisplayData | null,
 
 				MAX_DISPLAY_DATA_SIZE,
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
+				currentPage: 1,
+				pageSize: 10,
+				pageSizes: [10, 25, 50, 100],
 			};
 		},
 		mounted() {
 			this.init();
 		},
 		computed: {
+			activeNode(): INodeUi {
+				return this.$store.getters.activeNode;
+			},
+			displayMode(): IRunDataDisplayMode {
+				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
+			},
+			node(): INodeUi | null {
+				return (this.nodeUi as INodeUi | null) || null;
+			},
+			nodeType (): INodeTypeDescription | null {
+				if (this.node) {
+					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+				}
+				return null;
+			},
+			buttons(): Array<{label: string, value: string}> {
+				const defaults = [
+					{ label: this.$locale.baseText('runData.table'), value: 'table'},
+					{ label: this.$locale.baseText('runData.json'), value: 'json'},
+				];
+				if (this.binaryData.length) {
+					return [ ...defaults,
+						{ label: this.$locale.baseText('runData.binary'), value: 'binary'},
+					];
+				}
+
+				return defaults;
+			},
 			hasNodeRun(): boolean {
-				return Boolean(this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
+				return Boolean(!this.isExecuting && this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
 			},
 			hasRunError(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
-			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
 			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
@@ -291,67 +380,16 @@ export default mixins(
 					return null;
 				}
 				const executionData: IRunExecutionData = this.workflowExecution.data;
-				return executionData.resultData.runData;
-			},
-			maxDisplayItemsOptions (): number[] {
-				const options = [25, 50, 100, 250, 500, 1000].filter(option => option <= this.dataCount);
-				if (!options.includes(this.dataCount)) {
-					options.push(this.dataCount);
+				if (executionData && executionData.resultData) {
+					return executionData.resultData.runData;
 				}
-				return options;
-			},
-			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
-			},
-			runMetadata () {
-				if (!this.node || this.workflowExecution === null) {
-					return null;
-				}
-
-				const runData = this.workflowRunData;
-
-				if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-					return null;
-				}
-
-				if (runData[this.node.name].length <= this.runIndex) {
-					return null;
-				}
-
-				const taskData: ITaskData = runData[this.node.name][this.runIndex];
-				return {
-					executionTime: taskData.executionTime,
-					startTime: new Date(taskData.startTime).toLocaleString(),
-				};
+				return null;
 			},
 			dataCount (): number {
-				if (this.node === null) {
-					return 0;
-				}
-
-				const runData: IRunData | null = this.workflowRunData;
-
-				if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-					return 0;
-				}
-
-				if (runData[this.node.name].length <= this.runIndex) {
-					return 0;
-				}
-
-				if (runData[this.node.name][this.runIndex].hasOwnProperty('error')) {
-					return 1;
-				}
-
-				if (!runData[this.node.name][this.runIndex].hasOwnProperty('data') ||
-					runData[this.node.name][this.runIndex].data === undefined
-				) {
-					return 0;
-				}
-
-				const inputData = this.getMainInputData(runData[this.node.name][this.runIndex].data!, this.outputIndex);
-
-				return inputData.length;
+				return this.getDataCount(this.runIndex, this.currentOutputIndex);
+			},
+			dataSizeInMB(): string {
+				return (this.dataSize / 1024 / 1000).toLocaleString();
 			},
 			maxOutputIndex (): number {
 				if (this.node === null) {
@@ -368,13 +406,14 @@ export default mixins(
 					return 0;
 				}
 
-				if (runData[this.node.name][this.runIndex].data === undefined ||
-					runData[this.node.name][this.runIndex].data!.main === undefined
-				) {
-					return 0;
+				if (runData[this.node.name][this.runIndex]) {
+					const taskData = runData[this.node.name][this.runIndex].data;
+					if (taskData && taskData.main) {
+						return taskData.main.length - 1;
+					}
 				}
 
-				return runData[this.node.name][this.runIndex].data!.main.length - 1;
+				return 0;
 			},
 			maxRunIndex (): number {
 				if (this.node === null) {
@@ -393,49 +432,196 @@ export default mixins(
 
 				return 0;
 			},
-			jsonData (): IDataObject[] {
-				let inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+			inputData (): INodeExecutionData[] {
+				let inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
 				if (inputData.length === 0 || !Array.isArray(inputData)) {
 					return [];
 				}
 
-				if (this.maxDisplayItems !== null) {
-					inputData = inputData.slice(0, this.maxDisplayItems);
-				}
+				const offset = this.pageSize * (this.currentPage - 1);
+				inputData = inputData.slice(offset, offset + this.pageSize);
 
-				return this.convertToJson(inputData);
+				return inputData;
+			},
+			jsonData (): IDataObject[] {
+				return this.convertToJson(this.inputData);
 			},
 			tableData (): ITableData | undefined {
-				let inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
-				if (inputData.length === 0) {
-					return undefined;
-				}
-
-				if (this.maxDisplayItems !== null) {
-					inputData = inputData.slice(0,this.maxDisplayItems);
-				}
-
-				return this.convertToTable(inputData);
+				return this.convertToTable(this.inputData);
 			},
 			binaryData (): IBinaryKeyData[] {
-				if (this.node === null) {
+				if (!this.node) {
 					return [];
 				}
 
-				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.outputIndex);
+				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.currentOutputIndex);
+			},
+			currentOutputIndex(): number {
+				if (this.overrideOutputs && this.overrideOutputs.length && !this.overrideOutputs.includes(this.outputIndex)) {
+					return this.overrideOutputs[0] as number;
+				}
+
+				return this.outputIndex;
+			},
+			branches (): ITab[] {
+				function capitalize(name: string) {
+					return name.charAt(0).toLocaleUpperCase() + name.slice(1);
+				}
+				const branches: ITab[] = [];
+				for (let i = 0; i <= this.maxOutputIndex; i++) {
+					if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
+						continue;
+					}
+					const itemsCount = this.getDataCount(this.runIndex, i);
+					const items = this.$locale.baseText('ndv.output.items', {adjustToNumber: itemsCount});
+					let outputName = this.getOutputName(i);
+					if (`${outputName}` === `${i}`) {
+						outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
+					}
+					else {
+						outputName = capitalize(`${this.getOutputName(i)} ${this.$locale.baseText('ndv.output.branch')}`);
+					}
+					branches.push({
+						label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
+						value: i,
+					});
+				}
+				return branches;
 			},
 		},
 		methods: {
+			switchToBinary() {
+				this.onDisplayModeChange('binary');
+			},
+			onBranchChange(value: number) {
+				this.outputIndex = value;
+
+				this.$telemetry.track('User changed ndv branch', {
+					session_id: this.sessionId,
+					branch_index: value,
+					node_type: this.activeNode.type,
+					node_type_input_selection: this.nodeType? this.nodeType.name: '',
+					pane: this.paneType,
+				});
+			},
+			showTooMuchData() {
+				this.showData = true;
+				this.$telemetry.track('User clicked ndv button', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					type: 'showTooMuchData',
+				});
+			},
+			linkRun() {
+				this.$emit('linkRun');
+			},
+			unlinkRun() {
+				this.$emit('unlinkRun');
+			},
+			onCurrentPageChange() {
+				this.$telemetry.track('User changed ndv page', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					page_selected: this.currentPage,
+					page_size: this.pageSize,
+					items_total: this.dataCount,
+				});
+			},
+			onPageSizeChange(pageSize: number) {
+				this.pageSize = pageSize;
+				const maxPage = Math.ceil(this.dataCount / this.pageSize);
+				if (maxPage < this.currentPage) {
+					this.currentPage = maxPage;
+				}
+
+				this.$telemetry.track('User changed ndv page size', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: this.paneType,
+					page_selected: this.currentPage,
+					page_size: this.pageSize,
+					items_total: this.dataCount,
+				});
+			},
+			onDisplayModeChange(displayMode: IRunDataDisplayMode) {
+				const previous = this.displayMode;
+				this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: displayMode});
+
+				const dataContainer = this.$refs.dataContainer;
+				if (dataContainer) {
+					const dataDisplay = (dataContainer as Element).children[0];
+
+					if (dataDisplay){
+						dataDisplay.scrollTo(0, 0);
+					}
+				}
+
+				this.closeBinaryDataDisplay();
+				this.$externalHooks().run('runData.displayModeChanged', { newValue: displayMode, oldValue: previous });
+				if(this.activeNode) {
+					this.$telemetry.track('User changed ndv item view', {
+						previous_view: previous,
+						new_view: displayMode,
+						node_type: this.activeNode.type,
+						workflow_id: this.$store.getters.workflowId,
+						session_id: this.sessionId,
+						pane: this.paneType,
+					});
+				}
+			},
+			getRunLabel(option: number) {
+				let itemsCount = 0;
+				for (let i = 0; i <= this.maxOutputIndex; i++) {
+					itemsCount += this.getDataCount(option - 1, i);
+				}
+				const items = this.$locale.baseText('ndv.output.items', {adjustToNumber: itemsCount});
+				const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
+				return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex+1) + itemsLabel;
+			},
+			getDataCount(runIndex: number, outputIndex: number) {
+				if (this.node === null) {
+					return 0;
+				}
+
+				const runData: IRunData | null = this.workflowRunData;
+
+				if (runData === null || !runData.hasOwnProperty(this.node.name)) {
+					return 0;
+				}
+
+				if (runData[this.node.name].length <= runIndex) {
+					return 0;
+				}
+
+				if (runData[this.node.name][runIndex].hasOwnProperty('error')) {
+					return 1;
+				}
+
+				if (!runData[this.node.name][runIndex].hasOwnProperty('data') ||
+					runData[this.node.name][runIndex].data === undefined
+				) {
+					return 0;
+				}
+
+				const inputData = this.getMainInputData(runData[this.node.name][runIndex].data!, outputIndex);
+
+				return inputData.length;
+			},
 			init() {
 				// Reset the selected output index every time another node gets selected
 				this.outputIndex = 0;
-				this.maxDisplayItems = 25;
 				this.refreshDataSize();
-				if (this.displayMode === 'Binary') {
-					this.closeBinaryDataDisplay();
-					if (this.binaryData.length === 0) {
-						this.displayMode = 'Table';
-					}
+				this.closeBinaryDataDisplay();
+				if (this.binaryData.length > 0) {
+					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'binary'});
+				}
+				else if (this.displayMode === 'binary') {
+					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'table'});
 				}
 			},
 			closeBinaryDataDisplay () {
@@ -514,13 +700,31 @@ export default mixins(
 			dataItemClicked (path: string, data: object | number | string) {
 				this.state.value = data;
 			},
+			isDownloadable (index: number, key: string): boolean {
+				const binaryDataItem: IBinaryData = this.binaryData[index][key];
+				return !!(binaryDataItem.mimeType && binaryDataItem.fileName);
+			},
+			async downloadBinaryData (index: number, key: string) {
+				const binaryDataItem: IBinaryData = this.binaryData[index][key];
+
+				let bufferString = 'data:' + binaryDataItem.mimeType + ';base64,';
+				if(binaryDataItem.id) {
+					bufferString += await this.restApi().getBinaryBufferString(binaryDataItem.id);
+				} else {
+					bufferString += binaryDataItem.data;
+				}
+
+				const data = await fetch(bufferString);
+				const blob = await data.blob();
+				saveAs(blob, binaryDataItem.fileName);
+			},
 			displayBinaryData (index: number, key: string) {
 				this.binaryDataDisplayVisible = true;
 
 				this.binaryDataDisplayData = {
 					node: this.node!.name,
 					runIndex: this.runIndex,
-					outputIndex: this.outputIndex,
+					outputIndex: this.currentOutputIndex,
 					index,
 					key,
 				};
@@ -530,7 +734,7 @@ export default mixins(
 					return outputIndex + 1;
 				}
 
-				const nodeType = this.$store.getters.nodeType(this.node.type) as INodeTypeDescription | null;
+				const nodeType = this.nodeType;
 				if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
 					return outputIndex + 1;
 				}
@@ -609,9 +813,10 @@ export default mixins(
 				this.showData = false;
 
 				// Check how much data there is to display
-				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+				const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
 
-				const jsonItems = inputData.slice(0, this.maxDisplayItems || inputData.length).map(item => item.json);
+				const offset = this.pageSize * (this.currentPage - 1);
+				const jsonItems = inputData.slice(offset, offset + this.pageSize).map(item => item.json);
 
 				this.dataSize = JSON.stringify(jsonItems).length;
 
@@ -619,6 +824,9 @@ export default mixins(
 					// Data is reasonable small (< 200kb) so display it directly
 					this.showData = true;
 				}
+			},
+			onRunIndexChange(run: number) {
+				this.$emit('runChange', run);
 			},
 		},
 		watch: {
@@ -628,200 +836,286 @@ export default mixins(
 			jsonData () {
 				this.refreshDataSize();
 			},
-			displayMode (newValue, oldValue) {
-				this.closeBinaryDataDisplay();
-				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
-				if(this.node) {
-					const nodeType = this.node ? this.node.type : '';
-					this.$telemetry.track('User changed node output view mode', { old_mode: oldValue, new_mode: newValue, node_type: nodeType, workflow_id: this.$store.getters.workflowId });
+			binaryData (newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
+				if (newData.length && !prevData.length && this.displayMode !== 'binary') {
+					this.switchToBinary();
 				}
-			},
-			maxRunIndex () {
-				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
+				else if (!newData.length && this.displayMode === 'binary') {
+					this.onDisplayModeChange('table');
+				}
 			},
 		},
 	});
 </script>
 
-<style lang="scss">
+<style lang="scss" module>
+.infoIcon {
+	color: var(--color-foreground-dark);
+}
 
-.run-data-view {
+.center {
+	display: flex;
+	height: 100%;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
+	text-align: center;
+
+	> * {
+		max-width: 316px;
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.container {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: #f9f9f9;
+	background-color: var(--color-background-base);
+	display: flex;
+	flex-direction: column;
+}
 
-	.data-display-content {
-		position: absolute;
-		bottom: 0;
-		top: 50px;
-		left: 0;
-		right: 0;
-		overflow-y: auto;
-		line-height: 1.5;
-		word-break: normal;
-		font-size: var(--font-size-s);
+.header {
+	display: flex;
+	align-items: center;
+	margin-bottom: var(--spacing-s);
+	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
+	position: relative;
 
-		.binary-data-row {
-			display: inline-flex;
-			padding: 0.5em 1em;
+	> *:first-child {
+		flex-grow: 1;
+	}
+}
 
-			.binary-data-cell {
-				display: inline-block;
-				width: 300px;
-				overflow: hidden;
-				background-color: #fff;
-				margin-right: 1em;
-				border-radius: 3px;
-				-webkit-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
-				-moz-box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
-				box-shadow: 0px 0px 12px 0px rgba(0,0,0,0.05);
+.dataContainer {
+	position: relative;
+	height: 100%;
+}
 
-				.binary-data-information {
-					margin: 1em;
+.dataDisplay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding-left: var(--spacing-s);
+	right: 0;
+	overflow-y: auto;
+	line-height: 1.5;
+	word-break: normal;
+	height: 100%;
+	padding-bottom: var(--spacing-3xl);
+}
 
-					.binary-data-cell-name {
-						color: $--color-primary;
-						font-weight: 600;
-						font-size: 1.2em;
-						padding-bottom: 0.5em;
-						margin-bottom: 0.5em;
-						border-bottom: 1px solid #ccc;
-					}
+.errorDisplay {
+	composes: dataDisplay;
+	padding-right: var(--spacing-s);
+}
 
-					.binary-data-show-data-button-wrapper {
-						margin-top: 1.5em;
-						text-align: center;
-					}
+.jsonDisplay {
+	composes: dataDisplay;
+	background-color: var(--color-background-base);
+	padding-top: var(--spacing-s);
+}
 
-					.label {
-						padding-top: 0.5em;
-						font-weight: bold;
-					}
-					.value {
-						white-space: initial;
-						word-wrap: break-word;
-					}
-				}
-			}
-		}
+.tabs {
+	margin-bottom: var(--spacing-s);
+}
 
-		.binary-data-row-index {
-			display: block;
-			padding: 1em 1em 0.25em 1em;
+.table {
+	border-collapse: separate;
+	text-align: left;
+	width: calc(100% - var(--spacing-s));
+	margin-right: var(--spacing-s);
+	font-size: var(--font-size-s);
 
-			.binary-data-cell-index {
-				display: inline-block;
-				width: 30px;
-				height: 30px;
-				line-height: 30px;
-				border-radius: 5px;
-				text-align: center;
-				padding: 0 0.1em;
-				background-color: $--custom-header-background;
-				font-weight: 600;
-				color: #fff;
-			}
-		}
-
-		.json-data {
-			line-height: 1.5;
-
-			&.vjs-tree {
-				color: $--custom-input-font;
-			}
-		}
-
-		.error-display,
-		.json-data,
-		.message,
-		.no-data {
-			margin: 1em;
-		}
-
-		.too-much-data  {
-			margin: 1em;
-			text-align: center;
-
-			.text {
-				margin-bottom: 1em;
-			}
-		}
-
-		table {
-			border-collapse: collapse;
-			text-align: left;
-			width: calc(100% - 1px);
-			border-left: 25px solid #00000000;
-			border-right: 25px solid #00000000;
-
-			th {
-				background-color: $--custom-table-background-main;
-				color: #fff;
-				padding: 12px;
-			}
-			td {
-				padding: 12px;
-			}
-			tr:nth-child(even) {
-				background: #fff;;
-			}
-			tr:nth-child(odd) {
-				background: $--custom-table-background-stripe-color;
-			}
-		}
+	th {
+		padding: var(--spacing-2xs);
+		background-color: var(--color-background-base);
+		border-top: var(--border-base);
+		border-bottom: var(--border-base);
+		border-left: var(--border-base);
+		position: sticky;
+		top: 0;
 	}
 
-	.execute-node-button {
-		position: absolute;
-		top: 10px;
-		right: 10px;
+	td {
+		padding: var(--spacing-2xs);
+		border-bottom: var(--border-base);
+		border-left: var(--border-base);
+		overflow-wrap: break-word;
+		max-width: 300px;
+		white-space: pre-wrap;
 	}
 
-	.header {
-		padding-top: 10px;
-		padding-left: 10px;
-
-		display: flex;
-		align-items: center;
-		height: 40px;
-
-		.select-button {
-			height: 30px;
-			top: 50px;
-			right: 30px;
-			position: absolute;
-			text-align: right;
-			width: 200px;
-			z-index: 10;
-		}
-
-		.title-text {
-			display: inline-flex;
-			align-items: center;
-
-			> * {
-				margin-right: 2px;
-			}
-		}
-
-		.title-data-display-selector {
-			position: absolute;
-			left: calc(50% - 105px);
-			width: 210px;
-			display: inline-block;
-			text-align: center;
-
-			.entry.active {
-				font-weight: bold;
-			}
-		}
-
-		.opts {
-			width: 80px;
-			z-index: 1;
-		}
+	th:last-child, td:last-child {
+		border-right: var(--border-base);
 	}
+}
+
+.emptyCell {
+	height: 32px;
+}
+
+.itemsCount {
+	margin-left: var(--spacing-s);
+	margin-bottom: var(--spacing-s);
+}
+
+.runSelector {
+	max-width: 200px;
+	margin-left: var(--spacing-s);
+	margin-bottom: var(--spacing-s);
+	display: flex;
+
+	> * {
+		margin-right: var(--spacing-4xs);
+	}
+}
+
+.copyButton {
+	height: 30px;
+	top: 12px;
+	right: 24px;
+	position: absolute;
+	z-index: 10;
+}
+
+.pagination {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	bottom: 0;
+	padding: 5px;
+}
+
+.binaryIndex {
+	display: block;
+	padding: var(--spacing-2xs);
+	font-size: var(--font-size-2xs);
+
+	> * {
+		display: inline-block;
+		width: 30px;
+		height: 30px;
+		line-height: 30px;
+		border-radius: var(--border-radius-base);
+		text-align: center;
+		background-color: var(--color-foreground-xdark);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-xlight);
+	}
+}
+
+.binaryRow {
+	display: inline-flex;
+	font-size: var(--font-size-2xs);
+}
+
+
+.binaryCell {
+	display: inline-block;
+	width: 300px;
+	overflow: hidden;
+	background-color: #fff;
+	margin-right: var(--spacing-s);
+	margin-bottom: var(--spacing-s);
+	border-radius: var(--border-radius-base);
+	border: var(--border-base);
+	padding: var(--spacing-s);
+}
+
+.binaryHeader {
+	color: $--color-primary;
+	font-weight: 600;
+	font-size: 1.2em;
+	padding-bottom: 0.5em;
+	margin-bottom: 0.5em;
+	border-bottom: 1px solid #ccc;
+}
+
+.binaryButtonContainer {
+	margin-top: 1.5em;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+
+	> * {
+		flex-grow: 0;
+		margin-right: var(--spacing-3xs);
+	}
+}
+
+.binaryValue {
+	white-space: initial;
+	word-wrap: break-word;
+}
+
+.pageSizeSelector {
+	text-transform: capitalize;
+	max-width: 150px;
+}
+
+.displayModes {
+	display: flex;
+	justify-content: flex-end;
+	flex-grow: 1;
+}
+
+.spinner {
+	* {
+		color: var(--color-primary);
+		min-height: 40px;
+		min-width: 40px;
+	}
+
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--spacing-s);
+}
+
+</style>
+
+<style lang="scss">
+.vjs-tree {
+	color: var(--color-json-default);
+}
+
+.vjs-tree.is-highlight-selected {
+	background-color: var(--color-json-highlight);
+}
+
+.vjs-tree .vjs-value__null {
+	color: var(--color-json-null);
+}
+
+.vjs-tree .vjs-value__boolean {
+	color: var(--color-json-boolean);
+}
+
+.vjs-tree .vjs-value__number {
+	color: var(--color-json-number);
+}
+
+.vjs-tree .vjs-value__string {
+	color: var(--color-json-string);
+}
+
+.vjs-tree .vjs-key {
+	color: var(--color-json-key);
+}
+
+.vjs-tree .vjs-tree__brackets {
+	color: var(--color-json-brackets);
+}
+
+.vjs-tree .vjs-tree__brackets:hover {
+	color: var(--color-json-brackets-hover);
+}
+
+.vjs-tree .vjs-tree__content.has-line {
+	border-left: 1px dotted var(--color-json-line);
 }
 
 </style>

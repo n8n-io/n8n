@@ -48,7 +48,6 @@ export class AwsDynamoDB implements INodeType {
 		description: 'Consume the AWS DynamoDB API',
 		defaults: {
 			name: 'AWS DynamoDB',
-			color: '#2273b9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -63,6 +62,7 @@ export class AwsDynamoDB implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Item',

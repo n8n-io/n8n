@@ -31,7 +31,6 @@ export class KeapTrigger implements INodeType {
 		description: 'Starts the workflow when Infusionsoft events occur',
 		defaults: {
 			name: 'Keap Trigger',
-			color: '#79af53',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -51,7 +50,7 @@ export class KeapTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Event',
+				displayName: 'Event Name or ID',
 				name: 'eventId',
 				type: 'options',
 				typeOptions: {
@@ -65,7 +64,7 @@ export class KeapTrigger implements INodeType {
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Returns the data exactly in the way it got received from the API',
 			},
 		],
 	};

@@ -40,7 +40,6 @@ export class HubspotTrigger implements INodeType {
 		description: 'Starts the workflow when HubSpot events occur',
 		defaults: {
 			name: 'Hubspot Trigger',
-			color: '#ff7f64',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -85,61 +84,61 @@ export class HubspotTrigger implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'Contact Created',
-										value: 'contact.creation',
-										description: `To get notified if any contact is created in a customer's account.`,
-									},
-									{
-										name: 'Contact Deleted',
-										value: 'contact.deletion',
-										description: `To get notified if any contact is deleted in a customer's account.`,
-									},
-									{
-										name: 'Contact Privacy Deleted',
-										value: 'contact.privacyDeletion',
-										description: `To get notified if a contact is deleted for privacy compliance reasons. `,
-									},
-									{
-										name: 'Contact Property Changed',
-										value: 'contact.propertyChange',
-										description: `to get notified if a specified property is changed for any contact in a customer's account. `,
-									},
-									{
 										name: 'Company Created',
 										value: 'company.creation',
-										description: `To get notified if any company is created in a customer's account.`,
+										description: 'To get notified if any company is created in a customer\'s account',
 									},
 									{
 										name: 'Company Deleted',
 										value: 'company.deletion',
-										description: `To get notified if any company is deleted in a customer's account.`,
+										description: 'To get notified if any company is deleted in a customer\'s account',
 									},
 									{
 										name: 'Company Property Changed',
 										value: 'company.propertyChange',
-										description: `To get notified if a specified property is changed for any company in a customer's account.`,
+										description: 'To get notified if a specified property is changed for any company in a customer\'s account',
+									},
+									{
+										name: 'Contact Created',
+										value: 'contact.creation',
+										description: 'To get notified if any contact is created in a customer\'s account',
+									},
+									{
+										name: 'Contact Deleted',
+										value: 'contact.deletion',
+										description: 'To get notified if any contact is deleted in a customer\'s account',
+									},
+									{
+										name: 'Contact Privacy Deleted',
+										value: 'contact.privacyDeletion',
+										description: 'To get notified if a contact is deleted for privacy compliance reasons',
+									},
+									{
+										name: 'Contact Property Changed',
+										value: 'contact.propertyChange',
+										description: 'To get notified if a specified property is changed for any contact in a customer\'s account',
 									},
 									{
 										name: 'Deal Created',
 										value: 'deal.creation',
-										description: `To get notified if any deal is created in a customer's account.`,
+										description: 'To get notified if any deal is created in a customer\'s account',
 									},
 									{
 										name: 'Deal Deleted',
 										value: 'deal.deletion',
-										description: `To get notified if any deal is deleted in a customer's account.`,
+										description: 'To get notified if any deal is deleted in a customer\'s account',
 									},
 									{
 										name: 'Deal Property Changed',
 										value: 'deal.propertyChange',
-										description: `To get notified if a specified property is changed for any deal in a customer's account.`,
+										description: 'To get notified if a specified property is changed for any deal in a customer\'s account',
 									},
 								],
 								default: 'contact.creation',
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -159,7 +158,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -179,7 +178,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -283,7 +282,7 @@ export class HubspotTrigger implements INodeType {
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const currentWebhookUrl = this.getNodeWebhookUrl('default') as string;
-				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 
 				try {
 					const { targetUrl } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/settings`, {});
@@ -310,7 +309,7 @@ export class HubspotTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 				const events = (this.getNodeParameter('eventsUi') as IDataObject || {}).eventValues as IDataObject[] || [];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				let endpoint = `/webhooks/v3/${appId}/settings`;
@@ -342,7 +341,7 @@ export class HubspotTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const { appId } = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 
 				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
 
@@ -362,7 +361,7 @@ export class HubspotTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 
-		const credentials = await this.getCredentials('hubspotDeveloperApi') as IDataObject;
+		const credentials = await this.getCredentials('hubspotDeveloperApi');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials found!');

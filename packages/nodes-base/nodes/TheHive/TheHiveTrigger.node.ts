@@ -20,7 +20,6 @@ export class TheHiveTrigger implements INodeType {
 		description: 'Starts the workflow when TheHive events occur',
 		defaults: {
 			name: 'TheHive Trigger',
-			color: '#f3d02f',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -44,7 +43,7 @@ export class TheHiveTrigger implements INodeType {
 					{
 						name: '*',
 						value: '*',
-						description: 'Any time any event is triggered (Wildcard Event).',
+						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
 						name: 'Alert Created',

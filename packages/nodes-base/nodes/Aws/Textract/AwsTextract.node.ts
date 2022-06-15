@@ -8,10 +8,10 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -19,7 +19,7 @@ import {
 	awsApiRequestREST,
 	IExpenseDocument,
 	simplify,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunctions';
 
 export class AwsTextract implements INodeType {
@@ -33,7 +33,6 @@ export class AwsTextract implements INodeType {
 		description: 'Sends data to Amazon Textract',
 		defaults: {
 			name: 'AWS Textract',
-			color: '#5aa08d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -49,6 +48,7 @@ export class AwsTextract implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Analyze Receipt or Invoice',
@@ -56,7 +56,6 @@ export class AwsTextract implements INodeType {
 					},
 				],
 				default: 'analyzeExpense',
-				description: '',
 			},
 			{
 				displayName: 'Input Data Field Name',
@@ -71,10 +70,10 @@ export class AwsTextract implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG',
+				description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -85,16 +84,16 @@ export class AwsTextract implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data.',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
 
 	methods = {
 		credentialTest: {
-			async awsTextractApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async awsTextractApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
 				} catch (error) {
 					return {
 						status: 'Error',

@@ -26,7 +26,6 @@ export class Airtable implements INodeType {
 		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -41,6 +40,7 @@ export class Airtable implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Append',
@@ -69,7 +69,6 @@ export class Airtable implements INodeType {
 					},
 				],
 				default: 'read',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -81,16 +80,16 @@ export class Airtable implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of the base to access.',
+				description: 'The ID of the base to access',
 			},
 			{
-				displayName: 'Table',
+				displayName: 'Table ID',
 				name: 'table',
 				type: 'string',
 				default: '',
 				placeholder: 'Stories',
 				required: true,
-				description: 'The name of table to access.',
+				description: 'The ID of the table to access',
 			},
 
 			// ----------------------------------
@@ -108,7 +107,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all fields should be sent to Airtable or only specific ones.',
+				description: 'If all fields should be sent to Airtable or only specific ones',
 			},
 			{
 				displayName: 'Fields',
@@ -131,7 +130,7 @@ export class Airtable implements INodeType {
 				default: [],
 				placeholder: 'Name',
 				required: true,
-				description: 'The name of fields for which data should be sent to Airtable.',
+				description: 'The name of fields for which data should be sent to Airtable',
 			},
 
 			// ----------------------------------
@@ -150,7 +149,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to delete.',
+				description: 'ID of the record to delete',
 			},
 
 			// ----------------------------------
@@ -168,7 +167,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -189,7 +188,7 @@ export class Airtable implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'Number of results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Download Attachments',
@@ -203,7 +202,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: false,
-				description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
 			},
 			{
 				displayName: 'Download Fields',
@@ -221,7 +220,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: '',
-				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.`,
+				description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.',
 			},
 			{
 				displayName: 'Additional Options',
@@ -248,7 +247,7 @@ export class Airtable implements INodeType {
 						},
 						default: [],
 						placeholder: 'Name',
-						description: 'Only data for fields whose names are in this list will be included in the records.',
+						description: 'Only data for fields whose names are in this list will be included in the records',
 					},
 					{
 						displayName: 'Filter By Formula',
@@ -262,7 +261,7 @@ export class Airtable implements INodeType {
 						displayName: 'Sort',
 						name: 'sort',
 						placeholder: 'Add Sort Rule',
-						description: 'Defines how the returned records should be ordered.',
+						description: 'Defines how the returned records should be ordered',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -278,7 +277,7 @@ export class Airtable implements INodeType {
 										name: 'field',
 										type: 'string',
 										default: '',
-										description: 'Name of the field to sort on.',
+										description: 'Name of the field to sort on',
 									},
 									{
 										displayName: 'Direction',
@@ -297,7 +296,7 @@ export class Airtable implements INodeType {
 											},
 										],
 										default: 'asc',
-										description: 'The sort direction.',
+										description: 'The sort direction',
 									},
 								],
 							},
@@ -330,7 +329,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to return.',
+				description: 'ID of the record to return',
 			},
 
 			// ----------------------------------
@@ -349,7 +348,7 @@ export class Airtable implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to update.',
+				description: 'ID of the record to update',
 			},
 			{
 				displayName: 'Update All Fields',
@@ -363,7 +362,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all fields should be sent to Airtable or only specific ones.',
+				description: 'If all fields should be sent to Airtable or only specific ones',
 			},
 			{
 				displayName: 'Fields',
@@ -386,7 +385,7 @@ export class Airtable implements INodeType {
 				default: [],
 				placeholder: 'Name',
 				required: true,
-				description: 'The name of fields for which data should be sent to Airtable.',
+				description: 'The name of fields for which data should be sent to Airtable',
 			},
 
 			// ----------------------------------
@@ -417,7 +416,7 @@ export class Airtable implements INodeType {
 							maxValue: 10,
 						},
 						default: 10,
-						description: `Number of records to process at once.`,
+						description: 'Number of records to process at once',
 					},
 					{
 						displayName: 'Ignore Fields',
@@ -434,7 +433,7 @@ export class Airtable implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Comma separated list of fields to ignore.',
+						description: 'Comma-separated list of fields to ignore',
 					},
 					{
 						displayName: 'Typecast',
@@ -449,7 +448,7 @@ export class Airtable implements INodeType {
 							},
 						},
 						default: false,
-						description: 'If the Airtable API should attempt mapping of string values for linked records & select options.',
+						description: 'If the Airtable API should attempt mapping of string values for linked records & select options',
 					},
 				],
 			},

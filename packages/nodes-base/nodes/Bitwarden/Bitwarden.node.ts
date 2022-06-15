@@ -59,7 +59,6 @@ export class Bitwarden implements INodeType {
 		description: 'Consume the Bitwarden API',
 		defaults: {
 			name: 'Bitwarden',
-			color: '#175DDC',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -74,6 +73,7 @@ export class Bitwarden implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Collection',
@@ -93,7 +93,6 @@ export class Bitwarden implements INodeType {
 					},
 				],
 				default: 'collection',
-				description: 'Resource to consume',
 			},
 			...collectionOperations,
 			...collectionFields,

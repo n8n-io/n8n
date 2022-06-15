@@ -7,10 +7,12 @@ import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	JsonObject
 } from 'n8n-workflow';
 
 import {
+	emeliaApiTest,
 	emeliaGraphqlRequest,
 	loadResource,
 } from './GenericFunctions';
@@ -36,11 +38,10 @@ export class Emelia implements INodeType {
 		icon: 'file:emelia.svg',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Emelia API',
 		defaults: {
 			name: 'Emelia',
-			color: '#e18063',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -48,6 +49,7 @@ export class Emelia implements INodeType {
 			{
 				name: 'emeliaApi',
 				required: true,
+				testedBy: 'emeliaApiTest',
 			},
 		],
 		properties: [
@@ -55,6 +57,7 @@ export class Emelia implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign',
@@ -67,7 +70,6 @@ export class Emelia implements INodeType {
 				],
 				default: 'campaign',
 				required: true,
-				description: 'The resource to operate on.',
 			},
 			...campaignOperations,
 			...campaignFields,
@@ -77,6 +79,10 @@ export class Emelia implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			emeliaApiTest,
+		},
+
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions) {
 				return loadResource.call(this, 'campaign');
@@ -291,6 +297,46 @@ export class Emelia implements INodeType {
 
 						returnData.push({ success: true });
 
+					} else if (operation === 'duplicate') {
+
+						// ----------------------------------
+						//        campaign: duplicate
+						// ----------------------------------
+
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						const variables = {
+							fromId: this.getNodeParameter('campaignId', i),
+							name: this.getNodeParameter('campaignName', i),
+							copySettings: true,
+							copyMails: true,
+							copyContacts: false,
+							copyProvider: true,
+							...options,
+						};
+						const { data: { duplicateCampaign } } = await emeliaGraphqlRequest.call(this, {
+							query: `
+									mutation duplicateCampaign(
+										$fromId: ID!
+										$name: String!
+										$copySettings: Boolean!
+										$copyMails: Boolean!
+										$copyContacts: Boolean!
+										$copyProvider: Boolean!
+									) {
+										duplicateCampaign(
+											fromId: $fromId
+											name: $name
+											copySettings: $copySettings
+											copyMails: $copyMails
+											copyContacts: $copyContacts
+											copyProvider: $copyProvider
+										)
+									}`,
+							operationName: 'duplicateCampaign',
+							variables,
+						});
+
+						returnData.push({ _id: duplicateCampaign });
 					}
 
 				} else if (resource === 'contactList') {
@@ -374,7 +420,7 @@ export class Emelia implements INodeType {
 			} catch (error) {
 
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 

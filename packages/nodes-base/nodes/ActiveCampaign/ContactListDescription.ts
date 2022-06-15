@@ -7,6 +7,7 @@ export const contactListOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const contactListOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,7 +51,6 @@ export const contactListFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'List ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -69,7 +68,6 @@ export const contactListFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Contact ID',
 	},
 
 	// ----------------------------------
@@ -91,7 +89,6 @@ export const contactListFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'List ID',
 	},
 	{
 		displayName: 'Contact ID',
@@ -109,6 +106,5 @@ export const contactListFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Contact ID',
 	},
 ];

@@ -19,7 +19,7 @@ import {
 	activityOperations,
 } from './ActivityDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Strava implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,7 +32,6 @@ export class Strava implements INodeType {
 		description: 'Consume Strava API',
 		defaults: {
 			name: 'Strava',
-			color: '#ea5929',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -47,6 +46,7 @@ export class Strava implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -54,7 +54,6 @@ export class Strava implements INodeType {
 					},
 				],
 				default: 'activity',
-				description: 'The resource to operate on.',
 			},
 			...activityOperations,
 			...activityFields,
@@ -64,7 +63,7 @@ export class Strava implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -129,6 +128,15 @@ export class Strava implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = responseData.splice(0, limit);
 						}
+					}
+					//https://developers.strava.com/docs/reference/#api-Streams-getActivityStreams
+					if (operation === 'getStreams') {
+						const activityId = this.getNodeParameter('activityId', i) as string;
+						const keys = this.getNodeParameter('keys', i) as string[];
+						qs.keys = keys.toString();
+						qs.key_by_type = true;
+
+						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/streams`, {}, qs);
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {

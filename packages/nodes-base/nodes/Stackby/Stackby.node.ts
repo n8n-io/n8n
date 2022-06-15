@@ -26,7 +26,6 @@ export class Stackby implements INodeType {
 		description: 'Read, write, and delete data in Stackby',
 		defaults: {
 			name: 'Stackby',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -41,6 +40,7 @@ export class Stackby implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Append',
@@ -71,7 +71,7 @@ export class Stackby implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of the stack to access.',
+				description: 'The ID of the stack to access',
 			},
 			{
 				displayName: 'Table',
@@ -100,7 +100,7 @@ export class Stackby implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'ID of the record to return.',
+				description: 'ID of the record to return',
 			},
 
 			// ----------------------------------
@@ -118,7 +118,7 @@ export class Stackby implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -139,7 +139,7 @@ export class Stackby implements INodeType {
 					maxValue: 1000,
 				},
 				default: 1000,
-				description: 'Number of results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -181,8 +181,9 @@ export class Stackby implements INodeType {
 				},
 				default: '',
 				required: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id,name,description',
-				description: 'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 		],
 	};
@@ -190,7 +191,7 @@ export class Stackby implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const operation = this.getNodeParameter('operation', 0) as string;

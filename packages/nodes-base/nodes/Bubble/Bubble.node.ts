@@ -32,7 +32,6 @@ export class Bubble implements INodeType {
 		description: 'Consume the Bubble Data API',
 		defaults: {
 			name: 'Bubble',
-			color: '#0205d3',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -47,6 +46,7 @@ export class Bubble implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Object',
@@ -54,7 +54,6 @@ export class Bubble implements INodeType {
 					},
 				],
 				default: 'object',
-				description: 'Resource to consume',
 			},
 			...objectOperations,
 			...objectFields,

@@ -1,6 +1,6 @@
 <template>
 	<div @keydown.stop :class="parameterInputClasses">
-	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
+	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" :eventSource="eventSource || 'ndv'" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
 
 		<n8n-input
@@ -13,8 +13,8 @@
 		/>
 
 		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
-			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
+			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" :path="path" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
 			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
@@ -35,10 +35,10 @@
 				@focus="setFocus"
 				@blur="onBlur"
 				:title="displayTitle"
-				:placeholder="isValueExpression?'':parameter.placeholder"
+				:placeholder="isValueExpression ? '' : getPlaceholder()"
 			>
 				<div slot="suffix" class="expand-input-icon-container">
-					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
+					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$locale.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
 				</div>
 			</n8n-input>
 		</div>
@@ -78,7 +78,7 @@
 			:value="displayValue"
 			:title="displayTitle"
 			:disabled="isReadOnly"
-			:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
+			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.selectDateAndTime')"
 			:picker-options="dateTimePickerOptions"
 			@change="valueChanged"
 			@focus="setFocus"
@@ -94,7 +94,6 @@
 			:max="getArgument('maxValue')"
 			:min="getArgument('minValue')"
 			:precision="getArgument('numberPrecision')"
-			:step="getArgument('numberStepSize')"
 			:disabled="isReadOnly"
 			@change="valueChanged"
 			@input="onTextInputChange"
@@ -105,16 +104,47 @@
 			:placeholder="parameter.placeholder"
 		/>
 
+		<credentials-select
+			v-else-if="parameter.type === 'credentialsSelect' || (parameter.name === 'genericAuthType')"
+			ref="inputField"
+			:parameter="parameter"
+			:node="node"
+			:activeCredentialType="activeCredentialType"
+			:inputSize="inputSize"
+			:displayValue="displayValue"
+			:isReadOnly="isReadOnly"
+			:displayTitle="displayTitle"
+			@credentialSelected="credentialSelected"
+			@valueChanged="valueChanged"
+			@setFocus="setFocus"
+			@onBlur="onBlur"
+		>
+			<template v-slot:issues-and-options>
+				<parameter-issues
+					:issues="getIssues"
+				/>
+				<parameter-options
+				 	v-if="displayOptionsComputed"
+					:displayOptionsComputed="displayOptionsComputed"
+					:parameter="parameter"
+					:isValueExpression="isValueExpression"
+					:isDefault="isDefault"
+					:hasRemoteMethod="hasRemoteMethod"
+					@optionSelected="optionSelected"
+				/>
+			</template>
+		</credentials-select>
+
 		<n8n-select
 			v-else-if="parameter.type === 'options'"
 			ref="inputField"
 			:size="inputSize"
 			filterable
 			:value="displayValue"
+			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
 			:title="displayTitle"
-			:popper-append-to-body="true"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
@@ -124,11 +154,13 @@
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
-				:label="option.name"
+				:label="getOptionsOptionDisplayName(option)"
 			>
 				<div class="list-option">
-					<div class="option-headline">{{ option.name }}</div>
-					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+					<div class="option-headline">
+						{{ getOptionsOptionDisplayName(option) }}
+					</div>
+					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
 		</n8n-select>
@@ -142,16 +174,17 @@
 			:value="displayValue"
 			:loading="remoteParameterOptionsLoading"
 			:disabled="isReadOnly || remoteParameterOptionsLoading"
+			:title="displayTitle"
+			:placeholder="$locale.baseText('parameterInput.select')"
 			@change="valueChanged"
 			@keydown.stop
 			@focus="setFocus"
 			@blur="onBlur"
-			:title="displayTitle"
 		>
-			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="option.name" >
+			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="getOptionsOptionDisplayName(option)">
 				<div class="list-option">
-					<div class="option-headline">{{ option.name }}</div>
-					<div v-if="option.description" class="option-description" v-html="option.description"></div>
+					<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
+					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
 				</div>
 			</n8n-option>
 		</n8n-select>
@@ -167,26 +200,21 @@
 		/>
 	</div>
 
-	<div class="parameter-issues" v-if="getIssues.length">
-		<n8n-tooltip placement="top" >
-			<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + getIssues.join('<br />&nbsp;&nbsp;- ')"></div>
-			<font-awesome-icon icon="exclamation-triangle" />
-		</n8n-tooltip>
-	</div>
+	<parameter-issues
+		v-if="parameter.type !== 'credentialsSelect'"
+		:issues="getIssues"
+	/>
 
-	<div class="parameter-options" v-if="displayOptionsComputed">
-			<el-dropdown trigger="click" @command="optionSelected" size="mini">
-				<span class="el-dropdown-link">
-					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
-				</span>
-				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
-					<el-dropdown-item command="refreshOptions" v-if="Boolean(remoteMethod)">Refresh List</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
-				</el-dropdown-menu>
-			</el-dropdown>
-	</div>
+	<parameter-options
+		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect'"
+		:displayOptionsComputed="displayOptionsComputed"
+		:parameter="parameter"
+		:isValueExpression="isValueExpression"
+		:isDefault="isDefault"
+		:hasRemoteMethod="hasRemoteMethod"
+		@optionSelected="optionSelected"
+	/>
+
 	</div>
 </template>
 
@@ -195,17 +223,25 @@ import { get } from 'lodash';
 
 import {
 	INodeUi,
+	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 import {
 	NodeHelpers,
 	NodeParameterValue,
+	IHttpRequestOptions,
+	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
+import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
+import NodeCredentials from '@/components/NodeCredentials.vue';
+import ScopesNotice from '@/components/ScopesNotice.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
+import ParameterIssues from '@/components/ParameterIssues.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -215,6 +251,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	externalHooks,
@@ -227,7 +265,12 @@ export default mixins(
 		components: {
 			CodeEdit,
 			ExpressionEdit,
+			NodeCredentials,
+			CredentialsSelect,
 			PrismEditor,
+			ScopesNotice,
+			ParameterOptions,
+			ParameterIssues,
 			TextEdit,
 		},
 		props: [
@@ -240,6 +283,8 @@ export default mixins(
 			'value',
 			'hideIssues', // boolean
 			'errorHighlight',
+			'isForCredential', // boolean
+			'eventSource', // string
 		],
 		data () {
 			return {
@@ -252,17 +297,19 @@ export default mixins(
 				remoteParameterOptionsLoadingIssues: null as string | null,
 				textEditDialogVisible: false,
 				tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
+				CUSTOM_API_CALL_KEY,
+				activeCredentialType: '',
 				dateTimePickerOptions: {
 					shortcuts: [
 						{
-							text: 'Today',
+							text: 'Today', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								picker.$emit('pick', new Date());
 							},
 						},
 						{
-							text: 'Yesterday',
+							text: 'Yesterday', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								const date = new Date();
@@ -271,7 +318,7 @@ export default mixins(
 							},
 						},
 						{
-							text: 'A week ago',
+							text: 'A week ago', // TODO
 							// tslint:disable-next-line:no-any
 							onClick (picker: any) {
 								const date = new Date();
@@ -298,6 +345,13 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapGetters('credentials', ['allCredentialTypes']),
+			areExpressionsDisabled(): boolean {
+				return this.$store.getters['ui/areExpressionsDisabled'];
+			},
+			codeAutocomplete (): string | undefined {
+				return this.getArgument('codeAutocomplete') as string | undefined;
+			},
 			showExpressionAsTextInput(): boolean {
 				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
 
@@ -312,33 +366,43 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				try {
+					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
-				const returnValues: string[] = [];
-				for (const parameterPath of loadOptionsDependsOn) {
-					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+					const returnValues: string[] = [];
+					for (const parameterPath of loadOptionsDependsOn) {
+						returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+					}
+
+					return returnValues.join('|');
+				} catch (error) {
+					return null;
 				}
-
-				return returnValues.join('|');
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
 			displayTitle (): string {
-				let title = `Parameter: "${this.shortPath}"`;
-				if (this.getIssues.length) {
-					title += ` has issues`;
-					if (this.isValueExpression === true) {
-						title += ` and expression`;
-					}
-					title += `!`;
-				} else {
-					if (this.isValueExpression === true) {
-						title += ` has expression`;
-					}
+				const interpolation = { interpolate: { shortPath: this.shortPath } };
+
+				if (this.getIssues.length && this.isValueExpression) {
+					return this.$locale.baseText(
+						'parameterInput.parameterHasIssuesAndExpression',
+						interpolation,
+					);
+				} else if (this.getIssues.length && !this.isValueExpression) {
+					return this.$locale.baseText(
+						'parameterInput.parameterHasIssues',
+						interpolation,
+					);
+				} else if (!this.getIssues.length && this.isValueExpression) {
+					return this.$locale.baseText(
+						'parameterInput.parameterHasExpression',
+						interpolation,
+					);
 				}
 
-				return title;
+				return this.$locale.baseText('parameterInput.parameter', interpolation);
 			},
 			displayValue (): string | number | boolean | null {
 				if (this.remoteParameterOptionsLoading === true) {
@@ -346,7 +410,7 @@ export default mixins(
 					// to user that the data is loading. If not it would
 					// display the user the key instead of the value it
 					// represents
-					return 'Loading options...';
+					return this.$locale.baseText('parameterInput.loadingOptions');
 				}
 
 				let returnValue;
@@ -354,6 +418,13 @@ export default mixins(
 					returnValue = this.value;
 				} else {
 					returnValue = this.expressionValueComputed;
+				}
+
+				if (this.parameter.type === 'credentialsSelect') {
+					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
+					if (credType) {
+						returnValue = credType.displayName;
+					}
 				}
 
 				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
@@ -405,7 +476,11 @@ export default mixins(
 
 				return false;
 			},
-			expressionValueComputed (): NodeParameterValue | null {
+			expressionValueComputed (): NodeParameterValue | string[] | null {
+				if (this.areExpressionsDisabled) {
+					return this.value;
+				}
+
 				if (this.node === null) {
 					return null;
 				}
@@ -415,7 +490,7 @@ export default mixins(
 				try {
 					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
 				} catch (error) {
-					computedValue = `[ERROR: ${error.message}]`;
+					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
 				// Try to convert it into the corret type
@@ -448,9 +523,19 @@ export default mixins(
 				const newPath = this.shortPath.split('.');
 				newPath.pop();
 
-				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'));
+				const issues = NodeHelpers.getParameterIssues(this.parameter, this.node.parameters, newPath.join('.'), this.node);
 
-				if (['options', 'multiOptions'].includes(this.parameter.type) && this.remoteParameterOptionsLoading === false && this.remoteParameterOptionsLoadingIssues === null) {
+				if (this.parameter.type === 'credentialsSelect' && this.displayValue === '') {
+					issues.parameters = issues.parameters || {};
+
+					const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
+
+					issues.parameters[this.parameter.name] = [issue];
+				} else if (
+					['options', 'multiOptions'].includes(this.parameter.type) &&
+					this.remoteParameterOptionsLoading === false &&
+					this.remoteParameterOptionsLoadingIssues === null
+				) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
 					// case the value is not valid. The workflow can still be executed
@@ -458,10 +543,13 @@ export default mixins(
 					const validOptions = this.parameterOptions!.map((options: INodePropertyOptions) => options.value);
 
 					const checkValues: string[] = [];
-					if (Array.isArray(this.displayValue)) {
-						checkValues.push.apply(checkValues, this.displayValue);
-					} else {
-						checkValues.push(this.displayValue as string);
+
+					if (!this.skipCheck(this.displayValue)) {
+						if (Array.isArray(this.displayValue)) {
+							checkValues.push.apply(checkValues, this.displayValue);
+						} else {
+							checkValues.push(this.displayValue as string);
+						}
 					}
 
 					for (const checkValue of checkValues) {
@@ -469,7 +557,13 @@ export default mixins(
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
 							}
-							issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
+
+							const issue = this.$locale.baseText(
+								'parameterInput.theValueIsNotSupported',
+								{ interpolate: { checkValue } },
+							);
+
+							issues.parameters[this.parameter.name] = [issue];
 						}
 					}
 				} else if (this.remoteParameterOptionsLoadingIssues !== null) {
@@ -491,7 +585,7 @@ export default mixins(
 				return this.parameter.default === this.value;
 			},
 			isEditor (): boolean {
-				return this.getArgument('editor') === 'code';
+				return ['code', 'json'].includes(this.editorType);
 			},
 			isValueExpression () {
 				if (this.parameter.noDataExpression === true) {
@@ -502,8 +596,11 @@ export default mixins(
 				}
 				return false;
 			},
+			editorType (): string {
+				return this.getArgument('editor') as string;
+			},
 			parameterOptions (): INodePropertyOptions[] {
-				if (this.remoteMethod === undefined) {
+				if (this.hasRemoteMethod === false) {
 					// Options are already given
 					return this.parameter.options;
 				}
@@ -533,6 +630,9 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
+				if (this.parameter.type === 'credentialsSelect') {
+					return styles;
+				}
 				if (this.displayOptionsComputed === true) {
 					deductWidth += 25;
 				}
@@ -546,8 +646,8 @@ export default mixins(
 
 				return styles;
 			},
-			remoteMethod (): string | undefined {
-				return this.getArgument('loadOptionsMethod') as string | undefined;
+			hasRemoteMethod (): boolean {
+				return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 			},
 			shortPath (): string {
 				const shortPath = this.path.split('.');
@@ -559,8 +659,41 @@ export default mixins(
 			},
 		},
 		methods: {
+			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
+				// Update the values on the node
+				this.$store.commit('updateNodeProperties', updateInformation);
+
+				const node = this.$store.getters.getNodeByName(updateInformation.name);
+
+				// Update the issues
+				this.updateNodeCredentialIssues(node);
+
+				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			},
+			/**
+			 * Check whether a param value must be skipped when collecting node param issues for validation.
+			 */
+			skipCheck(value: string | number | boolean | null) {
+				return typeof value === 'string' && value.includes(CUSTOM_API_CALL_KEY);
+			},
+			getPlaceholder(): string {
+				return this.isForCredential
+					? this.$locale.credText().placeholder(this.parameter)
+					: this.$locale.nodeText().placeholder(this.parameter, this.path);
+			},
+			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
+				return this.isForCredential
+					? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
+					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
+			},
+			getOptionsOptionDescription(option: { value: string; description: string }): string {
+				return this.isForCredential
+					? this.$locale.credText().optionsOptionDescription(this.parameter, option)
+					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);
+			},
+
 			async loadRemoteParameterOptions () {
-				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
+				if (this.node === null || this.hasRemoteMethod === false || this.remoteParameterOptionsLoading) {
 					return;
 				}
 				this.remoteParameterOptionsLoadingIssues = null;
@@ -569,10 +702,13 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions({name: this.node.type, version: this.node.typeVersion}, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
+					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
+					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
+
+					const options = await this.restApi().getNodeParameterOptions({ nodeTypeAndVersion: { name: this.node.type, version: this.node.typeVersion}, path: this.path, methodName: loadOptionsMethod, loadOptions, currentNodeParameters: resolvedNodeParameters, credentials: this.node.credentials });
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -598,6 +734,8 @@ export default mixins(
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
 						workflow_id: this.$store.getters.workflowId,
+						session_id: this.$store.getters['ui/ndvSessionId'],
+						source: this.eventSource || 'ndv',
 					});
 				}
 			},
@@ -626,6 +764,10 @@ export default mixins(
 				this.valueChanged(value);
 			},
 			openExpressionEdit() {
+				if (this.areExpressionsDisabled) {
+					return;
+				}
+
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();
@@ -687,7 +829,11 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
-			valueChanged (value: string | number | boolean | Date | null) {
+			valueChanged (value: string[] | string | number | boolean | Date | null) {
+				if (this.parameter.name === 'nodeCredentialType') {
+					this.activeCredentialType = value as string;
+				}
+
 				if (value instanceof Date) {
 					value = value.toISOString();
 				}
@@ -722,7 +868,14 @@ export default mixins(
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();
 				} else if (command === 'removeExpression') {
-					this.valueChanged(this.expressionValueComputed !== undefined ? this.expressionValueComputed : null);
+					let value = this.expressionValueComputed;
+
+					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
+						value = (value || '').split(',')
+							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
+					}
+
+					this.valueChanged(typeof value !== 'undefined' ? value : null);
 				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();
 				}
@@ -734,6 +887,10 @@ export default mixins(
 				this.nodeName = this.node.name;
 			}
 
+			if (this.node && this.node.parameters.authentication === 'predefinedCredentialType') {
+				this.activeCredentialType = this.node.parameters.nodeCredentialType as string;
+			}
+
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && this.displayValue !== null && this.displayValue.toString().charAt(0) !== '#') {
 				const newValue = this.rgbaToHex(this.displayValue as string);
 				if (newValue !== null) {
@@ -741,7 +898,7 @@ export default mixins(
 				}
 			}
 
-			if (this.remoteMethod !== undefined && this.node !== null) {
+			if (this.hasRemoteMethod === true && this.node !== null) {
 				// Make sure to load the parameter options
 				// directly and whenever the credentials change
 				this.$watch(() => this.node!.credentials, () => {
@@ -798,20 +955,6 @@ export default mixins(
 
 .parameter-input {
 	display: inline-block;
-}
-
-.parameter-options {
-	width: 25px;
-	text-align: right;
-	float: right;
-}
-
-.parameter-issues {
-	width: 20px;
-	text-align: right;
-	float: right;
-	color: #ff8080;
-	font-size: var(--font-size-s);
 }
 
 ::v-deep .color-input {
@@ -887,18 +1030,6 @@ export default mixins(
 	display: flex;
 	height: 100%;
 	align-items: center;
-}
-
-.errors {
-	margin-top: var(--spacing-2xs);
-	color: var(--color-danger);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-
-	a {
-		color: var(--color-danger);
-		text-decoration: underline;
-	}
 }
 
 </style>

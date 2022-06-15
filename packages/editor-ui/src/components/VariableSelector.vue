@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="variable-selector-wrapper">
 		<div class="input-wrapper">
-			<n8n-input placeholder="Variable filter..." v-model="variableFilter" ref="inputField" size="small" type="text"></n8n-input>
+			<n8n-input :placeholder="$locale.baseText('variableSelector.variableFilter')" v-model="variableFilter" ref="inputField" size="small" type="text"></n8n-input>
 		</div>
 
 		<div class="result-wrapper">
@@ -13,7 +13,7 @@
 <script lang="ts">
 
 import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE,
 } from '@/constants';
 
 import {
@@ -38,6 +38,11 @@ import {
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+
+// Node types that should not be displayed in variable selector
+const SKIPPED_NODE_TYPES = [
+	STICKY_NODE_TYPE,
+];
 
 export default mixins(
 	workflowHelpers,
@@ -114,7 +119,7 @@ export default mixins(
 					const newOptions = this.removeEmptyEntries(inputData.options);
 					if (Array.isArray(newOptions) && newOptions.length) {
 						// Has still options left so return
-						inputData.options = this.sortOptions(newOptions);
+						inputData.options = newOptions;
 						return inputData;
 					} else if (Array.isArray(newOptions) && newOptions.length === 0) {
 						delete inputData.options;
@@ -369,13 +374,19 @@ export default mixins(
 				return returnData;
 			},
 			getNodeContext (workflow: Workflow, runExecutionData: IRunExecutionData | null, parentNode: string[], nodeName: string, filterText: string): IVariableSelectorOption[] | null {
-				const inputIndex = 0;
 				const itemIndex = 0;
 				const inputName = 'main';
 				const runIndex = 0;
 				const returnData: IVariableSelectorOption[] = [];
 
-				const connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
+				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+
+				if (activeNode === null) {
+					return returnData;
+				}
+
+				const nodeConnection = this.workflow.getNodeConnectionIndexes(activeNode.name, parentNode[0], 'main');
+				const connectionInputData = this.connectionInputData(parentNode, nodeName, inputName, runIndex, nodeConnection);
 
 				if (connectionInputData === null) {
 					return returnData;
@@ -386,7 +397,7 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', this.$store.getters.timezone, additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore
@@ -488,7 +499,8 @@ export default mixins(
 					// Check from which output to read the data.
 					// Depends on how the nodes are connected.
 					// (example "IF" node. If node is connected to "true" or to "false" output)
-					const outputIndex = this.workflow.getNodeConnectionOutputIndex(activeNode.name, parentNode[0], 'main');
+					const nodeConnection = this.workflow.getNodeConnectionIndexes(activeNode.name, parentNode[0], 'main');
+					const outputIndex = nodeConnection === undefined ? 0: nodeConnection.sourceIndex;
 
 					tempOutputData = this.getNodeOutputData(runData, parentNode[0], filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
 
@@ -525,14 +537,14 @@ export default mixins(
 
 				currentNodeData.push(
 					{
-						name: 'Parameters',
+						name: this.$locale.baseText('variableSelector.parameters'),
 						options: this.sortOptions(this.getNodeParameters(activeNode.name, initialPath, skipParameter, filterText) as IVariableSelectorOption[]),
 					},
 				);
 
 				returnData.push(
 					{
-						name: 'Current Node',
+						name: this.$locale.baseText('variableSelector.currentNode'),
 						options: this.sortOptions(currentNodeData),
 					},
 				);
@@ -546,7 +558,14 @@ export default mixins(
 				let nodeOptions: IVariableSelectorOption[];
 				const upstreamNodes = this.workflow.getParentNodes(activeNode.name, inputName);
 
-				for (const nodeName of Object.keys(this.workflow.nodes)) {
+				const workflowNodes = Object.entries(this.workflow.nodes);
+
+				// Sort the nodes according to their position relative to the current node
+				workflowNodes.sort((a, b) => {
+					return upstreamNodes.indexOf(b[0]) - upstreamNodes.indexOf(a[0]);
+				});
+
+				for (const [nodeName, node] of workflowNodes) {
 					// Add the parameters of all nodes
 					// TODO: Later have to make sure that no parameters can be referenced which have expression which use input-data (for nodes which are not parent nodes)
 
@@ -554,10 +573,14 @@ export default mixins(
 						// Skip the current node as this one get added separately
 						continue;
 					}
+					// If node type should be skipped, continue
+					if (SKIPPED_NODE_TYPES.includes(node.type)) {
+						continue;
+					}
 
 					nodeOptions = [
 						{
-							name: 'Parameters',
+							name: this.$locale.baseText('variableSelector.parameters'),
 							options: this.sortOptions(this.getNodeParameters(nodeName, `$node["${nodeName}"].parameter`, undefined, filterText)),
 						} as IVariableSelectorOption,
 					];
@@ -570,7 +593,7 @@ export default mixins(
 						if (tempOptions.length) {
 							nodeOptions = [
 								{
-									name: 'Context',
+									name: this.$locale.baseText('variableSelector.context'),
 									options: this.sortOptions(tempOptions),
 								} as IVariableSelectorOption,
 							];
@@ -583,16 +606,21 @@ export default mixins(
 						if (tempOutputData) {
 							nodeOptions.push(
 								{
-									name: 'Output Data',
+									name: this.$locale.baseText('variableSelector.outputData'),
 									options: this.sortOptions(tempOutputData),
 								} as IVariableSelectorOption,
 							);
 						}
 					}
 
+					const shortNodeType = this.$locale.shortNodeType(node.type);
+
 					allNodesData.push(
 						{
-							name: nodeName,
+							name: this.$locale.headerText({
+								key: `headers.${shortNodeType}.displayName`,
+								fallback: nodeName,
+							}),
 							options: this.sortOptions(nodeOptions),
 						},
 					);
@@ -600,8 +628,8 @@ export default mixins(
 
 				returnData.push(
 					{
-						name: 'Nodes',
-						options: this.sortOptions(allNodesData),
+						name: this.$locale.baseText('variableSelector.nodes'),
+						options: allNodesData,
 					},
 				);
 

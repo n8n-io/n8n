@@ -49,7 +49,6 @@ export class QuickBase implements INodeType {
 		description: 'Integrate with the Quick Base RESTful API',
 		defaults: {
 			name: 'Quick Base',
-			color: '#73489d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -64,6 +63,7 @@ export class QuickBase implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Field',
@@ -83,7 +83,6 @@ export class QuickBase implements INodeType {
 					},
 				],
 				default: 'record',
-				description: 'The resource to operate on.',
 			},
 			...fieldOperations,
 			...fieldFields,
@@ -131,7 +130,7 @@ export class QuickBase implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
 		let responseData;

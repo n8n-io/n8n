@@ -67,7 +67,6 @@ export class HelpScout implements INodeType {
 		description: 'Consume HelpScout API',
 		defaults: {
 			name: 'HelpScout',
-			color: '#1392ee',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -82,6 +81,7 @@ export class HelpScout implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Conversation',
@@ -101,7 +101,6 @@ export class HelpScout implements INodeType {
 					},
 				],
 				default: 'conversation',
-				description: 'The resource to operate on.',
 			},
 			...conversationOperations,
 			...conversationFields,
@@ -166,7 +165,7 @@ export class HelpScout implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

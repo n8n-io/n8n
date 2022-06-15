@@ -2,6 +2,7 @@
 	<component
 		:is="$options.components.N8nText"
 		:size="props.size"
+		:color="props.color"
 		:compact="true"
 	>
 		<component
@@ -25,7 +26,6 @@ export default {
 	},
 	props: {
 		icon: {
-			type: String,
 			required: true,
 		},
 		size: {
@@ -35,6 +35,8 @@ export default {
 		spin: {
 			type: Boolean,
 			default: false,
+		},
+		color: {
 		},
 	},
 };

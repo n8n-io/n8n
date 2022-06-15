@@ -33,7 +33,6 @@ export class NocoDB implements INodeType {
 		description: 'Read, update, write and delete data from NocoDB',
 		defaults: {
 			name: 'NocoDB',
-			color: '#0989ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -48,6 +47,7 @@ export class NocoDB implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -55,12 +55,12 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'The Resource to operate on',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -80,14 +80,14 @@ export class NocoDB implements INodeType {
 						description: 'Delete a row',
 					},
 					{
-						name: 'Get All',
-						value: 'getAll',
-						description: 'Retrieve all rows',
-					},
-					{
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a row',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve all rows',
 					},
 					{
 						name: 'Update',
@@ -96,7 +96,6 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			...operationFields,
 		],

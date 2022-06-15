@@ -7,6 +7,7 @@ export const campaignContactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const campaignContactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -53,11 +53,10 @@ export const campaignContactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -76,7 +75,6 @@ export const campaignContactFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCampaigns',
 		},
 		default: '',
-		description: 'Campaign ID',
 
 	},
 ];

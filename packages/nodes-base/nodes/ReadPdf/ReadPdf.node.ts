@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	INodeExecutionData,
@@ -32,7 +29,7 @@ export class ReadPdf implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property from which to read the PDF file.',
+				description: 'Name of the binary property from which to read the PDF file',
 			},
 		],
 	};
@@ -41,7 +38,7 @@ export class ReadPdf implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
@@ -55,7 +52,7 @@ export class ReadPdf implements INodeType {
 					item.binary = {};
 				}
 
-				const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+				const binaryData = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 				returnData.push({
 					binary: item.binary,
 					json: await pdf(binaryData),
@@ -63,7 +60,14 @@ export class ReadPdf implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

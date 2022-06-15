@@ -7,6 +7,7 @@ export const videoCategoryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,7 +24,6 @@ export const videoCategoryOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -32,6 +32,7 @@ export const videoCategoryFields: INodeProperties[] = [
 	/*                                 videoCategory:getAll                       */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
@@ -66,7 +67,7 @@ export const videoCategoryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,6 +91,6 @@ export const videoCategoryFields: INodeProperties[] = [
 			maxValue: 50,
 		},
 		default: 25,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

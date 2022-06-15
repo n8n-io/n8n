@@ -51,7 +51,7 @@ export class ActiveWebhooks {
 		// check that there is not a webhook already registed with that path/method
 		if (this.webhookUrls[webhookKey] && !webhookData.webhookId) {
 			throw new Error(
-				`Test-Webhook can not be activated because another one with the same method "${webhookData.httpMethod}" and path "${webhookData.path}" is already active!`,
+				`The URL path that the "${webhookData.node}" node uses is already taken. Please change it to something else.`,
 			);
 		}
 

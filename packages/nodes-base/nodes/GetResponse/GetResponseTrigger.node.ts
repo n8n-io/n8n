@@ -29,7 +29,6 @@ export class GetResponseTrigger implements INodeType {
 		description: 'Starts the workflow when GetResponse events occur',
 		defaults: {
 			name: 'GetResponse Trigger',
-			color: '#00afec',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -81,7 +80,6 @@ export class GetResponseTrigger implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Events',
@@ -91,27 +89,27 @@ export class GetResponseTrigger implements INodeType {
 					{
 						name: 'Customer Subscribed',
 						value: 'subscribe',
-						description: 'Receive notifications when a customer is subscribed to a list.',
+						description: 'Receive notifications when a customer is subscribed to a list',
 					},
 					{
 						name: 'Customer Unsubscribed',
 						value: 'unsubscribe',
-						description: 'Receive notifications when a customer is unsubscribed from a list.',
+						description: 'Receive notifications when a customer is unsubscribed from a list',
 					},
 					{
 						name: 'Email Opened',
 						value: 'open',
-						description: 'Receive notifications when a email is opened.',
+						description: 'Receive notifications when a email is opened',
 					},
 					{
 						name: 'Email Clicked',
 						value: 'click',
-						description: 'Receive notifications when a email is clicked.',
+						description: 'Receive notifications when a email is clicked',
 					},
 					{
 						name: 'Survey Submitted',
 						value: 'survey',
-						description: 'Receive notifications when a survey is submitted.',
+						description: 'Receive notifications when a survey is submitted',
 					},
 				],
 				default: [],
@@ -138,7 +136,7 @@ export class GetResponseTrigger implements INodeType {
 						name: 'delete',
 						type: 'boolean',
 						default: false,
-						description: 'Delete the current subscription.',
+						description: 'Delete the current subscription',
 					},
 				],
 			},

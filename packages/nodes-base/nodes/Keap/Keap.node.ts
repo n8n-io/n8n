@@ -100,7 +100,7 @@ import {
 	pascalCase,
 } from 'change-case';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {
@@ -113,7 +113,6 @@ export class Keap implements INodeType {
 		description: 'Consume Keap API',
 		defaults: {
 			name: 'Keap',
-			color: '#79af53',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -128,6 +127,7 @@ export class Keap implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -163,7 +163,6 @@ export class Keap implements INodeType {
 					},
 				],
 				default: 'company',
-				description: 'The resource to operate on.',
 			},
 			// COMPANY
 			...companyOperations,
@@ -290,7 +289,7 @@ export class Keap implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

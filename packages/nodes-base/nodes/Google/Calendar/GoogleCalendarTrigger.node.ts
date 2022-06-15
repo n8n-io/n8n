@@ -16,7 +16,7 @@ import {
 	googleApiRequestAllItems,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class GoogleCalendarTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +29,6 @@ export class GoogleCalendarTrigger implements INodeType {
 		description: 'Starts the workflow when Google Calendar events occur',
 		defaults: {
 			name: 'Google Calendar Trigger',
-			color: '#3E87E4',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -42,7 +41,7 @@ export class GoogleCalendarTrigger implements INodeType {
 		polling: true,
 		properties: [
 			{
-				displayName: 'Calendar Name/ID',
+				displayName: 'Calendar Name or ID',
 				name: 'calendarId',
 				type: 'options',
 				required: true,
@@ -75,7 +74,6 @@ export class GoogleCalendarTrigger implements INodeType {
 						value: 'eventUpdated',
 					},
 				],
-				description: '',
 			},
 			{
 				displayName: 'Options',

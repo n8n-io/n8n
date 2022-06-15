@@ -51,7 +51,6 @@ export class SeaTable implements INodeType {
 		description: 'Consume the SeaTable API',
 		defaults: {
 			name: 'SeaTable',
-			color: '#FF8000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -66,6 +65,7 @@ export class SeaTable implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -73,7 +73,6 @@ export class SeaTable implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'The resource to operate on',
 			},
 			...rowOperations,
 			...rowFields,

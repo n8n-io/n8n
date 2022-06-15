@@ -43,7 +43,6 @@ export class Marketstack implements INodeType {
 		description: 'Consume Marketstack API',
 		defaults: {
 			name: 'Marketstack',
-			color: '#02283e',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -58,6 +57,7 @@ export class Marketstack implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'End-of-Day Data',

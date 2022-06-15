@@ -24,7 +24,6 @@ export class Brandfetch implements INodeType {
 		description: 'Consume Brandfetch API',
 		defaults: {
 			name: 'Brandfetch',
-			color: '#1f1f1f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -39,6 +38,7 @@ export class Brandfetch implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 
 					{
@@ -68,7 +68,6 @@ export class Brandfetch implements INodeType {
 					},
 				],
 				default: 'logo',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------
@@ -79,7 +78,7 @@ export class Brandfetch implements INodeType {
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the company.',
+				description: 'The domain name of the company',
 				required: true,
 			},
 			{
@@ -95,7 +94,7 @@ export class Brandfetch implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
 				displayName: 'Image Type',
@@ -154,7 +153,7 @@ export class Brandfetch implements INodeType {
 				default: [
 					'png',
 				],
-				description: 'The image format in which the logo should be returned as.',
+				description: 'The image format in which the logo should be returned as',
 				required: true,
 			},
 		],
@@ -162,7 +161,7 @@ export class Brandfetch implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];

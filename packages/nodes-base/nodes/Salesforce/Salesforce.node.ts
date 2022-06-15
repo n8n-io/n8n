@@ -132,7 +132,6 @@ export class Salesforce implements INodeType {
 		description: 'Consume Salesforce API',
 		defaults: {
 			name: 'Salesforce',
-			color: '#429fd9',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -182,51 +181,52 @@ export class Salesforce implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
 						value: 'account',
-						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners).',
+						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners)',
 					},
 					{
 						name: 'Attachment',
 						value: 'attachment',
-						description: 'Represents a file that a has uploaded and attached to a parent object.',
+						description: 'Represents a file that a has uploaded and attached to a parent object',
 					},
 					{
 						name: 'Case',
 						value: 'case',
-						description: 'Represents a case, which is a customer issue or problem.',
+						description: 'Represents a case, which is a customer issue or problem',
 					},
 					{
 						name: 'Contact',
 						value: 'contact',
-						description: 'Represents a contact, which is an individual associated with an account.',
+						description: 'Represents a contact, which is an individual associated with an account',
 					},
 					{
 						name: 'Custom Object',
 						value: 'customObject',
-						description: 'Represents a custom object.',
+						description: 'Represents a custom object',
 					},
 					{
 						name: 'Document',
 						value: 'document',
-						description: 'Represents a document.',
+						description: 'Represents a document',
 					},
 					{
 						name: 'Flow',
 						value: 'flow',
-						description: 'Represents an autolaunched flow.',
+						description: 'Represents an autolaunched flow',
 					},
 					{
 						name: 'Lead',
 						value: 'lead',
-						description: 'Represents a prospect or potential.',
+						description: 'Represents a prospect or potential',
 					},
 					{
 						name: 'Opportunity',
 						value: 'opportunity',
-						description: 'Represents an opportunity, which is a sale or pending deal.',
+						description: 'Represents an opportunity, which is a sale or pending deal',
 					},
 					{
 						name: 'Search',
@@ -241,11 +241,10 @@ export class Salesforce implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
-						description: 'Represents a person, which is one user in system.',
+						description: 'Represents a person, which is one user in system',
 					},
 				],
 				default: 'lead',
-				description: 'Resource to consume.',
 			},
 			...leadOperations,
 			...leadFields,
@@ -1957,6 +1956,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.shippingCity !== undefined) {
 							body.ShippingCity = additionalFields.shippingCity as string;
 						}
+						if (additionalFields.accountNumber !== undefined) {
+							body.AccountNumber = additionalFields.accountNumber as string;
+						}
 						if (additionalFields.accountSource !== undefined) {
 							body.AccountSource = additionalFields.accountSource as string;
 						}
@@ -2064,6 +2066,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.shippingCity !== undefined) {
 							body.ShippingCity = updateFields.shippingCity as string;
+						}
+						if (updateFields.accountNumber !== undefined) {
+							body.AccountNumber = updateFields.accountNumber as string;
 						}
 						if (updateFields.accountSource !== undefined) {
 							body.AccountSource = updateFields.accountSource as string;
@@ -2179,6 +2184,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.reason !== undefined) {
 							body.Reason = additionalFields.reason as string;
 						}
+						if (additionalFields.status !== undefined) {
+							body.Status = additionalFields.status as string;
+						}
 						if (additionalFields.owner !== undefined) {
 							body.OwnerId = additionalFields.owner as string;
 						}
@@ -2242,6 +2250,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.reason !== undefined) {
 							body.Reason = updateFields.reason as string;
+						}
+						if (updateFields.status !== undefined) {
+							body.Status = updateFields.status as string;
 						}
 						if (updateFields.owner !== undefined) {
 							body.OwnerId = updateFields.owner as string;

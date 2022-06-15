@@ -25,7 +25,7 @@ if (process.argv.length === 2) {
 var nodeVersion = process.versions.node.split('.');
 
 if (parseInt(nodeVersion[0], 10) < 14) {
-	console.log(`\nYour Node.js version (${process.versions.node}) is too old to run n8n.\nPlease update to version 14 or later!\n`);
+	console.log(`\nYour Node.js version (${process.versions.node}) is too old to run n8n.\nPlease update at least to Node.js v14 or to the recommended Node.js v16!\n`);
 	process.exit(1);
 }
 

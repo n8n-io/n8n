@@ -6,16 +6,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import * as express from 'express';
+import express from 'express';
 import { readFileSync } from 'fs';
 import { getConnectionManager } from 'typeorm';
-import * as bodyParser from 'body-parser';
-// eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unused-vars
-import * as _ from 'lodash';
+import bodyParser from 'body-parser';
 
-import * as compression from 'compression';
+import compression from 'compression';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import * as parseUrl from 'parseurl';
+import parseUrl from 'parseurl';
+import { WebhookHttpMethod } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
 	ActiveExecutions,
@@ -30,7 +29,9 @@ import {
 	WaitingWebhooks,
 } from '.';
 
-import * as config from '../config';
+import config from '../config';
+// eslint-disable-next-line import/no-cycle
+import { WEBHOOK_METHODS } from './WebhookHelpers';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);
@@ -41,108 +42,43 @@ export function registerProductionWebhooks() {
 	// Regular Webhooks
 	// ----------------------------------------
 
-	// HEAD webhook requests
-	this.app.head(
+	// Register all webhook requests
+	this.app.all(
 		`/${this.endpointWebhook}/*`,
 		async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 				this.endpointWebhook.length + 2,
 			);
+
+			const method = req.method.toUpperCase() as WebhookHttpMethod;
+
+			if (method === 'OPTIONS') {
+				let allowedMethods: string[];
+				try {
+					allowedMethods = await this.activeWorkflowRunner.getWebhookMethods(requestUrl);
+					allowedMethods.push('OPTIONS');
+
+					// Add custom "Allow" header to satisfy OPTIONS response.
+					res.append('Allow', allowedMethods);
+				} catch (error) {
+					ResponseHelper.sendErrorResponse(res, error);
+					return;
+				}
+
+				ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+				return;
+			}
+
+			if (!WEBHOOK_METHODS.includes(method)) {
+				ResponseHelper.sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
+				return;
+			}
 
 			let response;
 			try {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				response = await this.activeWorkflowRunner.executeWebhook('HEAD', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(
-				res,
-				response.data,
-				true,
-				response.responseCode,
-				response.headers,
-			);
-		},
-	);
-
-	// OPTIONS webhook requests
-	this.app.options(
-		`/${this.endpointWebhook}/*`,
-		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-				this.endpointWebhook.length + 2,
-			);
-
-			let allowedMethods: string[];
-			try {
-				allowedMethods = await this.activeWorkflowRunner.getWebhookMethods(requestUrl);
-				allowedMethods.push('OPTIONS');
-
-				// Add custom "Allow" header to satisfy OPTIONS response.
-				res.append('Allow', allowedMethods);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-		},
-	);
-
-	// GET webhook requests
-	this.app.get(
-		`/${this.endpointWebhook}/*`,
-		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-				this.endpointWebhook.length + 2,
-			);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('GET', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(
-				res,
-				response.data,
-				true,
-				response.responseCode,
-				response.headers,
-			);
-		},
-	);
-
-	// POST webhook requests
-	this.app.post(
-		`/${this.endpointWebhook}/*`,
-		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-				this.endpointWebhook.length + 2,
-			);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('POST', requestUrl, req, res);
+				response = await this.activeWorkflowRunner.executeWebhook(method, requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
 				return;
@@ -169,8 +105,8 @@ export function registerProductionWebhooks() {
 
 	const waitingWebhooks = new WaitingWebhooks();
 
-	// HEAD webhook-waiting requests
-	this.app.head(
+	// Register all webhook-waiting requests
+	this.app.all(
 		`/${this.endpointWebhookWaiting}/*`,
 		async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook-waiting/" to get the registred part of the url
@@ -178,73 +114,20 @@ export function registerProductionWebhooks() {
 				this.endpointWebhookWaiting.length + 2,
 			);
 
-			let response;
-			try {
-				response = await waitingWebhooks.executeWebhook('HEAD', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
+			const method = req.method.toUpperCase() as WebhookHttpMethod;
+
+			// TOOD: Add support for OPTIONS in the future
+			// if (method === 'OPTIONS') {
+			// }
+
+			if (!WEBHOOK_METHODS.includes(method)) {
+				ResponseHelper.sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
 				return;
 			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(
-				res,
-				response.data,
-				true,
-				response.responseCode,
-				response.headers,
-			);
-		},
-	);
-
-	// GET webhook-waiting requests
-	this.app.get(
-		`/${this.endpointWebhookWaiting}/*`,
-		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook-waiting/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-				this.endpointWebhookWaiting.length + 2,
-			);
 
 			let response;
 			try {
-				response = await waitingWebhooks.executeWebhook('GET', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(
-				res,
-				response.data,
-				true,
-				response.responseCode,
-				response.headers,
-			);
-		},
-	);
-
-	// POST webhook-waiting requests
-	this.app.post(
-		`/${this.endpointWebhookWaiting}/*`,
-		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook-waiting/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-				this.endpointWebhookWaiting.length + 2,
-			);
-
-			let response;
-			try {
-				response = await waitingWebhooks.executeWebhook('POST', requestUrl, req, res);
+				response = await waitingWebhooks.executeWebhook(method, requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
 				return;
@@ -308,28 +191,28 @@ class App {
 	constructor() {
 		this.app = express();
 
-		this.endpointWebhook = config.get('endpoints.webhook') as string;
-		this.endpointWebhookWaiting = config.get('endpoints.webhookWaiting') as string;
-		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
-		this.executionTimeout = config.get('executions.timeout') as number;
-		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
-		this.timezone = config.get('generic.timezone') as string;
-		this.restEndpoint = config.get('endpoints.rest') as string;
+		this.endpointWebhook = config.getEnv('endpoints.webhook');
+		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError');
+		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess');
+		this.saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
+		this.executionTimeout = config.getEnv('executions.timeout');
+		this.maxExecutionTimeout = config.getEnv('executions.maxTimeout');
+		this.timezone = config.getEnv('generic.timezone');
+		this.restEndpoint = config.getEnv('endpoints.rest');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 
-		this.protocol = config.get('protocol');
-		this.sslKey = config.get('ssl_key');
-		this.sslCert = config.get('ssl_cert');
+		this.protocol = config.getEnv('protocol');
+		this.sslKey = config.getEnv('ssl_key');
+		this.sslCert = config.getEnv('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 	}
 
 	/**
@@ -415,7 +298,7 @@ class App {
 		}
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (Db.collections.Workflow === null) {
+			if (!Db.isInitialized) {
 				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
@@ -457,8 +340,8 @@ class App {
 }
 
 export async function start(): Promise<void> {
-	const PORT = config.get('port');
-	const ADDRESS = config.get('listen_address');
+	const PORT = config.getEnv('port');
+	const ADDRESS = config.getEnv('listen_address');
 
 	const app = new App();
 

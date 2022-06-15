@@ -60,7 +60,7 @@ export const pushConnection = mixins(
 
 				const connectionUrl = `${this.$store.getters.getRestUrl}/push?sessionId=${this.sessionId}`;
 
-				this.eventSource = new EventSource(connectionUrl);
+				this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
 				this.eventSource.addEventListener('message', this.pushMessageReceived, false);
 
 				this.eventSource.addEventListener('open', () => {
@@ -258,15 +258,25 @@ export const pushConnection = mixins(
 							title: 'Problem executing workflow',
 							message: runDataExecutedErrorMessage,
 							type: 'error',
+							duration: 0,
 						});
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
-						this.$showMessage({
-							title: 'Workflow was executed',
-							message: 'Workflow was executed successfully!',
-							type: 'success',
-						});
+
+						const execution = this.$store.getters.getWorkflowExecution;
+						if (execution && execution.executedNode) {
+							this.$showMessage({
+								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
+								type: 'success',
+							});
+						}
+						else {
+							this.$showMessage({
+								title: this.$locale.baseText('pushConnection.workflowExecutedSuccessfully'),
+								type: 'success',
+							});
+						}
 					}
 
 					// It does not push the runData as it got already pushed with each

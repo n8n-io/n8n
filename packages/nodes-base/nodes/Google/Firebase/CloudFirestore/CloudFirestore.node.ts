@@ -39,7 +39,6 @@ export class CloudFirestore implements INodeType {
 		description: 'Interact with Google Firebase - Cloud Firestore API',
 		defaults: {
 			name: 'Google Cloud Firestore',
-			color: '#ffcb2d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -54,6 +53,7 @@ export class CloudFirestore implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -65,7 +65,6 @@ export class CloudFirestore implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'The resource to operate on.',
 			},
 			...documentOperations,
 			...documentFields,

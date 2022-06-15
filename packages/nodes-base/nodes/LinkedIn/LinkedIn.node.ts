@@ -1,7 +1,4 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -18,6 +15,7 @@ import {
 } from './PostDescription';
 
 export class LinkedIn implements INodeType {
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',
@@ -27,7 +25,6 @@ export class LinkedIn implements INodeType {
 		description: 'Consume LinkedIn API',
 		defaults: {
 			name: 'LinkedIn',
-			color: '#0075b4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -42,6 +39,7 @@ export class LinkedIn implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -49,7 +47,6 @@ export class LinkedIn implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The resource to consume',
 			},
 			//POST
 			...postOperations,
@@ -150,7 +147,7 @@ export class LinkedIn implements INodeType {
 							}
 
 							// Buffer binary data
-							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
+							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
 							// Upload image
 							await linkedInApiRequest.call(this, 'POST', uploadUrl, buffer, true);
 

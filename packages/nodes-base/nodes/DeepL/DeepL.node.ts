@@ -30,7 +30,6 @@ export class DeepL implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'DeepL',
-			color: '#0f2b46',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -45,6 +44,7 @@ export class DeepL implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Language',
@@ -57,6 +57,7 @@ export class DeepL implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -72,7 +73,6 @@ export class DeepL implements INodeType {
 					},
 				],
 				default: 'translate',
-				description: 'The operation to perform',
 			},
 			...textOperations,
 		],

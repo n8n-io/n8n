@@ -26,7 +26,6 @@ export class HackerNews implements INodeType {
 		description: 'Consume Hacker News API',
 		defaults: {
 			name: 'Hacker News',
-			color: '#ff6600',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -38,6 +37,7 @@ export class HackerNews implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'All',
@@ -53,7 +53,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'article',
-				description: 'Resource to consume.',
 			},
 
 
@@ -64,6 +63,7 @@ export class HackerNews implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -79,12 +79,12 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -100,12 +100,12 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -121,7 +121,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'Operation to perform.',
 			},
 			// ----------------------------------
 			//         Fields
@@ -167,7 +166,7 @@ export class HackerNews implements INodeType {
 				name: 'returnAll',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return all results for the query or only up to a limit.',
+				description: 'Whether to return all results or only up to a given limit',
 				displayOptions: {
 					show: {
 						resource: [
@@ -183,8 +182,11 @@ export class HackerNews implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				default: 100,
-				description: 'Limit of Hacker News articles to be returned for the query.',
+				description: 'Max number of results to return',
 				displayOptions: {
 					show: {
 						resource: [
@@ -217,11 +219,11 @@ export class HackerNews implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include comments',
+						displayName: 'Include Comments',
 						name: 'includeComments',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to include all the comments in a Hacker News article.',
+						description: 'Whether to include all the comments in a Hacker News article',
 					},
 				],
 			},
@@ -247,7 +249,7 @@ export class HackerNews implements INodeType {
 						name: 'keyword',
 						type: 'string',
 						default: '',
-						description: 'The keyword for filtering the results of the query.',
+						description: 'The keyword for filtering the results of the query',
 					},
 					{
 						displayName: 'Tags',
@@ -285,8 +287,8 @@ export class HackerNews implements INodeType {
 								description: 'Returns query results filtered by Front Page tag',
 							},
 						],
-						default: '',
-						description: 'Tags for filtering the results of the query.',
+						default: [],
+						description: 'Tags for filtering the results of the query',
 					},
 				],
 			},

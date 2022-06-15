@@ -2,11 +2,6 @@
 
 @import "~n8n-design-system/theme/dist/index.css";
 
-
-body {
-	background-color: var(--color-canvas-background);
-}
-
 .clickable {
 	cursor: pointer;
 }
@@ -125,9 +120,6 @@ body {
 .el-tabs__nav:focus {
 	outline: none;
 }
-.el-tabs__item {
-	color: #555;
-}
 .el-tabs__item.is-active {
 	font-weight: bold;
 }
@@ -158,7 +150,7 @@ body {
 
 // Notification
 .el-notification {
-	border-radius: 0;
+	border-radius: 4px;
 	border: none;
 }
 
@@ -187,6 +179,32 @@ body {
 			&:hover {
 				background-color: $--tag-close-background-hover-color !important;
 			}
+		}
+	}
+}
+
+.add-option {
+	> * {
+		border: none;
+	}
+
+	i.el-select__caret {
+		color: var(--color-text-dark);
+	}
+	.el-input .el-input__inner {
+		&,
+		&:hover,
+		&:focus {
+			border-radius: 20px;
+			color: var(--color-text-dark);
+			background-color: var(--color-background-base);
+			border-color: var(--color-foreground-base);
+			text-align: center;
+		}
+
+		&::placeholder {
+			color: var(--color-text-dark);
+			opacity: 1; /** Firefox */
 		}
 	}
 }

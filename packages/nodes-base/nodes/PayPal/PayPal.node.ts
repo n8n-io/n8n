@@ -1,8 +1,14 @@
 import {
+	OptionsWithUri
+} from 'request';
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -39,7 +45,6 @@ export class PayPal implements INodeType {
 		description: 'Consume PayPal API',
 		defaults: {
 			name: 'PayPal',
-			color: '#356ae6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -47,6 +52,7 @@ export class PayPal implements INodeType {
 			{
 				name: 'payPalApi',
 				required: true,
+				testedBy: 'payPalApiTest',
 			},
 		],
 		properties: [
@@ -54,6 +60,7 @@ export class PayPal implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Payout',
@@ -65,7 +72,6 @@ export class PayPal implements INodeType {
 					},
 				],
 				default: 'payout',
-				description: 'Resource to consume.',
 			},
 
 			// Payout
@@ -76,10 +82,62 @@ export class PayPal implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async payPalApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+				const clientId = credentials!.clientId;
+				const clientSecret = credentials!.secret;
+				const environment = credentials!.env;
+
+				if (!clientId || !clientSecret || !environment) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: missing credentials`,
+					};
+				}
+
+				let baseUrl = '';
+				if (environment !== 'live') {
+					baseUrl = 'https://api-m.sandbox.paypal.com';
+				} else {
+					baseUrl = 'https://api-m.paypal.com';
+				}
+
+				const base64Key = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+				const options: OptionsWithUri = {
+					headers: {
+						'Authorization': `Basic ${base64Key}`,
+					},
+					method: 'POST',
+					uri: `${baseUrl}/v1/oauth2/token`,
+					form: {
+						grant_type: 'client_credentials',
+					},
+				};
+
+				try {
+					await this.helpers.request!(options);
+					return {
+						status: 'OK',
+						message: 'Authentication successful!',
+					};
+				}
+				catch (error) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${error.message}`,
+					};
+				}
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 
@@ -169,5 +227,6 @@ export class PayPal implements INodeType {
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
+
 	}
 }

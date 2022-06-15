@@ -28,7 +28,7 @@ import {
 	simplify,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import {
 	IData,
@@ -45,7 +45,6 @@ export class GoogleAnalytics implements INodeType {
 		description: 'Use the Google Analytics API',
 		defaults: {
 			name: 'Google Analytics',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -60,6 +59,7 @@ export class GoogleAnalytics implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Report',

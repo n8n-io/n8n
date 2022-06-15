@@ -25,7 +25,7 @@ import {
 	stockOnHandOperations,
 } from './StockOnHandDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class UnleashedSoftware implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,7 +38,6 @@ export class UnleashedSoftware implements INodeType {
 		description: 'Consume Unleashed Software API',
 		defaults: {
 			name: 'Unleashed Software',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -53,6 +52,7 @@ export class UnleashedSoftware implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Sales Order',
@@ -64,7 +64,6 @@ export class UnleashedSoftware implements INodeType {
 					},
 				],
 				default: 'salesOrder',
-				description: 'The resource to operate on.',
 			},
 			...salesOrderOperations,
 			...salesOrderFields,

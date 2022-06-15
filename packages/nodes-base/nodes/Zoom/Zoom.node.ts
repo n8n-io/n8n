@@ -31,7 +31,7 @@ import {
 // 	webinarFields,
 // } from './WebinarDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 interface Settings {
 	host_video?: boolean;
@@ -61,7 +61,6 @@ export class Zoom implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Zoom',
-			color: '#0B6CF9',
 		},
 		icon: 'file:zoom.svg',
 		inputs: ['main'],
@@ -111,12 +110,12 @@ export class Zoom implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Meeting',
@@ -132,7 +131,6 @@ export class Zoom implements INodeType {
 					// }
 				],
 				default: 'meeting',
-				description: 'The resource to operate on.',
 			},
 			//MEETINGS
 			...meetingOperations,

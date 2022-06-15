@@ -33,7 +33,7 @@ import {
 	publicStatusPageOperations,
 } from './PublicStatusPageDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,7 +46,6 @@ export class UptimeRobot implements INodeType {
 		description: 'Consume UptimeRobot API',
 		defaults: {
 			name: 'UptimeRobot',
-			color: '#3bd671',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -61,6 +60,7 @@ export class UptimeRobot implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -84,7 +84,6 @@ export class UptimeRobot implements INodeType {
 					},
 				],
 				default: 'account',
-				description: 'Resource to consume.',
 			},
 			/* -------------------------------------------------------------------------- */
 			/*                                account:getAccountDetails					  */
@@ -93,6 +92,7 @@ export class UptimeRobot implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -108,7 +108,6 @@ export class UptimeRobot implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			/* -------------------------------------------------------------------------- */
 			/*                                Monitor									  */

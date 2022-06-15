@@ -1,14 +1,14 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" title="Edit Expression" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" :title="$locale.baseText('expressionEdit.editExpression')" :before-close="closeDialog">
 			<el-row>
 				<el-col :span="8">
 					<div class="header-side-menu">
 						<div class="headline">
-							Edit Expression
+							{{ $locale.baseText('expressionEdit.editExpression') }}
 						</div>
 						<div class="sub-headline">
-							Variable Selector
+							{{ $locale.baseText('expressionEdit.variableSelector') }}
 						</div>
 					</div>
 
@@ -19,7 +19,7 @@
 				<el-col :span="16" class="right-side">
 					<div class="expression-editor-wrapper">
 						<div class="editor-description">
-							Expression
+							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
 						<div class="expression-editor">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
@@ -28,7 +28,7 @@
 
 					<div class="expression-result-wrapper">
 						<div class="editor-description">
-							Result
+							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
 						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
 					</div>
@@ -51,6 +51,8 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 
+const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`];
+
 export default mixins(
 	externalHooks,
 	genericHelpers,
@@ -61,6 +63,7 @@ export default mixins(
 		'parameter',
 		'path',
 		'value',
+		'eventSource',
 	],
 	components: {
 		ExpressionInput,
@@ -80,7 +83,7 @@ export default mixins(
 				this.updateDisplayValue();
 				this.$emit('valueChanged', this.latestValue);
 			} else {
-				this.callDebounced('updateDisplayValue', 500);
+				this.callDebounced('updateDisplayValue', { debounceTime: 500 });
 			}
 		},
 
@@ -110,7 +113,14 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				this.$telemetry.track('User closed Expression Editor', { empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.track('User closed Expression Editor', {
+					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
+					workflow_id: this.$store.getters.workflowId,
+					source: this.eventSource,
+					session_id: this.$store.getters['ui/ndvSessionId'],
+					has_parameter: this.value.includes('$parameter'),
+					has_mapping: !!MAPPING_PARAMS.find((param) => this.value.includes(param)),
+				});
 			}
 		},
 	},
@@ -157,7 +167,7 @@ export default mixins(
 	padding: 1em 0 0.5em 1.8em;
 	border-top-left-radius: 8px;
 
-	background-color: $--custom-window-sidebar-top;
+	background-color: var(--color-background-base);
 	color: #555;
 	border-bottom: 1px solid $--color-primary;
 	margin-bottom: 1em;

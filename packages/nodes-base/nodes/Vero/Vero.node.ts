@@ -33,7 +33,6 @@ export class Vero implements INodeType {
 		description: 'Consume Vero API',
 		defaults: {
 			name: 'Vero',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -48,20 +47,20 @@ export class Vero implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'User',
 						value: 'user',
-						description: `Create, update and manage the subscription status of your users.`,
+						description: 'Create, update and manage the subscription status of your users',
 					},
 					{
 						name: 'Event',
 						value: 'event',
-						description: `Track events based on actions your customers take in real time.`,
+						description: 'Track events based on actions your customers take in real time',
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume.',
 			},
 			...userOperations,
 			...eventOperations,
@@ -73,7 +72,7 @@ export class Vero implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {

@@ -1,14 +1,8 @@
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -16,7 +10,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeCredentialTestResult,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -62,7 +55,6 @@ export class Zendesk implements INodeType {
 		description: 'Consume Zendesk API',
 		defaults: {
 			name: 'Zendesk',
-			color: '#13353c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -77,7 +69,6 @@ export class Zendesk implements INodeType {
 						],
 					},
 				},
-				testedBy: 'zendeskSoftwareApiTest',
 			},
 			{
 				name: 'zendeskOAuth2Api',
@@ -107,12 +98,12 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Ticket',
@@ -136,7 +127,6 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'ticket',
-				description: 'Resource to consume',
 			},
 			// TICKET
 			...ticketOperations,
@@ -154,42 +144,6 @@ export class Zendesk implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			async zendeskSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
-				const credentials = credential.data;
-				const subdomain = credentials!.subdomain;
-				const email = credentials!.email;
-				const apiToken = credentials!.apiToken;
-
-				const base64Key =  Buffer.from(`${email}/token:${apiToken}`).toString('base64');
-				const options: OptionsWithUri = {
-					headers: {
-						'Content-Type': 'application/json',
-						'Authorization': `Basic ${base64Key}`,
-					},
-					method: 'GET',
-					uri: `https://${subdomain}.zendesk.com/api/v2/ticket_fields.json`,
-					qs: {
-						recent: 0,
-					},
-					json: true,
-					timeout: 5000,
-				};
-
-				try {
-					await this.helpers.request!(options);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: `Connection details not valid: ${error.message}`,
-					};
-				}
-				return {
-					status: 'OK',
-					message: 'Authentication successful!',
-				};
-			},
-		},
 		loadOptions: {
 			// Get all the custom fields to display them to user so that he can
 			// select them easily
@@ -313,7 +267,7 @@ export class Zendesk implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {

@@ -32,7 +32,6 @@ export class Webflow implements INodeType {
 		description: 'Consume the Webflow API',
 		defaults: {
 			name: 'Webflow',
-			color: '#245bf8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -76,12 +75,12 @@ export class Webflow implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Item',
@@ -89,7 +88,6 @@ export class Webflow implements INodeType {
 					},
 				],
 				default: 'item',
-				description: 'Resource to consume',
 			},
 			...itemOperations,
 			...itemFields,

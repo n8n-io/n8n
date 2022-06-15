@@ -37,7 +37,7 @@ import {
 	identityOperations,
 } from './IdentityDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class PostHog implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,7 +50,6 @@ export class PostHog implements INodeType {
 		description: 'Consume PostHog API',
 		defaults: {
 			name: 'PostHog',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,6 +64,7 @@ export class PostHog implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Alias',
@@ -84,7 +84,6 @@ export class PostHog implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on.',
 			},
 			...aliasOperations,
 			...aliasFields,
@@ -100,7 +99,7 @@ export class PostHog implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

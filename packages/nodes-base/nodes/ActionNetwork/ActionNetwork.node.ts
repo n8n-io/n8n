@@ -58,7 +58,6 @@ export class ActionNetwork implements INodeType {
 		description: 'Consume the Action Network API',
 		defaults: {
 			name: 'Action Network',
-			color: '#9dd3ed',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -73,6 +72,7 @@ export class ActionNetwork implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Attendance',
@@ -104,7 +104,6 @@ export class ActionNetwork implements INodeType {
 					},
 				],
 				default: 'attendance',
-				description: 'Resource to consume',
 			},
 			...attendanceOperations,
 			...attendanceFields,

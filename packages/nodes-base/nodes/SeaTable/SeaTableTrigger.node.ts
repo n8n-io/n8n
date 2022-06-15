@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -23,7 +24,7 @@ import {
 	IRowResponse,
 } from './Interfaces';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class SeaTableTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +37,6 @@ export class SeaTableTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'SeaTable Trigger',
-			color: '#FF8000',
 		},
 		credentials: [
 			{
@@ -49,7 +49,7 @@ export class SeaTableTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Table',
+				displayName: 'Table Name or ID',
 				name: 'tableName',
 				type: 'options',
 				required: true,
@@ -57,7 +57,7 @@ export class SeaTableTrigger implements INodeType {
 					loadOptionsMethod: 'getTableNames',
 				},
 				default: '',
-				description: 'The name of SeaTable table to access',
+				description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Event',
@@ -78,11 +78,11 @@ export class SeaTableTrigger implements INodeType {
 				default: 'rowCreated',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -109,13 +109,12 @@ export class SeaTableTrigger implements INodeType {
 		const simple = this.getNodeParameter('simple') as boolean;
 		const event = this.getNodeParameter('event') as string;
 		const ctx: ICtx = {};
+		const credentials = await this.getCredentials('seaTableApi');
 
+		const timezone = credentials.timezone as string || 'Europe/Berlin';
 		const now = moment().utc().format();
-
 		const startDate = webhookData.lastTimeChecked as string || now;
-
 		const endDate = now;
-
 		webhookData.lastTimeChecked = endDate;
 
 		let rows;
@@ -127,8 +126,15 @@ export class SeaTableTrigger implements INodeType {
 		if (this.getMode() === 'manual') {
 			rows = await seaTableApiRequest.call(this, ctx, 'POST', endpoint, { sql: `SELECT * FROM ${tableName} LIMIT 1` }) as IRowResponse;
 		} else {
-			rows = await seaTableApiRequest.call(this, ctx, 'POST', endpoint,
-				{ sql: `SELECT * FROM ${tableName} WHERE ${filterField} BETWEEN "${moment(startDate).utc().format('YYYY-MM-D HH:mm:ss')}" AND "${moment(endDate).utc().format('YYYY-MM-D HH:mm:ss')}"` }) as IRowResponse;
+			rows = (await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
+				sql: `SELECT * FROM ${tableName}
+					WHERE ${filterField} BETWEEN "${moment(startDate)
+					.tz(timezone)
+					.format('YYYY-MM-D HH:mm:ss')}"
+					AND "${moment(endDate)
+					.tz(timezone)
+					.format('YYYY-MM-D HH:mm:ss')}"`,
+			})) as IRowResponse;
 		}
 
 		let response;

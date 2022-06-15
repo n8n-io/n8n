@@ -80,7 +80,6 @@ export class ZohoCrm implements INodeType {
 		description: 'Consume Zoho CRM API',
 		defaults: {
 			name: 'Zoho',
-			color: '#CE2232',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -95,6 +94,7 @@ export class ZohoCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -138,7 +138,6 @@ export class ZohoCrm implements INodeType {
 					},
 				],
 				default: 'account',
-				description: 'Resource to consume',
 			},
 			...accountOperations,
 			...accountFields,

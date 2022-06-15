@@ -58,7 +58,6 @@ export class AgileCrm implements INodeType {
 		description: 'Consume Agile CRM API',
 		defaults: {
 			name: 'AgileCRM',
-			color: '#772244',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -75,6 +74,7 @@ export class AgileCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -90,7 +90,6 @@ export class AgileCrm implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,

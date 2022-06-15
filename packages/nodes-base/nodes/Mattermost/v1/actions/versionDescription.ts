@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -17,7 +17,6 @@ export const versionDescription: INodeTypeDescription = {
 	description: 'Sends data to Mattermost',
 	defaults: {
 		name: 'Mattermost',
-		color: '#000000',
 	},
 	inputs: ['main'],
 	outputs: ['main'],
@@ -32,6 +31,7 @@ export const versionDescription: INodeTypeDescription = {
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
+			noDataExpression: true,
 			options: [
 				{
 					name: 'Channel',
@@ -51,7 +51,6 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			],
 			default: 'message',
-			description: 'The resource to operate on',
 		},
 		...channel.descriptions,
 		...message.descriptions,

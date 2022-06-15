@@ -37,7 +37,7 @@ import {
 	commentOperations
 } from './CommentDescription';
 import { v4 as uuid } from 'uuid';
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,7 +50,6 @@ export class Twist implements INodeType {
 		description: 'Consume Twist API',
 		defaults: {
 			name: 'Twist',
-			color: '#316fea',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,6 +64,7 @@ export class Twist implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -84,7 +84,6 @@ export class Twist implements INodeType {
 					},
 				],
 				default: 'messageConversation',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,
@@ -169,7 +168,7 @@ export class Twist implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

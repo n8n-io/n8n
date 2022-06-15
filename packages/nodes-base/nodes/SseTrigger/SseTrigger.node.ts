@@ -1,4 +1,4 @@
-import * as EventSource from 'eventsource';
+import EventSource from 'eventsource';
 import { ITriggerFunctions } from 'n8n-core';
 import {
 	INodeType,
@@ -16,6 +16,7 @@ export class SseTrigger implements INodeType {
 		version: 1,
 		description: 'Triggers the workflow when Server-Sent Events occur',
 		eventTriggerDescription: '',
+		activationMessage: 'You can now make calls to your SSE URL to trigger executions.',
 		defaults: {
 			name: 'SSE Trigger',
 			color: '#225577',
@@ -29,7 +30,7 @@ export class SseTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'http://example.com',
-				description: 'The URL to receive the SSE from.',
+				description: 'The URL to receive the SSE from',
 				required: true,
 			},
 		],

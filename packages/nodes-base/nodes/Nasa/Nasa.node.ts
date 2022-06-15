@@ -15,7 +15,7 @@ import {
 	nasaApiRequestAllItems,
 } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Nasa implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +28,6 @@ export class Nasa implements INodeType {
 		description: 'Retrieve data from the NASA API',
 		defaults: {
 			name: 'NASA',
-			color: '#0B3D91',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -46,10 +45,11 @@ export class Nasa implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Astronomy Picture of the Day',
-						value: 'astronomyPictureOfTheDay',
+						name: 'Asteroid Neo-Browse',
+						value: 'asteroidNeoBrowse',
 					},
 					{
 						name: 'Asteroid Neo-Feed',
@@ -60,12 +60,16 @@ export class Nasa implements INodeType {
 						value: 'asteroidNeoLookup',
 					},
 					{
-						name: 'Asteroid Neo-Browse',
-						value: 'asteroidNeoBrowse',
+						name: 'Astronomy Picture of the Day',
+						value: 'astronomyPictureOfTheDay',
 					},
 					{
 						name: 'DONKI Coronal Mass Ejection',
 						value: 'donkiCoronalMassEjection',
+					},
+					{
+						name: 'DONKI High Speed Stream',
+						value: 'donkiHighSpeedStream',
 					},
 					// {
 					// 	name: 'DONKI Geomagnetic Storm',
@@ -76,44 +80,39 @@ export class Nasa implements INodeType {
 						value: 'donkiInterplanetaryShock',
 					},
 					{
-						name: 'DONKI Solar Flare',
-						value: 'donkiSolarFlare',
-					},
-					{
-						name: 'DONKI Solar Energetic Particle',
-						value: 'donkiSolarEnergeticParticle',
-					},
-					{
 						name: 'DONKI Magnetopause Crossing',
 						value: 'donkiMagnetopauseCrossing',
+					},
+					{
+						name: 'DONKI Notification',
+						value: 'donkiNotifications',
 					},
 					{
 						name: 'DONKI Radiation Belt Enhancement',
 						value: 'donkiRadiationBeltEnhancement',
 					},
 					{
-						name: 'DONKI High Speed Stream',
-						value: 'donkiHighSpeedStream',
+						name: 'DONKI Solar Energetic Particle',
+						value: 'donkiSolarEnergeticParticle',
+					},
+					{
+						name: 'DONKI Solar Flare',
+						value: 'donkiSolarFlare',
 					},
 					{
 						name: 'DONKI WSA+EnlilSimulation',
 						value: 'donkiWsaEnlilSimulation',
 					},
 					{
-						name: 'DONKI Notifications',
-						value: 'donkiNotifications',
+						name: 'Earth Asset',
+						value: 'earthAssets',
 					},
 					{
 						name: 'Earth Imagery',
 						value: 'earthImagery',
 					},
-					{
-						name: 'Earth Assets',
-						value: 'earthAssets',
-					},
 				],
 				default: 'astronomyPictureOfTheDay',
-				description: 'The resource to operate on',
 			},
 			// ----------------------------------
 			//            operations
@@ -122,6 +121,7 @@ export class Nasa implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -137,12 +137,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -158,12 +158,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -179,12 +179,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -200,12 +200,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -221,12 +221,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -242,12 +242,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -263,12 +263,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -284,12 +284,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -305,12 +305,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -326,12 +326,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -347,12 +347,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -368,12 +368,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -389,12 +389,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -410,12 +410,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -431,12 +431,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -452,12 +452,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -473,12 +473,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -494,12 +494,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -515,12 +515,12 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -536,7 +536,6 @@ export class Nasa implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------
@@ -601,7 +600,7 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default just the url of the image is returned. When set to true the image will be downloaded',
+				description: 'By default just the URL of the image is returned. When set to true the image will be downloaded.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -682,14 +681,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start date',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End date',
+						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
@@ -721,14 +720,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start date',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End date',
+						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
@@ -896,12 +895,16 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
 					show: {

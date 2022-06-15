@@ -51,7 +51,6 @@ export class ConvertKit implements INodeType {
 		description: 'Consume ConvertKit API',
 		defaults: {
 			name: 'ConvertKit',
-			color: '#fb6970',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -66,6 +65,7 @@ export class ConvertKit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Custom Field',
@@ -89,7 +89,6 @@ export class ConvertKit implements INodeType {
 					},
 				],
 				default: 'form',
-				description: 'The resource to operate on.',
 			},
 			//--------------------
 			// Field Description

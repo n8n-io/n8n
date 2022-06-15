@@ -5,6 +5,8 @@ import {
 	SASLOptions,
 } from 'kafkajs';
 
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+
 import {
 	ITriggerFunctions,
 } from 'n8n-core';
@@ -27,7 +29,6 @@ export class KafkaTrigger implements INodeType {
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -45,7 +46,7 @@ export class KafkaTrigger implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'topic-name',
-				description: 'Name of the queue of topic to consume from.',
+				description: 'Name of the queue of topic to consume from',
 			},
 			{
 				displayName: 'Group ID',
@@ -54,7 +55,30 @@ export class KafkaTrigger implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'n8n-kafka',
-				description: 'ID of the consumer group.',
+				description: 'ID of the consumer group',
+			},
+			{
+				displayName: 'Use Schema Registry',
+				name: 'useSchemaRegistry',
+				type: 'boolean',
+				default: false,
+				description: 'Use Confluent Schema Registry',
+			},
+			{
+				displayName: 'Schema Registry URL',
+				name: 'schemaRegistryUrl',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [
+							true,
+						],
+					},
+				},
+				placeholder: 'https://schema-registry-domain:8081',
+				default: '',
+				description: 'URL of the schema registry',
 			},
 			{
 				displayName: 'Options',
@@ -68,21 +92,21 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Allow sending message to a previously non exisiting topic .',
+						description: 'Allow sending message to a previously non exisiting topic',
 					},
 					{
-						displayName: 'Read messages from beginning',
+						displayName: 'Read Messages From Beginning',
 						name: 'fromBeginning',
 						type: 'boolean',
 						default: true,
-						description: 'Read message from beginning .',
-					},					
+						description: 'Read message from beginning',
+					},
 					{
 						displayName: 'JSON Parse Message',
 						name: 'jsonParseMessage',
 						type: 'boolean',
 						default: false,
-						description: 'Try to parse the message to an object.',
+						description: 'Try to parse the message to an object',
 					},
 					{
 						displayName: 'Only Message',
@@ -96,14 +120,21 @@ export class KafkaTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Returns only the message property.',
+						description: 'Returns only the message property',
 					},
 					{
 						displayName: 'Session Timeout',
 						name: 'sessionTimeout',
 						type: 'number',
 						default: 30000,
-						description: 'The time to await a response in ms.',
+						description: 'The time to await a response in ms',
+					},
+					{
+						displayName: 'Return Headers',
+						name: 'returnHeaders',
+						type: 'boolean',
+						default: false,
+						description: 'Return the headers received from Kafka',
 					},
 				],
 			},
@@ -116,7 +147,7 @@ export class KafkaTrigger implements INodeType {
 
 		const groupId = this.getNodeParameter('groupId') as string;
 
-		const credentials = await this.getCredentials('kafka') as IDataObject;
+		const credentials = await this.getCredentials('kafka');
 
 		const brokers = (credentials.brokers as string || '').split(',').map(item => item.trim()) as string[];
 
@@ -147,12 +178,16 @@ export class KafkaTrigger implements INodeType {
 		const consumer = kafka.consumer({ groupId });
 
 		await consumer.connect();
-		
+
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		await consumer.subscribe({ topic, fromBeginning: (options.fromBeginning)? true : false });
 
 		const self = this;
+
+		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
+
+		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
 
 		const startConsumer = async () => {
 			await consumer.run({
@@ -165,6 +200,23 @@ export class KafkaTrigger implements INodeType {
 						try {
 							value = JSON.parse(value);
 						} catch (error) { }
+					}
+
+					if (useSchemaRegistry) {
+						try {
+							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+							value = await registry.decode(message.value as Buffer);
+						} catch (error) { }
+					}
+
+					if (options.returnHeaders && message.headers) {
+						const headers: {[key: string]: string} = {};
+						for (const key of Object.keys(message.headers)) {
+							const header = message.headers[key];
+							headers[key] = header?.toString('utf8') || '';
+						}
+
+						data.headers = headers;
 					}
 
 					data.message = value;

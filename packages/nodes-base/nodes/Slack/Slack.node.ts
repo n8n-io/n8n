@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -8,11 +7,12 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeCredentialTestResult,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -66,7 +66,7 @@ import {
 	IAttachment,
 } from './MessageInterface';
 
-import moment = require('moment');
+import moment from 'moment';
 
 interface Attachment {
 	fields: {
@@ -119,7 +119,6 @@ export class Slack implements INodeType {
 		description: 'Consume Slack API',
 		defaults: {
 			name: 'Slack',
-			color: '#E01E5A',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -134,7 +133,6 @@ export class Slack implements INodeType {
 						],
 					},
 				},
-				testedBy: 'testSlackTokenAuth',
 			},
 			{
 				name: 'slackOAuth2Api',
@@ -164,13 +162,13 @@ export class Slack implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -206,7 +204,6 @@ export class Slack implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 
 			...channelOperations,
@@ -291,47 +288,12 @@ export class Slack implements INodeType {
 				return returnData;
 			},
 		},
-		credentialTest: {
-			async testSlackTokenAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
-
-				const options = {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json; charset=utf-8',
-						Authorization: `Bearer ${credential.data!.accessToken}`,
-					},
-					uri: 'https://slack.com/api/users.profile.get',
-					json: true,
-				};
-
-				try {
-					const response = await this.helpers.request(options);
-
-					if (!response.ok) {
-						return {
-							status: 'Error',
-							message: `${response.error}`,
-						};
-					}
-				} catch (err) {
-					return {
-						status: 'Error',
-						message: `${err.message}`,
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject;
 		let responseData;
 		const authentication = this.getNodeParameter('authentication', 0) as string;
@@ -377,7 +339,7 @@ export class Slack implements INodeType {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const userId = this.getNodeParameter('userId', i) as string;
 						const body: IDataObject = {
-							name: channel,
+							channel,
 							user: userId,
 						};
 						responseData = await slackApiRequest.call(this, 'POST', '/conversations.kick', body, qs);
@@ -844,6 +806,28 @@ export class Slack implements INodeType {
 						}
 						body['attachments'] = attachments;
 
+						const jsonParameters = this.getNodeParameter('jsonParameters', i, false) as boolean;
+						if (jsonParameters) {
+							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
+
+							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json');
+							}
+							if (blocksJson !== '') {
+								body.blocks = blocksJson;
+							}
+
+							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
+
+							if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
+								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json');
+							}
+
+							if (attachmentsJson !== '') {
+								body.attachments = attachmentsJson;
+							}
+						}
+
 						// Add all the other options to the request
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(body, updateFields);
@@ -978,9 +962,10 @@ export class Slack implements INodeType {
 								|| items[i].binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 							}
+							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							body.file = {
 								//@ts-ignore
-								value: Buffer.from(items[i].binary[binaryPropertyName].data, BINARY_ENCODING),
+								value: binaryDataBuffer,
 								options: {
 									//@ts-ignore
 									filename: items[i].binary[binaryPropertyName].fileName,
@@ -1192,7 +1177,7 @@ export class Slack implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 					continue;
 				}
 				throw error;

@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="parameter.displayName"
-		:tooltipText="parameter.description"
+		:label="$locale.credText().inputLabelDisplayName(parameter)"
+		:tooltipText="$locale.credText().inputLabelDescription(parameter)"
 		:required="parameter.required"
 		:showTooltip="focused"
 	>
@@ -13,27 +13,37 @@
 			:displayOptions="true"
 			:documentationUrl="documentationUrl"
 			:errorHighlight="showRequiredErrors"
+			:isForCredential="true"
 			@focus="onFocus"
 			@blur="onBlur"
 			@textInput="valueChanged"
 			@valueChanged="valueChanged"
 			inputSize="large"
+			:eventSource="eventSource"
 		/>
-		<div class="errors" v-if="showRequiredErrors">
-			This field is required. <a v-if="documentationUrl" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open docs</a>
+		<div :class="$style.errors" v-if="showRequiredErrors">
+			<n8n-text color="danger" size="small">
+				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+				<n8n-link v-if="documentationUrl" :to="documentationUrl" size="small" :underline="true" @click="onDocumentationUrlClick">
+					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
+				</n8n-link>
+			</n8n-text>
 		</div>
+		<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
 import ParameterInput from './ParameterInput.vue';
+import InputHint from './ParameterInputHint.vue';
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'ParameterInputExpanded',
 	components: {
 		ParameterInput,
+		InputHint,
 	},
 	props: {
 		parameter: {
@@ -44,6 +54,9 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		documentationUrl: {
+			type: String,
+		},
+		eventSource: {
 			type: String,
 		},
 	},
@@ -93,3 +106,12 @@ export default Vue.extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+	.errors {
+		margin-top: var(--spacing-2xs);
+	}
+	.hint {
+		margin-top: var(--spacing-4xs);
+	}
+</style>

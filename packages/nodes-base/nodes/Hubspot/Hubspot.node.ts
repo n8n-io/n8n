@@ -3,16 +3,27 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	clean,
+	getAssociations,
+	getCallMetadata,
+	getEmailMetadata,
+	getMeetingMetadata,
+	getTaskMetadata,
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
 } from './GenericFunctions';
@@ -38,6 +49,11 @@ import {
 } from './DealDescription';
 
 import {
+	engagementFields,
+	engagementOperations,
+} from './EngagementDescription';
+
+import {
 	formFields,
 	formOperations,
 } from './FormDescription';
@@ -60,6 +76,9 @@ import {
 	snakeCase,
 } from 'change-case';
 
+import {
+	validateCredentials
+} from './GenericFunctions';
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot',
@@ -71,7 +90,6 @@ export class Hubspot implements INodeType {
 		description: 'Consume HubSpot API',
 		defaults: {
 			name: 'Hubspot',
-			color: '#ff7f64',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -79,10 +97,23 @@ export class Hubspot implements INodeType {
 			{
 				name: 'hubspotApi',
 				required: true,
+				testedBy: 'hubspotApiTest',
 				displayOptions: {
 					show: {
 						authentication: [
 							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'hubspotAppToken',
+				required: true,
+				testedBy: 'hubspotApiTest',
+				displayOptions: {
+					show: {
+						authentication: [
+							'appToken',
 						],
 					},
 				},
@@ -110,18 +141,26 @@ export class Hubspot implements INodeType {
 						value: 'apiKey',
 					},
 					{
+						name: 'APP Token',
+						value: 'appToken',
+					},
+					{
 						name: 'OAuth2',
 						value: 'oAuth2',
 					},
 				],
 				default: 'apiKey',
-				description: 'The method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: 'Company',
+						value: 'company',
+					},
 					{
 						name: 'Contact',
 						value: 'contact',
@@ -131,12 +170,12 @@ export class Hubspot implements INodeType {
 						value: 'contactList',
 					},
 					{
-						name: 'Company',
-						value: 'company',
-					},
-					{
 						name: 'Deal',
 						value: 'deal',
+					},
+					{
+						name: 'Engagement',
+						value: 'engagement',
 					},
 					{
 						name: 'Form',
@@ -148,7 +187,6 @@ export class Hubspot implements INodeType {
 					},
 				],
 				default: 'deal',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,
@@ -162,6 +200,9 @@ export class Hubspot implements INodeType {
 			// DEAL
 			...dealOperations,
 			...dealFields,
+			// ENGAGEMENT
+			...engagementOperations,
+			...engagementFields,
 			// FORM
 			...formOperations,
 			...formFields,
@@ -172,6 +213,26 @@ export class Hubspot implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async hubspotApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				try {
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					const err = error as JsonObject;
+					if (err.statusCode === 401) {
+						return {
+							status: 'Error',
+							message: `Invalid credentials`,
+						};
+					}
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful',
+				};
+			},
+		},
+
 		loadOptions: {
 			/* -------------------------------------------------------------------------- */
 			/*                                 CONTACT                                    */
@@ -850,12 +911,16 @@ export class Hubspot implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/contacts/v1/lists/all/contacts/all';
 				const contacts = await hubspotApiRequestAllItems.call(this, 'contacts', 'GET', endpoint);
+
 				for (const contact of contacts) {
-					const contactName = `${contact.properties.firstname.value} ${contact.properties.lastname.value}`;
+					const firstName = contact.properties?.firstname?.value || '';
+					const lastName = contact.properties?.lastname?.value || '';
+					const contactName = `${firstName} ${lastName}`;
 					const contactId = contact.vid;
 					returnData.push({
 						name: contactName,
 						value: contactId,
+						description: `Contact VID: ${contactId}`,
 					});
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
@@ -867,7 +932,7 @@ export class Hubspot implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -906,7 +971,7 @@ export class Hubspot implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as JsonObject).message });
 				} else {
 					throw error;
 				}
@@ -914,7 +979,7 @@ export class Hubspot implements INodeType {
 		} else {
 			for (let i = 0; i < length; i++) {
 				try {
-				//https://developers.hubspot.com/docs/methods/contacts/create_or_update
+					//https://developers.hubspot.com/docs/methods/contacts/create_or_update
 					if (resource === 'contact') {
 						//https://developers.hubspot.com/docs/methods/companies/create_company
 						if (operation === 'upsert') {
@@ -1346,11 +1411,9 @@ export class Hubspot implements INodeType {
 							const endpoint = '/crm/v3/objects/contacts/search';
 
 							if (returnAll) {
-
 								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
-
 							} else {
-								qs.count = this.getNodeParameter('limit', 0) as number;
+								body.limit = this.getNodeParameter('limit', 0) as number;
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 								responseData = responseData.results;
 							}
@@ -2124,6 +2187,80 @@ export class Hubspot implements INodeType {
 							}
 						}
 					}
+					if (resource === 'engagement') {
+						//https://legacydocs.hubspot.com/docs/methods/engagements/create_engagement
+						if (operation === 'create') {
+							const type = this.getNodeParameter('type', i) as string;
+							const metadata = this.getNodeParameter('metadata', i) as IDataObject;
+							const associations = this.getNodeParameter('additionalFields.associations', i, {}) as IDataObject;
+
+							if (!Object.keys(metadata).length) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`At least one metadata field needs to set`,
+								);
+							}
+
+							const body: {
+								engagement: { type: string },
+								metadata: IDataObject,
+								associations: IDataObject
+							} = {
+								engagement: {
+									type: type.toUpperCase(),
+								},
+								metadata: {},
+								associations: {},
+							};
+
+							if (type === 'email') {
+								body.metadata = getEmailMetadata(metadata);
+							}
+
+							if (type === 'task') {
+								body.metadata = getTaskMetadata(metadata);
+							}
+
+							if (type === 'meeting') {
+								body.metadata = getMeetingMetadata(metadata);
+							}
+
+							if (type === 'call') {
+								body.metadata = getCallMetadata(metadata);
+							}
+
+							//@ts-ignore
+							body.associations = getAssociations(associations);
+
+							const endpoint = '/engagements/v1/engagements';
+							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
+						}
+						//https://legacydocs.hubspot.com/docs/methods/engagements/get_engagement
+						if (operation === 'delete') {
+							const engagementId = this.getNodeParameter('engagementId', i) as string;
+							const endpoint = `/engagements/v1/engagements/${engagementId}`;
+							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+							responseData = { success: true };
+						}
+						//https://legacydocs.hubspot.com/docs/methods/engagements/get_engagement
+						if (operation === 'get') {
+							const engagementId = this.getNodeParameter('engagementId', i) as string;
+							const endpoint = `/engagements/v1/engagements/${engagementId}`;
+							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						}
+						//https://legacydocs.hubspot.com/docs/methods/engagements/get-all-engagements
+						if (operation === 'getAll') {
+							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const endpoint = `/engagements/v1/engagements/paged`;
+							if (returnAll) {
+								responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
+							} else {
+								qs.limit = this.getNodeParameter('limit', 0) as number;
+								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+								responseData = responseData.results;
+							}
+						}
+					}
 					//https://developers.hubspot.com/docs/methods/forms/forms_overview
 					if (resource === 'form') {
 						//https://developers.hubspot.com/docs/methods/forms/v2/get_fields
@@ -2189,14 +2326,17 @@ export class Hubspot implements INodeType {
 							const ticketName = this.getNodeParameter('ticketName', i) as string;
 							const body: IDataObject[] = [
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'hs_pipeline',
 									value: pipelineId,
 								},
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'hs_pipeline_stage',
 									value: stageId,
 								},
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'subject',
 									value: ticketName,
 								},
@@ -2422,7 +2562,7 @@ export class Hubspot implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({ error: (error as JsonObject).message });
 						continue;
 					}
 					throw error;

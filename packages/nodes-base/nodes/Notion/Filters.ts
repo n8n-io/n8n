@@ -1,13 +1,8 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
 
-import {
-	getConditions
-} from './GenericFunctions';
 
-export const filters: INodeProperties[] = [{
-	displayName: 'Property Name',
+// tslint:disable-next-line: no-any
+export const filters = (conditions: any) => [{
+	displayName: 'Property Name or ID',
 	name: 'key',
 	type: 'options',
 	typeOptions: {
@@ -17,7 +12,7 @@ export const filters: INodeProperties[] = [{
 		],
 	},
 	default: '',
-	description: 'The name of the property to filter by.',
+	description: 'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 },
 {
 	displayName: 'Type',
@@ -25,7 +20,7 @@ export const filters: INodeProperties[] = [{
 	type: 'hidden',
 	default: '={{$parameter["&key"].split("|")[1]}}',
 },
-...getConditions(),
+...conditions,
 {
 	displayName: 'Title',
 	name: 'titleValue',
@@ -82,10 +77,10 @@ export const filters: INodeProperties[] = [{
 		},
 	},
 	default: '',
-	description: `Phone number. No structure is enforced.`,
+	description: 'Phone number. No structure is enforced.',
 },
 {
-	displayName: 'Option',
+	displayName: 'Option Name or ID',
 	name: 'multiSelectValue',
 	type: 'options',
 	typeOptions: {
@@ -105,11 +100,9 @@ export const filters: INodeProperties[] = [{
 		},
 	},
 	default: [],
-	description: `Name of the options you want to set.
-	Multiples can be defined separated by comma.`,
 },
 {
-	displayName: 'Option',
+	displayName: 'Option Name or ID',
 	name: 'selectValue',
 	type: 'options',
 	typeOptions: {
@@ -129,7 +122,6 @@ export const filters: INodeProperties[] = [{
 		},
 	},
 	default: '',
-	description: `Name of the option you want to set.`,
 },
 {
 	displayName: 'Email',
@@ -149,7 +141,6 @@ export const filters: INodeProperties[] = [{
 		},
 	},
 	default: '',
-	description: 'Email address.',
 },
 {
 	displayName: 'URL',
@@ -169,10 +160,9 @@ export const filters: INodeProperties[] = [{
 		},
 	},
 	default: '',
-	description: 'Web address.',
 },
 {
-	displayName: 'User ID',
+	displayName: 'User Name or ID',
 	name: 'peopleValue',
 	type: 'options',
 	typeOptions: {
@@ -192,10 +182,10 @@ export const filters: INodeProperties[] = [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 },
 {
-	displayName: 'User ID',
+	displayName: 'User Name or ID',
 	name: 'createdByValue',
 	type: 'options',
 	typeOptions: {
@@ -215,10 +205,10 @@ export const filters: INodeProperties[] = [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 },
 {
-	displayName: 'User ID',
+	displayName: 'User Name or ID',
 	name: 'lastEditedByValue',
 	type: 'options',
 	typeOptions: {
@@ -238,7 +228,7 @@ export const filters: INodeProperties[] = [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 },
 {
 	displayName: 'Relation ID',
@@ -271,7 +261,7 @@ export const filters: INodeProperties[] = [{
 	},
 	type: 'boolean',
 	default: false,
-	description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
+	description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked',
 },
 {
 	displayName: 'Number',
@@ -291,7 +281,7 @@ export const filters: INodeProperties[] = [{
 	},
 	type: 'number',
 	default: 0,
-	description: 'Number value.',
+	description: 'Number value',
 },
 {
 	displayName: 'Date',
@@ -317,7 +307,7 @@ export const filters: INodeProperties[] = [{
 	},
 	type: 'dateTime',
 	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
+	description: 'An ISO 8601 format date, with optional time',
 },
 {
 	displayName: 'Created Time',
@@ -343,7 +333,7 @@ export const filters: INodeProperties[] = [{
 	},
 	type: 'dateTime',
 	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
+	description: 'An ISO 8601 format date, with optional time',
 },
 {
 	displayName: 'Last Edited Time',
@@ -369,5 +359,99 @@ export const filters: INodeProperties[] = [{
 	},
 	type: 'dateTime',
 	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
-}];
+	description: 'An ISO 8601 format date, with optional time',
+},
+//formula types
+{
+	displayName: 'Number',
+	name: 'numberValue',
+	displayOptions: {
+		show: {
+			type: [
+				'formula',
+			],
+			returnType: [
+				'number',
+			],
+		},
+		hide: {
+			condition: [
+				'is_empty',
+				'is_not_empty',
+			],
+		},
+	},
+	type: 'number',
+	default: 0,
+	description: 'Number value',
+},
+{
+	displayName: 'Text',
+	name: 'textValue',
+	type: 'string',
+	displayOptions: {
+		show: {
+			type: [
+				'formula',
+			],
+			returnType: [
+				'text',
+			],
+		},
+		hide: {
+			condition: [
+				'is_empty',
+				'is_not_empty',
+			],
+		},
+	},
+	default: '',
+},
+{
+	displayName: 'Boolean',
+	name: 'checkboxValue',
+	displayOptions: {
+		show: {
+			type: [
+				'formula',
+			],
+			returnType: [
+				'checkbox',
+			],
+		},
+	},
+	type: 'boolean',
+	default: false,
+	description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked',
+
+},
+{
+	displayName: 'Date',
+	name: 'dateValue',
+	displayOptions: {
+		show: {
+			type: [
+				'formula',
+			],
+			returnType: [
+				'date',
+			],
+		},
+		hide: {
+			condition: [
+				'is_empty',
+				'is_not_empty',
+				'past_week',
+				'past_month',
+				'past_year',
+				'next_week',
+				'next_month',
+				'next_year',
+			],
+		},
+	},
+	type: 'dateTime',
+	default: '',
+	description: 'An ISO 8601 format date, with optional time',
+},
+];

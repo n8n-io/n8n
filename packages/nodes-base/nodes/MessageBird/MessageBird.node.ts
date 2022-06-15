@@ -25,7 +25,6 @@ export class MessageBird implements INodeType {
 		description: 'Sends SMS via MessageBird',
 		defaults: {
 			name: 'MessageBird',
-			color: '#2481d7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -40,6 +39,7 @@ export class MessageBird implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -51,12 +51,12 @@ export class MessageBird implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -72,12 +72,12 @@ export class MessageBird implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -93,7 +93,6 @@ export class MessageBird implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -116,7 +115,7 @@ export class MessageBird implements INodeType {
 						],
 					},
 				},
-				description: 'The number from which to send the message.',
+				description: 'The number from which to send the message',
 			},
 			{
 				displayName: 'To',
@@ -135,7 +134,7 @@ export class MessageBird implements INodeType {
 						],
 					},
 				},
-				description: 'All recipients separated by commas.',
+				description: 'All recipients separated by commas',
 			},
 			{
 				displayName: 'Message',
@@ -153,7 +152,7 @@ export class MessageBird implements INodeType {
 						],
 					},
 				},
-				description: 'The message to be send.',
+				description: 'The message to be send',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -173,11 +172,11 @@ export class MessageBird implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Created Date-time',
+						displayName: 'Created Date-Time',
 						name: 'createdDatetime',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time of the creation of the message in RFC3339 format (Y-m-dTH:i:sP).',
+						description: 'The date and time of the creation of the message in RFC3339 format (Y-m-dTH:i:sP)',
 					},
 					{
 						displayName: 'Datacoding',
@@ -198,14 +197,14 @@ export class MessageBird implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Using unicode will limit the maximum number of characters to 70 instead of 160.',
+						description: 'Using unicode will limit the maximum number of characters to 70 instead of 160',
 					},
 					{
 						displayName: 'Gateway',
 						name: 'gateway',
 						type: 'number',
 						default: '',
-						description: 'The SMS route that is used to send the message.',
+						description: 'The SMS route that is used to send the message',
 					},
 					{
 						displayName: 'Group IDs',
@@ -213,7 +212,7 @@ export class MessageBird implements INodeType {
 						placeholder: '1,2',
 						type: 'string',
 						default: '',
-						description: 'Group IDs separated by commas, If provided recipients can be omitted.',
+						description: 'Group IDs separated by commas, If provided recipients can be omitted',
 					},
 					{
 						displayName: 'Message Type',
@@ -238,7 +237,7 @@ export class MessageBird implements INodeType {
 						name: 'reference',
 						type: 'string',
 						default: '',
-						description: 'A client reference.',
+						description: 'A client reference',
 					},
 					{
 						displayName: 'Report Url',
@@ -248,11 +247,11 @@ export class MessageBird implements INodeType {
 						description: 'The status report URL to be used on a per-message basis. Reference is required for a status report webhook to be sent.',
 					},
 					{
-						displayName: 'Scheduled Date-time',
+						displayName: 'Scheduled Date-Time',
 						name: 'scheduledDatetime',
 						type: 'dateTime',
 						default: '',
-						description: 'The scheduled date and time of the message in RFC3339 format (Y-m-dTH:i:sP).',
+						description: 'The scheduled date and time of the message in RFC3339 format (Y-m-dTH:i:sP)',
 					},
 					{
 						displayName: 'Type',
@@ -290,7 +289,7 @@ export class MessageBird implements INodeType {
 						typeOptions: {
 							minValue: 1,
 						},
-						description: 'The amount of seconds that the message is valid.',
+						description: 'The amount of seconds that the message is valid',
 					},
 				],
 			},

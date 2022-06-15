@@ -43,7 +43,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 		description: 'Starts the workflow when Survey Monkey events occur',
 		defaults: {
 			name: 'SurveyMonkey Trigger',
-			color: '#53b675',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -101,7 +100,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Type',
@@ -138,14 +136,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 						description: 'A collector is created',
 					},
 					{
-						name: 'Collector Updated',
-						value: 'collector_updated',
-						description: 'A collector is updated',
-					},
-					{
 						name: 'Collector Deleted',
 						value: 'collector_deleted',
 						description: 'A collector is deleted',
+					},
+					{
+						name: 'Collector Updated',
+						value: 'collector_updated',
+						description: 'A collector is updated',
 					},
 					{
 						name: 'Response Completed',
@@ -165,12 +163,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Disqualified',
 						value: 'response_disqualified',
-						description: 'A survey response is disqualified ',
+						description: 'A survey response is disqualified',
 					},
 					{
 						name: 'Response Overquota',
 						value: 'response_overquota',
-						description: `A response is over a survey’s quota`,
+						description: 'A response is over a survey’s quota',
 					},
 					{
 						name: 'Response Updated',
@@ -209,14 +207,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				options: [
 					{
-						name: 'Collector Updated',
-						value: 'collector_updated',
-						description: 'A collector is updated',
-					},
-					{
 						name: 'Collector Deleted',
 						value: 'collector_deleted',
 						description: 'A collector is deleted',
+					},
+					{
+						name: 'Collector Updated',
+						value: 'collector_updated',
+						description: 'A collector is updated',
 					},
 					{
 						name: 'Response Completed',
@@ -236,12 +234,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Disqualified',
 						value: 'response_disqualified',
-						description: 'A survey response is disqualified ',
+						description: 'A survey response is disqualified',
 					},
 					{
 						name: 'Response Overquota',
 						value: 'response_overquota',
-						description: `A response is over a survey’s quota`,
+						description: 'A response is over a survey’s quota',
 					},
 					{
 						name: 'Response Updated',
@@ -276,7 +274,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Survey ID',
+				displayName: 'Survey Name or ID',
 				name: 'surveyId',
 				type: 'options',
 				displayOptions: {
@@ -342,7 +340,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Returns only the answers of the form and not any of the other data',
 			},
 		],
 	};
@@ -497,9 +495,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 		const webhookName = this.getWebhookName();
 
 		if (authenticationMethod === 'accessToken') {
-			credentials = await this.getCredentials('surveyMonkeyApi') as IDataObject;
+			credentials = await this.getCredentials('surveyMonkeyApi');
 		} else {
-			credentials = await this.getCredentials('surveyMonkeyOAuth2Api') as IDataObject;
+			credentials = await this.getCredentials('surveyMonkeyOAuth2Api');
 		}
 
 		if (webhookName === 'setup') {

@@ -38,7 +38,6 @@ export class ItemLists implements INodeType {
 		description: 'Helper for working with lists of items and transforming arrays',
 		defaults: {
 			name: 'Item Lists',
-			color: '#ff6d5a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -60,16 +59,17 @@ export class ItemLists implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
-					{
-						name: 'Split Out Items',
-						value: 'splitOutItems',
-						description: 'Turn a list inside item(s) into separate items',
-					},
 					{
 						name: 'Aggregate Items',
 						value: 'aggregateItems',
 						description: 'Merge fields into a single new item',
+					},
+					{
+						name: 'Limit',
+						value: 'limit',
+						description: 'Remove items if there are too many',
 					},
 					{
 						name: 'Remove Duplicates',
@@ -82,9 +82,9 @@ export class ItemLists implements INodeType {
 						description: 'Change the item order',
 					},
 					{
-						name: 'Limit',
-						value: 'limit',
-						description: 'Remove items if there are too many',
+						name: 'Split Out Items',
+						value: 'splitOutItems',
+						description: 'Turn a list inside item(s) into separate items',
 					},
 				],
 				default: 'splitOutItems',
@@ -228,7 +228,7 @@ export class ItemLists implements INodeType {
 								},
 								type: 'string',
 								default: '',
-								description: 'The name of the field to put the aggregated data in. Leave blank to use the input field name',
+								description: 'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
 							},
 						],
 					},
@@ -312,7 +312,7 @@ export class ItemLists implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Field To Exclude',
+				placeholder: 'Add Field To Compare',
 				default: {},
 				displayOptions: {
 					show: {
@@ -545,7 +545,7 @@ return 0;`,
 						name: 'removeOtherFields',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates',
+						description: 'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
 					},
 					{
 						displayName: 'Disable Dot Notation',
@@ -667,7 +667,7 @@ return 0;`,
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -752,7 +752,12 @@ return 0;`,
 								newItem = { ...newItem, [destinationFieldName as string || fieldToSplitOut as string]: element };
 							}
 
-							returnData.push({ json: newItem });
+							returnData.push({
+								json: newItem,
+								pairedItem: {
+									item: i,
+								},
+							});
 						}
 					}
 				}
@@ -790,8 +795,17 @@ return 0;`,
 					}
 				}
 
+
 				let newItem: INodeExecutionData;
-				newItem = { json: {} };
+				newItem = {
+					json: {},
+					pairedItem: Array.from({length}, (_, i) => i).map(index => {
+						return {
+							item: index,
+						};
+					}),
+				};
+
 				// tslint:disable-next-line: no-any
 				const values: { [key: string]: any } = {};
 				const outputFields: string[] = [];
@@ -899,9 +913,10 @@ return 0;`,
 					}
 					keys = fieldsToCompare.map(key => (key.trim()));
 				}
+
 				// This solution is O(nlogn)
 				// add original index to the items
-				const newItems = items.map((item, index) => ({ json: { ...item['json'], __INDEX: index, }, } as INodeExecutionData));
+				const newItems = items.map((item, index) => ({ json: { ...item['json'], __INDEX: index, }, pairedItem: { item: index, } } as INodeExecutionData));
 				//sort items using the compare keys
 				newItems.sort((a, b) => {
 					let result = 0;
@@ -962,7 +977,7 @@ return 0;`,
 				let data = items.filter((_, index) => !removedIndexes.includes(index));
 
 				if (removeOtherFields) {
-					data = data.map(item => ({ json: pick(item.json, ...keys) }));
+					data = data.map((item, index) => ({ json: pick(item.json, ...keys), pairedItem: { item: index, } }));
 				}
 
 				// return the filtered items
@@ -986,7 +1001,7 @@ return 0;`,
 						fieldName: string;
 						order: 'ascending' | 'descending'
 					}>;
-				
+
 
 					if (!sortFields || !sortFields.length) {
 						throw new NodeOperationError(this.getNode(), 'No sorting specified. Please add a field to sort by');

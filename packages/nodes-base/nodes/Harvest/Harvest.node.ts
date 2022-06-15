@@ -77,7 +77,6 @@ export class Harvest implements INodeType {
 		description: 'Access data on Harvest',
 		defaults: {
 			name: 'Harvest',
-			color: '#e7863f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -121,7 +120,6 @@ export class Harvest implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 
 
@@ -129,6 +127,7 @@ export class Harvest implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 
 					{
@@ -164,7 +163,7 @@ export class Harvest implements INodeType {
 						value: 'task',
 					},
 					{
-						name: 'Time Entries',
+						name: 'Time Entry',
 						value: 'timeEntry',
 					},
 					{
@@ -173,7 +172,6 @@ export class Harvest implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 
 			// operations
@@ -189,7 +187,7 @@ export class Harvest implements INodeType {
 			...userOperations,
 
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				required: true,

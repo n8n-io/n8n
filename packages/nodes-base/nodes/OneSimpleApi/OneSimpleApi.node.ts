@@ -23,7 +23,6 @@ export class OneSimpleApi implements INodeType {
 		description: 'A toolbox of no-code utilities',
 		defaults: {
 			name: 'One Simple API',
-			color: '#1A82e2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -38,6 +37,7 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Information',
@@ -64,6 +64,7 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -95,6 +96,7 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -121,6 +123,7 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -141,13 +144,13 @@ export class OneSimpleApi implements INodeType {
 					},
 				],
 				default: 'exchangeRate',
-				description: 'The operation to perform.',
 			},
 			// Utility
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -159,7 +162,7 @@ export class OneSimpleApi implements INodeType {
 					{
 						name: 'Expand URL',
 						value: 'expandURL',
-						description: 'Expand a shortened url',
+						description: 'Expand a shortened URL',
 					},
 					{
 						name: 'Generate QR Code',
@@ -173,7 +176,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				],
 				default: 'validateEmail',
-				description: 'The operation to perform.',
 			},
 			// website: pdf
 			{
@@ -284,12 +286,12 @@ export class OneSimpleApi implements INodeType {
 								value: 'A6',
 							},
 							{
-								name: 'Legal',
-								value: 'Legal',
-							},
-							{
 								name: 'Ledger',
 								value: 'Ledger',
+							},
+							{
+								name: 'Legal',
+								value: 'Legal',
 							},
 							{
 								name: 'Letter',
@@ -301,15 +303,13 @@ export class OneSimpleApi implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The page size',
 					},
 					{
 						displayName: 'Force Refresh',
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
-            This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
+						description: 'Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it\'s necessary.',
 					},
 				],
 			},
@@ -530,22 +530,20 @@ export class OneSimpleApi implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The screen size',
 					},
 					{
 						displayName: 'Force Refresh',
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
-            This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
+						description: 'Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it\'s necessary.',
 					},
 					{
 						displayName: 'Full Page',
 						name: 'fullpage',
 						type: 'boolean',
 						default: false,
-						description: 'The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option',
+						description: 'The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option.',
 					},
 				],
 			},
@@ -623,7 +621,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'From Currency',
 			},
 			{
 				displayName: 'To Currency',
@@ -642,7 +639,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'To Currency',
 			},
 			// information: imageMetadata
 			{
@@ -704,7 +700,6 @@ export class OneSimpleApi implements INodeType {
 						name: 'headers',
 						type: 'boolean',
 						default: false,
-						description: '',
 					},
 				],
 			},
@@ -725,7 +720,6 @@ export class OneSimpleApi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email Address',
 			},
 			// utility: expandURL
 			{
@@ -752,7 +746,7 @@ export class OneSimpleApi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		let download;

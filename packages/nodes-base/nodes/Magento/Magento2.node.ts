@@ -1,10 +1,18 @@
 import {
+	OptionsWithUri,
+} from 'request';
+
+
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -67,7 +75,6 @@ export class Magento2 implements INodeType {
 		description: 'Consume Magento API',
 		defaults: {
 			name: 'Magento 2',
-			color: '#ec6737',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -82,6 +89,7 @@ export class Magento2 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Customer',
@@ -101,7 +109,6 @@ export class Magento2 implements INodeType {
 					},
 				],
 				default: 'customer',
-				description: 'The resource to operate on',
 			},
 			...customerOperations,
 			...customerFields,
@@ -277,7 +284,7 @@ export class Magento2 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const timezone = this.getTimezone();
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -564,7 +571,7 @@ export class Magento2 implements INodeType {
 								sku,
 								name,
 								attribute_set_id: parseInt(attributeSetId, 10),
-								price, 
+								price,
 							},
 						};
 

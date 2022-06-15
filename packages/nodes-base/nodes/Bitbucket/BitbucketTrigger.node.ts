@@ -10,11 +10,11 @@ import {
 	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeCredentialTestResult,
 } from 'n8n-workflow';
 
 import {
@@ -32,7 +32,6 @@ export class BitbucketTrigger implements INodeType {
 		description: 'Handle Bitbucket events via webhooks',
 		defaults: {
 			name: 'Bitbucket Trigger',
-			color: '#0052cc',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -56,6 +55,7 @@ export class BitbucketTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -68,10 +68,9 @@ export class BitbucketTrigger implements INodeType {
 					},
 				],
 				default: 'workspace',
-				description: 'The resource to operate on.',
 			},
 			{
-				displayName: 'Workspace',
+				displayName: 'Workspace Name or ID',
 				name: 'workspace',
 				type: 'options',
 				displayOptions: {
@@ -87,7 +86,7 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events.',
+				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Events',
@@ -106,10 +105,10 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 			{
-				displayName: 'Repository',
+				displayName: 'Repository Name or ID',
 				name: 'repository',
 				type: 'options',
 				displayOptions: {
@@ -127,7 +126,7 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events.',
+				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Events',
@@ -146,7 +145,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to.',
+				description: 'The events to listen to',
 			},
 		],
 
@@ -154,7 +153,7 @@ export class BitbucketTrigger implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async bitbucketApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<NodeCredentialTestResult> {
+			async bitbucketApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 
 				const options: OptionsWithUri = {
