@@ -127,8 +127,6 @@ import {
 import { editor } from 'monaco-editor';
 import { workflowActivate } from './mixins/workflowActivate';
 
-const NODES_WITHOUT_TRIGGER_PANEL = [START_NODE_TYPE, ERROR_TRIGGER_NODE_TYPE];
-
 export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActivate).extend({
 	name: 'NodeDetailsView',
 	components: {
@@ -198,13 +196,12 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 			return null;
 		},
 		showTriggerPanel(): boolean {
+			const isWebhookBasedNode = this.activeNodeType && this.activeNodeType.webhooks && this.activeNodeType.webhooks.length;
+			const isPollingNode = this.activeNodeType && this.activeNodeType.polling;
 			return Boolean(
 				!this.readOnly &&
 				this.isTriggerNode &&
-					this.activeNode &&
-					!NODES_WITHOUT_TRIGGER_PANEL.includes(this.activeNode.type) &&
-					this.activeNodeType &&
-					!this.activeNodeType.group.includes('schedule'),
+				(isWebhookBasedNode || isPollingNode),
 			);
 		},
 		workflow(): Workflow {
