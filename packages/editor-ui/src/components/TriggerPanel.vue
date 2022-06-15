@@ -191,7 +191,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			}
 
 			if (this.isWebhookNode) {
-				return this.$locale.baseText('triggerPanel.webhookNode.action');
+				return '';
 			}
 
 			if (this.isWebhookBasedNode) {

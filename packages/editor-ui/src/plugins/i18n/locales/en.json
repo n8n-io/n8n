@@ -824,7 +824,6 @@
 	"triggerPanel.executeWorkflow": "Execute workflow to test node",
 	"triggerPanel.activateWorkflow.message": "Once you’re happy with your workflow, <a data-key=\"activate\">activate</a> it to continuously listen for requests. ",
 	"triggerPanel.webhookBasedNode.action": "Pull in events from {name}",
-	"triggerPanel.webhookNode.action": "Use this webhook",
 	"updatesPanel.andIs": "and is",
 	"updatesPanel.behindTheLatest": "behind the latest and greatest n8n",
 	"updatesPanel.howToUpdateYourN8nVersion": "How to update your n8n version",
