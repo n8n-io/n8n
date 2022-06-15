@@ -1,6 +1,6 @@
-# n8n - Workflow Automation Tool
+![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
+# n8n - Workflow automation tool
 
 n8n is an extendable workflow automation tool. With a [fair-code](http://faircode.io) distribution model, n8n will always have visible source code, be available to self-host, and allow you to add your own custom functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect anything to everything.
 
@@ -31,11 +31,11 @@ The changelog can be found [here](https://docs.n8n.io/reference/changelog.html) 
 
 Execute: `npm run start`
 
-## n8n.cloud
+## n8n cloud
 
-Sign-up for an [n8n.cloud](https://www.n8n.cloud/) account.
+Sign-up for an [n8n cloud](https://www.n8n.io/cloud/) account.
 
-While n8n.cloud and n8n are the same in terms of features, n8n.cloud provides certain conveniences such as:
+While n8n cloud and n8n are the same in terms of features, n8 cloud provides certain conveniences such as:
 
 - Not having to set up and maintain your n8n instance
 - Managed OAuth for authentication
@@ -66,7 +66,7 @@ However, I did not like how long the name was and I could not imagine writing
 something that long every time in the CLI. That is when I then ended up on
 'n8n'." - **Jan Oberhauser, Founder and CEO, n8n.io**
 
-## Development Setup
+## Development setup
 
 Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to contribute ? The [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) will help you get your development environment ready in minutes.
 
