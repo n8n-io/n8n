@@ -20,7 +20,7 @@ export default {
 	},
 };
 
-const Template: StoryFn = (args, { argTypes }) => ({
+const template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nHeaderMessage,
@@ -34,7 +34,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	`,
 });
 
-export const withTrailingLink = Template.bind({});
+export const withTrailingLink = template.bind({});
 
 withTrailingLink.args = {
 	theme: 'secondary',
@@ -44,7 +44,7 @@ withTrailingLink.args = {
 	trailingLinkUrl: 'https://n8n.io',
 };
 
-export const withTrailingIcon = Template.bind({});
+export const withTrailingIcon = template.bind({});
 
 withTrailingIcon.args = {
 	theme: 'secondary',
@@ -53,7 +53,7 @@ withTrailingIcon.args = {
 	trailingIcon: 'star',
 };
 
-export const withInfoTip = Template.bind({});
+export const withInfoTip = template.bind({});
 
 withInfoTip.args = {
 	theme: 'secondary',
