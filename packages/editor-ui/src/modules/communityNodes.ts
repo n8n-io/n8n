@@ -41,12 +41,6 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		getInstalledPackageByName(state: ICommunityNodesState) {
 			return (name: string) => state.installedPackages[name];
 		},
-		isCommunityNode(state: ICommunityNodesState, name: string) {
-			return (name: string) : boolean => {
-				const packageName = name.split('.')[0];
-				return packageName in state.installedPackages;
-			};
-		},
 	},
 	actions: {
 		async fetchAvailableCommunityPackageCount(context: ActionContext<ICommunityNodesState, IRootState>) {

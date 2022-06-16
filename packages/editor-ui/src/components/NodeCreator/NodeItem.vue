@@ -96,7 +96,7 @@ export default Vue.extend({
 			};
 		},
 		isCommunityNode(): boolean {
-			return this.$store.getters['communityNodes/isCommunityNode'](this.nodeType.name);
+			return this.nodeType.communityNode === true;
 		},
 		hasNameClash(): boolean {
 			return this.$store.getters.isNodeTypeInNameClash(this.nodeType);

@@ -29,6 +29,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
+	ICommunityNodesState,
 } from './Interface';
 
 import credentials from './modules/credentials';
@@ -649,6 +650,20 @@ export const store = new Vuex.Store({
 			if (!state.workflow.hasOwnProperty('settings')) {
 				Vue.set(state.workflow, 'settings', {});
 			}
+		},
+
+		setCommunityNodeFlags (state) {
+			const allNodeTypes = state.nodeTypes;
+			const communityPackages = (modules.communityNodes.state as ICommunityNodesState).installedPackages;
+
+			allNodeTypes.forEach(nodeInfo => {
+				const packageName = nodeInfo.name.split('.')[0];
+				if (packageName in communityPackages) {
+					nodeInfo.communityNode = true;
+				}
+			});
+			Vue.set(state, 'nodeTypes', allNodeTypes);
+			state.nodeTypes = allNodeTypes;
 		},
 
 		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {

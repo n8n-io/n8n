@@ -51,7 +51,7 @@ export default mixins(
 		isCommunityNode(): boolean {
 			const nodeType = this.nodeType as INodeTypeDescription | null;
 			if (nodeType) {
-				return this.$store.getters['communityNodes/isCommunityNode'](nodeType.name);
+				return nodeType.communityNode === true;
 			}
 			return false;
 		},
