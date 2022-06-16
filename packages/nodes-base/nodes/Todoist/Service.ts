@@ -55,5 +55,5 @@ export interface Service {
 
 export interface TodoistResponse {
 	success?: boolean;
-	[key: string]: any;
+	[key: string]: unknown;
 }
