@@ -9,7 +9,7 @@ import {
 	IWorkflowBase,
 	IWorkflowDb,
 } from '.';
-import { Telemetry } from './telemetry';
+import Telemetry from './telemetry';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;

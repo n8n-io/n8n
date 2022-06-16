@@ -47,13 +47,7 @@ import { credentialsController } from '../../../src/api/credentials.api';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
 import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
 import type { User } from '../../../src/databases/entities/User';
-import type {
-	ApiPath,
-	EndpointGroup,
-	PostgresSchemaSection,
-	SmtpTestAccount,
-	TriggerTime,
-} from './types';
+import type { ApiPath, EndpointGroup, PostgresSchemaSection, SmtpTestAccount } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
 

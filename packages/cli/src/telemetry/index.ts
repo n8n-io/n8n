@@ -35,7 +35,8 @@ interface IExecutionsBuffer {
 	firstExecutions: IFirstExecutions;
 }
 
-export class Telemetry {
+// eslint-disable-next-line import/no-default-export
+export default class Telemetry {
 	private client?: TelemetryClient;
 
 	private instanceId: string;
@@ -71,12 +72,24 @@ export class Telemetry {
 				return;
 			}
 
-			this.client = new TelemetryClient(key, url, { logLevel });
+			this.client = this.createTelemetryClient(key, url, logLevel);
 
-			this.pulseIntervalReference = setInterval(async () => {
-				void this.pulse();
-			}, 6 * 60 * 60 * 1000); // every 6 hours
+			this.startPulse();
 		}
+	}
+
+	private createTelemetryClient(
+		key: string,
+		url: string,
+		logLevel: string,
+	): TelemetryClient | undefined {
+		return new TelemetryClient(key, url, { logLevel });
+	}
+
+	private startPulse() {
+		this.pulseIntervalReference = setInterval(async () => {
+			void this.pulse();
+		}, 6 * 60 * 60 * 1000); // every 6 hours
 	}
 
 	private async pulse(): Promise<unknown> {
@@ -102,6 +115,10 @@ export class Telemetry {
 
 		allPromises.push(this.track('pulse', { version_cli: this.versionCli }));
 		return Promise.all(allPromises);
+	}
+
+	getTelemetryClient(): unknown {
+		return this.client;
 	}
 
 	async trackWorkflowExecution(properties: IDataObject): Promise<void> {
