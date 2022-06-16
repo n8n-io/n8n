@@ -75,8 +75,5 @@ export function isCommunityPackageName(packageName: string): boolean {
 	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
 	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
 
-	if(nameMatch) {
-		return true;
-	}
-	return false;
+	return !!nameMatch;
 }

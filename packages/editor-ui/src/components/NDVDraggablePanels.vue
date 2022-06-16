@@ -10,7 +10,7 @@
 			<div :class="$style.dragButtonContainer" @click="close">
 				<PanelDragButton
 					:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-					v-if="!isTriggerNode"
+					v-if="!hideInputAndOutput && !isTriggerNode"
 					:canMoveLeft="canMoveLeft"
 					:canMoveRight="canMoveRight"
 					@dragstart="onDragStart"

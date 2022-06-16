@@ -193,7 +193,7 @@ export default Vue.extend({
 	height: 16px;
 	width: 16px;
 	display: flex;
-	margin-right: 5px;
+	margin-right: var(--spacing-3xs);
 }
 
 .draggable {
