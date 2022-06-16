@@ -19,9 +19,10 @@ export class LinkedIn implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',
-		icon: 'file:linkedin.png',
+		icon: 'file:linkedin.svg',
 		group: ['input'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume LinkedIn API',
 		defaults: {
 			name: 'LinkedIn',
