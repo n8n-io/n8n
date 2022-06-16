@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const emailOperations: Array<INodeProperties> = [
+export const emailOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -33,7 +33,16 @@ export const emailOperations: Array<INodeProperties> = [
 	}
 ];
 
-const sendHtmlEmailFields: Array<INodeProperties> = [
+const emailAttachments: INodeProperties[] = [
+	{
+		displayName: 'Attachments',
+		default: {},
+		name: 'emailAttachments',
+		type: 'fixedCollection'
+	}
+];
+
+const sendHtmlEmailFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
@@ -343,7 +352,7 @@ const sendHtmlEmailFields: Array<INodeProperties> = [
 	}
 ];
 
-const sendHtmlTemplateEmailFields: Array<INodeProperties> = [
+const sendHtmlTemplateEmailFields: INodeProperties[] = [
 	{
 		type: 'number',
 		name: 'templateId',
@@ -479,7 +488,7 @@ const sendHtmlTemplateEmailFields: Array<INodeProperties> = [
 	}
 ];
 
-export const emailFields: Array<INodeProperties> = [
+export const emailFields: INodeProperties[] = [
 	...sendHtmlEmailFields,
 	...sendHtmlTemplateEmailFields
 ];

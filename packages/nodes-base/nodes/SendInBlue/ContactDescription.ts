@@ -84,7 +84,7 @@ export const contactOperations: INodeProperties[] = [
 	},
 ];
 
-const createOperations: Array<INodeProperties> = [
+const createOperations: INodeProperties[] = [
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -230,14 +230,14 @@ const createOperations: Array<INodeProperties> = [
 	}
 ];
 
-const getAllOperations: Array<INodeProperties> = [
+const getAllOperations: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		routing: {
 			send: {
-				paginate: "={{$value}}"
+				paginate: '={{$value}}'
 			}
 		},
 		displayOptions: {
@@ -354,7 +354,7 @@ const getAllOperations: Array<INodeProperties> = [
 	}
 ];
 
-const getOperations: Array<INodeProperties> = [
+const getOperations: INodeProperties[] = [
 	{
 		displayName: 'Contact Identifier',
 		name: 'identifier',
@@ -381,7 +381,7 @@ const getOperations: Array<INodeProperties> = [
 	}
 ];
 
-const deleteOperations: Array<INodeProperties> = [
+const deleteOperations: INodeProperties[] = [
 	{
 		displayName: 'Contact Identifier',
 		name: 'identifier',
@@ -417,7 +417,7 @@ const deleteOperations: Array<INodeProperties> = [
 	}
 ];
 
-const updateOperations: Array<INodeProperties> = [
+const updateOperations: INodeProperties[] = [
 	{
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',

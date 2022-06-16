@@ -116,7 +116,7 @@ export const attributeOperations: INodeProperties[] = [
 	}
 ];
 
-const createAttributeOperations: Array<INodeProperties> = [
+const createAttributeOperations: INodeProperties[] = [
 	{
 		default: 'normal',
 		description: 'Category of the attribute',
@@ -214,7 +214,7 @@ const createAttributeOperations: Array<INodeProperties> = [
 		type: 'options',
 		routing: {
 			send: {
-				type: "body",
+				type: 'body',
 				property: 'type',
 				value: '={{$value}}'
 			},
@@ -243,7 +243,7 @@ const createAttributeOperations: Array<INodeProperties> = [
 		placeholder: '',
 		routing: {
 			send: {
-				type: "body",
+				type: 'body',
 				property: 'value',
 				value: '={{$value}}'
 			}
@@ -320,7 +320,7 @@ const createAttributeOperations: Array<INodeProperties> = [
 	}
 ];
 
-const updateAttributeOperations: Array<INodeProperties> = [
+const updateAttributeOperations: INodeProperties[] = [
 	{
 		default: '',
 		description: 'Category of the attribute',
@@ -392,7 +392,7 @@ const updateAttributeOperations: Array<INodeProperties> = [
 		placeholder: '',
 		routing: {
 			send: {
-				type: "body",
+				type: 'body',
 				property: 'value',
 				value: '={{$value}}'
 			}
@@ -470,7 +470,7 @@ const updateAttributeOperations: Array<INodeProperties> = [
 	}
 ];
 
-const deleteAttribueOperations: Array<INodeProperties> = [
+const deleteAttribueOperations: INodeProperties[] = [
 	{
 		default: 'normal',
 		description: 'Category of the attribute',
@@ -529,7 +529,7 @@ const deleteAttribueOperations: Array<INodeProperties> = [
 	}
 ];
 
-const getAllAttributeOperations: Array<INodeProperties> = [
+const getAllAttributeOperations: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

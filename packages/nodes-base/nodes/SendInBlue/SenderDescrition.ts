@@ -1,6 +1,6 @@
 import { IDataObject, IExecuteSingleFunctions, IN8nHttpFullResponse, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
-export const senderOperations: Array<INodeProperties> = [
+export const senderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -76,7 +76,7 @@ export const senderOperations: Array<INodeProperties> = [
 	}
 ];
 
-const senderCreateOperation: Array<INodeProperties> = [
+const senderCreateOperation: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -131,7 +131,7 @@ const senderCreateOperation: Array<INodeProperties> = [
 	},
 ];
 
-const senderDeleteOperation: Array<INodeProperties> = [
+const senderDeleteOperation: INodeProperties[] = [
 	{
 		displayName: 'Sender ID',
 		name: 'id',
@@ -151,7 +151,7 @@ const senderDeleteOperation: Array<INodeProperties> = [
 	}
 ];
 
-const senderGetAllOperation: Array<INodeProperties> = [
+const senderGetAllOperation: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -195,7 +195,7 @@ const senderGetAllOperation: Array<INodeProperties> = [
 	},
 ];
 
-export const senderFields: Array<INodeProperties> = [
+export const senderFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                sender:create                               */
 	/* -------------------------------------------------------------------------- */
