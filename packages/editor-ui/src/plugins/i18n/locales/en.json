@@ -812,7 +812,7 @@
 	"triggerPanel.webhookBasedNode.listening": "Listening for your trigger event",
 	"triggerPanel.webhookNode.requestHint": "Make a {type} request to:",
 	"triggerPanel.webhookNode.prodRequestsHint": "For production executions, use <a data-key=\"copy\">this URL</a>. You won’t see production executions in this UI.",
-	"triggerPanel.webhookNode.activationHint": "Once you’ve finished building your workflow, avoid having to click this button by using the production webhook URL. <a data-key=\"help\">More info</a>",
+	"triggerPanel.webhookNode.activationHint": "Once you’ve finished building your workflow, run it without having to click this button by using the production webhook URL. <a data-key=\"help\">More info</a>",
 	"triggerPanel.webhookBasedNode.serviceHint": "Go to {service} and create an event",
 	"triggerPanel.inactiveHint": "Once you’ve finished building your workflow, <a>activate it</a> to have it also run automatically (you just won’t see the executions here). <a data-key=\"help\">More info</a>",
 	"triggerPanel.activeHint": "This node will also trigger automatically on new {service} events (but those executions won’t show up here). <a data-key=\"help\">More info</a>",
