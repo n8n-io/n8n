@@ -33,6 +33,7 @@ export class NocoDb implements ICredentialType {
 			value: '={{$credentials.apiToken}}',
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.host}}',
@@ -43,7 +44,7 @@ export class NocoDb implements ICredentialType {
 				type: 'responseSuccessBody',
 				properties: {
 					key: 'isAuthorized',
-					value: true,
+					value: false,
 					message: 'Invalid API Token',
 				},
 			},

@@ -128,7 +128,7 @@ export const operationFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 100,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -143,7 +143,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
+		description: 'Whether to download the attachment fields define in \'Download Fields\'',
 	},
 	{
 		displayName: 'Download Fields',
@@ -275,7 +275,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
+		description: 'Whether to download the attachment fields define in \'Download Fields\'',
 	},
 	{
 		displayName: 'Download Fields',
@@ -399,7 +399,7 @@ export const operationFields: INodeProperties[] = [
 						name: 'binaryData',
 						type: 'boolean',
 						default: false,
-						description: 'If the field data to set is binary and should be taken from a binary property',
+						description: 'Whether to use a binary property or not',
 					},
 					{
 						displayName: 'Field Value',
