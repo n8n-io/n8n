@@ -52,7 +52,7 @@ export class Sendinblue implements INodeType {
 						value: 'sender',
 					},
 					{
-						name: 'Attribute',
+						name: 'Contact Attribute',
 						value: 'attribute'
 					}
 				],
