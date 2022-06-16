@@ -806,7 +806,6 @@ export class Telegram implements INodeType {
 				name: 'fileName',
 				type: 'string',
 				default: '',
-				required: false,
 				description: 'Name of the file name. It is required if your input file name is empty.',
 				displayOptions: {
 					show: {
