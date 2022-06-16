@@ -18,6 +18,12 @@ RUN apk --update add --virtual build-dependencies python3 build-base ca-certific
 	apk del build-dependencies \
 	&& rm -rf /root /tmp/* /var/cache/apk/* && mkdir /root;
 
+# Install any external npm depdencies required by nodes here
+RUN cd /usr/local/lib/node_modules/n8n \
+	&& npm install jsdom \
+	&& npm install --save xml-js
+
+
 # Install fonts
 RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
 	update-ms-fonts && \
