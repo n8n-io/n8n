@@ -120,7 +120,7 @@ export default mixins(
 				return this.$locale.baseText('ndv.execute.listenForTestEvent');
 			}
 
-			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.name === ERROR_TRIGGER_NODE_TYPE)) {
+			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.mockManualExecution)) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 

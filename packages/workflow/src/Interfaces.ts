@@ -1180,6 +1180,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	};
 	webhooks?: IWebhookDescription[];
 	translation?: { [key: string]: object };
+	mockManualExecution?: true,
 }
 
 export interface INodeHookDescription {
