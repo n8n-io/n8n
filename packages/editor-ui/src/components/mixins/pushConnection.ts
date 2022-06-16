@@ -355,7 +355,7 @@ export const pushConnection = mixins(
 					const nodesToBeFetched: INodeTypeNameVersion[] = [pushData];
 
 					// Force reload of all credential types
-					this.$store.dispatch('credentials/fetchCredentialTypes')
+					this.$store.dispatch('credentials/fetchCredentialTypes', true)
 						.then(() => {
 							// Get the data of the node and update in internal storage
 							return this.restApi().getNodesInformation(nodesToBeFetched);
