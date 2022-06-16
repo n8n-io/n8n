@@ -41,7 +41,7 @@ export class GoogleCalendarTrigger implements INodeType {
 		polling: true,
 		properties: [
 			{
-				displayName: 'Calendar Name/ID',
+				displayName: 'Calendar Name or ID',
 				name: 'calendarId',
 				type: 'options',
 				required: true,

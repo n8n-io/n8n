@@ -122,7 +122,7 @@ export const labelFields: INodeProperties[] = [
 				value: 'hide',
 			},
 			{
-				name: 'show',
+				name: 'Show',
 				value: 'show',
 			},
 		],

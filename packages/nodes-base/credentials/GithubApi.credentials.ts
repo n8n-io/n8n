@@ -1,4 +1,6 @@
 import {
+	IAuthenticateHeaderAuth,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -28,4 +30,18 @@ export class GithubApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate: IAuthenticateHeaderAuth = {
+		type: 'headerAuth',
+		properties: {
+			name: 'Authorization',
+			value: '=token {{$credentials?.accessToken}}',
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.server}}',
+			url: '/user',
+			method: 'GET',
+		},
+	};
 }

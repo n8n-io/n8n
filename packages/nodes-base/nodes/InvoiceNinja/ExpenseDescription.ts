@@ -73,7 +73,7 @@ export const expenseFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
 				typeOptions: {
@@ -94,7 +94,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
@@ -120,6 +120,18 @@ export const expenseFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'ACH',
+						value: 5,
+					},
+					{
+						name: 'Alipay',
+						value: 28,
+					},
+					{
+						name: 'American Express',
+						value: 8,
+					},
+					{
 						name: 'Apply Credit',
 						value: 1,
 					},
@@ -128,68 +140,52 @@ export const expenseFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Cash',
-						value: 3,
-					},
-					{
-						name: 'Debit',
-						value: 4,
-					},
-					{
-						name: 'ACH',
-						value: 5,
-					},
-					{
-						name: 'Visa Card',
-						value: 6,
-					},
-					{
-						name: 'MasterCard',
-						value: 7,
-					},
-					{
-						name: 'American Express',
-						value: 8,
-					},
-					{
-						name: 'Discover Card',
-						value: 9,
-					},
-					{
-						name: 'Diners Card',
-						value: 10,
-					},
-					{
-						name: 'EuroCard',
-						value: 11,
-					},
-					{
-						name: 'Nova',
-						value: 12,
-					},
-					{
-						name: 'Credit Card Other',
-						value: 13,
-					},
-					{
-						name: 'Paypal',
-						value: 14,
-					},
-					{
-						name: 'Google Wallet',
-						value: 15,
-					},
-					{
-						name: 'Check',
-						value: 16,
+						name: 'Bitcoin',
+						value: 32,
 					},
 					{
 						name: 'Carte Blanche',
 						value: 17,
 					},
 					{
-						name: 'UnionPay',
-						value: 18,
+						name: 'Cash',
+						value: 3,
+					},
+					{
+						name: 'Check',
+						value: 16,
+					},
+					{
+						name: 'Credit Card Other',
+						value: 13,
+					},
+					{
+						name: 'Debit',
+						value: 4,
+					},
+					{
+						name: 'Diners Card',
+						value: 10,
+					},
+					{
+						name: 'Discover Card',
+						value: 9,
+					},
+					{
+						name: 'EuroCard',
+						value: 11,
+					},
+					{
+						name: 'GoCardless',
+						value: 31,
+					},
+					{
+						name: 'Google Wallet',
+						value: 15,
+					},
+					{
+						name: 'iZettle',
+						value: 24,
 					},
 					{
 						name: 'JCB',
@@ -204,6 +200,30 @@ export const expenseFields: INodeProperties[] = [
 						value: 21,
 					},
 					{
+						name: 'MasterCard',
+						value: 7,
+					},
+					{
+						name: 'Money Order',
+						value: 27,
+					},
+					{
+						name: 'Nova',
+						value: 12,
+					},
+					{
+						name: 'Paypal',
+						value: 14,
+					},
+					{
+						name: 'SEPA',
+						value: 30,
+					},
+					{
+						name: 'Sofort',
+						value: 29,
+					},
+					{
 						name: 'Solo',
 						value: 22,
 					},
@@ -212,40 +232,20 @@ export const expenseFields: INodeProperties[] = [
 						value: 23,
 					},
 					{
-						name: 'iZettle',
-						value: 24,
-					},
-					{
 						name: 'Swish',
 						value: 25,
+					},
+					{
+						name: 'UnionPay',
+						value: 18,
 					},
 					{
 						name: 'Venmo',
 						value: 26,
 					},
 					{
-						name: 'Money Order',
-						value: 27,
-					},
-					{
-						name: 'Alipay',
-						value: 28,
-					},
-					{
-						name: 'Sofort',
-						value: 29,
-					},
-					{
-						name: 'SEPA',
-						value: 30,
-					},
-					{
-						name: 'GoCardless',
-						value: 31,
-					},
-					{
-						name: 'Bitcoin',
-						value: 32,
+						name: 'Visa Card',
+						value: 6,
 					},
 				],
 				default: 1,
@@ -299,7 +299,7 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendor',
 				type: 'options',
 				typeOptions: {
