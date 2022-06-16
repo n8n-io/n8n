@@ -22,7 +22,7 @@ jest.mock('../../src/CommunityNodes/packageModel',  () => ({
 }));
 
 import { executeCommand, checkPackageStatus, hasPackageLoadedSuccessfully } from '../../src/CommunityNodes/helpers';
-import { searchInstalledPackage } from '../../src/CommunityNodes/packageModel';
+import { getAllInstalledPackages, searchInstalledPackage } from '../../src/CommunityNodes/packageModel';
 import { CURRENT_PACKAGE_VERSION, UPDATED_PACKAGE_VERSION } from './shared/constants';
 import { installedPackagePayload } from './shared/utils';
 
@@ -54,6 +54,12 @@ beforeEach(async () => {
 	await testDb.truncate(['InstalledNodes', 'InstalledPackages'], testDbName);
 	// @ts-ignore
 	executeCommand.mockReset();
+	// @ts-ignore
+	checkPackageStatus.mockReset();
+	// @ts-ignore
+	searchInstalledPackage.mockReset();
+		// @ts-ignore
+	hasPackageLoadedSuccessfully.mockReset();
 });
 
 afterAll(async () => {
@@ -192,7 +198,74 @@ test('POST /nodes package should not install banned package', async () => {
 	expect(response.body.message).toContain('banned');
 });
 
+// TEST DELETE ENDPOINT
+test('DELETE /nodes package name should not be empty', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const response = await authOwnerAgent.delete('/nodes').send();
 
+	expect(response.statusCode).toBe(400);
+});
+
+test('DELETE /nodes Should return error when package was not installed', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const requestBody = {
+		name: installedPackagePayload().packageName,
+	};
+
+	const response = await authOwnerAgent.delete('/nodes').send(requestBody);
+	expect(response.status).toBe(400);
+	expect(response.body.message).toContain('not installed');
+});
+
+// Useful test ?
+test('DELETE /nodes package should be uninstall all conditions are true', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const requestBody = {
+		name: installedPackagePayload().packageName,
+	};
+	// @ts-ignore
+	searchInstalledPackage.mockImplementation(() => {
+		return true;
+	});
+
+	const response = await authOwnerAgent.delete('/nodes').send(requestBody);
+	expect(executeCommand).toHaveBeenCalledTimes(1);
+});
+
+// TEST PATCH ENDPOINT
+
+test('PATCH /nodes package name should not be empty', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const response = await authOwnerAgent.patch('/nodes').send();
+
+	expect(response.statusCode).toBe(400);
+	console.log(response.body.message)
+});
+
+test('PATCH /nodes Should return error when package was not installed', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const requestBody = {
+		name: installedPackagePayload().packageName,
+	};
+
+	const response = await authOwnerAgent.patch('/nodes').send(requestBody);
+	expect(response.status).toBe(400);
+	expect(response.body.message).toContain('not installed');
+});
+
+test('PATCH /nodes package should be uptaded if all conditions are true', async () => {
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const requestBody = {
+		name: installedPackagePayload().packageName,
+	};
+	// @ts-ignore
+	searchInstalledPackage.mockImplementation(() => {
+		return true;
+	});
+
+	const response = await authOwnerAgent.patch('/nodes').send(requestBody);
+	expect(executeCommand).toHaveBeenCalledTimes(1);
+});
 
 async function saveMockPackage(payload: InstalledPackagePayload) {
 	return await testDb.saveInstalledPackage(payload);

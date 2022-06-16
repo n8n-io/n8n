@@ -193,7 +193,7 @@ nodesController.delete(
 		try {
 			void (await LoadNodesAndCredentials().removeNpmModule(name, installedPackage.installedNodes));
 
-			// Inform the connected frontends that new nodes are available
+			// Inform the connected frontends that the node list has been updated
 			installedPackage.installedNodes.forEach((installedNode) => {
 				const pushInstance = Push.getInstance();
 				pushInstance.send('removeNodeType', {
