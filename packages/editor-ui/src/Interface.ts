@@ -999,4 +999,5 @@ export interface ITab {
 	href?: string;
 	icon?: string;
 	align?: 'right';
+	tooltip?: string;
 }

@@ -15,6 +15,14 @@
 			<p :class="$style.warningIcon">
 				<font-awesome-icon icon="exclamation-triangle" />
 			</p>
+			<div class="missingNodeTitleContainer mt-s mb-xs">
+				<n8n-text
+					size="large"
+					bold
+				>
+					{{ $locale.baseText('nodeSettings.CommunityNodeUnknown.title') }}
+				</n8n-text>
+			</div>
 			<n8n-text v-if="isBaseNode">
 				{{
 					$locale.baseText(
@@ -23,9 +31,8 @@
 					)
 				}}
 			</n8n-text>
-			<div :class="$style.descriptionContainer" v-else>
-				<n8n-text :class="$style.missingNodeTitle" bold size="large">{{ $locale.baseText('nodeSettings.CommunityNodeUnknown.title') }}</n8n-text>
-				<div class="mt-s mb-l">
+			<div v-else :class="$style.descriptionContainer">
+				<div class="mb-l">
 					<span
 						v-html="$locale.baseText('nodeSettings.CommunityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })">
 					</span>
@@ -587,7 +594,6 @@ export default mixins(
 .warningIcon {
 	color: var(--color-text-lighter);
 	font-size: var(--font-size-2xl);
-	margin-top: 15% !important;
 }
 
 .descriptionContainer {
@@ -623,7 +629,12 @@ export default mixins(
 	}
 
 	.node-is-not-valid {
+		height: 75%;
 		padding: 10px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
 		text-align: center;
 	}
 
