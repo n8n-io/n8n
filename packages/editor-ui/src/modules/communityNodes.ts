@@ -27,6 +27,9 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		removePackageByName(state: ICommunityNodesState, name: string) {
 			Vue.delete(state.installedPackages, name);
 		},
+		updatePackageObject(state: ICommunityNodesState, newPackage: PublicInstalledPackage) {
+			state.installedPackages[newPackage.packageName] = newPackage;
+		},
 	},
 	getters: {
 		availablePackageCount(state: ICommunityNodesState): number {
@@ -78,10 +81,8 @@ const module: Module<ICommunityNodesState, IRootState> = {
 		async updatePackage(context: ActionContext<ICommunityNodesState, IRootState>, packageName: string) {
 			try {
 				const packageToUpdate = context.getters.getInstalledPackageByName(packageName);
-				await updatePackage(context.rootGetters.getRestApiContext, packageToUpdate.packageName);
-				// TODO: Use new back-end response to substitute the existing object in the store
-				packageToUpdate.installedVersion = packageToUpdate.updateAvailable;
-				delete packageToUpdate.updateAvailable;
+				const updatedPackage = await updatePackage(context.rootGetters.getRestApiContext, packageToUpdate.packageName);
+				context.commit('updatePackageObject', updatedPackage);
 			} catch (error) {
 				throw(error);
 			}
