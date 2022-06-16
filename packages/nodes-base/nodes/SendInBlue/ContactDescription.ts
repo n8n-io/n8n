@@ -388,7 +388,7 @@ const getAllOperations: Array<INodeProperties> = [
 
 const getOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Identifier',
+		displayName: 'Contact Identifier',
 		name: 'identifier',
 		type: 'string',
 		displayOptions: {
@@ -415,7 +415,7 @@ const getOperations: Array<INodeProperties> = [
 
 const deleteOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Identifier',
+		displayName: 'Contact Identifier',
 		name: 'identifier',
 		type: 'string',
 		displayOptions: {
@@ -453,7 +453,7 @@ const updateOperations: Array<INodeProperties> = [
 	{
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
-		displayName: 'Identifier',
+		displayName: 'Contact Identifier',
 		displayOptions: {
 			show: {
 				resource: [
