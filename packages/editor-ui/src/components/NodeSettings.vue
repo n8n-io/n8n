@@ -23,15 +23,7 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
 				</n8n-text>
 			</div>
-			<n8n-text v-if="isBaseNode">
-				{{
-					$locale.baseText(
-						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
-						{ interpolate: { nodeType: node.type } },
-					)
-				}}
-			</n8n-text>
-			<div v-else :class="$style.descriptionContainer">
+			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
 					<span
 						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })">
@@ -39,6 +31,14 @@
 				</div>
 				<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}</n8n-link>
 			</div>
+			<span v-else
+				v-html="
+					$locale.baseText('nodeSettings.nodeTypeUnknown.description',
+						{
+							interpolate: { docURL: CUSTOM_NODES_DOCS_URL }
+						})
+					">
+			</span>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
@@ -97,6 +97,7 @@ import {
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CUSTOM_NODES_DOCS_URL,
 } from '../constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -191,8 +192,8 @@ export default mixins(
 
 				return this.nodeType.properties;
 			},
-			isBaseNode(): boolean {
-				return this.node.type.startsWith('n8n-nodes-base.');
+			isCommunityNode(): boolean {
+				return this.node.type.startsWith('n8n-nodes-');
 			},
 		},
 		props: {
@@ -315,6 +316,7 @@ export default mixins(
 					},
 				] as INodeProperties[],
 				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+				CUSTOM_NODES_DOCS_URL,
 			};
 		},
 		watch: {

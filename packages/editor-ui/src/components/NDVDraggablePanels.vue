@@ -50,8 +50,6 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		console.log(`${this.hideInputAndOutput} || ${this.isTriggerNode} --> ${!this.hideInputAndOutput || !this.isTriggerNode}`);
-
 		this.setTotalWidth();
 		window.addEventListener('resize', this.setTotalWidth);
 		this.$emit('init', { position: this.getRelativePosition() });

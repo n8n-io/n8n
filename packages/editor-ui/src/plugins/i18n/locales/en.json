@@ -445,6 +445,7 @@
 	"nodeSettings.communityNodeUnknown.title": "Install this node to use it",
 	"nodeSettings.communityNodeUnknown.description": "This node is not currently installed. It's part of the <a href=\"https://www.npmjs.com/package/{packageName}\" target=\"_blank\"/>{packageName}</a> Community Package.",
 	"nodeSettings.communityNodeUnknown.installLink.text": "How to install Community Nodes",
+	"nodeSettings.nodeTypeUnknown.description": "This node is not currently installed. It is either from a newer version of n8n, a <a href=\"{docURL}\" target=\"_blank\"/>custom node</a>, or has an invalid structure",
 	"nodeSettings.thisNodeDoesNotHaveAnyParameters": "This node does not have any parameters",
 	"nodeSettings.useTheHttpRequestNode": "Use the <b>HTTP Request</b> node to make a custom API call. We'll take care of the {nodeTypeDisplayName} auth for you. <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/custom-operations/\">Learn more</a>",
 	"nodeSettings.waitBetweenTries.description": "How long to wait between each attempt (in milliseconds)",
