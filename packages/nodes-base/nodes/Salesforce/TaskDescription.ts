@@ -57,7 +57,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Status',
+		displayName: 'Status Name or ID',
 		name: 'status',
 		type: 'options',
 		required: true,
@@ -75,7 +75,7 @@ export const taskFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getTaskStatuses',
 		},
-		description: 'The current status of the task, such as In Progress or Completed',
+		description: 'The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -129,14 +129,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
-				displayName: 'Call Type',
+				displayName: 'Call Type Name or ID',
 				name: 'callType',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskCallTypes',
 				},
-				description: 'The type of call being answered: Inbound, Internal, or Outbound',
+				description: 'The type of call being answered: Inbound, Internal, or Outbound. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -154,14 +154,14 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -192,44 +192,44 @@ export const taskFields: INodeProperties[] = [
 				description: 'Whether a popup reminder has been set for the task (true) or not (false)',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the record',
+				description: 'ID of the User who owns the record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: 'Indicates the importance or urgency of a task, such as high or low',
+				description: 'Indicates the importance or urgency of a task, such as high or low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Recurrence Type',
+				displayName: 'Recurrence Type Name or ID',
 				name: 'recurrenceType',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
-				description: 'Recurrence Type of the task',
+				description: 'Recurrence Type of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Recurrence Instance',
+				displayName: 'Recurrence Instance Name or ID',
 				name: 'recurrenceInstance',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”.',
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -263,6 +263,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Recurrence Month Of Year',
 				name: 'recurrenceMonthOfYear',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'January',
@@ -359,24 +360,24 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value.',
 			},
 			{
-				displayName: 'Subject',
+				displayName: 'Subject Name or ID',
 				name: 'subject',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskSubjects',
 				},
-				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters',
+				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: 'Represents Type of the task, such as Call or Meeting',
+				description: 'Represents Type of the task, such as Call or Meeting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'What ID',
@@ -468,14 +469,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
 			},
 			{
-				displayName: 'Call Type',
+				displayName: 'Call Type Name or ID',
 				name: 'callType',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskCallTypes',
 				},
-				description: 'The type of call being answered: Inbound, Internal, or Outbound',
+				description: 'The type of call being answered: Inbound, Internal, or Outbound. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -493,14 +494,14 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -531,44 +532,44 @@ export const taskFields: INodeProperties[] = [
 				description: 'Whether a popup reminder has been set for the task (true) or not (false)',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the record',
+				description: 'ID of the User who owns the record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: 'Indicates the importance or urgency of a task, such as high or low',
+				description: 'Indicates the importance or urgency of a task, such as high or low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskStatuses',
 				},
-				description: 'The current status of the task, such as In Progress or Completed',
+				description: 'The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Subject',
+				displayName: 'Subject Name or ID',
 				name: 'subject',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskSubjects',
 				},
-				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters',
+				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence Day Of Month',
@@ -592,14 +593,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'The last date on which the task repeats. This field has a timestamp that is always set to midnight in the Coordinated Universal Time (UTC) time zone.',
 			},
 			{
-				displayName: 'Recurrence Instance',
+				displayName: 'Recurrence Instance Name or ID',
 				name: 'recurrenceInstance',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”.',
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -612,6 +613,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Recurrence Month Of Year',
 				name: 'recurrenceMonthOfYear',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'January',
@@ -694,14 +696,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents what triggers a repeating task to repeat. Add this field to a page layout together with the RecurrenceInterval field, which determines the number of days between the triggering date (due date or close date) and the due date of the next repeating task in the series. Label is Repeat This Task.',
 			},
 			{
-				displayName: 'Recurrence Type',
+				displayName: 'Recurrence Type Name or ID',
 				name: 'recurrenceType',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
-				description: 'Website for the task',
+				description: 'Website for the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence TimeZone SidKey',
@@ -718,14 +720,14 @@ export const taskFields: INodeProperties[] = [
 				description: 'Represents the time when the reminder is scheduled to fire, if IsReminderSet is set to true. If IsReminderSet is set to false, then the user may have deselected the reminder checkbox in the Salesforce user interface, or the reminder has already fired at the time indicated by the value.',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: 'Represents Type of the task, such as Call or Meeting',
+				description: 'Represents Type of the task, such as Call or Meeting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'What ID',
@@ -865,14 +867,14 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getTaskFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions',
+								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
@@ -880,6 +882,14 @@ export const taskFields: INodeProperties[] = [
 								name: 'operation',
 								type: 'options',
 								options: [
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
 									{
 										name: '=',
 										value: 'equal',
@@ -889,16 +899,8 @@ export const taskFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',

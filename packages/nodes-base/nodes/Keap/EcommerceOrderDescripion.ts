@@ -199,7 +199,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
 						typeOptions: {

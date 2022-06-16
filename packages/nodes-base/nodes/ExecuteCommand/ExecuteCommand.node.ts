@@ -119,12 +119,22 @@ export class ExecuteCommand implements INodeType {
 							stderr,
 							stdout,
 						},
+						pairedItem: {
+							item: itemIndex,
+						},
 					},
 				);
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnItems.push({json:{ error: error.message }});
+					returnItems.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

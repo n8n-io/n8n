@@ -52,7 +52,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:getPermalink
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -70,7 +70,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Channel containing the message',
+		description: 'Channel containing the message. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Timestamp',
@@ -155,7 +155,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The text to send',
 	},
 	{
-		displayName: 'JSON parameters',
+		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -463,7 +463,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:update                          */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -481,7 +481,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Channel containing the message to be updated',
+		description: 'Channel containing the message to be updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Text',
@@ -519,7 +519,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'Timestamp of the message to be updated',
 	},
 	{
-		displayName: 'JSON parameters',
+		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
@@ -774,7 +774,7 @@ export const messageFields: INodeProperties[] = [
 											},
 										},
 										default: '',
-										description: 'A URL to load in the user\'s browser when the button is clicked. Maximum length for this field is 3000 characters. If you\'re using url, you\'ll still receive an interaction payload and will need to send an acknowledgement response.',
+										description: 'A URL to load in the user\'s browser when the button is clicked. Maximum length for this field is 3000 characters. If you\'re using URL, you\'ll still receive an interaction payload and will need to send an acknowledgement response.',
 									},
 									{
 										displayName: 'Value',
@@ -1252,7 +1252,7 @@ export const messageFields: INodeProperties[] = [
 										},
 										type: 'string',
 										default: '',
-										description: 'A URL to load in the user\'s browser when the button is clicked. Maximum length for this field is 3000 characters. If you\'re using url, you\'ll still receive an interaction payload and will need to send an acknowledgement response.',
+										description: 'A URL to load in the user\'s browser when the button is clicked. Maximum length for this field is 3000 characters. If you\'re using URL, you\'ll still receive an interaction payload and will need to send an acknowledgement response.',
 									},
 									{
 										displayName: 'Value',
@@ -1732,7 +1732,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:delete
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -1750,7 +1750,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Channel containing the message to be deleted',
+		description: 'Channel containing the message to be deleted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Timestamp',

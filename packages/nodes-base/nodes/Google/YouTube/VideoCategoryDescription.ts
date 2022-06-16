@@ -32,6 +32,7 @@ export const videoCategoryFields: INodeProperties[] = [
 	/*                                 videoCategory:getAll                       */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',

@@ -84,6 +84,21 @@ export class HubspotTrigger implements INodeType {
 								type: 'options',
 								options: [
 									{
+										name: 'Company Created',
+										value: 'company.creation',
+										description: 'To get notified if any company is created in a customer\'s account',
+									},
+									{
+										name: 'Company Deleted',
+										value: 'company.deletion',
+										description: 'To get notified if any company is deleted in a customer\'s account',
+									},
+									{
+										name: 'Company Property Changed',
+										value: 'company.propertyChange',
+										description: 'To get notified if a specified property is changed for any company in a customer\'s account',
+									},
+									{
 										name: 'Contact Created',
 										value: 'contact.creation',
 										description: 'To get notified if any contact is created in a customer\'s account',
@@ -102,21 +117,6 @@ export class HubspotTrigger implements INodeType {
 										name: 'Contact Property Changed',
 										value: 'contact.propertyChange',
 										description: 'To get notified if a specified property is changed for any contact in a customer\'s account',
-									},
-									{
-										name: 'Company Created',
-										value: 'company.creation',
-										description: 'To get notified if any company is created in a customer\'s account',
-									},
-									{
-										name: 'Company Deleted',
-										value: 'company.deletion',
-										description: 'To get notified if any company is deleted in a customer\'s account',
-									},
-									{
-										name: 'Company Property Changed',
-										value: 'company.propertyChange',
-										description: 'To get notified if a specified property is changed for any company in a customer\'s account',
 									},
 									{
 										name: 'Deal Created',
@@ -138,7 +138,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -158,7 +158,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
@@ -178,7 +178,7 @@ export class HubspotTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Property',
+								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
 								typeOptions: {

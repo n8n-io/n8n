@@ -13,6 +13,12 @@ export class MailchimpOAuth2Api implements ICredentialType {
 	documentationUrl = 'mailchimp';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

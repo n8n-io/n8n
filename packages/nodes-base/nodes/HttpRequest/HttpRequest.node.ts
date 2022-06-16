@@ -1,14 +1,10 @@
-import path from 'path';
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
-	IAuthenticate,
 	IBinaryData,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
@@ -16,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
+import { replaceNullValues } from './GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -316,8 +313,8 @@ export class HttpRequest implements INodeType {
 						value: 'headerAuth',
 					},
 					{
-						name: 'Query Auth',
-						value: 'queryAuth',
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'OAuth1',
@@ -328,8 +325,8 @@ export class HttpRequest implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'None',
-						value: 'none',
+						name: 'Query Auth',
+						value: 'queryAuth',
 					},
 				],
 				default: 'none',
@@ -919,8 +916,7 @@ export class HttpRequest implements INodeType {
 				displayName: 'Query Paramters',
 			},
 		};
-
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
@@ -1232,6 +1228,9 @@ export class HttpRequest implements INodeType {
 							json: {
 								error: response.reason,
 							},
+							pairedItem: {
+								item: itemIndex,
+							},
 						},
 					);
 					continue;
@@ -1251,12 +1250,16 @@ export class HttpRequest implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 
 				if (items[itemIndex].binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
+					// @ts-ignore
 					Object.assign(newItem.binary, items[itemIndex].binary);
 				}
 
@@ -1295,11 +1298,19 @@ export class HttpRequest implements INodeType {
 
 						returnItem[property] = response![property];
 					}
-					returnItems.push({ json: returnItem });
+					returnItems.push({
+						json: returnItem,
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else {
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,
+						},
+						pairedItem: {
+							item: itemIndex,
 						},
 					});
 				}
@@ -1319,7 +1330,12 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: returnItem });
+					returnItems.push({
+						json: returnItem,
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else {
 					if (responseFormat === 'json' && typeof response === 'string') {
 						try {
@@ -1330,13 +1346,25 @@ export class HttpRequest implements INodeType {
 					}
 
 					if (options.splitIntoItems === true && Array.isArray(response)) {
-						response.forEach(item => returnItems.push({ json: item }));
+						response.forEach(item => returnItems.push({
+							json: item,
+							pairedItem: {
+								item: itemIndex,
+							},
+						}));
 					} else {
-						returnItems.push({ json: response });
+						returnItems.push({
+							json: response,
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
 					}
 				}
 			}
 		}
+
+		returnItems = returnItems.map(replaceNullValues);
 
 		return this.prepareOutputData(returnItems);
 	}

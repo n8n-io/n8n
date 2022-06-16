@@ -133,9 +133,13 @@ export class User {
 	@BeforeInsert()
 	@BeforeUpdate()
 	preUpsertHook(): void {
-		this.email = this.email?.toLowerCase();
+		this.email = this.email?.toLowerCase() ?? null;
 		this.updatedAt = new Date();
 	}
+
+	@Column({ type: String, nullable: true })
+	@Index({ unique: true })
+	apiKey?: string | null;
 
 	/**
 	 * Whether the user is pending setup completion.

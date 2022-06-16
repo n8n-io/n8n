@@ -16,7 +16,7 @@ import {
 
 import {
 	dropcontactApiRequest,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
@@ -273,7 +273,7 @@ export class Dropcontact implements INodeType {
 		credentialTest: {
 			async dropcontactApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					return {
 						status: 'Error',
