@@ -43,7 +43,6 @@ export class EmailReadImap implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
-		triggerPanel: {},
 		credentials: [
 			{
 				name: 'imap',

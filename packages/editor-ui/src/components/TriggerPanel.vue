@@ -177,10 +177,13 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				(!executedNode || executedNode === this.nodeName)
 			);
 		},
+		workflowRunning (): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
+		},
 		isActivelyPolling(): boolean {
 			const triggeredNode = this.$store.getters.executedNode;
 
-			return this.isPollingNode && this.nodeName === triggeredNode;
+			return this.workflowRunning && this.isPollingNode && this.nodeName === triggeredNode;
 		},
 		isWorkflowActive(): boolean {
 			return this.$store.getters.isActive;

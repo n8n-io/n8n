@@ -17,8 +17,6 @@ export class SseTrigger implements INodeType {
 		description: 'Triggers the workflow when Server-Sent Events occur',
 		eventTriggerDescription: '',
 		activationMessage: 'You can now make calls to your SSE URL to trigger executions.',
-		triggerPanel: {
-		},
 		defaults: {
 			name: 'SSE Trigger',
 			color: '#225577',
