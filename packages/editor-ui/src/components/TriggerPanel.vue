@@ -57,7 +57,7 @@
 					</div>
 
 					<NodeExecuteButton
-						v-if="showExecuteButton"
+						v-if="!isActivelyPolling"
 						:nodeName="nodeName"
 						@execute="onNodeExecute"
 						size="medium"
@@ -287,13 +287,6 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			}
 
 			return '';
-		},
-		showExecuteButton(): boolean {
-			return (
-				(this.isPollingNode && !this.isActivelyPolling) ||
-				this.isWebhookNode ||
-				this.isWebhookBasedNode
-			);
 		},
 	},
 	methods: {
