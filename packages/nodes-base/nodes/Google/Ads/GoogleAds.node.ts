@@ -1,13 +1,7 @@
 import {
 	INodeType,
 	INodeTypeDescription,
-
 } from 'n8n-workflow';
-
-import {
-	analyticsFields,
-	analyticsOperations
-} from './AnalyticsDescription';
 
 import {
 	campaignFields,
@@ -58,10 +52,6 @@ export class GoogleAds implements INodeType {
 						name: 'Campaign',
 						value: 'campaign',
 					},
-					{
-						name: 'Analytics',
-						value: 'analytics',
-					},
 				],
 				default: 'campaign',
 				description: 'The resource to operate on.',
@@ -71,11 +61,6 @@ export class GoogleAds implements INodeType {
 			//-------------------------------
 			...campaignOperations,
 			...campaignFields,
-			//-------------------------------
-			// Analytics Operations
-			//-------------------------------
-			...analyticsOperations,
-			...analyticsFields,
 		],
 	};
 }

@@ -1,3 +1,4 @@
+import { IDataObject } from 'n8n-workflow';
 import {
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
@@ -27,7 +28,32 @@ export const campaignOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
 						body: {
-							query: 'SELECT campaign.id, campaign.name, campaign.advertising_channel_type, campaign.status, campaign.campaign_budget, campaign.start_date, campaign.end_date FROM campaign ORDER BY campaign.id DESC',
+							query: '={{ "' +
+							'select ' +
+							'campaign.id, ' +
+							'campaign.name, ' +
+							'campaign_budget.amount_micros, ' +
+							'campaign_budget.period,' +
+							'campaign.status,' +
+							'campaign.optimization_score,' +
+							'campaign.advertising_channel_type,' +
+							'campaign.advertising_channel_sub_type,' +
+							'metrics.impressions,' +
+							'metrics.interactions,' +
+							'metrics.interaction_rate,' +
+							'metrics.average_cost,' +
+							'metrics.cost_micros,' +
+							'metrics.conversions,' +
+							'metrics.cost_per_conversion,' +
+							'metrics.conversions_from_interactions_rate,' +
+							'metrics.video_views,' +
+							'metrics.average_cpm,' +
+							'metrics.ctr ' +
+							'from campaign ' +
+							'where campaign.id > 0 ' + // create a dummy where clause so we can append more conditions
+							'" + (["allTime", undefined, ""].includes($parameter.additionalOptions?.dateRange) ? "" : " and segments.date DURING " + $parameter.additionalOptions.dateRange) + " ' +
+							'" + (["all", undefined, ""].includes($parameter.additionalOptions?.campaignStatus) ? "" : " and campaign.status = \'" + $parameter.additionalOptions.campaignStatus + "\'") + "' +
+							'" }}',
 						},
 						headers: {
 							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
@@ -35,18 +61,7 @@ export const campaignOperations: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'results',
-								},
-							},
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'campaign',
-								},
-							},
+							processCampaignSearchResponse,
 						],
 					},
 				},
@@ -61,7 +76,31 @@ export const campaignOperations: INodeProperties[] = [
 						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
 						returnFullResponse: true,
 						body: {
-							query: '={{ "SELECT campaign.id, campaign.name, campaign.advertising_channel_type, campaign.status, campaign.campaign_budget, campaign.start_date, campaign.end_date FROM campaign WHERE campaign.id = " + $parameter["campaignId"].toString().replace(/-/g, "") + " ORDER BY campaign.id DESC" }}',
+							query:
+								'={{ "' +
+								'select ' +
+								'campaign.id, ' +
+								'campaign.name, ' +
+								'campaign_budget.amount_micros, ' +
+								'campaign_budget.period,' +
+								'campaign.status,' +
+								'campaign.optimization_score,' +
+								'campaign.advertising_channel_type,' +
+								'campaign.advertising_channel_sub_type,' +
+								'metrics.impressions,' +
+								'metrics.interactions,' +
+								'metrics.interaction_rate,' +
+								'metrics.average_cost,' +
+								'metrics.cost_micros,' +
+								'metrics.conversions,' +
+								'metrics.cost_per_conversion,' +
+								'metrics.conversions_from_interactions_rate,' +
+								'metrics.video_views,' +
+								'metrics.average_cpm,' +
+								'metrics.ctr ' +
+								'from campaign ' +
+								'where campaign.id = " + $parameter["campaignId"].toString().replace(/-/g, "")' +
+								'}}',
 						},
 						headers: {
 							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
@@ -70,18 +109,7 @@ export const campaignOperations: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'results',
-								},
-							},
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'campaign',
-								},
-							},
+							processCampaignSearchResponse,
 						],
 					},
 				},
@@ -110,12 +138,6 @@ export const campaignOperations: INodeProperties[] = [
 									property: 'results',
 								},
 							},
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'campaign',
-								},
-							},
 						],
 					},
 				},
@@ -127,9 +149,6 @@ export const campaignOperations: INodeProperties[] = [
 ];
 
 export const campaignFields: INodeProperties[] = [
-	/* -------------------------------------------------------------------------- */
-	/*                                 calendar:availability                      */
-	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Manager Customer ID',
 		name: 'managerCustomerId',
@@ -197,4 +216,129 @@ export const campaignFields: INodeProperties[] = [
 		default: '',
 		description: 'Custom GQL query',
 	},
+	{
+		displayName: 'Additional Options',
+		name: 'additionalOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: {},
+		description: 'Additional options for fetching campaigns',
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Date range',
+				name: 'dateRange',
+				description: 'Filters statistics by period',
+				type: 'options',
+				options: [
+					{
+						name: 'All time',
+						value: 'allTime',
+						description: 'Fetch statistics for all period',
+					},
+					{
+						name: 'Today',
+						value: 'TODAY',
+						description: 'Today only',
+					},
+					{
+						name: 'Yesterday',
+						value: 'YESTERDAY',
+						description: 'Yesterday only',
+					},
+					{
+						name: 'Last 7 days',
+						value: 'LAST_7_DAYS',
+						description: 'Last 7 days, not including today',
+					},
+					{
+						name: 'Last business week',
+						value: 'LAST_BUSINESS_WEEK',
+						description: 'The 5 day business week, Monday through Friday, of the previous business week',
+					},
+					{
+						name: 'This month',
+						value: 'THIS_MONTH',
+						description: 'All days in the current month.',
+					},
+					{
+						name: 'Last month',
+						value: 'LAST_MONTH',
+						description: 'All days in the previous month',
+					},
+					{
+						name: 'Last 14 days',
+						value: 'LAST_14_DAYS',
+						description: 'The last 14 days not including today',
+					},
+					{
+						name: 'Last 30 days',
+						value: 'LAST_30_DAYS',
+						description: 'The last 30 days not including today',
+					},
+				],
+				default: 'allTime',
+			},
+			{
+				displayName: 'Campaign status',
+				name: 'campaignStatus',
+				description: 'Filters campaigns by status',
+				type: 'options',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+						description: 'Fetch all campaigns regardless of status',
+					},
+					{
+						name: 'Enabled',
+						value: 'ENABLED',
+						description: 'Filter only active campaigns',
+					},
+					{
+						name: 'Paused',
+						value: 'PAUSED',
+						description: 'Filter only paused campaigns',
+					},
+					{
+						name: 'Removed',
+						value: 'REMOVED',
+						description: 'Filter only removed campaigns',
+					},
+				],
+				default: 'all',
+			},
+		],
+	},
+];
+
+function processCampaignSearchResponse(this: IExecuteSingleFunctions, _inputData: INodeExecutionData[], responseData: IN8nHttpFullResponse): Promise<INodeExecutionData[]> {
+	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
+
+	return Promise.resolve(results.map((result) => {
+		return {
+			json: {
+				...result.campaign,
+				...result.metrics,
+				...result.campaignBudget,
+			},
+		};
+	}));
+}
+
+type GoogleAdsCampaignElement = [
+	{
+		campaign: object,
+		metrics: object,
+		campaignBudget: object,
+	}
 ];
