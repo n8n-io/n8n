@@ -9,6 +9,7 @@ import {
 	SyncHandler,
 	UpdateHandler
 } from './OperationHandler';
+
 import {Context} from './GenericFunctions';
 
 export class TodoistService implements Service {
@@ -53,7 +54,6 @@ export interface Service {
 }
 
 export interface TodoistResponse {
-	success: boolean;
-	// tslint:disable-next-line:no-any
-	data: any;
+	success?: boolean;
+	[key: string]: any;
 }

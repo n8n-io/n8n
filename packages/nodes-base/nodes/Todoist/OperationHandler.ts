@@ -1,5 +1,5 @@
 import {IDataObject} from 'n8n-workflow';
-import {Context, todoistApiRequest, todoistSyncRequest} from './GenericFunctions';
+import {Context, FormatDueDatetime, todoistApiRequest, todoistSyncRequest} from './GenericFunctions';
 import {Section, TodoistResponse} from './Service';
 import {v4 as uuid} from 'uuid';
 
@@ -27,7 +27,7 @@ export class CreateHandler implements OperationHandler {
 		}
 
 		if (options.dueDateTime) {
-			body.due_datetime = options.dueDateTime as string;
+			body.due_datetime = FormatDueDatetime(options.dueDateTime as string);
 		}
 
 		if (options.dueString) {
@@ -49,7 +49,6 @@ export class CreateHandler implements OperationHandler {
 		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body);
 
 		return {
-			success: true,
 			data,
 		};
 	}
@@ -89,7 +88,6 @@ export class GetHandler implements OperationHandler {
 
 		const responseData = await todoistApiRequest.call(ctx, 'GET', `/tasks/${id}`);
 		return {
-			success: true,
 			data: responseData,
 		};
 	}
@@ -180,7 +178,7 @@ export class UpdateHandler implements OperationHandler {
 		}
 
 		if (updateFields.dueDateTime) {
-			body.due_datetime = updateFields.dueDateTime as string;
+			body.due_datetime = FormatDueDatetime(updateFields.dueDateTime as string);
 		}
 
 		if (updateFields.dueString) {
@@ -199,7 +197,7 @@ export class UpdateHandler implements OperationHandler {
 
 		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body);
 
-		return {success: true, data: null};
+		return {success: true};
 	}
 }
 
@@ -224,7 +222,7 @@ export class MoveHandler implements OperationHandler {
 
 		await todoistSyncRequest.call(ctx, body);
 
-		return {success: true, data: null};
+		return {success: true};
 	}
 }
 
