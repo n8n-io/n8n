@@ -5,6 +5,7 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,7 +21,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,7 +46,7 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Person',
+		displayName: 'Person Name or ID',
 		name: 'person',
 		type: 'options',
 		typeOptions: {
@@ -54,7 +54,7 @@ export const postFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Person as which the post should be posted as',
+		description: 'Person as which the post should be posted as. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				operation: [

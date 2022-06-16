@@ -7,6 +7,7 @@ export const commentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const commentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -212,7 +212,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'The users that are directly mentioned',
 			},
 			{
-				displayName: 'Mark thread position',
+				displayName: 'Mark Thread Position',
 				name: 'mark_thread_position',
 				type: 'boolean',
 				default: true,
@@ -239,7 +239,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'The temporary ID of the comment',
 			},
 			{
-				displayName: 'Send as integration',
+				displayName: 'Send as Integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,

@@ -129,6 +129,7 @@ export class DateTime implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'MM/DD/YYYY',
@@ -191,24 +192,24 @@ export class DateTime implements INodeType {
 						description: 'In case the input format is not recognized you can provide the format',
 					},
 					{
-						displayName: 'From Timezone',
+						displayName: 'From Timezone Name or ID',
 						name: 'fromTimezone',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
-						description: 'The timezone to convert from',
+						description: 'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'To Timezone',
+						displayName: 'To Timezone Name or ID',
 						name: 'toTimezone',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
-						description: 'The timezone to convert to',
+						description: 'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
 			},
@@ -238,6 +239,7 @@ export class DateTime implements INodeType {
 					},
 				},
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Add',
@@ -283,6 +285,7 @@ export class DateTime implements INodeType {
 					},
 				},
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Quarters',
@@ -445,11 +448,17 @@ export class DateTime implements INodeType {
 						// Uses dot notation so copy all data
 						newItem = {
 							json: JSON.parse(JSON.stringify(item.json)),
+							pairedItem: {
+								item: i,
+							},
 						};
 					} else {
 						// Does not use dot notation so shallow copy is enough
 						newItem = {
 							json: { ...item.json },
+							pairedItem: {
+								item: i,
+							},
 						};
 					}
 
@@ -484,11 +493,17 @@ export class DateTime implements INodeType {
 						// Uses dot notation so copy all data
 						newItem = {
 							json: JSON.parse(JSON.stringify(item.json)),
+							pairedItem: {
+								item: i,
+							},
 						};
 					} else {
 						// Does not use dot notation so shallow copy is enough
 						newItem = {
 							json: { ...item.json },
+							pairedItem: {
+								item: i,
+							},
 						};
 					}
 
@@ -503,7 +518,14 @@ export class DateTime implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;

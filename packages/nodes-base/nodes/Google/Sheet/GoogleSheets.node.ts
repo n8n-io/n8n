@@ -92,6 +92,7 @@ export class GoogleSheets implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Spreadsheet',
@@ -104,12 +105,12 @@ export class GoogleSheets implements INodeType {
 
 				],
 				default: 'sheet',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -136,7 +137,7 @@ export class GoogleSheets implements INodeType {
 					{
 						name: 'Create or Update',
 						value: 'upsert',
-						description: 'Create a new record, or update the current one if it already exists',
+						description: 'Create a new record, or update the current one if it already exists (upsert)',
 					},
 					{
 						name: 'Delete',
@@ -165,7 +166,6 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'read',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -238,7 +238,7 @@ export class GoogleSheets implements INodeType {
 						name: 'columns',
 						values: [
 							{
-								displayName: 'Sheet',
+								displayName: 'Sheet Name or ID',
 								name: 'sheetId',
 								type: 'options',
 								typeOptions: {
@@ -247,7 +247,7 @@ export class GoogleSheets implements INodeType {
 								options: [],
 								default: '',
 								required: true,
-								description: 'The sheet to delete columns from',
+								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Start Index',
@@ -276,7 +276,7 @@ export class GoogleSheets implements INodeType {
 						name: 'rows',
 						values: [
 							{
-								displayName: 'Sheet',
+								displayName: 'Sheet Name or ID',
 								name: 'sheetId',
 								type: 'options',
 								typeOptions: {
@@ -285,7 +285,7 @@ export class GoogleSheets implements INodeType {
 								options: [],
 								default: '',
 								required: true,
-								description: 'The sheet to delete columns from',
+								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Start Index',
@@ -695,6 +695,7 @@ export class GoogleSheets implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -710,7 +711,6 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         spreadsheet:create
@@ -849,7 +849,7 @@ export class GoogleSheets implements INodeType {
 			//         sheet:create
 			// ----------------------------------
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
@@ -863,7 +863,7 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				description: 'When set to true a simplify version of the response will be used else the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Options',

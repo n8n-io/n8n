@@ -7,6 +7,7 @@ export const ticketOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const ticketOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +52,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                ticket:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Pipeline ID',
+		displayName: 'Pipeline Name or ID',
 		name: 'pipelineId',
 		type: 'options',
 		required: true,
@@ -70,10 +70,10 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in',
+		description: 'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Stage ID',
+		displayName: 'Stage Name or ID',
 		name: 'stageId',
 		type: 'options',
 		required: true,
@@ -94,7 +94,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in',
+		description: 'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Ticket Name',
@@ -132,7 +132,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company Ids',
+				displayName: 'Company IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -142,7 +142,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Companies associated with the ticket',
 			},
 			{
-				displayName: 'Contact Ids',
+				displayName: 'Contact IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -152,14 +152,14 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Contacts associated with the ticket',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketCategories',
 				},
 				default: '',
-				description: 'Main reason customer reached out for help',
+				description: 'Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Close Date',
@@ -173,7 +173,7 @@ export const ticketFields: INodeProperties[] = [
 				name: 'createDate',
 				type: 'dateTime',
 				default: '',
-				description: 'the date the ticket was created',
+				description: 'The date the ticket was created',
 			},
 			{
 				displayName: 'Description',
@@ -186,44 +186,44 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Description of the ticket',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketPriorities',
 				},
 				default: '',
-				description: 'The level of attention needed on the ticket',
+				description: 'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Resolution',
+				displayName: 'Resolution Name or ID',
 				name: 'resolution',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketResolutions',
 				},
 				default: '',
-				description: 'The action taken to resolve the ticket',
+				description: 'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Source',
+				displayName: 'Source Name or ID',
 				name: 'source',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketSources',
 				},
 				default: '',
-				description: 'Channel where ticket was originally submitted',
+				description: 'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Ticket Owner ID',
+				displayName: 'Ticket Owner Name or ID',
 				name: 'ticketOwnerId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property.',
+				description: 'The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -266,7 +266,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company Ids',
+				displayName: 'Company IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -276,7 +276,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Companies associated with the ticket',
 			},
 			{
-				displayName: 'Contact Ids',
+				displayName: 'Contact IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -286,14 +286,14 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Contact associated with the ticket',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketCategories',
 				},
 				default: '',
-				description: 'Main reason customer reached out for help',
+				description: 'Main reason customer reached out for help. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Close Date',
@@ -320,44 +320,44 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Description of the ticket',
 			},
 			{
-				displayName: 'Pipeline ID',
+				displayName: 'Pipeline Name or ID',
 				name: 'pipelineId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketPipelines',
 				},
 				default: '',
-				description: 'The ID of the pipeline the ticket is in',
+				description: 'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketPriorities',
 				},
 				default: '',
-				description: 'The level of attention needed on the ticket',
+				description: 'The level of attention needed on the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Resolution',
+				displayName: 'Resolution Name or ID',
 				name: 'resolution',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketResolutions',
 				},
 				default: '',
-				description: 'The action taken to resolve the ticket',
+				description: 'The action taken to resolve the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Source',
+				displayName: 'Source Name or ID',
 				name: 'source',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketSources',
 				},
 				default: '',
-				description: 'Channel where ticket was originally submitted',
+				description: 'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Name',
@@ -367,14 +367,14 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The ID of the pipeline the ticket is in',
 			},
 			{
-				displayName: 'Ticket Owner ID',
+				displayName: 'Ticket Owner Name or ID',
 				name: 'ticketOwnerId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property.',
+				description: 'The user from your team that the ticket is assigned to. You can assign additional users to a ticket record by creating a custom HubSpot user property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

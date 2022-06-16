@@ -53,7 +53,7 @@ export class WiseTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Profile',
+				displayName: 'Profile Name or ID',
 				name: 'profileId',
 				type: 'options',
 				required: true,

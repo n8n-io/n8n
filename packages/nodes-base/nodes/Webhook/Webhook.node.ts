@@ -170,12 +170,12 @@ export class Webhook implements INodeType {
 						description: 'As soon as this node executes',
 					},
 					{
-						name: 'When last node finishes',
+						name: 'When Last Node Finishes',
 						value: 'lastNode',
 						description: 'Returns data of the last-executed node',
 					},
 					{
-						name: 'Using \'Respond to Webhook\' node',
+						name: 'Using \'Respond to Webhook\' Node',
 						value: 'responseNode',
 						description: 'Response defined in that node',
 					},
@@ -382,6 +382,7 @@ export class Webhook implements INodeType {
 						},
 						default: '',
 						placeholder: 'application/xml',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{

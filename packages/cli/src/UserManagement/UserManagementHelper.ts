@@ -123,6 +123,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		resetPasswordTokenExpiration,
 		createdAt,
 		updatedAt,
+		apiKey,
 		...sanitizedUser
 	} = user;
 	if (withoutKeys) {
@@ -208,7 +209,7 @@ export async function checkPermissionsForExecution(
 	// then both arrays (allowed credentials vs used credentials)
 	// must be the same length
 	if (ids.length !== credentialCount) {
-		throw new Error('One or more of the used credentials are not accessable.');
+		throw new Error('One or more of the used credentials are not accessible.');
 	}
 	return true;
 }

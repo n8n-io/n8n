@@ -7,6 +7,7 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -42,7 +42,7 @@ export const postFields: INodeProperties[] = [
 	/*                                post:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -126,7 +126,7 @@ export const postFields: INodeProperties[] = [
 	/*                                post:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -217,7 +217,7 @@ export const postFields: INodeProperties[] = [
 	/*                                post:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {

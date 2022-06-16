@@ -5,6 +5,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,7 +21,6 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'track',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -103,7 +103,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Data',
 		name: 'dataAttributesUi',
 		placeholder: 'Add Data',
-		description: 'key value pairs that represent any properties you want to track with this event',
+		description: 'Key value pairs that represent any properties you want to track with this event',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -199,7 +199,7 @@ export const eventFields: INodeProperties[] = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'key value pairs that represent the custom user properties you want to update',
+		description: 'Key value pairs that represent the custom user properties you want to update',
 		displayOptions: {
 			show: {
 				resource: [

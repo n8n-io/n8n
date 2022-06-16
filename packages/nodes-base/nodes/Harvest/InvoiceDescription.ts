@@ -11,12 +11,23 @@ export const invoiceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
 			},
 		},
 		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create an invoice',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an invoice',
+			},
 			{
 				name: 'Get',
 				value: 'get',
@@ -28,23 +39,12 @@ export const invoiceOperations: INodeProperties[] = [
 				description: 'Get data of all invoices',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create an invoice',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an invoice',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an invoice',
-			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -144,19 +144,19 @@ export const invoiceFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'draft',
+						name: 'Draft',
 						value: 'draft',
 					},
 					{
-						name: 'open',
+						name: 'Open',
 						value: 'open',
 					},
 					{
-						name: 'paid',
+						name: 'Paid',
 						value: 'paid',
 					},
 					{
-						name: 'closed',
+						name: 'Closed',
 						value: 'closed',
 					},
 				],
@@ -185,7 +185,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                invoice:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice Id',
+		displayName: 'Invoice ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -205,7 +205,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                invoice:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice Id',
+		displayName: 'Invoice ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -225,7 +225,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                invoice:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
 		displayOptions: {
@@ -277,7 +277,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.',
 			},
 			{
-				displayName: 'Estimate Id',
+				displayName: 'Estimate ID',
 				name: 'estimate_id',
 				type: 'string',
 				default: '',
@@ -319,7 +319,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'The purchase order number',
 			},
 			{
-				displayName: 'Retainer Id',
+				displayName: 'Retainer ID',
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
@@ -353,7 +353,7 @@ export const invoiceFields: INodeProperties[] = [
 	/*                                invoice:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice Id',
+		displayName: 'Invoice ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -384,7 +384,7 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Client Id',
+				displayName: 'Client ID',
 				name: 'client_id',
 				type: 'string',
 				default: '',
@@ -412,7 +412,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.',
 			},
 			{
-				displayName: 'Estimate Id',
+				displayName: 'Estimate ID',
 				name: 'estimate_id',
 				type: 'string',
 				default: '',
@@ -454,7 +454,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'The purchase order number',
 			},
 			{
-				displayName: 'Retainer Id',
+				displayName: 'Retainer ID',
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,

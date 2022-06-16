@@ -51,6 +51,7 @@ export class Bannerbear implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Image',
@@ -62,7 +63,6 @@ export class Bannerbear implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume.',
 			},
 			// IMAGE
 			...imageOperations,

@@ -7,6 +7,7 @@ export const serviceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const serviceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -81,7 +81,7 @@ export const serviceFields: INodeProperties[] = [
 	/*                                service:Call                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Domain',
+		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
 		typeOptions: {
@@ -101,7 +101,7 @@ export const serviceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Service',
+		displayName: 'Service Name or ID',
 		name: 'service',
 		type: 'options',
 		typeOptions: {

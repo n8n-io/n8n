@@ -4,7 +4,7 @@ import {
 
 export const reactionDeleteDescription: ReactionProperties = [
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -23,7 +23,7 @@ export const reactionDeleteDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'ID of the user whose reaction to delete',
+		description: 'ID of the user whose reaction to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Post ID',

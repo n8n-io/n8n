@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -180,7 +180,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                   event:register                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event ID',
+		displayName: 'Event Name or ID',
 		name: 'eventId',
 		type: 'options',
 		typeOptions: {
@@ -319,7 +319,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The value for the predefined Phone Number field',
 			},
 			{
-				displayName: 'Session ID',
+				displayName: 'Session Name or ID',
 				name: 'date_id',
 				type: 'options',
 				typeOptions: {
@@ -329,7 +329,7 @@ export const eventFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Event Session ID',
+				description: 'Event Session ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Website',

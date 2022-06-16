@@ -49,6 +49,7 @@ export class Egoi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -57,12 +58,12 @@ export class Egoi implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -87,10 +88,9 @@ export class Egoi implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'List ID',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -107,7 +107,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'ID of list to operate on',
+				description: 'ID of list to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -204,7 +204,7 @@ export class Egoi implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field ID',
+										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
 										typeOptions: {
@@ -332,7 +332,7 @@ export class Egoi implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field ID',
+										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
 										typeOptions: {
@@ -514,7 +514,7 @@ export class Egoi implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -529,7 +529,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};

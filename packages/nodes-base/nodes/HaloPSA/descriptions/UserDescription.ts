@@ -5,6 +5,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -60,7 +61,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Site Name/ID',
+		displayName: 'Site Name or ID',
 		name: 'siteId',
 		type: 'options',
 		default: '',
@@ -118,7 +119,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User is Inactive',
+				displayName: 'User Is Inactive',
 				name: 'inactive',
 				type: 'boolean',
 				default: false,
@@ -142,11 +143,11 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
-		description: 'Whether output should be simplified',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -208,7 +209,7 @@ export const userFields: INodeProperties[] = [
 				default: 'all',
 				options: [
 					{
-						name: 'Active only',
+						name: 'Active Only',
 						value: 'active',
 						description: 'Whether to include active customers in the response',
 					},
@@ -218,7 +219,7 @@ export const userFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive customers in the response',
 					},
 					{
-						name: 'Inactive only',
+						name: 'Inactive Only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the response',
 					},
@@ -295,7 +296,7 @@ export const userFields: INodeProperties[] = [
 					'Your new password must be at least 8 characters long and contain at least one letter, one number or symbol, one upper case character and one lower case character',
 			},
 			{
-				displayName: 'Site ID',
+				displayName: 'Site Name or ID',
 				name: 'site_id',
 				type: 'options',
 				default: '',
@@ -310,7 +311,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User is Inactive',
+				displayName: 'User Is Inactive',
 				name: 'inactive',
 				type: 'boolean',
 				default: false,

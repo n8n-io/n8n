@@ -7,6 +7,7 @@ export const messageConversationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const messageConversationOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +52,7 @@ export const messageConversationFields: INodeProperties[] = [
 	/*                                messageConversation:create                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace ID',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -70,10 +70,10 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace',
+		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Conversation ID',
+		displayName: 'Conversation Name or ID',
 		name: 'conversationId',
 		type: 'options',
 		typeOptions: {
@@ -94,7 +94,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation',
+		description: 'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -253,7 +253,7 @@ export const messageConversationFields: INodeProperties[] = [
 	/*                                messageConversation:getAll                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace ID',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
@@ -271,10 +271,10 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace',
+		description: 'The ID of the workspace. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Conversation ID',
+		displayName: 'Conversation Name or ID',
 		name: 'conversationId',
 		type: 'options',
 		typeOptions: {
@@ -295,7 +295,7 @@ export const messageConversationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation',
+		description: 'The ID of the conversation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -325,6 +325,9 @@ export const messageConversationFields: INodeProperties[] = [
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				default: 50,
 				description: 'Max number of results to return',
 			},

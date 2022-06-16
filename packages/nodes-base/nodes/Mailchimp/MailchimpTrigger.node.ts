@@ -84,15 +84,14 @@ export class MailchimpTrigger implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'Method of authentication.',
 			},
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'The list that is gonna fire the event',
+				description: 'The list that is gonna fire the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
 				},

@@ -6,6 +6,7 @@ export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -30,11 +31,11 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -74,7 +75,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -257,18 +257,18 @@ export const postFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Open Graph Title',
-				name: 'og_title',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Open Graph Image',
 				name: 'og_image',
 				type: 'string',
 				default: '',
 				description: 'URL of the image',
 
+			},
+			{
+				displayName: 'Open Graph Title',
+				name: 'og_title',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Published At',
@@ -303,7 +303,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -365,7 +365,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'By',
 		name: 'by',
 		type: 'options',
-		default: '',
+		default: 'id',
 		required: true,
 		options: [
 			{
@@ -440,6 +440,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -487,6 +488,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -604,6 +606,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -669,6 +672,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -847,17 +851,17 @@ export const postFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Open Graph Title',
-				name: 'og_title',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Open Graph Image',
 				name: 'og_image',
 				type: 'string',
 				default: '',
 				description: 'URL of the image',
+			},
+			{
+				displayName: 'Open Graph Title',
+				name: 'og_title',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Published At',
@@ -892,7 +896,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

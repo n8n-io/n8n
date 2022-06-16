@@ -70,12 +70,12 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -87,12 +87,12 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'Resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -108,7 +108,6 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -132,7 +131,7 @@ export class Medium implements INodeType {
 				description: 'Are you posting for a publication?',
 			},
 			{
-				displayName: 'Publication ID',
+				displayName: 'Publication Name or ID',
 				name: 'publicationId',
 				type: 'options',
 				displayOptions: {
@@ -152,7 +151,7 @@ export class Medium implements INodeType {
 					loadOptionsMethod: 'getPublications',
 				},
 				default: '',
-				description: 'Publication IDs',
+				description: 'Publication IDs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',
@@ -334,6 +333,7 @@ export class Medium implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -349,7 +349,6 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'publication',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         publication:getAll

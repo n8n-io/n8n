@@ -39,6 +39,7 @@ export class AwsTranscribe implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Transcription Job',
@@ -46,12 +47,12 @@ export class AwsTranscribe implements INodeType {
 					},
 				],
 				default: 'transcriptionJob',
-				description: 'Resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create',
@@ -75,7 +76,6 @@ export class AwsTranscribe implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Job Name',
@@ -144,24 +144,24 @@ export class AwsTranscribe implements INodeType {
 						value: 'en-GB',
 					},
 					{
-						name: 'Irish English',
-						value: 'en-IE',
+						name: 'German',
+						value: 'de-DE',
 					},
 					{
 						name: 'Indian English',
 						value: 'en-IN',
 					},
 					{
-						name: 'Spanish',
-						value: 'es-ES',
-					},
-					{
-						name: 'German',
-						value: 'de-DE',
+						name: 'Irish English',
+						value: 'en-IE',
 					},
 					{
 						name: 'Russian',
 						value: 'ru-RU',
+					},
+					{
+						name: 'Spanish',
+						value: 'es-ES',
 					},
 				],
 				displayOptions: {
@@ -282,7 +282,7 @@ export class AwsTranscribe implements INodeType {
 				description: 'By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead.',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -299,7 +299,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Return All',

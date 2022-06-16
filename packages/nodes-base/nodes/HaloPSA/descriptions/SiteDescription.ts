@@ -5,6 +5,7 @@ export const siteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['site'],
@@ -87,7 +88,7 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Client Name',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
 		default: '',
@@ -156,11 +157,11 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
-		description: 'Whether output should be simplified',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 		displayOptions: {
 			show: {
 				resource: ['site'],
@@ -222,7 +223,7 @@ export const siteFields: INodeProperties[] = [
 				default: 'all',
 				options: [
 					{
-						name: 'Active only',
+						name: 'Active Only',
 						value: 'active',
 						description: 'Whether to include active sites in the response',
 					},
@@ -232,7 +233,7 @@ export const siteFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive sites in the response',
 					},
 					{
-						name: 'Inactive only',
+						name: 'Inactive Only',
 						value: 'inactive',
 						description: 'Whether to include inactive sites in the response',
 					},

@@ -7,6 +7,7 @@ export const collectionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const collectionOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -31,7 +31,7 @@ export const collectionFields: INodeProperties[] = [
 	/*                               collection:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -48,7 +48,7 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{

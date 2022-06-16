@@ -7,6 +7,7 @@ export const accountContactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const accountContactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -92,7 +92,7 @@ export const accountContactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
@@ -162,7 +162,7 @@ export const accountContactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',

@@ -37,14 +37,15 @@ export class Hunter implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: ' Domain Search',
+						name: 'Domain Search',
 						value: 'domainSearch',
 						description: 'Get every email address found on the internet using a given domain name, with sources',
 					},
 					{
-						name: ' Email Finder',
+						name: 'Email Finder',
 						value: 'emailFinder',
 						description: 'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
 					},
@@ -55,7 +56,7 @@ export class Hunter implements INodeType {
 					},
 				],
 				default: 'domainSearch',
-				description: 'operation to consume',
+				description: 'Operation to consume',
 			},
 			{
 				displayName: 'Domain',

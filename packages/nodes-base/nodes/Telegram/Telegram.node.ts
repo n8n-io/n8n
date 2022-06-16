@@ -47,6 +47,7 @@ export class Telegram implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					// {
 					// 	name: 'Bot',
@@ -70,7 +71,6 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -107,6 +107,7 @@ export class Telegram implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -147,13 +148,13 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -174,12 +175,12 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'answerQuery',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -195,13 +196,13 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -282,7 +283,6 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'sendMessage',
-				description: 'The operation to perform.',
 			},
 
 
@@ -1287,16 +1287,16 @@ export class Telegram implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'None',
-						value: 'none',
-					},
-					{
 						name: 'Force Reply',
 						value: 'forceReply',
 					},
 					{
 						name: 'Inline Keyboard',
 						value: 'inlineKeyboard',
+					},
+					{
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'Reply Keyboard',
@@ -1433,7 +1433,7 @@ export class Telegram implements INodeType {
 														name: 'url',
 														type: 'string',
 														default: '',
-														description: 'HTTP or tg:// url to be opened when button is pressed',
+														description: 'HTTP or tg:// URL to be opened when button is pressed',
 													},
 												],
 											},

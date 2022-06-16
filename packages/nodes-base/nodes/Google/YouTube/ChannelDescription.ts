@@ -7,6 +7,7 @@ export const channelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const channelOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -211,6 +211,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Language Code',
 				name: 'h1',
 				type: 'options',
@@ -218,7 +219,7 @@ export const channelFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports',
+				description: 'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
@@ -502,7 +503,7 @@ export const channelFields: INodeProperties[] = [
 										default: '',
 									},
 									{
-										displayName: 'watch Icon Image Url',
+										displayName: 'Watch Icon Image Url',
 										name: 'watchIconImageUrl',
 										type: 'string',
 										default: '',

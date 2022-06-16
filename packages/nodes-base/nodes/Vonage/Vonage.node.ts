@@ -38,6 +38,7 @@ export class Vonage implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -45,12 +46,12 @@ export class Vonage implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Send',
@@ -65,7 +66,6 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: 'send',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'From',
@@ -404,7 +404,7 @@ export class Vonage implements INodeType {
 						description: 'Boolean indicating if you like to receive a Delivery Receipt',
 					},
 					{
-						displayName: 'TTL (in minutes)',
+						displayName: 'TTL (in Minutes)',
 						name: 'ttl',
 						type: 'number',
 						default: 4320,

@@ -7,6 +7,7 @@ export const organizationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,6 +17,11 @@ export const organizationOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Count',
+				value: 'count',
+				description: 'Count organizations',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an organization',
@@ -24,11 +30,6 @@ export const organizationOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an organization',
-			},
-			{
-				name: 'Count',
-				value: 'count',
-				description: 'Count organizations',
 			},
 			{
 				name: 'Get',
@@ -52,7 +53,6 @@ export const organizationOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -131,7 +131,7 @@ export const organizationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -240,7 +240,7 @@ export const organizationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {

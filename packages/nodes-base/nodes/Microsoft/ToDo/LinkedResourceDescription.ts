@@ -7,6 +7,7 @@ export const linkedResourceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const linkedResourceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,7 +46,7 @@ export const linkedResourceFields: INodeProperties[] = [
 	/*                       linkedResource:ALL                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task List ID',
+		displayName: 'Task List Name or ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {

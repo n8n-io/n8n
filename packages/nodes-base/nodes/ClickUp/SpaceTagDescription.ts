@@ -7,6 +7,7 @@ export const spaceTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const spaceTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -83,7 +83,7 @@ export const spaceTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Name',
+		displayName: 'Name or ID',
 		name: 'name',
 		type: 'options',
 		typeOptions: {

@@ -7,6 +7,7 @@ export const videoOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,7 +48,6 @@ export const videoOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -73,6 +73,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
@@ -92,7 +93,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Category ID',
+		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
 		typeOptions: {
@@ -148,14 +149,14 @@ export const videoFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language',
+				displayName: 'Default Language Name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties',
+				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -507,6 +508,7 @@ export const videoFields: INodeProperties[] = [
 				description: 'The q parameter specifies the query term to search for',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Region Code',
 				name: 'regionCode',
 				type: 'options',
@@ -514,7 +516,7 @@ export const videoFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCountriesCodes',
 				},
 				default: '',
-				description: 'The regionCode parameter instructs the API to select a video chart available in the specified region',
+				description: 'The regionCode parameter instructs the API to select a video chart available in the specified region. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Related To Video ID',
@@ -531,7 +533,7 @@ export const videoFields: INodeProperties[] = [
 				description: 'The videoCategoryId parameter identifies the video category for which the chart should be retrieved',
 			},
 			{
-				displayName: 'Video Syndicated ',
+				displayName: 'Video Syndicated',
 				name: 'videoSyndicated',
 				type: 'boolean',
 				default: false,
@@ -604,7 +606,7 @@ export const videoFields: INodeProperties[] = [
 						description: 'YouTube will filter some content from search results and, at the least, will filter content that is restricted in your locale',
 					},
 					{
-						name: 'none',
+						name: 'None',
 						value: 'none',
 						description: 'YouTube will not filter the search result set',
 					},
@@ -709,6 +711,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
@@ -728,7 +731,7 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Category ID',
+		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
 		typeOptions: {
@@ -767,14 +770,14 @@ export const videoFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language',
+				displayName: 'Default Language Name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties',
+				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',

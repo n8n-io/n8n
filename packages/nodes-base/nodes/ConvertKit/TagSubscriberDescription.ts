@@ -7,6 +7,7 @@ export const tagSubscriberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,13 +33,12 @@ export const tagSubscriberOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const tagSubscriberFields: INodeProperties[] = [
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
 		typeOptions: {

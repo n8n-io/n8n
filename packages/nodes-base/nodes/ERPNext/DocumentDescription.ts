@@ -7,6 +7,7 @@ export const documentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const documentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -51,14 +51,14 @@ export const documentFields: INodeProperties[] = [
 	//       document: getAll
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'DocType whose documents to retrieve',
+		description: 'DocType whose documents to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
@@ -92,6 +92,9 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 10,
 		description: 'Max number of results to return',
 		displayOptions: {
@@ -155,7 +158,7 @@ export const documentFields: INodeProperties[] = [
 						name: 'customProperty',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
@@ -173,12 +176,16 @@ export const documentFields: INodeProperties[] = [
 								default: 'is',
 								options: [
 									{
-										name: 'IS',
-										value: 'is',
+										name: 'EQUALS, or GREATER',
+										value: 'equalsGreater',
 									},
 									{
-										name: 'IS NOT',
-										value: 'isNot',
+										name: 'EQUALS, or LESS',
+										value: 'equalsLess',
+									},
+									{
+										name: 'IS',
+										value: 'is',
 									},
 									{
 										name: 'IS GREATER',
@@ -189,12 +196,8 @@ export const documentFields: INodeProperties[] = [
 										value: 'less',
 									},
 									{
-										name: 'EQUALS, or GREATER',
-										value: 'equalsGreater',
-									},
-									{
-										name: 'EQUALS, or LESS',
-										value: 'equalsLess',
+										name: 'IS NOT',
+										value: 'isNot',
 									},
 								],
 							},
@@ -216,7 +219,7 @@ export const documentFields: INodeProperties[] = [
 	//       document: create
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		default: '',
@@ -224,7 +227,7 @@ export const documentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getDocTypes',
 		},
 		required: true,
-		description: 'DocType you would like to create',
+		description: 'DocType you would like to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
@@ -264,7 +267,7 @@ export const documentFields: INodeProperties[] = [
 				placeholder: 'Add Property',
 				values: [
 					{
-						displayName: 'Field',
+						displayName: 'Field Name or ID',
 						name: 'field',
 						type: 'options',
 						typeOptions: {
@@ -290,14 +293,14 @@ export const documentFields: INodeProperties[] = [
 	//          document: get
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to get',
+		description: 'The type of document you would like to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -333,14 +336,14 @@ export const documentFields: INodeProperties[] = [
 	//       document: delete
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to delete',
+		description: 'The type of document you would like to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -376,14 +379,14 @@ export const documentFields: INodeProperties[] = [
 	//       document: update
 	// ----------------------------------
 	{
-		displayName: 'DocType',
+		displayName: 'DocType Name or ID',
 		name: 'docType',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The type of document you would like to update',
+		description: 'The type of document you would like to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -440,7 +443,7 @@ export const documentFields: INodeProperties[] = [
 				name: 'customProperty',
 				values: [
 					{
-						displayName: 'Field',
+						displayName: 'Field Name or ID',
 						name: 'field',
 						type: 'options',
 						typeOptions: {

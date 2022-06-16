@@ -73,6 +73,7 @@ export class Rocketchat implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Chat',
@@ -80,12 +81,12 @@ export class Rocketchat implements INodeType {
 					},
 				],
 				default: 'chat',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -101,7 +102,6 @@ export class Rocketchat implements INodeType {
 					},
 				],
 				default: 'postMessage',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Channel',
@@ -183,7 +183,7 @@ export class Rocketchat implements INodeType {
 						name: 'avatar',
 						type: 'string',
 						default: '',
-						description: 'If provided, this will make the avatar use the provided image url',
+						description: 'If provided, this will make the avatar use the provided image URL',
 					},
 					{
 						displayName: 'Emoji',
@@ -320,7 +320,7 @@ export class Rocketchat implements INodeType {
 						description: 'Audio file to play, only supports what html audio does',
 					},
 					{
-						displayName: 'video URL',
+						displayName: 'Video URL',
 						name: 'videoUrl',
 						type: 'string',
 						default: '',

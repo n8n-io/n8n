@@ -7,8 +7,8 @@ export const attendeeOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
@@ -38,7 +38,7 @@ export const attendeeFields: INodeProperties[] = [
 	//     attendee: shared fields
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -46,7 +46,7 @@ export const attendeeFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'Key of the webinar that the attendee attended',
+		description: 'Key of the webinar that the attendee attended. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -56,7 +56,7 @@ export const attendeeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Session Key',
+		displayName: 'Session Key Name or ID',
 		name: 'sessionKey',
 		type: 'options',
 		required: true,
@@ -67,7 +67,7 @@ export const attendeeFields: INodeProperties[] = [
 			],
 		},
 		default: '',
-		description: 'Key of the session that the attendee attended',
+		description: 'Key of the session that the attendee attended. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

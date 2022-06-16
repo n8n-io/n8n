@@ -16,6 +16,7 @@ export const purchaseOrderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -56,7 +57,6 @@ export const purchaseOrderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -109,14 +109,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 	//      purchaseOrder: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Vendor ID',
+		displayName: 'Vendor Name or ID',
 		name: 'vendorId',
 		type: 'options',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
 		},
-		description: 'ID of the vendor associated with the purchase order',
+		description: 'ID of the vendor associated with the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -309,14 +309,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},
-				description: 'Status of the purchase order',
+				description: 'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -536,14 +536,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},
-				description: 'Status of the purchase order',
+				description: 'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',

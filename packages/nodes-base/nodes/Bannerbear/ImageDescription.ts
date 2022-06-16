@@ -7,6 +7,7 @@ export const imageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const imageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -37,7 +37,7 @@ export const imageFields: INodeProperties[] = [
 /*                                image:create                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
 		typeOptions: {
@@ -55,7 +55,7 @@ export const imageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The template ID you want to use',
+		description: 'The template ID you want to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -111,7 +111,7 @@ export const imageFields: INodeProperties[] = [
 				name: 'webhookUrl',
 				type: 'string',
 				default: '',
-				description: 'A url to POST the Image object to upon rendering completed',
+				description: 'A URL to POST the Image object to upon rendering completed',
 			},
 		],
 	},
@@ -140,7 +140,7 @@ export const imageFields: INodeProperties[] = [
 				name: 'modificationsValues',
 				values: [
 					{
-						displayName: 'Name',
+						displayName: 'Name or ID',
 						name: 'name',
 						type: 'options',
 						typeOptions: {
@@ -150,7 +150,7 @@ export const imageFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The name of the item you want to change',
+						description: 'The name of the item you want to change. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Text',
@@ -178,7 +178,7 @@ export const imageFields: INodeProperties[] = [
 						name: 'imageUrl',
 						type: 'string',
 						default: '',
-						description: 'Replacement image url you want to use (must be publicly viewable)',
+						description: 'Replacement image URL you want to use (must be publicly viewable)',
 					},
 				],
 			},

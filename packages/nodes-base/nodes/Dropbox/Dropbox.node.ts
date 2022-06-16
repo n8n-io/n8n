@@ -76,6 +76,7 @@ export class Dropbox implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -91,7 +92,6 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -101,6 +101,7 @@ export class Dropbox implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -136,13 +137,13 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'upload',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -178,13 +179,13 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -199,7 +200,6 @@ export class Dropbox implements INodeType {
 					},
 				],
 				default: 'query',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -514,6 +514,9 @@ export class Dropbox implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -531,7 +534,7 @@ export class Dropbox implements INodeType {
 				description: 'Max number of results to return',
 			},
 			{
-				displayName: 'Simple',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -545,7 +548,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Filters',
@@ -570,10 +573,12 @@ export class Dropbox implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'Audio (mp3, wav, mid, etc.)',
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Audio (mp3, qav, mid, etc.)',
 								value: 'audio',
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Document (doc, docx, txt, etc.)',
 								value: 'document',
 							},
@@ -582,6 +587,7 @@ export class Dropbox implements INodeType {
 								value: 'folder',
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Image (jpg, png, gif, etc.)',
 								value: 'image',
 							},
@@ -598,14 +604,17 @@ export class Dropbox implements INodeType {
 								value: 'pdf',
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Presentation (ppt, pptx, key, etc.)',
 								value: 'presentation',
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Spreadsheet (xlsx, xls, csv, etc.)',
 								value: 'spreadsheet',
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Video (avi, wmv, mp4, etc.)',
 								value: 'video',
 							},
@@ -698,6 +707,9 @@ export class Dropbox implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				displayOptions: {
 					show: {
 						resource: [
@@ -739,21 +751,21 @@ export class Dropbox implements INodeType {
 						description: 'If true, the results will include entries for files and folders that used to exist but were deleted. The default for this field is False.',
 					},
 					{
-						displayName: 'Include Shared Members ',
+						displayName: 'Include Shared Members',
 						name: 'include_has_explicit_shared_members',
 						type: 'boolean',
 						default: false,
 						description: 'If true, the results will include a flag for each file indicating whether or not that file has any explicit members. The default for this field is False.',
 					},
 					{
-						displayName: 'Include Mounted Folders ',
+						displayName: 'Include Mounted Folders',
 						name: 'include_mounted_folders',
 						type: 'boolean',
 						default: true,
 						description: 'If true, the results will include entries under mounted folders which includes app folder, shared folder and team folder. The default for this field is True.',
 					},
 					{
-						displayName: 'Include Non Downloadable Files ',
+						displayName: 'Include Non Downloadable Files',
 						name: 'include_non_downloadable_files',
 						type: 'boolean',
 						default: true,

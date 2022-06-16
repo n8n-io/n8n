@@ -5,6 +5,7 @@ export const conversationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -35,7 +36,6 @@ export const conversationOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -44,7 +44,7 @@ export const conversationFields: INodeProperties[] = [
 /*                                conversation:create                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Mailbox',
+		displayName: 'Mailbox Name or ID',
 		name: 'mailboxId',
 		type: 'options',
 		typeOptions: {
@@ -62,7 +62,7 @@ export const conversationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of a mailbox where the conversation is being created',
+		description: 'ID of a mailbox where the conversation is being created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Status',
@@ -536,11 +536,11 @@ export const conversationFields: INodeProperties[] = [
 						value: 'createdAt',
 					},
 					{
-						name: 'customer Email',
+						name: 'Customer Email',
 						value: 'customerEmail',
 					},
 					{
-						name: 'customer Name',
+						name: 'Customer Name',
 						value: 'customerName',
 					},
 					{

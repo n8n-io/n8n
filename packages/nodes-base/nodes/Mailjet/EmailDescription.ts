@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -7,6 +7,7 @@ export const emailOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -351,7 +352,7 @@ export const emailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
 		typeOptions: {
@@ -443,11 +444,10 @@ export const emailFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Track Opens',
-				name: 'trackOpens',
-				type: 'string',
-				description: 'Enable or disable open tracking on this message',
-				default: '',
+				displayName: 'Template Language',
+				name: 'templateLanguage',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Track Clicks',
@@ -457,10 +457,11 @@ export const emailFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Template Language',
-				name: 'templateLanguage',
-				type: 'boolean',
-				default: false,
+				displayName: 'Track Opens',
+				name: 'trackOpens',
+				type: 'string',
+				description: 'Enable or disable open tracking on this message',
+				default: '',
 			},
 		],
 	},

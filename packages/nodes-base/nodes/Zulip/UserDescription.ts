@@ -5,6 +5,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -274,8 +274,12 @@ export const userFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Organization Owner',
-						value: 100,
+						name: 'Guest',
+						value: 600,
+					},
+					{
+						name: 'Member',
+						value: 400,
 					},
 					{
 						name: 'Organization Administrator',
@@ -286,12 +290,8 @@ export const userFields: INodeProperties[] = [
 						value: 300,
 					},
 					{
-						name: 'Member',
-						value: 400,
-					},
-					{
-						name: 'Guest',
-						value: 600,
+						name: 'Organization Owner',
+						value: 100,
 					},
 				],
 				default: '',

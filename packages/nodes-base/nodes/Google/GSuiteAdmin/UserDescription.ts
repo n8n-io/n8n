@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -106,7 +106,7 @@ export const userFields: INodeProperties[] = [
 		description: 'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 	},
 	{
-		displayName: 'Domain',
+		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
 		typeOptions: {
@@ -236,6 +236,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 										name: 'isdn',
 										value: 'isdn',
 									},
@@ -268,6 +269,7 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 										name: 'tty tdd',
 										value: 'tty_tdd',
 									},
@@ -810,7 +812,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
-										name: 'isdn',
+										name: 'Isdn',
 										value: 'isdn',
 									},
 									{
@@ -842,7 +844,7 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
-										name: 'tty tdd',
+										name: 'Tty Tdd',
 										value: 'tty_tdd',
 									},
 									{

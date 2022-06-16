@@ -11,6 +11,7 @@ export const connectionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -46,7 +47,6 @@ export const connectionOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -74,7 +74,7 @@ export const connectionFields: INodeProperties[] = [
 		description: 'The name of the service',
 	},
 	{
-		displayName: 'External accout ID',
+		displayName: 'External Account ID',
 		name: 'externalid',
 		type: 'string',
 		default: '',
@@ -193,7 +193,7 @@ export const connectionFields: INodeProperties[] = [
 				description: 'The name of the service',
 			},
 			{
-				displayName: 'External accout ID',
+				displayName: 'External Account ID',
 				name: 'externalid',
 				type: 'string',
 				default: '',

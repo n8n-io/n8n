@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +67,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -84,7 +84,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -118,13 +118,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -313,6 +313,9 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
@@ -424,7 +427,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'forward',
 					},
 					{
-						name: 'import',
+						name: 'Import',
 						value: 'import',
 					},
 					{
@@ -545,7 +548,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
 				typeOptions: {
@@ -568,13 +571,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{

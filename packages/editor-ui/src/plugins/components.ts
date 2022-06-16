@@ -48,7 +48,7 @@ import {
 	N8nAvatar,
 	N8nActionToggle,
 	N8nButton,
-	N8nHeading,
+	N8nCard,
 	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
@@ -85,6 +85,7 @@ Vue.use(N8nActionBox);
 Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);
 Vue.use(N8nButton);
+Vue.component('n8n-card', N8nCard);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
 Vue.component('n8n-icon', N8nIcon);
