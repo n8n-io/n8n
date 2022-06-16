@@ -434,7 +434,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'If a query string should be used to filter results',
+				description: 'Whether query string should be used to filter results',
 			},
 			{
 				displayName: 'Query String',
@@ -475,7 +475,7 @@ export class GoogleDrive implements INodeType {
 					minValue: 1,
 					maxValue: 1000,
 				},
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 			},
 			{
@@ -805,7 +805,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field',
+				description: 'Whether upload should be taken from binary field',
 			},
 			{
 				displayName: 'File Content',
@@ -951,7 +951,7 @@ export class GoogleDrive implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All fields',
 							},
@@ -1345,7 +1345,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
+						description: 'Whether to perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
 					},
 
 					{
@@ -1404,7 +1404,7 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All spaces',
 							},
@@ -2270,6 +2270,7 @@ export class GoogleDrive implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
+							// @ts-ignore
 							Object.assign(newItem.binary, items[i].binary);
 						}
 
