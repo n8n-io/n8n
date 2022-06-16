@@ -17,8 +17,8 @@ import {
 } from 'lodash';
 
 export async function customerIoApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, baseApi?: string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	const credentials = await this.getCredentials('customerIoApi');
 	query = query || {};
-
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -30,7 +30,8 @@ export async function customerIoApiRequest(this: IHookFunctions | IExecuteFuncti
 	};
 
 	if (baseApi === 'tracking') {
-		options.url = `https://tracking/api/v1${endpoint}`;
+		const region = credentials.region;
+		options.url = `https://${region}/api/v1${endpoint}`;
 	} else if (baseApi === 'api') {
 		options.url = `https://api.customer.io/v1/api${endpoint}`;
 	} else if (baseApi === 'beta') {

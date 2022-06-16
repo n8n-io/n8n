@@ -53,8 +53,7 @@ export class CustomerIoApi implements ICredentialType {
 		},
 	];
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		if (requestOptions.url.includes('https://tracking/api/v1')) {
-			requestOptions.url = requestOptions.url.replace('tracking', credentials.region  as string);
+		if (requestOptions.url.includes('track')) {
 			const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
 			Object.assign(requestOptions.headers, { 'Authorization': `Basic ${basicAuthKey}` });
 		} else if (requestOptions.url.includes('api.customer.io')) {
