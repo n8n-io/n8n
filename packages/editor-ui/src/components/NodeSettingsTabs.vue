@@ -8,10 +8,11 @@
 
 <script lang="ts">
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { INodeTypeBaseDescriptionUi, INodeUi, ITab } from '@/Interface';
+import { INodeUi, ITab } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
+import { isCommunityPackageName } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -49,9 +50,9 @@ export default mixins(
 			return '';
 		},
 		isCommunityNode(): boolean {
-			const nodeType = this.nodeType as INodeTypeBaseDescriptionUi | null;
+			const nodeType = this.nodeType as INodeTypeDescription | null;
 			if (nodeType) {
-				return nodeType.communityNode === true;
+				return isCommunityPackageName(nodeType.name);
 			}
 			return false;
 		},

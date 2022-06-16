@@ -60,6 +60,7 @@ import NodeIcon from '../NodeIcon.vue';
 import TriggerIcon from '../TriggerIcon.vue';
 
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../../constants';
+import { isCommunityPackageName } from '../helpers';
 
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TriggerIcon', TriggerIcon);
@@ -96,7 +97,7 @@ export default Vue.extend({
 			};
 		},
 		isCommunityNode(): boolean {
-			return this.nodeType.communityNode === true;
+			return isCommunityPackageName(this.nodeType.name);
 		},
 		hasNameClash(): boolean {
 			return this.$store.getters.isNodeTypeInNameClash(this.nodeType);

@@ -17,7 +17,6 @@ import {
 	IRestApi,
 	IWorkflowDataUpdate,
 	INodeTranslationHeaders,
-	INodeTypeBaseDescriptionUi,
 } from '@/Interface';
 import {
 	IDataObject,
@@ -90,11 +89,11 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns all node-types
-				getNodeTypes: (onlyLatest = false): Promise<INodeTypeBaseDescriptionUi[]> => {
+				getNodeTypes: (onlyLatest = false): Promise<INodeTypeDescription[]> => {
 					return self.restApi().makeRestApiRequest('GET', `/node-types`, {onlyLatest});
 				},
 
-				getNodesInformation: (nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeBaseDescriptionUi[]> => {
+				getNodesInformation: (nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]> => {
 					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeInfos});
 				},
 

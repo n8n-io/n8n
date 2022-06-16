@@ -30,7 +30,6 @@ import {
 	XYPosition,
 	IRestApiContext,
 	ICommunityNodesState,
-	INodeTypeBaseDescriptionUi,
 } from './Interface';
 
 import credentials from './modules/credentials';
@@ -508,13 +507,9 @@ export const store = new Vuex.Store({
 			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
-		setNodeTypes (state, nodeTypes: INodeTypeBaseDescriptionUi[]) {
-			nodeTypes.forEach(nodeInfo => {
-				nodeInfo.communityNode = isCommunityPackageName(nodeInfo.name);
-			});
+		setNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
 			Vue.set(state, 'nodeTypes', nodeTypes);
 		},
-
 		// Active Execution
 		setExecutingNode (state, executingNode: string) {
 			state.executingNode = executingNode;
@@ -656,13 +651,9 @@ export const store = new Vuex.Store({
 			}
 		},
 
-		updateNodeTypes (state, nodeTypes: INodeTypeBaseDescriptionUi[]) {
+		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
 			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
 			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
-
-			newNodesState.forEach(nodeInfo => {
-				nodeInfo.communityNode = isCommunityPackageName(nodeInfo.name);
-			});
 
 			Vue.set(state, 'nodeTypes', newNodesState);
 			state.nodeTypes = newNodesState;
