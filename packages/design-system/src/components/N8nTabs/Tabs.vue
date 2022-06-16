@@ -11,7 +11,7 @@
 				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
-				<n8n-tooltip v-if="option.tooltip" placement="top">
+				<n8n-tooltip :disabled="!option.tooltip" placement="top">
 					<div slot="content">
 						{{ option.tooltip }}
 					</div>
@@ -37,29 +37,6 @@
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
 				</n8n-tooltip>
-				<div v-else>
-					<a
-						v-if="option.href"
-						target="_blank"
-						:href="option.href"
-						:class="[$style.link, $style.tab]"
-						@click="() => handleTabClick(option.value)"
-					>
-						<div>
-							{{ option.label }}
-							<span :class="$style.external"><n8n-icon icon="external-link-alt" size="small" /></span>
-						</div>
-					</a>
-
-					<div
-						v-else
-						:class="{ [$style.tab]: true, [$style.activeTab]: value === option.value }"
-						@click="() => handleTabClick(option.value)"
-					>
-						<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
-						<span v-if="option.label">{{ option.label }}</span>
-					</div>
-				</div>
 			</div>
 		</div>
 	</div>

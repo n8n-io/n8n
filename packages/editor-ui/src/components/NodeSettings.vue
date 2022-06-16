@@ -20,7 +20,7 @@
 					size="large"
 					bold
 				>
-					{{ $locale.baseText('nodeSettings.CommunityNodeUnknown.title') }}
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
 				</n8n-text>
 			</div>
 			<n8n-text v-if="isBaseNode">
@@ -34,10 +34,10 @@
 			<div v-else :class="$style.descriptionContainer">
 				<div class="mb-l">
 					<span
-						v-html="$locale.baseText('nodeSettings.CommunityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })">
+						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })">
 					</span>
 				</div>
-				<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">{{ $locale.baseText('nodeSettings.CommunityNodeUnknown.installLink.text') }}</n8n-link>
+				<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}</n8n-link>
 			</div>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
