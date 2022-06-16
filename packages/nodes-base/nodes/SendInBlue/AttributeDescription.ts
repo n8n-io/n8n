@@ -170,6 +170,7 @@ const createAttributeOperations: Array<INodeProperties> = [
 				],
 			},
 		},
+		required: true,
 		name: 'attributeName',
 		type: 'string',
 	},
@@ -209,6 +210,7 @@ const createAttributeOperations: Array<INodeProperties> = [
 				value: 'boolean',
 			}
 		],
+		required: true,
 		type: 'options',
 		routing: {
 			send: {
