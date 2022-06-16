@@ -191,14 +191,15 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				return this.$locale.baseText('triggerPanel.pollingNode.fetchingEvent');
 			}
 
+			if (this.nodeType && this.nodeType.triggerPanel && typeof this.nodeType.triggerPanel.header) {
+				return this.nodeType.triggerPanel.header;
+			}
+
+
 			if (this.nodeType && this.isPollingNode) {
 				return this.$locale.baseText('triggerPanel.scheduledNode.action', {
 					interpolate: { name: serviceName },
 				});
-			}
-
-			if (this.isWebhookNode) {
-				return '';
 			}
 
 			if (this.isWebhookBasedNode) {
@@ -207,7 +208,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				});
 			}
 
-			return this.$locale.baseText('triggerPanel.executeWorkflow');
+			return '';
 		},
 		subheader(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType.displayName) : '';

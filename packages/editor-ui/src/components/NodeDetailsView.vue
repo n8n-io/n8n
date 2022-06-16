@@ -198,10 +198,11 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 		showTriggerPanel(): boolean {
 			const isWebhookBasedNode = this.activeNodeType && this.activeNodeType.webhooks && this.activeNodeType.webhooks.length;
 			const isPollingNode = this.activeNodeType && this.activeNodeType.polling;
+			const override = this.activeNodeType && this.activeNodeType.triggerPanel;
 			return Boolean(
 				!this.readOnly &&
 				this.isTriggerNode &&
-				(isWebhookBasedNode || isPollingNode),
+				(isWebhookBasedNode || isPollingNode || override),
 			);
 		},
 		workflow(): Workflow {
