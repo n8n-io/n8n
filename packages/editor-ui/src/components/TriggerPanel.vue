@@ -67,7 +67,7 @@
 				<n8n-text size="small" @click="onLinkClick">
 					<span v-html="activationHint"></span>
 				</n8n-text>
-				<n8n-info-accordion ref="help" v-if="executionsDescription" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsDescription" @click="onLinkClick"></n8n-info-accordion>
+				<n8n-info-accordion ref="help" v-if="executionsHelp" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsHelp" @click="onLinkClick"></n8n-info-accordion>
 			</div>
 		</transition>
 	</div>
@@ -219,57 +219,16 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 			return '';
 		},
-		executionsActivationHint(): string {
-			if (!this.isWorkflowActive && !this.isActivelyPolling) {
-				if (this.isWebhookNode) {
-					return this.$locale.baseText('triggerPanel.executionsHint.webhookNode.inactive');
+		executionsHelp(): string {
+			if (this.nodeType && this.nodeType.triggerPanel && this.nodeType.triggerPanel.executionsHelp !== undefined) {
+				if (typeof this.nodeType.triggerPanel.executionsHelp === 'string') {
+					return this.nodeType.triggerPanel.executionsHelp;
 				}
-				else if (this.isWebhookBasedNode || this.isPollingNode) {
-					return this.$locale.baseText('triggerPanel.executionsHint.webhookBasedNode.inactive', {
-						interpolate: { service: this.serviceName },
-					});
+				if (!this.isWorkflowActive && this.nodeType.triggerPanel.executionsHelp.inactive) {
+					return this.nodeType.triggerPanel.executionsHelp.inactive;
 				}
-			}
-
-			if (this.isWorkflowActive) {
-				if (this.isWebhookNode) {
-					return this.$locale.baseText('triggerPanel.executionsHint.webhookNode.active');
-				}
-				else if (this.isWebhookBasedNode || this.isPollingNode) {
-					return this.$locale.baseText('triggerPanel.executionsHint.webhookBasedNode.active', {
-						interpolate: { service: this.serviceName },
-					});
-				}
-			}
-
-			return '';
-		},
-		executionsHint(): string {
-			const saveDataErrorExecutionDefault = this.$store.getters.saveDataErrorExecution;
-			const saveDataSuccessExecutionDefault = this.$store.getters.saveDataSuccessExecution;
-
-			const settings = this.$store.getters.workflowSettings;
-
-			const saveDataSuccess = settings.hasOwnProperty('saveDataSuccessExecution') ? settings.saveDataSuccessExecution: saveDataSuccessExecutionDefault;
-			const saveDataError = settings.hasOwnProperty('saveDataErrorExecution') ? settings.saveDataErrorExecution: saveDataErrorExecutionDefault;
-
-			if (saveDataSuccess === 'all' && saveDataError === 'all') {
-				return this.$locale.baseText('triggerPanel.executinosHint.enabled');
-			}
-
-			if (saveDataSuccess === 'all' || saveDataError === 'all') {
-				return this.$locale.baseText('triggerPanel.executinosHint.limited');
-			}
-
-			return this.$locale.baseText('triggerPanel.executinosHint.disabled');
-		},
-		executionsDescription(): string {
-			if (this.isWebhookNode) {
-				if (this.isWorkflowActive) {
-					return this.$locale.baseText('triggerPanel.webhookNode.executionsHelp.active');
-				}
-				else {
-					return this.$locale.baseText('triggerPanel.webhookNode.executionsHelp.inactive');
+				if (this.isWorkflowActive && this.nodeType.triggerPanel.executionsHelp.active) {
+					return this.nodeType.triggerPanel.executionsHelp.active;
 				}
 			}
 
@@ -299,15 +258,19 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				}
 			}
 
-			const activationHint = this.executionsActivationHint;
-			if (activationHint) {
-				return `${this.executionsActivationHint}<br />${this.executionsHint}`;
-			}
 			return '';
 		},
 		activationHint(): string {
-			if (this.isWebhookNode) {
-				return this.$locale.baseText('triggerPanel.webhookNode.activationHint');
+			if (this.nodeType && this.nodeType.triggerPanel && this.nodeType.triggerPanel.activationHint) {
+				if (typeof this.nodeType.triggerPanel.activationHint === 'string') {
+					return this.nodeType.triggerPanel.activationHint;
+				}
+				if (!this.isWorkflowActive && typeof this.nodeType.triggerPanel.activationHint.inactive === 'string') {
+					return this.nodeType.triggerPanel.activationHint.inactive;
+				}
+				if (this.isWorkflowActive && typeof this.nodeType.triggerPanel.activationHint.active === 'string') {
+					return this.nodeType.triggerPanel.activationHint.active;
+				}
 			}
 
 			if (!this.isWorkflowActive && !this.isActivelyPolling) {
