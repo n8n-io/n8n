@@ -36,7 +36,7 @@ export const senderOperations: INodeProperties[] = [
 							},
 						],
 					},
-				}
+				},
 			},
 			{
 				name: 'Get All',
@@ -58,22 +58,22 @@ export const senderOperations: INodeProperties[] = [
 								},
 							},
 							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
-								const returnAll = this.getNodeParameter("returnAll") as boolean;
+								const returnAll = this.getNodeParameter('returnAll') as boolean;
 								if(returnAll === false) {
-									const limit = this.getNodeParameter("limit") as number;
+									const limit = this.getNodeParameter('limit') as number;
 
 									items = items.slice(0, limit);
 								}
 
 								return items;
-							}
+							},
 						],
 					},
-				}
+				},
 			},
 		],
 		default: 'create',
-	}
+	},
 ];
 
 const senderCreateOperation: INodeProperties[] = [
@@ -99,7 +99,7 @@ const senderCreateOperation: INodeProperties[] = [
 			},
 			send: {
 				property: 'name',
-				type: 'body'
+				type: 'body',
 			},
 		},
 		required: true,
@@ -148,7 +148,7 @@ const senderDeleteOperation: INodeProperties[] = [
 			},
 		},
 		description: 'ID of the sender to delete',
-	}
+	},
 ];
 
 const senderGetAllOperation: INodeProperties[] = [
@@ -209,5 +209,5 @@ export const senderFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                sender:getAll                               */
 	/* -------------------------------------------------------------------------- */
-		...senderGetAllOperation
+		...senderGetAllOperation,
 ];

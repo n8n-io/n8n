@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const emailOperations: INodeProperties[] = [
 	{
@@ -21,16 +21,16 @@ export const emailOperations: INodeProperties[] = [
 			{
 				name: 'Send Template',
 				value: 'sendTemplate',
-			}
+			},
 		],
 		routing: {
 			request: {
 				method: 'POST',
-				url: '/v3/smtp/email'
-			}
+				url: '/v3/smtp/email',
+			},
 		},
 		default: 'send',
-	}
+	},
 ];
 
 const emailAttachments: INodeProperties[] = [
@@ -38,8 +38,8 @@ const emailAttachments: INodeProperties[] = [
 		displayName: 'Attachments',
 		default: {},
 		name: 'emailAttachments',
-		type: 'fixedCollection'
-	}
+		type: 'fixedCollection',
+	},
 ];
 
 const sendHtmlEmailFields: INodeProperties[] = [
@@ -95,8 +95,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 					'send',
 				],
 				sendHTML: [
-					false
-				]
+					false,
+				],
 			},
 		},
 		routing: {
@@ -121,8 +121,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 					'send',
 				],
 				sendHTML: [
-					true
-				]
+					true,
+				],
 			},
 		},
 		routing: {
@@ -183,7 +183,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						description: 'Email of the sender',
 					},
 				],
-				required: true
+				required: true,
 			},
 		],
 	},
@@ -240,7 +240,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				],
 			},
 		],
-		required: true
+		required: true,
 	},
 	{
 		displayName: 'Additional Parameters',
@@ -349,7 +349,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				],
 			},
 		],
-	}
+	},
 ];
 
 const sendHtmlTemplateEmailFields: INodeProperties[] = [
@@ -361,19 +361,19 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'email'
+					'email',
 				],
 				operation: [
-					'sendTemplate'
-				]
-			}
+					'sendTemplate',
+				],
+			},
 		},
 		routing: {
 			send: {
 				type: 'body',
-				property: 'templateId'
-			}
-		}
+				property: 'templateId',
+			},
+		},
 	},
 	{
 		displayName: 'Receipients',
@@ -389,7 +389,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 					'email',
 				],
 				operation: [
-					'sendTemplate'
+					'sendTemplate',
 				],
 			},
 		},
@@ -428,7 +428,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				],
 			},
 		],
-		required: true
+		required: true,
 	},
 	{
 		type: 'collection',
@@ -438,12 +438,12 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'email'
+					'email',
 				],
 				operation: [
-					'sendTemplate'
-				]
-			}
+					'sendTemplate',
+				],
+			},
 		},
 		options: [
 			{
@@ -478,17 +478,17 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 									},
 								},
 							},
-						]
+						],
 					},
 				],
 				default: {},
-				description: 'Pass the set of attributes to customize the template'
+				description: 'Pass the set of attributes to customize the template',
 			},
-		]
-	}
+		],
+	},
 ];
 
 export const emailFields: INodeProperties[] = [
 	...sendHtmlEmailFields,
-	...sendHtmlTemplateEmailFields
+	...sendHtmlTemplateEmailFields,
 ];

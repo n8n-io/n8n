@@ -21,7 +21,7 @@ export const contactOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/v3/contacts',
-					}
+					},
 				},
 			},
 			{
@@ -57,11 +57,11 @@ export const contactOperations: INodeProperties[] = [
 								limitParameter: 'limit',
 								offsetParameter: 'offset',
 								pageSize: 1000,
-								type: 'query'
-							}
-						}
-					}
-				}
+								type: 'query',
+							},
+						},
+					},
+				},
 			},
 			{
 				name: 'Update',
@@ -75,9 +75,9 @@ export const contactOperations: INodeProperties[] = [
 									value: '={{ { "success": true } }}', // Also possible to use the original response data
 								},
 							},
-						]
+						],
 					},
-				}
+				},
 			},
 		],
 		default: 'create',
@@ -104,8 +104,8 @@ const createOperations: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'email',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -116,10 +116,10 @@ const createOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contact'
+					'contact',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
@@ -189,11 +189,11 @@ const createOperations: INodeProperties[] = [
 									},
 								},
 							},
-						]
+						],
 					},
 				],
 				default: {},
-				description: 'Array of attributes to be added'
+				description: 'Array of attributes to be added',
 			},
 		],
 	},
@@ -205,11 +205,11 @@ const createOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contact'
+					'contact',
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		default: {},
@@ -223,11 +223,11 @@ const createOperations: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'updateEnabled',
-					}
-				}
-			}
+					},
+				},
+			},
 		],
-	}
+	},
 ];
 
 const getAllOperations: INodeProperties[] = [
@@ -237,8 +237,8 @@ const getAllOperations: INodeProperties[] = [
 		type: 'boolean',
 		routing: {
 			send: {
-				paginate: '={{$value}}'
-			}
+				paginate: '={{$value}}',
+			},
 		},
 		displayOptions: {
 			show: {
@@ -273,8 +273,8 @@ const getAllOperations: INodeProperties[] = [
 		routing: {
 			send: {
 				type: 'query',
-				property: 'limit'
-			}
+				property: 'limit',
+			},
 		},
 		typeOptions: {
 			minValue: 1,
@@ -295,7 +295,7 @@ const getAllOperations: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		default: {},
@@ -306,18 +306,18 @@ const getAllOperations: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{name:'DESC', value: 'desc'},
-					{name:'ASC', value: 'asc'}
+					{name:'ASC', value: 'asc'},
 				],
 				routing: {
 					send: {
 						type: 'query',
 						property: 'sort',
-						value: '={{$value}}'
-					}
+						value: '={{$value}}',
+					},
 				},
 				default: 'desc',
 				description: 'Sort the results in the ascending/descending order of record creation',
-			}
+			},
 		],
 	},
 	{
@@ -332,7 +332,7 @@ const getAllOperations: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		default: {},
@@ -349,9 +349,9 @@ const getAllOperations: INodeProperties[] = [
 				},
 				default: '',
 				description: 'Filter (urlencoded) the contacts modified after a given UTC date-time (YYYY-MM-DDTHH:mm:ss.SSSZ)',
-			}
+			},
 		],
-	}
+	},
 ];
 
 const getOperations: INodeProperties[] = [
@@ -366,19 +366,19 @@ const getOperations: INodeProperties[] = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		routing: {
 			request: {
 				method: 'GET',
 				url: '=/v3/contacts/{{$value}}',
-			}
+			},
 		},
 		required: true,
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
-	}
+	},
 ];
 
 const deleteOperations: INodeProperties[] = [
@@ -393,7 +393,7 @@ const deleteOperations: INodeProperties[] = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		routing: {
@@ -414,7 +414,7 @@ const deleteOperations: INodeProperties[] = [
 		},
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
-	}
+	},
 ];
 
 const updateOperations: INodeProperties[] = [
@@ -425,10 +425,10 @@ const updateOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contact'
+					'contact',
 				],
 				operation: [
-					'update'
+					'update',
 				],
 			},
 		},
@@ -446,10 +446,10 @@ const updateOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contact'
+					'contact',
 				],
 				operation: [
-					'update'
+					'update',
 				],
 			},
 		},
@@ -519,11 +519,11 @@ const updateOperations: INodeProperties[] = [
 									},
 								},
 							},
-						]
+						],
 					},
 				],
 				default: {},
-				description: 'Array of attributes to be updated'
+				description: 'Array of attributes to be updated',
 			},
 		],
 		routing: {
@@ -531,8 +531,8 @@ const updateOperations: INodeProperties[] = [
 				method: 'PUT',
 				url: '=/v3/contacts/{{$parameter.identifier}}',
 			},
-		}
-	}
+		},
+	},
 ];
 
 export const contactFields: INodeProperties[] = [
@@ -559,5 +559,5 @@ export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
-	...updateOperations
+	...updateOperations,
 ];

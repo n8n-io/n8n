@@ -1,5 +1,5 @@
-import { IExecuteSingleFunctions, IHttpRequestOptions, INodeExecutionData, INodeProperties, JsonObject } from "n8n-workflow";
-import { INTERCEPTORS } from "./GenericFunctions";
+import { IExecuteSingleFunctions, IHttpRequestOptions, INodeExecutionData, INodeProperties, JsonObject } from 'n8n-workflow';
+import { INTERCEPTORS } from './GenericFunctions';
 
 export const attributeOperations: INodeProperties[] = [
 	{
@@ -21,7 +21,7 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{$parameter.attributeName.toLowerCase()}}'
+						url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{$parameter.attributeName.toLowerCase()}}',
 					},
 					output: {
 						postReceive: [
@@ -31,7 +31,7 @@ export const attributeOperations: INodeProperties[] = [
 									value: '={{ { "success": true } }}', // Also possible to use the original response data
 								},
 							},
-						]
+						],
 					},
 					send: {
 						preSend: [
@@ -43,9 +43,9 @@ export const attributeOperations: INodeProperties[] = [
 								}
 
 								return requestOptions;
-							}
-						]
-					}
+							},
+						],
+					},
 				},
 			},
 			{
@@ -54,9 +54,9 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/v3/contacts/attributes/{{$parameter.updateAttributeCategory}}/{{$parameter.updateAttributeName.toLowerCase()}}'
-					}
-				}
+						url: '=/v3/contacts/attributes/{{$parameter.updateAttributeCategory}}/{{$parameter.updateAttributeName.toLowerCase()}}',
+					},
+				},
 			},
 			{
 				name: 'Delete',
@@ -64,7 +64,7 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/v3/contacts/attributes/{{$parameter.deleteAttributeCategory}}/{{$parameter.deleteAttributeName.toLowerCase()}}'
+						url: '=/v3/contacts/attributes/{{$parameter.deleteAttributeCategory}}/{{$parameter.deleteAttributeName.toLowerCase()}}',
 					},
 					output: {
 						postReceive: [
@@ -74,9 +74,9 @@ export const attributeOperations: INodeProperties[] = [
 									value: '={{ { "success": true } }}', // Also possible to use the original response data
 								},
 							},
-						]
+						],
 					},
-				}
+				},
 			},
 			{
 				name: 'Get All',
@@ -98,22 +98,22 @@ export const attributeOperations: INodeProperties[] = [
 								},
 							},
 							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
-								const returnAll = this.getNodeParameter("returnAll") as boolean;
+								const returnAll = this.getNodeParameter('returnAll') as boolean;
 								if(returnAll === false) {
-									const limit = this.getNodeParameter("limit") as number;
+									const limit = this.getNodeParameter('limit') as number;
 
 									items = items.slice(0, limit);
 								}
 
 								return items;
-							}
+							},
 						],
 					},
-				}
-			}
+				},
+			},
 		],
-		default: 'createAttribute'
-	}
+		default: 'createAttribute',
+	},
 ];
 
 const createAttributeOperations: INodeProperties[] = [
@@ -188,7 +188,7 @@ const createAttributeOperations: INodeProperties[] = [
 				],
 				attributeCategory: [
 					'normal',
-				]
+				],
 			},
 		},
 		name: 'attributeType',
@@ -208,7 +208,7 @@ const createAttributeOperations: INodeProperties[] = [
 			{
 				name: 'Boolean',
 				value: 'boolean',
-			}
+			},
 		],
 		required: true,
 		type: 'options',
@@ -216,9 +216,9 @@ const createAttributeOperations: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'type',
-				value: '={{$value}}'
+				value: '={{$value}}',
 			},
-		}
+		},
 	},
 	{
 		default: '',
@@ -227,16 +227,16 @@ const createAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'attribute'
+					'attribute',
 				],
 				operation: [
-					'createAttribute'
+					'createAttribute',
 				],
 				attributeCategory: [
 					'global',
-					'calculated'
-				]
-			}
+					'calculated',
+				],
+			},
 		},
 		name: 'attributeValue',
 		type: 'string',
@@ -245,9 +245,9 @@ const createAttributeOperations: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'value',
-				value: '={{$value}}'
-			}
-		}
+				value: '={{$value}}',
+			},
+		},
 	},
 	{
 		displayName: 'List',
@@ -258,14 +258,14 @@ const createAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'attribute'
+					'attribute',
 				],
 				operation: [
-					'createAttribute'
+					'createAttribute',
 				],
 				attributeCategory: [
-					'category'
-				]
+					'category',
+				],
 			},
 		},
 		options: [
@@ -308,16 +308,16 @@ const createAttributeOperations: INodeProperties[] = [
 										type: 'body',
 									},
 								},
-								description: 'Label of the value'
+								description: 'Label of the value',
 							},
-						]
+						],
 					},
 				],
 				default: {},
-				description: 'List of values and labels that the attribute can take'
+				description: 'List of values and labels that the attribute can take',
 			},
 		],
-	}
+	},
 ];
 
 const updateAttributeOperations: INodeProperties[] = [
@@ -376,16 +376,16 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'attribute'
+					'attribute',
 				],
 				operation: [
-					'updateAttribute'
+					'updateAttribute',
 				],
 				attributeCategory: [
 					'global',
-					'calculated'
-				]
-			}
+					'calculated',
+				],
+			},
 		},
 		name: 'updateAttributeValue',
 		type: 'string',
@@ -394,9 +394,9 @@ const updateAttributeOperations: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'value',
-				value: '={{$value}}'
-			}
-		}
+				value: '={{$value}}',
+			},
+		},
 	},
 	{
 		displayName: 'Update Fields',
@@ -408,14 +408,14 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'attribute'
+					'attribute',
 				],
 				operation: [
-					'updateAttribute'
+					'updateAttribute',
 				],
 				updateAttributeCategory: [
-					'category'
-				]
+					'category',
+				],
 			},
 		},
 		options: [
@@ -458,16 +458,16 @@ const updateAttributeOperations: INodeProperties[] = [
 										type: 'body',
 									},
 								},
-								description: 'Label of the value'
+								description: 'Label of the value',
 							},
-						]
+						],
 					},
 				],
 				default: {},
-				description: 'List of values and labels that the attribute can take'
+				description: 'List of values and labels that the attribute can take',
 			},
 		],
-	}
+	},
 ];
 
 const deleteAttribueOperations: INodeProperties[] = [
@@ -526,7 +526,7 @@ const deleteAttribueOperations: INodeProperties[] = [
 		},
 		name: 'deleteAttributeName',
 		type: 'string',
-	}
+	},
 ];
 
 const getAllAttributeOperations: INodeProperties[] = [
@@ -577,5 +577,5 @@ export const attributeFields: INodeProperties[] = [
 	...createAttributeOperations,
 	...updateAttributeOperations,
 	...deleteAttribueOperations,
-	...getAllAttributeOperations
+	...getAllAttributeOperations,
 ];

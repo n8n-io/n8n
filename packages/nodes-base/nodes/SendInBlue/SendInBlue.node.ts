@@ -1,8 +1,8 @@
 import { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { attributeOperations, attributeFields } from './AttributeDescription';
+import { attributeFields, attributeOperations } from './AttributeDescription';
 import { contactFields, contactOperations } from './ContactDescription';
 import { emailFields, emailOperations } from './EmailDescription';
-import { senderOperations, senderFields } from './SenderDescrition';
+import { senderFields, senderOperations } from './SenderDescrition';
 export class Sendinblue implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sendinblue',
@@ -14,7 +14,7 @@ export class Sendinblue implements INodeType {
 		description: 'Consume Sendinblue API',
 		defaults: {
 			name: 'Sendinblue',
-			color: '#044a75'
+			color: '#044a75',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -53,8 +53,8 @@ export class Sendinblue implements INodeType {
 					},
 					{
 						name: 'Contact Attribute',
-						value: 'attribute'
-					}
+						value: 'attribute',
+					},
 				],
 				default: 'email',
 			},
