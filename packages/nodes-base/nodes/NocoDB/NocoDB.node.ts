@@ -41,9 +41,43 @@ export class NocoDB implements INodeType {
 			{
 				name: 'nocoDb',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'nocoDb',
+						],
+					},
+				},
+			},
+			{
+				name: 'nocoDbApiToken',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'nocoDbApiToken',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'User Token',
+						value: 'nocoDb',
+					},
+					{
+						name: 'API Token',
+						value: 'nocoDbApiToken',
+					},
+				],
+				default: 'nocoDb',
+			},
 			{
 				displayName: 'API Version',
 				name: 'version',
@@ -153,11 +187,6 @@ export class NocoDB implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProjects(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials('nocoDb');
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
-
 				try {
 					const requestMethod = 'GET';
 					const endpoint = '/api/v1/db/meta/projects/';

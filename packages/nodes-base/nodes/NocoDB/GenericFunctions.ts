@@ -14,6 +14,7 @@ import {
 	INodeExecutionData,
 	IPollFunctions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -34,19 +35,29 @@ interface IAttachment {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('nocoDb');
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+	let credentials;
+
+	if (authenticationMethod === 'nocoDbApiToken') {
+		credentials = await this.getCredentials('nocoDbApiToken');
+	} else if (authenticationMethod === 'nocoDb') {
+		credentials = await this.getCredentials('nocoDb');
+	}
+
+	if (credentials === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+
+	const baseUrl = credentials.host as string;
+
 	query = query || {};
 
-	const tokenType = (credentials.apiToken.toString().length > 40) ? 'xc-auth' : 'xc-token';
-
 	const options: OptionsWithUri = {
-		headers: {
-			[tokenType]: credentials.apiToken,
-		},
+		headers: {},
 		method,
 		body,
 		qs: query,
-		uri: uri || `${credentials.host}${endpoint}`,
+		uri: uri || baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`,
 		json: true,
 
 	};
@@ -59,8 +70,10 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		delete options.body;
 	}
 
+	const credentialType = authenticationMethod === 'nocoDb' ? 'nocoDb' : 'nocoDbApiToken';
+
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

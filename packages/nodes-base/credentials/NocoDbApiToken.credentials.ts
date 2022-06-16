@@ -6,13 +6,13 @@ import {
 } from 'n8n-workflow';
 
 
-export class NocoDb implements ICredentialType {
-	name = 'nocoDb';
-	displayName = 'NocoDB';
+export class NocoDbApiToken implements ICredentialType {
+	name = 'nocoDbApiToken';
+	displayName = 'NocoDB API Token';
 	documentationUrl = 'nocoDb';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'User Token',
+			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
 			default: '',
@@ -29,7 +29,7 @@ export class NocoDb implements ICredentialType {
 	authenticate: IAuthenticateHeaderAuth = {
 		type: 'headerAuth',
 		properties: {
-			name: 'xc-auth',
+			name: 'xc-token',
 			value: '={{$credentials.apiToken}}',
 		},
 	};
@@ -43,7 +43,7 @@ export class NocoDb implements ICredentialType {
 				type: 'responseSuccessBody',
 				properties: {
 					key: 'isAuthorized',
-					value: true,
+					value: false,
 					message: 'Invalid API Token',
 				},
 			},
