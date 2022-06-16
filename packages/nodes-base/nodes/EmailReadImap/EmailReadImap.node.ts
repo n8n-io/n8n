@@ -39,9 +39,11 @@ export class EmailReadImap implements INodeType {
 		defaults: {
 			name: 'IMAP Email',
 			color: '#44AA22',
+			serviceName: 'Email',
 		},
 		inputs: [],
 		outputs: ['main'],
+		triggerPanel: {},
 		credentials: [
 			{
 				name: 'imap',

@@ -25,6 +25,7 @@ export class LocalFileTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
+		triggerPanel: {},
 		properties: [
 			{
 				displayName: 'Trigger On',
