@@ -6,10 +6,10 @@
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" />
+					<NodeExecuteButton v-if="node && nodeValid" :nodeName="node.name" @execute="onNodeExecute" size="small" />
 				</div>
 			</div>
-			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
+			<NodeSettingsTabs v-if="node && nodeValid" v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<p :class="$style.warningIcon">

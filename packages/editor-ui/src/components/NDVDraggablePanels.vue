@@ -1,9 +1,9 @@
 <template>
 	<div>
-		<div :class="$style.inputPanel" v-if="!isTriggerNode" :style="inputPanelStyles">
+		<div :class="$style.inputPanel" v-if="!hideInputAndOutput && !isTriggerNode" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
-		<div :class="$style.outputPanel" :style="outputPanelStyles">
+		<div :class="$style.outputPanel" v-if="!hideInputAndOutput" :style="outputPanelStyles">
 			<slot name="output"></slot>
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
@@ -39,6 +39,9 @@ export default Vue.extend({
 		isTriggerNode: {
 			type: Boolean,
 		},
+		hideInputAndOutput: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
@@ -47,6 +50,8 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
+		console.log(`${this.hideInputAndOutput} || ${this.isTriggerNode} --> ${!this.hideInputAndOutput || !this.isTriggerNode}`);
+
 		this.setTotalWidth();
 		window.addEventListener('resize', this.setTotalWidth);
 		this.$emit('init', { position: this.getRelativePosition() });
