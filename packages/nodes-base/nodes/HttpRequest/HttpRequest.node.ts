@@ -1,14 +1,10 @@
-import path from 'path';
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
-	IAuthenticate,
 	IBinaryData,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
@@ -16,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
+import { replaceNullValues } from './GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -919,8 +916,7 @@ export class HttpRequest implements INodeType {
 				displayName: 'Query Paramters',
 			},
 		};
-
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
@@ -1263,6 +1259,7 @@ export class HttpRequest implements INodeType {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
+					// @ts-ignore
 					Object.assign(newItem.binary, items[itemIndex].binary);
 				}
 
@@ -1366,6 +1363,8 @@ export class HttpRequest implements INodeType {
 				}
 			}
 		}
+
+		returnItems = returnItems.map(replaceNullValues);
 
 		return this.prepareOutputData(returnItems);
 	}

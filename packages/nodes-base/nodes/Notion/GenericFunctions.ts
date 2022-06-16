@@ -711,7 +711,7 @@ export function getConditions() {
 	return elements;
 }
 
-export function validateCrendetials(this: ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject) {
+export function validateCredentials(this: ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject) {
 	const options: OptionsWithUri = {
 		headers: {
 			'Authorization': `Bearer ${credentials.apiKey}`,
