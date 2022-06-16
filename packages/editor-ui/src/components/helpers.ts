@@ -36,10 +36,6 @@ export function getStyleTokenValue(name: string): string {
 }
 
 export function getTriggerNodeServiceName(nodeType: INodeTypeDescription): string {
-	if (nodeType && nodeType.defaults && typeof nodeType.defaults.serviceName === 'string') {
-		return nodeType.defaults.serviceName;
-	}
-
 	return nodeType.displayName.replace(/ trigger/i, '');
 }
 

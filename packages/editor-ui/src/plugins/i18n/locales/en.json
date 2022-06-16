@@ -305,7 +305,7 @@
 	"ndv.backToCanvas": "Back to canvas",
 	"ndv.backToCanvas.waitingForTriggerWarning": "Waiting for a Trigger node to execute. Close this view to see the Workflow Canvas.",
 	"ndv.execute.stopWaitingForWebhook.error": "Problem deleting test webhook",
-	"ndv.execute.stopWaitingForWebhook.success": "Problem deleting test webhook",
+	"ndv.execute.stopWaitingForWebhook.success": "Deleted test webhook",
 	"ndv.execute.executeNode": "Execute node",
 	"ndv.execute.executing": "Executing",
 	"ndv.execute.fetchEvent": "Fetch Test Event",

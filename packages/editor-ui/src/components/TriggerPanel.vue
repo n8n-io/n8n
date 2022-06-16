@@ -480,6 +480,10 @@ $--dark-pulse-color: hsla(
 	bottom: 0;
 	left: 0;
 	width: 100%;
+
+	b {
+		font-weight: var(--font-weight-bold);
+	}
 }
 </style>
 
