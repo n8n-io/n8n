@@ -75,7 +75,7 @@ export class LinkedIn implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let body = {};
+		let body:any = {};
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -219,6 +219,15 @@ export class LinkedIn implements INodeType {
 									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
 								},
 							};
+
+							if (description === '') {
+								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].description;
+							}
+
+							if (title === '') {
+								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].title;
+							}
+
 						} else {
 							body = {
 								author: authorUrn,
