@@ -59,14 +59,12 @@ export class CloseHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex) as string;
 
-		const responseData = await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/close`);
+		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/close`);
 
 		return {
 			success: true,
-			data: null,
 		};
 	}
-
 }
 
 export class DeleteHandler implements OperationHandler {
@@ -141,7 +139,6 @@ export class ReopenHandler implements OperationHandler {
 
 		const responseData = await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/reopen`);
 		return {
-			success: true,
 			data: responseData,
 		};
 	}
@@ -237,9 +234,9 @@ export class SyncHandler implements OperationHandler {
 			temp_id_mapping: this.convertToObject(tempIdMapping),
 		};
 
-		const response = await todoistSyncRequest.call(ctx, body);
+		await todoistSyncRequest.call(ctx, body);
 
-		return {success: true, data: response};
+		return {success: true};
 	}
 
 	private convertToObject(map: Map<string, string>) {
