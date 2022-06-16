@@ -83,7 +83,7 @@ export const spaceTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Name',
+		displayName: 'Name or ID',
 		name: 'name',
 		type: 'options',
 		typeOptions: {

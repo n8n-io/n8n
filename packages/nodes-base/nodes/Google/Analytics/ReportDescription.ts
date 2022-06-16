@@ -28,7 +28,7 @@ export const reportOperations: INodeProperties[] = [
 
 export const reportFields: INodeProperties[] = [
 	{
-		displayName: 'View ID',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -47,7 +47,7 @@ export const reportFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '123456',
-		description: 'The View ID of Google Analytics',
+		description: 'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -168,14 +168,14 @@ export const reportFields: INodeProperties[] = [
 						name: 'dimensionValues',
 						values: [
 							{
-								displayName: 'Name',
+								displayName: 'Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDimensions',
 								},
 								default: '',
-								description: 'Name of the dimension to fetch, for example ga:browser',
+								description: 'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 						],
 					},
@@ -197,14 +197,14 @@ export const reportFields: INodeProperties[] = [
 						name: 'filterValues',
 						values: [
 							{
-								displayName: 'Dimension Name',
+								displayName: 'Dimension Name or ID',
 								name: 'dimensionName',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDimensions',
 								},
 								default: '',
-								description: 'Name of the dimension to filter by',
+								description: 'Name of the dimension to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							// https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Operator
 							{
@@ -223,12 +223,20 @@ export const reportFields: INodeProperties[] = [
 										value: 'ENDS_WITH',
 									},
 									{
+										name: 'Equal (Number)',
+										value: 'NUMERIC_EQUAL',
+									},
+									{
 										name: 'Exact',
 										value: 'EXACT',
 									},
 									{
-										name: 'Greater Than (number)',
+										name: 'Greater Than (Number)',
 										value: 'NUMERIC_GREATER_THAN',
+									},
+									{
+										name: 'Less Than (Number)',
+										value: 'NUMERIC_LESS_THAN',
 									},
 									{
 										name: 'Partial',
@@ -237,14 +245,6 @@ export const reportFields: INodeProperties[] = [
 									{
 										name: 'Regular Expression',
 										value: 'REGEXP',
-									},
-									{
-										name: 'Equal (number)',
-										value: 'NUMERIC_EQUAL',
-									},
-									{
-										name: 'Less Than (number)',
-										value: 'NUMERIC_LESS_THAN',
 									},
 								],
 							},

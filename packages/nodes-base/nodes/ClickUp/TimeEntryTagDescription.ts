@@ -42,7 +42,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -107,7 +107,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:add                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -194,7 +194,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:remove                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
 		default: '',

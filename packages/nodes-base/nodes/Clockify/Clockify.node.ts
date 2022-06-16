@@ -102,7 +102,7 @@ export class Clockify implements INodeType {
 			...taskOperations,
 			...timeEntryOperations,
 			{
-				displayName: 'Workspace ID',
+				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
 				typeOptions: {

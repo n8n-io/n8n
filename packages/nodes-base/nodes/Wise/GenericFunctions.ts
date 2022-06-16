@@ -58,6 +58,10 @@ export async function wiseApiRequest(
 		delete options.qs;
 	}
 
+	if (option.encoding) {
+		delete options.json;
+	}
+
 	if (Object.keys(option)) {
 		Object.assign(options, option);
 	}
@@ -110,26 +114,6 @@ export async function wiseApiRequest(
 	} else {
 		throw new NodeApiError(this.getNode(), { ...response, message: response.statusMessage });
 	}
-}
-
-/**
- * Populate the binary property of node items with binary data for a PDF file.
- */
-export async function handleBinaryData(
-	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-	i: number,
-	endpoint: string,
-) {
-	const data = await wiseApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
-	const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-
-	items[i].binary = items[i].binary ?? {};
-	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
-	items[i].binary![binaryProperty].fileName = this.getNodeParameter('fileName', i) as string;
-	items[i].binary![binaryProperty].fileExtension = 'pdf';
-
-	return items;
 }
 
 export function getTriggerName(eventName: string) {

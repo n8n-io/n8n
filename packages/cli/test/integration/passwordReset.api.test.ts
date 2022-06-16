@@ -24,7 +24,7 @@ let globalMemberRole: Role;
 let isSmtpAvailable = false;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 

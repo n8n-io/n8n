@@ -68,7 +68,7 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 		],
 	},
 	{
-		displayName: 'Auto Delete',
+		displayName: 'Auto Delete Queue',
 		name: 'autoDelete',
 		type: 'boolean',
 		default: false,
