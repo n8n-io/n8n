@@ -5,6 +5,8 @@ import dateformat from 'dateformat';
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
 
+const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+
 export function abbreviateNumber(num: number) {
 	const tier = (Math.log10(Math.abs(num)) / 3) | 0;
 
@@ -66,4 +68,15 @@ export function isString(value: unknown): value is string {
 
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
+}
+
+export function isCommunityPackageName(packageName: string): boolean {
+	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
+	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
+	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
+
+	if(nameMatch) {
+		return true;
+	}
+	return false;
 }

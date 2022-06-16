@@ -145,6 +145,10 @@ export type XYPosition = [number, number];
 
 export type MessageType = 'success' | 'warning' | 'info' | 'error';
 
+export interface INodeTypeBaseDescriptionUi extends INodeTypeDescription {
+	communityNode: boolean;
+}
+
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
@@ -177,8 +181,8 @@ export interface IRestApi {
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getCredentialTranslation(credentialType: string): Promise<object>;
 	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
-	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
-	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
+	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeBaseDescriptionUi[]>;
+	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeBaseDescriptionUi[]>;
 	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
@@ -849,7 +853,7 @@ export interface IRootState {
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
 	nodeIndex: Array<string | null>;
-	nodeTypes: INodeTypeDescription[];
+	nodeTypes: INodeTypeBaseDescriptionUi[];
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];

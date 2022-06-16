@@ -362,7 +362,6 @@ export const pushConnection = mixins(
 						})
 						.then((nodesInfo) => {
 							this.$store.commit('updateNodeTypes', nodesInfo);
-							this.$store.commit('setCommunityNodeFlags');
 						});
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;

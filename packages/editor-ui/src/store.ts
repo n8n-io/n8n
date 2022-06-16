@@ -30,6 +30,7 @@ import {
 	XYPosition,
 	IRestApiContext,
 	ICommunityNodesState,
+	INodeTypeBaseDescriptionUi,
 } from './Interface';
 
 import credentials from './modules/credentials';
@@ -41,6 +42,7 @@ import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
 import communityNodes from './modules/communityNodes';
+import { isCommunityPackageName } from './components/helpers';
 
 Vue.use(Vuex);
 
@@ -506,8 +508,10 @@ export const store = new Vuex.Store({
 			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
-		// Node-Types
-		setNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+		setNodeTypes (state, nodeTypes: INodeTypeBaseDescriptionUi[]) {
+			nodeTypes.forEach(nodeInfo => {
+				nodeInfo.communityNode = isCommunityPackageName(nodeInfo.name);
+			});
 			Vue.set(state, 'nodeTypes', nodeTypes);
 		},
 
@@ -652,23 +656,14 @@ export const store = new Vuex.Store({
 			}
 		},
 
-		setCommunityNodeFlags (state) {
-			const allNodeTypes = state.nodeTypes;
-			const communityPackages = (modules.communityNodes.state as ICommunityNodesState).installedPackages;
-
-			allNodeTypes.forEach(nodeInfo => {
-				const packageName = nodeInfo.name.split('.')[0];
-				if (packageName in communityPackages) {
-					nodeInfo.communityNode = true;
-				}
-			});
-			Vue.set(state, 'nodeTypes', allNodeTypes);
-			state.nodeTypes = allNodeTypes;
-		},
-
-		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+		updateNodeTypes (state, nodeTypes: INodeTypeBaseDescriptionUi[]) {
 			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
 			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
+
+			newNodesState.forEach(nodeInfo => {
+				nodeInfo.communityNode = isCommunityPackageName(nodeInfo.name);
+			});
+
 			Vue.set(state, 'nodeTypes', newNodesState);
 			state.nodeTypes = newNodesState;
 		},

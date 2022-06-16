@@ -2832,7 +2832,6 @@ export default mixins(
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
 				this.$store.commit('setNodeTypes', nodeTypes);
-				this.$store.commit('setCommunityNodeFlags');
 			},
 			async loadCredentialTypes (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchCredentialTypes');
@@ -2877,7 +2876,6 @@ export default mixins(
 					});
 
 					this.$store.commit('updateNodeTypes', nodesInfo);
-					this.$store.commit('setCommunityNodeFlags');
 					this.stopLoading();
 				}
 			},

@@ -114,6 +114,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { isCommunityPackageName } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -193,7 +194,7 @@ export default mixins(
 				return this.nodeType.properties;
 			},
 			isCommunityNode(): boolean {
-				return this.node.type.startsWith('n8n-nodes-');
+				return isCommunityPackageName(this.node.type);
 			},
 		},
 		props: {
