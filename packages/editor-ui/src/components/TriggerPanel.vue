@@ -21,7 +21,7 @@
 							})
 						}}
 					</n8n-text>
-					<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('triggerPanel.copiedTestUrl')" class="mb-2xl" size="medium" :collapse="true"></CopyInput>
+					<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('triggerPanel.copiedTestUrl')" class="mb-2xl" size="medium" :collapse="true" @copy="onTestLinkCopied"></CopyInput>
 					<n8n-text tag="div" @click="onLinkClick">
 						<span v-html="$locale.baseText('triggerPanel.webhookNode.prodRequestsHint')"></span>
 					</n8n-text>
@@ -319,6 +319,10 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 							title: this.$locale.baseText('triggerPanel.copiedProdUrl'),
 							type: 'success',
 						});
+						this.$telemetry.track('User copied webhook URL', {
+							pane: 'inputs',
+							type: 'production url',
+						});
 					}
 				} else if (target.dataset.key === 'executions') {
 					this.$store.commit('setActiveNode', null);
@@ -327,6 +331,12 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 				}
 			}
+		},
+		onTestLinkCopied() {
+			this.$telemetry.track('User copied webhook URL', {
+				pane: 'inputs',
+				type: 'test url',
+			});
 		},
 		onAction(action: string) {
 			if (action === 'activate') {

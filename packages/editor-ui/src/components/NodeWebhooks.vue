@@ -88,6 +88,10 @@ export default mixins(
 					title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
 					type: 'success',
 				});
+				this.$telemetry.track('User copied webhook URL', {
+					pane: 'parameters',
+					type: `${this.showUrlFor} url`,
+				});
 			},
 			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
 				if (this.node) {
