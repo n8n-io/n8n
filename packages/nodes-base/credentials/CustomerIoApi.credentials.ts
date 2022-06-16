@@ -35,6 +35,7 @@ export class CustomerIoApi implements ICredentialType {
 			],
 			default: 'track.customer.io',
 			description: 'Should be set based on your account region',
+			hint: 'The region will be omited when being used with the HTTP node',
 			required: true,
 		},
 		{
