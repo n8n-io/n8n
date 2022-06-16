@@ -274,12 +274,12 @@ export const pushConnection = mixins(
 								this.$showMessage({
 									title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
 										interpolate: {
-											service: getTriggerNodeServiceName(node.name),
+											service: getTriggerNodeServiceName(nodeType),
 										},
 									}),
 									message: this.$locale.baseText('pushConnection.pollingNode.dataNotFound.message', {
 										interpolate: {
-											service: getTriggerNodeServiceName(node.name),
+											service: getTriggerNodeServiceName(nodeType),
 										},
 									}),
 									type: 'success',

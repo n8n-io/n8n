@@ -85,7 +85,7 @@ export default Vue.extend({
 				return triggerNodeType.activationMessage;
 			}
 
-			const serviceName = getTriggerNodeServiceName(triggerNodeType.displayName);
+			const serviceName = getTriggerNodeServiceName(triggerNodeType);
 			if (trigger.webhookId) {
 				return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
 					interpolate: {

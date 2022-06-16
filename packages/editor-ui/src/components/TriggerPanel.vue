@@ -116,7 +116,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 		serviceName(): string {
 			if (this.nodeType) {
-				return getTriggerNodeServiceName(this.nodeType.displayName);
+				return getTriggerNodeServiceName(this.nodeType);
 			}
 
 			return '';
@@ -186,7 +186,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return this.$store.getters.isActive;
 		},
 		header(): string {
-			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType.displayName) : '';
+			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
 
 			if (this.isActivelyPolling) {
 				return this.$locale.baseText('triggerPanel.pollingNode.fetchingEvent');
@@ -212,7 +212,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return '';
 		},
 		subheader(): string {
-			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType.displayName) : '';
+			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
 			if (this.isActivelyPolling) {
 				return this.$locale.baseText('triggerPanel.pollingNode.fetchingHint', {
 					interpolate: { name: serviceName },
