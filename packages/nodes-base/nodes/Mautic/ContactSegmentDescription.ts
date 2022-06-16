@@ -7,6 +7,7 @@ export const contactSegmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const contactSegmentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -53,11 +53,10 @@ export const contactSegmentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 
-		displayName: 'Segment ID',
+		displayName: 'Segment Name or ID',
 		name: 'segmentId',
 		type: 'options',
 		required: true,
@@ -76,7 +75,6 @@ export const contactSegmentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getSegments',
 		},
 		default: '',
-		description: 'Segment ID',
 
 	},
 ];

@@ -15,6 +15,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import camelcase from 'lodash.camelcase';
+import { CategoryName } from '@/plugins/i18n';
 
 export default Vue.extend({
 	props: ['item'],
@@ -24,8 +25,8 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		renderCategoryName(categoryName: string) {
-			const key = `nodeCreator.categoryNames.${categoryName}`;
+		renderCategoryName(categoryName: CategoryName) {
+			const key = `nodeCreator.categoryNames.${categoryName}` as const;
 
 			return this.$locale.exists(key) ? this.$locale.baseText(key) : categoryName;
 		},

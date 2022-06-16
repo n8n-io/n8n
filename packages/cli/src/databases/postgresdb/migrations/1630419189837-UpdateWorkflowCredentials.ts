@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config = require('../../../../config');
+import * as config from '../../../../config';
 import { MigrationHelpers } from '../../MigrationHelpers';
 
 // replacing the credentials in workflows and execution
@@ -9,13 +9,14 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 	name = 'UpdateWorkflowCredentials1630419189837';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		console.log('Start migration', this.name);
-		console.time(this.name);
-		let tablePrefix = config.get('database.tablePrefix');
-		const schema = config.get('database.postgresdb.schema');
+		let tablePrefix = config.getEnv('database.tablePrefix');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+
+		await queryRunner.query(`SET search_path TO ${schema};`);
+
 		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`
@@ -151,15 +152,15 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 				queryRunner.query(updateQuery, updateParams);
 			}
 		});
-		console.timeEnd(this.name);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
-		const schema = config.get('database.postgresdb.schema');
+		let tablePrefix = config.getEnv('database.tablePrefix');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+		await queryRunner.query(`SET search_path TO ${schema};`);
 		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`

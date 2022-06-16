@@ -40,18 +40,19 @@
 
 		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
 			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-			<a :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">
+			<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
 				{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
-			</a>
+			</n8n-link>
 		</n8n-info-tip>
 
 		<CopyInput
 			v-if="isOAuthType && credentialProperties.length"
 			:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
-			:copyContent="oAuthCallbackUrl"
+			:value="oAuthCallbackUrl"
 			:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
-			:subtitle="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-			:successMessage="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+			:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
+			:toastTitle="$locale.baseText('credentialEdit.credentialEdit.showMessage.title')"
+			:toastMessage="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
 		/>
 
 		<CredentialInputs

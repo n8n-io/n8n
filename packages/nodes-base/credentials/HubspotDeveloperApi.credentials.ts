@@ -14,12 +14,18 @@ const scopes = [
 
 export class HubspotDeveloperApi implements ICredentialType {
 	name = 'hubspotDeveloperApi';
-	displayName = 'Hubspot Developer API';
+	displayName = 'HubSpot Developer API';
 	documentationUrl = 'hubspot';
 	extends = [
 		'oAuth2Api',
 	];
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
@@ -45,7 +51,6 @@ export class HubspotDeveloperApi implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
-			description: 'Resource to consume.',
 		},
 		{
 			displayName: 'Developer API Key',

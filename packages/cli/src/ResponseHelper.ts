@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -95,13 +96,13 @@ export function sendSuccessResponse(
 	}
 }
 
-export function sendErrorResponse(res: Response, error: ResponseError, shouldLog = true) {
+export function sendErrorResponse(res: Response, error: ResponseError) {
 	let httpStatusCode = 500;
 	if (error.httpStatusCode) {
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	if (process.env.NODE_ENV !== 'production' && shouldLog) {
+	if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}
@@ -129,9 +130,11 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 		// @ts-ignore
 		response.stack = error.stack;
 	}
-
 	res.status(httpStatusCode).json(response);
 }
+
+const isUniqueConstraintError = (error: Error) =>
+	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
 
 /**
  * A helper function which does not just allow to return Promises it also makes sure that
@@ -143,15 +146,18 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
  * @returns
  */
 
-export function send(processFunction: (req: Request, res: Response) => Promise<any>) {
+export function send(processFunction: (req: Request, res: Response) => Promise<any>, raw = false) {
+	// eslint-disable-next-line consistent-return
 	return async (req: Request, res: Response) => {
 		try {
 			const data = await processFunction(req, res);
 
-			// Success response
-			sendSuccessResponse(res, data);
+			sendSuccessResponse(res, data, raw);
 		} catch (error) {
-			// Error response
+			if (error instanceof Error && isUniqueConstraintError(error)) {
+				error.message = 'There is already an entry with this name';
+			}
+
 			sendErrorResponse(res, error);
 		}
 	};

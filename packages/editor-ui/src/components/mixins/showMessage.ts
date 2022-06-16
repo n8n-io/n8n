@@ -5,7 +5,7 @@ import mixins from 'vue-typed-mixins';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { ExecutionError } from 'n8n-workflow';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import { MessageType } from 'element-ui/types/message';
+import { ElMessage, ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { isChildOf } from './helpers';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
@@ -27,8 +27,13 @@ export const showMessage = mixins(externalHooks).extend({
 				stickyNotificationQueue.push(notification);
 			}
 
-			if(messageData.type === 'error' && track) {
-				this.$telemetry.track('Instance FE emitted error', { error_title: messageData.title, error_message: messageData.message, workflow_id: this.$store.getters.workflowId });
+			if (messageData.type === 'error' && track) {
+				this.$telemetry.track('Instance FE emitted error', {
+					error_title: messageData.title,
+					error_message: messageData.message,
+					caused_by_credential: this.causedByCredential(messageData.message),
+					workflow_id: this.$store.getters.workflowId,
+				});
 			}
 
 			return notification;
@@ -92,6 +97,10 @@ export const showMessage = mixins(externalHooks).extend({
 			return notification;
 		},
 
+		$showAlert(config: ElMessageOptions): ElMessageComponent {
+			return this.$message(config);
+		},
+
 		$getExecutionError(error?: ExecutionError) {
 			// There was a problem with executing the workflow
 			let errorMessage = 'There was a problem executing the workflow!';
@@ -131,7 +140,14 @@ export const showMessage = mixins(externalHooks).extend({
 				message,
 				errorMessage: error.message,
 			});
-			this.$telemetry.track('Instance FE emitted error', { error_title: title, error_description: message, error_message: error.message, workflow_id: this.$store.getters.workflowId });
+
+			this.$telemetry.track('Instance FE emitted error', {
+				error_title: title,
+				error_description: message,
+				error_message: error.message,
+				caused_by_credential: this.causedByCredential(error.message),
+				workflow_id: this.$store.getters.workflowId,
+			});
 		},
 
 		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string): Promise<boolean> {
@@ -198,6 +214,15 @@ export const showMessage = mixins(externalHooks).extend({
 					<p>${node.name}: ${errorDescription}</p>
 				</details>
 			`;
+		},
+
+		/**
+		 * Whether a workflow execution error was caused by a credential issue, as reflected by the error message.
+		 */
+		causedByCredential(message: string | undefined) {
+			if (!message) return false;
+
+			return message.includes('Credentials for') && message.includes('are not set');
 		},
 	},
 });

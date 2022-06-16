@@ -11,9 +11,9 @@ import {
 	apiRequest,
 } from '../../../transport';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
-import { 
+import {
 	capitalCase
 } from 'change-case';
 

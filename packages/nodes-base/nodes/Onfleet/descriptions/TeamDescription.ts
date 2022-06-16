@@ -7,6 +7,7 @@ export const teamOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,14 +87,14 @@ const managersField = {
 } as INodeProperties;
 
 const hubField = {
-	displayName: 'Hub Name/ID',
+	displayName: 'Hub Name or ID',
 	name: 'hub',
 	type: 'options',
 	typeOptions: {
 		loadOptionsMethod: 'getHubs',
 	},
 	default: '',
-	description: 'The team\'s hub',
+	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {
@@ -354,7 +355,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -378,7 +379,7 @@ export const teamFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Update Fields',

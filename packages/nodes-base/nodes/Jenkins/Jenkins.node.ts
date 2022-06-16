@@ -128,7 +128,7 @@ export class Jenkins implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Job Name',
+				displayName: 'Job Name or ID',
 				name: 'job',
 				type: 'options',
 				typeOptions: {
@@ -148,7 +148,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the job',
+				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 
 			// --------------------------------------------------------------------------------------------------------
@@ -170,7 +170,7 @@ export class Jenkins implements INodeType {
 					},
 				},
 				required: true,
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -180,7 +180,7 @@ export class Jenkins implements INodeType {
 						displayName: 'Parameters',
 						values: [
 							{
-								displayName: 'Name',
+								displayName: 'Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -327,7 +327,6 @@ export class Jenkins implements INodeType {
 						],
 					},
 				},
-				required: false,
 				default: '',
 				description: 'Freeform reason for quiet down mode',
 			},
@@ -370,7 +369,7 @@ export class Jenkins implements INodeType {
 				noDataExpression: true,
 			},
 			{
-				displayName: 'Job Name',
+				displayName: 'Job Name or ID',
 				name: 'job',
 				type: 'options',
 				typeOptions: {
@@ -388,7 +387,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the job',
+				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Return All',
@@ -518,7 +517,7 @@ export class Jenkins implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;

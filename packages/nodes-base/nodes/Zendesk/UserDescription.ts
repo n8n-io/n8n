@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -81,7 +82,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: `The user's name`,
+		description: 'The user\'s name',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -105,14 +106,14 @@ export const userFields: INodeProperties[] = [
 				name: 'alias',
 				type: 'string',
 				default: '',
-				description: `An alias displayed to end users`,
+				description: 'An alias displayed to end users',
 			},
 			{
 				displayName: 'Custom Role ID',
 				name: 'custom_role_id',
 				type: 'number',
 				default: 0,
-				description: `A custom role if the user is an agent on the Enterprise plan`,
+				description: 'A custom role if the user is an agent on the Enterprise plan',
 			},
 			{
 				displayName: 'Details',
@@ -126,7 +127,7 @@ export const userFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: `The user's primary email address`,
+				description: 'The user\'s primary email address',
 			},
 			{
 				displayName: 'External ID',
@@ -136,14 +137,15 @@ export const userFields: INodeProperties[] = [
 				description: 'A unique identifier from another system',
 			},
 			{
-				displayName: 'Locale ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Locale',
 				name: 'locale',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLocales',
 				},
 				default: '',
-				description: `The user's locale.`,
+				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -164,38 +166,38 @@ export const userFields: INodeProperties[] = [
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
-				description: `true if the user can only create private comments`,
+				description: 'True if the user can only create private comments',
 			},
 			{
-				displayName: 'Organization ID',
+				displayName: 'Organization Name or ID',
 				name: 'organization_id',
 				typeOptions: {
 					loadOptionsMethod: 'getOrganizations',
 				},
 				type: 'options',
 				default: '',
-				description: `The id of the user's organization. If the user has more than one organization memberships, the id of the user's default organization`,
+				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: `The user's primary phone number.`,
+				description: 'The user\'s primary phone number',
 			},
 			{
 				displayName: 'Report CSV',
 				name: 'report_csv',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface.`,
+				description: 'Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface',
 			},
 			{
 				displayName: 'Restricted Agent',
 				name: 'restricted_agent',
 				type: 'boolean',
 				default: false,
-				description: `If the agent has any restrictions; false for admins and unrestricted agents, true for other agents`,
+				description: 'If the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
 			},
 			{
 				displayName: 'Role',
@@ -216,21 +218,21 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: `The user's role`,
+				description: 'The user\'s role',
 			},
 			{
 				displayName: 'Signature',
 				name: 'signature',
 				type: 'string',
 				default: '',
-				description: `The user's signature. Only agents and admins can have signatures`,
+				description: 'The user\'s signature. Only agents and admins can have signatures.',
 			},
 			{
 				displayName: 'Suspended',
 				name: 'suspended',
 				type: 'boolean',
 				default: false,
-				description: `If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal`,
+				description: 'If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
 				displayName: 'Tags',
@@ -265,20 +267,20 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: `Specifies which tickets the user has access to`,
+				description: 'Specifies which tickets the user has access to',
 			},
 			{
 				displayName: 'Timezone',
 				name: 'time_zone',
 				type: 'string',
 				default: '',
-				description: `The user's time zone.`,
+				description: 'The user\'s time zone',
 			},
 			{
 				displayName: 'User Fields',
 				name: 'userFieldsUi',
 				placeholder: 'Add User Field',
-				description: `Values of custom fields in the user's profile.`,
+				description: 'Values of custom fields in the user\'s profile',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -290,21 +292,21 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on.',
+								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the field.',
+								description: 'Value of the field',
 							},
 						],
 					},
@@ -315,7 +317,7 @@ export const userFields: INodeProperties[] = [
 				name: 'verified',
 				type: 'boolean',
 				default: false,
-				description: `The user's primary identity is verified or not`,
+				description: 'The user\'s primary identity is verified or not',
 			},
 		],
 	},
@@ -338,7 +340,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -362,14 +363,14 @@ export const userFields: INodeProperties[] = [
 				name: 'alias',
 				type: 'string',
 				default: '',
-				description: `An alias displayed to end users`,
+				description: 'An alias displayed to end users',
 			},
 			{
 				displayName: 'Custom Role ID',
 				name: 'custom_role_id',
 				type: 'number',
 				default: 0,
-				description: `A custom role if the user is an agent on the Enterprise plan`,
+				description: 'A custom role if the user is an agent on the Enterprise plan',
 			},
 			{
 				displayName: 'Details',
@@ -383,7 +384,7 @@ export const userFields: INodeProperties[] = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: `The user's primary email address`,
+				description: 'The user\'s primary email address',
 			},
 			{
 				displayName: 'External ID',
@@ -393,14 +394,15 @@ export const userFields: INodeProperties[] = [
 				description: 'A unique identifier from another system',
 			},
 			{
-				displayName: 'Locale ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Locale',
 				name: 'locale',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLocales',
 				},
 				default: '',
-				description: `The user's locale.`,
+				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -414,7 +416,7 @@ export const userFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `The user's name`,
+				description: 'The user\'s name',
 			},
 			{
 				displayName: 'Notes',
@@ -428,38 +430,38 @@ export const userFields: INodeProperties[] = [
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
-				description: `true if the user can only create private comments`,
+				description: 'True if the user can only create private comments',
 			},
 			{
-				displayName: 'Organization ID',
+				displayName: 'Organization Name or ID',
 				name: 'organization_id',
 				typeOptions: {
 					loadOptionsMethod: 'getOrganizations',
 				},
 				type: 'options',
 				default: '',
-				description: `The id of the user's organization. If the user has more than one organization memberships, the id of the user's default organization`,
+				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: `The user's primary phone number.`,
+				description: 'The user\'s primary phone number',
 			},
 			{
 				displayName: 'Report CSV',
 				name: 'report_csv',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface.`,
+				description: 'Whether or not the user can access the CSV report on the Search tab of the Reporting page in the Support admin interface',
 			},
 			{
 				displayName: 'Restricted Agent',
 				name: 'restricted_agent',
 				type: 'boolean',
 				default: false,
-				description: `If the agent has any restrictions; false for admins and unrestricted agents, true for other agents`,
+				description: 'If the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
 			},
 			{
 				displayName: 'Role',
@@ -480,21 +482,21 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: `The user's role`,
+				description: 'The user\'s role',
 			},
 			{
 				displayName: 'Signature',
 				name: 'signature',
 				type: 'string',
 				default: '',
-				description: `The user's signature. Only agents and admins can have signatures`,
+				description: 'The user\'s signature. Only agents and admins can have signatures.',
 			},
 			{
 				displayName: 'Suspended',
 				name: 'suspended',
 				type: 'boolean',
 				default: false,
-				description: `If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal`,
+				description: 'If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
 				displayName: 'Tags',
@@ -529,20 +531,20 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: `Specifies which tickets the user has access to`,
+				description: 'Specifies which tickets the user has access to',
 			},
 			{
 				displayName: 'Timezone',
 				name: 'time_zone',
 				type: 'string',
 				default: '',
-				description: `The user's time zone.`,
+				description: 'The user\'s time zone',
 			},
 			{
 				displayName: 'User Fields',
 				name: 'userFieldsUi',
 				placeholder: 'Add User Field',
-				description: `Values of custom fields in the user's profile.`,
+				description: 'Values of custom fields in the user\'s profile',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -554,21 +556,21 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on.',
+								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the field.',
+								description: 'Value of the field',
 							},
 						],
 					},
@@ -579,7 +581,7 @@ export const userFields: INodeProperties[] = [
 				name: 'verified',
 				type: 'boolean',
 				default: false,
-				description: `The user's primary identity is verified or not`,
+				description: 'The user\'s primary identity is verified or not',
 			},
 		],
 	},
@@ -602,7 +604,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   user:getAll                              */
@@ -622,7 +623,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -646,7 +647,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -705,7 +706,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -729,7 +730,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -781,7 +782,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                             user:getRelatedData                            */

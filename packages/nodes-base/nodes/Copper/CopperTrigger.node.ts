@@ -47,6 +47,7 @@ export class CopperTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				default: '',
 				options: [
@@ -75,7 +76,7 @@ export class CopperTrigger implements INodeType {
 						value: 'task',
 					},
 				],
-				description: 'The resource which will fire the event.',
+				description: 'The resource which will fire the event',
 			},
 			{
 				displayName: 'Event',
@@ -100,7 +101,7 @@ export class CopperTrigger implements INodeType {
 						description: 'Any field in the existing entity record is changed',
 					},
 				],
-				description: 'The event to listen to.',
+				description: 'The event to listen to',
 			},
 		],
 	};
@@ -134,7 +135,7 @@ export class CopperTrigger implements INodeType {
 
 				const credentials = await this.getCredentials('copperApi');
 				body.secret = {
-					secret: getAutomaticSecret(credentials!),
+					secret: getAutomaticSecret(credentials),
 				};
 
 				const { id } = await copperApiRequest.call(this, 'POST', endpoint, body);
@@ -160,7 +161,7 @@ export class CopperTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		// Check if the supplied secret matches. If not ignore request.
-		if (req.body.secret !== getAutomaticSecret(credentials!)) {
+		if (req.body.secret !== getAutomaticSecret(credentials)) {
 			return {};
 		}
 

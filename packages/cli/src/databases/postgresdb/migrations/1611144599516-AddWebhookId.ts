@@ -5,12 +5,14 @@ export class AddWebhookId1611144599516 implements MigrationInterface {
 	name = 'AddWebhookId1611144599516';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+
+		await queryRunner.query(`SET search_path TO ${schema};`);
 
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity ADD "webhookId" character varying`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity ADD "pathLength" integer`);
@@ -18,12 +20,13 @@ export class AddWebhookId1611144599516 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.getEnv('database.tablePrefix');
 		const tablePrefixPure = tablePrefix;
-		const schema = config.get('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
+		await queryRunner.query(`SET search_path TO ${schema};`);
 
 		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}16f4436789e804e3e1c9eeb240`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity DROP COLUMN "pathLength"`);

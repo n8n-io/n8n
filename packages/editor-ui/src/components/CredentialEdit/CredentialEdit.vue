@@ -54,10 +54,10 @@
 						defaultActive="connection"
 						:light="true"
 					>
-						<n8n-menu-item index="connection" :class="$style.credTab"
+						<n8n-menu-item index="connection"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
-						<n8n-menu-item index="details" :class="$style.credTab"
+						<n8n-menu-item index="details"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
 					</n8n-menu>
@@ -299,9 +299,17 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		isOAuthType(): boolean {
 			return !!this.credentialTypeName && (
-				['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeName) ||
-				this.parentTypes.includes('oAuth1Api') ||
-				this.parentTypes.includes('oAuth2Api')
+				(
+					(
+						this.credentialTypeName === 'oAuth2Api' ||
+						this.parentTypes.includes('oAuth2Api')
+					) && this.credentialData.grantType === 'authorizationCode'
+				)
+				||
+				(
+					this.credentialTypeName === 'oAuth1Api' ||
+					this.parentTypes.includes('oAuth1Api')
+				)
 			);
 		},
 		isOAuthConnected(): boolean {
@@ -395,6 +403,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialData as INodeParameters,
 				parameter,
 				'',
+				null,
 			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
@@ -598,6 +607,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				this.credentialData as INodeParameters,
 				false,
 				false,
+				null,
 			);
 
 			const credentialDetails: ICredentialsDecrypted = {
@@ -843,10 +853,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 	display: flex;
 	flex-grow: 1;
 	margin-bottom: var(--spacing-s);
-}
-
-.credTab {
-	padding-left: 12px !important;
 }
 
 .credActions {

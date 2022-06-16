@@ -62,6 +62,7 @@ import {
 
 import mixins from 'vue-typed-mixins';
 import { setPageTitle } from '@/components/helpers';
+import { VIEWS } from '@/constants';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplatesCollectionView',
@@ -102,7 +103,7 @@ export default mixins(workflowHelpers).extend({
 			}, 50);
 		},
 		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
-			this.navigateTo(event, 'TemplatesWorkflowView', id);
+			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
 		onUseWorkflow({event, id}: {event: MouseEvent, id: string}) {
 			this.$telemetry.track('User inserted workflow template', {
@@ -111,7 +112,7 @@ export default mixins(workflowHelpers).extend({
 				source: 'collection',
 			});
 
-			this.navigateTo(event, 'WorkflowTemplate', id);
+			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {
 			if (e.metaKey || e.ctrlKey) {
