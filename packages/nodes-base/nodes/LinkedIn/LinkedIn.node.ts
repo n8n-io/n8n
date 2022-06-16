@@ -76,7 +76,8 @@ export class LinkedIn implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let body:any = {};
+
+		let body:any = {};// tslint:disable-line:no-any
 
 		for (let i = 0; i < items.length; i++) {
 			try {
