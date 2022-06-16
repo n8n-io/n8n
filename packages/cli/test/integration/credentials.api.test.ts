@@ -2,6 +2,7 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { Db } from '../../src';
 import { randomName, randomString } from './shared/random';
+import config from '../../config';
 import * as utils from './shared/utils';
 import type { CredentialPayload, SaveCredentialFunction } from './shared/types';
 import type { Role } from '../../src/databases/entities/Role';
@@ -357,7 +358,6 @@ test('PATCH /credentials/:id should fail with missing encryption key', async () 
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
 
-
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
@@ -508,7 +508,6 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
 
-
 	const response = await authOwnerAgent
 		.get(`/credentials/${savedCredential.id}`)
 		.query({ includeData: true });
@@ -525,6 +524,57 @@ test('GET /credentials/:id should return 404 if cred not found', async () => {
 	const response = await authMemberAgent.get('/credentials/789');
 
 	expect(response.statusCode).toBe(404);
+});
+
+test.only('GET /credentials/:id should hit different Routers', async () => {
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+
+	config.set('deployment.paid', false);
+
+	const firstResponse = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+	expect(firstResponse.statusCode).toBe(200);
+
+	expect(typeof firstResponse.body.data.name).toBe('string');
+	expect(typeof firstResponse.body.data.type).toBe('string');
+	expect(typeof firstResponse.body.data.nodesAccess[0].nodeType).toBe('string');
+	expect(firstResponse.body.data.data).toBeUndefined();
+
+	const secondResponse = await authOwnerAgent
+		.get(`/credentials/${savedCredential.id}`)
+		.query({ includeData: true });
+
+	expect(secondResponse.statusCode).toBe(200);
+	expect(typeof secondResponse.body.data.name).toBe('string');
+	expect(typeof secondResponse.body.data.type).toBe('string');
+	expect(typeof secondResponse.body.data.nodesAccess[0].nodeType).toBe('string');
+	expect(secondResponse.body.data.data).toBeDefined();
+
+	config.set('deployment.paid', true);
+
+	const third = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+	expect(third.statusCode).toBe(200);
+
+	expect(third.body).toEqual({ enterprise: true });
+
+	const fourth = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+	expect(fourth.statusCode).toBe(200);
+	expect(fourth.body).toEqual({ enterprise: true });
+
+	config.set('deployment.paid', false);
+
+	const fifth = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+	expect(fifth.statusCode).toBe(200);
+
+	expect(typeof fifth.body.data.name).toBe('string');
+	expect(typeof fifth.body.data.type).toBe('string');
+	expect(typeof fifth.body.data.nodesAccess[0].nodeType).toBe('string');
+	expect(fifth.body.data.data).toBeUndefined();
 });
 
 const credentialPayload = () => ({

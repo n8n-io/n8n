@@ -27,8 +27,26 @@ import { createCredentiasFromCredentialsEntity } from '../CredentialsHelper';
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
 import { externalHooks } from '../Server';
+import { CredentialsService } from './credentials.service';
+import { EECreditentialsService } from '../../ee/src/credentials/credentials.service';
+import { eeCredentialsController } from '../../ee/src/credentials/credentials.controller';
 
 export const credentialsController = express.Router();
+// eslint-disable-next-line import/no-mutable-exports
+export let credentialsService: CredentialsService | EECreditentialsService;
+
+export function setServices(): void {
+	// EE enabled
+	if (config.getEnv('deployment.paid')) {
+		credentialsService = new EECreditentialsService();
+		return;
+	}
+
+	// FREE
+	credentialsService = new CredentialsService();
+}
+
+setServices();
 
 /**
  * Initialize Logger if needed
@@ -41,6 +59,8 @@ credentialsController.use((req, res, next) => {
 	}
 	next();
 });
+
+credentialsController.use('/', eeCredentialsController);
 
 /**
  * GET /credentials
@@ -361,14 +381,18 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await Db.collections.SharedCredentials.findOne({
-			relations: ['credentials'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'credentials',
-				entityId: credentialId,
-			}),
-		});
+		// const shared = await Db.collections.SharedCredentials.findOne({
+		// 	relations: ['credentials'],
+		// 	where: whereClause({
+		// 		user: req.user,
+		// 		entityType: 'credentials',
+		// 		entityId: credentialId,
+		// 	}),
+		// });
+
+		const shared = await credentialsService.getSharedCredentials(req.user.id, credentialId, [
+			'credentials',
+		]);
 
 		if (!shared) {
 			throw new ResponseHelper.ResponseError(
@@ -402,7 +426,7 @@ credentialsController.get(
 			);
 		}
 
-		const coreCredential = createCredentiasFromCredentialsEntity(credential);
+		const coreCredential = credentialsService.createCredentiasFromCredentialsEntity(credential);
 
 		return {
 			id: id.toString(),

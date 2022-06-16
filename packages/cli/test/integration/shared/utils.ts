@@ -41,7 +41,7 @@ import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/ro
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
-import { credentialsController } from '../../../src/api/credentials.api';
+import { credentialsController } from '../../../src/credentials/credentials.controller';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
 import type { User } from '../../../src/databases/entities/User';
 import type { ApiPath, EndpointGroup, PostgresSchemaSection, SmtpTestAccount } from './types';
@@ -96,7 +96,7 @@ export async function initTestServer({
 		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
 		const map: Record<string, express.Router | express.Router[]> = {
 			credentials: credentialsController,
-			publicApi: apiRouters
+			publicApi: apiRouters,
 		};
 
 		for (const group of routerEndpoints) {
