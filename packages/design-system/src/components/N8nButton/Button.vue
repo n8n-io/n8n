@@ -88,9 +88,8 @@ export default Vue.extend({
 			return this.disabled ? 'true' : 'false';
 		},
 		classes(): string {
-			return `button ${this.type}` +
-				` el-button el-button--${this.type}` +
-				`${this.size ? ` ${this.size} el-button--${this.size}` : ''}` +
+			return `button ${this.$style['button']} ${this.$style[this.type]}` +
+				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
 				`${this.outline ? ` ${this.$style['outline']}` : ''}` +
 				`${this.loading ? ` ${this.$style['loading']}` : ''}` +
 				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
@@ -103,74 +102,77 @@ export default Vue.extend({
 });
 </script>
 
-<style lang="scss">
+<style lang="scss" module>
 @import '../../../theme/src/mixins/utils';
 @import '../../../theme/src/common/var';
 
-.button, .el-button {
-  display: inline-block;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
+.button {
+	display: inline-block;
+	line-height: 1;
+	white-space: nowrap;
+	cursor: pointer;
 
-  border: var(--border-width-base) $button-border-color var(--border-style-base);
-  color: $button-font-color;
-  background-color: $button-background-color;
-  font-weight: var(--font-weight-bold);
-  border-radius: $button-border-radius;
-  padding: $button-padding-vertical $button-padding-horizontal;
-  font-size: $button-font-size;
+	border: var(--border-width-base) $button-border-color var(--border-style-base);
+	color: $button-font-color;
+	background-color: $button-background-color;
+	font-weight: var(--font-weight-bold);
+	border-radius: $button-border-radius;
+	padding: $button-padding-vertical $button-padding-horizontal;
+	font-size: $button-font-size;
 
-  -webkit-appearance: none;
-  text-align: center;
-  box-sizing: border-box;
-  outline: none;
-  margin: 0;
-  transition: 0.3s;
-
-  @include utils-user-select(none);
-
-  &:hover {
-	color: $button-hover-color;
-	border-color: $button-hover-border-color;
-	background-color: $button-hover-background-color;
-  }
-
-  &:focus {
-	border-color: $button-focus-outline-color;
-	outline: $focus-outline-width solid $button-focus-outline-color;
-  }
-
-  &:active {
-	color: $button-active-color;
-	border-color: $button-active-border-color;
-	background-color: $button-active-background-color;
+	-webkit-appearance: none;
+	text-align: center;
+	box-sizing: border-box;
 	outline: none;
-  }
+	margin: 0;
+	transition: 0.3s;
 
-  &::-moz-focus-inner {
-	border: 0;
-  }
+	@include utils-user-select(none);
 
-  > i {
-	display: none;
-  }
+	&:hover {
+		color: $button-hover-color;
+		border-color: $button-hover-border-color;
+		background-color: $button-hover-background-color;
+	}
 
-  > span {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-  }
+	&:focus {
+		border-color: $button-focus-outline-color;
+		outline: $focus-outline-width solid $button-focus-outline-color;
+	}
 
-  span + span {
-	margin-left: var(--spacing-3xs);
-  }
+	&:active {
+		color: $button-active-color;
+		border-color: $button-active-border-color;
+		background-color: $button-active-background-color;
+		outline: none;
+	}
 
-  /**
-   * Colors
-   */
+	&::-moz-focus-inner {
+		border: 0;
+	}
 
-  &.secondary {
+	> i {
+		display: none;
+	}
+
+	> span {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	span + span {
+		margin-left: var(--spacing-3xs);
+	}
+}
+
+$loading-overlay-background-color: rgba(255, 255, 255, 0.35);
+
+/**
+ * Colors
+ */
+
+.secondary {
 	--button-color: var(--color-primary);
 	--button-border-color: var(--color-primary);
 	--button-background-color: var(--color-background-xlight);
@@ -184,10 +186,9 @@ export default Vue.extend({
 	--button-hover-border-color: var(--color-primary);
 
 	--button-focus-outline-color: var(--color-primary-tint-1);
-  }
+}
 
-  &.tertiary,
-  &.btn--cancel {
+.tertiary {
 	font-weight: var(--font-weight-regular) !important;
 
 	--button-background-color: var(--color-background-xlight);
@@ -203,9 +204,9 @@ export default Vue.extend({
 	--button-hover-border-color: var(--color-neutral-800);
 
 	--button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.2);
-  }
+}
 
-  &.success {
+.success {
 	--button-background-color: var(--color-success);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-success);
@@ -217,9 +218,9 @@ export default Vue.extend({
 	--button-hover-border-color: var(--color-success-450);
 
 	--button-focus-outline-color: hsla(var(--color-success-h), var(--color-success-s), var(--color-success-l), 0.33);
-  }
+}
 
-  &.warning {
+.warning {
 	--button-background-color: var(--color-warning);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-warning);
@@ -231,9 +232,9 @@ export default Vue.extend({
 	--button-hover-border-color: var(--color-warning-650);
 
 	--button-focus-outline-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), 0.33);
-  }
+}
 
-  &.danger {
+.danger {
 	--button-background-color: var(--color-danger);
 	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-danger);
@@ -246,81 +247,69 @@ export default Vue.extend({
 	--button-hover-border-color: var(--color-danger-700);
 
 	--button-focus-outline-color: hsla(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l), 0.33);
-  }
+}
 
-  /**
-   * Sizes
-   */
+/**
+ * Sizes
+ */
 
-  &.mini,
-  &.el-button--mini {
+.mini {
 	--button-padding-vertical: var(--spacing-4xs);
 	--button-padding-horizontal: var(--spacing-2xs);
 	--button-font-size: var(--font-size-2xs);
 
 	&.icon-button {
-	  height: 22px;
-	  width: 22px;
+		height: 22px;
+		width: 22px;
 	}
-  }
+}
 
-  &.small,
-  &.el-button--small  {
+.small {
 	--button-padding-vertical: var(--spacing-3xs);
 	--button-padding-horizontal: var(--spacing-xs);
 	--button-font-size: var(--font-size-2xs);
 
 	&.icon-button {
-	  height: 26px;
-	  width: 26px;
+		height: 26px;
+		width: 26px;
 	}
-  }
+}
 
-  &.medium,
-  &.el-button--medium  {
+.medium {
 	--button-padding-vertical: var(--spacing-2xs);
 	--button-padding-horizontal: var(--spacing-xs);
 	--button-font-size: var(--font-size-2xs);
 
 	&.icon-button {
-	  height: 32px;
-	  width: 32px;
+		height: 32px;
+		width: 32px;
 	}
-  }
+}
 
-  &.large,
-  &.el-button--large  {
+.large {
 	&.icon-button {
-	  height: 42px;
-	  width: 42px;
+		height: 42px;
+		width: 42px;
 	}
-  }
+}
 
-  &.xlarge,
-  &.el-button--xlarge  {
+.xlarge {
 	--button-padding-vertical: var(--spacing-xs);
 	--button-padding-horizontal: var(--spacing-s);
 	--button-font-size: var(--font-size-m);
 
 	&.icon-button {
-	  height: 46px;
-	  width: 46px;
+		height: 46px;
+		width: 46px;
 	}
-  }
 }
-</style>
-
-<style lang="scss" module>
-@import '../../../theme/src/mixins/utils';
-@import '../../../theme/src/common/var';
-
-$loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 
 /**
  * Modifiers
  */
 
 .outline {
+	--button-color: var(--color-primary);
 	--button-background-color: transparent;
 	--button-disabled-background-color: transparent;
 	--button-active-background-color: transparent;
@@ -329,6 +318,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 		--button-color: var(--color-primary);
 		--button-border-color: var(--color-primary);
 		--button-active-background-color: var(--color-primary);
+	}
+
+	&.tertiary {
+		--button-color: var(--color-text-dark);
 	}
 
 	&.success {
@@ -354,8 +347,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 	--button-color: var(--color-text-light);
 	--button-border-color: transparent;
 	--button-background-color: transparent;
+	--button-active-color: var(--color-text-light);
 	--button-active-background-color: transparent;
 	--button-active-border-color: transparent;
+	--button-hover-color: var(--color-text-light);
 	--button-hover-background-color: transparent;
 	--button-hover-border-color: transparent;
 
@@ -396,33 +391,33 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0.35);
 
 .loading,
 .active {
-  position: relative;
-  pointer-events: none;
-
-  &:before {
+	position: relative;
 	pointer-events: none;
-	content: '';
-	position: absolute;
-	left: -1px;
-	top: -1px;
-	right: -1px;
-	bottom: -1px;
-	border-radius: inherit;
-	background-color: $loading-overlay-background-color;
-  }
+
+	&:before {
+		pointer-events: none;
+		content: '';
+		position: absolute;
+		left: -1px;
+		top: -1px;
+		right: -1px;
+		bottom: -1px;
+		border-radius: inherit;
+		background-color: $loading-overlay-background-color;
+	}
 }
 
 .disabled {
-  &,
-  &:hover,
-  &:active,
-  &:focus {
-	cursor: not-allowed;
-	background-image: none;
-	color: $button-disabled-font-color;
-	background-color: $button-disabled-background-color;
-	border-color: $button-disabled-border-color;
-  }
+	&,
+	&:hover,
+	&:active,
+	&:focus {
+		cursor: not-allowed;
+		background-image: none;
+		color: $button-disabled-font-color;
+		background-color: $button-disabled-background-color;
+		border-color: $button-disabled-border-color;
+	}
 }
 
 .transparent {

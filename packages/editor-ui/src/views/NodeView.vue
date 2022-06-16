@@ -89,14 +89,14 @@
 			@closeNodeCreator="closeNodeCreator"
 		/>
 		<div :class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
-			<n8n-icon-button @click="zoomToFit" type="tertiary" size="xlarge" :title="$locale.baseText('nodeView.zoomToFit')" icon="expand" />
-			<n8n-icon-button @click="zoomIn" type="tertiary" size="xlarge" :title="$locale.baseText('nodeView.zoomIn')" icon="search-plus" />
-			<n8n-icon-button @click="zoomOut" type="tertiary" size="xlarge" :title="$locale.baseText('nodeView.zoomOut')" icon="search-minus" />
+			<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')" icon="expand" />
+			<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')" icon="search-plus" />
+			<n8n-icon-button @click="zoomOut" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomOut')" icon="search-minus" />
 			<n8n-icon-button
 				v-if="nodeViewScale !== 1 && !isDemo"
 				@click="resetZoom"
 				type="tertiary"
-				size="xlarge"
+				size="large"
 				:title="$locale.baseText('nodeView.resetZoom')"
 				icon="undo"
 			/>
@@ -2977,7 +2977,7 @@ export default mixins(
 	position: fixed;
 	left: $--sidebar-width + $--zoom-menu-margin;
 	width: 210px;
-	bottom: 45px;
+	bottom: 44px;
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;

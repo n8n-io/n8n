@@ -85,6 +85,7 @@ Vue.use(N8nActionBox);
 Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);
 Vue.component('n8n-button', N8nButton);
+Vue.component('el-button', N8nButton);
 Vue.component('n8n-card', N8nCard);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);

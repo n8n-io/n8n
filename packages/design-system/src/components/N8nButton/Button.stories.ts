@@ -155,7 +155,6 @@ Outline.args = {
 
 export const Text = AllColorsAndSizesTemplate.bind({});
 Text.args = {
-	type: 'primary',
 	text: true,
 	label: 'Button',
 };

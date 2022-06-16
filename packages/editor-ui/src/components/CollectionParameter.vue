@@ -194,6 +194,10 @@ export default mixins(
 
 	.param-options {
 		margin-top: var(--spacing-xs);
+
+		.button {
+			--button-background-color: var(--color-background-base);
+		}
 	}
 
 	.no-items-exist {
