@@ -64,9 +64,10 @@
 					/>
 				</div>
 
-				<n8n-text size="small" @click="onLinkClick">
-					<span v-html="activationHint"></span>
+				<n8n-text size="small" @click="onLinkClick" v-if="activationHint">
+					<span v-html="activationHint"></span>&nbsp;
 				</n8n-text>
+				<n8n-link size="small" v-if="activationHint && executionsHelp" @click="expandExecutionHelp">{{ $locale.baseText('triggerPanel.moreInfo') }}</n8n-link>
 				<n8n-info-accordion ref="help" v-if="executionsHelp" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsHelp" @click="onLinkClick"></n8n-info-accordion>
 			</div>
 		</transition>
@@ -290,6 +291,11 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 	},
 	methods: {
+		expandExecutionHelp() {
+			if (this.$refs.help) {
+				(this.$refs.help as Vue).$emit('expand');
+			}
+		},
 		onLinkClick(e: MouseEvent) {
 			if (!e.target) {
 				return;
@@ -316,10 +322,6 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-				} else if (target.dataset.key === 'help') {
-					if (this.$refs.help) {
-						(this.$refs.help as Vue).$emit('expand');
-					}
 				}
 			}
 		},
