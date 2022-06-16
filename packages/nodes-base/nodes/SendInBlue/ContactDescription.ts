@@ -21,16 +21,6 @@ export const contactOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/v3/contacts',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "success": true } }}',
-								},
-							},
-						],
 					}
 				},
 			},
@@ -116,59 +106,6 @@ const createOperations: Array<INodeProperties> = [
 				property: 'email',
 			}
 		}
-	},
-	{
-		displayName: 'SMS',
-		name: 'sms',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'attributes.SMS',
-			}
-		}
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact'
-				],
-				operation: [
-					'create',
-				]
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Update Enabled',
-				name: 'updateEnabled',
-				type: 'boolean',
-				default: false,
-				routing: {
-					send: {
-						type: 'body',
-						property: 'updateEnabled',
-					}
-				}
-			}
-		],
 	},
 	{
 		displayName: 'Additional Fields',
@@ -258,6 +195,37 @@ const createOperations: Array<INodeProperties> = [
 				default: {},
 				description: 'Array of attributes to be added'
 			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact'
+				],
+				operation: [
+					'create',
+				]
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Update Enabled',
+				name: 'updateEnabled',
+				type: 'boolean',
+				default: false,
+				routing: {
+					send: {
+						type: 'body',
+						property: 'updateEnabled',
+					}
+				}
+			}
 		],
 	}
 ];
