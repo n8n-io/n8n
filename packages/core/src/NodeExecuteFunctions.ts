@@ -942,6 +942,14 @@ export async function requestOAuth2(
 			newRequestOptions?.headers?.Authorization.split(' ')[1];
 	}
 
+	if (oAuth2Options?.includeAccessTokenInHeader) {
+		Object.assign(newRequestOptions, {
+			headers: {
+				[oAuth2Options.includeAccessTokenInHeader]: token.accessToken,
+			},
+		});
+	}
+
 	return this.helpers.request!(newRequestOptions).catch(async (error: IResponseError) => {
 		const statusCodeReturned =
 			oAuth2Options?.tokenExpiredStatusCode === undefined
@@ -1009,6 +1017,15 @@ export async function requestOAuth2(
 			if (isN8nRequest) {
 				return this.helpers.httpRequest(newRequestOptions);
 			}
+
+			if (oAuth2Options?.includeAccessTokenInHeader) {
+				Object.assign(newRequestOptions, {
+					headers: {
+						[oAuth2Options.includeAccessTokenInHeader]: token.accessToken,
+					},
+				});
+			}
+
 			return this.helpers.request!(newRequestOptions);
 		}
 

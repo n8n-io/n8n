@@ -11,7 +11,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IAdditionalCredentialOptions,
+	IDataObject, IOAuth2Options, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -25,7 +26,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	let credentials;
 	let credentialType = 'shopifyOAuth2Api';
 
-	if (authenticationMethod === 'shopifyApi') {
+	if (authenticationMethod === 'apiKey') {
 		credentials = await this.getCredentials('shopifyApi');
 		credentialType = 'shopifyApi';
 	} else if (authenticationMethod === 'accessToken') {
@@ -41,6 +42,11 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
 		body,
 		json: true,
+	};
+
+	const oAuth2Options: IOAuth2Options = {
+		tokenType: 'Bearer',
+		includeAccessTokenInHeader: 'X-Shopify-Access-Token',
 	};
 
 	if (authenticationMethod === 'apiKey') {
@@ -59,7 +65,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		delete options.qs;
 	}
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options, { oauth2:  oAuth2Options });
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
