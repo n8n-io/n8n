@@ -191,7 +191,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				return this.$locale.baseText('triggerPanel.pollingNode.fetchingEvent');
 			}
 
-			if (this.nodeType && this.nodeType.triggerPanel && typeof this.nodeType.triggerPanel.header) {
+			if (this.nodeType && this.nodeType.triggerPanel && typeof this.nodeType.triggerPanel.header === 'string') {
 				return this.nodeType.triggerPanel.header;
 			}
 
