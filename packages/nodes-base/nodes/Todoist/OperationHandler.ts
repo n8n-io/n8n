@@ -117,10 +117,6 @@ export class GetAllHandler implements OperationHandler {
 		}
 
 		let responseData = await todoistApiRequest.call(ctx, 'GET', '/tasks', {}, qs);
-		const sections = await getSections(ctx, filters.projectId as number);
-		for (const task of responseData) {
-			task.section = sections.get(task.section_id as string);
-		}
 
 		if (!returnAll) {
 			const limit = ctx.getNodeParameter('limit', itemIndex) as number;
@@ -128,15 +124,9 @@ export class GetAllHandler implements OperationHandler {
 		}
 
 		return {
-			success: true,
 			data: responseData,
 		};
 	}
-}
-
-async function getSections(ctx: Context, projectId: number): Promise<Map<string, string>> {
-	const sections: Section[] = await todoistApiRequest.call(ctx, 'GET', '/sections', {}, {project_id: projectId});
-	return new Map(sections.map(s => [s.id, s.name]));
 }
 
 async function getSectionIds(ctx: Context, projectId: number): Promise<Map<string, number>> {
