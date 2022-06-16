@@ -14,10 +14,19 @@
 							fallback: nodeType.displayName,
 						})
 					}}
+					<span v-if="isCommunityNode && hasNameClash" :class="$style.packageName">({{ nodeType.name.split('.')[0] }})</span>
 				</span>
-				<span :class="$style['trigger-icon']">
-					<TriggerIcon v-if="isTrigger" />
+				<span v-if="isTrigger" :class="$style['trigger-icon']">
+					<TriggerIcon />
 				</span>
+				<n8n-tooltip v-if="isCommunityNode" placement="top">
+					<div
+						slot="content"
+						v-html="$locale.baseText('nodeCreator.mainPanel.communityNode.tooltip', { interpolate: { docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+					>
+					</div>
+					<n8n-icon icon="cube" />
+				</n8n-tooltip>
 			</div>
 			<div :class="$style.description">
 				{{ $locale.headerText({
@@ -50,6 +59,9 @@ import Vue from 'vue';
 import NodeIcon from '../NodeIcon.vue';
 import TriggerIcon from '../TriggerIcon.vue';
 
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../../constants';
+import { isCommunityPackageName } from '../helpers';
+
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TriggerIcon', TriggerIcon);
 
@@ -68,6 +80,7 @@ export default Vue.extend({
 				x: -100,
 				y: -100,
 			},
+			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 		};
 	},
 	computed: {
@@ -82,6 +95,12 @@ export default Vue.extend({
 				top: `${this.draggablePosition.y}px`,
 				left: `${this.draggablePosition.x}px`,
 			};
+		},
+		isCommunityNode(): boolean {
+			return isCommunityPackageName(this.nodeType.name);
+		},
+		hasNameClash(): boolean {
+			return this.$store.getters.isNodeTypeInNameClash(this.nodeType);
 		},
 	},
 	mounted() {
@@ -174,6 +193,7 @@ export default Vue.extend({
 	height: 16px;
 	width: 16px;
 	display: flex;
+	margin-right: var(--spacing-3xs);
 }
 
 .draggable {

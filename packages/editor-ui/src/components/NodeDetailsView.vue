@@ -27,7 +27,14 @@
 
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
-			<NDVDraggablePanels :isTriggerNode="isTriggerNode" @close="close" @init="onPanelsInit" @dragstart="onDragStart" @dragend="onDragEnd">
+			<NDVDraggablePanels
+				:isTriggerNode="isTriggerNode"
+				:hideInputAndOutput="activeNodeType === null"
+				@close="close"
+				@init="onPanelsInit"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			>
 				<template #input>
 					<InputPanel
 						:workflow="workflow"

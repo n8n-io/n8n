@@ -6,20 +6,39 @@
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" />
+					<NodeExecuteButton v-if="node && nodeValid" :nodeName="node.name" @execute="onNodeExecute" size="small" />
 				</div>
 			</div>
-			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
+			<NodeSettingsTabs v-if="node && nodeValid" v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			<n8n-text>
-				{{
-					$locale.baseText(
-						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
-						{ interpolate: { nodeType: node.type } },
-					)
-				}}
-			</n8n-text>
+			<p :class="$style.warningIcon">
+				<font-awesome-icon icon="exclamation-triangle" />
+			</p>
+			<div class="missingNodeTitleContainer mt-s mb-xs">
+				<n8n-text
+					size="large"
+					bold
+				>
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
+				</n8n-text>
+			</div>
+			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
+				<div class="mb-l">
+					<span
+						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })">
+					</span>
+				</div>
+				<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}</n8n-link>
+			</div>
+			<span v-else
+				v-html="
+					$locale.baseText('nodeSettings.nodeTypeUnknown.description',
+						{
+							interpolate: { docURL: CUSTOM_NODES_DOCS_URL }
+						})
+					">
+			</span>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
@@ -76,6 +95,11 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
+import {
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CUSTOM_NODES_DOCS_URL,
+} from '../constants';
+
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -90,6 +114,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { isCommunityPackageName } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -167,6 +192,9 @@ export default mixins(
 				}
 
 				return this.nodeType.properties;
+			},
+			isCommunityNode(): boolean {
+				return isCommunityPackageName(this.node.type);
 			},
 		},
 		props: {
@@ -288,7 +316,8 @@ export default mixins(
 						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
 					},
 				] as INodeProperties[],
-
+				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+				CUSTOM_NODES_DOCS_URL,
 			};
 		},
 		watch: {
@@ -564,6 +593,16 @@ export default mixins(
 .header {
 	background-color: var(--color-background-base);
 }
+
+.warningIcon {
+	color: var(--color-text-lighter);
+	font-size: var(--font-size-2xl);
+}
+
+.descriptionContainer {
+	display: flex;
+	flex-direction: column;
+}
 </style>
 
 <style lang="scss">
@@ -593,7 +632,13 @@ export default mixins(
 	}
 
 	.node-is-not-valid {
+		height: 75%;
 		padding: 10px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
 	}
 
 	.node-parameters-wrapper {
@@ -655,5 +700,4 @@ export default mixins(
 		background-color: #793300;
 	}
 }
-
 </style>

@@ -144,7 +144,6 @@ export interface INodeUpdatePropertiesInformation {
 export type XYPosition = [number, number];
 
 export type MessageType = 'success' | 'warning' | 'info' | 'error';
-
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
@@ -999,4 +998,5 @@ export interface ITab {
 	href?: string;
 	icon?: string;
 	align?: 'right';
+	tooltip?: string;
 }

@@ -12,6 +12,7 @@ import { INodeUi, ITab } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
+import { isCommunityPackageName } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -33,6 +34,7 @@ export default mixins(
 		},
 		documentationUrl (): string {
 			const nodeType = this.nodeType as INodeTypeDescription | null;
+
 			if (!nodeType) {
 				return '';
 			}
@@ -46,6 +48,13 @@ export default mixins(
 			}
 
 			return '';
+		},
+		isCommunityNode(): boolean {
+			const nodeType = this.nodeType as INodeTypeDescription | null;
+			if (nodeType) {
+				return isCommunityPackageName(nodeType.name);
+			}
+			return false;
 		},
 		options (): ITab[] {
 			const options: ITab[] = [
@@ -61,11 +70,21 @@ export default mixins(
 					href: this.documentationUrl,
 				});
 			}
+			if (this.isCommunityNode) {
+				options.push({
+					icon: 'cube',
+					value: 'communityNode',
+					align: 'right',
+					tooltip: this.$locale.baseText('generic.communityNode'),
+				});
+			}
+			// If both tabs have align right, both will have excessive left margin
+			const pushCogRight = this.isCommunityNode ? false : true;
 			options.push(
 				{
 					icon: 'cog',
 					value: 'settings',
-					align: 'right',
+					align: pushCogRight ? 'right': undefined,
 				},
 			);
 

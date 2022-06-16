@@ -1,16 +1,16 @@
 <template>
 	<div>
-		<div :class="$style.inputPanel" v-if="!isTriggerNode" :style="inputPanelStyles">
+		<div :class="$style.inputPanel" v-if="!hideInputAndOutput && !isTriggerNode" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
-		<div :class="$style.outputPanel" :style="outputPanelStyles">
+		<div :class="$style.outputPanel" v-if="!hideInputAndOutput" :style="outputPanelStyles">
 			<slot name="output"></slot>
 		</div>
 		<div :class="$style.mainPanel" :style="mainPanelStyles">
 			<div :class="$style.dragButtonContainer" @click="close">
 				<PanelDragButton
 					:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-					v-if="!isTriggerNode"
+					v-if="!hideInputAndOutput && !isTriggerNode"
 					:canMoveLeft="canMoveLeft"
 					:canMoveRight="canMoveRight"
 					@dragstart="onDragStart"
@@ -37,6 +37,9 @@ export default Vue.extend({
 	},
 	props: {
 		isTriggerNode: {
+			type: Boolean,
+		},
+		hideInputAndOutput: {
 			type: Boolean,
 		},
 	},
