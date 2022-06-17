@@ -140,6 +140,7 @@ export class Chargebee implements INodeType {
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 						description: 'The email address of the customer',
 					},
