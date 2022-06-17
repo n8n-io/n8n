@@ -7,10 +7,10 @@ import * as express from 'express';
 import * as FormData from 'form-data';
 import { URLSearchParams } from 'url';
 import { IDeferredPromise } from './DeferredPromise';
-import { Workflow } from './Workflow';
-import { WorkflowHooks } from './WorkflowHooks';
-import { WorkflowOperationError } from './WorkflowErrors';
-import { NodeApiError, NodeOperationError } from './NodeErrors';
+import type { Workflow } from './Workflow';
+import type { WorkflowHooks } from './WorkflowHooks';
+import type { WorkflowOperationError } from './WorkflowErrors';
+import type { NodeApiError, NodeOperationError } from './NodeErrors';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;

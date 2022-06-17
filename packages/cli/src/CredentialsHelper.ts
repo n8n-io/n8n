@@ -8,7 +8,6 @@
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
-import { NodeVersionedType } from 'n8n-workflow';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -37,6 +36,7 @@ import {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	LoggerProxy as Logger,
+	NodeVersionedType,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
