@@ -78,6 +78,10 @@ export default {
 .description {
 	display: flex;
 	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
+
+	b {
+		font-weight: var(--font-weight-bold);
+	}
 }
 
 </style>

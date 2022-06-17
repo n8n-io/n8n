@@ -382,11 +382,6 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				type: 'test url',
 			});
 		},
-		onAction(action: string) {
-			if (action === 'activate') {
-				this.$emit('activate');
-			}
-		},
 		onNodeExecute() {
 			this.$emit('execute');
 		},
