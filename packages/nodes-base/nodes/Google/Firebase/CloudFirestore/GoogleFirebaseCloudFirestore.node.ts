@@ -28,7 +28,7 @@ import {
 	documentOperations,
 } from './DocumentDescription';
 
-export class CloudFirestore implements INodeType {
+export class GoogleFirebaseCloudFirestore implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Cloud Firestore',
 		name: 'googleFirebaseCloudFirestore',

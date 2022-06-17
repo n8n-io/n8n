@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {
 	INodeProperties,
 	INodeTypeDescription,
