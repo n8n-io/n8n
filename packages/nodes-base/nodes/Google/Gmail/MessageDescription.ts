@@ -483,7 +483,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Whether to include messages from SPAM and TRASH in the results',
 			},
 			{
-				displayName: 'Label IDs',
+				displayName: 'Label Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {

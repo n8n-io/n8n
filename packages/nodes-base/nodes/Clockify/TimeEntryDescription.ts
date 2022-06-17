@@ -154,7 +154,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -364,7 +364,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
 				typeOptions: {

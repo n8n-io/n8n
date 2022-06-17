@@ -65,7 +65,7 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Workers Names/IDs',
+	displayName: 'Worker Names or IDs',
 	name: 'workers',
 	type: 'multiOptions',
 	typeOptions: {
@@ -76,7 +76,7 @@ const workersField = {
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrators Names/IDs',
+	displayName: 'Administrator Names or IDs',
 	name: 'managers',
 	type: 'multiOptions',
 	typeOptions: {

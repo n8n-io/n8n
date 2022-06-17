@@ -101,7 +101,7 @@ export const agentGroupFields: INodeProperties[] = [
 				description: 'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Member Names/IDs',
+				displayName: 'Member Names or IDs',
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
@@ -111,7 +111,7 @@ export const agentGroupFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Observer Names/IDs',
+				displayName: 'Observer Names or IDs',
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],
@@ -307,7 +307,7 @@ export const agentGroupFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Member Names/IDs',
+				displayName: 'Member Names or IDs',
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
@@ -323,7 +323,7 @@ export const agentGroupFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Observer Names/IDs',
+				displayName: 'Observer Names or IDs',
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],

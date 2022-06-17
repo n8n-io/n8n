@@ -238,7 +238,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -248,7 +248,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -458,7 +458,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -468,7 +468,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -616,7 +616,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit response to posts published after a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Author',
+				displayName: 'Author Names or IDs',
 				name: 'author',
 				type: 'multiOptions',
 				default: [],
@@ -633,7 +633,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit response to posts published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				default: [],
@@ -664,7 +664,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Scope under which the request is made; determines fields present in response',
 			},
 			{
-				displayName: 'Exclude Categories',
+				displayName: 'Exclude Categories Name or ID',
 				name: 'excludedCategories',
 				type: 'multiOptions',
 				default: [],
@@ -674,7 +674,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Exclude Tags',
+				displayName: 'Exclude Tags Name or ID',
 				name: 'excludedTags',
 				type: 'multiOptions',
 				default: [],
@@ -793,7 +793,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether to limit the result set to items that are sticky',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],

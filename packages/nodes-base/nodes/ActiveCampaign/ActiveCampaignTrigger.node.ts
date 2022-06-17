@@ -47,7 +47,7 @@ export class ActiveCampaignTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Events',
+				displayName: 'Event Names or IDs',
 				name: 'events',
 				type: 'multiOptions',
 				typeOptions: {

@@ -52,7 +52,7 @@ export const contactTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tags',
+		displayName: 'Tag Names or IDs',
 		name: 'tagsToAdd',
 		description: 'Tags to add to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'multiOptions',
@@ -95,7 +95,7 @@ export const contactTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tags',
+		displayName: 'Tag Names or IDs',
 		name: 'tagsToRemove',
 		description: 'Tags to remove from the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'multiOptions',

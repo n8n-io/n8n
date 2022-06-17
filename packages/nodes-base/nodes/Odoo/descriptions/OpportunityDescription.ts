@@ -234,7 +234,7 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				displayName: 'Field To Include Names or IDs',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				default: [],

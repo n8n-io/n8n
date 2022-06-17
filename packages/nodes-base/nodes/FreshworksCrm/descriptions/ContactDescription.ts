@@ -239,7 +239,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Sales Accounts',
+				displayName: 'Sales Account Names or IDs',
 				name: 'sales_accounts',
 				type: 'multiOptions',
 				default: [],
@@ -591,7 +591,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Sales Accounts',
+				displayName: 'Sales Account Names or IDs',
 				name: 'sales_accounts',
 				type: 'multiOptions',
 				default: [],

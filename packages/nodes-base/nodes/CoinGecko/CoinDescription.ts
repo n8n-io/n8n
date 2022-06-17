@@ -182,7 +182,7 @@ export const coinFields: INodeProperties[] = [
 		placeholder: 'bitcoin',
 	},
 	{
-		displayName: 'Base Currencies',
+		displayName: 'Base Currencies Name or ID',
 		name: 'baseCurrencies',
 		required: true,
 		type: 'multiOptions',
@@ -330,7 +330,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Quote Currencies',
+		displayName: 'Quote Currencies Name or ID',
 		name: 'quoteCurrencies',
 		type: 'multiOptions',
 		typeOptions: {
@@ -654,7 +654,7 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Exchange IDs',
+				displayName: 'Exchange Names or IDs',
 				name: 'exchange_ids',
 				type: 'multiOptions',
 				typeOptions: {

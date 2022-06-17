@@ -237,7 +237,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'List IDs',
 						values: [
 							{
-								displayName: 'List IDs',
+								displayName: 'List Names or IDs',
 								name: 'listIds',
 								type: 'multiOptions',
 								typeOptions: {

@@ -132,7 +132,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company IDs',
+				displayName: 'Company Names or IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -142,7 +142,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Contact IDs',
+				displayName: 'Contact Names or IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -266,7 +266,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company IDs',
+				displayName: 'Company Names or IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -276,7 +276,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Contact IDs',
+				displayName: 'Contact Names or IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -424,7 +424,7 @@ export const ticketFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -505,7 +505,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {

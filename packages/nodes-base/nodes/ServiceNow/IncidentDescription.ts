@@ -143,7 +143,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The close notes for the incident',
 			},
 			{
-				displayName: 'Configuration Items',
+				displayName: 'Configuration Item Names or IDs',
 				name: 'cmdb_ci',
 				type: 'multiOptions',
 				typeOptions: {
@@ -334,7 +334,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -423,7 +423,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -558,7 +558,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The close notes for the incident',
 			},
 			{
-				displayName: 'Configuration Items',
+				displayName: 'Configuration Item Names or IDs',
 				name: 'cmdb_ci',
 				type: 'multiOptions',
 				typeOptions: {

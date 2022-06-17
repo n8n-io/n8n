@@ -282,7 +282,7 @@ export class GoogleSlides implements INodeType {
 								description: 'Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
 							},
 							{
-								displayName: 'Page IDs',
+								displayName: 'Page Names or IDs',
 								name: 'pageObjectIds',
 								type: 'multiOptions',
 								default: [],

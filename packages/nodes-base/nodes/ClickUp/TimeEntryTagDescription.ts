@@ -234,7 +234,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Tag Names',
+		displayName: 'Tag Names or IDs',
 		name: 'tagNames',
 		type: 'multiOptions',
 		typeOptions: {

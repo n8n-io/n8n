@@ -217,7 +217,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -230,7 +230,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Recipients',
+				displayName: 'Recipient Names or IDs',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {
@@ -545,7 +545,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The content of the thread',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {

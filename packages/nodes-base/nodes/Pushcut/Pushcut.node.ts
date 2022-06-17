@@ -109,7 +109,7 @@ export class Pushcut implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Devices',
+						displayName: 'Device Names or IDs',
 						name: 'devices',
 						type: 'multiOptions',
 						typeOptions: {

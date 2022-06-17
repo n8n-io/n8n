@@ -159,7 +159,7 @@ export const announcementFields: INodeProperties[] = [
 				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Department Names/IDs',
+				displayName: 'Department Names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
@@ -326,7 +326,7 @@ export const announcementFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Department Names/IDs',
+				displayName: 'Department Names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],

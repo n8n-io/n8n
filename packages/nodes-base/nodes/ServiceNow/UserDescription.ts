@@ -209,7 +209,7 @@ export const userFields: INodeProperties[] = [
 				description: 'The main phone number of the user',
 			},
 			{
-				displayName: 'Roles',
+				displayName: 'Role Names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
@@ -325,7 +325,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -485,7 +485,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -688,7 +688,7 @@ export const userFields: INodeProperties[] = [
 				description: 'The main phone number of the user',
 			},
 			{
-				displayName: 'Roles',
+				displayName: 'Role Names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {

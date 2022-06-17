@@ -251,7 +251,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Survey IDs',
+				displayName: 'Survey Names or IDs',
 				name: 'surveyIds',
 				type: 'multiOptions',
 				displayOptions: {
@@ -292,7 +292,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Collector IDs',
+				displayName: 'Collector Names or IDs',
 				name: 'collectorIds',
 				type: 'multiOptions',
 				displayOptions: {

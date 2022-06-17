@@ -232,7 +232,7 @@ export const channelFields: INodeProperties[] = [
 		description: 'The ID of the channel to invite user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'User IDs',
+		displayName: 'User Names or IDs',
 		name: 'userIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -720,7 +720,7 @@ export const channelFields: INodeProperties[] = [
 				description: 'Whether you want the full IM channel definition in the response',
 			},
 			{
-				displayName: 'Users',
+				displayName: 'User Names or IDs',
 				name: 'users',
 				type: 'multiOptions',
 				typeOptions: {

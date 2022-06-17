@@ -171,7 +171,7 @@ export const draftFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {

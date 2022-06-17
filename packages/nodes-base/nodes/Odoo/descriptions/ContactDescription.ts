@@ -279,7 +279,7 @@ export const contactDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				displayName: 'Field to Include Names or IDs',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				default: [],

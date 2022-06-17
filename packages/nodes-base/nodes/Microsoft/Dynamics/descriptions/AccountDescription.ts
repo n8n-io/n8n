@@ -172,7 +172,7 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return Field Names or IDs',
 				name: 'returnFields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -181,7 +181,7 @@ export const accountFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Expand Fields',
+				displayName: 'Expand Field Names or IDs',
 				name: 'expandFields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -260,7 +260,7 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return Field Names or IDs',
 				name: 'returnFields',
 				type: 'multiOptions',
 				typeOptions: {

@@ -172,7 +172,7 @@ export const workItemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Label IDs',
+				displayName: 'Label Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -182,7 +182,7 @@ export const workItemFields: INodeProperties[] = [
 				description: 'ID of the label to set on the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Member IDs',
+				displayName: 'Member Names or IDs',
 				name: 'memberIds',
 				type: 'multiOptions',
 				typeOptions: {

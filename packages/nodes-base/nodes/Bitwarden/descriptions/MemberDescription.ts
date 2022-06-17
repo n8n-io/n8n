@@ -199,7 +199,7 @@ export const memberFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
 				description: 'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
@@ -262,7 +262,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
 				description: 'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',

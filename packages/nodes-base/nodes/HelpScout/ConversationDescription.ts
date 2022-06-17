@@ -232,7 +232,7 @@ export const conversationFields: INodeProperties[] = [
 				description: 'Whether set to true, no outgoing emails or notifications will be generated',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -622,7 +622,7 @@ export const conversationFields: INodeProperties[] = [
 				description: 'Filter conversation by status',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
