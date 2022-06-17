@@ -442,6 +442,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-missing-from-dynamic-options': 'error',
 				'n8n-nodes-base/filesystem-wrong-cred-filename': 'error',
 				'n8n-nodes-base/node-param-placeholder-missing-email': 'error',
+				'n8n-nodes-base/node-class-description-icon-not-svg': 'error',
 				'n8n-nodes-base/node-class-description-empty-string': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-options': 'error'
 			},

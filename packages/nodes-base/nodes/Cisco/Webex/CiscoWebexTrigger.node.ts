@@ -27,6 +27,7 @@ export class CiscoWebexTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webex by Cisco Trigger',
 		name: 'ciscoWebexTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:ciscoWebex.png',
 		group: ['trigger'],
 		version: 1,

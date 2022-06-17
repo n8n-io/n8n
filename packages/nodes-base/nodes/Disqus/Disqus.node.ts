@@ -16,6 +16,7 @@ export class Disqus implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Disqus',
 		name: 'disqus',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:disqus.png',
 		group: ['input'],
 		version: 1,
