@@ -260,7 +260,7 @@ export const pushConnection = mixins(
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
-						}, true);
+						});
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
