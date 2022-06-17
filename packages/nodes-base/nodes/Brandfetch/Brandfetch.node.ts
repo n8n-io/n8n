@@ -17,6 +17,7 @@ export class Brandfetch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Brandfetch',
 		name: 'Brandfetch',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:brandfetch.png',
 		group: ['output'],
 		version: 1,

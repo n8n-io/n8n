@@ -17,6 +17,7 @@ export class OpenThesaurus implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenThesaurus',
 		name: 'openThesaurus',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:openthesaurus.png',
 		group: ['output'],
 		version: 1,

@@ -28,6 +28,7 @@ export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'E-goi',
 		name: 'egoi',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:egoi.png',
 		group: ['output'],
 		version: 1,

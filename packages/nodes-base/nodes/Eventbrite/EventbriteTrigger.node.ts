@@ -22,6 +22,7 @@ export class EventbriteTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Eventbrite Trigger',
 		name: 'eventbriteTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:eventbrite.png',
 		group: ['trigger'],
 		version: 1,
@@ -112,16 +113,16 @@ export class EventbriteTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'attendee.updated',
-						value: 'attendee.updated',
-					},
-					{
 						name: 'attendee.checked_in',
 						value: 'attendee.checked_in',
 					},
 					{
 						name: 'attendee.checked_out',
 						value: 'attendee.checked_out',
+					},
+					{
+						name: 'attendee.updated',
+						value: 'attendee.updated',
 					},
 					{
 						name: 'event.created',

@@ -21,6 +21,7 @@ export class Medium implements INodeType {
 		displayName: 'Medium',
 		name: 'medium',
 		group: ['output'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:medium.png',
 		version: 1,
 		description: 'Consume Medium API',
