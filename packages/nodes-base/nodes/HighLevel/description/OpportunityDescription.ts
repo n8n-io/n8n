@@ -42,7 +42,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/opportunities/{{$parameter.identifier}}',
+						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities/{{$parameter.identifier}}',
 					},
 					output: {
 						postReceive: [
@@ -62,17 +62,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/opportunities/{{$parameter.identifier}}',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'opportunity',
-								},
-							},
-						],
+						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities/{{$parameter.identifier}}',
 					},
 				},
 			},
@@ -124,6 +114,83 @@ export const opportunityOperations: INodeProperties[] = [
 	},
 ];
 
+const deleteOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Pipeline Identifier',
+		name: 'pipelineIdentifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Pipeline the opportunity belongs to',
+	},
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'delete',
+				]
+			},
+		},
+		default: '',
+		description: 'Opportunity ID',
+	},
+];
+
+const getOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Pipeline Identifier',
+		name: 'pipelineIdentifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Pipeline the opportunity belongs to',
+	},
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'get',
+				]
+			},
+		},
+		default: '',
+		description: 'Opportunity ID',
+	},
+];
 
 const getAllOperations: Array<INodeProperties> = [
 	{
@@ -335,8 +402,7 @@ const getAllOperations: Array<INodeProperties> = [
 export const opportunityFields: INodeProperties[] = [
 	// ...createOperations,
 	// ...updateOperations,
-	// ...deleteOperations,
-	// ...getOperations,
+	...deleteOperations,
+	...getOperations,
 	...getAllOperations,
-	// ...lookupOperations,
 ];
