@@ -331,6 +331,7 @@ export class RabbitMQ implements INodeType {
 				// @ts-ignore
 				const promisesResponses = await Promise.allSettled(queuePromises);
 
+				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
 					if (response!.status !== 'fulfilled') {
 
@@ -396,6 +397,7 @@ export class RabbitMQ implements INodeType {
 				// @ts-ignore
 				const promisesResponses = await Promise.allSettled(exchangePromises);
 
+				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
 					if (response!.status !== 'fulfilled') {
 
