@@ -161,7 +161,7 @@ export class Twilio implements INodeType {
 						],
 					},
 				},
-				description: 'Whether the message should be send to WhatsApp',
+				description: 'Whether the message should be sent to WhatsApp',
 			},
 			{
 				displayName: 'Message',
