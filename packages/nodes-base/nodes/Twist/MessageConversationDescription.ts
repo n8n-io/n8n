@@ -522,7 +522,7 @@ export const messageConversationFields: INodeProperties[] = [
 				description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
 			},
 			{
-				displayName: 'Direct Mentions Name or ID',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
