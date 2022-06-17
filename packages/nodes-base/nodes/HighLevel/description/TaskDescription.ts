@@ -24,16 +24,6 @@ export const taskOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks',
 					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'task',
-								},
-							},
-						],
-					},
 				},
 			},
 			{
@@ -112,6 +102,142 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+	},
+];
+
+const additionalFields: Array<INodeProperties> = [
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'description',
+					}
+				}
+			},
+			{
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'assignedTo',
+					}
+				}
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Incompleted',
+						value: 'incompleted',
+					},
+					{
+						name: 'Completed',
+						value: 'completed',
+					},
+				],
+				default: 'incompleted',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'status',
+					}
+				}
+			},
+		],
+	}
+]
+
+const createOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Contact Identifier',
+		name: 'contactIdentifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Contact the task belongs to',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'title',
+			}
+		}
+	},
+	{
+		displayName: 'Due Date',
+		name: 'dueDate',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'dueDate',
+			}
+		}
 	},
 ];
 
@@ -266,10 +392,10 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 export const taskFields: INodeProperties[] = [
-	// ...createOperations,
+	...createOperations,
 	// ...updateOperations,
+	...additionalFields,
 	...deleteOperations,
 	...getOperations,
 	...getAllOperations,
-	// ...lookupOperations,
 ];
