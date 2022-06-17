@@ -441,6 +441,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-line-break-html-tag': 'error',
 				'n8n-nodes-base/filesystem-wrong-cred-filename': 'error',
 				'n8n-nodes-base/node-param-placeholder-missing-email': 'error',
+				'n8n-nodes-base/filesystem-wrong-node-filename': 'error',
 			},
 		},
 	],
