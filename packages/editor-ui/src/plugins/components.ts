@@ -71,6 +71,7 @@ import {
 	N8nTabs,
 	N8nFormInputs,
 	N8nFormBox,
+	N8nPulse,
 	N8nSquareButton,
 	N8nTags,
 	N8nTag,
@@ -104,6 +105,7 @@ Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
 Vue.component('n8n-notice', N8nNotice);
 Vue.use(N8nOption);
+Vue.use(N8nPulse);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
 Vue.component('n8n-sticky', N8nSticky);

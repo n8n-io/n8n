@@ -57,6 +57,7 @@ import N8nMenuItem from './N8nMenuItem';
 import N8nNotice from './N8nNotice';
 import N8nLink from './N8nLink';
 import N8nOption from './N8nOption';
+import N8nPulse from './N8nPulse';
 import N8nRadioButtons from './N8nRadioButtons';
 import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
@@ -97,6 +98,7 @@ export {
 	N8nMenuItem,
 	N8nNotice,
 	N8nOption,
+	N8nPulse,
 	N8nRadioButtons,
 	N8nSelect,
 	N8nSpinner,
