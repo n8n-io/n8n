@@ -10,6 +10,7 @@ import {
 
 import { contactFields, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
+import { pipelineFields, pipelineOperations } from './description/PipelineDescription';
 import { wait } from './GenericFunctions';
 
 
@@ -27,6 +28,10 @@ const ressources: INodeProperties[] = [
 			{
 				name: 'Opportunity',
 				value: 'opportunity',
+			},
+			{
+				name: 'Pipeline',
+				value: 'pipeline',
 			},
 			{
 				name: 'Task',
@@ -87,17 +92,17 @@ export class HighLevel implements INodeType {
 
 				do {
 
-					// console.log(requestData.options.url);
+					console.log(requestData.options);
 
 					const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
 					const items = pageResponseData[0].json[rootProperty] as [];
 					items.forEach(item => responseData.push({ json: item }));
 
 					const meta = pageResponseData[0].json.meta as IDataObject;
-					const startAfterId = meta.startAfterId as string;
-					const startAfter = meta.startAfter as number;
+					const startAfterId = meta?.startAfterId as string;
+					const startAfter = meta?.startAfter as number;
 					requestData.options.qs = { startAfterId, startAfter };
-					responseTotal = meta.total as number;
+					responseTotal = meta?.total as number || 0;
 
 					// console.log(JSON.stringify(meta, null, 2));
 					// await wait();
@@ -113,6 +118,8 @@ export class HighLevel implements INodeType {
 			...contactFields,
 			...opportunityOperations,
 			...opportunityFields,
+			...pipelineOperations,
+			...pipelineFields,
 		],
 	};
 }
