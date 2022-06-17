@@ -115,6 +115,45 @@ export const taskOperations: INodeProperties[] = [
 	},
 ];
 
+const deleteOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Contact Identifier',
+		name: 'contactIdentifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Contact the task belongs to',
+	},
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'delete',
+				]
+			},
+		},
+		default: '',
+		description: 'Task ID',
+	},
+];
+
 const getOperations: Array<INodeProperties> = [
 	{
 		displayName: 'Contact Identifier',
@@ -229,7 +268,7 @@ const getAllOperations: Array<INodeProperties> = [
 export const taskFields: INodeProperties[] = [
 	// ...createOperations,
 	// ...updateOperations,
-	// ...deleteOperations,
+	...deleteOperations,
 	...getOperations,
 	...getAllOperations,
 	// ...lookupOperations,
