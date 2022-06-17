@@ -30,7 +30,6 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 		url: '',
 		headers: {
 			'Accept': 'application/json',
-			'Authorization': `Token ${credentials.token}`,
 		},
 		json: true,
 	};
@@ -44,7 +43,7 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	let results = null;
 	let keepLooking = true;
 	while (keepLooking) {
-		const response = await this.helpers.httpRequest(options);
+		const response = await this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', options);
 		// Append or set results
 		results = response.results ? _.concat(results || [], response.results) : response;
 		if (returnAll && response.next) {
