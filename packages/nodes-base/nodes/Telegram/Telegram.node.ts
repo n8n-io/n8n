@@ -623,7 +623,7 @@ export class Telegram implements INodeType {
 						name: 'show_alert',
 						type: 'boolean',
 						default: false,
-						description: 'Whether true, an alert will be shown by the client instead of a notification at the top of the chat screen',
+						description: 'Whether an alert will be shown by the client instead of a notification at the top of the chat screen',
 					},
 					{
 						displayName: 'Text',
