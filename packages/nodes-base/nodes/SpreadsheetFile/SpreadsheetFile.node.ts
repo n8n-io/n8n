@@ -234,7 +234,8 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Whether, when reading from file the empty cells will be filled with an empty string in the JSON',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'When reading from file the empty cells will be filled with an empty string in the JSON',
 					},
 					{
 						displayName: 'RAW Data',

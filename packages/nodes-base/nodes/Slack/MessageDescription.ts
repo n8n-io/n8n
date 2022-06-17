@@ -1157,7 +1157,8 @@ export const messageFields: INodeProperties[] = [
 										},
 										type: 'boolean',
 										default: false,
-										description: 'Whether set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
+										// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+										description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
 									},
 								],
 							},

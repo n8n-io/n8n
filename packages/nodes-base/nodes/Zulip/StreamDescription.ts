@@ -160,7 +160,8 @@ export const streamFields: INodeProperties[] = [
 				name: 'announce',
 				type: 'boolean',
 				default: false,
-				description: 'Whether is true and one of the streams specified in subscriptions has to be created (i.e. doesnt exist to begin with), an announcement will be made notifying that a new stream was created.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'If announce is True and one of the streams specified in subscriptions has to be created (i.e. doesnt exist to begin with), an announcement will be made notifying that a new stream was created.',
 			},
 			{
 				displayName: 'Authorization Errors Fatal',

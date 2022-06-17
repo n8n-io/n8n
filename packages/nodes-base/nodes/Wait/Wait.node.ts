@@ -385,7 +385,8 @@ export class Wait implements INodeType {
 				name: 'limitWaitTime',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the workflow will automatically resume execution after the specified limit type, if no webhook call is received',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'If no webhook call is received, the workflow will automatically resume execution after the specified limit type',
 				displayOptions: {
 					show: {
 						resume: [

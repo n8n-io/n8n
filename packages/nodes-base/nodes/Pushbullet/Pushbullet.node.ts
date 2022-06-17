@@ -377,7 +377,8 @@ export class Pushbullet implements INodeType {
 						name: 'active',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to don\'t return deleted pushes',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'Don\'t return deleted pushes',
 					},
 					{
 						displayName: 'Modified After',

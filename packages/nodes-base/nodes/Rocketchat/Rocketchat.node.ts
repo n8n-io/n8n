@@ -303,7 +303,8 @@ export class Rocketchat implements INodeType {
 						name: 'titleLinkDownload',
 						type: 'boolean',
 						default: false,
-						description: 'Whether true, a download icon appears and clicking this saves the link to file',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'When this is true, a download icon appears and clicking this saves the link to file',
 					},
 					{
 						displayName: 'Image URL',

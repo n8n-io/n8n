@@ -214,7 +214,8 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether to flag the case, default=false',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description: 'Flag of the case default=false',
 	},
 	{
 		displayName: 'TLP',
@@ -513,7 +514,8 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to flag the case, default=false',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Flag of the case default=false',
 			},
 			{
 				displayName: 'Impact Status',
@@ -781,7 +783,8 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to flag the case, default=false',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Flag of the case default=false',
 			},
 			{
 				displayName: 'Impact Status',

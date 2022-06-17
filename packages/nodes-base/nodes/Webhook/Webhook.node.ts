@@ -344,7 +344,8 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Whether Raw body (binary)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'Raw body (binary)',
 					},
 					{
 						displayName: 'Response Data',

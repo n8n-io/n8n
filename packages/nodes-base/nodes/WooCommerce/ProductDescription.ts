@@ -203,7 +203,8 @@ export const productFields: INodeProperties[] = [
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the stock management at product level',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Stock management at product level',
 			},
 			{
 				displayName: 'Menu Order',
@@ -716,7 +717,8 @@ export const productFields: INodeProperties[] = [
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the stock management at product level',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Stock management at product level',
 			},
 			{
 				displayName: 'Menu Order',
