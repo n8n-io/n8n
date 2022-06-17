@@ -56,7 +56,6 @@ export class RenameKeys implements INodeType {
 								name: 'useRegEx',
 								type: 'boolean',
 								default: false,
-								hint: 'Be aware that by using regular expression previously renamed keys can be affected',
 							},
 							// rename keys ------------------------------------------------------------------------------------------------------------
 							{
