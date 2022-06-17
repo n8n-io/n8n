@@ -139,7 +139,7 @@ export const documentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Comma-separated list of fields to return',
+				description: 'Comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				placeholder: 'name,country',
 			},
 			{

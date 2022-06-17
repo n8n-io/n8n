@@ -1633,7 +1633,7 @@ export class Mailchimp implements INodeType {
 							loadOptionsMethod: 'getCampaignsFields',
 						},
 						default: [],
-						description: 'A comma-separated list of fields to exclude',
+						description: 'A comma-separated list of fields to exclude. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Fields',
@@ -1650,7 +1650,7 @@ export class Mailchimp implements INodeType {
 							'campaigns.settings.reply_to',
 							'campaigns.settings.title',
 						],
-						description: 'A comma-separated list of fields to return',
+						description: 'A comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'List Name or ID',

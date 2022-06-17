@@ -245,7 +245,7 @@ export const postFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the category taxonomy',
+				description: 'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Tags',
@@ -255,7 +255,7 @@ export const postFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the post_tag taxonomy',
+				description: 'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -465,7 +465,7 @@ export const postFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the category taxonomy',
+				description: 'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Tags',
@@ -475,7 +475,7 @@ export const postFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the post_tag taxonomy',
+				description: 'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -623,7 +623,7 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
-				description: 'Limit result set to posts assigned to specific authors',
+				description: 'Limit result set to posts assigned to specific authors. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Before',
@@ -640,7 +640,7 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy',
+				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Context',
@@ -671,7 +671,7 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy',
+				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Exclude Tags',
@@ -681,7 +681,7 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy',
+				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Order',
@@ -800,7 +800,7 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to all items that have the specified term assigned in the tags taxonomy',
+				description: 'Limit result set to all items that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

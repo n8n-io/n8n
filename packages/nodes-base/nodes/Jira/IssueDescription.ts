@@ -933,7 +933,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: 'List of users to receive the notification',
+						description: 'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Groups',
@@ -943,7 +943,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: 'List of groups to receive the notification',
+						description: 'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
 
@@ -1009,7 +1009,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: 'List of users to receive the notification',
+						description: 'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Groups',
@@ -1019,7 +1019,7 @@ export const issueFields: INodeProperties[] = [
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: 'List of groups to receive the notification',
+						description: 'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
 

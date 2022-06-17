@@ -170,7 +170,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Collections',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group',
+				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -217,7 +217,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Collections',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group',
+				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
