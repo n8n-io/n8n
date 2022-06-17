@@ -327,7 +327,7 @@ export const incidentFields: INodeProperties[] = [
 						value: 'acknowledgers',
 					},
 					{
-						name: 'Assigness',
+						name: 'Assignees',
 						value: 'assigness',
 					},
 					{
