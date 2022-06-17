@@ -382,7 +382,7 @@ export class Asana implements INodeType {
 							'name',
 							'resource_type',
 						],
-						description: 'Defines fields to return',
+						description: 'Defines fields to return. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Pretty',
@@ -619,7 +619,7 @@ export class Asana implements INodeType {
 							'name',
 							'resource_type',
 						],
-						description: 'Defines fields to return',
+						description: 'Defines fields to return. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Pretty',
@@ -941,7 +941,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: [],
-						description: 'The project to filter tasks on',
+						description: 'The project to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
 			},

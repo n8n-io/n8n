@@ -370,7 +370,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getServices',
 				},
 				default: [],
-				description: 'Returns only the incidents associated with the passed service(s)',
+				description: 'Returns only the incidents associated with the passed service(s). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Since',

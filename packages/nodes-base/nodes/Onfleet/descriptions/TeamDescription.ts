@@ -72,7 +72,7 @@ const workersField = {
 		loadOptionsMethod: 'getWorkers',
 	},
 	default: [],
-	description: 'A list of workers',
+	description: 'A list of workers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 } as INodeProperties;
 
 const managersField = {
@@ -83,7 +83,7 @@ const managersField = {
 		loadOptionsMethod: 'getAdmins',
 	},
 	default: [],
-	description: 'A list of managing administrators',
+	description: 'A list of managing administrators. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 } as INodeProperties;
 
 const hubField = {

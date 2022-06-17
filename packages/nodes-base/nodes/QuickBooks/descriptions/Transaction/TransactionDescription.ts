@@ -111,7 +111,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'customer',
 				type: 'multiOptions',
 				default: [],
-				description: 'Customer to filter results by',
+				description: 'Customer to filter results by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomers',
 				},
@@ -269,7 +269,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'department',
 				type: 'multiOptions',
 				default: [],
-				description: 'Department to filter results by',
+				description: 'Department to filter results by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -294,7 +294,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'memo',
 				type: 'multiOptions',
 				default: [],
-				description: 'Memo to filter results by',
+				description: 'Memo to filter results by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getMemos',
 				},
@@ -359,7 +359,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'term',
 				type: 'multiOptions',
 				default: [],
-				description: 'Term to filter results by',
+				description: 'Term to filter results by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getTerms',
 				},
@@ -387,7 +387,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'vendor',
 				type: 'multiOptions',
 				default: [],
-				description: 'Vendor to filter results by',
+				description: 'Vendor to filter results by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getVendors',
 				},

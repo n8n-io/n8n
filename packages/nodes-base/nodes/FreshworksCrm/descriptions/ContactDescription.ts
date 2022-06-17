@@ -246,7 +246,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'Accounts which contact belongs to',
+				description: 'Accounts which contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -597,7 +597,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'Accounts which contact belongs to',
+				description: 'Accounts which contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'State',

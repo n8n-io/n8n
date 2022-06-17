@@ -242,7 +242,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this user',
+				description: 'The array of tags applied to this user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Restriction',
@@ -506,7 +506,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this user',
+				description: 'The array of tags applied to this user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Restriction',

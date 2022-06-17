@@ -104,7 +104,7 @@ export const departmentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColumns',
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{

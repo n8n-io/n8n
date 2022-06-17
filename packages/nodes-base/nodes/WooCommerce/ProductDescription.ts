@@ -144,7 +144,7 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories',
+				description: 'List of categories. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
@@ -342,7 +342,7 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags',
+				description: 'List of tags. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -657,7 +657,7 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories',
+				description: 'List of categories. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
@@ -862,7 +862,7 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags',
+				description: 'List of tags. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',

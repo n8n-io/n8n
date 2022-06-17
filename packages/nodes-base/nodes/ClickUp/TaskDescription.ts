@@ -342,7 +342,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The array of tags applied to this task',
+				description: 'The array of tags applied to this task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Time Estimate',
@@ -917,7 +917,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The array of tags applied to this task',
+				description: 'The array of tags applied to this task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

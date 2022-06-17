@@ -250,7 +250,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the user to invite into channel',
+		description: 'The ID of the user to invite into channel. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -724,7 +724,7 @@ export const channelFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users.',
+				description: 'If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

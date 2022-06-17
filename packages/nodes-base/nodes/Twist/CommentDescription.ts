@@ -209,7 +209,7 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned',
+				description: 'The users that are directly mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Mark Thread Position',
@@ -229,7 +229,7 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that will attached to the comment',
+				description: 'The users that will attached to the comment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Temporary ID',
@@ -556,7 +556,7 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned',
+				description: 'The users that are directly mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

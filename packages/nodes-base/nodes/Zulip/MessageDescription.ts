@@ -72,7 +72,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',

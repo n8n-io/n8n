@@ -510,7 +510,7 @@ export const customObjectFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Fields to include separated by ,',
+				description: 'Fields to include separated by ,. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

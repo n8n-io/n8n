@@ -56,7 +56,7 @@ const teamsField = {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'These are the teams that this Hub will be assigned to',
+	description: 'These are the teams that this Hub will be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 } as INodeProperties;
 
 export const hubFields: INodeProperties[] = [

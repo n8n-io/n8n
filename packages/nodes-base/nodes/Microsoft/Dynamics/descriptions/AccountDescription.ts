@@ -267,7 +267,7 @@ export const accountFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAccountFields',
 				},
 				default: [],
-				description: 'Fields the response will include',
+				description: 'Fields the response will include. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
