@@ -132,7 +132,7 @@ export class OpenThesaurus implements INodeType {
 						name: 'supersynsets',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to indicate that each synonym group is supplied with its (optional) generic terms',
+						description: 'Whether each synonym group is supplied with its (optional) generic terms',
 					},
 				],
 			},
