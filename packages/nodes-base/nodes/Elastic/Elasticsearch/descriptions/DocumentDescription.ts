@@ -360,7 +360,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Ignore Throttled',
 				name: 'ignore_throttled',
-				description: 'Whether true, concrete, expanded or aliased indices are ignored when frozen. Defaults to true.',
+				description: 'Whether concrete, expanded or aliased indices are ignored when frozen. Defaults to true.',
 				type: 'boolean',
 				default: true,
 			},
