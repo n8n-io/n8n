@@ -431,7 +431,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Remove Tags Name or ID',
+				displayName: 'Remove Tag Names or IDs',
 				name: 'removeTags',
 				type: 'multiOptions',
 				typeOptions: {
