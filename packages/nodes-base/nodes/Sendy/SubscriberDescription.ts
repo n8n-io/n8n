@@ -115,7 +115,7 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'gdpr',
 				type: 'boolean',
 				default: false,
-				description: 'Whether you\'re signing up EU users in a GDPR compliant manner, set this to "true"',
+				description: 'Whether you\'re signing up EU users in a GDPR compliant manner',
 			},
 			{
 				displayName: 'Honeypot',
