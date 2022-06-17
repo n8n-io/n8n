@@ -201,7 +201,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'shortIdLookUp',
 				type: 'boolean',
 				default: true,
-				description: 'Whether set to true then short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in.',
+				description: 'Whether short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in.',
 			},
 		],
 	},
