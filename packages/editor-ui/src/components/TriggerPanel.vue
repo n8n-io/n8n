@@ -318,7 +318,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				}
 			}
 
-			if (this.isWebhookNode) {
+			if (this.isWebhookBasedNode) {
 				if (this.isWorkflowActive) {
 					return this.$locale.baseText('triggerPanel.webhookBasedNode.activationHint.active', {
 						interpolate: { service: this.serviceName },
