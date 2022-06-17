@@ -121,7 +121,7 @@ export const dealFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Associated Vids Name or ID',
+				displayName: 'Associated Vids Names or IDs',
 				name: 'associatedVids',
 				type: 'multiOptions',
 				typeOptions: {
