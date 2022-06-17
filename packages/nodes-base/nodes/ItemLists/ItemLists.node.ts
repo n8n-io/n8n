@@ -141,7 +141,7 @@ export class ItemLists implements INodeType {
 				},
 			},
 			{
-				displayName: 'Fields To Include',
+				displayName: 'Fields to Include',
 				name: 'fieldsToInclude',
 				type: 'fixedCollection',
 				typeOptions: {

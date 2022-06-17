@@ -664,7 +664,8 @@ export const postFields: INodeProperties[] = [
 				description: 'Scope under which the request is made; determines fields present in response',
 			},
 			{
-				displayName: 'Exclude Categories Name or ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Exclude Categories',
 				name: 'excludedCategories',
 				type: 'multiOptions',
 				default: [],
@@ -674,7 +675,8 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Exclude Tags Name or ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Exclude Tags',
 				name: 'excludedTags',
 				type: 'multiOptions',
 				default: [],
