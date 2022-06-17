@@ -23,7 +23,15 @@
 							}}
 						</n8n-text>
 					</div>
-					<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('triggerPanel.copiedTestUrl')" class="mb-2xl" size="medium" :collapse="true" @copy="onTestLinkCopied"></CopyInput>
+					<CopyInput
+						:value="webhookTestUrl"
+						:toastTitle="$locale.baseText('triggerPanel.copiedTestUrl')"
+						class="mb-2xl"
+						size="medium"
+						:collapse="true"
+						:copy-button-text="$locale.baseText('generic.clickToCopy')"
+						@copy="onTestLinkCopied"
+					></CopyInput>
 				</div>
 				<div v-else>
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
@@ -67,8 +75,20 @@
 				<n8n-text size="small" @click="onLinkClick" v-if="activationHint">
 					<span v-html="activationHint"></span>&nbsp;
 				</n8n-text>
-				<n8n-link size="small" v-if="activationHint && executionsHelp" @click="expandExecutionHelp">{{ $locale.baseText('triggerPanel.moreInfo') }}</n8n-link>
-				<n8n-info-accordion ref="help" v-if="executionsHelp" :class="$style.accordion" :title="$locale.baseText('triggerPanel.executionsHint.question')" :description="executionsHelp" @click="onLinkClick"></n8n-info-accordion>
+				<n8n-link
+					size="small"
+					v-if="activationHint && executionsHelp"
+					@click="expandExecutionHelp"
+					>{{ $locale.baseText('triggerPanel.moreInfo') }}</n8n-link
+				>
+				<n8n-info-accordion
+					ref="help"
+					v-if="executionsHelp"
+					:class="$style.accordion"
+					:title="$locale.baseText('triggerPanel.executionsHint.question')"
+					:description="executionsHelp"
+					@click="onLinkClick"
+				></n8n-info-accordion>
 			</div>
 		</transition>
 	</div>
@@ -114,8 +134,12 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 			return null;
 		},
-		hasIssues (): boolean {
-			return Boolean(this.node && this.node.issues && (this.node.issues.parameters || this.node.issues.credentials));
+		hasIssues(): boolean {
+			return Boolean(
+				this.node &&
+					this.node.issues &&
+					(this.node.issues.parameters || this.node.issues.credentials),
+			);
 		},
 		serviceName(): string {
 			if (this.nodeType) {
@@ -180,7 +204,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				(!executedNode || executedNode === this.nodeName)
 			);
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
 		isActivelyPolling(): boolean {
@@ -198,10 +222,13 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				return this.$locale.baseText('triggerPanel.pollingNode.fetchingEvent');
 			}
 
-			if (this.nodeType && this.nodeType.triggerPanel && typeof this.nodeType.triggerPanel.header === 'string') {
+			if (
+				this.nodeType &&
+				this.nodeType.triggerPanel &&
+				typeof this.nodeType.triggerPanel.header === 'string'
+			) {
 				return this.nodeType.triggerPanel.header;
 			}
-
 
 			if (this.nodeType && this.isPollingNode) {
 				return this.$locale.baseText('triggerPanel.scheduledNode.action', {
@@ -228,7 +255,11 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return '';
 		},
 		executionsHelp(): string {
-			if (this.nodeType && this.nodeType.triggerPanel && this.nodeType.triggerPanel.executionsHelp !== undefined) {
+			if (
+				this.nodeType &&
+				this.nodeType.triggerPanel &&
+				this.nodeType.triggerPanel.executionsHelp !== undefined
+			) {
 				if (typeof this.nodeType.triggerPanel.executionsHelp === 'string') {
 					return this.nodeType.triggerPanel.executionsHelp;
 				}
@@ -245,8 +276,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					return this.$locale.baseText('triggerPanel.webhookBasedNode.executionsHelp.active', {
 						interpolate: { service: this.serviceName },
 					});
-				}
-				else {
+				} else {
 					return this.$locale.baseText('triggerPanel.webhookBasedNode.executionsHelp.inactive', {
 						interpolate: { service: this.serviceName },
 					});
@@ -258,8 +288,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					return this.$locale.baseText('triggerPanel.pollingNode.executionsHelp.active', {
 						interpolate: { service: this.serviceName },
 					});
-				}
-				else {
+				} else {
 					return this.$locale.baseText('triggerPanel.pollingNode.executionsHelp.inactive', {
 						interpolate: { service: this.serviceName },
 					});
@@ -269,19 +298,33 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return '';
 		},
 		activationHint(): string {
-			if (this.nodeType && this.nodeType.triggerPanel && this.nodeType.triggerPanel.activationHint) {
+			if (this.isActivelyPolling) {
+				return '';
+			}
+
+			if (
+				this.nodeType &&
+				this.nodeType.triggerPanel &&
+				this.nodeType.triggerPanel.activationHint
+			) {
 				if (typeof this.nodeType.triggerPanel.activationHint === 'string') {
 					return this.nodeType.triggerPanel.activationHint;
 				}
-				if (!this.isWorkflowActive && typeof this.nodeType.triggerPanel.activationHint.inactive === 'string') {
+				if (
+					!this.isWorkflowActive &&
+					typeof this.nodeType.triggerPanel.activationHint.inactive === 'string'
+				) {
 					return this.nodeType.triggerPanel.activationHint.inactive;
 				}
-				if (this.isWorkflowActive && typeof this.nodeType.triggerPanel.activationHint.active === 'string') {
+				if (
+					this.isWorkflowActive &&
+					typeof this.nodeType.triggerPanel.activationHint.active === 'string'
+				) {
 					return this.nodeType.triggerPanel.activationHint.active;
 				}
 			}
 
-			if (!this.isWorkflowActive && !this.isActivelyPolling) {
+			if (!this.isWorkflowActive) {
 				return this.$locale.baseText('triggerPanel.inactiveHint', {
 					interpolate: { service: this.serviceName },
 				});
@@ -438,12 +481,14 @@ $--dark-pulse-color: hsla(
 		box-shadow: 0 0 0 0 $--light-pulse-color;
 	}
 
-	58.33% { // 3s
+	58.33% {
+		// 3s
 		-moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
 		box-shadow: 0 0 0 60px $--dark-pulse-color;
 	}
 
-	66.6% { // 4s
+	66.6% {
+		// 4s
 		-moz-box-shadow: 0 0 0 66px transparent;
 		box-shadow: 0 0 0 66px transparent;
 	}
@@ -460,17 +505,20 @@ $--dark-pulse-color: hsla(
 		box-shadow: 0 0 0 0 $--light-pulse-color;
 	}
 
-	16.66% { // 1s
+	16.66% {
+		// 1s
 		-moz-box-shadow: 0 0 0 0 $--light-pulse-color;
 		box-shadow: 0 0 0 0 $--light-pulse-color;
 	}
 
-	50% { // 3s
+	50% {
+		// 3s
 		-moz-box-shadow: 0 0 0 60px $--dark-pulse-color;
 		box-shadow: 0 0 0 60px $--dark-pulse-color;
 	}
 
-	83.3% { // 5s
+	83.3% {
+		// 5s
 		-moz-box-shadow: 0 0 0 66px transparent;
 		box-shadow: 0 0 0 66px transparent;
 	}
@@ -486,11 +534,21 @@ $--dark-pulse-color: hsla(
 }
 
 @keyframes shake {
-	90% { transform: translateX(0) }
-	92.5% { transform: translateX(6px) }
-	95% { transform: translateX(-6px) }
-	97.5% { transform: translateX(6px) }
-	100% { transform: translateX(0) }
+	90% {
+		transform: translateX(0);
+	}
+	92.5% {
+		transform: translateX(6px);
+	}
+	95% {
+		transform: translateX(-6px);
+	}
+	97.5% {
+		transform: translateX(6px);
+	}
+	100% {
+		transform: translateX(0);
+	}
 }
 
 .accordion {
@@ -506,7 +564,6 @@ $--dark-pulse-color: hsla(
 </style>
 
 <style lang="scss" scoped>
-
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 200ms;
@@ -515,5 +572,4 @@ $--dark-pulse-color: hsla(
 .fade-leave-to {
 	opacity: 0;
 }
-
 </style>
