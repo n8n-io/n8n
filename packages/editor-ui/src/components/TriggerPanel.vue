@@ -12,12 +12,12 @@
 				</div>
 				<div v-if="isWebhookNode">
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
-						$locale.baseText('triggerPanel.webhookNode.listening')
+						$locale.baseText('ndv.trigger.webhookNode.listening')
 					}}</n8n-text>
 					<div :class="$style.shake">
 						<n8n-text class="mb-xs">
 							{{
-								$locale.baseText('triggerPanel.webhookNode.requestHint', {
+								$locale.baseText('ndv.trigger.webhookNode.requestHint', {
 									interpolate: { type: this.webhookHttpMethod },
 								})
 							}}
@@ -25,7 +25,7 @@
 					</div>
 					<CopyInput
 						:value="webhookTestUrl"
-						:toastTitle="$locale.baseText('triggerPanel.copiedTestUrl')"
+						:toastTitle="$locale.baseText('ndv.trigger.copiedTestUrl')"
 						class="mb-2xl"
 						size="medium"
 						:collapse="true"
@@ -35,12 +35,12 @@
 				</div>
 				<div v-else>
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
-						$locale.baseText('triggerPanel.webhookBasedNode.listening')
+						$locale.baseText('ndv.trigger.webhookBasedNode.listening')
 					}}</n8n-text>
 					<div :class="$style.shake">
 						<n8n-text class="mb-xs" tag="div">
 							{{
-								$locale.baseText('triggerPanel.webhookBasedNode.serviceHint', {
+								$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
 									interpolate: { service: serviceName },
 								})
 							}}
@@ -79,13 +79,13 @@
 					size="small"
 					v-if="activationHint && executionsHelp"
 					@click="expandExecutionHelp"
-					>{{ $locale.baseText('triggerPanel.moreInfo') }}</n8n-link
+					>{{ $locale.baseText('ndv.trigger.moreInfo') }}</n8n-link
 				>
 				<n8n-info-accordion
 					ref="help"
 					v-if="executionsHelp"
 					:class="$style.accordion"
-					:title="$locale.baseText('triggerPanel.executionsHint.question')"
+					:title="$locale.baseText('ndv.trigger.executionsHint.question')"
 					:description="executionsHelp"
 					@click="onLinkClick"
 				></n8n-info-accordion>
@@ -219,7 +219,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
 
 			if (this.isActivelyPolling) {
-				return this.$locale.baseText('triggerPanel.pollingNode.fetchingEvent');
+				return this.$locale.baseText('ndv.trigger.pollingNode.fetchingEvent');
 			}
 
 			if (
@@ -231,7 +231,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			}
 
 			if (this.isWebhookBasedNode) {
-				return this.$locale.baseText('triggerPanel.webhookBasedNode.action', {
+				return this.$locale.baseText('ndv.trigger.webhookBasedNode.action', {
 					interpolate: { name: serviceName },
 				});
 			}
@@ -241,7 +241,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		subheader(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
 			if (this.isActivelyPolling) {
-				return this.$locale.baseText('triggerPanel.pollingNode.fetchingHint', {
+				return this.$locale.baseText('ndv.trigger.pollingNode.fetchingHint', {
 					interpolate: { name: serviceName },
 				});
 			}
@@ -267,11 +267,11 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 			if (this.isWebhookBasedNode) {
 				if (this.isWorkflowActive) {
-					return this.$locale.baseText('triggerPanel.webhookBasedNode.executionsHelp.active', {
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.executionsHelp.active', {
 						interpolate: { service: this.serviceName },
 					});
 				} else {
-					return this.$locale.baseText('triggerPanel.webhookBasedNode.executionsHelp.inactive', {
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.executionsHelp.inactive', {
 						interpolate: { service: this.serviceName },
 					});
 				}
@@ -279,11 +279,11 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 			if (this.isPollingNode) {
 				if (this.isWorkflowActive) {
-					return this.$locale.baseText('triggerPanel.pollingNode.executionsHelp.active', {
+					return this.$locale.baseText('ndv.trigger.pollingNode.executionsHelp.active', {
 						interpolate: { service: this.serviceName },
 					});
 				} else {
-					return this.$locale.baseText('triggerPanel.pollingNode.executionsHelp.inactive', {
+					return this.$locale.baseText('ndv.trigger.pollingNode.executionsHelp.inactive', {
 						interpolate: { service: this.serviceName },
 					});
 				}
@@ -320,12 +320,12 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 			if (this.isWebhookBasedNode) {
 				if (this.isWorkflowActive) {
-					return this.$locale.baseText('triggerPanel.webhookBasedNode.activationHint.active', {
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.activationHint.active', {
 						interpolate: { service: this.serviceName },
 					});
 				}
 				else {
-					return this.$locale.baseText('triggerPanel.webhookBasedNode.activationHint.inactive', {
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.activationHint.inactive', {
 						interpolate: { service: this.serviceName },
 					});
 				}
@@ -333,12 +333,12 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 			if (this.isPollingNode) {
 				if (this.isWorkflowActive) {
-					return this.$locale.baseText('triggerPanel.pollingNode.activationHint.active', {
+					return this.$locale.baseText('ndv.trigger.pollingNode.activationHint.active', {
 						interpolate: { service: this.serviceName },
 					});
 				}
 				else {
-					return this.$locale.baseText('triggerPanel.pollingNode.activationHint.inactive', {
+					return this.$locale.baseText('ndv.trigger.pollingNode.activationHint.inactive', {
 						interpolate: { service: this.serviceName },
 					});
 				}
@@ -370,7 +370,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					if (this.webhookProdUrl) {
 						this.copyToClipboard(this.webhookProdUrl);
 						this.$showMessage({
-							title: this.$locale.baseText('triggerPanel.copiedProdUrl'),
+							title: this.$locale.baseText('ndv.trigger.copiedProdUrl'),
 							type: 'success',
 						});
 						this.$telemetry.track('User copied webhook URL', {
