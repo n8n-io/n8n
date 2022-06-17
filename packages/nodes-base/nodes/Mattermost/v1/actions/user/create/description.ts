@@ -223,7 +223,7 @@ export const userCreateDescription: UserProperties = [
 								name: 'email',
 								type: 'boolean',
 								default: false,
-								description: 'Whether to enable email notifications, "false" to disable. Defaults to "true".',
+								description: 'Whether to enable email notifications, "false" to disable. Defaults to "false".',
 							},
 							{
 								displayName: 'First Name',
