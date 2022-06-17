@@ -15,7 +15,6 @@ export const showMessage = mixins(externalHooks).extend({
 		$showMessage(
 			messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },
 			track = true,
-			telemetrySourceTypeNode = '',
 		) {
 			messageData.dangerouslyUseHTMLString = true;
 			if (messageData.position === undefined) {
@@ -34,7 +33,6 @@ export const showMessage = mixins(externalHooks).extend({
 					error_message: messageData.message,
 					caused_by_credential: this.causedByCredential(messageData.message),
 					workflow_id: this.$store.getters.workflowId,
-					node_type: telemetrySourceTypeNode,
 				});
 			}
 
