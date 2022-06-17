@@ -204,7 +204,7 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: [],
 		placeholder: 'bitcoin',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Platform ID',
@@ -348,7 +348,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: [],
-		description: 'The second currency in the pair. For BTC:ETH this is ETH.',
+		description: 'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Range (Days)',
@@ -661,7 +661,7 @@ export const coinFields: INodeProperties[] = [
 					loadOptionsMethod: 'getExchanges',
 				},
 				default: [],
-				description: 'Filter results by exchange IDs',
+				description: 'Filter results by exchange IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Include Exchange Logo',
