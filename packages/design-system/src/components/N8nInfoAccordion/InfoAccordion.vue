@@ -3,7 +3,7 @@
 		<div :class="{[$style.header]: true, [$style.expanded]: expanded}" @click="toggle">
 			<n8n-text color="text-base" size="small" align="left" bold>{{ title }}</n8n-text>
 
-			<font-awesome-icon
+			<n8n-icon
 				:class="$style.chevron"
 				:icon="expanded? 'chevron-up' : 'chevron-down'"
 				bold
@@ -19,8 +19,15 @@
 </template>
 
 <script>
+import N8nText from '../N8nText';
+import N8nIcon from '../N8nIcon';
+
 export default {
 	name: 'n8n-info-accordion',
+	components: {
+		N8nText,
+		N8nIcon,
+	},
 	props: {
 		title: {
 			type: String,
