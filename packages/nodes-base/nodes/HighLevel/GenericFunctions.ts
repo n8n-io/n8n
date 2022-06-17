@@ -2,7 +2,8 @@ import {
 	IExecutePaginationFunctions,
 	IRequestOptionsFromParameters,
 	INodeExecutionData,
-	IDataObject
+	IDataObject,
+	IPostReceiveRootProperty
 } from "n8n-workflow";
 
 export function wait(millis: number = 1000) {
@@ -18,7 +19,7 @@ export async function highLevelApiPagination(this: IExecutePaginationFunctions, 
 	let rootProperty = '';
 	requestData.postReceive.forEach(pR => {
 		for (let i = 0; i < pR.actions.length; i++) {
-			const action: any = pR.actions[i];
+			const action = pR.actions[i] as IPostReceiveRootProperty;
 			if (action.type === 'rootProperty') {
 				rootProperty = action.properties.property
 				pR.actions.splice(i, 1);
