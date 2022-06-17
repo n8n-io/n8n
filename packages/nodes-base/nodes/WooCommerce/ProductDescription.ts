@@ -196,7 +196,7 @@ export const productFields: INodeProperties[] = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the product featured',
+				description: 'Whether the product is deatured',
 			},
 			{
 				displayName: 'Manage Stock',
