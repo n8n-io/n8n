@@ -44,11 +44,12 @@ export const workflowActivate = mixins(
 				this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState, previous_status: isWorkflowActive,  ndv_input: telemetrySource === 'ndv' });
 
 				try {
-					if (isWorkflowActive) {
+					if (isWorkflowActive && newActiveState) {
 						this.$showMessage({
 							title: this.$locale.baseText('workflowActivator.workflowIsActive'),
 							type: 'success',
 						});
+						this.updatingWorkflowActivation = false;
 
 						return;
 					}
