@@ -276,7 +276,7 @@ export const streamFields: INodeProperties[] = [
 				name: 'includeOwnersubscribed',
 				type: 'boolean',
 				default: true,
-				description: 'Whether user is a bot, include all streams that the bots owner is subscribed to',
+				description: 'Whether the user is a bot, include all streams that the bots owner is subscribed to',
 			},
 			{
 				displayName: 'Include Public',
