@@ -212,6 +212,80 @@ const getAllOperations: Array<INodeProperties> = [
 		},
 		options: [
 			{
+				displayName: 'Stage ID',
+				name: 'stageId',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'stageId',
+					}
+				}
+			},
+			{
+				displayName: 'Monetary Value',
+				name: 'monetaryValue',
+				type: 'number',
+				default: '',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'monetaryValue',
+					}
+				}
+			},
+			{
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'assignedTo',
+					}
+				}
+			},
+			{
+				displayName: 'Campaign ID',
+				name: 'campaignId',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'campaignId',
+					}
+				}
+			},
+			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'number',
+				default: '',
+				description: 'Epoch timestamp. for ex: 1598107050459.',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'startDate',
+					}
+				}
+			},
+			{
+				displayName: 'End Date',
+				name: 'endDate',
+				type: 'number',
+				default: '',
+				description: 'Epoch timestamp. for ex: 1614091050459.',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'endDate',
+					}
+				}
+			},
+			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
@@ -224,66 +298,33 @@ const getAllOperations: Array<INodeProperties> = [
 					}
 				}
 			},
-		],
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
 			{
-				displayName: 'Sort By',
-				name: 'sortBy',
+				displayName: 'Status',
+				name: 'status',
 				type: 'options',
 				options: [
 					{
-						name: 'Date Added',
-						value: 'date_added',
+						name: 'Open',
+						value: 'open',
 					},
 					{
-						name: 'Date Updated',
-						value: 'date_updated',
+						name: 'Won',
+						value: 'won',
+					},
+					{
+						name: 'Lost',
+						value: 'lost',
+					},
+					{
+						name: 'Abandoned',
+						value: 'abandoned',
 					},
 				],
-				default: 'date_added',
+				default: 'open',
 				routing: {
 					send: {
 						type: 'query',
-						property: 'sortBy',
-					}
-				}
-			},
-			{
-				displayName: 'Order',
-				name: 'order',
-				type: 'options',
-				options: [
-					{
-						name: 'Descending',
-						value: 'desc',
-					},
-					{
-						name: 'Ascending',
-						value: 'asc',
-					},
-				],
-				default: 'desc',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'order',
+						property: 'status',
 					}
 				}
 			},
