@@ -327,7 +327,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'is-template',
 				type: 'boolean',
 				default: false,
-				description: 'Whether provided, projects will be filtered by whether they are used as a template',
+				description: 'Whether to return only projects as templates',
 			},
 			{
 				displayName: 'Name',
