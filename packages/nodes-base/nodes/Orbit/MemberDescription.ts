@@ -152,6 +152,7 @@ export const memberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 
@@ -235,6 +236,7 @@ export const memberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 	{

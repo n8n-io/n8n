@@ -601,6 +601,7 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default just the URL of the image is returned. When set to true the image will be downloaded.',
 			},
 			{

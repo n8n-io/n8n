@@ -182,6 +182,7 @@ export class EventbriteTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically.',
 			},
 		],

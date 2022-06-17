@@ -172,7 +172,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'embeddable',
 				type: 'boolean',
 				default: false,
-				description: 'This value indicates whether the video can be embedded on another website',
+				description: 'Whether the video can be embedded on another website',
 			},
 			{
 				displayName: 'License',
@@ -196,7 +196,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'notifySubscribers',
 				type: 'boolean',
 				default: false,
-				description: 'The notifySubscribers parameter indicates whether YouTube should send a notification about the new video to users who subscribe to the video\'s channel',
+				description: 'Whether YouTube should send a notification about the new video to users who subscribe to the video\'s channel',
 			},
 			{
 				displayName: 'Privacy Status',
@@ -224,7 +224,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'publicStatsViewable',
 				type: 'boolean',
 				default: true,
-				description: 'This value indicates whether the extended video statistics on the video\'s watch page are publicly viewable',
+				description: 'Whether the extended video statistics on the video\'s watch page are publicly viewable',
 			},
 			{
 				displayName: 'Publish At',
@@ -245,7 +245,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'selfDeclaredMadeForKids',
 				type: 'boolean',
 				default: false,
-				description: 'This value indicates whether the video is designated as child-directed, and it contains the current "made for kids" status of the video',
+				description: 'Whether the video is designated as child-directed, and it contains the current "made for kids" status of the video',
 			},
 			{
 				displayName: 'Tags',
@@ -486,7 +486,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'forDeveloper',
 				type: 'boolean',
 				default: false,
-				description: 'The forDeveloper parameter restricts the search to only retrieve videos uploaded via the developer\'s application or website',
+				description: 'Whether to restrict the search to only retrieve videos uploaded via the developer\'s application or website',
 			},
 			{
 				displayName: 'Published After',
@@ -539,7 +539,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'videoSyndicated',
 				type: 'boolean',
 				default: false,
-				description: 'The videoSyndicated parameter lets you to restrict a search to only videos that can be played outside youtube.com',
+				description: 'Whether to restrict a search to only videos that can be played outside youtube.com',
 			},
 			{
 				displayName: 'Video Type',
@@ -795,7 +795,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'embeddable',
 				type: 'boolean',
 				default: false,
-				description: 'This value indicates whether the video can be embedded on another website',
+				description: 'Whether the video can be embedded on another website',
 			},
 			{
 				displayName: 'License',
@@ -819,7 +819,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'notifySubscribers',
 				type: 'boolean',
 				default: false,
-				description: 'The notifySubscribers parameter indicates whether YouTube should send a notification about the new video to users who subscribe to the video\'s channel',
+				description: 'Whether YouTube should send a notification about the new video to users who subscribe to the video\'s channel',
 			},
 			{
 				displayName: 'Privacy Status',
@@ -847,7 +847,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'publicStatsViewable',
 				type: 'boolean',
 				default: true,
-				description: 'This value indicates whether the extended video statistics on the video\'s watch page are publicly viewable',
+				description: 'Whether the extended video statistics on the video\'s watch page are publicly viewable',
 			},
 			{
 				displayName: 'Publish At',
@@ -868,7 +868,7 @@ export const videoFields: INodeProperties[] = [
 				name: 'selfDeclaredMadeForKids',
 				type: 'boolean',
 				default: false,
-				description: 'This value indicates whether the video is designated as child-directed, and it contains the current "made for kids" status of the video',
+				description: 'Whether the video is designated as child-directed, and it contains the current "made for kids" status of the video',
 			},
 			{
 				displayName: 'Tags',

@@ -447,6 +447,7 @@ module.exports = {
 				'n8n-nodes-base/filesystem-wrong-node-filename': 'error',
 				'n8n-nodes-base/node-class-description-icon-not-svg': 'error',
 				'n8n-nodes-base/node-class-description-empty-string': 'error',
+				'n8n-nodes-base/node-param-description-boolean-without-whether': 'error',
 			},
 		},
 	],

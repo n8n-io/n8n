@@ -95,6 +95,7 @@ export class Brandfetch implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{

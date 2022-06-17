@@ -179,7 +179,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Flag of the task. Default=false.',
+		description: 'Whether to flag the task. Default=false.',
 	},
 	// required for responder execution
 	{
@@ -297,7 +297,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the task. Default=false.',
+				description: 'Whether to flag the task. Default=false.',
 			},
 			{
 				displayName: 'Owner',
@@ -415,7 +415,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the task. Default=false.',
+				description: 'Whether to flag the task. Default=false.',
 			},
 			{
 				displayName: 'Owner',

@@ -1402,7 +1402,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Only return currently published entities',
+				description: 'Whether to return currently published entities',
 			},
 			{
 				displayName: 'Minimal',
@@ -1419,13 +1419,14 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Return only array of entities without additional lists in it',
+				description: 'Whether to return array of entities without additional lists in it',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default only the data of the fields get returned. If this options gets set the RAW response with all data gets returned.',
 			},
 		],

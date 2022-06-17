@@ -86,7 +86,7 @@ export class Hunter implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return only the the found emails',
+				description: 'Whether to return only the the found emails',
 			},
 			{
 				displayName: 'Return All',

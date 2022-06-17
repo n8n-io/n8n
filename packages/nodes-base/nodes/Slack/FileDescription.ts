@@ -54,7 +54,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field',
+		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',
@@ -236,7 +236,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'showFilesHidden',
 				type: 'boolean',
 				default: false,
-				description: 'Show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
+				description: 'Whether to show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
 			},
 			{
 				displayName: 'Timestamp From',

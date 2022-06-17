@@ -247,7 +247,7 @@ export const threadFields: INodeProperties[] = [
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
-				description: 'Displays the integration as the thread creator',
+				description: 'Whether to display the integration as the thread creator',
 			},
 			{
 				displayName: 'Temporary ID',
@@ -364,7 +364,7 @@ export const threadFields: INodeProperties[] = [
 				name: 'as_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only the IDs of the threads are returned',
+				description: 'Whether only the IDs of the threads are returned',
 			},
 			{
 				displayName: 'Filter By',

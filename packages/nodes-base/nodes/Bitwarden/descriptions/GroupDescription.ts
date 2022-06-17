@@ -147,7 +147,7 @@ export const groupFields: INodeProperties[] = [
 		name: 'accessAll',
 		type: 'boolean',
 		default: false,
-		description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
+		description: 'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -211,7 +211,7 @@ export const groupFields: INodeProperties[] = [
 				name: 'accessAll',
 				type: 'boolean',
 				default: false,
-				description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
+				description: 'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 			},
 			{
 				displayName: 'Collections',

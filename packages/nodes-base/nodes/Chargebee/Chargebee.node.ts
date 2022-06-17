@@ -456,7 +456,7 @@ export class Chargebee implements INodeType {
 						],
 					},
 				},
-				description: 'If set it will not cancel it directly in will instead schedule the cancelation for the end of the term',
+				description: 'Whether it will not cancel it directly in will instead schedule the cancelation for the end of the term',
 			},
 
 			// ----------------------------------

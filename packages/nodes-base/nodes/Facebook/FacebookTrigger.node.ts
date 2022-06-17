@@ -161,7 +161,7 @@ export class FacebookTrigger implements INodeType {
 						name: 'includeValues',
 						type: 'boolean',
 						default: true,
-						description: 'Indicates if change notifications should include the new values',
+						description: 'Whether change notifications should include the new values',
 					},
 				],
 			},

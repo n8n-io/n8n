@@ -68,14 +68,14 @@ export class Amqp implements INodeType {
 						name: 'dataAsObject',
 						type: 'boolean',
 						default: false,
-						description: 'Send the data as an object',
+						description: 'Whether to send the data as an object',
 					},
 					{
 						displayName: 'Reconnect',
 						name: 'reconnect',
 						type: 'boolean',
 						default: true,
-						description: 'Automatically reconnect if disconnected',
+						description: 'Whether to automatically reconnect if disconnected',
 					},
 					{
 						displayName: 'Reconnect Limit',

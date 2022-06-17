@@ -164,7 +164,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'active',
 				type: 'boolean',
 				default: false,
-				description: 'Return only active dates in series',
+				description: 'Whether to return only active dates in series',
 			},
 			{
 				displayName: 'Session ID',

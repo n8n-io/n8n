@@ -269,7 +269,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+		description: 'Whether the observable is an IOC (Indicator of compromise)',
 	},
 	{
 		displayName: 'Sighted',
@@ -287,7 +287,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Sighted previously',
+		description: 'Whether sighted previously',
 	},
 	{
 		displayName: 'Status',
@@ -467,12 +467,12 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+				description: 'Whether the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
-				description: 'Sighted previously',
+				description: 'Whether sighted previously',
 				type: 'boolean',
 				default: false,
 			},
@@ -591,7 +591,7 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+				description: 'Whether the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Keyword',

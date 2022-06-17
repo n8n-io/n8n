@@ -202,7 +202,7 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should be returned RAW instead of parsed into keys according to their header',
+		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
