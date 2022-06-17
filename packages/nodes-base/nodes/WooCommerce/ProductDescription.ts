@@ -1211,7 +1211,7 @@ export const productFields: INodeProperties[] = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to limit result set to featured products',
+				description: 'Whether to limit the result set to featured products',
 			},
 			{
 				displayName: 'Max Price',
