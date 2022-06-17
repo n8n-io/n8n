@@ -557,6 +557,7 @@ export const coinFields: INodeProperties[] = [
 				displayName: 'Price Change Percentage',
 				name: 'price_change_percentage',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: '1h',

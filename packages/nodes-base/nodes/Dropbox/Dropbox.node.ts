@@ -583,6 +583,10 @@ export class Dropbox implements INodeType {
 								value: 'document',
 							},
 							{
+								name: 'Dropbox Paper',
+								value: 'paper',
+							},
+							{
 								name: 'Folder',
 								value: 'folder',
 							},
@@ -594,10 +598,6 @@ export class Dropbox implements INodeType {
 							{
 								name: 'Other',
 								value: 'other',
-							},
-							{
-								name: 'Dropbox Paper',
-								value: 'paper',
 							},
 							{
 								name: 'PDF',

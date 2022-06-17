@@ -113,16 +113,16 @@ export class EventbriteTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'attendee.updated',
-						value: 'attendee.updated',
-					},
-					{
 						name: 'attendee.checked_in',
 						value: 'attendee.checked_in',
 					},
 					{
 						name: 'attendee.checked_out',
 						value: 'attendee.checked_out',
+					},
+					{
+						name: 'attendee.updated',
+						value: 'attendee.updated',
 					},
 					{
 						name: 'event.created',

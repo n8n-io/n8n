@@ -98,14 +98,14 @@ export class GetResponseTrigger implements INodeType {
 						description: 'Receive notifications when a customer is unsubscribed from a list',
 					},
 					{
-						name: 'Email Opened',
-						value: 'open',
-						description: 'Receive notifications when a email is opened',
-					},
-					{
 						name: 'Email Clicked',
 						value: 'click',
 						description: 'Receive notifications when a email is clicked',
+					},
+					{
+						name: 'Email Opened',
+						value: 'open',
+						description: 'Receive notifications when a email is opened',
 					},
 					{
 						name: 'Survey Submitted',
