@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './description/ContactDescription';
+import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
 import { wait } from './GenericFunctions';
 
 
@@ -110,6 +111,8 @@ export class HighLevel implements INodeType {
 			...ressources,
 			...contactOperations,
 			...contactFields,
+			...opportunityOperations,
+			...opportunityFields,
 		],
 	};
 }
