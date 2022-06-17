@@ -324,16 +324,30 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				}
 			}
 
-			if (!this.isWorkflowActive) {
-				return this.$locale.baseText('triggerPanel.inactiveHint', {
-					interpolate: { service: this.serviceName },
-				});
+			if (this.isWebhookNode) {
+				if (this.isWorkflowActive) {
+					return this.$locale.baseText('triggerPanel.webhookBasedNode.activationHint.active', {
+						interpolate: { service: this.serviceName },
+					});
+				}
+				else {
+					return this.$locale.baseText('triggerPanel.webhookBasedNode.activationHint.inactive', {
+						interpolate: { service: this.serviceName },
+					});
+				}
 			}
 
-			if (this.isWorkflowActive) {
-				return this.$locale.baseText('triggerPanel.activeHint', {
-					interpolate: { service: this.serviceName },
-				});
+			if (this.isPollingNode) {
+				if (this.isWorkflowActive) {
+					return this.$locale.baseText('triggerPanel.pollingNode.activationHint.active', {
+						interpolate: { service: this.serviceName },
+					});
+				}
+				else {
+					return this.$locale.baseText('triggerPanel.pollingNode.activationHint.inactive', {
+						interpolate: { service: this.serviceName },
+					});
+				}
 			}
 
 			return '';
