@@ -116,7 +116,7 @@ export default mixins(
 		},
 		buttonLabel(): string {
 			if (this.isListeningForEvents) {
-				return this.$locale.baseText('ndv.trigger.stopListening');
+				return this.$locale.baseText('ndv.execute.stopListening');
 			}
 
 			if (this.label) {
