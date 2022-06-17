@@ -144,6 +144,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Primary Company Name or ID',
 		name: 'company',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCompanies',
 		},
@@ -420,6 +421,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStages',
 				},
@@ -848,6 +850,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Primary Company Name or ID',
 				name: 'company',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -900,6 +903,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -1431,6 +1435,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Campaign Email Name or ID',
 		name: 'campaignEmailId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {

@@ -110,6 +110,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Contact Type Name or ID',
 				name: 'contactType',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getContactTypes',
 				},
@@ -161,6 +162,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Owner Name or ID',
 				name: 'ownerId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -221,6 +223,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
@@ -282,6 +285,7 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountries',
 						},
