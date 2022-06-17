@@ -80,7 +80,7 @@ export class Kafka implements INodeType {
 				name: 'useSchemaRegistry',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to Use Confluent Schema Registry',
+				description: 'Whether to use Confluent Schema Registry',
 			},
 			{
 				displayName: 'Schema Registry URL',
