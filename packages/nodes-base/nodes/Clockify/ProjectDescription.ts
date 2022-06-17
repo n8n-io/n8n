@@ -296,7 +296,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'contains-client',
 				type: 'boolean',
 				default: false,
-				description: 'Whether provided, projects will be filtered by whether they have a client',
+				description: 'Whether to return only projects having a client',
 			},
 			{
 				displayName: 'Client Status',
