@@ -380,6 +380,9 @@ export class MoveBinaryData implements INodeType {
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
 				json: {},
+				pairedItem: {
+					item: itemIndex,
+				},
 			};
 
 			if (mode === 'binaryToJson') {

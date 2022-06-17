@@ -186,6 +186,8 @@ export class EmailReadImap implements INodeType {
 		const staticData = this.getWorkflowStaticData('node');
 		Logger.debug('Loaded static data for node "EmailReadImap"', {staticData});
 
+		let connection: ImapSimple;
+
 		// Returns the email text
 		const getText = async (parts: any[], message: Message, subtype: string) => { // tslint:disable-line:no-any
 			if (!message.attributes.struct) {
@@ -440,19 +442,29 @@ export class EmailReadImap implements INodeType {
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
 			return imapConnect(config).then(async conn => {
-				conn.on('error', async err => {
-					if (err.code.toUpperCase() === 'ECONNRESET') {
-						Logger.verbose('IMAP connection was reset - reconnecting.');
-						connection = await establishConnection();
-						await connection.openBox(mailbox);
+				conn.on('error', async error => {
+					const errorCode = error.code.toUpperCase();
+					if (['ECONNRESET', 'EPIPE'].includes(errorCode)) {
+						Logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, { error });
+						try {
+							connection = await establishConnection();
+							await connection.openBox(mailbox);
+							return;
+						} catch (e) {
+							Logger.error('IMAP reconnect did fail', { error: e });
+							// If something goes wrong we want to run emitError
+						}
+					} else {
+						Logger.error('Email Read Imap node encountered a connection error', { error });
 					}
-					throw err;
+
+					this.emitError(error);
 				});
 				return conn;
 			});
 		};
 
-		let connection: ImapSimple = await establishConnection();
+		connection = await establishConnection();
 
 		await connection.openBox(mailbox);
 
