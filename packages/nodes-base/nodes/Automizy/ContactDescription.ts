@@ -385,7 +385,7 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Add Tags Name or ID',
+				displayName: 'Add Tag Names or IDs',
 				name: 'addTags',
 				type: 'multiOptions',
 				typeOptions: {
