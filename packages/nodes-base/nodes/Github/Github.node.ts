@@ -86,6 +86,10 @@ export class Github implements INodeType {
 						value: 'issue',
 					},
 					{
+						name: 'Organization',
+						value: 'organization',
+					},
+					{
 						name: 'Release',
 						value: 'release',
 					},
@@ -100,10 +104,6 @@ export class Github implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
-					},
-					{
-						name: 'Organization',
-						value: 'organization',
 					},
 				],
 				default: 'issue',
