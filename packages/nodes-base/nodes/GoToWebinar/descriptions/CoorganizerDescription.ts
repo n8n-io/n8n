@@ -124,6 +124,7 @@ export const coorganizerFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'The co-organizer\'s email address',
 		displayOptions: {

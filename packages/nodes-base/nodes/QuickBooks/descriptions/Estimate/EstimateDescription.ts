@@ -375,6 +375,7 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		description: 'The email of the recipient of the estimate',

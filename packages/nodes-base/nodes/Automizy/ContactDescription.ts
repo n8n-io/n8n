@@ -56,6 +56,7 @@ export const contactFields: INodeProperties[] = [
 		name: 'email',
 		required: true,
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
@@ -351,6 +352,7 @@ export const contactFields: INodeProperties[] = [
 		name: 'email',
 		required: true,
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
