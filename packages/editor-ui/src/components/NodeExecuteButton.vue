@@ -101,6 +101,10 @@ export default mixins(
 			}
 
 			if (this.isTriggerNode && this.hasIssues) {
+				if (this.$store.getters.activeNode && this.$store.getters.activeNode !== this.nodeName) {
+					return this.$locale.baseText('ndv.execute.fixPrevious');
+				}
+
 				return this.$locale.baseText('ndv.execute.requiredFieldsMissing');
 			}
 

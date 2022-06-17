@@ -314,6 +314,7 @@
 	"ndv.execute.workflowAlreadyRunning": "Workflow is already running",
 	"ndv.execute.requiredFieldsMissing": "Complete required fields first",
 	"ndv.execute.nodeIsDisabled": "Enable node to execute",
+	"ndv.execute.fixPrevious": "Fix previous node first",
 	"ndv.featureRequest": "I wish this node would...",
 	"ndv.input": "Input",
 	"ndv.input.nodeDistance": "({count} node back) | ({count} nodes back)",
