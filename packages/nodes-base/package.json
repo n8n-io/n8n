@@ -758,7 +758,7 @@
     "moment-timezone": "^0.5.28",
     "mongodb": "^3.6.9",
     "mqtt": "4.2.6",
-    "mssql": "^6.2.0",
+    "mssql": "^8.1.2",
     "mysql2": "~2.3.0",
     "n8n-core": "~0.122.0",
     "node-html-markdown": "^1.1.3",
