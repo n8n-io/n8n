@@ -14,7 +14,7 @@
 		"preserveConstEnums": true,
 		"moduleResolution": "node",
 		"resolveJsonModule": true,
-		"declaration": false,
+		"declaration": true,
 		"outDir": "./dist/",
 		"target": "esnext",
 		"sourceMap": false,
