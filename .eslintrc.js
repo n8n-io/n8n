@@ -371,7 +371,10 @@ module.exports = {
 			},
 		},
 		{
-			files: ['./packages/nodes-base/nodes/**/*.ts'],
+			files: [
+				'./packages/nodes-base/nodes/**/*.ts',
+				'./packages/nodes-base/credentials/*.credentials.ts',
+			],
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
 				'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'error',
@@ -436,6 +439,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-display-name-miscased': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-fixed-collection': 'error',
 				'n8n-nodes-base/node-param-description-line-break-html-tag': 'error',
+				'n8n-nodes-base/filesystem-wrong-cred-filename': 'error',
 				'n8n-nodes-base/node-param-placeholder-missing-email': 'error',
 			},
 		},
