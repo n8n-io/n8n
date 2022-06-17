@@ -47,23 +47,24 @@ export const pipelineOperations: INodeProperties[] = [
 
 
 const getAllOperations: Array<INodeProperties> = [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'pipeline',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
+	// HighLevel API V1.1.20 does not support /pipelines pagination
+	// {
+	// 	displayName: 'Return All',
+	// 	name: 'returnAll',
+	// 	type: 'boolean',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'pipeline',
+	// 			],
+	// 			operation: [
+	// 				'getAll',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: false,
+	// 	description: 'Whether to return all results or only up to a given limit',
+	// },
 	{
 		displayName: 'Limit',
 		name: 'limit',
@@ -76,9 +77,9 @@ const getAllOperations: Array<INodeProperties> = [
 				operation: [
 					'getAll',
 				],
-				returnAll: [
-					false,
-				],
+				// returnAll: [
+				// 	false,
+				// ],
 			},
 		},
 		typeOptions: {

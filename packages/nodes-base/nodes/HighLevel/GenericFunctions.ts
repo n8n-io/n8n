@@ -5,11 +5,11 @@ import {
 	IDataObject
 } from "n8n-workflow";
 
-export function wait() {
-	return new Promise((resolve, reject) => {
+export function wait(millis: number = 1000) {
+	return new Promise((resolve, _reject) => {
 		setTimeout(() => {
 			resolve(true);
-		}, 1000);
+		}, millis);
 	});
 }
 
@@ -28,12 +28,12 @@ export async function highLevelApiPagination(this: IExecutePaginationFunctions, 
 	});
 
 	const responseData: INodeExecutionData[] = [];
-	const returnAll = this.getNodeParameter('returnAll');
+	const returnAll = this.getNodeParameter('returnAll', false) as boolean;
 	let responseTotal = 0;
 
 	do {
 
-		console.log(requestData.options);
+		// console.log(requestData.options);
 
 		const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
 		const items = pageResponseData[0].json[rootProperty] as [];
