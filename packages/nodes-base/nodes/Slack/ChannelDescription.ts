@@ -682,7 +682,7 @@ export const channelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether it will resolve the data automatically. By default the response only contain the ID to resource.',
+		description: 'Whether to resolve the data automatically. By default the response only contain the ID to resource.',
 	},
 
 	/* -------------------------------------------------------------------------- */
