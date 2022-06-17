@@ -100,6 +100,7 @@ export const registrantFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email address of the registrant to create',
 		displayOptions: {

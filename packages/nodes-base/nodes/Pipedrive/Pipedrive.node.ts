@@ -3138,6 +3138,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -3352,6 +3353,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						typeOptions: {
 							multipleValues: true,
 						},

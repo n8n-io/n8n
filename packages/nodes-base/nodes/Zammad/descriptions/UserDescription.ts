@@ -258,6 +258,7 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Email Address',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
