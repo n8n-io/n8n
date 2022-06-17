@@ -981,7 +981,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Match Case',
 						name: 'matchCase',
 						type: 'boolean',
-						description: 'Indicates whether the search should respect case sensitivity',
+						description: 'Whether the search should respect case sensitivity',
 						default: false,
 						displayOptions: {
 							show: {

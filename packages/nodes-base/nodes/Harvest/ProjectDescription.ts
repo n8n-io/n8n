@@ -119,7 +119,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active projects and false to return inactive projects',
+				description: 'Whether to only return active projects and false to return inactive projects',
 			},
 			{
 				displayName: 'Page',
@@ -313,7 +313,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'budget_is_monthly',
 				type: 'boolean',
 				default: false,
-				description: 'Option to have the budget reset every month. Defaults to false.',
+				description: 'Whether the budget resets every month. Defaults to false.',
 			},
 			{
 				displayName: 'Cost Budget',
@@ -327,6 +327,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'cost_budget_include_expenses',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
 			},
 			{
@@ -390,7 +391,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'show_budget_to_all',
 				type: 'boolean',
 				default: false,
-				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
+				description: 'Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
 			{
 				displayName: 'Starts On',
@@ -480,7 +481,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'budget_is_monthly',
 				type: 'boolean',
 				default: false,
-				description: 'Option to have the budget reset every month. Defaults to false.',
+				description: 'Whether to have the budget reset every month. Defaults to false.',
 			},
 			{
 				displayName: 'Client ID',
@@ -501,6 +502,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'cost_budget_include_expenses',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
 			},
 			{
@@ -578,7 +580,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'show_budget_to_all',
 				type: 'boolean',
 				default: false,
-				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
+				description: 'Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
 			{
 				displayName: 'Starts On',

@@ -249,7 +249,7 @@ export const draftFields: INodeProperties[] = [
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},

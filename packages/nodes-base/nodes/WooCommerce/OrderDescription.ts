@@ -114,7 +114,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Define if the order is paid. It will set the status to processing and reduce stock items.',
+				description: 'Whether the order is paid. It will set the status to processing and reduce stock items.',
 			},
 			{
 				displayName: 'Status',

@@ -202,7 +202,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'Create a private channel instead of a public one',
+				description: 'Whether to create a private channel instead of a public one',
 			},
 		],
 	},
@@ -438,7 +438,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'excludeArchived',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to exclude archived channels from the list',
+				description: 'Whether to exclude archived channels from the list',
 			},
 			{
 				displayName: 'Types',
@@ -558,7 +558,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'inclusive',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages with latest or oldest timestamp in results only when either timestamp is specified',
+				description: 'Whether to include messages with latest or oldest timestamp in results only when either timestamp is specified',
 			},
 			{
 				displayName: 'Latest',
@@ -682,7 +682,7 @@ export const channelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
+		description: 'Whether to resolve the data automatically. By default the response only contain the ID to resource.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -717,7 +717,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'returnIm',
 				type: 'boolean',
 				default: false,
-				description: 'Boolean, indicates you want the full IM channel definition in the response',
+				description: 'Whether you want the full IM channel definition in the response',
 			},
 			{
 				displayName: 'User Names or IDs',
@@ -881,7 +881,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'inclusive',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages with latest or oldest timestamp in results only when either timestamp is specified',
+				description: 'Whether to include messages with latest or oldest timestamp in results only when either timestamp is specified',
 			},
 			{
 				displayName: 'Latest',

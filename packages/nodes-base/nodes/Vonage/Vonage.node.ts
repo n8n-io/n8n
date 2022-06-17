@@ -402,7 +402,7 @@ export class Vonage implements INodeType {
 						name: 'status-report-req',
 						type: 'boolean',
 						default: false,
-						description: 'Boolean indicating if you like to receive a Delivery Receipt',
+						description: 'Whether to receive a Delivery Receipt',
 					},
 					{
 						displayName: 'TTL (in Minutes)',

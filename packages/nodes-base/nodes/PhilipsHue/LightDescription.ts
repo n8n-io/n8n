@@ -170,6 +170,7 @@ export const lightFields: INodeProperties[] = [
 			},
 		},
 		default: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'On/Off state of the light',
 	},
 	{

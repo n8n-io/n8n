@@ -283,7 +283,7 @@ export const viewFields: INodeProperties[] = [
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: 'Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
+				description: 'Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -311,7 +311,7 @@ export const viewFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Sort By',
@@ -702,7 +702,7 @@ export const viewFields: INodeProperties[] = [
 				name: 'disableParsing',
 				type: 'boolean',
 				default: false,
-				description: 'If true, the API will not attempt to parse the data in any way',
+				description: 'Whether the API will not attempt to parse the data in any way',
 			},
 		],
 	},

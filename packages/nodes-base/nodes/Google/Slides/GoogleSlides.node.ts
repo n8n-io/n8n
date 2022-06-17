@@ -279,7 +279,7 @@ export class GoogleSlides implements INodeType {
 								name: 'matchCase',
 								type: 'boolean',
 								default: false,
-								description: 'Indicates whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
+								description: 'Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
 							},
 							{
 								displayName: 'Page Names or IDs',
@@ -354,6 +354,7 @@ export class GoogleSlides implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Name of the binary property to which to write the data of the read page',
 			},
 			{

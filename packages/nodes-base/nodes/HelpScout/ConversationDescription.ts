@@ -164,6 +164,7 @@ export const conversationFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -195,7 +196,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'autoReply',
 				type: 'boolean',
 				default: false,
-				description: 'When autoReply is set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation',
+				description: 'Whether set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation',
 			},
 			{
 				displayName: 'Closed At',
@@ -228,7 +229,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'When imported is set to true, no outgoing emails or notifications will be generated',
+				description: 'Whether set to true, no outgoing emails or notifications will be generated',
 			},
 			{
 				displayName: 'Tag Names or IDs',
@@ -359,7 +360,7 @@ export const conversationFields: INodeProperties[] = [
 						},
 						type: 'boolean',
 						default: false,
-						description: 'If set to true, a draft reply is created',
+						description: 'Whether true, a draft reply is created',
 					},
 				],
 			},

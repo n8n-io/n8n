@@ -301,7 +301,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'view_all_tickets',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true if the contact can see all the tickets that are associated with the company to which they belong',
+				description: 'Whether the contact can see all the tickets that are associated with the company to which they belong',
 			},
 		],
 	},

@@ -69,6 +69,7 @@ export class JotFormTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
 			},
 			{
@@ -76,7 +77,7 @@ export class JotFormTrigger implements INodeType {
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 

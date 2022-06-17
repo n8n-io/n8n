@@ -400,7 +400,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Weather or not you want to define a date range',
+						description: 'Whether or not you want to define a date range',
 					},
 					{
 						displayName: 'Include Time',
@@ -414,7 +414,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: true,
-						description: 'Weather or not to include the time in the date',
+						description: 'Whether or not to include the time in the date',
 					},
 					{
 						displayName: 'Date',
@@ -812,7 +812,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Weather or not you want to define a date range',
+						description: 'Whether or not you want to define a date range',
 					},
 					{
 						displayName: 'Include Time',
@@ -826,7 +826,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: true,
-						description: 'Weather or not to include the time in the date',
+						description: 'Whether or not to include the time in the date',
 					},
 					{
 						displayName: 'Date',
@@ -1104,7 +1104,7 @@ export const databasePageFields = [
 					},
 				},
 				default: false,
-				description: 'If a database field contains a file, whether to download it',
+				description: 'Whether to download a file if a database\'s field contains it',
 			},
 			{
 				displayName: 'Filters',

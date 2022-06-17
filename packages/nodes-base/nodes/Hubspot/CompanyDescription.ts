@@ -231,7 +231,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates that the company is publicly traded',
+				description: 'Whether that the company is publicly traded',
 			},
 			{
 				displayName: 'Lead Status Name or ID',
@@ -583,7 +583,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates that the company is publicly traded',
+				description: 'Whether that the company is publicly traded',
 			},
 			{
 				displayName: 'Lead Status Name or ID',
@@ -815,7 +815,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'includeMergeAudits',
 				type: 'boolean',
 				default: false,
-				description: 'Returns any merge history if the company has been previously merged with another company record. Defaults to false.',
+				description: 'Whether to return any merge history if the company has been previously merged with another company record. Defaults to false.',
 			},
 		],
 	},
@@ -886,7 +886,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'includeMergeAudits',
 				type: 'boolean',
 				default: false,
-				description: 'Returns any merge history if a company has been previously merged with another company record. Defaults to false.',
+				description: 'Whether to return any merge history if a company has been previously merged with another company record. Defaults to false.',
 			},
 			{
 				displayName: 'Property Names or IDs',
@@ -1005,6 +1005,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],

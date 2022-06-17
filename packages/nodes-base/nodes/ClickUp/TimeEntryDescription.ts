@@ -194,7 +194,7 @@ export const timeEntryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'When set to true it will return just the current running time entry',
+		description: 'Whether to return just the current running time entry',
 	},
 	{
 		displayName: 'Time Entry ID',

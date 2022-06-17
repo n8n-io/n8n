@@ -216,7 +216,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'mark_thread_position',
 				type: 'boolean',
 				default: true,
-				description: 'By default, the position of the thread is marked',
+				description: 'Whether the position of the thread is marked',
 			},
 			{
 				displayName: 'Recipient Names or IDs',
@@ -243,7 +243,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
-				description: 'Displays the integration as the comment creator',
+				description: 'Whether to display the integration as the comment creator',
 			},
 		],
 	},
@@ -355,7 +355,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'as_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only the IDs of the comments are returned',
+				description: 'Whether only the IDs of the comments are returned',
 			},
 			{
 				displayName: 'Ending Object Index',
