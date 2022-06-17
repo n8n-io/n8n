@@ -260,7 +260,7 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Fields Name or ID',
+				displayName: 'Return Field Names or IDs',
 				name: 'returnFields',
 				type: 'multiOptions',
 				typeOptions: {
