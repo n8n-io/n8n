@@ -17,7 +17,6 @@
   "scripts": {
     "dev": "npm run watch",
     "build": "rimraf dist && npm-run-all --parallel build:esbuild build:gulp build:tsc",
-    "build:fast": "npm-run-all --parallel build:esbuild build:gulp",
     "build:esbuild": "node scripts/build.mjs",
     "build:gulp": "gulp build:assets build:translations",
     "build:tsc": "tsc --project tsconfig.json --emitDeclarationOnly",
@@ -26,7 +25,7 @@
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "lintfix-plugin": "cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes --fix",
     "nodelinter": "nodelinter",
-    "watch": "npm-run-all --parallel build:assets build:dts && node scripts/build.mjs --watch",
+    "watch": "npm run build && node scripts/build.mjs --watch",
     "test": "jest",
     "build:old": "tsc && gulp build:assets build:translations",
     "watch:old": "tsc --watch"

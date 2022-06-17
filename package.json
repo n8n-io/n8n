@@ -5,13 +5,8 @@
   "homepage": "https://n8n.io",
   "scripts": {
     "bootstrap": "lerna bootstrap --hoist --no-ci",
-    "build": "npm run build:phase-1 && npm run build:phase-2 && npm run build:phase-3",
-    "build:fast": "npm run build:phase-1 && npm run build:phase-2 && npm run build:phase-3:fast",
-    "build:phase-1": "lerna exec 'npm run build' --scope n8n-workflow",
-    "build:phase-2": "lerna exec 'npm run build' --scope n8n-core",
-    "build:phase-3": "lerna exec 'npm run build' --parallel --scope '{n8n-nodes-base,n8n,n8n-design-system,n8n-editor-ui,n8n-node-dev}'",
-    "build:phase-3:fast": "lerna exec 'npm run build:fast' --scope n8n-nodes-base && lerna exec 'npm run build' --parallel --scope '{n8n,n8n-design-system,n8n-editor-ui,n8n-node-dev}'",
-    "dev": "lerna exec npm run dev --parallel",
+    "build": "turbo run build --parallel",
+    "dev": "turbo run dev --parallel",
     "clean:dist": "lerna exec -- rimraf ./dist",
     "format": "lerna exec npm run format",
     "lint": "lerna exec npm run lint",
@@ -29,7 +24,11 @@
     "lerna": "^3.13.1",
     "npm-run-all": "4.1.5",
     "rimraf": "^3.0.2",
-    "run-script-os": "^1.0.7"
+    "run-script-os": "^1.0.7",
+    "turbo": "^1.2.16"
   },
-  "postcss": {}
+  "postcss": {},
+  "workspaces": [
+    "packages/*"
+  ]
 }
