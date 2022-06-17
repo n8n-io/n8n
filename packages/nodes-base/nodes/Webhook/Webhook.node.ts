@@ -286,7 +286,7 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Whether to set to true if webhook will receive binary data',
+						description: 'Whether the webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
