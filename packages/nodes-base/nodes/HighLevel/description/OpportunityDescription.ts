@@ -332,6 +332,46 @@ const createOperations: Array<INodeProperties> = [
 			}
 		}
 	},
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Open',
+				value: 'open',
+			},
+			{
+				name: 'Won',
+				value: 'won',
+			},
+			{
+				name: 'Lost',
+				value: 'lost',
+			},
+			{
+				name: 'Abandoned',
+				value: 'abandoned',
+			},
+		],
+		default: 'open',
+		routing: {
+			send: {
+				type: 'query',
+				property: 'status',
+			}
+		}
+	},
 ];
 
 const deleteOperations: Array<INodeProperties> = [
