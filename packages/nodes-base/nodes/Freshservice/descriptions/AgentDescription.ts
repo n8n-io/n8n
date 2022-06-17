@@ -153,7 +153,7 @@ export const agentFields: INodeProperties[] = [
 						default: 'specified_groups',
 					},
 					{
-						displayName: 'Groups Name or ID',
+						displayName: 'Group Names or IDs',
 						name: 'groups',
 						description: 'Groups in which the permissions granted by the role apply. Required only when Scope is Specified Groups - ignored otherwise. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 						type: 'multiOptions',
@@ -196,7 +196,7 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Departments Name or ID',
+				displayName: 'Department Names or IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
@@ -235,7 +235,7 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Members of Group Name or ID',
+				displayName: 'Member Names or IDs',
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
@@ -251,7 +251,7 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Observers of Group Name or ID',
+				displayName: 'Observer Names or IDs',
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],
@@ -541,7 +541,7 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Departments Name or ID',
+				displayName: 'Department Names or IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
@@ -593,7 +593,7 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Members of Group Name or ID',
+				displayName: 'Member Names or IDs',
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
@@ -609,7 +609,7 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Observers of Group Name or ID',
+				displayName: 'Observer Names or IDs',
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],

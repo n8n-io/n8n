@@ -71,7 +71,7 @@ export const couponFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Products Name or ID',
+		displayName: 'Product Names or IDs',
 		name: 'productIds',
 		type: 'multiOptions',
 		typeOptions: {

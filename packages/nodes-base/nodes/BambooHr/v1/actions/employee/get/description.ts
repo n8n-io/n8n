@@ -38,7 +38,7 @@ export const employeeGetDescription: EmployeeProperties = [
 		},
 		options: [
 			{
-				displayName: 'Fields Name or ID',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {

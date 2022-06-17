@@ -47,7 +47,7 @@ export class PayPalTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Events Name or ID',
+				displayName: 'Event Names or IDs',
 				name: 'events',
 				type: 'multiOptions',
 				required: true,

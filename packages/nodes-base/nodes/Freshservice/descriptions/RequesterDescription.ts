@@ -114,7 +114,7 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Departments Name or ID',
+				displayName: 'Department Names or IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
@@ -411,7 +411,7 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Departments Name or ID',
+				displayName: 'Department Names or IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],

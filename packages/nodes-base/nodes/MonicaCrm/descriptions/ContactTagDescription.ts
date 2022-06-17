@@ -52,7 +52,7 @@ export const contactTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tags Name or ID',
+		displayName: 'Tag Names or IDs',
 		name: 'tagsToAdd',
 		description: 'Tags to add to the contact',
 		type: 'multiOptions',
@@ -95,7 +95,7 @@ export const contactTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tags Name or ID',
+		displayName: 'Tag Names or IDs',
 		name: 'tagsToRemove',
 		description: 'Tags to remove from the contact',
 		type: 'multiOptions',

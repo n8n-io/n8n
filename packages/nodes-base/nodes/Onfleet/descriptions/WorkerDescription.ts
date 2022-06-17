@@ -145,7 +145,7 @@ const vehicleColorField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Teams Name or ID',
+	displayName: 'Team Names or IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
@@ -156,7 +156,7 @@ const teamsField = {
 } as INodeProperties;
 
 const teamsFilterField = {
-	displayName: 'Teams Name or ID',
+	displayName: 'Team Names or IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {

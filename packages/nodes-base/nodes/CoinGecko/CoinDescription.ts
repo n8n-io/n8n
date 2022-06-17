@@ -654,7 +654,7 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Exchanges Name or ID',
+				displayName: 'Exchange Names or IDs',
 				name: 'exchange_ids',
 				type: 'multiOptions',
 				typeOptions: {

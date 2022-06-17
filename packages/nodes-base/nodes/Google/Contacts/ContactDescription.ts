@@ -341,7 +341,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Groups Name or ID',
+				displayName: 'Group Names or IDs',
 				name: 'group',
 				type: 'multiOptions',
 				typeOptions: {
@@ -1406,7 +1406,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Groups Name or ID',
+				displayName: 'Group Names or IDs',
 				name: 'group',
 				type: 'multiOptions',
 				typeOptions: {

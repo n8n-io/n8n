@@ -91,7 +91,7 @@ export const linkFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],
@@ -223,7 +223,7 @@ export const linkFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],

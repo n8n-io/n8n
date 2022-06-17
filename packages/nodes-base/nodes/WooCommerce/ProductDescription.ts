@@ -137,7 +137,7 @@ export const productFields: INodeProperties[] = [
 				default: 'visible',
 			},
 			{
-				displayName: 'Categories Name or ID',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -335,7 +335,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -650,7 +650,7 @@ export const productFields: INodeProperties[] = [
 				default: 'visible',
 			},
 			{
-				displayName: 'Categories Name or ID',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -855,7 +855,7 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

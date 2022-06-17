@@ -500,7 +500,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Fields Name or ID',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {

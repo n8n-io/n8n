@@ -172,7 +172,7 @@ export const workItemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Labels Name or ID',
+				displayName: 'Label Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -182,7 +182,7 @@ export const workItemFields: INodeProperties[] = [
 				description: 'ID of the label to set on the item to create',
 			},
 			{
-				displayName: 'Members Name or ID',
+				displayName: 'Member Names or IDs',
 				name: 'memberIds',
 				type: 'multiOptions',
 				typeOptions: {

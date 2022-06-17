@@ -118,7 +118,7 @@ export class ZendeskTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Fields Name or ID',
+						displayName: 'Field Names or IDs',
 						name: 'fields',
 						description: 'The fields to return the values of',
 						type: 'multiOptions',

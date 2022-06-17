@@ -1644,7 +1644,7 @@ export class Mailchimp implements INodeType {
 						description: 'A comma-separated list of fields to exclude',
 					},
 					{
-						displayName: 'Fields Name or ID',
+						displayName: 'Field Names or IDs',
 						name: 'fields',
 						type: 'multiOptions',
 						typeOptions: {

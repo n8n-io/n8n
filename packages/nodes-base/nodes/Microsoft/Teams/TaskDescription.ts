@@ -212,7 +212,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
-				displayName: 'Labels Name or ID',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -516,7 +516,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Labels Name or ID',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {

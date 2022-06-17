@@ -230,7 +230,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The users that are directly mentioned',
 			},
 			{
-				displayName: 'Recipients Name or ID',
+				displayName: 'Recipient Names or IDs',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {

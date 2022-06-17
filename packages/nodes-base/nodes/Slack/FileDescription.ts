@@ -120,7 +120,7 @@ export const fileFields: INodeProperties[] = [
 		placeholder: 'Add options',
 		options: [
 			{
-				displayName: 'Channels Name or ID',
+				displayName: 'Channel Names or IDs',
 				name: 'channelIds',
 				type: 'multiOptions',
 				typeOptions: {

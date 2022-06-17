@@ -196,7 +196,7 @@ export const channelFields: INodeProperties[] = [
 				description: 'The temporary ID of the channel. It needs to be a negative number.',
 			},
 			{
-				displayName: 'Users Name or ID',
+				displayName: 'User Names or IDs',
 				name: 'user_ids',
 				type: 'multiOptions',
 				typeOptions: {

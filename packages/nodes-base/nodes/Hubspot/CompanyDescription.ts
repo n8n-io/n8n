@@ -889,7 +889,7 @@ export const companyFields: INodeProperties[] = [
 				description: 'Returns any merge history if a company has been previously merged with another company record. Defaults to false.',
 			},
 			{
-				displayName: 'Properties Name or ID',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -1089,7 +1089,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties Name or ID',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {

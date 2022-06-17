@@ -490,7 +490,7 @@ export const messageFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories Name or ID',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {

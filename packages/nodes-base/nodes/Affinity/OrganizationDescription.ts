@@ -105,7 +105,7 @@ export const organizationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Persons Name or ID',
+				displayName: 'Person Names or IDs',
 				name: 'persons',
 				type: 'multiOptions',
 				typeOptions: {
@@ -169,7 +169,7 @@ export const organizationFields: INodeProperties[] = [
 				description: 'The name of the organization',
 			},
 			{
-				displayName: 'Persons Name or ID',
+				displayName: 'Person Names or IDs',
 				name: 'persons',
 				type: 'multiOptions',
 				typeOptions: {

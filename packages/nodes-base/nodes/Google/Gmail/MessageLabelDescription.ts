@@ -53,7 +53,7 @@ export const messageLabelFields: INodeProperties[] = [
 		description: 'The message ID of your email',
 	},
 	{
-		displayName: 'Labels Name or ID',
+		displayName: 'Label Names or IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
 		typeOptions: {

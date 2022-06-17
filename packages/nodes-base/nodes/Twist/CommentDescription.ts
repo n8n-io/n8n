@@ -219,7 +219,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'By default, the position of the thread is marked',
 			},
 			{
-				displayName: 'Recipients Name or ID',
+				displayName: 'Recipient Names or IDs',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {

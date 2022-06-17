@@ -179,7 +179,7 @@ export const noteDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields To Include Name or ID',
+				displayName: 'Field To Include Names or IDs',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				default: [],

@@ -238,7 +238,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Categories Name or ID',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -248,7 +248,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The terms assigned to the object in the category taxonomy',
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -458,7 +458,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Categories Name or ID',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -468,7 +468,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The terms assigned to the object in the category taxonomy',
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -616,7 +616,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit response to posts published after a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Authors Name or ID',
+				displayName: 'Author Names or IDs',
 				name: 'author',
 				type: 'multiOptions',
 				default: [],
@@ -633,7 +633,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit response to posts published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Categories Name or ID',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				default: [],
@@ -793,7 +793,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit result set to items that are sticky',
 			},
 			{
-				displayName: 'Tags Name or ID',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],

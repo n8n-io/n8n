@@ -117,7 +117,7 @@ export class GetResponseTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Lists Name or ID',
+				displayName: 'List Names or IDs',
 				name: 'listIds',
 				type: 'multiOptions',
 				typeOptions: {

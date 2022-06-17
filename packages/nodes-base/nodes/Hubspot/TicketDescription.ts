@@ -132,7 +132,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Companies Name or ID',
+				displayName: 'Company Names or IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -142,7 +142,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Companies associated with the ticket',
 			},
 			{
-				displayName: 'Contacts Name or ID',
+				displayName: 'Contact Names or IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -266,7 +266,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Companies Name or ID',
+				displayName: 'Company Names or IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -276,7 +276,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'Companies associated with the ticket',
 			},
 			{
-				displayName: 'Contacts Name or ID',
+				displayName: 'Contact Names or IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -424,7 +424,7 @@ export const ticketFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Properties Name or ID',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -505,7 +505,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties Name or ID',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {

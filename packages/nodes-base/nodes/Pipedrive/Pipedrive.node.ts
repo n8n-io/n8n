@@ -2273,7 +2273,7 @@ export class Pipedrive implements INodeType {
 						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
 					},
 					{
-						displayName: 'Labels Name or ID',
+						displayName: 'Label Names or IDs',
 						name: 'label_ids',
 						type: 'multiOptions',
 						typeOptions: {
@@ -2451,7 +2451,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the user who will own the lead to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Labels Name or ID',
+						displayName: 'Label Names or IDs',
 						name: 'label_ids',
 						type: 'multiOptions',
 						typeOptions: {
@@ -3900,7 +3900,7 @@ export class Pipedrive implements INodeType {
 						description: 'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
 					},
 					{
-						displayName: 'Types Name or ID',
+						displayName: 'Type Names or IDs',
 						name: 'type',
 						type: 'multiOptions',
 						typeOptions: {
