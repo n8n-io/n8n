@@ -4,7 +4,6 @@
 			<n8n-text color="text-base" size="small" align="left" bold>{{ title }}</n8n-text>
 
 			<n8n-icon
-				:class="$style.chevron"
 				:icon="expanded? 'chevron-up' : 'chevron-down'"
 				bold
 			/>
@@ -74,10 +73,6 @@ export default {
 
 .expanded {
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
-}
-
-.chevron {
-	height: 14px;
 }
 
 .description {
