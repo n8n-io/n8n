@@ -206,7 +206,7 @@ export const channelFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that will participate in the channel',
+				description: 'The users that will participate in the channel. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

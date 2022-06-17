@@ -238,7 +238,7 @@ export const conversationFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags to be be added to the conversation',
+				description: 'List of tags to be added to the conversation. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'User ID',
@@ -628,7 +628,7 @@ export const conversationFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'Filter conversation by tags',
+				description: 'Filter conversation by tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

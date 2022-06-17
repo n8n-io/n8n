@@ -192,7 +192,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: [],
-				description: 'Optional labels that will be assigned to a created task',
+				description: 'Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Content',
