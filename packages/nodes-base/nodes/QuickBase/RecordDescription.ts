@@ -122,7 +122,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Fields Name or ID',
+				displayName: 'Return Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
