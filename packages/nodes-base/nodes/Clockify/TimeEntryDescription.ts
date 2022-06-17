@@ -236,7 +236,7 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'consider-duration-format',
 				type: 'boolean',
 				default: false,
-				description: 'Whether provided, returned timeentry\'s duration will be rounded to minutes or seconds based on duration format (hh:mm or hh:mm:ss) from workspace settings',
+				description: 'Whether to return the time entry\'s duration rounded to minutes or seconds based on duration format (hh:mm or hh:mm:ss) from workspace settings',
 			},
 			{
 				displayName: 'Hydrated',
