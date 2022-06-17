@@ -112,7 +112,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Associated Companies Name or ID',
+				displayName: 'Associated Company Names or IDs',
 				name: 'associatedCompany',
 				type: 'multiOptions',
 				typeOptions: {
