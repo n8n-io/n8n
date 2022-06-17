@@ -262,7 +262,8 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Select Name or ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Select',
 				name: 'select',
 				type: 'multiOptions',
 				typeOptions: {
