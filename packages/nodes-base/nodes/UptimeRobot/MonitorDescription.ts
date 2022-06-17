@@ -236,7 +236,7 @@ export const monitorFields: INodeProperties[] = [
 				name: 'mwindow',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the maintenance windows for the monitors to be returned',
+				description: 'Whether to return the maintenance windows for the monitors',
 			},
 			{
 				displayName: 'Monitor IDs',
