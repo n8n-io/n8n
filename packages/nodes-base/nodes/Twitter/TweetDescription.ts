@@ -146,7 +146,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'possiblySensitive',
 				type: 'boolean',
 				default: false,
-				description: 'Whether, if you upload Tweet media that might be considered sensitive content such as nudity, or medical procedures, you must set this value to true',
+				description: 'Whether you are uploading Tweet media that might be considered sensitive content such as nudity, or medical procedures',
 			},
 		],
 	},
