@@ -230,7 +230,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'reply_broadcast',
 				type: 'boolean',
 				default: false,
-				description: 'Whether reply should be made visible to everyone in the channel or conversation, use in conjunction with thread_ts',
+				description: 'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts',
 			},
 			{
 				displayName: 'Unfurl Links',
