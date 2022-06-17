@@ -50,9 +50,7 @@ export const workflowActivate = mixins(
 						return;
 					}
 
-					if (newActiveState) {
-						this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState, ndv_input: telemetrySource === 'ndv' });
-					}
+					this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState, ndv_input: telemetrySource === 'ndv' });
 
 					await this.updateWorkflow({workflowId: currWorkflowId, active: newActiveState});
 				} catch (error) {
@@ -70,7 +68,6 @@ export const workflowActivate = mixins(
 
 				const activationEventName = isCurrentWorkflow ? 'workflow.activeChangeCurrent' : 'workflow.activeChange';
 				this.$externalHooks().run(activationEventName, { workflowId: currWorkflowId, active: newActiveState });
-				this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState, ndv_input: telemetrySource === 'ndv' });
 
 				this.$emit('workflowActiveChanged', { id: currWorkflowId, active: newActiveState });
 				this.updatingWorkflowActivation = false;

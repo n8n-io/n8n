@@ -383,7 +383,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 						workflow_id: this.$store.getters.workflowId,
 						session_id: this.sessionId,
 						pane: 'input',
-						type: 'executions-log',
+						type: 'open-executions-log',
 					});
 					this.$store.commit('setActiveNode', null);
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
