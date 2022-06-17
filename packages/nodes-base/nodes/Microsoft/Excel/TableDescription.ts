@@ -262,7 +262,7 @@ export const tableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should be returned RAW instead of parsed into keys according to their header',
+		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
@@ -437,7 +437,7 @@ export const tableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should be returned RAW instead of parsed into keys according to their header',
+		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
@@ -617,6 +617,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'returnAllMatches',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
 			},
 		],

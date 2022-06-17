@@ -790,7 +790,7 @@ export const postFields: INodeProperties[] = [
 				name: 'sticky',
 				type: 'boolean',
 				default: false,
-				description: 'Limit result set to items that are sticky',
+				description: 'Whether to limit result set to items that are sticky',
 			},
 			{
 				displayName: 'Tags',

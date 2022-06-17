@@ -770,6 +770,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'isOverTime',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The new over time field of the card',
 			},
 			{

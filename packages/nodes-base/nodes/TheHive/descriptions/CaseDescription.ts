@@ -213,7 +213,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Flag of the case default=false',
+		description: 'Whether to flag the case, default=false',
 	},
 	{
 		displayName: 'TLP',
@@ -509,7 +509,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the case default=false',
+				description: 'Whether to flag the case, default=false',
 			},
 			{
 				displayName: 'Impact Status',
@@ -776,7 +776,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the case default=false',
+				description: 'Whether to flag the case, default=false',
 			},
 			{
 				displayName: 'Impact Status',

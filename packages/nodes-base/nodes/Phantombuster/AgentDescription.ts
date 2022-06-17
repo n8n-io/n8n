@@ -176,6 +176,7 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -283,6 +284,7 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -429,7 +431,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'manualLaunch',
 				type: 'boolean',
 				default: false,
-				description: 'If set, the agent will be considered as "launched manually"',
+				description: 'Whether the agent will be considered as "launched manually"',
 			},
 			{
 				displayName: 'Max Instance Count',

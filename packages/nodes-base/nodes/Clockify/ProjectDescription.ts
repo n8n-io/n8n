@@ -295,7 +295,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'contains-client',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they have a client',
+				description: 'Whether provided, projects will be filtered by whether they have a client',
 			},
 			{
 				displayName: 'Client Status',
@@ -319,14 +319,14 @@ export const projectFields: INodeProperties[] = [
 				name: 'contains-user',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they have users',
+				description: 'Whether provided, projects will be filtered by whether they have users',
 			},
 			{
 				displayName: 'Is Template',
 				name: 'is-template',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they are used as a template',
+				description: 'Whether provided, projects will be filtered by whether they are used as a template',
 			},
 			{
 				displayName: 'Name',

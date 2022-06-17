@@ -455,7 +455,7 @@ export const userFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC',
+				description: 'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC',
 			},
 			{
 				displayName: 'UTM Campaign',

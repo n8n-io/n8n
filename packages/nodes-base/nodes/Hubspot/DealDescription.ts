@@ -369,6 +369,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],
@@ -440,7 +441,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includeAssociations',
 				type: 'boolean',
 				default: false,
-				description: 'Include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
+				description: 'Whether to include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
 			},
 			{
 				displayName: 'Properties',
@@ -564,6 +565,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],

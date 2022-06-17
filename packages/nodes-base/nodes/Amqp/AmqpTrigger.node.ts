@@ -79,14 +79,14 @@ export class AmqpTrigger implements INodeType {
 						name: 'jsonConvertByteArrayToString',
 						type: 'boolean',
 						default: false,
-						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
+						description: 'Whether to convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
-						description: 'Parse the body to an object',
+						description: 'Whether to parse the body to an object',
 					},
 					{
 						displayName: 'Messages per Cicle',
@@ -100,14 +100,14 @@ export class AmqpTrigger implements INodeType {
 						name: 'onlyBody',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the body property',
+						description: 'Whether to return only the body property',
 					},
 					{
 						displayName: 'Reconnect',
 						name: 'reconnect',
 						type: 'boolean',
 						default: true,
-						description: 'Automatically reconnect if disconnected',
+						description: 'Whether to automatically reconnect if disconnected',
 					},
 					{
 						displayName: 'Reconnect Limit',

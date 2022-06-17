@@ -185,7 +185,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'public',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, the channel will be marked as public',
+				description: 'Whether the channel will be marked as public',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
@@ -323,7 +323,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only archived conversations are returned',
+				description: 'Whether only archived conversations are returned',
 			},
 		],
 	},
@@ -442,7 +442,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'public',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, the channel will be marked as public',
+				description: 'Whether the channel will be marked as public',
 			},
 		],
 	},

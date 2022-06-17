@@ -133,7 +133,7 @@ export class MySql implements INodeType {
 						name: 'ignore',
 						type: 'boolean',
 						default: true,
-						description: 'Ignore any ignorable errors that occur while executing the INSERT statement',
+						description: 'Whether to ignore any ignorable errors that occur while executing the INSERT statement',
 					},
 					{
 						displayName: 'Priority',

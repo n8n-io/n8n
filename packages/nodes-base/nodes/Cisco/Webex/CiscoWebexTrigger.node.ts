@@ -107,6 +107,7 @@ export class CiscoWebexTrigger implements INodeType {
 					},
 				},
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
@@ -132,7 +133,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Limit to messages which contain file content attachments',
+						description: 'Whether to limit to messages which contain file content attachments',
 					},
 					{
 						displayName: 'Is Locked',
@@ -150,7 +151,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Limit to rooms that are locked',
+						description: 'Whether to limit to rooms that are locked',
 					},
 					{
 						displayName: 'Is Moderator',
@@ -169,7 +170,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Limit to moderators of a room',
+						description: 'Whether to limit to moderators of a room',
 					},
 					{
 						displayName: 'Mentioned People',

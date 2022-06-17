@@ -65,6 +65,7 @@ export const channelMembersDescription: ChannelProperties = [
 			},
 		},
 		default: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the response only contain the ID of the user. If this option gets activated, it will resolve the user automatically.',
 	},
 	{

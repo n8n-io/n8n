@@ -323,6 +323,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				},
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
@@ -340,7 +341,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 	};

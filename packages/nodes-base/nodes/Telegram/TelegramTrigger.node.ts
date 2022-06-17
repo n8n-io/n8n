@@ -121,6 +121,7 @@ export class TelegramTrigger implements INodeType {
 						name: 'download',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Telegram delivers the image in multiple sizes. By default, just the large image would be downloaded. If you want to change the size, set the field \'Image Size\'.',
 					},
 					{

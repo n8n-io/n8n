@@ -124,7 +124,7 @@ export class Switch implements INodeType {
 					},
 				},
 				default: false,
-				description: 'The value to compare with the second one',
+				description: 'Whether to compare with the second one value',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -173,7 +173,7 @@ export class Switch implements INodeType {
 								name: 'value2',
 								type: 'boolean',
 								default: false,
-								description: 'The value to compare with the first one',
+								description: 'Whether to compare with the first one value',
 							},
 							{
 								displayName: 'Output',

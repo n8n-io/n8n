@@ -426,6 +426,7 @@ export const couponFields: INodeProperties[] = [
 				name: 'recurring',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'If the coupon is used on subscription products, this indicates whether the discount should apply to recurring payments after the initial purchase',
 			},
 		],
@@ -860,6 +861,7 @@ export const couponFields: INodeProperties[] = [
 				name: 'recurring',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'If the coupon is used on subscription products, this indicates whether the discount should apply to recurring payments after the initial purchase',
 			},
 		],

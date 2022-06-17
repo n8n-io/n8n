@@ -564,7 +564,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'current',
 				type: 'boolean',
 				default: true,
-				description: 'For meeting series, whether to return just the current meeting or all meetings',
+				description: 'Whether to return just the current meeting or all meetings',
 			},
 			{
 				displayName: 'Meeting Number',

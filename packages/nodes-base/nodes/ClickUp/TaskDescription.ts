@@ -861,6 +861,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'includeClosed',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The response does by default not include closed tasks. Set this to true and dont send a status filter to include closed tasks.',
 			},
 			{
@@ -904,7 +905,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'subtasks',
 				type: 'boolean',
 				default: false,
-				description: 'Include subtasks, default false',
+				description: 'Whether to include subtasks, default false',
 			},
 			{
 				displayName: 'Tags',
@@ -1059,6 +1060,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'The value is JSON and will be parsed as such. Is needed if for example needed for labels which expects the value to be an array.',
 	},
 	{

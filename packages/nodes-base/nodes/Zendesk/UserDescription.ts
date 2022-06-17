@@ -152,7 +152,7 @@ export const userFields: INodeProperties[] = [
 				name: 'moderator',
 				type: 'boolean',
 				default: false,
-				description: 'Designates whether the user has forum moderation capabilities',
+				description: 'Whether the user has forum moderation capabilities',
 			},
 			{
 				displayName: 'Notes',
@@ -166,7 +166,7 @@ export const userFields: INodeProperties[] = [
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
-				description: 'True if the user can only create private comments',
+				description: 'Whether the user can only create private comments',
 			},
 			{
 				displayName: 'Organization Name or ID',
@@ -197,7 +197,7 @@ export const userFields: INodeProperties[] = [
 				name: 'restricted_agent',
 				type: 'boolean',
 				default: false,
-				description: 'If the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
+				description: 'Whether the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
 			},
 			{
 				displayName: 'Role',
@@ -232,7 +232,7 @@ export const userFields: INodeProperties[] = [
 				name: 'suspended',
 				type: 'boolean',
 				default: false,
-				description: 'If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
+				description: 'Whether the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
 				displayName: 'Tags',
@@ -317,7 +317,7 @@ export const userFields: INodeProperties[] = [
 				name: 'verified',
 				type: 'boolean',
 				default: false,
-				description: 'The user\'s primary identity is verified or not',
+				description: 'Whether the user\'s primary identity is verified or not',
 			},
 		],
 	},
@@ -409,7 +409,7 @@ export const userFields: INodeProperties[] = [
 				name: 'moderator',
 				type: 'boolean',
 				default: false,
-				description: 'Designates whether the user has forum moderation capabilities',
+				description: 'Whether the user has forum moderation capabilities',
 			},
 			{
 				displayName: 'Name',
@@ -430,7 +430,7 @@ export const userFields: INodeProperties[] = [
 				name: 'only_private_comments',
 				type: 'boolean',
 				default: false,
-				description: 'True if the user can only create private comments',
+				description: 'Whether the user can only create private comments',
 			},
 			{
 				displayName: 'Organization Name or ID',
@@ -461,7 +461,7 @@ export const userFields: INodeProperties[] = [
 				name: 'restricted_agent',
 				type: 'boolean',
 				default: false,
-				description: 'If the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
+				description: 'Whether the agent has any restrictions; false for admins and unrestricted agents, true for other agents',
 			},
 			{
 				displayName: 'Role',
@@ -496,7 +496,7 @@ export const userFields: INodeProperties[] = [
 				name: 'suspended',
 				type: 'boolean',
 				default: false,
-				description: 'If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
+				description: 'Whether the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
 				displayName: 'Tags',
@@ -581,7 +581,7 @@ export const userFields: INodeProperties[] = [
 				name: 'verified',
 				type: 'boolean',
 				default: false,
-				description: 'The user\'s primary identity is verified or not',
+				description: 'Whether the user\'s primary identity is verified or not',
 			},
 		],
 	},

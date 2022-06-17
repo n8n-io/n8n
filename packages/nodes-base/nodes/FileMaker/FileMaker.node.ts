@@ -168,7 +168,7 @@ export class FileMaker implements INodeType {
 				name: 'getPortals',
 				type: 'boolean',
 				default: false,
-				description: 'Should we get portal data as well ?',
+				description: 'Whether to get portal data as well',
 				displayOptions: {
 					show: {
 						action: [
@@ -297,7 +297,7 @@ export class FileMaker implements INodeType {
 				name: 'setSort',
 				type: 'boolean',
 				default: false,
-				description: 'Should we sort data ?',
+				description: 'Whether to sort data',
 				displayOptions: {
 					show: {
 						action: [
@@ -371,7 +371,7 @@ export class FileMaker implements INodeType {
 				name: 'setScriptBefore',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run before the action specified by the API call and after the subsequent sort',
+				description: 'Whether to define a script to be run before the action specified by the API call and after the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -432,7 +432,7 @@ export class FileMaker implements INodeType {
 				name: 'setScriptSort',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort',
+				description: 'Whether to define a script to be run after the action specified by the API call but before the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -493,7 +493,7 @@ export class FileMaker implements INodeType {
 				name: 'setScriptAfter',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort',
+				description: 'Whether to define a script to be run after the action specified by the API call but before the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [

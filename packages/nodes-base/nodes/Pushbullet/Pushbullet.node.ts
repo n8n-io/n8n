@@ -377,7 +377,7 @@ export class Pushbullet implements INodeType {
 						name: 'active',
 						type: 'boolean',
 						default: false,
-						description: 'Don\'t return deleted pushes',
+						description: 'Whether to don\'t return deleted pushes',
 					},
 					{
 						displayName: 'Modified After',
@@ -421,7 +421,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Marks a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible',
+				description: 'Whether to mark a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible',
 			},
 		],
 	};

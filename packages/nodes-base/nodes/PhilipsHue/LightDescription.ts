@@ -169,7 +169,7 @@ export const lightFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'On/Off state of the light',
+		description: 'Whether On or Off state of the light',
 	},
 	{
 		displayName: 'Additional Fields',

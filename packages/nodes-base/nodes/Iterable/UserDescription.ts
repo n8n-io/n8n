@@ -105,7 +105,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Create a new user if the idetifier does not exist',
+		description: 'Whether to create a new user if the idetifier does not exist',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -161,7 +161,7 @@ export const userFields: INodeProperties[] = [
 				name: 'mergeNestedObjects',
 				type: 'boolean',
 				default: false,
-				description: 'Merge top level objects instead of overwriting (default: false), e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}}, the resulting profile: {mySettings:{mobile:true,email:true}}',
+				description: 'Whether to merge top level objects instead of overwriting (default: false), e.g. if user profile has data: {mySettings:{mobile:true}} and change contact field has data: {mySettings:{email:true}}, the resulting profile: {mySettings:{mobile:true,email:true}}',
 			},
 		],
 	},

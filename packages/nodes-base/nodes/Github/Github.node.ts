@@ -449,7 +449,7 @@ export class Github implements INodeType {
 						resource: ['file'],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field',
+				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
 				displayName: 'File Content',
@@ -582,7 +582,7 @@ export class Github implements INodeType {
 					},
 				},
 				description:
-					'If set it will set the data of the file as binary property instead of returning the raw API response',
+					'Whether to set the data of the file as binary property instead of returning the raw API response',
 			},
 			{
 				displayName: 'Binary Property',
@@ -989,7 +989,7 @@ export class Github implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Set "true" to create a draft (unpublished) release, "false" to create a published one',
+							'Whether to create a draft (unpublished) release, "false" to create a published one',
 					},
 					{
 						displayName: 'Prerelease',
@@ -997,7 +997,7 @@ export class Github implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'If set to "true" it will point out that the release is non-production ready',
+							'Whether to point out that the release is non-production ready',
 					},
 					{
 						displayName: 'Target Commitish',
@@ -1061,7 +1061,7 @@ export class Github implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Set "true" to create a draft (unpublished) release, "false" to create a published one',
+							'Whether to create a draft (unpublished) release, "false" to create a published one',
 					},
 					{
 						displayName: 'Name',
@@ -1076,7 +1076,7 @@ export class Github implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'If set to "true" it will point out that the release is non-production ready',
+							'Whether to point out that the release is non-production ready',
 					},
 					{
 						displayName: 'Tag Name',

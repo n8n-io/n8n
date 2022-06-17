@@ -479,7 +479,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'includeArchived',
 				type: 'boolean',
 				default: false,
-				description: 'Contacts with a status of ARCHIVED will be included in the response',
+				description: 'Whether contacts with a status of ARCHIVED will be included in the response',
 			},
 			{
 				displayName: 'Order By',

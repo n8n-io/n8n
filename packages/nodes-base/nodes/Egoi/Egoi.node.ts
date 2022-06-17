@@ -153,6 +153,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the response just includes the contact ID. If this option gets activated, it will resolve the data automatically.',
 			},
 			{

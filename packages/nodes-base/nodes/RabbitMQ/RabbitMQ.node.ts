@@ -156,7 +156,7 @@ export class RabbitMQ implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON',
+				description: 'Whether to send the the data the node receives as JSON',
 			},
 			{
 				displayName: 'Message',
@@ -229,14 +229,14 @@ export class RabbitMQ implements INodeType {
 						name: 'autoDelete',
 						type: 'boolean',
 						default: false,
-						description: 'The queue will be deleted when the number of consumers drops to zero',
+						description: 'Whether the queue will be deleted when the number of consumers drops to zero',
 					},
 					{
 						displayName: 'Durable',
 						name: 'durable',
 						type: 'boolean',
 						default: true,
-						description: 'The queue will survive broker restarts',
+						description: 'Whether the queue will survive broker restarts',
 					},
 					{
 						displayName: 'Exclusive',
@@ -250,7 +250,7 @@ export class RabbitMQ implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Scopes the queue to the connection',
+						description: 'Whether to scope the queue to the connection',
 					},
 					{
 						displayName: 'Headers',

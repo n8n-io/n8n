@@ -70,7 +70,7 @@ export class WufooTrigger implements INodeType {
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 	};

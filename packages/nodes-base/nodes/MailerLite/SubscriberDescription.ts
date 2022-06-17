@@ -140,7 +140,7 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'resubscribe',
 				type: 'boolean',
 				default: false,
-				description: 'Reactivate subscriber if value is true',
+				description: 'Whether to reactivate subscriber',
 			},
 			{
 				displayName: 'Signup IP',
@@ -262,7 +262,7 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'resend_autoresponders',
 				type: 'boolean',
 				default: false,
-				description: 'Defines if it is needed to resend autoresponders',
+				description: 'Whether it is needed to resend autoresponders',
 			},
 			{
 				displayName: 'Type',

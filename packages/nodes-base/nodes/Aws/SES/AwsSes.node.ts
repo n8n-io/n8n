@@ -440,7 +440,7 @@ export class AwsSes implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If body is HTML or simple text',
+				description: 'Whether body is HTML or simple text',
 			},
 			{
 				displayName: 'Subject',

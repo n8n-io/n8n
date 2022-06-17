@@ -1861,7 +1861,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				default: false,
-				description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+				description: 'Whether enabled, only full exact matches against the given term are returned. It is not case sensitive.',
 			},
 			{
 				displayName: 'Return All',
@@ -2900,7 +2900,7 @@ export class Pipedrive implements INodeType {
 						name: 'exactMatch',
 						type: 'boolean',
 						default: false,
-						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+						description: 'Whether enabled, only full exact matches against the given term are returned. It is not case sensitive.',
 					},
 					{
 						displayName: 'Fields',
@@ -2932,7 +2932,7 @@ export class Pipedrive implements INodeType {
 						name: 'rawData',
 						type: 'boolean',
 						default: false,
-						description: 'Returns the data exactly in the way it got received from the API',
+						description: 'Whether to return the data exactly in the way it got received from the API',
 					},
 				],
 			},
@@ -3470,6 +3470,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.',
 			},
 			{
@@ -3491,6 +3492,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.',
 			},
 			{
@@ -3753,7 +3755,7 @@ export class Pipedrive implements INodeType {
 						name: 'exactMatch',
 						type: 'boolean',
 						default: false,
-						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+						description: 'Whether enabled, only full exact matches against the given term are returned. It is not case sensitive.',
 					},
 					{
 						displayName: 'Fields',
@@ -3781,7 +3783,7 @@ export class Pipedrive implements INodeType {
 						name: 'rawData',
 						type: 'boolean',
 						default: false,
-						description: 'Returns the data exactly in the way it got received from the API',
+						description: 'Whether to return the data exactly in the way it got received from the API',
 					},
 				],
 			},

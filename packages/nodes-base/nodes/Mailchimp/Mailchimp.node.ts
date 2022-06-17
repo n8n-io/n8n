@@ -445,6 +445,7 @@ export class Mailchimp implements INodeType {
 						name: 'vip',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Vip status for subscribers',
 					},
 					{
@@ -1208,7 +1209,7 @@ export class Mailchimp implements INodeType {
 						name: 'skipMergeValidation',
 						type: 'boolean',
 						default: false,
-						description: 'If skip_merge_validation is true, member data will be accepted without merge field values, even if the merge field is usually required',
+						description: 'Whether member data will be accepted without merge field values, even if the merge field is usually required',
 					},
 					{
 						displayName: 'Status',
@@ -1245,6 +1246,7 @@ export class Mailchimp implements INodeType {
 						name: 'vip',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Vip status for subscribers',
 					},
 					{
@@ -1456,7 +1458,7 @@ export class Mailchimp implements INodeType {
 						name: 'isSyncing',
 						type: 'boolean',
 						default: false,
-						description: 'When is_syncing is true, automations based on the tags in the request will not fire',
+						description: 'Whether automations based on the tags in the request will not fire',
 					},
 				],
 			},

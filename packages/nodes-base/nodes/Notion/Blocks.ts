@@ -231,7 +231,7 @@ const typeMention: INodeProperties[] = [
 		},
 		type: 'boolean',
 		default: false,
-		description: 'Weather or not you want to define a date range',
+		description: 'Whether or not you want to define a date range',
 	},
 	{
 		displayName: 'Date',

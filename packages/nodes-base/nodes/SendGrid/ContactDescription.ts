@@ -326,7 +326,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all contacts will be deleted',
+		description: 'Whether all contacts will be deleted',
 	},
 
 	/* -------------------------------------------------------------------------- */

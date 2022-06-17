@@ -136,7 +136,7 @@ export class GetResponseTrigger implements INodeType {
 						name: 'delete',
 						type: 'boolean',
 						default: false,
-						description: 'Delete the current subscription',
+						description: 'Whether to delete the current subscription',
 					},
 				],
 			},

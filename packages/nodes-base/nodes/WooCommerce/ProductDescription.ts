@@ -182,7 +182,7 @@ export const productFields: INodeProperties[] = [
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'If the product is downloadable',
+				description: 'Whether the product is downloadable',
 			},
 			{
 				displayName: 'External URL',
@@ -196,14 +196,14 @@ export const productFields: INodeProperties[] = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Featured product',
+				description: 'Whether the product featured',
 			},
 			{
 				displayName: 'Manage Stock',
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
-				description: 'Stock management at product level',
+				description: 'Whether the stock management at product level',
 			},
 			{
 				displayName: 'Menu Order',
@@ -238,7 +238,7 @@ export const productFields: INodeProperties[] = [
 				name: 'reviewsAllowed',
 				type: 'boolean',
 				default: true,
-				description: 'Allow reviews',
+				description: 'Whether to allow reviews',
 			},
 			{
 				displayName: 'Sale Price',
@@ -280,7 +280,7 @@ export const productFields: INodeProperties[] = [
 				name: 'soldIndividually',
 				type: 'boolean',
 				default: false,
-				description: 'Allow one item to be bought in a single order',
+				description: 'Whether to allow one item to be bought in a single order',
 			},
 			{
 				displayName: 'Status',
@@ -407,7 +407,7 @@ export const productFields: INodeProperties[] = [
 				name: 'virtual',
 				type: 'boolean',
 				default: false,
-				description: 'If the product is virtual',
+				description: 'Whether the product is virtual',
 			},
 			{
 				displayName: 'Weight',
@@ -695,7 +695,7 @@ export const productFields: INodeProperties[] = [
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'If the product is downloadable',
+				description: 'Whether the product is downloadable',
 			},
 			{
 				displayName: 'External URL',
@@ -709,14 +709,14 @@ export const productFields: INodeProperties[] = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Featured product',
+				description: 'Whether the product is featured',
 			},
 			{
 				displayName: 'Manage Stock',
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
-				description: 'Stock management at product level',
+				description: 'Whether the stock management at product level',
 			},
 			{
 				displayName: 'Menu Order',
@@ -758,7 +758,7 @@ export const productFields: INodeProperties[] = [
 				name: 'reviewsAllowed',
 				type: 'boolean',
 				default: true,
-				description: 'Allow reviews',
+				description: 'Whether to allow reviews',
 			},
 			{
 				displayName: 'Sale Price',
@@ -800,7 +800,7 @@ export const productFields: INodeProperties[] = [
 				name: 'soldIndividually',
 				type: 'boolean',
 				default: false,
-				description: 'Allow one item to be bought in a single order',
+				description: 'Whether to allow one item to be bought in a single order',
 			},
 			{
 				displayName: 'Status',
@@ -927,7 +927,7 @@ export const productFields: INodeProperties[] = [
 				name: 'virtual',
 				type: 'boolean',
 				default: false,
-				description: 'If the product is virtual',
+				description: 'Whether the product is virtual',
 			},
 			{
 				displayName: 'Weight',
@@ -1211,7 +1211,7 @@ export const productFields: INodeProperties[] = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Limit result set to featured products',
+				description: 'Whether to limit result set to featured products',
 			},
 			{
 				displayName: 'Max Price',

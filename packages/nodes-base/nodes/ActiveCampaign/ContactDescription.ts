@@ -87,7 +87,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Update user if it exists already. If not set and user exists it will error instead.',
+		description: 'Whether to update user if it exists already. If not set and user exists it will error instead.',
 	},
 	{
 		displayName: 'Additional Fields',
