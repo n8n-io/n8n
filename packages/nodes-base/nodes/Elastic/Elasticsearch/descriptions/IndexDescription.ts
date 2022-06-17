@@ -92,7 +92,7 @@ export const indexFields: INodeProperties[] = [
 			{
 				displayName: 'Include Type Name',
 				name: 'include_type_name',
-				description: 'Whether mapping type is expected in the body of mappings. Defaults to false.',
+				description: 'Whether a mapping type is expected in the body of mappings. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
