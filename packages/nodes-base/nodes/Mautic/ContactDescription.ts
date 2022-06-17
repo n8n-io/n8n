@@ -426,7 +426,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -913,7 +913,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				displayOptions: {

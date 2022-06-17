@@ -69,7 +69,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Roles',
+		displayName: 'Roles Name or ID',
 		name: 'roles',
 		type: 'multiOptions',
 		description: 'Comma-separated list of roles to assign to the user',
@@ -285,7 +285,7 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Roles',
+				displayName: 'Roles Name or ID',
 				name: 'roles',
 				type: 'multiOptions',
 				description: 'Comma-separated list of roles to assign to the user',

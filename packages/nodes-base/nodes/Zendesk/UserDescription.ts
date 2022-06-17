@@ -235,7 +235,7 @@ export const userFields: INodeProperties[] = [
 				description: 'If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -499,7 +499,7 @@ export const userFields: INodeProperties[] = [
 				description: 'If the agent is suspended. Tickets from suspended users are also suspended, and these users cannot sign in to the end user portal.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

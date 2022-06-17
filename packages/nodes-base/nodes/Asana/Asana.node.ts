@@ -371,7 +371,7 @@ export class Asana implements INodeType {
 				placeholder: 'Add Field',
 				options: [
 					{
-						displayName: 'Fields',
+						displayName: 'Fields Name or ID',
 						name: 'opt_fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -608,7 +608,7 @@ export class Asana implements INodeType {
 						description: 'The assignee to filter tasks on. Note: If you specify assignee, you must also specify the workspace to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Fields',
+						displayName: 'Fields Name or ID',
 						name: 'opt_fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -934,7 +934,7 @@ export class Asana implements INodeType {
 						description: 'The task notes',
 					},
 					{
-						displayName: 'Project IDs',
+						displayName: 'Projects Name or ID',
 						name: 'projects',
 						type: 'multiOptions',
 						typeOptions: {

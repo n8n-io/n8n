@@ -196,7 +196,7 @@ export const customResourceDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				displayName: 'Fields To Include Name or ID',
 				name: 'fieldsList',
 				type: 'multiOptions',
 				default: [],

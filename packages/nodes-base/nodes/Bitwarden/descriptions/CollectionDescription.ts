@@ -119,7 +119,7 @@ export const collectionFields: INodeProperties[] = [
 		required: true,
 		options: [
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'groups',
 				type: 'multiOptions',
 				description: 'The group to assign this collection to',

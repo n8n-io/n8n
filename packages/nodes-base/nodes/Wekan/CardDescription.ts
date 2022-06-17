@@ -179,7 +179,7 @@ export const cardFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignees',
+				displayName: 'Assignees Name or ID',
 				name: 'assignees',
 				type: 'multiOptions',
 				typeOptions: {
@@ -196,7 +196,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The new description of the card',
 			},
 			{
-				displayName: 'Members',
+				displayName: 'Members Name or ID',
 				name: 'members',
 				type: 'multiOptions',
 				typeOptions: {
@@ -596,7 +596,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'Update the owner of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Assignees',
+				displayName: 'Assignees Name or ID',
 				name: 'assignees',
 				type: 'multiOptions',
 				typeOptions: {
@@ -756,7 +756,7 @@ export const cardFields: INodeProperties[] = [
 				description: 'The new list ID of the card (move operation). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Members',
+				displayName: 'Members Name or ID',
 				name: 'members',
 				type: 'multiOptions',
 				typeOptions: {

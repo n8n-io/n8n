@@ -279,7 +279,7 @@ export const projectFields: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Client IDs',
+				displayName: 'Clients Name or ID',
 				name: 'clients',
 				type: 'multiOptions',
 				typeOptions: {

@@ -165,7 +165,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'ID of the status of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -409,7 +409,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -583,7 +583,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Order of the task in the user story',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

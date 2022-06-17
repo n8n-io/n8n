@@ -129,7 +129,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Fields Name or ID',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {

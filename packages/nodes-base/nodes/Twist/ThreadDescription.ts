@@ -217,7 +217,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mentions Name or ID',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -230,7 +230,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The users that are directly mentioned',
 			},
 			{
-				displayName: 'Recipients',
+				displayName: 'Recipients Name or ID',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {
@@ -545,7 +545,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The content of the thread',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mentions Name or ID',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {

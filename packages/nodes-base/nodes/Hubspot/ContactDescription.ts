@@ -384,7 +384,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'A contact\'s primary phone number',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Properties Name or ID',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -571,7 +571,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Properties Name or ID',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -694,7 +694,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Properties Name or ID',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -839,7 +839,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Properties Name or ID',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -1062,7 +1062,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Fields Name or ID',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {

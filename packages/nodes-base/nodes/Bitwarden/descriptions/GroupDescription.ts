@@ -167,7 +167,7 @@ export const groupFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Collections',
+				displayName: 'Collections Name or ID',
 				name: 'collections',
 				type: 'multiOptions',
 				description: 'The collections to assign to this group',
@@ -214,7 +214,7 @@ export const groupFields: INodeProperties[] = [
 				description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 			},
 			{
-				displayName: 'Collections',
+				displayName: 'Collections Name or ID',
 				name: 'collections',
 				type: 'multiOptions',
 				description: 'The collections to assign to this group',

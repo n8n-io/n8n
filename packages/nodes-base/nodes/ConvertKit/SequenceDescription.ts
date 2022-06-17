@@ -180,7 +180,7 @@ export const sequenceFields: INodeProperties[] = [
 				description: 'The subscriber\'s first name',
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

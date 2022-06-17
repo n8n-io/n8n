@@ -87,7 +87,7 @@ export const userGroupFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Channel IDs',
+				displayName: 'Channels Name or ID',
 				name: 'channelIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -336,7 +336,7 @@ export const userGroupFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Channel IDs',
+				displayName: 'Channels Name or ID',
 				name: 'channels',
 				type: 'multiOptions',
 				typeOptions: {

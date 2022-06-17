@@ -504,7 +504,7 @@ export const caseFields: INodeProperties[] = [
 				default: 'open',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],

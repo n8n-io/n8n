@@ -1626,7 +1626,7 @@ export class Mailchimp implements INodeType {
 						description: 'Restrict the response to campaigns sent before the set time',
 					},
 					{
-						displayName: 'Exclude Fields',
+						displayName: 'Exclude Fields Name or ID',
 						name: 'excludeFields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1636,7 +1636,7 @@ export class Mailchimp implements INodeType {
 						description: 'A comma-separated list of fields to exclude',
 					},
 					{
-						displayName: 'Fields',
+						displayName: 'Fields Name or ID',
 						name: 'fields',
 						type: 'multiOptions',
 						typeOptions: {

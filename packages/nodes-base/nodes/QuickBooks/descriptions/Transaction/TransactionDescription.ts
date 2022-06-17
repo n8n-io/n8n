@@ -107,7 +107,7 @@ export const transactionFields: INodeProperties[] = [
 				options: TRANSACTION_REPORT_COLUMNS,
 			},
 			{
-				displayName: 'Customer',
+				displayName: 'Customers Name or ID',
 				name: 'customer',
 				type: 'multiOptions',
 				default: [],
@@ -265,7 +265,7 @@ export const transactionFields: INodeProperties[] = [
 				options: PREDEFINED_DATE_RANGES.map(toOptions),
 			},
 			{
-				displayName: 'Department',
+				displayName: 'Departments Name or ID',
 				name: 'department',
 				type: 'multiOptions',
 				default: [],
@@ -290,7 +290,7 @@ export const transactionFields: INodeProperties[] = [
 				options: GROUP_BY_OPTIONS.map(toOptions),
 			},
 			{
-				displayName: 'Memo',
+				displayName: 'Memos Name or ID',
 				name: 'memo',
 				type: 'multiOptions',
 				default: [],
@@ -355,7 +355,7 @@ export const transactionFields: INodeProperties[] = [
 				options: SOURCE_ACCOUNT_TYPES.map(toOptions).map(toDisplayName),
 			},
 			{
-				displayName: 'Term',
+				displayName: 'Terms Name or ID',
 				name: 'term',
 				type: 'multiOptions',
 				default: [],
@@ -383,7 +383,7 @@ export const transactionFields: INodeProperties[] = [
 				options: TRANSACTION_TYPES.map(toOptions).map(toDisplayName),
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendors Name or ID',
 				name: 'vendor',
 				type: 'multiOptions',
 				default: [],

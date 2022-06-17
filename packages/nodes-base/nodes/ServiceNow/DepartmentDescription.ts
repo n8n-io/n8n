@@ -96,7 +96,7 @@ export const departmentFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Fields Name or ID',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {

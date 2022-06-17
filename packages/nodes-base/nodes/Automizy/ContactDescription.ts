@@ -173,7 +173,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The status of the contact. You can only send email to contacts with ACTIVE status.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -381,7 +381,7 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Add Tags',
+				displayName: 'Add Tags Name or ID',
 				name: 'addTags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -427,7 +427,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Remove Tags',
+				displayName: 'Remove Tags Name or ID',
 				name: 'removeTags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -466,7 +466,7 @@ export const contactFields: INodeProperties[] = [
 				description: 'The status of the contact. You can only send email to contacts with ACTIVE status.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

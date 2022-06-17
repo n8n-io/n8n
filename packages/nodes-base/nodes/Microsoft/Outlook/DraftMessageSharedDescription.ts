@@ -100,7 +100,7 @@ export const draftMessageSharedFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Categories Name or ID',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {

@@ -163,7 +163,7 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Components',
+				displayName: 'Components Name or ID',
 				name: 'componentIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -213,7 +213,7 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Labels Name or ID',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -376,7 +376,7 @@ export const issueFields: INodeProperties[] = [
 				description: 'Issue Types',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Labels Name or ID',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -926,7 +926,7 @@ export const issueFields: INodeProperties[] = [
 						description: 'Indicates whether the notification should be sent to the issue\'s voters',
 					},
 					{
-						displayName: 'Users',
+						displayName: 'Users Name or ID',
 						name: 'users',
 						type: 'multiOptions',
 						typeOptions: {
@@ -936,7 +936,7 @@ export const issueFields: INodeProperties[] = [
 						description: 'List of users to receive the notification',
 					},
 					{
-						displayName: 'Groups',
+						displayName: 'Groups Name or ID',
 						name: 'groups',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1002,7 +1002,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Recipients Restrictions',
 				values: [
 					{
-						displayName: 'Users',
+						displayName: 'Users Name or ID',
 						name: 'users',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1012,7 +1012,7 @@ export const issueFields: INodeProperties[] = [
 						description: 'List of users to receive the notification',
 					},
 					{
-						displayName: 'Groups',
+						displayName: 'Groups Name or ID',
 						name: 'groups',
 						type: 'multiOptions',
 						typeOptions: {

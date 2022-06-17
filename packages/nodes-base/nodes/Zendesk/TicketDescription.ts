@@ -213,7 +213,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The value of the subject field for this ticket',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -450,7 +450,7 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The value of the subject field for this ticket',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

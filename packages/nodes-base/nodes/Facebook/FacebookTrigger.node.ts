@@ -137,7 +137,7 @@ export class FacebookTrigger implements INodeType {
 			},
 			//https://developers.facebook.com/docs/graph-api/webhooks/reference/page
 			{
-				displayName: 'Fields',
+				displayName: 'Fields Name or ID',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {

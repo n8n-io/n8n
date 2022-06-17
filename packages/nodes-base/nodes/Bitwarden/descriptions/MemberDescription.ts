@@ -198,7 +198,7 @@ export const memberFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Collections',
+				displayName: 'Collections Name or ID',
 				name: 'collections',
 				type: 'multiOptions',
 				description: 'The collections to assign to this member',
@@ -261,7 +261,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Collections',
+				displayName: 'Collections Name or ID',
 				name: 'collections',
 				type: 'multiOptions',
 				description: 'The collections to assign to this member',

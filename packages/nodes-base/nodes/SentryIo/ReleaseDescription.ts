@@ -245,7 +245,7 @@ export const releaseFields: INodeProperties[] = [
 		description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
 	},
 	{
-		displayName: 'Projects',
+		displayName: 'Projects Name or ID',
 		name: 'projects',
 		type: 'multiOptions',
 		typeOptions: {

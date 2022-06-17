@@ -264,7 +264,7 @@ export const databasePageFields = [
 						description: 'Phone number. No structure is enforced.',
 					},
 					{
-						displayName: 'Options',
+						displayName: 'Options Name or ID',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -326,7 +326,7 @@ export const databasePageFields = [
 						description: 'Web address',
 					},
 					{
-						displayName: 'User IDs',
+						displayName: 'Users Name or ID',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -677,7 +677,7 @@ export const databasePageFields = [
 						description: 'Phone number. No structure is enforced.',
 					},
 					{
-						displayName: 'Options',
+						displayName: 'Options Name or ID',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -736,7 +736,7 @@ export const databasePageFields = [
 						description: 'Web address',
 					},
 					{
-						displayName: 'User IDs',
+						displayName: 'Users Name or ID',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {

@@ -318,7 +318,7 @@ export const observableFields: INodeProperties[] = [
 	},
 	// required for analyzer execution
 	{
-		displayName: 'Analyzer',
+		displayName: 'Analyzers Name or ID',
 		name: 'analyzers',
 		type: 'multiOptions',
 		required: true,
@@ -542,7 +542,7 @@ export const observableFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Data Type',
+				displayName: 'Data Types Name or ID',
 				name: 'dataType',
 				type: 'multiOptions',
 				default: [],

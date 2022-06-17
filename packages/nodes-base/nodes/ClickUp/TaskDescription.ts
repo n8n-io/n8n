@@ -235,7 +235,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignees',
+				displayName: 'Assignees Name or ID',
 				name: 'assignees',
 				type: 'multiOptions',
 				typeOptions: {
@@ -332,7 +332,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -717,7 +717,7 @@ export const taskFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Assignees',
+				displayName: 'Assignees Name or ID',
 				name: 'assignees',
 				type: 'multiOptions',
 				typeOptions: {
@@ -888,7 +888,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Statuses',
+				displayName: 'Statuses Name or ID',
 				name: 'statuses',
 				type: 'multiOptions',
 				typeOptions: {
@@ -907,7 +907,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Include subtasks, default false',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

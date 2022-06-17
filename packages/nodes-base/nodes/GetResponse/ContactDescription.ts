@@ -175,7 +175,7 @@ export const contactFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -634,7 +634,7 @@ export const contactFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

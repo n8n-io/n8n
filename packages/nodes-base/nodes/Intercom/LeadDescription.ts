@@ -350,7 +350,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'An avatar image URL. note: the image URL needs to be https.',
 			},
 			{
-				displayName: 'Companies',
+				displayName: 'Companies Name or ID',
 				name: 'companies',
 				type: 'multiOptions',
 				typeOptions: {

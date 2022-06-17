@@ -363,7 +363,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Additional details to include',
 			},
 			{
-				displayName: 'Service IDs',
+				displayName: 'Services Name or ID',
 				name: 'serviceIds',
 				type: 'multiOptions',
 				typeOptions: {

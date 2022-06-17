@@ -54,6 +54,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:sendPrivate                         */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 		displayName: 'To',
 		name: 'to',
 		type: 'multiOptions',

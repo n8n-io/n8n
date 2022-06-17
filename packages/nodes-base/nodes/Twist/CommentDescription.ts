@@ -199,7 +199,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mentions Name or ID',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -219,7 +219,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'By default, the position of the thread is marked',
 			},
 			{
-				displayName: 'Recipients',
+				displayName: 'Recipients Name or ID',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {
@@ -546,7 +546,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'The content of the comment',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mentions Name or ID',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {

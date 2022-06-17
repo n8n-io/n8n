@@ -122,7 +122,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return Fields Name or ID',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -262,7 +262,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Select',
+				displayName: 'Select Name or ID',
 				name: 'select',
 				type: 'multiOptions',
 				typeOptions: {
@@ -418,7 +418,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Fields Name or ID',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -564,7 +564,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Fields Name or ID',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {

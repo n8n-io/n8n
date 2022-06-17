@@ -150,7 +150,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -259,7 +259,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tags Name or ID',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

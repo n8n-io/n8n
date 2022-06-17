@@ -106,7 +106,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee IDs',
+				displayName: 'Assignees Name or ID',
 				name: 'assigneeIds',
 				type: 'multiOptions',
 				default: [],
@@ -313,7 +313,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee IDs',
+				displayName: 'Assignees Name or ID',
 				name: 'assigneeIds',
 				type: 'multiOptions',
 				default: [],
