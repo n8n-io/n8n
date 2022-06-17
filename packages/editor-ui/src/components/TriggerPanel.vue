@@ -230,12 +230,6 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				return this.nodeType.triggerPanel.header;
 			}
 
-			if (this.nodeType && this.isPollingNode) {
-				return this.$locale.baseText('triggerPanel.scheduledNode.action', {
-					interpolate: { name: serviceName },
-				});
-			}
-
 			if (this.isWebhookBasedNode) {
 				return this.$locale.baseText('triggerPanel.webhookBasedNode.action', {
 					interpolate: { name: serviceName },
