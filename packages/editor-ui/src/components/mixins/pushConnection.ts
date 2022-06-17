@@ -255,12 +255,15 @@ export const pushConnection = mixins(
 					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
 
+						const error = runDataExecuted.data.resultData.error;
+						const nodeTypeWithError = (error && error.node && error.node.type) || '';
+
 						this.$showMessage({
 							title: 'Problem executing workflow',
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
-						});
+						}, true, nodeTypeWithError);
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
