@@ -217,7 +217,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mentions Name or ID',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
