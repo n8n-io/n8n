@@ -886,7 +886,7 @@ export class EditImage implements INodeType {
 					if ((a as INodePropertyOptions).name.toLowerCase() > (b as INodePropertyOptions).name.toLowerCase()) { return 1; }
 					return 0;
 				}) as INodePropertyOptions[],
-				default: 'border',
+				default: '',
 			},
 			{
 				displayName: 'Property Name',
@@ -946,7 +946,7 @@ export class EditImage implements INodeType {
 								typeOptions: {
 									loadOptionsMethod: 'getFonts',
 								},
-								default: 'default',
+								default: '',
 								description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 						],
@@ -990,7 +990,7 @@ export class EditImage implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getFonts',
 						},
-						default: 'default',
+						default: '',
 						description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{

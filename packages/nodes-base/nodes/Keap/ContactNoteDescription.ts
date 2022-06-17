@@ -149,7 +149,7 @@ export const contactNoteFields: INodeProperties[] = [
 						value: 'other',
 					},
 				],
-				default: '',
+				default: 'appointment',
 			},
 		],
 	},
@@ -366,7 +366,7 @@ export const contactNoteFields: INodeProperties[] = [
 						value: 'other',
 					},
 				],
-				default: '',
+				default: 'appointment',
 			},
 			{
 				displayName: 'User Name or ID',

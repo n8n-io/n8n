@@ -312,7 +312,7 @@ export const projectFields: INodeProperties[] = [
 						value: 'ARCHIVED',
 					},
 				],
-				default: '',
+				default: 'ACTIVE',
 				description: 'If provided, projects will be filtered by whether they have a client',
 			},
 			{
@@ -353,7 +353,7 @@ export const projectFields: INodeProperties[] = [
 						value: 'DURATION',
 					},
 				],
-				default: '',
+				default: 'NAME',
 			},
 			{
 				displayName: 'Sort Order',
@@ -369,7 +369,7 @@ export const projectFields: INodeProperties[] = [
 						value: 'DESCENDING',
 					},
 				],
-				default: '',
+				default: 'ASCENDING',
 			},
 			{
 				displayName: 'User Name or ID',
@@ -398,7 +398,7 @@ export const projectFields: INodeProperties[] = [
 						value: 'ARCHIVED',
 					},
 				],
-				default: '',
+				default: 'ACTIVE',
 				description: 'If provided, projects will be filtered by whether they have a client',
 			},
 		],

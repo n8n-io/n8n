@@ -344,7 +344,7 @@ export const buildFields: INodeProperties[] = [
 						value: 'replace',
 					},
 				],
-				default: '',
+				default: 'deep_merge',
 			},
 		],
 	},

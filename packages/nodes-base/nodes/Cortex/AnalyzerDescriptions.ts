@@ -136,6 +136,7 @@ export const analyzerFields: INodeProperties[] = [
 		displayName: 'TLP',
 		name: 'tlp',
 		type: 'options',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -171,7 +172,7 @@ export const analyzerFields: INodeProperties[] = [
 				value: TLP.red,
 			},
 		],
-		default: 2,
+		default: undefined,
 		description: 'The TLP of the analyzed observable',
 	},
 	{

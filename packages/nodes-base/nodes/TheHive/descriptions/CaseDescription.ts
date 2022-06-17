@@ -11,7 +11,7 @@ export const caseOperations: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Operation',
 		name: 'operation',
-		default: 'getAll',
+		default: '',
 		type: 'options',
 		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		noDataExpression: true,
@@ -220,8 +220,9 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'TLP',
 		name: 'tlp',
 		type: 'options',
+		default: '',
 		required: true,
-		default: 2,
+		default: undefined,
 		options: [
 			{
 				name: 'White',
@@ -363,7 +364,7 @@ export const caseFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -467,7 +468,7 @@ export const caseFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -519,7 +520,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Impact Status',
 				name: 'impactStatus',
 				type: 'options',
-				default: '',
+				default: 'NoImpact',
 				options: [
 					{
 						name: 'No Impact',
@@ -560,7 +561,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Resolution Status',
 				name: 'resolutionStatus',
 				type: 'options',
-				default: '',
+				default: 'Duplicated',
 				options: [
 					{
 						value: 'Duplicated',
@@ -657,7 +658,8 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: '',
+				default: undefined,
 				options: [
 					{
 						name: 'White',
@@ -749,7 +751,7 @@ export const caseFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -787,7 +789,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Impact Status',
 				name: 'impactStatus',
 				type: 'options',
-				default: '',
+				default: 'NoImpact',
 				options: [
 					{
 						name: 'No Impact',
@@ -813,7 +815,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'Resolution Status',
 				name: 'resolutionStatus',
 				type: 'options',
-				default: '',
+				default: 'Duplicated',
 				options: [
 					{
 						value: 'Duplicated',
@@ -909,7 +911,8 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: '',
+				default: undefined,
 				options: [
 					{
 						name: 'White',

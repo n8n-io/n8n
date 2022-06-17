@@ -260,7 +260,7 @@ export const productDetailsOptions: INodeProperties[] = [
 		name: 'id',
 		type: 'options',
 		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProducts',
 		},
@@ -415,7 +415,7 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					typeOptions: {
 						loadOptionsMethod,
 					},
-					default: [],
+					default: '',
 					description: 'Field to sort records by',
 				},
 				{

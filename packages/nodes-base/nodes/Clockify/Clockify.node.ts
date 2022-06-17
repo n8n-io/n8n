@@ -110,7 +110,7 @@ export class Clockify implements INodeType {
 					loadOptionsMethod: 'listWorkspaces',
 				},
 				required: true,
-				default: [],
+				default: '',
 			},
 			...projectFields,
 			...tagFields,

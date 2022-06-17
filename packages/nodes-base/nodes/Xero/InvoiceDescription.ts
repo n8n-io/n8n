@@ -83,7 +83,7 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Accounts Receivable or customer invoice',
 			},
 		],
-		default: '',
+		default: 'ACCPAY',
 		displayOptions: {
 			show: {
 				resource: [
@@ -211,7 +211,7 @@ export const invoiceFields: INodeProperties[] = [
 								value: 'GSTONIMPORTS',
 							},
 						],
-						default: '',
+						default: 'INPUT',
 						required: true,
 					},
 					{
@@ -675,7 +675,7 @@ export const invoiceFields: INodeProperties[] = [
 										value: 'GSTONIMPORTS',
 									},
 								],
-								default: '',
+								default: 'INPUT',
 								required: true,
 							},
 							{
@@ -950,7 +950,7 @@ export const invoiceFields: INodeProperties[] = [
 						value: 'DESC',
 					},
 				],
-				default: '',
+				default: 'ASC',
 			},
 			{
 				displayName: 'Statuses',

@@ -1341,14 +1341,14 @@ export const productFields: INodeProperties[] = [
 						value: 'onbackorder',
 					},
 				],
-				default: '',
+				default: 'instock',
 				description: 'Controls the stock status of the product',
 			},
 			{
 				displayName: 'Tag Name or ID',
 				name: 'tag',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -1372,7 +1372,7 @@ export const productFields: INodeProperties[] = [
 						value: 'zero-rate.',
 					},
 				],
-				default: '',
+				default: 'standard',
 				description: 'Limit result set to products with a specific tax class',
 			},
 			{

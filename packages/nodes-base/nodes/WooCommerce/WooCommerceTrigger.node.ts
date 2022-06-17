@@ -52,7 +52,7 @@ export class WooCommerceTrigger implements INodeType {
 				name: 'event',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'coupon.created',
 				options: [
 					{
 						name: 'coupon.created',

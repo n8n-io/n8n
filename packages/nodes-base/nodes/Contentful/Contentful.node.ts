@@ -71,7 +71,7 @@ export class Contentful implements INodeType {
 					LocaleDescription.resource,
 					SpaceDescription.resource,
 				],
-				default: 'entry',
+				default: '',
 			},
 
 			// Operations:

@@ -58,7 +58,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},

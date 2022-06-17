@@ -534,7 +534,7 @@ export const appointmentFields: INodeProperties[] = [
 				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},

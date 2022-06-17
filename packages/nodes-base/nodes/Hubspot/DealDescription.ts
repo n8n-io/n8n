@@ -791,7 +791,7 @@ export const dealFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
-				default: 'createdate',
+				default: '',
 			},
 		],
 	},

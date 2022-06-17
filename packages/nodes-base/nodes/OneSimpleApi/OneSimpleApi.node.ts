@@ -302,7 +302,7 @@ export class OneSimpleApi implements INodeType {
 								value: 'Tabloid',
 							},
 						],
-						default: '',
+						default: 'A0',
 					},
 					{
 						displayName: 'Force Refresh',
@@ -529,7 +529,7 @@ export class OneSimpleApi implements INodeType {
 								value: 'tablet-landscape',
 							},
 						],
-						default: '',
+						default: 'phone',
 					},
 					{
 						displayName: 'Force Refresh',

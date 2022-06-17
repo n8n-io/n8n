@@ -81,7 +81,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				name: 'event',
 				type: 'options',
 				required: true,
-				default: '',
+				default: 'appointment.canceled',
 				options: [
 					{
 						name: 'appointment.canceled',

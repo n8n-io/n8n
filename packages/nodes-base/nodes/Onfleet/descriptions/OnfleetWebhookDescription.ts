@@ -21,7 +21,7 @@ export const eventDisplay: INodeProperties = {
 		return { name, value };
 	}).sort(sort),
 	required: true,
-	default: [],
+	default: '',
 };
 
 export const eventNameField = {

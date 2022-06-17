@@ -79,7 +79,7 @@ export const engagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'call',
 	},
 	{
 		displayName: 'Metadata',
@@ -121,7 +121,7 @@ export const engagementFields: INodeProperties[] = [
 						value: 'CONTACT',
 					},
 				],
-				default: '',
+				default: 'COMPANY',
 			},
 			{
 				displayName: 'Status',
@@ -149,7 +149,7 @@ export const engagementFields: INodeProperties[] = [
 						value: 'WAITING',
 					},
 				],
-				default: '',
+				default: 'COMPLETED',
 			},
 			{
 				displayName: 'Subject',

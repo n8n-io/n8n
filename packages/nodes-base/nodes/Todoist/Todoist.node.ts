@@ -292,7 +292,7 @@ export class Todoist implements INodeType {
 								'options.section',
 							],
 						},
-						default: {},
+						default: '',
 						description: 'The parent task you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
@@ -316,7 +316,7 @@ export class Todoist implements INodeType {
 								'project',
 							],
 						},
-						default: {},
+						default: '',
 						description: 'The section you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
@@ -400,7 +400,7 @@ export class Todoist implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getLabels',
 						},
-						default: {},
+						default: '',
 						description: 'Filter tasks by label. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{

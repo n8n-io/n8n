@@ -40,7 +40,7 @@ export const contactListFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getContactLists',
 		},
-		default: [],
+		default: '',
 		required: true,
 		description: 'The ID of the contact list to add the contact to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {

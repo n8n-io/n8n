@@ -38,7 +38,7 @@ export const quoteFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
@@ -59,7 +59,7 @@ export const quoteFields: INodeProperties[] = [
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},

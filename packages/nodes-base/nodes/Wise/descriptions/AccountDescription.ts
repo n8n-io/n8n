@@ -45,7 +45,7 @@ export const accountFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
@@ -69,7 +69,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
@@ -89,7 +89,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Borderless Account Name or ID',
 		name: 'borderlessAccountId',
 		type: 'options',
-		default: [],
+		default: '',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getBorderlessAccounts',

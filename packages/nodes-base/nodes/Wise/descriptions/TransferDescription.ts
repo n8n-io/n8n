@@ -50,7 +50,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 			loadOptionsDependsOn: [
@@ -92,7 +92,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},
@@ -165,7 +165,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
@@ -291,7 +291,7 @@ export const transferFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},

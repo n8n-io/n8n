@@ -145,7 +145,7 @@ export const accountFields: INodeProperties[] = [
 					typeOptions: {
 						loadOptionsMethod: 'getAccountType',
 					},
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Annual Revenue',
@@ -337,7 +337,7 @@ export const accountFields: INodeProperties[] = [
 					typeOptions: {
 						loadOptionsMethod: 'getAccountType',
 					},
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Annual Revenue',

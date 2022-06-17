@@ -171,7 +171,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'UNSUBSCRIBED',
 					},
 				],
-				default: '',
+				default: 'ACTIVE',
 				description: 'The status of the contact. You can only send email to contacts with ACTIVE status.',
 			},
 			{
@@ -466,7 +466,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'UNSUBSCRIBED',
 					},
 				],
-				default: '',
+				default: 'ACTIVE',
 				description: 'The status of the contact. You can only send email to contacts with ACTIVE status.',
 			},
 			{

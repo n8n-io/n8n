@@ -100,7 +100,7 @@ export const filters = (conditions: any) => [{
 			],
 		},
 	},
-	default: [],
+	default: '',
 },
 {
 	displayName: 'Option Name or ID',

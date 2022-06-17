@@ -11,7 +11,7 @@ const finalGroups = {
 	displayName: 'Resource',
 	name: 'group',
 	type: 'options',
-	default: 'communication',
+	default: '',
 	options: [],
 };
 

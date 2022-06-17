@@ -1094,7 +1094,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
-				default: 'createdate',
+				default: '',
 			},
 		],
 	},

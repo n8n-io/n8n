@@ -60,7 +60,7 @@ export const userCreateDescription: UserProperties = [
 				],
 			},
 		},
-		default: '',
+		default: 'email',
 	},
 	{
 		displayName: 'Auth Data',

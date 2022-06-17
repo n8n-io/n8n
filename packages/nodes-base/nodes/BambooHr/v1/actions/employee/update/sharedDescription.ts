@@ -128,7 +128,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'non-exempt',
 				},
 			],
-			default: '',
+			default: 'exempt',
 		},
 		{
 			displayName: 'Gender',
@@ -144,7 +144,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'male',
 				},
 			],
-			default: '',
+			default: 'female',
 		},
 		{
 			displayName: 'Hire Date',
@@ -180,7 +180,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'domesticPartnership',
 				},
 			],
-			default: '',
+			default: 'single',
 		},
 		{
 			displayName: 'Mobile Phone',
@@ -220,7 +220,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'year',
 				},
 			],
-			default: '',
+			default: 'hour',
 		},
 		{
 			displayName: 'Pay Rate',
@@ -300,7 +300,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 					value: 'weekly',
 				},
 			],
-			default: '',
+			default: 'commission',
 		},
 		{
 			displayName: 'Preferred Name',

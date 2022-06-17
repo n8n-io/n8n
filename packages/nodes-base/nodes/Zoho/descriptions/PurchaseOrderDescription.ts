@@ -112,7 +112,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 		displayName: 'Vendor Name or ID',
 		name: 'vendorId',
 		type: 'options',
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
 		},
@@ -312,7 +312,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},
@@ -539,7 +539,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},

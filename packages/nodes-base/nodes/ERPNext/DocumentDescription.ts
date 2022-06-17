@@ -278,7 +278,7 @@ export const documentFields: INodeProperties[] = [
 								'docType',
 							],
 						},
-						default: [],
+						default: '',
 					},
 					{
 						displayName: 'Value',

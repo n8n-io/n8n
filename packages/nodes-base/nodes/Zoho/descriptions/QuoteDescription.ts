@@ -205,7 +205,7 @@ export const quoteFields: INodeProperties[] = [
 				displayName: 'Quote Stage Name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
@@ -399,7 +399,7 @@ export const quoteFields: INodeProperties[] = [
 				displayName: 'Quote Stage Name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},

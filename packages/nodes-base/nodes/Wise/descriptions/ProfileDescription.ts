@@ -38,7 +38,7 @@ export const profileFields: INodeProperties[] = [
 		name: 'profileId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},

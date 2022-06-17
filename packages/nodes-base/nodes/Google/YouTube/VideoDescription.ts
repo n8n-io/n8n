@@ -188,7 +188,7 @@ export const videoFields: INodeProperties[] = [
 						value: 'youtube',
 					},
 				],
-				default: '',
+				default: 'creativeCommon',
 				description: 'The video\'s license',
 			},
 			{
@@ -216,7 +216,7 @@ export const videoFields: INodeProperties[] = [
 						value: 'unlisted',
 					},
 				],
-				default: '',
+				default: 'private',
 				description: 'The playlist\'s privacy status',
 			},
 			{
@@ -559,7 +559,7 @@ export const videoFields: INodeProperties[] = [
 						value: 'movie',
 					},
 				],
-				default: '',
+				default: 'any',
 				description: 'The videoType parameter lets you restrict a search to a particular type of videos',
 			},
 		],
@@ -618,7 +618,7 @@ export const videoFields: INodeProperties[] = [
 						description: 'YouTube will try to exclude all restricted content from the search result set',
 					},
 				],
-				default: '',
+				default: 'moderate',
 			},
 		],
 	},
@@ -673,7 +673,7 @@ export const videoFields: INodeProperties[] = [
 				description: 'Removes any rating that the authenticated user had previously set for the video',
 			},
 		],
-		default: '',
+		default: 'dislike',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 video:update                               */
@@ -811,7 +811,7 @@ export const videoFields: INodeProperties[] = [
 						value: 'youtube',
 					},
 				],
-				default: '',
+				default: 'creativeCommon',
 				description: 'The video\'s license',
 			},
 			{
@@ -839,7 +839,7 @@ export const videoFields: INodeProperties[] = [
 						value: 'unlistef',
 					},
 				],
-				default: '',
+				default: 'private',
 				description: 'The playlist\'s privacy status',
 			},
 			{

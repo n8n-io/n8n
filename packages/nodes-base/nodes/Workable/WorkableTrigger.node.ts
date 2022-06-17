@@ -63,7 +63,7 @@ export class WorkableTrigger implements INodeType {
 						value: 'candidateMoved',
 					},
 				],
-				default: '',
+				default: 'candidateCreated',
 				required: true,
 			},
 			{

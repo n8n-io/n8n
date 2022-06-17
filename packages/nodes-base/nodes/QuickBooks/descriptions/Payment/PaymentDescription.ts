@@ -63,7 +63,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		description: 'The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},

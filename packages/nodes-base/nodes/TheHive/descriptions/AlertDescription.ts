@@ -24,7 +24,7 @@ export const alertOperations: INodeProperties[] = [
 				],
 			},
 		},
-		default: 'create',
+		default: '',
 	},
 ];
 
@@ -221,8 +221,9 @@ export const alertFields: INodeProperties[] = [
 		displayName: 'TLP',
 		name: 'tlp',
 		type: 'options',
+		default: '',
 		required: true,
-		default: 2,
+		default: undefined,
 		options: [
 			{
 				name: 'White',
@@ -539,7 +540,7 @@ export const alertFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -709,7 +710,7 @@ export const alertFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -820,7 +821,8 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: '',
+				default: undefined,
 				options: [
 					{
 						name: 'White',
@@ -910,7 +912,7 @@ export const alertFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
-								default: 'Custom Field',
+								default: '',
 							},
 							{
 								displayName: 'Value',
@@ -975,7 +977,8 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: '',
+				default: undefined,
 				options: [
 					{
 						name: 'White',

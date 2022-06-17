@@ -371,7 +371,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'DESC',
 					},
 				],
-				default: '',
+				default: 'ASC',
 				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
@@ -410,7 +410,7 @@ export const fileFields: INodeProperties[] = [
 						value: 'enterprise_content',
 					},
 				],
-				default: '',
+				default: 'user_content',
 				description: 'Limits search results to a user scope',
 			},
 			{
@@ -539,7 +539,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'group',
 		description: 'The type of object the file will be shared with',
 	},
 	{

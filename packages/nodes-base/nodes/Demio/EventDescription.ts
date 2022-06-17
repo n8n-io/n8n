@@ -117,7 +117,7 @@ export const eventFields: INodeProperties[] = [
 						value: 'upcoming',
 					},
 				],
-				default: '',
+				default: 'automated',
 			},
 		],
 	},

@@ -153,7 +153,7 @@ export const portfolioCompanyFields: INodeProperties[] = [
 						value: 'inactive',
 					},
 				],
-				default: '',
+				default: 'active',
 			},
 			{
 				displayName: 'Vulnerability',

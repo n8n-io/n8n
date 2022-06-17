@@ -122,7 +122,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'offline',
 	},
 	{
 		displayName: 'Additional Fields',

@@ -62,7 +62,7 @@ export const descriptions: INodeProperties[] = [
 				description: 'Invite user to team',
 			},
 		],
-		default: '',
+		default: 'create',
 	},
 	...create.description,
 	...deactive.description,

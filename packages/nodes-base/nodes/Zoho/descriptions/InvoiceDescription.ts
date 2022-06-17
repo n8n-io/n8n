@@ -153,7 +153,7 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
@@ -343,7 +343,7 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
-				default: [],
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},

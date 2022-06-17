@@ -379,7 +379,7 @@ export const orderFields: INodeProperties[] = [
 								value: 'none',
 							},
 						],
-						default: '',
+						default: 'taxable',
 						description: 'Tax class of fee',
 					},
 					{
@@ -1082,7 +1082,7 @@ export const orderFields: INodeProperties[] = [
 								value: 'none',
 							},
 						],
-						default: '',
+						default: 'taxable',
 						description: 'Tax class of fee',
 					},
 					{

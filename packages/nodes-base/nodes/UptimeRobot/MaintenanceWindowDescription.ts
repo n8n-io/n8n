@@ -92,7 +92,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		name: 'type',
 		type: 'options',
 		required: true,
-		default: '',
+		default: 1,
 		options: [
 			{
 				name: 'Once',
@@ -171,7 +171,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				value: 7,
 			},
 		],
-		default: '',
+		default: 1,
 	},
 	{
 		displayName: 'Month Day',
@@ -383,7 +383,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
-				default: '',
+				default: 1,
 				options: [
 					{
 						name: 'Once',
@@ -446,7 +446,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 						value: 7,
 					},
 				],
-				default: '',
+				default: 1,
 			},
 			{
 				displayName: 'Month Day',

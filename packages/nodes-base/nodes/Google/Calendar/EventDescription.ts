@@ -284,7 +284,7 @@ export const eventFields: INodeProperties[] = [
 						value: 'yearly',
 					},
 				],
-				default: '',
+				default: 'Daily',
 			},
 			{
 				displayName: 'Repeat How Many Times?',
@@ -330,7 +330,7 @@ export const eventFields: INodeProperties[] = [
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
-				default: '',
+				default: 'all',
 			},
 			{
 				displayName: 'Show Me As',
@@ -430,7 +430,7 @@ export const eventFields: INodeProperties[] = [
 								value: 'popup',
 							},
 						],
-						default: '',
+						default: 'email',
 					},
 					{
 						displayName: 'Minutes Before',
@@ -507,7 +507,7 @@ export const eventFields: INodeProperties[] = [
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
-				default: '',
+				default: 'all',
 			},
 		],
 	},
@@ -659,7 +659,7 @@ export const eventFields: INodeProperties[] = [
 						description: 'Order by last modification time (ascending)',
 					},
 				],
-				default: '',
+				default: 'startTime',
 				description: 'The order of the events returned in the result',
 			},
 			{
@@ -895,7 +895,7 @@ export const eventFields: INodeProperties[] = [
 						value: 'yearly',
 					},
 				],
-				default: '',
+				default: 'Daily',
 			},
 			{
 				displayName: 'Repeat How Many Times?',
@@ -941,7 +941,7 @@ export const eventFields: INodeProperties[] = [
 					},
 				],
 				description: 'Whether to send notifications about the creation of the new event',
-				default: '',
+				default: 'all',
 			},
 			{
 				displayName: 'Show Me As',
@@ -1048,7 +1048,7 @@ export const eventFields: INodeProperties[] = [
 								value: 'popup',
 							},
 						],
-						default: '',
+						default: 'email',
 					},
 					{
 						displayName: 'Minutes Before',

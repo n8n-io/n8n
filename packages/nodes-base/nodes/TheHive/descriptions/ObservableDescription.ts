@@ -14,7 +14,7 @@ export const observableOperations: INodeProperties[] = [
 		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		noDataExpression: true,
 		required: true,
-		default: 'getAll',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -221,8 +221,9 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'TLP',
 		name: 'tlp',
 		type: 'options',
+		default: '',
 		required: true,
-		default: 2,
+		default: undefined,
 		displayOptions: {
 			show: {
 				resource: [
@@ -294,7 +295,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'status',
 		type: 'options',
 		required: true,
-		default: '',
+		default: 'Ok',
 		options: [
 			{
 				name: 'Ok',
@@ -441,7 +442,8 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: '',
+				default: undefined,
 				options: [
 					{
 						name: 'White',
@@ -480,7 +482,7 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				default: '',
+				default: 'Ok',
 				options: [
 					{
 						name: 'Ok',
@@ -624,7 +626,7 @@ export const observableFields: INodeProperties[] = [
 				name: 'Status',
 				displayName: 'Status',
 				type: 'options',
-				default: '',
+				default: 'Ok',
 				options: [
 					{
 						name: 'Ok',
@@ -641,7 +643,8 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				default: 2,
+				default: '',
+				default: undefined,
 				options: [
 					{
 						name: 'White',

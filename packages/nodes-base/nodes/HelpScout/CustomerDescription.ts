@@ -117,7 +117,7 @@ export const customerFields: INodeProperties[] = [
 						value: 'unknown',
 					},
 				],
-				default: '',
+				default: 'female',
 				description: 'Gender of this customer',
 			},
 			{
@@ -297,7 +297,7 @@ export const customerFields: INodeProperties[] = [
 							},
 						],
 						description: 'Chat type',
-						default: '',
+						default: 'aim',
 					},
 					{
 						displayName: 'Value',
@@ -353,7 +353,7 @@ export const customerFields: INodeProperties[] = [
 							},
 						],
 						description: 'Location for this email address',
-						default: '',
+						default: 'home',
 					},
 					{
 						displayName: 'Value',
@@ -417,7 +417,7 @@ export const customerFields: INodeProperties[] = [
 							},
 						],
 						description: 'Location for this phone',
-						default: '',
+						default: 'fax',
 					},
 					{
 						displayName: 'Value',
@@ -509,7 +509,7 @@ export const customerFields: INodeProperties[] = [
 							},
 						],
 						description: 'Type of social profile',
-						default: '',
+						default: 'aboutMe',
 					},
 					{
 						displayName: 'Value',
@@ -789,7 +789,7 @@ export const customerFields: INodeProperties[] = [
 						value: 'unknown',
 					},
 				],
-				default: '',
+				default: 'female',
 				description: 'Gender of this customer',
 			},
 			{

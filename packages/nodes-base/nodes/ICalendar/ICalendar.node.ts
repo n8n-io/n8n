@@ -154,7 +154,7 @@ export class ICalendar implements INodeType {
 								value: 'TENTATIVE',
 							},
 						],
-						default: '',
+						default: 'BUSY',
 						description: 'Used to specify busy status for Microsoft applications, like Outlook',
 					},
 					{

@@ -66,7 +66,7 @@ export const workItemFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 		},
-		default: [],
+		default: '',
 		required: true,
 		description: 'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
@@ -88,7 +88,7 @@ export const workItemFields: INodeProperties[] = [
 			loadOptionsDependsOn: ['spaceId'],
 			loadOptionsMethod: 'getStatuses',
 		},
-		default: [],
+		default: '',
 		required: true,
 		description: 'ID of the status to set on the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
@@ -226,7 +226,7 @@ export const workItemFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 		},
-		default: [],
+		default: '',
 		required: true,
 		description: 'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
@@ -379,7 +379,7 @@ export const workItemFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 				},
-				default: [],
+				default: '',
 				description: 'ID of the status to set on the item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{

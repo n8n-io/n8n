@@ -189,7 +189,7 @@ export class FileMaker implements INodeType {
 					loadOptionsMethod: 'getPortals',
 				},
 				options: [],
-				default: [],
+				default: '',
 				displayOptions: {
 					show: {
 						action: [

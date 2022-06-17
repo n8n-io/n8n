@@ -234,7 +234,7 @@ export const agentFields: INodeProperties[] = [
 						value: 'unknown',
 					},
 				],
-				default: '',
+				default: 'finished',
 				description: 'If set, allows to define which status was previously retrieved on user-side',
 			},
 			{

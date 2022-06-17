@@ -365,7 +365,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'view',
 		description: 'The type of sharing link to create',
 	},
 	{
@@ -392,7 +392,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: 'anonymous',
 		description: 'The type of sharing link to create',
 	},
 /* -------------------------------------------------------------------------- */

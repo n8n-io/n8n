@@ -115,7 +115,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						value: 'survey',
 					},
 				],
-				default: '',
+				default: 'collector',
 				required: true,
 			},
 			{
@@ -191,7 +191,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						description: 'A survey is updated',
 					},
 				],
-				default: '',
+				default: 'collector_created',
 				required: true,
 			},
 			{
@@ -247,7 +247,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						description: 'A survey response is updated',
 					},
 				],
-				default: '',
+				default: 'collector_deleted',
 				required: true,
 			},
 			{
@@ -288,7 +288,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getSurveys',
 				},
-				default: [],
+				default: '',
 				required: true,
 			},
 			{

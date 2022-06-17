@@ -481,7 +481,7 @@ export const databasePageFields = [
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
-						default: 'default',
+						default: '',
 						description: 'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
@@ -893,7 +893,7 @@ export const databasePageFields = [
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
-						default: 'default',
+						default: '',
 						description: 'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
@@ -1226,7 +1226,7 @@ export const databasePageFields = [
 										],
 									},
 								},
-								default: '',
+								default: 'created_time',
 								description: 'The name of the property to filter by',
 							},
 							{
@@ -1256,7 +1256,7 @@ export const databasePageFields = [
 										value: 'descending',
 									},
 								],
-								default: '',
+								default: 'ascending',
 								description: 'The direction to sort',
 							},
 						],

@@ -46,7 +46,7 @@ export const leadFields: INodeProperties[] = [
 		name: 'campaignId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
@@ -164,7 +164,7 @@ export const leadFields: INodeProperties[] = [
 		name: 'campaignId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
@@ -229,7 +229,7 @@ export const leadFields: INodeProperties[] = [
 		name: 'campaignId',
 		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},

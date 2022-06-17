@@ -449,7 +449,7 @@ export const timeEntryFields: INodeProperties[] = [
 						'list',
 					],
 				},
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Billable',
@@ -828,7 +828,7 @@ export const timeEntryFields: INodeProperties[] = [
 						'list',
 					],
 				},
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Billable',

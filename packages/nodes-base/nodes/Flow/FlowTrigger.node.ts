@@ -48,7 +48,7 @@ export class FlowTrigger implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				default: '',
+				default: 'list',
 				options:
 					[
 						{

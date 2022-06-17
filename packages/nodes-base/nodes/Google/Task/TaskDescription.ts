@@ -161,7 +161,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'completed',
 					},
 				],
-				default: '',
+				default: 'needsAction',
 				description: 'Current status of the task',
 			},
 
@@ -501,7 +501,7 @@ export const taskFields: INodeProperties[] = [
 						value: 'completed',
 					},
 				],
-				default: '',
+				default: 'needsAction',
 				description: 'Current status of the task',
 			},
 			{

@@ -275,7 +275,7 @@ export const memberFields: INodeProperties[] = [
 						value: 'DESC',
 					},
 				],
-				default: '',
+				default: 'ASC',
 			},
 		],
 	},
@@ -326,7 +326,7 @@ export const memberFields: INodeProperties[] = [
 				value: 'twitter',
 			},
 		],
-		default: '',
+		default: 'discourse',
 		required: true,
 		displayOptions: {
 			show: {
@@ -354,7 +354,7 @@ export const memberFields: INodeProperties[] = [
 				value: 'id',
 			},
 		],
-		default: '',
+		default: 'username',
 		required: true,
 		displayOptions: {
 			show: {
@@ -679,7 +679,7 @@ export const memberFields: INodeProperties[] = [
 								value: 'twitter',
 							},
 						],
-						default: '',
+						default: 'discourse',
 						description: 'Set to github, twitter, email, discourse or the source of any identities you\'ve manually created',
 					},
 					{
@@ -696,7 +696,7 @@ export const memberFields: INodeProperties[] = [
 								value: 'id',
 							},
 						],
-						default: '',
+						default: 'username',
 						required: true,
 						displayOptions: {
 							show: {
