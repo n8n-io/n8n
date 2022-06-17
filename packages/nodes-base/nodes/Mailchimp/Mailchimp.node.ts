@@ -301,6 +301,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
@@ -636,6 +637,7 @@ export class Mailchimp implements INodeType {
 								displayName: 'Category Name or ID',
 								name: 'categoryId',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getGroupCategories',
 									loadOptionsDependsOn: [
@@ -711,6 +713,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -754,6 +757,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -996,6 +1000,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
@@ -1094,6 +1099,7 @@ export class Mailchimp implements INodeType {
 										displayName: 'Category Name or ID',
 										name: 'categoryId',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getGroupCategories',
 											loadOptionsDependsOn: [
@@ -1397,6 +1403,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
@@ -1489,6 +1496,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Group Category Name or ID',
 				name: 'groupCategory',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroupCategories',
 					loadOptionsDependsOn: [

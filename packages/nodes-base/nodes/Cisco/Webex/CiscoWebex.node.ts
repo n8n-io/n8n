@@ -34,6 +34,7 @@ export class CiscoWebex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webex by Cisco',
 		name: 'ciscoWebex',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:ciscoWebex.png',
 		group: ['transform'],
 		version: 1,

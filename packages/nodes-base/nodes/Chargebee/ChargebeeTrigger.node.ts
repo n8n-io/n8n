@@ -14,6 +14,7 @@ export class ChargebeeTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chargebee Trigger',
 		name: 'chargebeeTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:chargebee.png',
 		group: ['trigger'],
 		version: 1,

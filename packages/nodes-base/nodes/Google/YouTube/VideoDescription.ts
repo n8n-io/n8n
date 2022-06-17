@@ -77,6 +77,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCountriesCodes',
 		},
@@ -96,6 +97,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getVideoCategories',
 			loadOptionsDependsOn: [
@@ -715,6 +717,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCountriesCodes',
 		},
@@ -734,6 +737,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getVideoCategories',
 			loadOptionsDependsOn: [
