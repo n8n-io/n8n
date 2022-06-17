@@ -522,7 +522,6 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
