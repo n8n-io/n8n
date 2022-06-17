@@ -89,6 +89,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'groupId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 			loadOptionsDependsOn: [
@@ -317,6 +318,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'groupId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 			loadOptionsDependsOn: [
@@ -339,6 +341,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Member Name or ID',
 		name: 'memberId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getMembers',
 			loadOptionsDependsOn: [
@@ -364,6 +367,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Plan Name or ID',
 		name: 'planId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getPlans',
 			loadOptionsDependsOn: [
@@ -502,6 +506,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Group Name or ID',
 				name: 'groupId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 					loadOptionsDependsOn: [

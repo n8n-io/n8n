@@ -19,6 +19,7 @@ export class Pushcut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pushcut',
 		name: 'pushcut',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:pushcut.png',
 		group: ['input'],
 		version: 1,
@@ -74,6 +75,7 @@ export class Pushcut implements INodeType {
 				displayName: 'Notification Name or ID',
 				name: 'notificationName',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getNotifications',
 				},

@@ -161,6 +161,7 @@ export const memberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'The email of the member to update',
 		displayOptions: {

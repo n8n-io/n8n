@@ -7,6 +7,7 @@ export const customResourceOperations: INodeProperties[] = [
 		displayName: 'Custom Resource Name or ID',
 		name: 'customResource',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getModels',
@@ -95,6 +96,7 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
@@ -239,6 +241,7 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsDependsOn: [
@@ -357,6 +360,7 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',

@@ -97,6 +97,7 @@ export const coinFields: INodeProperties[] = [
 		name: 'coinId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCoins',
 		},
@@ -162,6 +163,7 @@ export const coinFields: INodeProperties[] = [
 		name: 'coinId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCoins',
 		},
@@ -555,6 +557,7 @@ export const coinFields: INodeProperties[] = [
 				displayName: 'Price Change Percentage',
 				name: 'price_change_percentage',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: '1h',

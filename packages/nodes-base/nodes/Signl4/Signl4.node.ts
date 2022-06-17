@@ -17,6 +17,7 @@ export class Signl4 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SIGNL4',
 		name: 'signl4',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:signl4.png',
 		group: ['transform'],
 		version: 1,

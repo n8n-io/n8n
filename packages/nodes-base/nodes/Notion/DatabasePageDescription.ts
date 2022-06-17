@@ -183,6 +183,7 @@ export const databasePageFields = [
 						displayName: 'Key Name or ID',
 						name: 'key',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseProperties',
 							loadOptionsDependsOn: [
@@ -596,6 +597,7 @@ export const databasePageFields = [
 						displayName: 'Key Name or ID',
 						name: 'key',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseIdFromPage',
 							loadOptionsDependsOn: [
@@ -696,6 +698,7 @@ export const databasePageFields = [
 						displayName: 'Option Name or ID',
 						name: 'selectValue',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
@@ -990,6 +993,7 @@ export const databasePageFields = [
 		displayName: 'Database Name or ID',
 		name: 'databaseId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDatabases',
 		},

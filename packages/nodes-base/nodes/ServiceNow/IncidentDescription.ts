@@ -110,6 +110,7 @@ export const incidentFields: INodeProperties[] = [
 				displayName: 'Business Service Name or ID',
 				name: 'business_service',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getBusinessServices',
@@ -524,6 +525,7 @@ export const incidentFields: INodeProperties[] = [
 				displayName: 'Business Service Name or ID',
 				name: 'business_service',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getBusinessServices',
