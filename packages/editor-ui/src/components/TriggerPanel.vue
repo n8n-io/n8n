@@ -448,10 +448,6 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	bottom: 0;
 	left: 0;
 	width: 100%;
-
-	b {
-		font-weight: var(--font-weight-bold);
-	}
 }
 </style>
 
