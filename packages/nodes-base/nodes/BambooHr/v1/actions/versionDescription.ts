@@ -22,6 +22,7 @@ export const versionDescription: INodeTypeDescription = {
 	description: 'Consume BambooHR API',
 	displayName: 'BambooHR',
 	group: ['transform'],
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 	icon: 'file:bambooHr.png',
 	inputs: ['main'],
 	name: 'bambooHr',

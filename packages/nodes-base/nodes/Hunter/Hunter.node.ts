@@ -16,6 +16,7 @@ export class Hunter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hunter',
 		name: 'hunter',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:hunter.png',
 		group: ['output'],
 		version: 1,

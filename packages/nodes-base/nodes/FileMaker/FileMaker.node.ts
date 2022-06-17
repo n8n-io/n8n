@@ -28,6 +28,7 @@ export class FileMaker implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FileMaker',
 		name: 'filemaker',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:filemaker.png',
 		group: ['input'],
 		version: 1,
