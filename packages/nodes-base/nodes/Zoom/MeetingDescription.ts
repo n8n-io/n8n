@@ -248,7 +248,7 @@ export const meetingFields: INodeProperties[] = [
 						name: 'watermark',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to add watermark when viewing a shared screen',
+						description: 'Whether to add a watermark when viewing a shared screen',
 					},
 				],
 			},
