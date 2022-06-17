@@ -439,6 +439,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-display-name-miscased': 'error',
 				'n8n-nodes-base/node-param-default-wrong-for-fixed-collection': 'error',
 				'n8n-nodes-base/node-param-description-line-break-html-tag': 'error',
+				'n8n-nodes-base/node-param-description-missing-from-dynamic-options': 'error',
 				'n8n-nodes-base/filesystem-wrong-cred-filename': 'error',
 				'n8n-nodes-base/node-param-placeholder-missing-email': 'error',
 			},
