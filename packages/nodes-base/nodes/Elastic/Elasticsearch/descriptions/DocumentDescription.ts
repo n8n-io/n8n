@@ -367,7 +367,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Ignore Unavailable',
 				name: 'ignore_unavailable',
-				description: 'Whether true, missing or closed indices are not included in the response. Defaults to false.',
+				description: 'Whether missing or closed indices are not included in the response. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
