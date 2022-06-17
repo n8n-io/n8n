@@ -7,6 +7,7 @@ import {
 import { contactFields, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
 import { pipelineFields, pipelineOperations } from './description/PipelineDescription';
+import { taskFields, taskOperations } from './description/TaskDescription';
 import { highLevelApiPagination, wait } from './GenericFunctions';
 
 
@@ -78,6 +79,8 @@ export class HighLevel implements INodeType {
 			...opportunityFields,
 			...pipelineOperations,
 			...pipelineFields,
+			...taskOperations,
+			...taskFields,
 		],
 	};
 }
