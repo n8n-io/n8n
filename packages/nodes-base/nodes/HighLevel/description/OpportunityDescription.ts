@@ -22,7 +22,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '/opportunities',
+						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities',
 					},
 					output: {
 						postReceive: [
@@ -95,7 +95,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/opportunities/{{$parameter.identifier}}',
+						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities/{{$parameter.identifier}}',
 					},
 					output: {
 						postReceive: [
@@ -111,6 +111,226 @@ export const opportunityOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+	},
+];
+
+const additionalFields: Array<INodeProperties> = [
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Monetary Value',
+				name: 'monetaryValue',
+				type: 'number',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'monetaryValue',
+					}
+				}
+			},
+			{
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'assignedTo',
+					}
+				}
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'name',
+					}
+				}
+			},
+			// TODO: TAGS as Array
+			// {
+			// 	displayName: 'Tags',
+			// 	name: 'tags',
+			// 	type: 'string',
+			// 	default: '',
+			// 	routing: {
+			// 		send: {
+			// 			type: 'body',
+			// 			property: 'tags',
+			// 		}
+			// 	}
+			// },
+			{
+				displayName: 'Company Name',
+				name: 'companyName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'companyName',
+					}
+				}
+			},
+		],
+	}
+]
+
+const createOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Pipeline Identifier',
+		name: 'pipelineIdentifier',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		description: 'Pipeline the opportunity belongs to',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'title',
+			}
+		}
+	},
+	{
+		displayName: 'Stage ID',
+		name: 'stageId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'stageId',
+			}
+		}
+	},
+	{
+		displayName: 'Contact ID',
+		name: 'contactId ',
+		type: 'string',
+		description: 'Contact ID (or email or phone) required',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'contactId',
+			}
+		}
+	},
+	{
+		displayName: 'Email',
+		name: 'email  ',
+		type: 'string',
+		description: 'Email (or contactId or phone) required',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'email ',
+			}
+		}
+	},
+	{
+		displayName: 'Phone',
+		name: 'phone',
+		type: 'string',
+		description: 'Phone (or contactId or email) required',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'phone',
+			}
+		}
 	},
 ];
 
@@ -400,8 +620,9 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 export const opportunityFields: INodeProperties[] = [
-	// ...createOperations,
+	...createOperations,
 	// ...updateOperations,
+	...additionalFields,
 	...deleteOperations,
 	...getOperations,
 	...getAllOperations,
