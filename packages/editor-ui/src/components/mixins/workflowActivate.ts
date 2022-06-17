@@ -38,7 +38,21 @@ export const workflowActivate = mixins(
 
 				const isCurrentWorkflow = currWorkflowId === this.$store.getters['workflowId'];
 
+				const activeWorkflows = this.$store.getters.getActiveWorkflows;
+				const isWorkflowActive = activeWorkflows.includes(currWorkflowId);
+
+				this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState, previous_status: isWorkflowActive,  ndv_input: telemetrySource === 'ndv' });
+
 				try {
+					if (isWorkflowActive) {
+						this.$showMessage({
+							title: this.$locale.baseText('workflowActivator.workflowIsActive'),
+							type: 'success',
+						});
+
+						return;
+					}
+
 					if (isCurrentWorkflow && nodesIssuesExist) {
 						this.$showMessage({
 							title: this.$locale.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
@@ -49,8 +63,6 @@ export const workflowActivate = mixins(
 						this.updatingWorkflowActivation = false;
 						return;
 					}
-
-					this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState, ndv_input: telemetrySource === 'ndv' });
 
 					await this.updateWorkflow({workflowId: currWorkflowId, active: newActiveState});
 				} catch (error) {

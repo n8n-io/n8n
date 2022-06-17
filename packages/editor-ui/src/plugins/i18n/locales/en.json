@@ -842,6 +842,7 @@
 	"versionCard.thisVersionHasASecurityIssue": "This version has a security issue.<br />It is listed here for completeness.",
 	"versionCard.unknown": "unknown",
 	"versionCard.version": "Version",
+	"workflowActivator.workflowIsActive": "Workflow is already active",
 	"workflowActivator.activateWorkflow": "Activate workflow",
 	"workflowActivator.deactivateWorkflow": "Deactivate workflow",
 	"workflowActivator.showError.title": "Workflow could not be {newStateName}",
