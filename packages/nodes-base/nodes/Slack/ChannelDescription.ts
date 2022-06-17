@@ -329,6 +329,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
@@ -352,6 +353,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -607,6 +609,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},

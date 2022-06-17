@@ -209,6 +209,7 @@ export class Egoi implements INodeType {
 										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getExtraFields',
 											loadOptionsDependsOn: [
@@ -338,6 +339,7 @@ export class Egoi implements INodeType {
 										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getExtraFields',
 											loadOptionsDependsOn: [
