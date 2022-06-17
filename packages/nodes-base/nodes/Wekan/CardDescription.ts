@@ -145,6 +145,7 @@ export const cardFields: INodeProperties[] = [
 		displayName: 'Author Name or ID',
 		name: 'authorId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},

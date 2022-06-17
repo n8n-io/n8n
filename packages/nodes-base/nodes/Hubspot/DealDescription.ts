@@ -186,6 +186,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Deal Type Name or ID',
 				name: 'dealType',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
@@ -312,6 +313,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Deal Type Name or ID',
 				name: 'dealType',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
@@ -655,6 +657,7 @@ export const dealFields: INodeProperties[] = [
 										displayName: 'Property Name or ID',
 										name: 'propertyName',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getDealProperties',
 										},
@@ -784,6 +787,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
