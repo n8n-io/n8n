@@ -320,7 +320,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'contains-user',
 				type: 'boolean',
 				default: false,
-				description: 'Whether provided, projects will be filtered by whether they have users',
+				description: 'Whether to return only projects having users',
 			},
 			{
 				displayName: 'Is Template',
