@@ -1,6 +1,7 @@
 import {
 	INodeTypeBaseDescription,
 	INodeVersionedType,
+	NodeVersionedType
 } from 'n8n-workflow';
 
 import {
@@ -10,10 +11,6 @@ import {
 import {
 	NotionV2,
 } from './v2/NotionV2.node';
-
-import {
-	NodeVersionedType,
-} from '../../src/NodeVersionedType';
 
 export class Notion extends NodeVersionedType {
 	constructor() {

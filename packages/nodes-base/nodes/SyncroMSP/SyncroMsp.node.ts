@@ -1,9 +1,8 @@
 import {
 	INodeTypeBaseDescription,
 	INodeVersionedType,
+	NodeVersionedType,
 } from 'n8n-workflow';
-
-import { NodeVersionedType } from '../../src/NodeVersionedType';
 
 import { SyncroMspV1 } from './v1/SyncroMspV1.node';
 

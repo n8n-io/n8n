@@ -8,7 +8,7 @@
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
-import { NodeVersionedType } from 'n8n-nodes-base';
+import { NodeVersionedType } from 'n8n-workflow';
 
 import {
 	ICredentialDataDecryptedObject,

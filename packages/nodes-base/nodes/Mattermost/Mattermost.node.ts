@@ -1,10 +1,10 @@
 import {
 	INodeTypeBaseDescription,
 	INodeVersionedType,
+	NodeVersionedType,
 } from 'n8n-workflow';
 
 import { MattermostV1 } from './v1/MattermostV1.node';
-import { NodeVersionedType } from '../../src/NodeVersionedType';
 
 export class Mattermost extends NodeVersionedType {
 	constructor() {

@@ -7,6 +7,7 @@ export * from './DeferredPromise';
 export * from './Interfaces';
 export * from './Expression';
 export * from './NodeErrors';
+export * from './NodeVersionedType';
 export * as TelemetryHelpers from './TelemetryHelpers';
 export * from './RoutingNode';
 export * from './Workflow';
