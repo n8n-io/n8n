@@ -181,7 +181,7 @@ export const accountFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Expand Fields Name or ID',
+				displayName: 'Expand Field Names or IDs',
 				name: 'expandFields',
 				type: 'multiOptions',
 				typeOptions: {
