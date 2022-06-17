@@ -19,6 +19,7 @@ export class PostmarkTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Postmark Trigger',
 		name: 'postmarkTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:postmark.png',
 		group: ['trigger'],
 		version: 1,
