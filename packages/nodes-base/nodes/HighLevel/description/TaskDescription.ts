@@ -64,16 +64,6 @@ export const taskOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks/{{$parameter.identifier}}',
 					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'task',
-								},
-							},
-						],
-					},
 				},
 			},
 			{
@@ -125,6 +115,44 @@ export const taskOperations: INodeProperties[] = [
 	},
 ];
 
+const getOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Contact Identifier',
+		name: 'contactIdentifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Contact the task belongs to',
+	},
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'get',
+				]
+			},
+		},
+		default: '',
+		description: 'Task ID',
+	},
+];
 
 const getAllOperations: Array<INodeProperties> = [
 	{
@@ -202,7 +230,7 @@ export const taskFields: INodeProperties[] = [
 	// ...createOperations,
 	// ...updateOperations,
 	// ...deleteOperations,
-	// ...getOperations,
+	...getOperations,
 	...getAllOperations,
 	// ...lookupOperations,
 ];
