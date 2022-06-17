@@ -362,18 +362,6 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 				if (target.dataset.key === 'activate') {
 					this.$emit('activate');
-				} else if (target.dataset.key === 'copy') {
-					if (this.webhookProdUrl) {
-						this.copyToClipboard(this.webhookProdUrl);
-						this.$showMessage({
-							title: this.$locale.baseText('ndv.trigger.copiedProdUrl'),
-							type: 'success',
-						});
-						this.$telemetry.track('User copied webhook URL', {
-							pane: 'inputs',
-							type: 'production url',
-						});
-					}
 				} else if (target.dataset.key === 'executions') {
 					this.$telemetry.track('User clicked ndv link', {
 						workflow_id: this.$store.getters.workflowId,
