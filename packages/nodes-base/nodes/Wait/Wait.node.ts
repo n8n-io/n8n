@@ -533,7 +533,7 @@ export class Wait implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Whether set to true webhook will receive binary data',
+						description: 'Whether the webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
