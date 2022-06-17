@@ -350,7 +350,6 @@ const createOperations: Array<INodeProperties> = [
 			}
 		}
 	},
-	...additionalFields
 ];
 
 const updateOperations: Array<INodeProperties> = [
@@ -418,7 +417,6 @@ const updateOperations: Array<INodeProperties> = [
 			}
 		}
 	},
-	...additionalFields
 ];
 
 const deleteOperations: Array<INodeProperties> = [
@@ -651,6 +649,7 @@ const lookupOperations: Array<INodeProperties> = [
 export const contactFields: INodeProperties[] = [
 	...createOperations,
 	...updateOperations,
+	...additionalFields,
 	...deleteOperations,
 	...getOperations,
 	...getAllOperations,
