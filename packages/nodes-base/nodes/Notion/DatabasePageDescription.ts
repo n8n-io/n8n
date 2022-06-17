@@ -1104,7 +1104,7 @@ export const databasePageFields = [
 					},
 				},
 				default: false,
-				description: 'Whether to download a file if database\'s field contains it',
+				description: 'Whether to download a file if a database\'s field contains it',
 			},
 			{
 				displayName: 'Filters',
