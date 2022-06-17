@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import { ERROR_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
