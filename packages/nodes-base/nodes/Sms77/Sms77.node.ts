@@ -18,6 +18,7 @@ export class Sms77 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'sms77',
 		name: 'sms77',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:sms77.png',
 		group: ['transform'],
 		version: 1,

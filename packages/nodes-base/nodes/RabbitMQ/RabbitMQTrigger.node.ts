@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {
 	createDeferredPromise,
 	IDataObject,
@@ -26,6 +27,7 @@ export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ Trigger',
 		name: 'rabbitmqTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:rabbitmq.png',
 		group: ['trigger'],
 		version: 1,

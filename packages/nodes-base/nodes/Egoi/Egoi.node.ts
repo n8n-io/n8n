@@ -28,6 +28,7 @@ export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'E-goi',
 		name: 'egoi',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:egoi.png',
 		group: ['output'],
 		version: 1,
@@ -113,6 +114,7 @@ export class Egoi implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						operation: [
@@ -208,6 +210,7 @@ export class Egoi implements INodeType {
 										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getExtraFields',
 											loadOptionsDependsOn: [
@@ -312,6 +315,7 @@ export class Egoi implements INodeType {
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 						description: 'Email address for subscriber',
 					},
@@ -336,6 +340,7 @@ export class Egoi implements INodeType {
 										displayName: 'Field Name or ID',
 										name: 'field_id',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getExtraFields',
 											loadOptionsDependsOn: [
@@ -457,6 +462,7 @@ export class Egoi implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [

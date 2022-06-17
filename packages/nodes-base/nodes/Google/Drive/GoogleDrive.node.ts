@@ -964,12 +964,12 @@ export class GoogleDrive implements INodeType {
 								value: 'exportLinks',
 							},
 							{
-								name: 'iconLink',
-								value: 'iconLink',
-							},
-							{
 								name: 'hasThumbnail',
 								value: 'hasThumbnail',
+							},
+							{
+								name: 'iconLink',
+								value: 'iconLink',
 							},
 							{
 								name: 'ID',
@@ -980,12 +980,12 @@ export class GoogleDrive implements INodeType {
 								value: 'kind',
 							},
 							{
-								name: 'Name',
-								value: 'name',
-							},
-							{
 								name: 'mimeType',
 								value: 'mimeType',
+							},
+							{
+								name: 'Name',
+								value: 'name',
 							},
 							{
 								name: 'Permissions',
@@ -1198,12 +1198,12 @@ export class GoogleDrive implements INodeType {
 								value: 'exportLinks',
 							},
 							{
-								name: 'iconLink',
-								value: 'iconLink',
-							},
-							{
 								name: 'hasThumbnail',
 								value: 'hasThumbnail',
+							},
+							{
+								name: 'iconLink',
+								value: 'iconLink',
 							},
 							{
 								name: 'ID',
@@ -1214,12 +1214,12 @@ export class GoogleDrive implements INodeType {
 								value: 'kind',
 							},
 							{
-								name: 'Name',
-								value: 'name',
-							},
-							{
 								name: 'mimeType',
 								value: 'mimeType',
+							},
+							{
+								name: 'Name',
+								value: 'name',
 							},
 							{
 								name: 'Permissions',

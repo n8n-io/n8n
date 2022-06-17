@@ -201,6 +201,7 @@ export const streamFields: INodeProperties[] = [
 								displayName: 'Principal Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Principal email address',

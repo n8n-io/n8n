@@ -8,6 +8,7 @@ export const taskOperations: INodeProperties[] = [
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		noDataExpression: true,
 		required: true,
 		displayOptions: {
@@ -185,6 +186,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {

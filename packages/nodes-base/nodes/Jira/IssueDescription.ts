@@ -70,6 +70,7 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Project Name or ID',
 		name: 'project',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -151,6 +152,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -254,6 +256,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPriorities',
 				},
@@ -263,6 +266,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -319,6 +323,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -417,6 +422,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPriorities',
 				},
@@ -426,6 +432,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},

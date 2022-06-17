@@ -11,6 +11,7 @@ export const alertOperations: INodeProperties[] = [
 		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		noDataExpression: true,
 		required: true,
 		typeOptions: {
@@ -441,6 +442,7 @@ export const alertFields: INodeProperties[] = [
 		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -533,6 +535,7 @@ export const alertFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -702,6 +705,7 @@ export const alertFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -902,6 +906,7 @@ export const alertFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},

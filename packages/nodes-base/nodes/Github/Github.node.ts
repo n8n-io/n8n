@@ -525,6 +525,7 @@ export class Github implements INodeType {
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								default: '',
 								description: 'The email of the author of the commit',
 							},
@@ -559,6 +560,7 @@ export class Github implements INodeType {
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								default: '',
 								description: 'The email of the committer of the commit',
 							},
@@ -1538,6 +1540,7 @@ export class Github implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				required: true,
 				displayOptions: {

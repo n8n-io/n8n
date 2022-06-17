@@ -23,6 +23,7 @@ export class GetResponseTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GetResponse Trigger',
 		name: 'getResponseTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:getResponse.png',
 		group: ['trigger'],
 		version: 1,
@@ -97,14 +98,14 @@ export class GetResponseTrigger implements INodeType {
 						description: 'Receive notifications when a customer is unsubscribed from a list',
 					},
 					{
-						name: 'Email Opened',
-						value: 'open',
-						description: 'Receive notifications when a email is opened',
-					},
-					{
 						name: 'Email Clicked',
 						value: 'click',
 						description: 'Receive notifications when a email is clicked',
+					},
+					{
+						name: 'Email Opened',
+						value: 'open',
+						description: 'Receive notifications when a email is opened',
 					},
 					{
 						name: 'Survey Submitted',

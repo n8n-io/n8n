@@ -99,6 +99,7 @@ export const userProfileFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'This field can only be changed by admins for users on paid teams',
 			},
