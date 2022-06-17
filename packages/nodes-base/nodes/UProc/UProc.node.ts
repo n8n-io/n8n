@@ -26,6 +26,7 @@ export class UProc implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'uProc',
 		name: 'uproc',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:uproc.png',
 		group: ['output'],
 		version: 1,

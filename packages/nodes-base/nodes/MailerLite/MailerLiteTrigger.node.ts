@@ -18,6 +18,7 @@ export class MailerLiteTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MailerLite Trigger',
 		name: 'mailerLiteTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:mailerLite.png',
 		group: ['trigger'],
 		version: 1,

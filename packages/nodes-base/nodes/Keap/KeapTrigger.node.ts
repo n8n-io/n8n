@@ -24,6 +24,7 @@ export class KeapTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Keap Trigger',
 		name: 'keapTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:keap.png',
 		group: ['trigger'],
 		version: 1,
