@@ -39,6 +39,7 @@
 					<TriggerPanel
 						v-if="showTriggerPanel"
 						:nodeName="activeNode.name"
+						:sessionId="sessionId"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"
 					/>
@@ -365,7 +366,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 		onWorkflowActivate() {
 			this.$store.commit('setActiveNode', null);
 			setTimeout(() => {
-				this.activateCurrentWorkflow();
+				this.activateCurrentWorkflow('ndv');
 			}, 1000);
 		},
 		onFeatureRequestClick() {

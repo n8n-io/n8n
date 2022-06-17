@@ -6,7 +6,7 @@
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" />
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" telemetrySource="parameters" />
 				</div>
 			</div>
 			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />

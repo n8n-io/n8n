@@ -42,6 +42,9 @@ export default mixins(
 			type: Boolean,
 			default: false,
 		},
+		telemetrySource: {
+			type: String,
+		},
 	},
 	computed: {
 		node (): INodeUi {
@@ -154,6 +157,7 @@ export default mixins(
 				this.stopWaitingForWebhook();
 			}
 			else {
+				this.$telemetry.track('User clicked execute node button', { node_type: this.nodeName, workflow_id: this.$store.getters.workflowId, source: this.telemetrySource });
 				this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 				this.$emit('execute');
 			}

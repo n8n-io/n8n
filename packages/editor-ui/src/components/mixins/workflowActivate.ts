@@ -18,11 +18,11 @@ export const workflowActivate = mixins(
 			};
 		},
 		methods: {
-			async activateCurrentWorkflow() {
+			async activateCurrentWorkflow(telemetrySource?: string) {
 				const workflowId = this.$store.getters.workflowId;
-				return this.updateWorkflowActivation(workflowId, true);
+				return this.updateWorkflowActivation(workflowId, true, telemetrySource);
 			},
-			async updateWorkflowActivation(workflowId: string | undefined, newActiveState: boolean) {
+			async updateWorkflowActivation(workflowId: string | undefined, newActiveState: boolean, telemetrySource?: string) {
 				this.updatingWorkflowActivation = true;
 				const nodesIssuesExist = this.$store.getters.nodesIssuesExist as boolean;
 
@@ -51,7 +51,7 @@ export const workflowActivate = mixins(
 					}
 
 					if (newActiveState) {
-						this.$telemetry.track('User set workflow active status');
+						this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState, ndv_input: telemetrySource === 'ndv' });
 					}
 
 					await this.updateWorkflow({workflowId: currWorkflowId, active: newActiveState});
@@ -70,7 +70,7 @@ export const workflowActivate = mixins(
 
 				const activationEventName = isCurrentWorkflow ? 'workflow.activeChangeCurrent' : 'workflow.activeChange';
 				this.$externalHooks().run(activationEventName, { workflowId: currWorkflowId, active: newActiveState });
-				this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState });
+				this.$telemetry.track('User set workflow active status', { workflow_id: currWorkflowId, is_active: newActiveState, ndv_input: telemetrySource === 'ndv' });
 
 				this.$emit('workflowActiveChanged', { id: currWorkflowId, active: newActiveState });
 				this.updatingWorkflowActivation = false;

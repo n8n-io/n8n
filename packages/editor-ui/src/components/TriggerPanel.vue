@@ -14,17 +14,16 @@
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						$locale.baseText('triggerPanel.webhookNode.listening')
 					}}</n8n-text>
-					<n8n-text tag="div" class="mb-xs">
-						{{
-							$locale.baseText('triggerPanel.webhookNode.requestHint', {
-								interpolate: { type: this.webhookHttpMethod },
-							})
-						}}
-					</n8n-text>
+					<div :class="$style.shake">
+						<n8n-text class="mb-xs">
+							{{
+								$locale.baseText('triggerPanel.webhookNode.requestHint', {
+									interpolate: { type: this.webhookHttpMethod },
+								})
+							}}
+						</n8n-text>
+					</div>
 					<CopyInput :value="webhookTestUrl" :toastTitle="$locale.baseText('triggerPanel.copiedTestUrl')" class="mb-2xl" size="medium" :collapse="true" @copy="onTestLinkCopied"></CopyInput>
-					<n8n-text tag="div" @click="onLinkClick">
-						<span v-html="$locale.baseText('triggerPanel.webhookNode.prodRequestsHint')"></span>
-					</n8n-text>
 				</div>
 				<div v-else>
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
@@ -61,6 +60,7 @@
 						:nodeName="nodeName"
 						@execute="onNodeExecute"
 						size="medium"
+						telemetrySource="inputs"
 					/>
 				</div>
 
@@ -97,6 +97,9 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	},
 	props: {
 		nodeName: {
+			type: String,
+		},
+		sessionId: {
 			type: String,
 		},
 	},
@@ -325,6 +328,12 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 						});
 					}
 				} else if (target.dataset.key === 'executions') {
+					this.$telemetry.track('User clicked ndv link', {
+						workflow_id: this.$store.getters.workflowId,
+						session_id: this.sessionId,
+						pane: 'input',
+						type: 'i-wish-this-node-would',
+					});
 					this.$store.commit('setActiveNode', null);
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
@@ -366,8 +375,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	overflow: hidden;
 
 	> * {
-		max-width: 316px;
-		margin-bottom: var(--spacing-2xl);
+		width: 100%;
 	}
 }
 
