@@ -2,6 +2,7 @@ import {
 	IDataObject,
 	IExecutePaginationFunctions,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptionsFromParameters,
@@ -9,6 +10,32 @@ import {
 
 import { contactFields, contactOperations } from './description/ContactDescription';
 import { wait } from './GenericFunctions';
+
+
+const ressources: INodeProperties[] = [
+	{
+		displayName: 'Resource',
+		name: 'resource',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Contact',
+				value: 'contact',
+			},
+			{
+				name: 'Opportunity',
+				value: 'opportunity',
+			},
+			{
+				name: 'Task',
+				value: 'task',
+			},
+		],
+		default: 'contact',
+		required: true,
+	},
+]
 
 export class HighLevel implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,7 +81,7 @@ export class HighLevel implements INodeType {
 				});
 
 				const responseData: INodeExecutionData[] = [];
-				const returnAll = this.getNodeParameter('returnAll')
+				const returnAll = this.getNodeParameter('returnAll');
 				let responseTotal = 0;
 
 				do {
@@ -62,13 +89,13 @@ export class HighLevel implements INodeType {
 					// console.log(requestData.options.url);
 
 					const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
-					const items = pageResponseData[0].json[rootProperty] as []
-					items.forEach(item => responseData.push({ json: item }))
+					const items = pageResponseData[0].json[rootProperty] as [];
+					items.forEach(item => responseData.push({ json: item }));
 
 					const meta = pageResponseData[0].json.meta as IDataObject;
-					const startAfterId = meta.startAfterId as string
-					const startAfter = meta.startAfter as number
-					requestData.options.qs = { startAfterId, startAfter }
+					const startAfterId = meta.startAfterId as string;
+					const startAfter = meta.startAfter as number;
+					requestData.options.qs = { startAfterId, startAfter };
 					responseTotal = meta.total as number;
 
 					// console.log(JSON.stringify(meta, null, 2));
@@ -80,20 +107,7 @@ export class HighLevel implements INodeType {
 			},
 		},
 		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Contact',
-						value: 'contact',
-					},
-				],
-				default: 'contact',
-				required: true,
-			},
+			...ressources,
 			...contactOperations,
 			...contactFields,
 		],

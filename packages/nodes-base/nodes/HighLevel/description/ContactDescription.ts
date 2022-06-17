@@ -15,7 +15,6 @@ export const contactOperations: INodeProperties[] = [
 				],
 			},
 		},
-
 		options: [
 			{
 				name: 'Create',
@@ -40,15 +39,54 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/contacts/{{$parameter.identifier}}',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "success": true } }}',
+								},
+							},
+						],
+					},
+				},
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/contacts/{{$parameter.identifier}}',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'contact',
+								},
+							},
+						],
+					},
+				},
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				routing: {
+					request: {
+						method: 'GET',
+						url: '=/contacts',
+					},
+					send: {
+						paginate: true,
+					},
 					output: {
 						postReceive: [
 							{
@@ -64,63 +102,49 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Lookup',
 				value: 'lookup',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/contacts/lookup?email={{$parameter.email}}&phone={{$parameter.phone}}',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'contacts',
+								},
+							},
+						],
+					},
+				},
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				routing: {
+					request: {
+						method: 'PUT',
+						url: '=/contacts/{{$parameter.identifier}}',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'contact',
+								},
+							},
+						],
+					},
+				},
 			},
 		],
 		default: 'create',
 	},
 ];
 
-const createOperations: Array<INodeProperties> = [
-	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		description: 'Email or Phone are required to create contact',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'email',
-			}
-		}
-	},
-	{
-		displayName: 'Phone',
-		name: 'phone',
-		type: 'string',
-		description: 'Email or Phone are required to create contact',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'phone',
-			}
-		}
-	},
+const additionalFields: Array<INodeProperties> = [
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -134,6 +158,7 @@ const createOperations: Array<INodeProperties> = [
 				],
 				operation: [
 					'create',
+					'update',
 				],
 			},
 		},
@@ -276,6 +301,56 @@ const createOperations: Array<INodeProperties> = [
 			// },
 		],
 	}
+]
+
+const createOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		description: 'Email or Phone are required to create contact',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'email',
+			}
+		}
+	},
+	{
+		displayName: 'Phone',
+		name: 'phone',
+		type: 'string',
+		description: 'Email or Phone are required to create contact',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'phone',
+			}
+		}
+	},
+	...additionalFields
 ];
 
 const updateOperations: Array<INodeProperties> = [
@@ -292,22 +367,6 @@ const updateOperations: Array<INodeProperties> = [
 				operation: [
 					'update',
 				]
-			},
-		},
-		routing: {
-			request: {
-				method: 'PUT',
-				url: '=/contacts/{{$value}}',
-			},
-			output: {
-				postReceive: [
-					{
-						type: 'rootProperty',
-						properties: {
-							property: 'contact',
-						},
-					},
-				],
 			},
 		},
 		default: '',
@@ -359,6 +418,7 @@ const updateOperations: Array<INodeProperties> = [
 			}
 		}
 	},
+	...additionalFields
 ];
 
 const deleteOperations: Array<INodeProperties> = [
@@ -374,22 +434,6 @@ const deleteOperations: Array<INodeProperties> = [
 				operation: [
 					'delete',
 				]
-			},
-		},
-		routing: {
-			request: {
-				method: 'DELETE',
-				url: '=/contacts/{{$value}}',
-			},
-			output: {
-				postReceive: [
-					{
-						type: 'set',
-						properties: {
-							value: '={{ { "success": true } }}',
-						},
-					},
-				],
 			},
 		},
 		default: '',
@@ -413,22 +457,6 @@ const getOperations: Array<INodeProperties> = [
 				]
 			},
 		},
-		routing: {
-			request: {
-				method: 'GET',
-				url: '=/contacts/{{$value}}',
-			},
-			output: {
-				postReceive: [
-					{
-						type: 'rootProperty',
-						properties: {
-							property: 'contact',
-						},
-					},
-				],
-			},
-		},
 		default: '',
 		description: 'Contact ID',
 	},
@@ -450,15 +478,6 @@ const getAllOperations: Array<INodeProperties> = [
 			},
 		},
 		default: false,
-		routing: {
-			request: {
-				method: 'GET',
-				url: '=/contacts',
-			},
-			send: {
-				paginate: true,
-			},
-		},
 		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
@@ -604,22 +623,6 @@ const lookupOperations: Array<INodeProperties> = [
 				],
 				operation: [
 					'lookup',
-				],
-			},
-		},
-		routing: {
-			request: {
-				method: 'GET',
-				url: '=/contacts/lookup?email={{$parameter.email}}&phone={{$parameter.phone}}',
-			},
-			output: {
-				postReceive: [
-					{
-						type: 'rootProperty',
-						properties: {
-							property: 'contacts',
-						},
-					},
 				],
 			},
 		},
