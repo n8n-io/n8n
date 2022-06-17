@@ -125,7 +125,7 @@ export class OpenThesaurus implements INodeType {
 						name: 'subsynsets',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to indicate that each synonym group has its (optional) sub-terms supplied',
+						description: 'Whether each synonym group has its (optional) sub-terms supplied',
 					},
 					{
 						displayName: 'Supersynsets',
