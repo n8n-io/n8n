@@ -719,7 +719,6 @@
     "@types/xml2js": "^0.4.3",
     "esbuild": "0.14.34",
     "eslint-plugin-n8n-nodes-base": "^1.0.29",
-    "fast-glob": "^3.2.11",
     "gulp": "^4.0.0",
     "jest": "^27.4.7",
     "n8n-workflow": "~0.101.0",

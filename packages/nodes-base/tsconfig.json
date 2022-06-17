@@ -8,7 +8,7 @@
 			"node",
 			"jest"
 		],
-		"module": "esnext",
+		"module": "commonjs",
 		"removeComments": true,
 		"strict": true,
 		"preserveConstEnums": true,
@@ -16,7 +16,7 @@
 		"resolveJsonModule": true,
 		"declaration": true,
 		"outDir": "./dist/",
-		"target": "esnext",
+		"target": "es2019",
 		"sourceMap": false,
 		"esModuleInterop": true,
 		"useUnknownInCatchVariables": false,
@@ -25,8 +25,5 @@
 		"credentials/**/*",
 		"nodes/**/*",
 		"test/**/*"
-	],
-	"exclude": [
-		"**/*.spec.ts"
 	]
 }
