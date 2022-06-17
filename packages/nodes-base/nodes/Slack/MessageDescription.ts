@@ -1079,7 +1079,7 @@ export const messageFields: INodeProperties[] = [
 										},
 										type: 'boolean',
 										default: false,
-										description: 'Whether set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
+										description: 'Whether to set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed',
 									},
 								],
 							},
