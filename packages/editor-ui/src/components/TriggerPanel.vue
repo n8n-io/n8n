@@ -1,7 +1,11 @@
 <template>
 	<div :class="$style.container">
 		<transition name="fade" mode="out-in">
-			<div key="empty" v-if="hasIssues"></div>
+			<div key="empty" :class="$style.center" v-if="hasIssues">
+				<n8n-text>
+					{{ $locale.baseText('ndv.trigger.fillInRequiredFields') }}
+				</n8n-text>
+			</div>
 			<div key="listening" v-else-if="isListeningForEvents">
 				<n8n-pulse>
 					<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
@@ -419,6 +423,12 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 
 .action {
 	margin-bottom: var(--spacing-2xl);
+}
+
+.center {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .shake {
