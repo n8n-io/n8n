@@ -1863,7 +1863,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+				description: 'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 			},
 			{
 				displayName: 'Return All',
