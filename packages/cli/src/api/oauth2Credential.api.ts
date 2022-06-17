@@ -30,12 +30,12 @@ import { OAuthRequest } from '../requests';
 import { externalHooks } from '../Server';
 import config from '../../config';
 
-export const oauth2CredentialController = express.Router();
+export const oauth2CredentialsController = express.Router();
 
 /**
  * Initialize Logger if needed
  */
-oauth2CredentialController.use((req, res, next) => {
+oauth2CredentialsController.use((req, res, next) => {
 	try {
 		LoggerProxy.getInstance();
 	} catch (error) {
@@ -51,7 +51,7 @@ const restEndpoint = config.getEnv('endpoints.rest');
  *
  * Authorize OAuth Data
  */
-oauth2CredentialController.get(
+oauth2CredentialsController.get(
 	'/auth',
 	ResponseHelper.send(async (req: OAuthRequest.OAuth1Credential.Auth): Promise<string> => {
 		const { id: credentialId } = req.query;
@@ -74,11 +74,7 @@ oauth2CredentialController.get(
 		try {
 			encryptionKey = await UserSettings.getEncryptionKey();
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				(error as IDataObject).message as string,
-				undefined,
-				500,
-			);
+			throw new ResponseHelper.ResponseError((error as Error).message, undefined, 500);
 		}
 
 		const mode: WorkflowExecuteMode = 'internal';
@@ -169,7 +165,7 @@ oauth2CredentialController.get(
  * Verify and store app code. Generate access tokens and store for respective credential.
  */
 
-oauth2CredentialController.get(
+oauth2CredentialsController.get(
 	'/callback',
 	async (req: OAuthRequest.OAuth2Credential.Callback, res: express.Response) => {
 		try {
@@ -189,7 +185,10 @@ oauth2CredentialController.get(
 
 			let state;
 			try {
-				state = JSON.parse(Buffer.from(stateEncoded, 'base64').toString()) as IDataObject;
+				state = JSON.parse(Buffer.from(stateEncoded, 'base64').toString()) as {
+					cid: string;
+					token: string;
+				};
 			} catch (error) {
 				const errorResponse = new ResponseHelper.ResponseError(
 					'Invalid state format returned',
@@ -199,7 +198,7 @@ oauth2CredentialController.get(
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			const credential = await getCredentialWithoutUser(state.cid as string);
+			const credential = await getCredentialWithoutUser(state.cid);
 
 			if (!credential) {
 				LoggerProxy.error('OAuth2 callback failed because of insufficient permissions', {
@@ -245,7 +244,7 @@ oauth2CredentialController.get(
 			const token = new Csrf();
 			if (
 				decryptedDataOriginal.csrfSecret === undefined ||
-				!token.verify(decryptedDataOriginal.csrfSecret as string, state.token as string)
+				!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
 			) {
 				LoggerProxy.debug('OAuth2 callback state is invalid', {
 					userId: req.user?.id,
@@ -330,7 +329,7 @@ oauth2CredentialController.get(
 			// Add special database related data
 			newCredentialsData.updatedAt = new Date();
 			// Save the credentials in DB
-			await Db.collections.Credentials.update(state.cid as string, newCredentialsData);
+			await Db.collections.Credentials.update(state.cid, newCredentialsData);
 			LoggerProxy.verbose('OAuth2 callback successful for new credential', {
 				userId: req.user?.id,
 				credentialId: state.cid,
