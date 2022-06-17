@@ -290,16 +290,12 @@ export class Disqus implements INodeType {
 								value: 'Is_Anonymous',
 							},
 							{
-								name: 'Is_Flagged',
-								value: 'Is_Flagged',
-							},
-							{
-								name: 'No_Issue',
-								value: 'No_Issue',
-							},
-							{
 								name: 'Is_At_Flag_Limit',
 								value: 'Is_At_Flag_Limit',
+							},
+							{
+								name: 'Is_Flagged',
+								value: 'Is_Flagged',
 							},
 							{
 								name: 'Is_Toxic',
@@ -308,6 +304,10 @@ export class Disqus implements INodeType {
 							{
 								name: 'Modified_By_Rule',
 								value: 'Modified_By_Rule',
+							},
+							{
+								name: 'No_Issue',
+								value: 'No_Issue',
 							},
 							{
 								name: 'Shadow_Banned',

@@ -59,14 +59,9 @@ export class TelegramTrigger implements INodeType {
 						description: 'All updates',
 					},
 					{
-						name: 'Message',
-						value: 'message',
-						description: 'Trigger on new incoming message of any kind — text, photo, sticker, etc',
-					},
-					{
-						name: 'Edited Message',
-						value: 'edited_message',
-						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
+						name: 'Callback Query',
+						value: 'callback_query',
+						description: 'Trigger on new incoming callback query',
 					},
 					{
 						name: 'Channel Post',
@@ -79,20 +74,24 @@ export class TelegramTrigger implements INodeType {
 						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
 					},
 					{
+						name: 'Edited Message',
+						value: 'edited_message',
+						description: 'Trigger on new version of a channel post that is known to the bot and was edited',
+					},
+					{
 						name: 'Inline Query',
 						value: 'inline_query',
 						description: 'Trigger on new incoming inline query',
 					},
 					{
-						name: 'Callback Query',
-						value: 'callback_query',
-						description: 'Trigger on new incoming callback query',
+						name: 'Message',
+						value: 'message',
+						description: 'Trigger on new incoming message of any kind — text, photo, sticker, etc',
 					},
-
 					{
-						name: 'Shipping Query',
-						value: 'shipping_query',
-						description: 'Trigger on new incoming shipping query. Only for invoices with flexible price.',
+						name: 'Poll',
+						value: 'poll',
+						description: 'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
 					{
 						name: 'Pre-Checkout Query',
@@ -100,9 +99,9 @@ export class TelegramTrigger implements INodeType {
 						description: 'Trigger on new incoming pre-checkout query. Contains full information about checkout.',
 					},
 					{
-						name: 'Poll',
-						value: 'poll',
-						description: 'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
+						name: 'Shipping Query',
+						value: 'shipping_query',
+						description: 'Trigger on new incoming shipping query. Only for invoices with flexible price.',
 					},
 				],
 				required: true,
