@@ -1,3 +1,4 @@
+/* eslint-disable id-denylist */
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
@@ -125,12 +126,17 @@ export class Expression {
 			versions: process.versions,
 		};
 
+		/**
+		 * Denylist
+		 */
+
 		// @ts-ignore
 		data.document = {};
 		data.global = {};
 		data.window = {};
 		data.Window = {};
 		data.this = {};
+		data.globalThis = {};
 		data.self = {};
 
 		// Alerts
@@ -140,6 +146,7 @@ export class Expression {
 
 		// Prevent Remote Code Execution
 		data.eval = {};
+		data.uneval = {};
 		data.setTimeout = {};
 		data.setInterval = {};
 		data.Function = {};
@@ -148,13 +155,103 @@ export class Expression {
 		data.fetch = {};
 		data.XMLHttpRequest = {};
 
+		// Prevent control abstraction
+		data.Promise = {};
+		data.Generator = {};
+		data.GeneratorFunction = {};
+		data.AsyncFunction = {};
+		data.AsyncGenerator = {};
+		data.AsyncGeneratorFunction = {};
+
+		// Prevent WASM
+		data.WebAssembly = {};
+
+		// Prevent Reflection
+		data.Reflect = {};
+		data.Proxy = {};
+
 		// @ts-ignore
+		data.constructor = {};
+
+		// Deprecated
+		data.escape = {};
+		data.unescape = {};
+
+		/**
+		 * Allowlist
+		 */
+
+		// Dates
+		data.Date = Date;
 		data.DateTime = DateTime;
 		data.Interval = Interval;
 		data.Duration = Duration;
 
-		// @ts-ignore
-		data.constructor = {};
+		// Objects
+		data.Object = Object;
+
+		// Arrays
+		data.Array = Array;
+		data.Int8Array = Int8Array;
+		data.Uint8Array = Uint8Array;
+		data.Uint8ClampedArray = Uint8ClampedArray;
+		data.Int16Array = Int16Array;
+		data.Uint16Array = Uint16Array;
+		data.Int32Array = Int32Array;
+		data.Uint32Array = Uint32Array;
+		data.Float32Array = Float32Array;
+		data.Float64Array = Float64Array;
+		data.BigInt64Array = typeof BigInt64Array !== 'undefined' ? BigInt64Array : {};
+		data.BigUint64Array = typeof BigUint64Array !== 'undefined' ? BigUint64Array : {};
+
+		// Collections
+		data.Map = typeof Map !== 'undefined' ? Map : {};
+		data.WeakMap = typeof WeakMap !== 'undefined' ? WeakMap : {};
+		data.Set = typeof Set !== 'undefined' ? Set : {};
+		data.WeakSet = typeof WeakSet !== 'undefined' ? WeakSet : {};
+
+		// Errors
+		data.Error = Error;
+		data.TypeError = TypeError;
+		data.SyntaxError = SyntaxError;
+		data.EvalError = EvalError;
+		data.RangeError = RangeError;
+		data.ReferenceError = ReferenceError;
+		data.URIError = URIError;
+
+		// Internationalization
+		data.Intl = typeof Intl !== 'undefined' ? Intl : {};
+
+		// Text
+		data.String = String;
+		data.RegExp = RegExp;
+
+		// Math
+		data.Math = Math;
+		data.Number = Number;
+		data.BigInt = typeof BigInt !== 'undefined' ? BigInt : {};
+		data.Infinity = Infinity;
+		data.NaN = NaN;
+		data.isFinite = Number.isFinite;
+		data.isNaN = Number.isNaN;
+		data.parseFloat = parseFloat;
+		data.parseInt = parseInt;
+
+		// Structured data
+		data.JSON = JSON;
+		data.ArrayBuffer = typeof ArrayBuffer !== 'undefined' ? ArrayBuffer : {};
+		data.SharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined' ? SharedArrayBuffer : {};
+		data.Atomics = typeof Atomics !== 'undefined' ? Atomics : {};
+		data.DataView = typeof DataView !== 'undefined' ? DataView : {};
+
+		data.encodeURI = encodeURI;
+		data.encodeURIComponent = encodeURIComponent;
+		data.decodeURI = decodeURI;
+		data.decodeURIComponent = decodeURIComponent;
+
+		// Other
+		data.Boolean = Boolean;
+		data.Symbol = Symbol;
 
 		// Execute the expression
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
