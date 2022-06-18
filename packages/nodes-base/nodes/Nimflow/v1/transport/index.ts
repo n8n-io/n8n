@@ -3,9 +3,10 @@ import {
 } from 'n8n-core';
 
 import {
+	GenericValue,
 	IDataObject,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -14,12 +15,16 @@ import {
 
 const baseUrl = 'https://api.nimflow.com';
 
-export async function nimflowApiRequest(
+/*
+* Make an API request to Nimflow
+*/
+
+export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	body: object,
-): Promise<any> {
+	body: IDataObject | GenericValue | GenericValue[] = {},
+) {
 	const {
 		subscriptionKey,
 		apiKey,
@@ -28,8 +33,8 @@ export async function nimflowApiRequest(
 
 	const options: OptionsWithUri = {
 		headers: {
-			'Accept': 'text/plain',
-			'Content-Type': 'application/json',
+			'accept': 'text/plain',
+			'content-type': 'application/json',
 			'subscription-key': subscriptionKey,
 			'x-api-key': apiKey,
 			'unit-id': unitId
@@ -40,14 +45,6 @@ export async function nimflowApiRequest(
 		json: true
 	};
 
-	if (Object.keys(body).length === 0) {
-		delete options.body;
-	}
-
-	try {
-		const result =  await this.helpers.request!(options);
-		return result;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	const result =  await this.helpers.request!(options);
+	return result;
 }
