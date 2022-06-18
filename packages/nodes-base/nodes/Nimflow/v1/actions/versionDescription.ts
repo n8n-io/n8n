@@ -6,6 +6,7 @@ import { taskDependencyFields } from '../../../ClickUp/TaskDependencyDescription
 
 import * as context from './context';
 import * as task from './task';
+import * as fn from './function';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Nimflow',
@@ -52,5 +53,6 @@ export const versionDescription: INodeTypeDescription = {
 		},
 		...context.descriptions,
 		...task.descriptions,
+		...fn.descriptions,
 	],
 };
