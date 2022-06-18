@@ -21,7 +21,8 @@
     "lint": "cd ../.. && node_modules/eslint/bin/eslint.js packages/workflow",
     "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/workflow --fix",
     "watch": "tsc --watch",
-    "test": "jest"
+    "test": "jest",
+    "test:dev": "jest --watch"
   },
   "files": [
     "dist"
@@ -32,8 +33,8 @@
     "@types/jmespath": "^0.15.0",
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.merge": "^4.6.6",
-    "@types/luxon": "^2.0.9",
     "@types/lodash.set": "^4.3.6",
+    "@types/luxon": "^2.0.9",
     "@types/node": "14.17.27",
     "@types/xml2js": "^0.4.3",
     "@typescript-eslint/eslint-plugin": "^4.29.0",
@@ -44,6 +45,7 @@
     "eslint-plugin-import": "^2.23.4",
     "eslint-plugin-prettier": "^3.4.0",
     "jest": "^27.4.7",
+    "jest-environment-jsdom": "^27.5.1",
     "prettier": "^2.3.2",
     "ts-jest": "^27.1.3",
     "tslint": "^6.1.2",
@@ -56,7 +58,7 @@
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
     "luxon": "^2.3.0",
-    "riot-tmpl": "^3.0.8",
+    "riot-tmpl": "github:n8n-io/tmpl",
     "xml2js": "^0.4.23"
   },
   "jest": {
