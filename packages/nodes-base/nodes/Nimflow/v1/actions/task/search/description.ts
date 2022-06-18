@@ -1,37 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	TaskProperties,
+} from '../../Interfaces';
 
-export const taskOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-				show: {
-						resource: [
-								'task',
-						],
-				},
-		},
-		options: [
-				{
-						name: 'Search',
-						value: 'search',
-						description: 'Search tasks by multiple criteria',
-				},
-				{
-					name: 'SearchAndUpdate',
-					value: 'searchAndUpdate',
-					description: 'Search and update tasks by multiple criteria',
-				},
-		],
-		default: 'search',
-	},
-]
-
-export const taskFields: INodeProperties[] = [
+export const searchDescription: TaskProperties = [
 	{
 		displayName: 'ContextTypeName',
 		name: 'contextTypeName',
@@ -50,23 +21,6 @@ export const taskFields: INodeProperties[] = [
 		description:'Tasks that matches the Context Type Name',
 	},
 	{
-		displayName: 'ContextReference',
-		name: 'contextReference',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'task'
-				],
-				operation: [
-					'search'
-				]
-			}
-		},
-		default: '',
-		description: 'Tasks that matches the Context Reference'
-	},
-	{
 		displayName: 'TypeName',
 		name: 'typeName',
 		type: 'string',
@@ -82,23 +36,6 @@ export const taskFields: INodeProperties[] = [
 		},
 		default: '',
 		description: 'Tasks that matches the Type Name'
-	},
-	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'task'
-				],
-				operation: [
-					'search'
-				]
-			}
-		},
-		default: '',
-		description: 'Tasks that matches the Status'
 	},
 	{
 		displayName: "Archived",
@@ -124,83 +61,22 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tasks'
+					'task'
 				],
 				operation: [
 					'search'
 				]
 			}
 		},
-		default: new Date().toISOString(),
+		default: null,
 		description: 'Tasks with StartDate On or After a date'
-	},
-	{
-		displayName: 'StartDateBefore',
-		name: 'startDateBefore',
-		type: 'dateTime',
-		displayOptions: {
-			show: {
-				resource: [
-					'tasks'
-				],
-				operation: [
-					'search'
-				]
-			}
-		},
-		default: new Date().toISOString(),
-		description: 'Tasks with StartDate Before a date'
-	},
-	{
-		displayName: 'DueDateOnOrAfter',
-		name: 'dueDateOnOrAfter',
-		type: 'dateTime',
-		displayOptions: {
-			show: {
-				resource: [
-					'tasks'
-				],
-				operation: [
-					'search'
-				]
-			}
-		},
-		default: new Date().toISOString(),
-		description: 'Tasks with DueDate On or After a date'
 	},
 	{
 		displayName: 'DueDateBefore',
 		name: 'dueDateBefore',
 		type: 'dateTime',
-		displayOptions: {
-			show: {
-				resource: [
-					'tasks'
-				],
-				operation: [
-					'search'
-				]
-			}
-		},
-		default: new Date().toISOString(),
+		default: null,
 		description: 'Tasks with DueDate Before a date'
-	},
-	{
-		displayName: 'AssignedTo',
-		name: 'assignedTo',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'tasks'
-				],
-				operation: [
-					'search'
-				]
-			}
-		},
-		default: '',
-		description: 'Tasks that match the Assigned To'
 	},
 	{
 		displayName: 'AssignedToCurrentUser',
@@ -210,6 +86,9 @@ export const taskFields: INodeProperties[] = [
 			show: {
 				resource: [
 					'task'
+				],
+				operation: [
+					'search'
 				]
 			}
 		},
@@ -224,6 +103,9 @@ export const taskFields: INodeProperties[] = [
 			show: {
 				resource: [
 					'task'
+				],
+				operation: [
+					'search'
 				]
 			}
 		},
@@ -238,10 +120,74 @@ export const taskFields: INodeProperties[] = [
 			show: {
 				resource: [
 					'task'
+				],
+				operation: [
+					'search'
 				]
 			}
 		},
 		default: true,
 		description: 'Tasks that are or not enable to start'
-	}
+	},
+	{
+    displayName: 'Additional Fields',
+    name: 'additionalFields',
+    type: 'collection',
+    placeholder: 'Add Field',
+    default: {},
+    displayOptions: {
+        show: {
+            resource: [
+                'task',
+            ],
+            operation: [
+                'search',
+            ],
+        },
+    },
+    options: [
+        {
+            displayName: 'AssignedTo',
+            name: 'assignedTo',
+            type: 'string',
+            default: '',
+						description: 'Tasks that match the Assigned To'
+        },
+				{
+					displayName: 'StartDateBefore',
+					name: 'startDateBefore',
+					type: 'dateTime',
+					default: null,
+					description: 'Tasks with StartDate Before a date'
+				},
+				{
+					displayName: 'DueDateOnOrAfter',
+					name: 'dueDateOnOrAfter',
+					type: 'dateTime',
+					default: null,
+					description: 'Tasks with DueDate On or After a date'
+				},
+				{
+					displayName: 'Status',
+					name: 'status',
+					type: 'string',
+					default: '',
+					description: 'Tasks that matches the Status'
+				},
+				{
+					displayName: 'ContextReference',
+					name: 'contextReference',
+					type: 'string',
+					default: '',
+					description: 'Tasks that matches the Context Reference'
+				},
+				{
+					displayName: 'ContextId',
+					name: 'contextId',
+					type: 'string',
+					default: '',
+					description: 'Tasks that matches the Context ID'
+				},
+    ],
+	},
 ]

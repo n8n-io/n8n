@@ -6,7 +6,7 @@ import {
 
 type NimflowMap = {
 	context: 'dispatchAction',
-	task: 'addResponse' | 'search' | 'searchAndUpdate'
+	task: 'search' | 'addResponse'
 };
 
 export type Nimflow = AllEntities<NimflowMap>;

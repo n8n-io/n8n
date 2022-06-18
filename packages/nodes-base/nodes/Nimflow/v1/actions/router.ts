@@ -4,9 +4,11 @@ import {
 
 import {
 	INodeExecutionData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import * as context from './context';
+import * as task from './task';
 import { Nimflow } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -25,13 +27,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		try {
 			if (nimflow.resource === 'context') {
 				operationResult.push(...await context[nimflow.operation].execute.call(this, i));
+			} else if(nimflow.resource === 'task') {
+				operationResult.push(...await task[nimflow.operation].execute.call(this, i));
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {
 				operationResult.push({json: this.getInputData(i)[0].json, error: err});
 			} else {
 				if (err.context) err.context.itemIndex = i;
-				throw err;
+				throw new NodeApiError(this.getNode(), err);
 			}
 		}
 	}
