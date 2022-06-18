@@ -413,7 +413,7 @@ test('GET /workflows/:id should retrieve workflow', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
+	const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt, tags } =
 		response.body;
 
 	expect(id).toEqual(workflow.id);
@@ -422,6 +422,7 @@ test('GET /workflows/:id should retrieve workflow', async () => {
 	expect(active).toBe(false);
 	expect(staticData).toEqual(workflow.staticData);
 	expect(nodes).toEqual(workflow.nodes);
+	expect(tags).toEqual([]);
 	expect(settings).toEqual(workflow.settings);
 	expect(createdAt).toEqual(workflow.createdAt.toISOString());
 	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
