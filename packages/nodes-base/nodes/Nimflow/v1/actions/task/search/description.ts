@@ -55,40 +55,6 @@ export const searchDescription: TaskProperties = [
 		description: 'Tasks thar are or not are Archived'
 	},
 	{
-		displayName: 'StartDateOnOrAfter',
-		name: 'startDateOnOrAfter',
-		type: 'dateTime',
-		displayOptions: {
-			show: {
-				resource: [
-					'task'
-				],
-				operation: [
-					'search'
-				]
-			}
-		},
-		default: null,
-		description: 'Tasks with StartDate On or After a date'
-	},
-	{
-		displayName: 'DueDateBefore',
-		name: 'dueDateBefore',
-		type: 'dateTime',
-		displayOptions: {
-			show: {
-				resource: [
-					'task'
-				],
-				operation: [
-					'search'
-				]
-			}
-		},
-		default: null,
-		description: 'Tasks with DueDate Before a date'
-	},
-	{
 		displayName: 'AssignedToCurrentUser',
 		name: 'assignedToCurrentUser',
 		type: 'boolean',
@@ -164,6 +130,13 @@ export const searchDescription: TaskProperties = [
 						description: 'Tasks that match the Assigned To'
         },
 				{
+					displayName: 'StartDateOnOrAfter',
+					name: 'startDateOnOrAfter',
+					type: 'dateTime',
+					default: null,
+					description: 'Tasks with StartDate On or After a date'
+				},
+				{
 					displayName: 'StartDateBefore',
 					name: 'startDateBefore',
 					type: 'dateTime',
@@ -176,6 +149,13 @@ export const searchDescription: TaskProperties = [
 					type: 'dateTime',
 					default: null,
 					description: 'Tasks with DueDate On or After a date'
+				},
+				{
+					displayName: 'DueDateBefore',
+					name: 'dueDateBefore',
+					type: 'dateTime',
+					default: null,
+					description: 'Tasks with DueDate Before a date'
 				},
 				{
 					displayName: 'Status',
