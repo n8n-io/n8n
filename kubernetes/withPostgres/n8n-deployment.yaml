@@ -15,7 +15,7 @@ spec:
   template:
     metadata:
       labels:
-        io.kompose.service: n8n
+        service: n8n
     spec:
       containers:
         - args:
