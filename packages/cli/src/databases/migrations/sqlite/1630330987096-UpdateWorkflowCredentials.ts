@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
-import { MigrationHelpers } from '../../MigrationHelpers';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import { runChunked } from '../../utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
@@ -13,7 +13,6 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 		logMigrationStart(this.name);
 
 		const tablePrefix = config.getEnv('database.tablePrefix');
-		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`
 			SELECT id, name, type
@@ -26,7 +25,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 		`;
 
 		// @ts-ignore
-		await helpers.runChunked(workflowsQuery, (workflows) => {
+		await runChunked(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = JSON.parse(workflow.nodes);
 				let credentialsUpdated = false;
@@ -69,7 +68,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 			WHERE "waitTill" IS NOT NULL AND finished = 0
 		`;
 		// @ts-ignore
-		await helpers.runChunked(waitingExecutionsQuery, (waitingExecutions) => {
+		await runChunked(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
 			waitingExecutions.forEach(async (execution) => {
 				const data = JSON.parse(execution.workflowData);
 				let credentialsUpdated = false;
@@ -153,7 +152,6 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
-		const helpers = new MigrationHelpers(queryRunner);
 
 		const credentialsEntities = await queryRunner.query(`
 			SELECT id, name, type
@@ -166,7 +164,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 		`;
 
 		// @ts-ignore
-		await helpers.runChunked(workflowsQuery, (workflows) => {
+		await runChunked(queryRunner, workflowsQuery, (workflows) => {
 			// @ts-ignore
 			workflows.forEach(async (workflow) => {
 				const nodes = JSON.parse(workflow.nodes);
@@ -216,7 +214,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 		`;
 
 		// @ts-ignore
-		await helpers.runChunked(waitingExecutionsQuery, (waitingExecutions) => {
+		await runChunked(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
 			// @ts-ignore
 			waitingExecutions.forEach(async (execution) => {
 				const data = JSON.parse(execution.workflowData);
