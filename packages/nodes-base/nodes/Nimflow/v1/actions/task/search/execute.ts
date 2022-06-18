@@ -19,8 +19,6 @@ export async function search(this: IExecuteFunctions, index: number): Promise<IN
 	const contextTypeName = this.getNodeParameter('contextTypeName', index) as string;
 	const typeName = this.getNodeParameter('typeName', index) as string;
 	const archived = this.getNodeParameter('archived', index) as boolean;
-	const startDateOnOrAfter = this.getNodeParameter('startDateOnOrAfter', index) as string;
-	const dueDateBefore = this.getNodeParameter('dueDateBefore', index) as string;
 	const unassigned = this.getNodeParameter('unassigned', index) as boolean;
 	const assignedToCurrentUser = this.getNodeParameter('assignedToCurrentUser', index) as boolean;
 	const startEnabled = this.getNodeParameter('startEnabled', index) as boolean;
@@ -32,8 +30,6 @@ export async function search(this: IExecuteFunctions, index: number): Promise<IN
 		...(contextTypeName && { contextTypeName} ),
 		...(typeName && {typeName}),
 		archived,
-		...(startDateOnOrAfter && {startDateOnOrAfter}),
-		...(dueDateBefore && {dueDateBefore}),
 		unassigned,
 		assignedToCurrentUser,
 		startEnabled,

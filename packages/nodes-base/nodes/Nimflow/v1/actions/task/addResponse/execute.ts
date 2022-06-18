@@ -33,6 +33,6 @@ export async function addResponse(this: IExecuteFunctions, index: number): Promi
 		payload,
 		...additionalFields
 	};
-	//const responseData = await apiRequest.call(this, method, endpoint, body);
-	return this.helpers.returnJsonArray(body);
+	const responseData = await apiRequest.call(this, method, endpoint, body);
+	return this.helpers.returnJsonArray(responseData);
 }
