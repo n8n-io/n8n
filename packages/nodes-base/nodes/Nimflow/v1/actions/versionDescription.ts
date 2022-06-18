@@ -2,8 +2,10 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { taskDependencyFields } from '../../../ClickUp/TaskDependencyDescription';
 
 import * as context from './context';
+import * as task from './task';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Nimflow',
@@ -49,5 +51,6 @@ export const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		...context.descriptions,
+		...task.descriptions,
 	],
 };
