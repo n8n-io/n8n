@@ -16,6 +16,8 @@ let globalMemberRole: Role;
 let workflowOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 
+jest.mock('../../../src/telemetry');
+
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 	const initResult = await testDb.init();
@@ -34,6 +36,7 @@ beforeAll(async () => {
 	utils.initTestTelemetry();
 	utils.initTestLogger();
 	await utils.initNodeTypes();
+	await utils.initConfigFile();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 
@@ -648,7 +651,7 @@ test('POST /workflows/:id/activate should fail due to trying to activate a workf
 	expect(response.statusCode).toBe(400);
 });
 
-test.skip('POST /workflows/:id/activate should set workflow as active', async () => {
+test('POST /workflows/:id/activate should set workflow as active', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
 	const authAgent = utils.createAgent(app, {
@@ -692,7 +695,7 @@ test.skip('POST /workflows/:id/activate should set workflow as active', async ()
 	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(true);
 });
 
-test.skip('POST /workflows/:id/activate should set non-owned workflow as active when owner', async () => {
+test('POST /workflows/:id/activate should set non-owned workflow as active when owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
