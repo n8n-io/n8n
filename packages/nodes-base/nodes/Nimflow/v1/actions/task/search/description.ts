@@ -75,6 +75,16 @@ export const searchDescription: TaskProperties = [
 		displayName: 'DueDateBefore',
 		name: 'dueDateBefore',
 		type: 'dateTime',
+		displayOptions: {
+			show: {
+				resource: [
+					'task'
+				],
+				operation: [
+					'search'
+				]
+			}
+		},
 		default: null,
 		description: 'Tasks with DueDate Before a date'
 	},

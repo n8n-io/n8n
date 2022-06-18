@@ -9,6 +9,7 @@ import {
 
 import * as context from './context';
 import * as task from './task';
+import * as fn from './function';
 import { Nimflow } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -29,6 +30,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				operationResult.push(...await context[nimflow.operation].execute.call(this, i));
 			} else if(nimflow.resource === 'task') {
 				operationResult.push(...await task[nimflow.operation].execute.call(this, i));
+			} else if(nimflow.resource === 'function') {
+				operationResult.push(...await fn[nimflow.operation].execute.call(this, i))
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {
