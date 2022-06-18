@@ -1,0 +1,3033 @@
+{
+  "x-generator": "NSwag v13.15.10.0 (NJsonSchema v10.6.10.0 (Newtonsoft.Json v13.0.0.0))",
+  "swagger": "2.0",
+  "info": {
+    "title": "Nimflow Hub Base API v1",
+    "version": "4.55.4"
+  },
+  "host": "api.nimflow.com",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/BlobStorage/Upload": {
+      "post": {
+        "tags": [
+          "BlobStorage"
+        ],
+        "summary": "Upload file",
+        "operationId": "BlobStorage_Upload",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "name": "path",
+            "in": "query",
+            "x-nullable": true
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/WriteFilesResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/BlobStorage/List": {
+      "post": {
+        "tags": [
+          "BlobStorage"
+        ],
+        "summary": "List files",
+        "operationId": "BlobStorage_List",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/List"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Blob"
+              }
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/BlobStorage/{path}": {
+      "get": {
+        "tags": [
+          "BlobStorage"
+        ],
+        "summary": "Get file from path",
+        "operationId": "BlobStorage_Get",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "x-nullable": true
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/BlobStorage/GetDataUrl/{path}": {
+      "get": {
+        "tags": [
+          "BlobStorage"
+        ],
+        "summary": "Get file's data url from path",
+        "operationId": "BlobStorage_GetDataUrl",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "x-nullable": true
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "Returns the base64 encoded string",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/BlobStorage/Delete": {
+      "post": {
+        "tags": [
+          "BlobStorage"
+        ],
+        "summary": "Delete file",
+        "operationId": "BlobStorage_Delete",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DeleteFile"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/DeleteFileResponse"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/BlobStorage/WriteFiles": {
+      "post": {
+        "tags": [
+          "BlobStorage"
+        ],
+        "summary": "Write files from base 64 data",
+        "operationId": "BlobStorage_WriteFiles",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the target folder and each file content encoded as a base64 string with a\nfilename.\n            ",
+            "schema": {
+              "$ref": "#/definitions/WriteFiles"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/WriteFilesResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/InsertOne": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Insert one document",
+        "operationId": "Collections_InsertOne",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/InsertOne"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The Id of the inserted document.",
+            "schema": {
+              "$ref": "#/definitions/InsertResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/InsertMany": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Insert many documents",
+        "operationId": "Collections_InsertMany",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the new documents.",
+            "schema": {
+              "$ref": "#/definitions/InsertMany"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The acknowledged of the command execution.",
+            "schema": {
+              "$ref": "#/definitions/InsertManyResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/Replace": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Replace one document",
+        "operationId": "Collections_Replace",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the collection type name, Id and new replacement data.",
+            "schema": {
+              "$ref": "#/definitions/ReplaceOne"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "Returns the matched and actually modified counts.",
+            "schema": {
+              "$ref": "#/definitions/ReplaceOneResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/UpdateOne": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Update one document",
+        "operationId": "Collections_UpdateOne",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the collection type name, filter and update operators.",
+            "schema": {
+              "$ref": "#/definitions/UpdateOne"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "Returns the matched and actually modified counts.",
+            "schema": {
+              "$ref": "#/definitions/UpdateResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/UpdateMany": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Update many documents",
+        "operationId": "Collections_UpdateMany",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the collection type name, filter and update operators.",
+            "schema": {
+              "$ref": "#/definitions/UpdateMany"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "Returns the matched and actually modified counts.",
+            "schema": {
+              "$ref": "#/definitions/UpdateResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/DeleteOne": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Delete one document by id",
+        "operationId": "Collections_DeleteOne",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the custom collection name and the Id of the document.",
+            "schema": {
+              "$ref": "#/definitions/DeleteOne"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The deleted documents count.",
+            "schema": {
+              "$ref": "#/definitions/DeleteResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/DeleteMany": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Delete many documents",
+        "operationId": "Collections_DeleteMany",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the collection type name and filter.",
+            "schema": {
+              "$ref": "#/definitions/DeleteMany"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "Returns the deleted documents count.",
+            "schema": {
+              "$ref": "#/definitions/DeleteResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/FindById": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Find document by id",
+        "operationId": "Collections_FindById",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the custom collection name and the Id of the document.",
+            "schema": {
+              "$ref": "#/definitions/FindById"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The document with the id or <see langword=\"null\"/>",
+            "schema": {}
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/Find": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Find documents",
+        "operationId": "Collections_Find",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "body",
+            "required": true,
+            "description": "Query containing the criteria.",
+            "schema": {
+              "$ref": "#/definitions/Find"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The list of matching documents.",
+            "schema": {
+              "type": "array",
+              "items": {}
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Collections/Aggregate": {
+      "post": {
+        "tags": [
+          "Collections"
+        ],
+        "summary": "Aggregate documents",
+        "operationId": "Collections_Aggregate",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "body",
+            "required": true,
+            "description": "Aggregation query containing the pipeline definition.",
+            "schema": {
+              "$ref": "#/definitions/Aggregate"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The aggregation result.",
+            "schema": {
+              "type": "array",
+              "items": {}
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Contexts/DispatchAction": {
+      "post": {
+        "tags": [
+          "Contexts"
+        ],
+        "summary": "Dispatch action",
+        "operationId": "Contexts_DispatchAction",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the required reference information and payload.",
+            "schema": {
+              "$ref": "#/definitions/DispatchContextAction"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "Command execution result.",
+            "schema": {
+              "$ref": "#/definitions/DispatchContextActionResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Contexts/Aggregate": {
+      "post": {
+        "tags": [
+          "Contexts"
+        ],
+        "summary": "Aggregate contexts",
+        "operationId": "Contexts_Aggregate",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "body",
+            "required": true,
+            "description": "Aggregation query containing the pipeline definition.",
+            "schema": {
+              "$ref": "#/definitions/AggregateContexts"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The aggregation result.",
+            "schema": {}
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Events/AggregateEvents": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Aggregate events",
+        "operationId": "Events_AggregateEvents",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "body",
+            "required": true,
+            "description": "Aggregation query containing the pipeline definition.",
+            "schema": {
+              "$ref": "#/definitions/AggregateEvents"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The aggregation result.",
+            "schema": {}
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Events/RegisterCustomEvents": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Register custom events",
+        "operationId": "Events_RegisterCustomEvents",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RegisterCustomEvents"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/RegisterCustomEventsResult"
+            }
+          }
+        }
+      }
+    },
+    "/Functions/Call": {
+      "post": {
+        "tags": [
+          "Functions"
+        ],
+        "summary": "Call",
+        "operationId": "Functions_Call",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "description": "The function call request.",
+            "schema": {
+              "$ref": "#/definitions/CallFunction"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "Result of the evaluation of the function with its corresponding type.",
+            "schema": {}
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Tasks/Search": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Search tasks",
+        "description": "Search tasks by multiple criteria",
+        "operationId": "Tasks_Search",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "body",
+            "required": true,
+            "description": "Query containing the criteria.",
+            "schema": {
+              "$ref": "#/definitions/SearchTasks"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The list of matching tasks.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ContextTask"
+              }
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Tasks/Aggregate": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Aggregate tasks",
+        "operationId": "Tasks_Aggregate",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "body",
+            "required": true,
+            "description": "Aggregation query containing the pipeline definition.",
+            "schema": {
+              "$ref": "#/definitions/AggregateTasks"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The aggregation result.",
+            "schema": {}
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Tasks/AddResponse": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Add task response",
+        "operationId": "Tasks_AddResponse",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "Command containing the required values to locate a task and send a given response with its\ncorresponding payload.\n            ",
+            "schema": {
+              "$ref": "#/definitions/AddTaskResponse"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The add response command result.",
+            "schema": {
+              "$ref": "#/definitions/AddTaskResponseResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    },
+    "/Tasks/SearchAndUpdate": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Search and update tasks",
+        "operationId": "Tasks_SearchAndUpdate",
+        "consumes": [
+          "application/json-patch+json",
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "body",
+            "required": true,
+            "description": "The command containing the criteria and the update values.",
+            "schema": {
+              "$ref": "#/definitions/SearchAndUpdateTasks"
+            },
+            "x-nullable": false
+          },
+          {
+            "type": "string",
+            "name": "unit-id",
+            "in": "header",
+            "required": true,
+            "description": "Selected Business Unit Id"
+          },
+          {
+            "type": "string",
+            "name": "subscription-key",
+            "in": "header",
+            "description": "Subscription key (required when using api.nimflow.com)"
+          },
+          {
+            "type": "string",
+            "name": "x-api-key",
+            "in": "header",
+            "description": "API Key required for Digital Workers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "x-nullable": false,
+            "description": "The result of executing the command.",
+            "schema": {
+              "$ref": "#/definitions/UpdateTasksResult"
+            }
+          },
+          "400": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "401": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          },
+          "500": {
+            "x-nullable": false,
+            "description": "",
+            "schema": {}
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "WriteFilesResult": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "fileNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Blob": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "List": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "filePrefix": {
+          "type": "string"
+        }
+      }
+    },
+    "DeleteFileResponse": {
+      "type": "object"
+    },
+    "DeleteFile": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "WriteFiles": {
+      "type": "object",
+      "required": [
+        "path",
+        "files"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FileContent"
+          }
+        }
+      }
+    },
+    "FileContent": {
+      "type": "object",
+      "required": [
+        "fileName",
+        "base64"
+      ],
+      "properties": {
+        "fileName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base64": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "InsertResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/OperationResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "OperationResult": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "isAcknowledged"
+      ],
+      "properties": {
+        "isAcknowledged": {
+          "type": "boolean"
+        }
+      }
+    },
+    "InsertOne": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionCommandOfInsertResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          }
+        }
+      ]
+    },
+    "CustomCollectionCommandOfInsertResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionRequestOfInsertResult"
+        },
+        {
+          "type": "object",
+          "x-abstract": true
+        }
+      ]
+    },
+    "CustomCollectionRequestOfInsertResult": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "collectionName"
+      ],
+      "properties": {
+        "collectionName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "InsertManyResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/OperationResult"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "InsertMany": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionCommandOfInsertManyResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "documents": {
+              "type": "array",
+              "items": {
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "CustomCollectionCommandOfInsertManyResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionRequestOfInsertManyResult"
+        },
+        {
+          "type": "object",
+          "x-abstract": true
+        }
+      ]
+    },
+    "CustomCollectionRequestOfInsertManyResult": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "collectionName"
+      ],
+      "properties": {
+        "collectionName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ReplaceOneResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/OperationResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "matchedCount",
+            "modifiedCount"
+          ],
+          "properties": {
+            "matchedCount": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "modifiedCount": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      ]
+    },
+    "ReplaceOne": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionCommandOfReplaceOneResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "replacement"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "replacement": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          }
+        }
+      ]
+    },
+    "CustomCollectionCommandOfReplaceOneResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionRequestOfReplaceOneResult"
+        },
+        {
+          "type": "object",
+          "x-abstract": true
+        }
+      ]
+    },
+    "CustomCollectionRequestOfReplaceOneResult": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "collectionName"
+      ],
+      "properties": {
+        "collectionName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "UpdateResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/OperationResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "matchedCount",
+            "modifiedCount"
+          ],
+          "properties": {
+            "matchedCount": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "modifiedCount": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      ]
+    },
+    "UpdateOne": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/UpdateCommandOfUpdateResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "update",
+            "isUpsert"
+          ],
+          "properties": {
+            "update": {
+              "type": "array",
+              "items": {}
+            },
+            "isUpsert": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "UpdateCommandOfUpdateResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionCommandOfUpdateResult"
+        },
+        {
+          "type": "object",
+          "x-abstract": true,
+          "required": [
+            "filter"
+          ],
+          "properties": {
+            "filter": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          }
+        }
+      ]
+    },
+    "CustomCollectionCommandOfUpdateResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionRequestOfUpdateResult"
+        },
+        {
+          "type": "object",
+          "x-abstract": true
+        }
+      ]
+    },
+    "CustomCollectionRequestOfUpdateResult": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "collectionName"
+      ],
+      "properties": {
+        "collectionName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "UpdateMany": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/UpdateCommandOfUpdateResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "update"
+          ],
+          "properties": {
+            "update": {
+              "type": "array",
+              "items": {}
+            }
+          }
+        }
+      ]
+    },
+    "DeleteResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/OperationResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "deletedCount"
+          ],
+          "properties": {
+            "deletedCount": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      ]
+    },
+    "DeleteOne": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionCommandOfDeleteResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "CustomCollectionCommandOfDeleteResult": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionRequestOfDeleteResult"
+        },
+        {
+          "type": "object",
+          "x-abstract": true
+        }
+      ]
+    },
+    "CustomCollectionRequestOfDeleteResult": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "collectionName"
+      ],
+      "properties": {
+        "collectionName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "DeleteMany": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionCommandOfDeleteResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          }
+        }
+      ]
+    },
+    "FindById": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionQueryOfObject"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "CustomCollectionQueryOfObject": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionRequestOfObject"
+        },
+        {
+          "type": "object",
+          "x-abstract": true
+        }
+      ]
+    },
+    "CustomCollectionRequestOfObject": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "collectionName"
+      ],
+      "properties": {
+        "collectionName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Find": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionQueryOfIEnumerableOfObject"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "filter": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "sort": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "skip": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "limit": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      ]
+    },
+    "CustomCollectionQueryOfIEnumerableOfObject": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionRequestOfIEnumerableOfObject"
+        },
+        {
+          "type": "object",
+          "x-abstract": true
+        }
+      ]
+    },
+    "CustomCollectionRequestOfIEnumerableOfObject": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "collectionName"
+      ],
+      "properties": {
+        "collectionName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Aggregate": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CustomCollectionQueryOfIEnumerableOfObject"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "stages": {
+              "type": "array",
+              "items": {
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "DispatchContextActionResult": {
+      "type": "object",
+      "required": [
+        "contextId",
+        "isNew"
+      ],
+      "properties": {
+        "contextId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "isNew": {
+          "type": "boolean"
+        }
+      }
+    },
+    "DispatchContextAction": {
+      "type": "object",
+      "required": [
+        "contextTypeName",
+        "action"
+      ],
+      "properties": {
+        "contextTypeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contextId": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "subject": {
+          "type": "string"
+        }
+      }
+    },
+    "AggregateContexts": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/AggregateQuery"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contextTypeName": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "AggregateQuery": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "tryParseDateTimeStrings"
+      ],
+      "properties": {
+        "stages": {
+          "type": "array",
+          "items": {}
+        },
+        "tryParseDateTimeStrings": {
+          "type": "boolean"
+        }
+      }
+    },
+    "AggregateEvents": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/AggregateQuery"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "timestampGreaterThanEqual": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "timestampLessThan": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "eventIn": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "RegisterCustomEventsResult": {
+      "type": "object",
+      "required": [
+        "registeredCount"
+      ],
+      "properties": {
+        "registeredCount": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "RegisterCustomEvents": {
+      "type": "object",
+      "required": [
+        "events"
+      ],
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CustomEventData"
+          }
+        }
+      }
+    },
+    "CustomEventData": {
+      "type": "object",
+      "required": [
+        "eventName",
+        "reference"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "eventName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TagState"
+          }
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MetricState"
+          }
+        },
+        "sentBy": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        }
+      }
+    },
+    "TagState": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "MetricState": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "CallFunction": {
+      "type": "object",
+      "required": [
+        "moduleName",
+        "name",
+        "parameters"
+      ],
+      "properties": {
+        "moduleName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "ContextTask": {
+      "type": "object",
+      "required": [
+        "contextId",
+        "contextTypeName",
+        "typeName",
+        "title",
+        "data",
+        "dateCreated",
+        "dateUpdated",
+        "archived",
+        "importance",
+        "focused",
+        "id"
+      ],
+      "properties": {
+        "contextId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contextTypeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contextReference": {
+          "type": "string"
+        },
+        "typeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dateCreated": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dateUpdated": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "assignedTo": {
+          "type": "string"
+        },
+        "assignedToRole": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "archived": {
+          "type": "boolean"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "importance": {
+          "$ref": "#/definitions/Importance"
+        },
+        "focused": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Importance": {
+      "type": "integer",
+      "description": "",
+      "x-enumNames": [
+        "Normal",
+        "High",
+        "Low"
+      ],
+      "enum": [
+        0,
+        1,
+        -1
+      ]
+    },
+    "SearchTasks": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/SearchTasksBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "assignedTo": {
+              "type": "string"
+            },
+            "assignedToRoleIncludes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "assignedToIncludes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "unassigned": {
+              "type": "boolean"
+            },
+            "assignedToCurrentUser": {
+              "type": "boolean"
+            },
+            "startEnabled": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "SearchTasksBase": {
+      "type": "object",
+      "x-abstract": true,
+      "required": [
+        "skip",
+        "limit"
+      ],
+      "properties": {
+        "contextId": {
+          "type": "string"
+        },
+        "contextTypeName": {
+          "type": "string"
+        },
+        "contextReference": {
+          "type": "string"
+        },
+        "typeName": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "statusIn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "archived": {
+          "type": "boolean"
+        },
+        "focused": {
+          "type": "boolean"
+        },
+        "importance": {
+          "$ref": "#/definitions/Importance"
+        },
+        "startDateOnOrAfter": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startDateBefore": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dueDateOnOrAfter": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dueDateBefore": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sort": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SortDefinition"
+          }
+        },
+        "skip": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "default": 1000
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "SortDefinition": {
+      "type": "object",
+      "required": [
+        "fieldName",
+        "direction"
+      ],
+      "properties": {
+        "fieldName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "$ref": "#/definitions/SortDirection"
+        }
+      }
+    },
+    "SortDirection": {
+      "type": "integer",
+      "description": "",
+      "x-enumNames": [
+        "Ascending",
+        "Descending"
+      ],
+      "enum": [
+        1,
+        -1
+      ]
+    },
+    "AggregateTasks": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/AggregateQuery"
+        },
+        {
+          "type": "object",
+          "required": [
+            "assignedToCurrentUser"
+          ],
+          "properties": {
+            "startEnabled": {
+              "type": "boolean"
+            },
+            "assignedToCurrentUser": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "AddTaskResponseResult": {
+      "type": "object",
+      "properties": {
+        "responseId": {
+          "type": "string"
+        }
+      }
+    },
+    "AddTaskResponse": {
+      "type": "object",
+      "required": [
+        "contextTypeName",
+        "taskTypeName",
+        "responseTypeName"
+      ],
+      "properties": {
+        "contextId": {
+          "type": "string"
+        },
+        "contextReference": {
+          "type": "string"
+        },
+        "contextTypeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taskTypeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "responseTypeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sentBy": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "subject": {
+          "type": "string"
+        },
+        "startedOn": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sentOn": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "UpdateTasksResult": {
+      "type": "object",
+      "required": [
+        "matchedCount",
+        "modifiedCount"
+      ],
+      "properties": {
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ContextTask"
+          }
+        },
+        "matchedCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "modifiedCount": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "SearchAndUpdateTasks": {
+      "type": "object",
+      "required": [
+        "search",
+        "returnTasks",
+        "assignToCurrentUser"
+      ],
+      "properties": {
+        "search": {
+          "$ref": "#/definitions/SearchTasks"
+        },
+        "values": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "returnTasks": {
+          "type": "boolean"
+        },
+        "assignToCurrentUser": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "BlobStorage",
+      "description": "Provides full access to store and query binary data as documents, images, etc.\n            "
+    },
+    {
+      "name": "Collections",
+      "description": "Provides full access to custom collections.\nCustom collections are named user defined collections to freely insert, update, delete and query documents.\n            "
+    },
+    {
+      "name": "Contexts",
+      "description": "Provides access to query existing context instances and dispatch actions.\n            "
+    },
+    {
+      "name": "Events",
+      "description": "Provides access to query and register events.\n            "
+    },
+    {
+      "name": "Functions",
+      "description": "Provides end-points to discovery modules and their functions and to maintain user-defined functions.\n            "
+    },
+    {
+      "name": "Tasks",
+      "description": "Provides access to query existing tasks, manage them, and submit responses.\n            "
+    }
+  ]
+}
