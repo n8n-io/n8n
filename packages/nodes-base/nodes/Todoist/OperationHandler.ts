@@ -75,7 +75,6 @@ export class DeleteHandler implements OperationHandler {
 
 		return {
 			success: true,
-			data: null,
 		};
 	}
 }
