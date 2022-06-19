@@ -1,4 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
+import { validateAttachmentsData } from './GenericFunctions';
 
 export const emailOperations: INodeProperties[] = [
 	{
@@ -30,15 +31,6 @@ export const emailOperations: INodeProperties[] = [
 			},
 		},
 		default: 'send',
-	},
-];
-
-const emailAttachments: INodeProperties[] = [
-	{
-		displayName: 'Attachments',
-		default: {},
-		name: 'emailAttachments',
-		type: 'fixedCollection',
 	},
 ];
 
@@ -260,6 +252,92 @@ const sendHtmlEmailFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Attachments',
+				name: 'emailAttachments',
+				placeholder: 'Add Attachment',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options:[
+					{
+						name: 'attachment',
+						displayName: 'Attachment Data',
+						values: [
+								{
+									default: false,
+									displayName: 'Use Attachment Url',
+									name: 'useAttachmentUrl',
+									type: 'boolean',
+								},
+								{
+									default: '',
+									displayName: 'Attachment Url',
+									displayOptions: {
+										hide: {
+											useAttachmentUrl: [false]
+										}
+									},
+									name: 'url',
+									placeholder: 'https://attachment.domain.com/myAttachmentFromUrl.jpg',
+									routing: {
+										send: {
+											property: '=attachment[{{$index}}].url',
+											type: 'body',
+										},
+									},
+									type: 'string',
+								},
+								{
+									default: '',
+									displayName: 'Attachment Data',
+									displayOptions: {
+										hide: {
+											useAttachmentUrl: [true]
+										}
+									},
+									name: 'content',
+									placeholder: 'b3JkZXIucGRm',
+									routing: {
+										send: {
+											property: '=attachment[{{$index}}].content',
+											type: 'body',
+										},
+									},
+									type: 'string',
+								},
+								{
+									default: '',
+									description: 'Name of attachment to be shown, must include file type',
+									displayName: 'Attachment Name',
+									displayOptions: {
+										hide: {
+											useAttachmentUrl: [true]
+										}
+									},
+									name: 'name',
+									placeholder: 'myAttachment.pdf',
+									routing: {
+										send: {
+											property: '=attachment[{{$index}}].name',
+											type: 'body',
+										},
+									},
+									type: 'string',
+								}
+						]
+					}
+				],
+				routing: {
+					send: {
+						preSend: [
+							validateAttachmentsData
+						]
+					},
+				}
+			},
 			{
 				displayName: 'Receipients BCC',
 				name: 'receipientsBCC',
