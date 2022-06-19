@@ -432,10 +432,43 @@ const sendHtmlEmailFields: INodeProperties[] = [
 
 const sendHtmlTemplateEmailFields: INodeProperties[] = [
 	{
-		type: 'number',
+		type: 'options',
 		name: 'templateId',
 		displayName: 'Template ID',
 		default: 0,
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v3/smtp/templates?templateStatus=true&limit=1000&offset=0&sort=desc',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'templates'
+								}
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.name}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'value',
+								},
+							},
+						]
+					}
+				}
+			}
+		},
 		displayOptions: {
 			show: {
 				resource: [
