@@ -43,7 +43,7 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'twakeCloudApi', options);
 	} catch (error) {
-		if (error.error.code === 'ECONNREFUSED') {
+		if (error.error?.code === 'ECONNREFUSED') {
 			throw new NodeApiError(this.getNode(), error, { message: 'Twake host is not accessible!' });
 		}
 		throw new NodeApiError(this.getNode(), error);
