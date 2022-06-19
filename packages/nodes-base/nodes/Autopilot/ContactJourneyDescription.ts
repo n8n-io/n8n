@@ -32,7 +32,7 @@ export const contactJourneyFields: INodeProperties[] = [
 	/*                                 contactJourney:add                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Trigger ID',
+		displayName: 'Trigger Name or ID',
 		name: 'triggerId',
 		required: true,
 		typeOptions: {
@@ -50,7 +50,7 @@ export const contactJourneyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'List ID',
+		description: 'List ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',

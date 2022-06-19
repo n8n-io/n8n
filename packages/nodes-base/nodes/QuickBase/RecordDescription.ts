@@ -22,6 +22,11 @@ export const recordOperations: INodeProperties[] = [
 				description: 'Create a record',
 			},
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a record',
@@ -35,11 +40,6 @@ export const recordOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a record',
-			},
-			{
-				name: 'Upsert',
-				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 		],
 		default: 'create',
@@ -286,14 +286,14 @@ export const recordFields: INodeProperties[] = [
 						displayName: 'Sort By',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getTableFields',
 								},
 								default: '',
-								description: 'The unique identifier of a field in a table',
+								description: 'The unique identifier of a field in a table. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Order',
@@ -362,6 +362,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the properties which should used as columns for the new rows',
 	},
@@ -380,7 +381,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'update can use the key field on the table, or any other supported unique field',
+		description: 'Update can use the key field on the table, or any other supported unique field',
 	},
 	{
 		displayName: 'Simplify',
@@ -487,6 +488,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the properties which should used as columns for the new rows',
 	},
@@ -505,10 +507,10 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'update can use the key field on the table, or any other supported unique field',
+		description: 'Update can use the key field on the table, or any other supported unique field',
 	},
 	{
-		displayName: 'Merge Field ID',
+		displayName: 'Merge Field Name or ID',
 		name: 'mergeFieldId',
 		type: 'options',
 		typeOptions: {
@@ -525,7 +527,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '<p>You\'re updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>',
+		description: '<p>You\'re updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Simplify',

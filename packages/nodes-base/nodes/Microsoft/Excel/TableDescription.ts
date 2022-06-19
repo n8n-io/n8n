@@ -45,7 +45,7 @@ export const tableFields: INodeProperties[] = [
 /*                                 table:addRow                               */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
 		typeOptions: {
@@ -64,7 +64,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet',
+		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
 		required: true,
@@ -87,7 +87,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Table',
+		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
 		required: true,
@@ -142,7 +142,7 @@ export const tableFields: INodeProperties[] = [
 /*                                 table:getRows                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
 		typeOptions: {
@@ -161,7 +161,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet',
+		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
 		required: true,
@@ -184,7 +184,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Table',
+		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
 		required: true,
@@ -317,7 +317,7 @@ export const tableFields: INodeProperties[] = [
 /*                                 table:getColumns                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
 		typeOptions: {
@@ -336,7 +336,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet',
+		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
 		required: true,
@@ -359,7 +359,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Table',
+		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
 		required: true,
@@ -492,7 +492,7 @@ export const tableFields: INodeProperties[] = [
 /*                                 table:lookup                               */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
 		required: true,
@@ -512,7 +512,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet',
+		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
 		required: true,
@@ -535,7 +535,7 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Table',
+		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
 		required: true,

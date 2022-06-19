@@ -41,7 +41,7 @@ export const accountFields: INodeProperties[] = [
 	//      account: getBalances
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -49,7 +49,7 @@ export const accountFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to retrieve the balance of',
+		description: 'ID of the user profile to retrieve the balance of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -66,14 +66,14 @@ export const accountFields: INodeProperties[] = [
 	//      account: getStatement
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile whose account to retrieve the statement of',
+		description: 'ID of the user profile whose account to retrieve the statement of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,7 +86,7 @@ export const accountFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Borderless Account ID',
+		displayName: 'Borderless Account Name or ID',
 		name: 'borderlessAccountId',
 		type: 'options',
 		default: [],
@@ -97,7 +97,7 @@ export const accountFields: INodeProperties[] = [
 				'profileId',
 			],
 		},
-		description: 'ID of the borderless account to retrieve the statement of',
+		description: 'ID of the borderless account to retrieve the statement of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -123,6 +123,82 @@ export const accountFields: INodeProperties[] = [
 				],
 				operation: [
 					'getStatement',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Format',
+		name: 'format',
+		type: 'options',
+		default: 'json',
+		description: 'File format to retrieve the statement in',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'getStatement',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'JSON',
+				value: 'json',
+			},
+			{
+				name: 'CSV',
+				value: 'csv',
+			},
+			{
+				name: 'PDF',
+				value: 'pdf',
+			},
+		],
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		required: true,
+		default: 'data',
+		description: 'Name of the binary property to which to write to',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'getStatement',
+				],
+				format: [
+					'csv',
+					'pdf',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'data.pdf',
+		description: 'Name of the file that will be downloaded',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'getStatement',
+				],
+				format: [
+					'csv',
+					'pdf',
 				],
 			},
 		},

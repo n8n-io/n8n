@@ -77,7 +77,7 @@ export const notificationFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'imageValue',
-						displayName: 'image',
+						displayName: 'Image',
 						values: [
 							{
 								displayName: 'Binary Data',

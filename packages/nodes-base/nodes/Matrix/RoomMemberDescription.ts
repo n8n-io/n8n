@@ -32,7 +32,7 @@ export const roomMemberFields: INodeProperties[] = [
 	/*                             roomMember:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -70,7 +70,7 @@ export const roomMemberFields: INodeProperties[] = [
 		placeholder: 'Add filter',
 		options: [
 			{
-				displayName: 'Exclude membership',
+				displayName: 'Exclude Membership',
 				name: 'notMembership',
 				type: 'options',
 				default: '',
