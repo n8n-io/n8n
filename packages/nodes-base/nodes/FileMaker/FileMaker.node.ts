@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {IExecuteFunctions} from 'n8n-core';
 import {
 	ILoadOptionsFunctions,
@@ -27,6 +28,7 @@ export class FileMaker implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FileMaker',
 		name: 'filemaker',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:filemaker.png',
 		group: ['input'],
 		version: 1,
@@ -168,7 +170,7 @@ export class FileMaker implements INodeType {
 				name: 'getPortals',
 				type: 'boolean',
 				default: false,
-				description: 'Should we get portal data as well ?',
+				description: 'Whether to get portal data as well',
 				displayOptions: {
 					show: {
 						action: [
@@ -212,6 +214,7 @@ export class FileMaker implements INodeType {
 				displayName: 'Response Layout Name or ID',
 				name: 'responseLayout',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getResponseLayouts',
 				},
@@ -297,7 +300,7 @@ export class FileMaker implements INodeType {
 				name: 'setSort',
 				type: 'boolean',
 				default: false,
-				description: 'Should we sort data ?',
+				description: 'Whether to sort data',
 				displayOptions: {
 					show: {
 						action: [
@@ -371,7 +374,7 @@ export class FileMaker implements INodeType {
 				name: 'setScriptBefore',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run before the action specified by the API call and after the subsequent sort',
+				description: 'Whether to define a script to be run before the action specified by the API call and after the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -432,7 +435,7 @@ export class FileMaker implements INodeType {
 				name: 'setScriptSort',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort',
+				description: 'Whether to define a script to be run after the action specified by the API call but before the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -493,7 +496,7 @@ export class FileMaker implements INodeType {
 				name: 'setScriptAfter',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort',
+				description: 'Whether to define a script to be run after the action specified by the API call but before the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
