@@ -43,7 +43,7 @@ customCallout.args = {
 	theme: 'custom',
 	icon: 'code-branch',
 	message: 'This is a callout.',
-	actionText: 'Read more'
+	actionText: 'Read more',
 };
 
 export const secondaryCallout = template.bind({});
