@@ -42,6 +42,7 @@ export class Salesmate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesmate',
 		name: 'salesmate',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:salesmate.png',
 		group: ['output'],
 		version: 1,

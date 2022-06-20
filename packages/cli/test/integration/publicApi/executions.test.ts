@@ -8,6 +8,8 @@ import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 
+jest.mock('../../../src/telemetry');
+
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;

@@ -2,11 +2,11 @@
 	<div :class="{'node-settings': true, 'dragging': dragging}" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
-				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
+				<NodeTitle class="node-name" :value="node && node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" />
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" telemetrySource="parameters" />
 				</div>
 			</div>
 			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
@@ -31,6 +31,7 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+					@activate="onWorkflowActivate"
 				>
 					<node-credentials
 						:node="node"
@@ -297,6 +298,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			onWorkflowActivate() {
+				this.$emit('activate');
+			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},

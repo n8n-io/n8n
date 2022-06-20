@@ -149,14 +149,14 @@ export const collectionFields: INodeProperties[] = [
 				type: 'boolean',
 				required: true,
 				default: true,
-				description: 'Resolve linked collection items',
+				description: 'Whether to resolve linked collection items',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Skip',
@@ -213,7 +213,7 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If new entry fields should be set via the value-key pair UI or JSON',
+		description: 'Whether new entry fields should be set via the value-key pair UI or JSON',
 	},
 	{
 		displayName: 'Entry Data',
