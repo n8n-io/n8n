@@ -32,6 +32,7 @@ export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wordpress',
 		name: 'wordpress',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:wordpress.png',
 		group: ['output'],
 		version: 1,

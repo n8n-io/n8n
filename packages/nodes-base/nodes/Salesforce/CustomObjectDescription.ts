@@ -500,7 +500,7 @@ export const customObjectFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -510,7 +510,7 @@ export const customObjectFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Fields to include separated by ,',
+				description: 'Fields to include separated by commas. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -536,6 +536,7 @@ export const customObjectFields: INodeProperties[] = [
 				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getRecordTypes',
 					loadOptionsDependsOn: [
@@ -567,6 +568,7 @@ export const customObjectFields: INodeProperties[] = [
 				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getRecordTypes',
 					loadOptionsDependsOn: [

@@ -59,7 +59,7 @@ export const contactTagFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Tag IDs',
+		displayName: 'Tag Names or IDs',
 		name: 'tagIds',
 		type: 'multiOptions',
 		typeOptions: {

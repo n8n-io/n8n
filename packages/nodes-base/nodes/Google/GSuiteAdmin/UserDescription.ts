@@ -109,6 +109,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDomains',
 		},
@@ -158,7 +159,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Makes a user a super administrator',
+		description: 'Whether to make a user a super administrator',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -182,7 +183,7 @@ export const userFields: INodeProperties[] = [
 				name: 'changePasswordAtNextLogin',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the user is forced to change their password at next login',
+				description: 'Whether the user is forced to change their password at next login',
 			},
 			{
 				displayName: 'Phones',
@@ -304,7 +305,7 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description: 'Indicates if this is the user\'s primary phone number. A user may only have one primary phone number.',
+								description: 'Whether this is the user\'s primary phone number. A user may only have one primary phone number.',
 							},
 						],
 					},
@@ -452,7 +453,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schemas',
+				displayName: 'Custom Schemas Name or ID',
 				name: 'customFieldMask',
 				type: 'multiOptions',
 				displayOptions: {
@@ -466,7 +467,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.',
+				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'View Type',
@@ -586,7 +587,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schemas',
+				displayName: 'Custom Schemas Name or ID',
 				name: 'customFieldMask',
 				type: 'multiOptions',
 				displayOptions: {
@@ -600,7 +601,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.',
+				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Customer',
@@ -649,7 +650,7 @@ export const userFields: INodeProperties[] = [
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'If set to true, retrieves the list of deleted users',
+				description: 'Whether to retrieve the list of deleted users',
 			},
 			{
 				displayName: 'Sort Order',
@@ -732,14 +733,14 @@ export const userFields: INodeProperties[] = [
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if user is archived',
+				description: 'Whether user is archived',
 			},
 			{
 				displayName: 'Change Password At Next Login',
 				name: 'changePasswordAtNextLogin',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the user is forced to change their password at next login',
+				description: 'Whether the user is forced to change their password at next login',
 			},
 			{
 				displayName: 'First Name',
@@ -878,7 +879,7 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description: 'Indicates if this is the user\'s primary phone number. A user may only have one primary phone number.',
+								description: 'Whether this is the user\'s primary phone number. A user may only have one primary phone number.',
 							},
 						],
 					},
