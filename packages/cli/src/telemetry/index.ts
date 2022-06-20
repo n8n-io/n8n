@@ -35,6 +35,14 @@ interface IExecutionsBuffer {
 	firstExecutions: IFirstExecutions;
 }
 
+interface IExecutionTrackProperties {
+	workflow_id: string;
+	success: boolean;
+	error_node_type?: string;
+	is_manual: boolean;
+	[key: string]: unknown;
+}
+
 // eslint-disable-next-line import/no-default-export
 export default class Telemetry {
 	private client?: TelemetryClient;
@@ -117,13 +125,9 @@ export default class Telemetry {
 		return Promise.all(allPromises);
 	}
 
-	getTelemetryClient(): unknown {
-		return this.client;
-	}
-
-	async trackWorkflowExecution(properties: IDataObject): Promise<void> {
+	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
 		if (this.client) {
-			const workflowId = properties.workflow_id as string;
+			const workflowId = properties.workflow_id;
 			this.executionCountsBuffer.counts[workflowId] = this.executionCountsBuffer.counts[
 				workflowId
 			] ?? {
@@ -136,13 +140,10 @@ export default class Telemetry {
 			let countKey: CountBufferItemKey;
 			let firstExecKey: FirstExecutionItemKey;
 
-			if (
-				properties.success === false &&
-				properties.error_node_type &&
-				(properties.error_node_type as string).startsWith('n8n-nodes-base')
-			) {
-				// errored exec
-				void this.track('Workflow execution errored', properties);
+			if (!properties.success) {
+				if (properties.error_node_type?.startsWith('n8n-nodes-base')) {
+					void this.track('Workflow execution errored', properties);
+				}
 
 				if (properties.is_manual) {
 					firstExecKey = 'first_manual_error';
@@ -223,5 +224,11 @@ export default class Telemetry {
 				resolve();
 			}
 		});
+	}
+
+	// test helpers
+
+	getCountsBuffer(): IExecutionsBuffer {
+		return this.executionCountsBuffer;
 	}
 }
