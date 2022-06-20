@@ -14,7 +14,7 @@ import { AddExecutionEntityIndexes1644424784709 } from './1644424784709-AddExecu
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
-import { CommunityNodes1652254514003 } from './1652254514003-CommunityNodes.ts';
+import { CommunityNodes1652254514003 } from './1652254514003-CommunityNodes';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 
 export const mysqlMigrations = [

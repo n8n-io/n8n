@@ -25,9 +25,9 @@ import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { entities } from './databases/entities';
 
-import { postgresMigrations } from './databases/postgresdb/migrations';
-import { mysqlMigrations } from './databases/mysqldb/migrations';
-import { sqliteMigrations } from './databases/sqlite/migrations';
+import { postgresMigrations } from './databases/migrations/postgresdb';
+import { mysqlMigrations } from './databases/migrations/mysqldb';
+import { sqliteMigrations } from './databases/migrations/sqlite';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;

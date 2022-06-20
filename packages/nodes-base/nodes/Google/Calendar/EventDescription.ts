@@ -261,7 +261,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Repeat Frecuency',
+				displayName: 'Repeat Frequency',
 				name: 'repeatFrecuency',
 				type: 'options',
 				options: [
@@ -304,7 +304,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'rrule',
 				type: 'string',
 				default: '',
-				description: 'Recurrence rule. When set, the parameters Repeat Frecuency, Repeat How Many Times and Repeat Until are ignored.',
+				description: 'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
 				displayName: 'Send Updates',
@@ -872,7 +872,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Repeat Frecuency',
+				displayName: 'Repeat Frequency',
 				name: 'repeatFrecuency',
 				type: 'options',
 				options: [
@@ -915,7 +915,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'rrule',
 				type: 'string',
 				default: '',
-				description: 'Recurrence rule. When set, the parameters Repeat Frecuency, Repeat How Many Times and Repeat Until are ignored.',
+				description: 'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
 				displayName: 'Send Updates',
