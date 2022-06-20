@@ -359,6 +359,19 @@ export const ticketFields: INodeProperties[] = [
 				default: '',
 				description: 'Channel where ticket was originally submitted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
+      {
+				displayName: 'Stage Name or ID',
+				name: 'stageId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTicketStages',
+					loadOptionsDependsOn: [
+						'updateFields.pipelineId',
+					],
+				},
+				default: '',
+				description: 'The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			},
 			{
 				displayName: 'Ticket Name',
 				name: 'ticketName',
