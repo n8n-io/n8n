@@ -172,7 +172,7 @@ const typeMention: INodeProperties[] = [
 		description: 'An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.',
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'user',
 		type: 'options',
 		typeOptions: {
@@ -186,7 +186,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the user being mentioned',
+		description: 'The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Page ID',
@@ -203,7 +203,7 @@ const typeMention: INodeProperties[] = [
 		description: 'The ID of the page being mentioned',
 	},
 	{
-		displayName: 'Database ID',
+		displayName: 'Database Name or ID',
 		name: 'database',
 		type: 'options',
 		typeOptions: {
@@ -217,7 +217,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the database being mentioned',
+		description: 'The ID of the database being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Range',
@@ -541,7 +541,7 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 			displayName: 'Block',
 			values: [
 				{
-					displayName: 'Type',
+					displayName: 'Type Name or ID',
 					name: 'type',
 					type: 'options',
 					typeOptions: {

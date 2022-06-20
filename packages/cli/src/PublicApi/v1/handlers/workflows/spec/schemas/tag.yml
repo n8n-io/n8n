@@ -1,0 +1,16 @@
+type: object
+properties:
+  id:
+    type: string
+    example: 12
+  name:
+    type: string
+    example: Production
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true

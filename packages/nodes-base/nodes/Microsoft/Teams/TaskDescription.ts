@@ -85,7 +85,7 @@ export const taskFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		required: true,
 		type: 'options',
@@ -108,7 +108,7 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Plan ID',
+		displayName: 'Plan Name or ID',
 		name: 'planId',
 		required: true,
 		type: 'options',
@@ -129,10 +129,10 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The plan for the task to belong to',
+		description: 'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Bucket ID',
+		displayName: 'Bucket Name or ID',
 		name: 'bucketId',
 		required: true,
 		type: 'options',
@@ -153,7 +153,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The bucket for the task to belong to',
+		description: 'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Title',
@@ -191,7 +191,7 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assignedTo',
 				type: 'options',
 				typeOptions: {
@@ -201,7 +201,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Who the task should be assigned to',
+				description: 'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -313,7 +313,7 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		required: true,
 		type: 'options',
@@ -336,7 +336,7 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Member ID',
+		displayName: 'Member Name or ID',
 		name: 'memberId',
 		type: 'options',
 		typeOptions: {
@@ -361,7 +361,7 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Plan ID',
+		displayName: 'Plan Name or ID',
 		name: 'planId',
 		type: 'options',
 		typeOptions: {
@@ -466,7 +466,7 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assignedTo',
 				type: 'options',
 				typeOptions: {
@@ -476,10 +476,10 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Who the task should be assigned to',
+				description: 'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Bucket ID',
+				displayName: 'Bucket Name or ID',
 				name: 'bucketId',
 				type: 'options',
 				typeOptions: {
@@ -489,7 +489,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The bucket for the task to belong to',
+				description: 'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -499,7 +499,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
-				displayName: 'Group ID',
+				displayName: 'Group Name or ID',
 				name: 'groupId',
 				type: 'options',
 				typeOptions: {
@@ -535,7 +535,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 			{
-				displayName: 'Plan ID',
+				displayName: 'Plan Name or ID',
 				name: 'planId',
 				type: 'options',
 				typeOptions: {
@@ -545,7 +545,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'The plan for the task to belong to',
+				description: 'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',

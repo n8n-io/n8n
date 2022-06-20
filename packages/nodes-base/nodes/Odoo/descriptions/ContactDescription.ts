@@ -105,7 +105,7 @@ export const contactDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country',
+								displayName: 'Country Name or ID',
 								name: 'country_id',
 								type: 'options',
 								default: '',
@@ -114,7 +114,7 @@ export const contactDescription: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'State',
+								displayName: 'State Name or ID',
 								name: 'state_id',
 								type: 'options',
 								default: '',
@@ -345,7 +345,7 @@ export const contactDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country',
+								displayName: 'Country Name or ID',
 								name: 'country_id',
 								type: 'options',
 								default: '',
@@ -354,7 +354,7 @@ export const contactDescription: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'State',
+								displayName: 'State Name or ID',
 								name: 'state_id',
 								type: 'options',
 								default: '',

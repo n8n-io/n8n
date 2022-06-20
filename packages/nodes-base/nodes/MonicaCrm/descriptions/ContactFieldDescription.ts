@@ -69,7 +69,7 @@ export const contactFieldFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field Type',
+		displayName: 'Contact Field Type Name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
 		required: true,
@@ -253,7 +253,7 @@ export const contactFieldFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field Type ID',
+		displayName: 'Contact Field Type Name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
 		typeOptions: {

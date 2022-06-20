@@ -107,7 +107,7 @@ export const userGetAllDescription: UserProperties = [
 						value: 'status',
 					},
 					{
-						name: 'username',
+						name: 'Username',
 						value: 'username',
 					},
 				],

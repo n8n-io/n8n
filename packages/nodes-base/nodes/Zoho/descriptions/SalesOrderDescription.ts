@@ -65,7 +65,7 @@ export const salesOrderFields: INodeProperties[] = [
 	//       salesOrder: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Account ID',
+		displayName: 'Account Name or ID',
 		name: 'accountId',
 		required: true,
 		type: 'options',
@@ -193,7 +193,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Name of the carrier',
 			},
 			{
-				displayName: 'Contact ID',
+				displayName: 'Contact Name or ID',
 				name: 'contactId',
 				type: 'options',
 				default: [],
@@ -211,7 +211,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: [],
@@ -280,14 +280,14 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
-				description: 'Status of the sales order',
+				description: 'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -407,14 +407,14 @@ export const salesOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice',
+				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -435,7 +435,7 @@ export const salesOrderFields: INodeProperties[] = [
 				description: 'Name of the carrier',
 			},
 			{
-				displayName: 'Contact ID',
+				displayName: 'Contact Name or ID',
 				name: 'contactId',
 				type: 'options',
 				default: [],
@@ -453,7 +453,7 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
 				default: [],
@@ -521,14 +521,14 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
-				description: 'Status of the sales order',
+				description: 'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',

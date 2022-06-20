@@ -83,7 +83,7 @@ export class ClickUpTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Team',
+				displayName: 'Team Name or ID',
 				name: 'team',
 				type: 'options',
 				typeOptions: {

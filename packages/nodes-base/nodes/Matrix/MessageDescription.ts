@@ -37,7 +37,7 @@ export const messageFields: INodeProperties[] = [
 	/*                              message:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -56,7 +56,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The channel to send the message to',
+		description: 'The channel to send the message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Text',
@@ -171,7 +171,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:getAll                           */
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		default: '',
@@ -188,7 +188,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API.',
+		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		required: true,
 	},
 	{

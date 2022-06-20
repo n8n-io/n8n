@@ -243,7 +243,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The users that will attached to the thread',
 			},
 			{
-				displayName: 'Send as integration',
+				displayName: 'Send as Integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
@@ -372,7 +372,7 @@ export const threadFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Attached to me',
+						name: 'Attached to Me',
 						value: 'attached_to_me',
 					},
 					{
