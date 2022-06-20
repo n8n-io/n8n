@@ -9,7 +9,7 @@
 			:message="$locale.baseText('runData.pindata.thisDataIsPinned')"
 			:actionText="$locale.baseText('runData.pindata.unpin')"
 			:trailingLinkText="$locale.baseText('runData.pindata.learnMore')"
-			:trailingLinkUrl="'https://docs.n8n.io/PENDING'"
+			trailingLinkUrl="https://docs.n8n.io/data/data-pinning/"
 			@action-text-click="onClickUnpinData"
 		/>
 
