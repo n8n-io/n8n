@@ -87,16 +87,6 @@ export const contactOperations: INodeProperties[] = [
 					send: {
 						paginate: true,
 					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'contacts',
-								},
-							},
-						],
-					},
 				}
 			},
 			{

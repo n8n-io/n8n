@@ -1,6 +1,10 @@
 import {
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
 	INodeProperties
 } from 'n8n-workflow';
+
+import { isEmailValid, isPhoneValid } from '../GenericFunctions';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -23,16 +27,6 @@ export const opportunityOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'opportunity',
-								},
-							},
-						],
 					},
 				},
 			},
@@ -76,16 +70,6 @@ export const opportunityOperations: INodeProperties[] = [
 					},
 					send: {
 						paginate: true,
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'opportunities',
-								},
-							},
-						],
 					},
 				}
 			},
@@ -264,10 +248,11 @@ const createOperations: Array<INodeProperties> = [
 		}
 	},
 	{
-		displayName: 'Contact ID',
-		name: 'contactId ',
+		displayName: 'Contact Identifier',
+		name: 'contactIdentifier',
+		required: true,
 		type: 'string',
-		description: 'Contact ID (or email or phone) required',
+		description: 'Either email, phone or contact ID',
 		displayOptions: {
 			show: {
 				resource: [
@@ -281,54 +266,20 @@ const createOperations: Array<INodeProperties> = [
 		default: '',
 		routing: {
 			send: {
-				type: 'body',
-				property: 'contactId',
-			}
-		}
-	},
-	{
-		displayName: 'Email',
-		name: 'email  ',
-		type: 'string',
-		description: 'Email (or contactId or phone) required',
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
+				preSend: [
+					async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+						requestOptions.body = (requestOptions.body || {}) as object;
+						const identifier = this.getNodeParameter('contactIdentifier') as string;
+						if (isEmailValid(identifier)) {
+							Object.assign(requestOptions.body, { email: identifier });
+						} else if (isPhoneValid(identifier)) {
+							Object.assign(requestOptions.body, { phone : identifier })
+						} else {
+							Object.assign(requestOptions.body, { contactId: identifier });
+						}
+						return requestOptions;
+					},
 				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'email ',
-			}
-		}
-	},
-	{
-		displayName: 'Phone',
-		name: 'phone',
-		type: 'string',
-		description: 'Phone (or contactId or email) required',
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'phone',
 			}
 		}
 	},
@@ -336,6 +287,7 @@ const createOperations: Array<INodeProperties> = [
 		displayName: 'Status',
 		name: 'status',
 		type: 'options',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -367,7 +319,7 @@ const createOperations: Array<INodeProperties> = [
 		default: 'open',
 		routing: {
 			send: {
-				type: 'query',
+				type: 'body',
 				property: 'status',
 			}
 		}
