@@ -103,6 +103,7 @@ export class ConvertKitTrigger implements INodeType {
 				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
@@ -120,6 +121,7 @@ export class ConvertKitTrigger implements INodeType {
 				displayName: 'Sequence Name or ID',
 				name: 'courseId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getSequences',
 				},
@@ -167,6 +169,7 @@ export class ConvertKitTrigger implements INodeType {
 				displayName: 'Tag Name or ID',
 				name: 'tagId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},

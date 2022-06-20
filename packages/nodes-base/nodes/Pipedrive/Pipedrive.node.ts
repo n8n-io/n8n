@@ -1108,6 +1108,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDealLabels',
 						},
@@ -1393,6 +1394,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDealLabels',
 						},
@@ -1861,7 +1863,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				default: false,
-				description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+				description: 'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 			},
 			{
 				displayName: 'Return All',
@@ -2271,14 +2273,14 @@ export class Pipedrive implements INodeType {
 						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
 					},
 					{
-						displayName: 'Label IDs',
+						displayName: 'Label Names or IDs',
 						name: 'label_ids',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getLeadLabels',
 						},
 						default: [],
-						description: 'ID of the labels to attach to the lead to create',
+						description: 'ID of the labels to attach to the lead to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Organization ID',
@@ -2449,14 +2451,14 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the user who will own the lead to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Label IDs',
+						displayName: 'Label Names or IDs',
 						name: 'label_ids',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getLeadLabels',
 						},
 						default: [],
-						description: 'ID of the labels to attach to the lead to update',
+						description: 'ID of the labels to attach to the lead to update. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Person Name or ID',
@@ -2788,6 +2790,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getOrganizationLabels',
 						},
@@ -2900,7 +2903,7 @@ export class Pipedrive implements INodeType {
 						name: 'exactMatch',
 						type: 'boolean',
 						default: false,
-						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+						description: 'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 					},
 					{
 						displayName: 'Fields',
@@ -2932,7 +2935,7 @@ export class Pipedrive implements INodeType {
 						name: 'rawData',
 						type: 'boolean',
 						default: false,
-						description: 'Returns the data exactly in the way it got received from the API',
+						description: 'Whether to return the data exactly in the way it got received from the API',
 					},
 				],
 			},
@@ -3011,6 +3014,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getOrganizationLabels',
 						},
@@ -3134,6 +3138,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -3144,6 +3149,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getPersonLabels',
 						},
@@ -3347,6 +3353,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -3357,6 +3364,7 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getPersonLabels',
 						},
@@ -3470,6 +3478,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.',
 			},
 			{
@@ -3491,6 +3500,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.',
 			},
 			{
@@ -3753,7 +3763,7 @@ export class Pipedrive implements INodeType {
 						name: 'exactMatch',
 						type: 'boolean',
 						default: false,
-						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+						description: 'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 					},
 					{
 						displayName: 'Fields',
@@ -3781,7 +3791,7 @@ export class Pipedrive implements INodeType {
 						name: 'rawData',
 						type: 'boolean',
 						default: false,
-						description: 'Returns the data exactly in the way it got received from the API',
+						description: 'Whether to return the data exactly in the way it got received from the API',
 					},
 				],
 			},
@@ -3892,14 +3902,14 @@ export class Pipedrive implements INodeType {
 						description: 'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
 					},
 					{
-						displayName: 'Type',
+						displayName: 'Type Names or IDs',
 						name: 'type',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getActivityTypes',
 						},
 						default: [],
-						description: 'Type of the Activity',
+						description: 'Type of the Activity. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'User Name or ID',

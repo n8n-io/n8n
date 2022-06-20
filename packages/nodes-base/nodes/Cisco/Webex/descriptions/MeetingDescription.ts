@@ -211,6 +211,7 @@ export const meetingFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Email address of meeting invitee',
@@ -276,6 +277,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Required Registration Info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Require First Name',
@@ -564,7 +566,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'current',
 				type: 'boolean',
 				default: true,
-				description: 'For meeting series, whether to return just the current meeting or all meetings',
+				description: 'Whether to return just the current meeting or all meetings',
 			},
 			{
 				displayName: 'Meeting Number',
@@ -798,6 +800,7 @@ export const meetingFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Email address of meeting invitee',
@@ -870,6 +873,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Required Registration Info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Require First Name',

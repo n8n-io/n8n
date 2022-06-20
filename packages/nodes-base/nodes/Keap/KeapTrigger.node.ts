@@ -24,6 +24,7 @@ export class KeapTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Keap Trigger',
 		name: 'keapTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:keap.png',
 		group: ['trigger'],
 		version: 1,
@@ -53,6 +54,7 @@ export class KeapTrigger implements INodeType {
 				displayName: 'Event Name or ID',
 				name: 'eventId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getEvents',
 				},
@@ -64,7 +66,7 @@ export class KeapTrigger implements INodeType {
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 		],
 	};

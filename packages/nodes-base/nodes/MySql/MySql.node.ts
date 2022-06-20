@@ -74,7 +74,6 @@ export class MySql implements INodeType {
 					},
 				},
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
 				description: 'The SQL query to execute',
@@ -111,7 +110,6 @@ export class MySql implements INodeType {
 					},
 				},
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id,name,description',
 				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
@@ -135,7 +133,7 @@ export class MySql implements INodeType {
 						name: 'ignore',
 						type: 'boolean',
 						default: true,
-						description: 'Ignore any ignorable errors that occur while executing the INSERT statement',
+						description: 'Whether to ignore any ignorable errors that occur while executing the INSERT statement',
 					},
 					{
 						displayName: 'Priority',

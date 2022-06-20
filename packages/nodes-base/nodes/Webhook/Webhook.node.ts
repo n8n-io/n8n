@@ -286,7 +286,7 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Set to true if webhook will receive binary data',
+						description: 'Whether the webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
@@ -308,14 +308,14 @@ export class Webhook implements INodeType {
 						name: 'ignoreBots',
 						type: 'boolean',
 						default: false,
-						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
+						description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 					},
 					{
 						displayName: 'No Response Body',
 						name: 'noResponseBody',
 						type: 'boolean',
 						default: false,
-						description: 'Do not send any body in the response',
+						description: 'Whether to send any body in the response',
 						displayOptions: {
 							hide: {
 								'rawBody': [
@@ -344,6 +344,7 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Raw body (binary)',
 					},
 					{

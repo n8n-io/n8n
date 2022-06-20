@@ -77,6 +77,7 @@ export const responderFields: INodeProperties[] = [
 		name: 'jsonObject',
 		type: 'boolean',
 		default: false,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'Choose between providing JSON object or seperated attributes',
 		displayOptions: {
 			show: {
@@ -167,6 +168,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'flag',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Flag of the case default=false',
 					},
 					{
@@ -667,7 +669,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'ioc',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+						description: 'Whether the observable is an IOC (Indicator of compromise)',
 					},
 					{
 						displayName: 'Status',

@@ -68,7 +68,7 @@ export class AirtableTrigger implements INodeType {
 				name: 'downloadAttachments',
 				type: 'boolean',
 				default: false,
-				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
+				description: 'Whether the attachment fields define in \'Download Fields\' will be downloaded',
 			},
 			{
 				displayName: 'Download Fields',

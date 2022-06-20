@@ -167,6 +167,7 @@ export const webinarFields: INodeProperties[] = [
 				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
