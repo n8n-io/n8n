@@ -24,6 +24,7 @@ export class WorkableTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workable Trigger',
 		name: 'workableTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:workable.png',
 		group: ['trigger'],
 		version: 1,

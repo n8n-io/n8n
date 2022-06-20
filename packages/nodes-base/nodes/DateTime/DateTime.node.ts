@@ -95,7 +95,7 @@ export class DateTime implements INodeType {
 				},
 				type: 'boolean',
 				default: false,
-				description: 'If a predefined format should be selected or custom format entered',
+				description: 'Whether a predefined format should be selected or custom format entered',
 			},
 			{
 				displayName: 'To Format',

@@ -22,6 +22,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Cloud Natural Language',
 		name: 'googleCloudNaturalLanguage',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googlecloudnaturallanguage.png',
 		group: ['input', 'output'],
 		version: 1,

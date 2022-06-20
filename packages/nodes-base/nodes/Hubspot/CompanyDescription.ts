@@ -231,7 +231,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates that the company is publicly traded',
+				description: 'Whether that the company is publicly traded',
 			},
 			{
 				displayName: 'Lead Status Name or ID',
@@ -583,7 +583,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'isPublic',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates that the company is publicly traded',
+				description: 'Whether that the company is publicly traded',
 			},
 			{
 				displayName: 'Lead Status Name or ID',
@@ -815,7 +815,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'includeMergeAudits',
 				type: 'boolean',
 				default: false,
-				description: 'Returns any merge history if the company has been previously merged with another company record. Defaults to false.',
+				description: 'Whether to return any merge history if the company has been previously merged with another company record. Defaults to false.',
 			},
 		],
 	},
@@ -886,17 +886,17 @@ export const companyFields: INodeProperties[] = [
 				name: 'includeMergeAudits',
 				type: 'boolean',
 				default: false,
-				description: 'Returns any merge history if a company has been previously merged with another company record. Defaults to false.',
+				description: 'Whether to return any merge history if a company has been previously merged with another company record. Defaults to false.',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companies.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companies.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
@@ -1005,6 +1005,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],
@@ -1089,14 +1090,14 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
