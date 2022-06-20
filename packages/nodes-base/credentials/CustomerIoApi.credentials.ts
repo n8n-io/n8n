@@ -54,13 +54,18 @@ export class CustomerIoApi implements ICredentialType {
 		},
 	];
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		if (requestOptions.url.includes('track')) {
+		// @ts-ignore
+		const url = requestOptions.url ? requestOptions.url : requestOptions.uri;
+		if (url.includes('track')) {
 			const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
+			// @ts-ignore
 			Object.assign(requestOptions.headers, { 'Authorization': `Basic ${basicAuthKey}` });
-		} else if (requestOptions.url.includes('api.customer.io')) {
+		} else if (url.includes('api.customer.io')) {
 			const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
+			// @ts-ignore
 			Object.assign(requestOptions.headers, { 'Authorization': `Basic ${basicAuthKey}` });
-		} else if (requestOptions.url.includes('beta-api.customer.io')) {
+		} else if (url.includes('beta-api.customer.io')) {
+			// @ts-ignore
 			Object.assign(requestOptions.headers, { 'Authorization': `Bearer ${credentials.appApiKey as string}` });
 		} else {
 			throw new Error('Unknown way of authenticating');
