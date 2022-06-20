@@ -241,7 +241,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 
 // tslint:disable-next-line: no-any
 function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
-	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => typeof result) => !v && value.ignoreIfEmpty ? undefined : cb(v);
+	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) => !v && value.ignoreIfEmpty ? undefined : cb(v);  // tslint:disable-line: no-any
 	let result = {};
 
 	switch (type) {
