@@ -54,7 +54,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field',
+		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',
@@ -120,14 +120,14 @@ export const fileFields: INodeProperties[] = [
 		placeholder: 'Add options',
 		options: [
 			{
-				displayName: 'Channels',
+				displayName: 'Channel Names or IDs',
 				name: 'channelIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'The channels to send the file to',
+				description: 'The channels to send the file to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'File Name',
@@ -236,7 +236,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'showFilesHidden',
 				type: 'boolean',
 				default: false,
-				description: 'Show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
+				description: 'Whether to show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
 			},
 			{
 				displayName: 'Timestamp From',
@@ -270,17 +270,16 @@ export const fileFields: INodeProperties[] = [
 						value: 'images',
 					},
 					{
+						name: 'PDFs',
+						value: 'pdfs',
+					},
+					{
 						name: 'Snippets',
 						value: 'snippets',
 					},
 					{
 						name: 'Spaces',
 						value: 'spaces',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'PDFs',
-						value: 'pdfs',
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased

@@ -58,6 +58,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -87,7 +88,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Update user if it exists already. If not set and user exists it will error instead.',
+		description: 'Whether to update user if it exists already. If not set and user exists it will error instead.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -245,6 +246,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Email of the contact',
 			},
@@ -348,6 +350,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Email address of the contact you want to get',
 			},

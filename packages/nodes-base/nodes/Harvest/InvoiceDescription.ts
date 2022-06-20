@@ -323,6 +323,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The ID of the retainer associated with this invoice',
 			},
 			{
@@ -458,6 +459,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The ID of the retainer associated with this invoice',
 			},
 			{

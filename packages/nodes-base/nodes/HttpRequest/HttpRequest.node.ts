@@ -454,7 +454,7 @@ export class HttpRequest implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: 'If the query and/or body parameter should be set via the value-key pair UI or JSON/RAW',
+				description: 'Whether the query and/or body parameter should be set via the value-key pair UI or JSON/RAW',
 			},
 
 			{
@@ -523,28 +523,28 @@ export class HttpRequest implements INodeType {
 						name: 'fullResponse',
 						type: 'boolean',
 						default: false,
-						description: 'Returns the full reponse data instead of only the body',
+						description: 'Whether to return the full reponse data instead of only the body',
 					},
 					{
 						displayName: 'Follow All Redirects',
 						name: 'followAllRedirects',
 						type: 'boolean',
 						default: false,
-						description: 'Follow non-GET HTTP 3xx redirects',
+						description: 'Whether to follow non-GET HTTP 3xx redirects',
 					},
 					{
 						displayName: 'Follow GET Redirect',
 						name: 'followRedirect',
 						type: 'boolean',
 						default: true,
-						description: 'Follow GET HTTP 3xx redirects',
+						description: 'Whether to follow GET HTTP 3xx redirects',
 					},
 					{
 						displayName: 'Ignore Response Code',
 						name: 'ignoreResponseCode',
 						type: 'boolean',
 						default: false,
-						description: 'Succeeds also when status code is not 2xx',
+						description: 'Whether to succeeds also when status code is not 2xx',
 					},
 					{
 						displayName: 'MIME Type',
@@ -576,7 +576,7 @@ export class HttpRequest implements INodeType {
 						name: 'splitIntoItems',
 						type: 'boolean',
 						default: false,
-						description: 'Outputs each element of an array as own item',
+						description: 'Whether to output each element of an array as own item',
 						displayOptions: {
 							show: {
 								'/responseFormat': [
@@ -600,7 +600,7 @@ export class HttpRequest implements INodeType {
 						name: 'useQueryString',
 						type: 'boolean',
 						default: false,
-						description: 'Set this option to true if you need arrays to be serialized as foo=bar&foo=baz instead of the default foo[0]=bar&foo[1]=baz',
+						description: 'Whether you need arrays to be serialized as foo=bar&foo=baz instead of the default foo[0]=bar&foo[1]=baz',
 					},
 				],
 			},
@@ -628,7 +628,7 @@ export class HttpRequest implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If binary data should be send as body',
+				description: 'Whether binary data should be send as body',
 			},
 			{
 				displayName: 'Binary Property',

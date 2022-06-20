@@ -16,6 +16,7 @@ export class Hunter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hunter',
 		name: 'hunter',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:hunter.png',
 		group: ['output'],
 		version: 1,
@@ -85,7 +86,7 @@ export class Hunter implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return only the the found emails',
+				description: 'Whether to return only the the found emails',
 			},
 			{
 				displayName: 'Return All',
@@ -179,44 +180,44 @@ export class Hunter implements INodeType {
 						default: [],
 						options: [
 							{
-								name: 'Executive',
-								value: 'executive',
+								name: 'Communication',
+								value: 'communication',
 							},
 							{
-								name: 'IT',
-								value: 'it',
+								name: 'Executive',
+								value: 'executive',
 							},
 							{
 								name: 'Finance',
 								value: 'finance',
 							},
 							{
-								name: 'Management',
-								value: 'management',
+								name: 'HR',
+								value: 'hr',
 							},
 							{
-								name: 'Sales',
-								value: 'sales',
+								name: 'IT',
+								value: 'it',
 							},
 							{
 								name: 'Legal',
 								value: 'legal',
 							},
 							{
-								name: 'Support',
-								value: 'support',
-							},
-							{
-								name: 'HR',
-								value: 'hr',
+								name: 'Management',
+								value: 'management',
 							},
 							{
 								name: 'Marketing',
 								value: 'marketing',
 							},
 							{
-								name: 'Communication',
-								value: 'communication',
+								name: 'Sales',
+								value: 'sales',
+							},
+							{
+								name: 'Support',
+								value: 'support',
 							},
 						],
 					},
@@ -271,6 +272,7 @@ export class Hunter implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						operation: [
