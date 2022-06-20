@@ -1,11 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class SplitInBatches implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +17,8 @@ export class SplitInBatches implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'You may not need this node — n8n nodes automatically run once for each input item. <a href="https://docs.n8n.io/getting-started/key-concepts/looping.html#using-loops-in-n8n" target="_blank">More info</a>',
+				displayName:
+					'You may not need this node — n8n nodes automatically run once for each input item. <a href="https://docs.n8n.io/getting-started/key-concepts/looping.html#using-loops-in-n8n" target="_blank">More info</a>',
 				name: 'splitInBatchesNotice',
 				type: 'notice',
 				default: '',
@@ -50,7 +45,8 @@ export class SplitInBatches implements INodeType {
 						name: 'reset',
 						type: 'boolean',
 						default: false,
-						description: 'If set to true, the node will be reset and so with the current input-data newly initialized',
+						description:
+							'If set to true, the node will be reset and so with the current input-data newly initialized',
 					},
 				],
 			},
@@ -64,6 +60,8 @@ export class SplitInBatches implements INodeType {
 
 		const batchSize = this.getNodeParameter('batchSize', 0) as number;
 
+		const returnItems: INodeExecutionData[] = [];
+
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 		if (nodeContext.items === undefined || options.reset === true) {
@@ -74,24 +72,36 @@ export class SplitInBatches implements INodeType {
 
 			// Set the other items to be saved in the context to return at later runs
 			nodeContext.items = items;
-			
+
 			// Return this first batch of items
-			if(items.length > 0) {
-				if(batchSize === 1) return this.prepareOutputData([items[0]]);
-				else return this.prepareOutputData(items.slice(0, batchSize));
-			} else return null;
+			if (items.length > 0) {
+				if (batchSize === 1) {
+					returnItems.push(...[items[0]]);
+				} else {
+					returnItems.push(...items.slice(0, batchSize));
+				}
+			} else {
+				return null;
+			}
 		} else {
 			// The node has been called before. So return the next batch of items.
 			nodeContext.currentRunIndex += 1;
 			nodeContext.noItemsLeft = nodeContext.items.length === 0;
-			if(batchSize === 1) {
+
+			if (batchSize === 1) {
 				const pos = nodeContext.currentRunIndex;
-				if(pos < nodeContext.items.length) return this.prepareOutputData([nodeContext.items[pos]]);
+				if (pos < nodeContext.items.length) {
+					returnItems.push(...[nodeContext.items[pos]]);
+				}
 			} else {
 				const pos = nodeContext.currentRunIndex * batchSize;
-				if(pos < nodeContext.items.length) return this.prepareOutputData(nodeContext.items.slice(pos, pos + batchSize));
+				if (pos < nodeContext.items.length) {
+					returnItems.push(...nodeContext.items.slice(pos, pos + batchSize));
+				}
 			}
 			return null;
 		}
+
+		return this.prepareOutputData(returnItems);
 	}
 }
