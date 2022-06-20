@@ -326,6 +326,19 @@ export const databasePageFields = [
 						description: 'Web address',
 					},
 					{
+						displayName: 'Ignore If Empty',
+						name: 'ignoreIfEmpty',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								type: [
+									'url',
+								],
+							},
+						},
+						default: false,
+					},
+					{
 						displayName: 'User IDs',
 						name: 'peopleValue',
 						type: 'multiOptions',
@@ -734,6 +747,19 @@ export const databasePageFields = [
 						},
 						default: '',
 						description: 'Web address',
+					},
+					{
+						displayName: 'Ignore If Empty',
+						name: 'ignoreIfEmpty',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								type: [
+									'url',
+								],
+							},
+						},
+						default: false,
 					},
 					{
 						displayName: 'User IDs',
