@@ -98,6 +98,62 @@ export const opportunityOperations: INodeProperties[] = [
 	},
 ];
 
+const pipelineIdentifier: INodeProperties =
+{
+	displayName: 'Pipeline Identifier',
+	name: 'pipelineIdentifier',
+	type: 'options',
+	displayOptions: {
+		show: {
+			resource: [
+				'opportunity',
+			],
+			operation: [
+				'create',
+				'delete',
+				'get',
+				'getAll',
+				'update',
+			],
+		},
+	},
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					url: '/pipelines',
+					method: 'GET',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'pipelines',
+							},
+						},
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.name}}',
+								value: '={{$responseItem.id}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		}
+	},
+	default: '',
+	description: 'Pipeline the opportunity belongs to',
+}
+
 const additionalFields: Array<INodeProperties> = [
 	{
 		displayName: 'Additional Fields',
@@ -184,24 +240,6 @@ const additionalFields: Array<INodeProperties> = [
 
 const createOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Pipeline Identifier',
-		name: 'pipelineIdentifier',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		description: 'Pipeline the opportunity belongs to',
-	},
-	{
 		displayName: 'Title',
 		name: 'title',
 		type: 'string',
@@ -273,7 +311,7 @@ const createOperations: Array<INodeProperties> = [
 						if (isEmailValid(identifier)) {
 							Object.assign(requestOptions.body, { email: identifier });
 						} else if (isPhoneValid(identifier)) {
-							Object.assign(requestOptions.body, { phone : identifier })
+							Object.assign(requestOptions.body, { phone: identifier })
 						} else {
 							Object.assign(requestOptions.body, { contactId: identifier });
 						}
@@ -328,24 +366,6 @@ const createOperations: Array<INodeProperties> = [
 
 const deleteOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Pipeline Identifier',
-		name: 'pipelineIdentifier',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-		default: '',
-		required: true,
-		description: 'Pipeline the opportunity belongs to',
-	},
-	{
 		displayName: 'Identifier',
 		name: 'identifier',
 		type: 'string',
@@ -367,24 +387,6 @@ const deleteOperations: Array<INodeProperties> = [
 
 const getOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Pipeline Identifier',
-		name: 'pipelineIdentifier',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-		default: '',
-		required: true,
-		description: 'Pipeline the opportunity belongs to',
-	},
-	{
 		displayName: 'Identifier',
 		name: 'identifier',
 		type: 'string',
@@ -405,24 +407,6 @@ const getOperations: Array<INodeProperties> = [
 ];
 
 const getAllOperations: Array<INodeProperties> = [
-	{
-		displayName: 'Pipeline Identifier',
-		name: 'pipelineIdentifier',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: '',
-		required: true,
-		description: 'Pipeline the opportunity belongs to',
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -612,6 +596,7 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 export const opportunityFields: INodeProperties[] = [
+	pipelineIdentifier,
 	...createOperations,
 	// ...updateOperations,
 	...additionalFields,
