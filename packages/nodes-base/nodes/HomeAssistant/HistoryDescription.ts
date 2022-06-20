@@ -107,14 +107,14 @@ export const historyFields: INodeProperties[] = [
 				name: 'minimalResponse',
 				type: 'boolean',
 				default: false,
-				description: 'To only return <code>last_changed</code> and state for states',
+				description: 'Whether to only return <code>last_changed</code> and state for states',
 			},
 			{
 				displayName: 'Significant Changes Only',
 				name: 'significantChangesOnly',
 				type: 'boolean',
 				default: false,
-				description: 'Only return significant state changes',
+				description: 'Whether to only return significant state changes',
 			},
 			{
 				displayName: 'Start Time',

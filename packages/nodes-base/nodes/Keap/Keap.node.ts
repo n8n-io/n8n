@@ -106,6 +106,7 @@ export class Keap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Keap',
 		name: 'keap',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:keap.png',
 		group: ['input'],
 		version: 1,

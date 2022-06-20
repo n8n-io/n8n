@@ -175,7 +175,7 @@ export class Todoist implements INodeType {
 				description: 'The project you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -192,7 +192,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: [],
-				description: 'Optional labels that will be assigned to a created task',
+				description: 'Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -502,7 +502,7 @@ export class Todoist implements INodeType {
 						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
 					{
-						displayName: 'Labels',
+						displayName: 'Label Names or IDs',
 						name: 'labels',
 						type: 'multiOptions',
 						typeOptions: {

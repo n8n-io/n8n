@@ -160,7 +160,7 @@ export const boardFields: INodeProperties[] = [
 				name: 'prefs_cardCovers',
 				type: 'boolean',
 				default: true,
-				description: 'Determines whether card covers are enabled',
+				description: 'Whether card covers are enabled',
 			},
 			{
 				displayName: 'Invitations',
@@ -191,14 +191,14 @@ export const boardFields: INodeProperties[] = [
 				name: 'defaultLabels',
 				type: 'boolean',
 				default: true,
-				description: 'Determines whether to use the default set of labels',
+				description: 'Whether to use the default set of labels',
 			},
 			{
 				displayName: 'Lists',
 				name: 'defaultLists',
 				type: 'boolean',
 				default: true,
-				description: 'Determines whether to add the default set of lists to a board(To Do, Doing, Done).It is ignored if idBoardSource is provided',
+				description: 'Whether to add the default set of lists to a board(To Do, Doing, Done).It is ignored if idBoardSource is provided',
 			},
 			{
 				displayName: 'Organization ID',
@@ -262,7 +262,7 @@ export const boardFields: INodeProperties[] = [
 				name: 'prefs_selfJoin',
 				type: 'boolean',
 				default: true,
-				description: 'Determines whether users can join the boards themselves or whether they have to be invited',
+				description: 'Whether users can join the boards themselves or whether they have to be invited',
 			},
 			{
 				displayName: 'Source IDs',
