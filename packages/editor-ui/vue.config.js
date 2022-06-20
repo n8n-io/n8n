@@ -30,8 +30,8 @@ module.exports = {
 		],
 		resolve: {
 			alias: {
-				'element-ui/packages/button': path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/Button.vue'),
-				'element-ui/lib/button': path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/Button.vue'),
+				'element-ui/packages/button': path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.vue'),
+				'element-ui/lib/button': path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.vue'),
 			},
 		},
 	},

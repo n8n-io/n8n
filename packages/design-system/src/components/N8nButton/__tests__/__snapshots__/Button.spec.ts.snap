@@ -1,5 +1,10 @@
 // Vitest Snapshot v1
 
+exports[`components > N8nButton > overrides > should render correctly 1`] = `
+"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_7t6ot_115 _primary_7t6ot_288 _medium_7t6ot_254\\" icon=\\"plus-circle\\" type=\\"secondary\\">
+  <!----><span>Button</span></button>"
+`;
+
 exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_7t6ot_115 _primary_7t6ot_288 _medium_7t6ot_254 _icon_7t6ot_239\\"><span class=\\"_icon_7t6ot_239\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\"></n8n-icon-stub></span><span>Button</span></button>"`;
 
 exports[`components > N8nButton > props > loading > should render loading spinner 1`] = `"<button disabled=\\"disabled\\" aria-disabled=\\"false\\" aria-busy=\\"true\\" aria-live=\\"polite\\" class=\\"button _button_7t6ot_115 _primary_7t6ot_288 _medium_7t6ot_254 _loading_7t6ot_352 _icon_7t6ot_239\\"><span class=\\"_icon_7t6ot_239\\"><n8n-spinner-stub size=\\"medium\\" type=\\"dots\\"></n8n-spinner-stub></span><span>Button</span></button>"`;

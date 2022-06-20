@@ -1,5 +1,6 @@
 import {render} from '@testing-library/vue';
 import N8nButton from "../Button.vue";
+import ElButton from "../overrides/ElButton.vue";
 
 const slots = {
 	default: 'Button',
@@ -41,6 +42,21 @@ describe('components', () => {
 					});
 					expect(wrapper.html()).toMatchSnapshot();
 				});
+			});
+		});
+
+		describe('overrides', () => {
+			it('should render correctly', () => {
+				const wrapper = render(ElButton, {
+					props: {
+						icon: 'plus-circle',
+						type: 'secondary',
+					},
+					slots,
+					stubs,
+				});
+
+				expect(wrapper.html()).toMatchSnapshot();
 			});
 		});
 	});

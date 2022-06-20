@@ -14,14 +14,10 @@ export default {
 		type: {
 			type: String,
 			default: 'primary',
-			validator: (value: string): boolean =>
-				['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'].includes(value),
 		},
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		loading: {
 			type: Boolean,
