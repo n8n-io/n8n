@@ -241,7 +241,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 
 // tslint:disable-next-line: no-any
 function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
-	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) => !v && value.ignoreIfEmpty ? undefined : cb(v);
+	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => typeof result) => !v && value.ignoreIfEmpty ? undefined : cb(v);
 	let result = {};
 
 	switch (type) {
@@ -366,7 +366,7 @@ function getNameAndType(key: string) {
 
 export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
 	return properties
-		.filter((property): property is Record<string, { key: string; [k: string]: any }> => typeof property.key === 'string')
+	.filter((property): property is Record<string, { key: string; [k: string]: any }> => typeof property.key === 'string') // tslint:disable-line: no-any
 		.map(property => [`${property.key.split('|')[0]}`, getPropertyKeyValue(property, property.key.split('|')[1], timezone, version)] as const)
 		.filter(([, value]) => value)
 		.reduce((obj, [key, value]) => Object.assign(obj, {
