@@ -4,37 +4,17 @@
 		<div :class="$style['message-section']">
 			<div :class="$style.icon">
 				<n8n-icon
-					v-bind="$attrs"
 					:icon="getIcon"
 					:size="theme === 'secondary' ? 'medium' : 'large'"
 				/>
 			</div>
-			<n8n-text
-				size="small"
-				v-bind="$attrs"
-				:bold="theme === 'secondary'"
-			>
-				{{ message }}
-			</n8n-text>
-			<span
-				v-if="actionText"
-				:class="$style['action-text']"
-				@click="$emit('action-text-click')"
-			>
-				{{ actionText }}
-			</span>
+			<slot />
+			<div :class="$style['actions']">
+				<slot name="actions" />
+			</div>
 		</div>
 
-		<n8n-link
-			v-if="trailingLinkText && trailingLinkUrl"
-			:to="trailingLinkUrl"
-			size="small"
-			theme="secondary"
-			:bold="true"
-			:underline="true"
-		>
-			{{ trailingLinkText }}
-		</n8n-link>
+		<slot name="trailingContent" />
 	</div>
 </template>
 
@@ -43,6 +23,13 @@ import Vue from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
+
+const CALLOUT_DEFAULT_ICONS = {
+	info: 'info-circle',
+	success: 'check-circle',
+	warning: 'exclamation-triangle',
+	danger: 'times-circle',
+};
 
 export default Vue.extend({
 	name: 'n8n-callout',
@@ -62,29 +49,6 @@ export default Vue.extend({
 			type: String,
 			default: 'info-circle'
 		},
-		message: {
-			type: String,
-			required: true
-		},
-		actionText: {
-			type: String,
-		},
-		trailingLinkText: {
-			type: String,
-		},
-		trailingLinkUrl: {
-			type: String,
-		},
-	},
-	data() {
-		return {
-			defaultIcons: {
-				'info': 'info-circle',
-				'success': 'check-circle',
-				'warning': 'exclamation-triangle',
-				'danger': 'times-circle',
-			}
-		}
 	},
 	computed: {
 		classes(): string[] {
@@ -94,10 +58,11 @@ export default Vue.extend({
 			];
 		},
 		getIcon(): string {
-			if (['custom', 'secondary'].includes(this.theme)) {
-				return this.icon;
+			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
+				return CALLOUT_DEFAULT_ICONS[this.theme];
 			}
-			return this.defaultIcons[this.theme];
+
+			return this.icon;
 		},
 	}
 });
@@ -117,6 +82,12 @@ export default Vue.extend({
 
 .message-section {
 	display: flex;
+}
+
+.actions {
+	color: green;
+	padding-left: var(--spacing-4xs);
+	text-decoration: underline;
 }
 
 .info, .custom {
@@ -153,11 +124,5 @@ export default Vue.extend({
 	color: var(--color-secondary);
 	background-color: var(--color-secondary-tint-2);
 	border-color: var(--color-secondary-tint-1);
-}
-
-.action-text {
-	padding-left: var(--spacing-4xs);
-	text-decoration: underline;
-	cursor: pointer;
 }
 </style>
