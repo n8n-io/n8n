@@ -90,6 +90,7 @@ import {
 	faTasks,
 	faTerminal,
 	faThLarge,
+	faThumbtack,
 	faTimes,
 	faThumbtack,
 	faTrash,
@@ -203,6 +204,7 @@ addIcon(faThLarge);
 addIcon(faTimes);
 addIcon(faThumbtack);
 addIcon(faTrash);
+addIcon(faThumbtack);
 addIcon(faUndo);
 addIcon(faUnlink);
 addIcon(faUserCircle);
