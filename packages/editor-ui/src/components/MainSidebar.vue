@@ -219,13 +219,6 @@ import {
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 
-const settingsRoutes = [
-	VIEWS.PERSONAL_SETTINGS,
-	VIEWS.USERS_SETTINGS,
-	VIEWS.API_SETTINGS,
-	VIEWS.COMMUNITY_NODES,
-];
-
 export default mixins(
 	genericHelpers,
 	restApi,
@@ -628,6 +621,11 @@ export default mixins(
 				}
 			},
 			findFirstAccessibleSettingsRoute() {
+				// Get all settings rotes by filtering them by pageCategory property
+				const settingsRoutes = this.$router.getRoutes().filter(
+					category => category.meta.telemetry &&
+						category.meta.telemetry.pageCategory === 'settings',
+				).map(route => route.name || '');
 				let defaultSettingsRoute = null;
 
 				for (const route of settingsRoutes) {
