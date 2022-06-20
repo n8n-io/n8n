@@ -9,7 +9,7 @@
 			:message="$locale.baseText('runData.pindata.thisDataIsPinned')"
 			:actionText="$locale.baseText('runData.pindata.unpin')"
 			:trailingLinkText="$locale.baseText('runData.pindata.learnMore')"
-			trailingLinkUrl="https://docs.n8n.io/data/data-pinning/"
+			:trailingLinkUrl="dataPinningDocsUrl"
 			@action-text-click="onTogglePinData"
 		/>
 
@@ -315,6 +315,7 @@ import {
 } from '@/Interface';
 
 import {
+	DATA_PINNING_DOCS_URL,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 } from '@/constants';
@@ -416,6 +417,9 @@ export default mixins(
 		computed: {
 			activeNode(): INodeUi {
 				return this.$store.getters.activeNode;
+			},
+			dataPinningDocsUrl(): string {
+				return DATA_PINNING_DOCS_URL;
 			},
 			displayMode(): IRunDataDisplayMode {
 				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
