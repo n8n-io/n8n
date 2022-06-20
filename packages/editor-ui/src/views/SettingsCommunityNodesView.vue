@@ -17,6 +17,7 @@
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
 				@click="openInstallModal"
+				@descriptionClick="onDescriptionTextClick"
 			/>
 			<div
 				:class="$style.cardsContainer"
@@ -39,6 +40,7 @@
 					:calloutText="actionBoxConfig.calloutText"
 					:calloutTheme="actionBoxConfig.calloutTheme"
 					@click="openInstallModal"
+					@descriptionClick="onDescriptionTextClick"
 				/>
 			</div>
 			<div
@@ -88,9 +90,21 @@ export default mixins(
 			const packagesToUpdate: PublicInstalledPackage[] = installedPackages.filter(p => p.updateAvailable );
 			this.$telemetry.track('user viewed cnr settings page', {
 				num_of_packages_installed: installedPackages.length,
-				installed_packages: installedPackages,
+				installed_packages: installedPackages.map(p => {
+					return {
+						package_name: p.packageName,
+						package_version: p.installedVersion,
+						package_nodes: p.installedNodes.map(node => `${node.name}-v${node.latestVersion}`),
+					};
+				}),
 				is_update_available: packagesToUpdate.length > 0,
-				packages_to_update: packagesToUpdate,
+				packages_to_update: packagesToUpdate.map(p => {
+					return {
+						package_name: p.packageName,
+						package_version_current: p.installedVersion,
+						package_version_available: p.updateAvailable,
+					};
+				}),
 			});
 		} catch (error) {
 			this.$showError(
@@ -140,9 +154,14 @@ export default mixins(
 		},
 	},
 	methods: {
-		openInstallModal() {
+		openInstallModal(event: MouseEvent) {
 			this.$telemetry.track('user clicked cnr install button', { is_empty_state: this.getInstalledPackages.length === 0 });
 			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
+		},
+		onDescriptionTextClick(event: MouseEvent) {
+			if ((event.target as Element).localName === 'a') {
+				this.$telemetry.track('user clicked cnr learn more link', { source: 'cnr settings page' });
+			}
 		},
 	},
 });

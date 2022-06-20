@@ -118,6 +118,7 @@ export default mixins(
 				this.checkboxWarning = true;
 			} else {
 				try {
+					this.$telemetry.track('user started cnr package install', { input_string: this.packageName, source: 'cnr settings page' });
 					this.infoTextErrorMessage = '';
 					this.loading = true;
 					await this.$store.dispatch('communityNodes/installPackage', this.packageName);
@@ -129,23 +130,9 @@ export default mixins(
 						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
 						type: 'success',
 					});
-					this.$telemetry.track('user started cnr install',
-						{
-							is_valid_input: true,
-							input_string: this.packageName,
-							source: 'cnr settings page',
-						},
-					);
 				} catch(error) {
 					if(error.httpStatusCode && error.httpStatusCode === 400) {
 						this.infoTextErrorMessage = error.message;
-						this.$telemetry.track('user started cnr install',
-							{
-								is_valid_input: false,
-								input_string: this.packageName,
-								source: 'cnr settings page',
-							},
-						);
 					} else {
 						this.$showError(
 							error,
@@ -167,7 +154,7 @@ export default mixins(
 			this.packageName = this.packageName.replaceAll('npm i ', '').replaceAll('npm install ', '');
 		},
 		onLearnMoreLinkClick() {
-			this.$telemetry.track('user clicked cnr learn more link', { source: 'cnr settings page' });
+			this.$telemetry.track('user clicked cnr learn more link', { source: 'install package modal' });
 		},
 	},
 });

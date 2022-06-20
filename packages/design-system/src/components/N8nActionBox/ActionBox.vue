@@ -3,7 +3,7 @@
 		<div :class="$style.heading" v-if="props.heading">
 			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
 		</div>
-		<div :class="$style.description">
+		<div :class="$style.description" @click="(e) => listeners.descriptionClick && listeners.descriptionClick(e)">
 			<n8n-text color="text-base"><span v-html="props.description"></span></n8n-text>
 		</div>
 		<component v-if="props.buttonText" :is="$options.components.N8nButton" :label="props.buttonText" size="large"

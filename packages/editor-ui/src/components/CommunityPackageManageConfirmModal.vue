@@ -113,6 +113,11 @@ export default mixins(showMessage).extend({
 		},
 		async onUninstall() {
 			try {
+				this.$telemetry.track('user started cnr package deletion', {
+					package_name: this.activePackage.packageName,
+					package_node_names: this.activePackage.installedNodes.map(node => node.name),
+					package_version: this.activePackage.installedVersion,
+				});
 				this.loading = true;
 				await this.$store.dispatch('communityNodes/uninstallPackage', this.activePackageName);
 				this.$showMessage({
@@ -133,6 +138,12 @@ export default mixins(showMessage).extend({
 		},
 		async onUpdate() {
 			try {
+				this.$telemetry.track('user started cnr package update', {
+					package_name: this.activePackage.packageName,
+					package_node_names: this.activePackage.installedNodes.map(node => node.name),
+					package_version_current: this.activePackage.installedVersion,
+					package_version_new: this.activePackage.updateAvailable,
+				});
 				this.loading = true;
 				await this.$store.dispatch('communityNodes/updatePackage', this.activePackageName);
 				this.$showMessage({
