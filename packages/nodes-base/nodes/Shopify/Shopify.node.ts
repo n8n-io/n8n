@@ -108,7 +108,7 @@ export class Shopify implements INodeType {
 						description: 'Private apps are deprecated and can\'t be created as of January 2022',
 					},
 				],
-				default: 'apiKey',
+				default: 'accessToken',
 		},
 			{
 				displayName: 'Resource',
