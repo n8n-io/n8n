@@ -277,6 +277,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined) {
 				// merge both objects when exist.
+				// @ts-ignore
 				requestObject.body = Object.assign(requestObject.body, requestObject.form);
 			}
 			axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];

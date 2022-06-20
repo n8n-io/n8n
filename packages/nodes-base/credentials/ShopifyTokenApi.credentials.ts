@@ -25,6 +25,13 @@ export class ShopifyTokenApi implements ICredentialType {
 			default: '',
 			description: 'Only the subdomain without .myshopify.com',
 		},
+		{
+			displayName: 'App Secret Key',
+			name: 'appSecretKey',
+			type: 'string',
+			default: '',
+			description: 'Optional secret key needed to verify the webhook when using Shopify Trigger node',
+		},
 	];
 	authenticate: IAuthenticateHeaderAuth = {
 		type: 'headerAuth',

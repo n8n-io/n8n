@@ -44,6 +44,7 @@ export interface IOAuth2Options {
 	tokenType?: string;
 	keepBearer?: boolean;
 	tokenExpiredStatusCode?: number;
+	includeAccessTokenInHeader?: string;
 }
 
 export interface IConnection {
