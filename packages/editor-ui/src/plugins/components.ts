@@ -50,6 +50,7 @@ import {
 	N8nActionToggle,
 	N8nButton,
 	N8nElButton,
+	N8nCallout,
 	N8nCard,
 	N8nIcon,
 	N8nIconButton,
@@ -60,7 +61,6 @@ import {
 	N8nLink,
 	N8nLoading,
 	N8nHeading,
-	N8nHeaderMessage,
 	N8nMarkdown,
 	N8nMenu,
 	N8nMenuItem,
@@ -91,6 +91,7 @@ Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);
 Vue.component('n8n-button', N8nButton);
 Vue.component('el-button', N8nElButton);
+Vue.component('n8n-callout', N8nCallout);
 Vue.component('n8n-card', N8nCard);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
@@ -102,7 +103,6 @@ Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
 Vue.component('n8n-loading', N8nLoading);
 Vue.use(N8nHeading);
-Vue.component('n8n-header-message', N8nHeaderMessage);
 Vue.use(N8nLink);
 Vue.component('n8n-markdown', N8nMarkdown);
 Vue.use(N8nMenu);
