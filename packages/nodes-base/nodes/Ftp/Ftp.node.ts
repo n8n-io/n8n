@@ -166,7 +166,7 @@ export class Ftp implements INodeType {
 						name: 'folder',
 						type: 'boolean',
 						default: false,
-						description: 'When set to true, folders can be deleted',
+						description: 'Whether folders can be deleted',
 						required: true,
 					},
 					{
@@ -181,7 +181,7 @@ export class Ftp implements INodeType {
 						name: 'recursive',
 						type: 'boolean',
 						default: false,
-						description: 'If true, remove all files and directories in target directory',
+						description: 'Whether to remove all files and directories in target directory',
 						required: true,
 					},
 				],
@@ -272,7 +272,7 @@ export class Ftp implements INodeType {
 						name: 'createDirectories',
 						type: 'boolean',
 						default: false,
-						description: 'Recursively create destination directory when renaming an existing file or folder',
+						description: 'Whether to recursively create destination directory when renaming an existing file or folder',
 					},
 				],
 			},
@@ -307,6 +307,7 @@ export class Ftp implements INodeType {
 				name: 'binaryData',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The text content of the file to upload',
 			},
 			{
@@ -375,7 +376,7 @@ export class Ftp implements INodeType {
 				name: 'recursive',
 				type: 'boolean',
 				default: false,
-				description: 'Return object representing all directories / objects recursively found within SFTP server',
+				description: 'Whether to return object representing all directories / objects recursively found within SFTP server',
 				required: true,
 			},
 		],

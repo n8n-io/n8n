@@ -227,7 +227,7 @@ export class Todoist implements INodeType {
 				description: 'Section to which you want move the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Labels ID',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -244,7 +244,7 @@ export class Todoist implements INodeType {
 					},
 				},
 				default: [],
-				description: 'Optional labels that will be assigned to a created task',
+				description: 'Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -558,7 +558,7 @@ export class Todoist implements INodeType {
 						description: '2-letter code specifying language in case due_string is not written in English',
 					},
 					{
-						displayName: 'Labels ID',
+						displayName: 'Label Names or IDs',
 						name: 'labels',
 						type: 'multiOptions',
 						typeOptions: {

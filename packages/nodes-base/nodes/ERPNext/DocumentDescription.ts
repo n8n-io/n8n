@@ -129,7 +129,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -139,7 +139,7 @@ export const documentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Comma-separated list of fields to return',
+				description: 'Comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				placeholder: 'name,country',
 			},
 			{
@@ -161,6 +161,7 @@ export const documentFields: INodeProperties[] = [
 								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getDocFields',
 									loadOptionsDependsOn: [
@@ -270,6 +271,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'field',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDocFields',
 							loadOptionsDependsOn: [
@@ -446,6 +448,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'field',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDocFields',
 							loadOptionsDependsOn: [

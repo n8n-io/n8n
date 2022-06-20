@@ -29,6 +29,7 @@ import {
 	NodeHelpers,
 	IExecuteData,
 	INodeConnection,
+	IWebhookDescription,
 } from 'n8n-workflow';
 
 import {
@@ -426,6 +427,33 @@ export const workflowHelpers = mixins(
 				}
 
 				return nodeData;
+			},
+
+			getWebhookExpressionValue (webhookData: IWebhookDescription, key: string): string {
+				if (webhookData[key] === undefined) {
+					return 'empty';
+				}
+				try {
+					return this.resolveExpression(webhookData[key] as string) as string;
+				} catch (e) {
+					return this.$locale.baseText('nodeWebhooks.invalidExpression');
+				}
+			},
+
+			getWebhookUrl (webhookData: IWebhookDescription, node: INode, showUrlFor?: string): string {
+				if (webhookData.restartWebhook === true) {
+					return '$resumeWebhookUrl';
+				}
+				let baseUrl = this.$store.getters.getWebhookUrl;
+				if (showUrlFor === 'test') {
+					baseUrl = this.$store.getters.getWebhookTestUrl;
+				}
+
+				const workflowId = this.$store.getters.workflowId;
+				const path = this.getWebhookExpressionValue(webhookData, 'path');
+				const isFullPath = this.getWebhookExpressionValue(webhookData, 'isFullPath') as unknown as boolean || false;
+
+				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 			},
 
 

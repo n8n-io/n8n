@@ -11,9 +11,9 @@ import { randomApiKey, randomEmail, randomName, randomString, randomValidPasswor
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
 import { entities } from '../../../src/databases/entities';
-import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
-import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
-import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
+import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
+import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
+import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
 import { categorize, getPostgresSchemaSection } from './utils';
 import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 

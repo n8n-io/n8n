@@ -204,7 +204,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Authors IDs',
+				displayName: 'Author Names or IDs',
 				name: 'authors',
 				type: 'multiOptions',
 				typeOptions: {
@@ -303,7 +303,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -770,7 +770,7 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Authors IDs',
+				displayName: 'Author Names or IDs',
 				name: 'authors',
 				type: 'multiOptions',
 				typeOptions: {
@@ -896,7 +896,7 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {

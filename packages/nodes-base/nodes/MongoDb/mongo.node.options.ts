@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -246,7 +247,7 @@ export const nodeDescription: INodeTypeDescription = {
 				},
 			},
 			default: false,
-			description: 'Perform an insert if no documents match the update key',
+			description: 'Whether to perform an insert if no documents match the update key',
 		},
 		{
 			displayName: 'Options',
@@ -275,7 +276,7 @@ export const nodeDescription: INodeTypeDescription = {
 					name: 'useDotNotation',
 					type: 'boolean',
 					default: false,
-					description: 'Wheather to use dot notation to access date fields',
+					description: 'Whether to use dot notation to access date fields',
 				},
 			],
 		},

@@ -28,15 +28,15 @@
     "watch:theme": "gulp watch:theme"
   },
   "peerDependencies": {
-    "@fortawesome/fontawesome-svg-core": "1.x",
-    "@fortawesome/free-solid-svg-icons": "5.x",
+    "@fortawesome/fontawesome-svg-core": "6.x",
+    "@fortawesome/free-solid-svg-icons": "6.x",
     "@fortawesome/vue-fontawesome": "2.x",
     "core-js": "3.x"
   },
   "devDependencies": {
     "@babel/core": "^7.14.6",
-    "@fortawesome/fontawesome-svg-core": "^1.2.35",
-    "@fortawesome/free-solid-svg-icons": "^5.15.3",
+    "@fortawesome/fontawesome-svg-core": "^6.1.1",
+    "@fortawesome/free-solid-svg-icons": "^6.1.1",
     "@fortawesome/vue-fontawesome": "^2.0.2",
     "@storybook/addon-actions": "^6.3.6",
     "@storybook/addon-essentials": "^6.3.6",

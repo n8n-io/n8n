@@ -97,6 +97,7 @@ export const coinFields: INodeProperties[] = [
 		name: 'coinId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCoins',
 		},
@@ -162,6 +163,7 @@ export const coinFields: INodeProperties[] = [
 		name: 'coinId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCoins',
 		},
@@ -180,7 +182,7 @@ export const coinFields: INodeProperties[] = [
 		placeholder: 'bitcoin',
 	},
 	{
-		displayName: 'Base Currencies',
+		displayName: 'Base Currencies Name or ID',
 		name: 'baseCurrencies',
 		required: true,
 		type: 'multiOptions',
@@ -202,7 +204,7 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: [],
 		placeholder: 'bitcoin',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Platform ID',
@@ -328,7 +330,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Quote Currencies',
+		displayName: 'Quote Currencies Name or ID',
 		name: 'quoteCurrencies',
 		type: 'multiOptions',
 		typeOptions: {
@@ -346,7 +348,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: [],
-		description: 'The second currency in the pair. For BTC:ETH this is ETH.',
+		description: 'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Range (Days)',
@@ -549,12 +551,13 @@ export const coinFields: INodeProperties[] = [
 				name: 'sparkline',
 				type: 'boolean',
 				default: false,
-				description: 'Include sparkline 7 days data',
+				description: 'Whether to include sparkline 7 days data',
 			},
 			{
 				displayName: 'Price Change Percentage',
 				name: 'price_change_percentage',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: '1h',
@@ -651,14 +654,14 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Exchange IDs',
+				displayName: 'Exchange Names or IDs',
 				name: 'exchange_ids',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getExchanges',
 				},
 				default: [],
-				description: 'Filter results by exchange IDs',
+				description: 'Filter results by exchange IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Include Exchange Logo',
@@ -711,7 +714,7 @@ export const coinFields: INodeProperties[] = [
 				name: 'localization',
 				type: 'boolean',
 				default: true,
-				description: 'Set to false to exclude localized languages in response',
+				description: 'Whether to exclude localized languages in response',
 			},
 		],
 	},
@@ -737,42 +740,42 @@ export const coinFields: INodeProperties[] = [
 				name: 'community_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include community data',
+				description: 'Whether to include community data',
 			},
 			{
 				displayName: 'Developer Data',
 				name: 'developer_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include developer data',
+				description: 'Whether to include developer data',
 			},
 			{
 				displayName: 'Localization',
 				name: 'localization',
 				type: 'boolean',
 				default: false,
-				description: 'Include all localized languages in response',
+				description: 'Whether to include all localized languages in response',
 			},
 			{
 				displayName: 'Market Data',
 				name: 'market_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include market data',
+				description: 'Whether to include market data',
 			},
 			{
 				displayName: 'Sparkline',
 				name: 'sparkline',
 				type: 'boolean',
 				default: false,
-				description: 'Include sparkline 7 days data (eg. true, false).',
+				description: 'Whether to include sparkline 7 days data (eg. true, false).',
 			},
 			{
 				displayName: 'Tickers',
 				name: 'tickers',
 				type: 'boolean',
 				default: false,
-				description: 'Include tickers data',
+				description: 'Whether to include tickers data',
 			},
 		],
 	},
