@@ -88,9 +88,18 @@ export default mixins(
 		async onAction(value: string) {
 			switch (value) {
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
+					this.$telemetry.track('user clicked to browse the cnr package documentation', {
+						package_name: this.communityPackage.packageName,
+						package_version: this.communityPackage.installedVersion,
+					});
 					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
 					break;
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
+					this.$telemetry.track('user started cnr package deletion', {
+						package_name: this.communityPackage.packageName,
+						package_node_names: this.communityPackage.installedNodes.map(node => node.name),
+						package_version: this.communityPackage.installedVersion,
+					});
 					this.$store.dispatch('ui/openCommunityPackageUninstallConfirmModal', this.communityPackage.packageName);
 					break;
 				default:
@@ -98,6 +107,12 @@ export default mixins(
 			}
 		},
 		onUpdateClick() {
+			this.$telemetry.track('user started cnr package update', {
+				package_name: this.communityPackage.packageName,
+				package_node_names: this.communityPackage.installedNodes.map(node => node.name),
+				package_version_current: this.communityPackage.installedVersion,
+				package_version_new: this.communityPackage.updateAvailable,
+			});
 			this.$store.dispatch('ui/openCommunityPackageUpdateConfirmModal', this.communityPackage.packageName);
 		},
 	},

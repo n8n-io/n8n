@@ -26,10 +26,17 @@
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
 					<span
-						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })">
+						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })"
+						@click="onMissingNodeTextClick"
+					>
 					</span>
 				</div>
-				<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}</n8n-link>
+				<n8n-link
+					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
+					@click="onMissingNodeLearnMoreLinkClick"
+				>
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
+				</n8n-link>
 			</div>
 			<span v-else
 				v-html="
@@ -576,6 +583,17 @@ export default mixins(
 				} else {
 					this.nodeValid = false;
 				}
+			},
+			onMissingNodeTextClick(event: MouseEvent) {
+				if ((event.target as Element).localName === 'a') {
+					this.$telemetry.track('user clicked cnr browse button', { source: 'cnr missing node modal' });
+				}
+			},
+			onMissingNodeLearnMoreLinkClick() {
+				this.$telemetry.track('user clicked how to install community nodes link', {
+					package_name: this.node.type.split('.')[0],
+					node_type: this.node.type,
+				});
 			},
 		},
 		mounted () {
