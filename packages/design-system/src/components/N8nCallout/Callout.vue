@@ -158,5 +158,6 @@ export default Vue.extend({
 .action-text {
 	padding-left: var(--spacing-4xs);
 	text-decoration: underline;
+	cursor: pointer;
 }
 </style>
