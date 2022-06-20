@@ -35,7 +35,7 @@ const template : StoryFn = (_, { argTypes }) => ({
 	components: {
 		N8nCallout,
 	},
-	template: `<n8n-callout v-bind="$props"></n8n-callout>`,
+	template: `<n8n-callout v-bind="$props" />`,
 });
 
 export const customCallout = template.bind({});
