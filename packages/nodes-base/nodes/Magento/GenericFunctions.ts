@@ -107,7 +107,7 @@ export function getAddressesUi(): INodeProperties {
 						default: '',
 					},
 					{
-						displayName: 'Country',
+						displayName: 'Country Name or ID',
 						name: 'country_id',
 						type: 'options',
 						typeOptions: {
@@ -437,17 +437,17 @@ function getConditionTypeFields(): INodeProperties {
 				description: 'The value can contain a comma-separated list of values',
 			},
 			{
-				name: 'Like',
-				value: 'like',
-				description: 'The value can contain the SQL wildcard characters when like is specified',
-			},
-			{
 				name: 'Less Than',
 				value: 'lt',
 			},
 			{
 				name: 'Less Than or Equal',
 				value: 'lte',
+			},
+			{
+				name: 'Like',
+				value: 'like',
+				description: 'The value can contain the SQL wildcard characters when like is specified',
 			},
 			{
 				name: 'More or Equal',
@@ -578,7 +578,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 					name: 'customAttribute',
 					values: [
 						{
-							displayName: 'Attribute Code',
+							displayName: 'Attribute Code Name or ID',
 							name: 'attribute_code',
 							type: 'options',
 							typeOptions: {
@@ -635,7 +635,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Group Name/ID',
+			displayName: 'Group Name or ID',
 			name: 'group_id',
 			type: 'options',
 			typeOptions: {
@@ -668,7 +668,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Store URL/ID',
+			displayName: 'Store Name or ID',
 			name: 'store_id',
 			type: 'options',
 			typeOptions: {
@@ -695,7 +695,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			default: '',
 		},
 		{
-			displayName: 'Website Name/ID',
+			displayName: 'Website Name or ID',
 			name: 'website_id',
 			type: 'options',
 			displayOptions: {
@@ -716,7 +716,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 export function getProductOptionalFields(): INodeProperties[] {
 	return [
 		{
-			displayName: 'Attribute Set Name/ID',
+			displayName: 'Attribute Set Name or ID',
 			name: 'attribute_set_id',
 			type: 'options',
 			displayOptions: {
@@ -816,7 +816,7 @@ export function getProductOptionalFields(): INodeProperties[] {
 			default: 1,
 		},
 		{
-			displayName: 'Type Name/ID',
+			displayName: 'Type Name or ID',
 			name: 'type_id',
 			type: 'options',
 			typeOptions: {

@@ -132,7 +132,7 @@ export class RabbitMQ implements INodeType {
 				description: 'Type of exchange',
 			},
 			{
-				displayName: 'Routing key',
+				displayName: 'Routing Key',
 				name: 'routingKey',
 				type: 'string',
 				displayOptions: {

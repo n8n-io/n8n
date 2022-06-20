@@ -37,7 +37,7 @@ export const userListFields: INodeProperties[] = [
 	/*                                userList:add                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -55,7 +55,7 @@ export const userListFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Identifier to be used',
+		description: 'Identifier to be used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Identifier',
@@ -107,7 +107,7 @@ export const userListFields: INodeProperties[] = [
 	/*                                userList:remove                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -125,7 +125,7 @@ export const userListFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Identifier to be used',
+		description: 'Identifier to be used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Identifier',

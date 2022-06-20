@@ -55,6 +55,7 @@ export class Cron implements INodeType {
 								displayName: 'Mode',
 								name: 'mode',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Every Minute',
@@ -158,6 +159,7 @@ export class Cron implements INodeType {
 										],
 									},
 								},
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Monday',

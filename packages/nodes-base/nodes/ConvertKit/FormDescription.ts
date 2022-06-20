@@ -39,7 +39,7 @@ export const formOperations: INodeProperties[] = [
 
 export const formFields: INodeProperties[] = [
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'id',
 		type: 'options',
 		typeOptions: {

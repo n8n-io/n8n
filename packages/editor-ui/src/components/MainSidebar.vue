@@ -259,7 +259,11 @@ export default mixins(
 				'isTemplatesEnabled',
 			]),
 			canUserAccessSettings(): boolean {
-				return this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS) || this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
+				return [
+					VIEWS.PERSONAL_SETTINGS,
+					VIEWS.USERS_SETTINGS,
+					VIEWS.API_SETTINGS,
+				].some((route) => this.canUserAccessRouteByName(route));
 			},
 			helpMenuItems (): object[] {
 				return [
@@ -612,11 +616,16 @@ export default mixins(
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (key === 'settings') {
-					if ((this.currentUser as IUser).isDefaultUser) {
-						this.$router.push('/settings/users');
+					if (this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS) || this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS)) {
+						if ((this.currentUser as IUser).isDefaultUser) {
+							this.$router.push('/settings/users');
+						}
+						else {
+							this.$router.push('/settings/personal');
+						}
 					}
-					else {
-						this.$router.push('/settings/personal');
+					else if (this.canUserAccessRouteByName(VIEWS.API_SETTINGS)) {
+						this.$router.push('/settings/api');
 					}
 				}
 			},

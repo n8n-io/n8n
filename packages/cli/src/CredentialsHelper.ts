@@ -51,6 +51,8 @@ import {
 } from '.';
 // eslint-disable-next-line import/no-cycle
 import { User } from './databases/entities/User';
+// eslint-disable-next-line import/no-cycle
+import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -190,6 +192,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			'internal',
 			defaultTimezone,
 			additionalKeys,
+			undefined,
 			'',
 		);
 
@@ -366,6 +369,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					mode,
 					timezone,
 					{},
+					undefined,
 					false,
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
@@ -397,6 +401,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				mode,
 				defaultTimezone,
 				{},
+				undefined,
 				undefined,
 				decryptedData,
 			) as ICredentialDataDecryptedObject;
@@ -642,6 +647,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				inputData,
 				runIndex,
 				nodeTypeCopy,
+				{ node, data: {}, source: null },
 				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);
@@ -763,4 +769,15 @@ export async function getCredentialWithoutUser(
 ): Promise<ICredentialsDb | undefined> {
 	const credential = await Db.collections.Credentials.findOne(credentialId);
 	return credential;
+}
+
+export function createCredentiasFromCredentialsEntity(
+	credential: CredentialsEntity,
+	encrypt = false,
+): Credentials {
+	const { id, name, type, nodesAccess, data } = credential;
+	if (encrypt) {
+		return new Credentials({ id: null, name }, type, nodesAccess);
+	}
+	return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
 }
