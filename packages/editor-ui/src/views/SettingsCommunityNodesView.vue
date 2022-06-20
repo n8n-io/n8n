@@ -62,6 +62,7 @@ import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY, COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../constants';
+import { PublicInstalledPackage } from 'n8n-workflow';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -82,6 +83,15 @@ export default mixins(
 		try {
 			this.$data.loading = true;
 			await this.$store.dispatch('communityNodes/fetchInstalledPackages');
+
+			const installedPackages: PublicInstalledPackage[] = this.getInstalledPackages;
+			const packagesToUpdate: PublicInstalledPackage[] = installedPackages.filter(p => p.updateAvailable );
+			this.$telemetry.track('user viewed cnr settings page', {
+				num_of_packages_installed: installedPackages.length,
+				installed_packages: installedPackages,
+				is_update_available: packagesToUpdate.length > 0,
+				packages_to_update: packagesToUpdate,
+			});
 		} catch (error) {
 			this.$showError(
 				error,
@@ -131,6 +141,7 @@ export default mixins(
 	},
 	methods: {
 		openInstallModal() {
+			this.$telemetry.track('user clicked cnr install button', { is_empty_state: this.getInstalledPackages.length === 0 });
 			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},

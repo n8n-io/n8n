@@ -56,7 +56,7 @@
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }}
 					</n8n-text><br />
-					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL">{{ $locale.baseText('_reusableDynamicText.learnMore') }}</n8n-link>
+					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{ $locale.baseText('_reusableDynamicText.learnMore') }}</n8n-link>
 				</el-checkbox>
 			</div>
 		</template>
@@ -110,6 +110,7 @@ export default mixins(
 	},
 	methods: {
 		openNPMPage() {
+			this.$telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
 			window.open(NPM_KEYWORD_SEARCH_URL, '_blank');
 		},
 		async onInstallClick() {
@@ -128,9 +129,23 @@ export default mixins(
 						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
 						type: 'success',
 					});
+					this.$telemetry.track('user started cnr install',
+						{
+							is_valid_input: true,
+							input_string: this.packageName,
+							source: 'cnr settings page',
+						},
+					);
 				} catch(error) {
 					if(error.httpStatusCode && error.httpStatusCode === 400) {
 						this.infoTextErrorMessage = error.message;
+						this.$telemetry.track('user started cnr install',
+							{
+								is_valid_input: false,
+								input_string: this.packageName,
+								source: 'cnr settings page',
+							},
+						);
 					} else {
 						this.$showError(
 							error,
@@ -150,6 +165,9 @@ export default mixins(
 		},
 		onInputBlur() {
 			this.packageName = this.packageName.replaceAll('npm i ', '').replaceAll('npm install ', '');
+		},
+		onLearnMoreLinkClick() {
+			this.$telemetry.track('user clicked cnr learn more link', { source: 'cnr settings page' });
 		},
 	},
 });
