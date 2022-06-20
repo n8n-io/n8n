@@ -94,6 +94,11 @@ export default {
 	}
 }
 
+.secondary {
+	background-color: var(--color-secondary-tint-2);
+	color: var(--color-secondary);
+}
+
 .primary-underline {
 	composes: primary;
 	text-decoration: underline;
@@ -104,8 +109,9 @@ export default {
 	text-decoration: underline;
 }
 
-.secondary {
-	--background-color: var(--color-secondary-tint-2);
+.secondary-underline {
+	composes: secondary;
+	text-decoration: underline;
 }
 
 </style>

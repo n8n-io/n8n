@@ -40,12 +40,12 @@ import N8nAvatar from './N8nAvatar';
 import N8nBadge from './N8nBadge';
 import N8nButton from './N8nButton';
 import { N8nElButton } from './N8nButton/overrides';
+import N8nCallout from './N8nCallout';
 import N8nCard from './N8nCard';
 import N8nFormBox from './N8nFormBox';
 import N8nFormInput from './N8nFormInput';
 import N8nFormInputs from './N8nFormInputs';
 import N8nHeading from './N8nHeading';
-import N8nHeaderMessage from './N8nHeaderMessage';
 import N8nIcon from './N8nIcon';
 import N8nIconButton from './N8nIconButton';
 import N8nInput from './N8nInput';
@@ -83,9 +83,9 @@ export {
 	N8nBadge,
 	N8nButton,
 	N8nElButton,
+	N8nCallout,
 	N8nCard,
 	N8nHeading,
-	N8nHeaderMessage,
 	N8nFormBox,
 	N8nFormInput,
 	N8nFormInputs,
