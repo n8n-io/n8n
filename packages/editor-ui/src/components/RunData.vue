@@ -10,7 +10,7 @@
 			:actionText="$locale.baseText('runData.pindata.unpin')"
 			:trailingLinkText="$locale.baseText('runData.pindata.learnMore')"
 			trailingLinkUrl="https://docs.n8n.io/data/data-pinning/"
-			@action-text-click="onClickUnpinData"
+			@action-text-click="onTogglePinData"
 		/>
 
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
