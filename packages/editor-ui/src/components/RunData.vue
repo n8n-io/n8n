@@ -6,12 +6,30 @@
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style['pinned-data-callout']"
-			:message="$locale.baseText('runData.pindata.thisDataIsPinned')"
-			:actionText="$locale.baseText('runData.pindata.unpin')"
-			:trailingLinkText="$locale.baseText('runData.pindata.learnMore')"
-			:trailingLinkUrl="dataPinningDocsUrl"
-			@action-text-click="onTogglePinData"
-		/>
+		>
+			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
+			<template #actions>
+				<n8n-link
+					theme="secondary"
+					size="small"
+					:bold="true"
+					@click="onTogglePinData"
+				>
+					{{ $locale.baseText('runData.pindata.unpin') }}
+				</n8n-link>
+			</template>
+			<template #trailingContent>
+				<n8n-link
+					:to="dataPinningDocsUrl"
+					size="small"
+					theme="secondary"
+					:bold="true"
+					:underline="true"
+				>
+					Learn more
+				</n8n-link>
+			</template>
+		</n8n-callout>
 
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
