@@ -419,6 +419,11 @@ export class ShopifyTrigger implements INodeType {
 			secret = credentials.appSecretKey as string;
 		}
 
+		if (authentication === 'oAuth2') {
+			const credentials = await this.getCredentials('shopifyOAuth2Api');
+			secret = credentials.clientSecret as string;
+		}
+
 		const topic = this.getNodeParameter('topic') as string;
 		if (headerData['x-shopify-topic'] !== undefined
 			&& headerData['x-shopify-hmac-sha256'] !== undefined

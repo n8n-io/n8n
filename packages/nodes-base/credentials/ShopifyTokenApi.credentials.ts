@@ -18,19 +18,20 @@ export class ShopifyTokenApi implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'App Secret Key',
+			name: 'appSecretKey',
+			required: true,
+			type: 'string',
+			default: '',
+			description: 'Secret key needed to verify the webhook when using Shopify Trigger node',
+		},
+		{
 			displayName: 'Shop Subdomain',
 			name: 'shopSubdomain',
 			required: true,
 			type: 'string',
 			default: '',
 			description: 'Only the subdomain without .myshopify.com',
-		},
-		{
-			displayName: 'App Secret Key',
-			name: 'appSecretKey',
-			type: 'string',
-			default: '',
-			description: 'Optional secret key needed to verify the webhook when using Shopify Trigger node',
 		},
 	];
 	authenticate: IAuthenticateHeaderAuth = {

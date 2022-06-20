@@ -29,11 +29,14 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (authenticationMethod === 'apiKey') {
 		credentials = await this.getCredentials('shopifyApi');
 		credentialType = 'shopifyApi';
+
 	} else if (authenticationMethod === 'accessToken') {
 		credentials = await this.getCredentials('shopifyTokenApi');
 		credentialType = 'shopifyTokenApi';
+
 	} else {
 		credentials = await this.getCredentials('shopifyOAuth2Api');
+
 	}
 
 	const options: OptionsWithUri = {
@@ -50,8 +53,10 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	if (authenticationMethod === 'apiKey') {
-		const headerWithAuthentication = Object.assign({},
-			{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
+		const headerWithAuthentication = Object.assign(
+			{},
+			{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` },
+		);
 		options.headers = headerWithAuthentication;
 	}
 
@@ -64,6 +69,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
+
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options, { oauth2:  oAuth2Options });
 	} catch (error) {
