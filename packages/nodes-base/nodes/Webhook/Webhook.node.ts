@@ -53,6 +53,14 @@ export class Webhook implements INodeType {
 		defaults: {
 			name: 'Webhook',
 		},
+		triggerPanel: {
+			header: '',
+			executionsHelp: {
+				inactive: 'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. These executions will show up in the executions list, but not in the editor.',
+				active: 'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. Since the workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key=\"executions\">executions list</a>, but not in the editor.',
+			},
+			activationHint: 'Once you’ve finished building your workflow, run it without having to click this button by using the production webhook URL.',
+		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
