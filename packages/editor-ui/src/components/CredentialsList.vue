@@ -27,7 +27,7 @@
 					<template slot-scope="scope">
 						<div class="cred-operations">
 							<n8n-icon-button :title="$locale.baseText('credentialsList.editCredential')" @click.stop="editCredential(scope.row)" size="small" icon="pen" />
-							<n8n-icon-button :title="$locale.baseText('credentialsList.deleteCredential')" @click.stop="deleteCredential(scope.row)" size="small" icon="trash" type="tertiary" />
+							<n8n-icon-button :title="$locale.baseText('credentialsList.deleteCredential')" @click.stop="deleteCredential(scope.row)" size="small" icon="trash" />
 						</div>
 					</template>
 				</el-table-column>

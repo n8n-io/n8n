@@ -49,6 +49,7 @@ export default Vue.extend({
 <style lang="scss" module>
 .container {
 	width: 65px;
+	display: inline-flex;
 }
 
 .saved {
