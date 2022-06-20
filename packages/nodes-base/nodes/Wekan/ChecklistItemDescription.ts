@@ -437,7 +437,7 @@ export const checklistItemFields: INodeProperties[] = [
 				name: 'isFinished',
 				type: 'boolean',
 				default: false,
-				description: 'Item is checked',
+				description: 'Whether the item is checked',
 			},
 		],
 	},

@@ -112,7 +112,7 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Associated Company',
+				displayName: 'Associated Company Names or IDs',
 				name: 'associatedCompany',
 				type: 'multiOptions',
 				typeOptions: {
@@ -121,7 +121,7 @@ export const dealFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Associated Vids',
+				displayName: 'Associated Vids Names or IDs',
 				name: 'associatedVids',
 				type: 'multiOptions',
 				typeOptions: {
@@ -186,6 +186,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Deal Type Name or ID',
 				name: 'dealType',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
@@ -312,6 +313,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Deal Type Name or ID',
 				name: 'dealType',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
@@ -369,6 +371,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],
@@ -440,27 +443,27 @@ export const dealFields: INodeProperties[] = [
 				name: 'includeAssociations',
 				type: 'boolean',
 				default: false,
-				description: 'Include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
+				description: 'Whether to include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Properties With History',
+				displayName: 'Property Names or IDs',
 				name: 'propertiesWithHistory',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: 'Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property\'s value.',
+				description: 'Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property\'s value. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 
 		],
@@ -564,6 +567,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],
@@ -655,6 +659,7 @@ export const dealFields: INodeProperties[] = [
 										displayName: 'Property Name or ID',
 										name: 'propertyName',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getDealProperties',
 										},
@@ -763,14 +768,14 @@ export const dealFields: INodeProperties[] = [
 				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Query',
@@ -784,6 +789,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},

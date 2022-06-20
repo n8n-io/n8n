@@ -252,7 +252,7 @@ export class Asana implements INodeType {
 						name: 'completed',
 						type: 'boolean',
 						default: false,
-						description: 'If the subtask should be marked completed',
+						description: 'Whether the subtask should be marked completed',
 					},
 					{
 						displayName: 'Due On',
@@ -266,7 +266,7 @@ export class Asana implements INodeType {
 						name: 'liked',
 						type: 'boolean',
 						default: false,
-						description: 'If the task is liked by the authorized user',
+						description: 'Whether the task is liked by the authorized user',
 					},
 					{
 						displayName: 'Notes',
@@ -371,7 +371,7 @@ export class Asana implements INodeType {
 				placeholder: 'Add Field',
 				options: [
 					{
-						displayName: 'Fields',
+						displayName: 'Field Names or IDs',
 						name: 'opt_fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -382,14 +382,14 @@ export class Asana implements INodeType {
 							'name',
 							'resource_type',
 						],
-						description: 'Defines fields to return',
+						description: 'Defines fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Pretty',
 						name: 'opt_pretty',
 						type: 'boolean',
 						default: false,
-						description: 'Provides “pretty” output',
+						description: 'Whether to provide “pretty” output',
 					},
 				],
 			},
@@ -608,7 +608,7 @@ export class Asana implements INodeType {
 						description: 'The assignee to filter tasks on. Note: If you specify assignee, you must also specify the workspace to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Fields',
+						displayName: 'Field Names or IDs',
 						name: 'opt_fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -619,14 +619,14 @@ export class Asana implements INodeType {
 							'name',
 							'resource_type',
 						],
-						description: 'Defines fields to return',
+						description: 'Defines fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Pretty',
 						name: 'opt_pretty',
 						type: 'boolean',
 						default: false,
-						description: 'Provides “pretty” output',
+						description: 'Whether to provide “pretty” output',
 					},
 					{
 						displayName: 'Project Name or ID',
@@ -815,7 +815,7 @@ export class Asana implements INodeType {
 						name: 'completed',
 						type: 'boolean',
 						default: false,
-						description: 'If the task is marked completed',
+						description: 'Whether the task is marked completed',
 					},
 					{
 						displayName: 'Text',
@@ -892,7 +892,7 @@ export class Asana implements INodeType {
 						name: 'completed',
 						type: 'boolean',
 						default: false,
-						description: 'If the task should be marked completed',
+						description: 'Whether the task should be marked completed',
 					},
 					{
 						displayName: 'Due On',
@@ -920,7 +920,7 @@ export class Asana implements INodeType {
 						name: 'liked',
 						type: 'boolean',
 						default: false,
-						description: 'If the task is liked by the authorized user',
+						description: 'Whether the task is liked by the authorized user',
 					},
 					{
 						displayName: 'Notes',
@@ -934,14 +934,14 @@ export class Asana implements INodeType {
 						description: 'The task notes',
 					},
 					{
-						displayName: 'Project IDs',
+						displayName: 'Project Names or IDs',
 						name: 'projects',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: [],
-						description: 'The project to filter tasks on',
+						description: 'The project to filter tasks on. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 				],
 			},
@@ -1014,7 +1014,7 @@ export class Asana implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If body is HTML or simple text',
+				description: 'Whether body is HTML or simple text',
 			},
 			{
 				displayName: 'Text',
@@ -1087,7 +1087,7 @@ export class Asana implements INodeType {
 						name: 'is_pinned',
 						type: 'boolean',
 						default: false,
-						description: 'Pin the comment',
+						description: 'Whether to pin the comment',
 					},
 				],
 			},
@@ -1756,7 +1756,7 @@ export class Asana implements INodeType {
 						name: 'archived',
 						type: 'boolean',
 						default: false,
-						description: 'Only return projects whose archived field takes on the value of this parameter',
+						description: 'Whether to only return projects whose archived field takes on the value of this parameter',
 					},
 					{
 						displayName: 'Teams Name or ID',

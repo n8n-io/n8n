@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -42,6 +43,7 @@ export class QuickBase implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Quick Base',
 		name: 'quickbase',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:quickbase.png',
 		group: ['input'],
 		version: 1,
