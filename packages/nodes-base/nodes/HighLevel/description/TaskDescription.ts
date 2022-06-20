@@ -1,6 +1,13 @@
 import {
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
 	INodeProperties
 } from 'n8n-workflow';
+
+import {
+	DateTime,
+	ToISOTimeOptions
+} from 'luxon';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -236,6 +243,17 @@ const createOperations: Array<INodeProperties> = [
 			send: {
 				type: 'body',
 				property: 'dueDate',
+				preSend: [
+					async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+						const dueDateParam = this.getNodeParameter('dueDate') as string;
+						const options: ToISOTimeOptions = { suppressMilliseconds: true }
+						const dueDate = DateTime.fromISO(dueDateParam).toISO(options);
+						requestOptions.body = (requestOptions.body || {}) as object;
+						Object.assign(requestOptions.body, { dueDate });
+						// console.log({ dueDateParam, dueDate });
+						return requestOptions;
+					},
+				],
 			}
 		}
 	},
