@@ -49,6 +49,7 @@ export const BREAKPOINT_XL = 1920;
 
 
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
+export const DATA_PINNING_DOCS_URL = 'https://docs.n8n.io/data/data-pinning/';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
