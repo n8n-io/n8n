@@ -99,6 +99,10 @@ export class SplitInBatches implements INodeType {
 					returnItems.push(...nodeContext.items.slice(pos, pos + batchSize));
 				}
 			}
+		}
+
+		if (returnItems.length === 0) {
+			// No data left to return so stop execution of the branch
 			return null;
 		}
 
