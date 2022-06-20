@@ -34,6 +34,8 @@ import { User } from './databases/entities/User';
 import { SharedCredentials } from './databases/entities/SharedCredentials';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { Settings } from './databases/entities/Settings';
+import { FeatureConfig } from './databases/entities/FeatureConfig';
+import { ActiveDirectoryConfig } from './ActiveDirectory/types';
 
 export interface IActivationError {
 	time: number;
@@ -82,6 +84,7 @@ export interface IDatabaseCollections {
 	SharedCredentials: Repository<SharedCredentials>;
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;
+	FeatureConfig: Repository<FeatureConfig>;
 }
 
 export interface IWebhookDb {
@@ -91,6 +94,20 @@ export interface IWebhookDb {
 	node: string;
 	webhookId?: string;
 	pathLength?: number;
+}
+
+// ----------------------------------
+//            feature config
+// ----------------------------------
+
+export interface IFeatureConfigDb {
+	data: string;
+	name: string;
+}
+
+export interface IActiveDirectoryFeatureConfig {
+	name: string;
+	data: ActiveDirectoryConfig;
 }
 
 // ----------------------------------

@@ -34,10 +34,9 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { ActiveDirectoryManager } from '../src/ActiveDirectory/ActiveDirectoryManager';
-import { search } from 'superagent';
-import { string } from '@oclif/parser/lib/flags';
 import { ActiveDirectoryService } from '../src/ActiveDirectory/ActiveDirectoryService';
 import { getActiveDirectorySyncInstance } from '../src/ActiveDirectory/ActiveDirectorySync';
+import { handleActiveDirectoryFirstInit } from '../src/ActiveDirectory/helpers';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -219,14 +218,7 @@ export class Start extends Command {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
 
-				// //si no existe in the database settings it's the first time;
-				// if (databaseSettings['ACTIVE_DIRECTORY_DISABLED'] === undefined) {
-				// 	//if config active directory enabled
-				// 	// save it to setting table as enabled enabled
-				// 	//set config object to enabled
-				// 	// save all other feature settings to the other table
-				// 	// with their initial values;
-				// }
+				await handleActiveDirectoryFirstInit(databaseSettings);
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');

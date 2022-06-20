@@ -11,6 +11,26 @@ import { compareHash, sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import type { LoginRequest } from '../../requests';
 import config = require('../../../config');
+import { handleActiveDirectoryLogin } from '../../ActiveDirectory/helpers';
+
+const handleEmailLogin = async (email: string, password: string): Promise<{ user?: User }> => {
+	const user = await Db.collections.User.findOne(
+		{
+			email,
+		},
+		{
+			relations: ['globalRole'],
+		},
+	);
+
+	if (user?.password && (await compareHash(password, user.password))) {
+		return {};
+	}
+
+	return {
+		user,
+	};
+};
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -21,39 +41,42 @@ export function authenticationMethods(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: LoginRequest, res: Response): Promise<PublicUser> => {
-			if (!req.body.email) {
+			const { email, password } = req.body;
+
+			if (!email) {
 				throw new Error('Email is required to log in');
 			}
 
-			if (!req.body.password) {
+			if (!password) {
 				throw new Error('Password is required to log in');
 			}
 
-			let user;
-			try {
-				user = await Db.collections.User.findOne(
-					{
-						email: req.body.email,
-					},
-					{
-						relations: ['globalRole'],
-					},
-				);
-			} catch (error) {
-				throw new Error('Unable to access database.');
+			const { user: adUser } = await handleActiveDirectoryLogin(email, password);
+
+			console.log('asasasasa')
+
+			if (adUser) {
+				await issueCookie(res, adUser);
+
+				return sanitizeUser(adUser);
 			}
 
-			if (!user || !user.password || !(await compareHash(req.body.password, user.password))) {
-				// password is empty until user signs up
-				const error = new Error('Wrong username or password. Do you have caps lock on?');
-				// @ts-ignore
-				error.httpStatusCode = 401;
-				throw error;
+			console.log('asasasasa')
+
+			console.log('pase');
+
+			const { user: localUser } = await handleEmailLogin(email, password);
+
+			if (localUser) {
+				await issueCookie(res, localUser);
+
+				return sanitizeUser(localUser);
 			}
 
-			await issueCookie(res, user);
-
-			return sanitizeUser(user);
+			const error = new Error('Wrong username or password. Do you have caps lock on?');
+			// @ts-ignore
+			error.httpStatusCode = 401;
+			throw error;
 		}),
 	);
 

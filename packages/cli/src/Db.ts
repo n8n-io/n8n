@@ -192,6 +192,7 @@ export async function init(
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);
+	collections.FeatureConfig = linkRepository(entities.FeatureConfig);
 
 	isInitialized = true;
 

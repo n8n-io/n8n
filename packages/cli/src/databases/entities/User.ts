@@ -141,6 +141,13 @@ export class User {
 	@Index({ unique: true })
 	apiKey?: string | null;
 
+	@Column({ type: String, nullable: false, default: 'email' })
+	signInType: 'ldap' | 'email';
+
+	@Column({ type: String, nullable: true })
+	@Index({ unique: true })
+	username?: string | null;
+
 	/**
 	 * Whether the user is pending setup completion.
 	 */

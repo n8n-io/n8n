@@ -683,6 +683,11 @@ export const schema = {
 	},
 
 	activeDirectory: {
+		disabled: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_ACTIVE_DIRECTORY_DISABLED',
+		},
 		connection: {
 			url: {
 				format: String,
@@ -722,6 +727,11 @@ export const schema = {
 				format: String,
 				default: '',
 				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_LASTNAME',
+			},
+			loginId: {
+				format: String,
+				default: '',
+				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_LOGINID',
 			},
 		},
 	},
