@@ -2474,7 +2474,7 @@ export class Hubspot implements INodeType {
 									value: updateFields.pipelineId as string,
 								});
 							}
-							if (updateFields.pipelineId) {
+							if (updateFields.stageId) {
 								body.push({
 									name: 'hs_pipeline_stage',
 									value: updateFields.stageId as string,
