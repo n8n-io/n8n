@@ -23,6 +23,7 @@ export class GetResponseTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GetResponse Trigger',
 		name: 'getResponseTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:getResponse.png',
 		group: ['trigger'],
 		version: 1,
@@ -97,14 +98,14 @@ export class GetResponseTrigger implements INodeType {
 						description: 'Receive notifications when a customer is unsubscribed from a list',
 					},
 					{
-						name: 'Email Opened',
-						value: 'open',
-						description: 'Receive notifications when a email is opened',
-					},
-					{
 						name: 'Email Clicked',
 						value: 'click',
 						description: 'Receive notifications when a email is clicked',
+					},
+					{
+						name: 'Email Opened',
+						value: 'open',
+						description: 'Receive notifications when a email is opened',
 					},
 					{
 						name: 'Survey Submitted',
@@ -116,7 +117,7 @@ export class GetResponseTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'List IDs',
+				displayName: 'List Names or IDs',
 				name: 'listIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -136,7 +137,7 @@ export class GetResponseTrigger implements INodeType {
 						name: 'delete',
 						type: 'boolean',
 						default: false,
-						description: 'Delete the current subscription',
+						description: 'Whether to delete the current subscription',
 					},
 				],
 			},
