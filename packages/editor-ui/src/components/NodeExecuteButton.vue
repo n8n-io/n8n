@@ -59,6 +59,9 @@ export default mixins(
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
+		hasPinData (): boolean {
+			return this.node !== null && typeof this.node.pinData !== 'undefined';
+		},
 		isTriggerNode (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 		},
@@ -84,7 +87,21 @@ export default mixins(
 		},
 	},
 	methods: {
-		onClick() {
+		async onClick() {
+			if (this.hasPinData) {
+				const shouldUnpin = await this.confirmMessage(
+					this.$locale.baseText('ndv.pinData.unpinOnExecute.description'),
+					this.$locale.baseText('ndv.pinData.unpinOnExecute.title'),
+					null,
+					this.$locale.baseText('ndv.pinData.unpinOnExecute.confirm'),
+					this.$locale.baseText('ndv.pinData.unpinOnExecute.cancel'),
+				);
+
+				if (shouldUnpin) {
+					this.$store.commit('unpinData', { node: this.node });
+				}
+			}
+
 			this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 			this.$emit('execute');
 		},

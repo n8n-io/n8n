@@ -26,9 +26,9 @@
 							<p>
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
 							</p>
-							<n8n-link to="https://google.com" size="s">
+							<n8n-link to="https://google.com" size="small">
 								{{ $locale.baseText('ndv.pinData.pin.link') }}
-								<n8n-icon icon="external-link-alt" size="s" />
+								<n8n-icon icon="external-link-alt" size="small" />
 							</n8n-link>
 						</div>
 					</template>
@@ -37,6 +37,7 @@
 						type="tertiary"
 						active
 						icon="thumbtack"
+						:disabled="editMode.enabled || inputData.length === 0"
 						@click="onTogglePinData"
 					/>
 				</n8n-tooltip>
@@ -93,16 +94,42 @@
 				</el-dropdown>
 				<n8n-icon-button
 					:title="$locale.baseText('runData.editOutput')"
+					:circle="false"
+					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
-					:circle="false"
-					@click="enterEditMode"
+					@click="enterEditMode()"
 				/>
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
+			</div>
+
+			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
+				<code-editor v-model="editMode.value" />
+				<div :class="$style['edit-mode-footer']">
+					<n8n-info-tip :class="$style['edit-mode-footer-infotip']">
+						{{ $locale.baseText('runData.editor.copyDataInfo') }}
+						<a href="https://google.com">
+							{{ $locale.baseText('generic.learnMore') }}
+						</a>
+					</n8n-info-tip>
+					<div :class="$style['edit-mode-footer-buttons']">
+						<n8n-button
+							type="tertiary"
+							:label="$locale.baseText('runData.editor.cancel')"
+							@click="onClickCancelEdit"
+						/>
+						<n8n-button
+							class="ml-2xs"
+							type="primary"
+							:label="$locale.baseText('runData.editor.save')"
+							@click="onClickSaveEdit"
+						/>
+					</div>
+				</div>
 			</div>
 
 			<div v-else-if="!hasNodeRun" :class="$style.center">
@@ -168,23 +195,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
-				<div v-if="editMode.enabled" :class="$style['edit-mode']">
-					<code-editor v-model="editMode.value" />
-					<div>
-						<n8n-button
-							type="tertiary"
-							:label="$locale.baseText('runData.editor.cancel')"
-							@click="onClickCancelEdit"
-						/>
-						<n8n-button
-							type="tertiary"
-							:label="$locale.baseText('runData.editor.save')"
-							@click="onClickSaveEdit"
-						/>
-					</div>
-				</div>
 				<vue-json-pretty
-					v-else
 					:data="jsonData"
 					:deep="10"
 					v-model="state.path"
@@ -286,7 +297,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
+	INodeTypeDescription, IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -303,7 +314,7 @@ import {
 
 import {
 	MAX_DISPLAY_DATA_SIZE,
-	MAX_DISPLAY_ITEMS_AUTO_ALL,
+	MAX_DISPLAY_ITEMS_AUTO_ALL, MAX_WORKFLOW_PINNED_DATA_SIZE,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -319,6 +330,7 @@ import mixins from 'vue-typed-mixins';
 
 import { saveAs } from 'file-saver';
 import {CodeEditor} from "@/components/forms";
+import { stringSizeInBytes } from './helpers';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -417,7 +429,7 @@ export default mixins(
 				return null;
 			},
 			hasPinData (): boolean {
-				return !!(this.node && this.node.pinData);
+				return this.node !== null && typeof this.node.pinData !== 'undefined';
 			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
@@ -433,7 +445,7 @@ export default mixins(
 				return defaults;
 			},
 			hasNodeRun(): boolean {
-				return Boolean(!this.isExecuting && this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name));
+				return Boolean(!this.isExecuting && this.node && (this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name) || this.hasPinData));
 			},
 			hasRunError(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
@@ -499,7 +511,19 @@ export default mixins(
 				return 0;
 			},
 			inputData (): INodeExecutionData[] {
-				let inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+				let inputData;
+				if (this.node && this.node.pinData) {
+					inputData = Array.isArray(this.node.pinData)
+						? this.node.pinData.map((value) => ({
+							json: value,
+						}))
+						: [{
+							json: this.node.pinData,
+						}];
+				} else {
+					inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+				}
+
 				if (inputData.length === 0 || !Array.isArray(inputData)) {
 					return [];
 				}
@@ -556,17 +580,18 @@ export default mixins(
 			},
 		},
 		methods: {
-			enterEditMode() {
+			enterEditMode(data?: Array<Record<string, string>>) {
 				this.editMode.enabled = true;
-				this.editMode.value = JSON.stringify(this.jsonData, null, 2);
+				this.editMode.value = JSON.stringify(data || this.jsonData, null, 2);
 			},
 			onClickCancelEdit() {
 				this.editMode.enabled = false;
 				this.editMode.value = '';
 			},
 			onClickSaveEdit() {
+				let data;
 				try {
-					JSON.parse(this.editMode.value);
+					data = JSON.parse(this.editMode.value);
 				} catch (error) {
 					const title = this.$locale.baseText('runData.invalidPinnedData');
 
@@ -578,14 +603,50 @@ export default mixins(
 					return;
 				}
 
-				this.editMode.enabled = false;
-				this.$store.commit('pinData', { node: this.node, data: this.editMode.value });
+				try {
+					if (this.$store.getters['pinDataSize'] + stringSizeInBytes(JSON.stringify(data)) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
+						throw new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description'));
+					}
+				} catch (error) {
+					this.$showError(error, this.$locale.baseText('ndv.pinData.error.tooLarge.title'));
+					return;
+				}
+
+				if (this.verifyPinnedDataSize(data)) {
+					this.editMode.enabled = false;
+					this.$store.commit('pinData', { node: this.node, data });
+				}
 			},
-			onTogglePinData() {
+			async onTogglePinData() {
 				if (this.hasPinData) {
 					this.$store.commit('unpinData', { node: this.node });
-				} else {
+				} else if (this.verifyPinnedDataSize(this.jsonData)) {
 					this.$store.commit('pinData', { node: this.node, data: this.jsonData });
+
+					if (this.maxRunIndex > 0) {
+						this.$showToast({
+							title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
+								interpolate: {
+									index: `${this.runIndex}`,
+								},
+							}),
+							message: this.$locale.baseText('ndv.pinData.pin.multipleRuns.description'),
+							type: 'success',
+							duration: 2000,
+						});
+					}
+				}
+			},
+			verifyPinnedDataSize(data: IDataObject[]): boolean {
+				try {
+					if (this.$store.getters['pinDataSize'] + stringSizeInBytes(JSON.stringify(data)) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
+						throw new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description'));
+					}
+
+					return true;
+				} catch (error) {
+					this.$showError(error, this.$locale.baseText('ndv.pinData.error.tooLarge.title'));
+					return false;
 				}
 			},
 			switchToBinary() {
@@ -1206,7 +1267,7 @@ export default mixins(
 }
 
 .edit-mode {
-	height: 100%;
+	height: calc(100% - var(--spacing-s));
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-end;
@@ -1214,6 +1275,26 @@ export default mixins(
 	padding-right: var(--spacing-s);
 }
 
+.edit-mode-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding-top: var(--spacing-s);
+	padding-left: var(--spacing-s);
+}
+
+.edit-mode-footer-infotip {
+	display: flex;
+	flex: 1;
+	width: 100%;
+}
+
+.edit-mode-footer-buttons {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	margin-left: var(--spacing-s);
+}
 </style>
 
 <style lang="scss">

@@ -1,3 +1,5 @@
+export const MAX_WORKFLOW_SIZE = 16777216;
+export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912;
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 export const NODE_NAME_PREFIX = 'node-';
