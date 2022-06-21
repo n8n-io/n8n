@@ -18,6 +18,8 @@ type FirstExecutionItemKey =
 	| 'first_prod_success'
 	| 'first_prod_error';
 
+type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
+
 type IExecutionCountsBufferItem = {
 	[key in CountBufferItemKey]: number;
 };
@@ -35,7 +37,21 @@ interface IExecutionsBuffer {
 	firstExecutions: IFirstExecutions;
 }
 
-interface IExecutionTrackProperties {
+interface IExecutionTrackData {
+	count: number;
+	first: Date;
+}
+
+interface IExecutionsBufferNew {
+	[workflowId: string]: {
+		manual_error?: IExecutionTrackData;
+		manual_success?: IExecutionTrackData;
+		prod_error?: IExecutionTrackData;
+		prod_success?: IExecutionTrackData;
+	};
+}
+
+export interface IExecutionTrackProperties {
 	workflow_id: string;
 	success: boolean;
 	error_node_type?: string;
@@ -62,6 +78,8 @@ export default class Telemetry {
 			first_prod_success: undefined,
 		},
 	};
+
+	private executionCountsBufferNew: IExecutionsBufferNew = {};
 
 	constructor(instanceId: string, versionCli: string) {
 		this.instanceId = instanceId;
@@ -127,6 +145,7 @@ export default class Telemetry {
 
 	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
 		if (this.client) {
+			const execTime = new Date();
 			const workflowId = properties.workflow_id;
 			this.executionCountsBuffer.counts[workflowId] = this.executionCountsBuffer.counts[
 				workflowId
@@ -137,13 +156,33 @@ export default class Telemetry {
 				prod_success_count: 0,
 			};
 
+			this.executionCountsBufferNew[workflowId] = this.executionCountsBufferNew[workflowId] ?? {};
+
 			let countKey: CountBufferItemKey;
 			let firstExecKey: FirstExecutionItemKey;
 
+			const key: ExecutionTrackDataKey = `${properties.is_manual ? 'manual' : 'prod'}_${
+				properties.success ? 'success' : 'error'
+			}`;
+
+			if (!this.executionCountsBufferNew[workflowId][key]) {
+				this.executionCountsBufferNew[workflowId][key] = {
+					count: 1,
+					first: execTime,
+				};
+			} else {
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				this.executionCountsBufferNew[workflowId][key]!.count++;
+			}
+
+			if (!properties.success && properties.error_node_type?.startsWith('n8n-nodes-base')) {
+				void this.track('Workflow execution errored', properties);
+			}
+
 			if (!properties.success) {
-				if (properties.error_node_type?.startsWith('n8n-nodes-base')) {
-					void this.track('Workflow execution errored', properties);
-				}
+				// if (properties.error_node_type?.startsWith('n8n-nodes-base')) {
+				// 	void this.track('Workflow execution errored', properties);
+				// }
 
 				if (properties.is_manual) {
 					firstExecKey = 'first_manual_error';
@@ -230,5 +269,9 @@ export default class Telemetry {
 
 	getCountsBuffer(): IExecutionsBuffer {
 		return this.executionCountsBuffer;
+	}
+
+	getCountsBufferNew(): IExecutionsBufferNew {
+		return this.executionCountsBufferNew;
 	}
 }
