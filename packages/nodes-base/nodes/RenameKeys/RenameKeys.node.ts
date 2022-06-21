@@ -93,11 +93,17 @@ export class RenameKeys implements INodeType {
 								name: 'replacements',
 								values: [
 									{
+										displayName: 'Be aware that by using regular expression previously renamed keys can be affected',
+										name: 'regExNotice',
+										type: 'notice',
+										default: '',
+									},
+									{
 										displayName: 'Regular Expression',
 										name: 'searchRegex',
 										type: 'string',
 										default: '',
-										placeholder: '',
+										placeholder: 'e.g. [N-n]ame',
 										description: 'Regex to match the key name',
 										hint: 'Learn more and test RegEx <a href="https://regex101.com/">here</a>',
 									},
@@ -106,7 +112,7 @@ export class RenameKeys implements INodeType {
 										name: 'replaceRegex',
 										type: 'string',
 										default: '',
-										placeholder: '',
+										placeholder: 'replacedName',
 										description: 'The name the key/s should be renamed to. It\'s possible to use regex captures e.g. $1, $2, ...',
 									},
 									{
@@ -114,14 +120,15 @@ export class RenameKeys implements INodeType {
 										name: 'options',
 										type: 'collection',
 										default: {},
-										placeholder: 'Add Option',
+										placeholder: 'Add Regex Option',
 										options: [
 											{
 												displayName: 'Max Depth',
 												name: 'depth',
 												type: 'number',
 												default: -1,
-												description: 'Maximum depth to replace keys (-1 for unlimited, 0 for top level only)',
+												description: 'Maximum depth to replace keys',
+												hint: 'Specify number for depth level (-1 for unlimited, 0 for top level only)',
 											},
 											{
 												displayName: 'Case Insensitive',
