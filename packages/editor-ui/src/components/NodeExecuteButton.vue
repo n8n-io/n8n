@@ -64,6 +64,9 @@ export default mixins(
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
+		hasPinData (): boolean {
+			return this.node !== null && typeof this.node.pinData !== 'undefined';
+		},
 		isTriggerNode (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 		},
@@ -156,11 +159,24 @@ export default mixins(
 			});
 		},
 
-		onClick() {
+		async onClick() {
 			if (this.isListeningForEvents) {
 				this.stopWaitingForWebhook();
-			}
-			else {
+			} else {
+				if (this.hasPinData) {
+					const shouldUnpin = await this.confirmMessage(
+						this.$locale.baseText('ndv.pinData.unpinOnExecute.description'),
+						this.$locale.baseText('ndv.pinData.unpinOnExecute.title'),
+						null,
+						this.$locale.baseText('ndv.pinData.unpinOnExecute.confirm'),
+						this.$locale.baseText('ndv.pinData.unpinOnExecute.cancel'),
+					);
+
+					if (shouldUnpin) {
+						this.$store.commit('unpinData', { node: this.node });
+					}
+				}
+
 				this.$telemetry.track('User clicked execute node button', { node_type: this.nodeName, workflow_id: this.$store.getters.workflowId, source: this.telemetrySource });
 				this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 				this.$emit('execute');

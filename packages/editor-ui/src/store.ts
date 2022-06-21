@@ -2,7 +2,11 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/constants';
+import {
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	DEFAULT_NODETYPE_VERSION,
+	MAX_WORKFLOW_PINNED_DATA_SIZE,
+} from '@/constants';
 
 import {
 	IConnection,
@@ -39,6 +43,7 @@ import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
+import {stringSizeInBytes} from "@/components/helpers";
 
 Vue.use(Vuex);
 
@@ -207,6 +212,8 @@ export const store = new Vuex.Store({
 			const node = state.workflow.nodes.find((node) => node.name === payload.node.name);
 			if (node) {
 				Vue.set(node, 'pinData', payload.data);
+
+				state.stateIsDirty = true;
 			}
 		},
 		unpinData(state, payload: { node: INodeUi }) {
@@ -214,6 +221,8 @@ export const store = new Vuex.Store({
 			if (node) {
 				Vue.set(node, 'pinData', undefined);
 				delete node.pinData;
+
+				state.stateIsDirty = true;
 			}
 		},
 
@@ -857,6 +866,19 @@ export const store = new Vuex.Store({
 		},
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
+		},
+
+		/**
+		 * Pin data
+		 */
+
+		pinDataSize: (state) => {
+			return state.workflow.nodes
+				.filter((node) => node.pinData)
+				.reduce((acc, node) => {
+					acc += stringSizeInBytes(JSON.stringify(node.pinData));
+					return acc;
+				}, 0);
 		},
 
 		/**

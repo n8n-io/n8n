@@ -13,6 +13,7 @@
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
+		ref="runData"
 	>
 		<template v-slot:header>
 			<div :class="$style.titleSection">
@@ -34,7 +35,18 @@
 
 		<template v-slot:node-not-run>
 			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-if="!workflowRunning && (isScheduleTrigger || !isTriggerNode)">{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
+			<n8n-text v-if="!workflowRunning && (isScheduleTrigger || !isTriggerNode)">
+				{{ $locale.baseText('ndv.output.runNodeHint') }}
+				<span @click="insertTestData">
+					<n8n-text
+						tag="a"
+						size="medium"
+						color="primary"
+					>
+						{{ $locale.baseText('ndv.output.insertTestData') }}
+					</n8n-text>
+				</span>
+			</n8n-text>
 		</template>
 
 		<template v-slot:no-output-data>
@@ -164,6 +176,17 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		insertTestData() {
+			if (this.$refs.runData) {
+				(this.$refs.runData as Vue & {
+					enterEditMode: (data?: Array<Record<string, string>>) => {}
+				}).enterEditMode([
+					{
+						propertyName: "value",
+					},
+				]);
+			}
+		},
 		onLinkRun() {
 			this.$emit('linkRun');
 		},
