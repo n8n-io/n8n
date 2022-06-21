@@ -48,8 +48,10 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'boolean',
 								default: false,
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 								description: 'The value to compare with the second one',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -72,6 +74,7 @@ export class If implements INodeType {
 								name: 'value2',
 								type: 'boolean',
 								default: false,
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 								description: 'The value to compare with the first one',
 							},
 						],
@@ -87,17 +90,18 @@ export class If implements INodeType {
 								default: '',
 								description: 'The value to compare with the second one',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
 								options: [
 									{
-										name: 'Occurred after',
+										name: 'Occurred After',
 										value: 'after',
 									},
 									{
-										name: 'Occurred before',
+										name: 'Occurred Before',
 										value: 'before',
 									},
 								],
@@ -128,6 +132,8 @@ export class If implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Smaller',
@@ -197,6 +203,8 @@ export class If implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Contains',

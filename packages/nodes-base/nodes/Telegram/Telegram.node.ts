@@ -47,6 +47,7 @@ export class Telegram implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					// {
 					// 	name: 'Bot',
@@ -70,7 +71,6 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -107,6 +107,7 @@ export class Telegram implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -147,13 +148,13 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -174,12 +175,12 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'answerQuery',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -195,13 +196,13 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -282,7 +283,6 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'sendMessage',
-				description: 'The operation to perform.',
 			},
 
 
@@ -394,7 +394,7 @@ export class Telegram implements INodeType {
 						name: 'disable_notification',
 						type: 'boolean',
 						default: false,
-						description: 'Do not send a notification to all chat members about the new pinned message',
+						description: 'Whether to send a notification to all chat members about the new pinned message',
 					},
 				],
 			},
@@ -530,7 +530,7 @@ export class Telegram implements INodeType {
 						name: 'show_alert',
 						type: 'boolean',
 						default: false,
-						description: 'If true, an alert will be shown by the client instead of a notification at the top of the chat screen',
+						description: 'Whether an alert will be shown by the client instead of a notification at the top of the chat screen',
 					},
 					{
 						displayName: 'Text',
@@ -623,7 +623,7 @@ export class Telegram implements INodeType {
 						name: 'show_alert',
 						type: 'boolean',
 						default: false,
-						description: 'If true, an alert will be shown by the client instead of a notification at the top of the chat screen',
+						description: 'Whether an alert will be shown by the client instead of a notification at the top of the chat screen',
 					},
 					{
 						displayName: 'Text',
@@ -687,7 +687,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Download the file',
+				description: 'Whether to download the file',
 			},
 
 			// ----------------------------------
@@ -772,7 +772,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field',
+				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
 				displayName: 'Binary Property',
@@ -1287,16 +1287,16 @@ export class Telegram implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'None',
-						value: 'none',
-					},
-					{
 						name: 'Force Reply',
 						value: 'forceReply',
 					},
 					{
 						name: 'Inline Keyboard',
 						value: 'inlineKeyboard',
+					},
+					{
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'Reply Keyboard',
@@ -1333,14 +1333,14 @@ export class Telegram implements INodeType {
 						name: 'force_reply',
 						type: 'boolean',
 						default: false,
-						description: 'Shows reply interface to the user, as if they manually selected the bot‘s message and tapped ’Reply',
+						description: 'Whether to show reply interface to the user, as if they manually selected the bot‘s message and tapped ’Reply',
 					},
 					{
 						displayName: 'Selective',
 						name: 'selective',
 						type: 'boolean',
 						default: false,
-						description: 'Use this parameter if you want to force reply from specific users only',
+						description: 'Whether to force reply from specific users only',
 					},
 				],
 			},
@@ -1412,7 +1412,7 @@ export class Telegram implements INodeType {
 														name: 'pay',
 														type: 'boolean',
 														default: false,
-														description: 'Specify True, to send a Pay button',
+														description: 'Whether to send a Pay button',
 													},
 													{
 														displayName: 'Switch Inline Query Current Chat',
@@ -1433,7 +1433,7 @@ export class Telegram implements INodeType {
 														name: 'url',
 														type: 'string',
 														default: '',
-														description: 'HTTP or tg:// url to be opened when button is pressed',
+														description: 'HTTP or tg:// URL to be opened when button is pressed',
 													},
 												],
 											},
@@ -1502,14 +1502,14 @@ export class Telegram implements INodeType {
 														name: 'request_contact',
 														type: 'boolean',
 														default: false,
-														description: 'If True, the user\'s phone number will be sent as a contact when the button is pressed.Available in private chats only',
+														description: 'Whether the user\'s phone number will be sent as a contact when the button is pressed.Available in private chats only',
 													},
 													{
 														displayName: 'Request Location',
 														name: 'request_location',
 														type: 'boolean',
 														default: false,
-														description: 'If True, the user\'s request_location',
+														description: 'Whether the user\'s request_location',
 													},
 												],
 											},
@@ -1541,21 +1541,21 @@ export class Telegram implements INodeType {
 						name: 'resize_keyboard',
 						type: 'boolean',
 						default: false,
-						description: 'Requests clients to resize the keyboard vertically for optimal fit',
+						description: 'Whether to request clients to resize the keyboard vertically for optimal fit',
 					},
 					{
 						displayName: 'One Time Keyboard',
 						name: 'one_time_keyboard',
 						type: 'boolean',
 						default: false,
-						description: 'Requests clients to hide the keyboard as soon as it\'s been used',
+						description: 'Whether to request clients to hide the keyboard as soon as it\'s been used',
 					},
 					{
 						displayName: 'Selective',
 						name: 'selective',
 						type: 'boolean',
 						default: false,
-						description: 'Use this parameter if you want to show the keyboard to specific users only',
+						description: 'Whether to show the keyboard to specific users only',
 					},
 				],
 			},
@@ -1579,14 +1579,14 @@ export class Telegram implements INodeType {
 						name: 'remove_keyboard',
 						type: 'boolean',
 						default: false,
-						description: 'Requests clients to remove the custom keyboard',
+						description: 'Whether to request clients to remove the custom keyboard',
 					},
 					{
 						displayName: 'Selective',
 						name: 'selective',
 						type: 'boolean',
 						default: false,
-						description: 'Use this parameter if you want to force reply from specific users only',
+						description: 'Whether to force reply from specific users only',
 					},
 				],
 			},
@@ -1650,7 +1650,7 @@ export class Telegram implements INodeType {
 								],
 							},
 						},
-						description: 'Sends the message silently. Users will receive a notification with no sound.',
+						description: 'Whether to send the message silently. Users will receive a notification with no sound.',
 					},
 					{
 						displayName: 'Disable WebPage Preview',
@@ -1665,7 +1665,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Disables link previews for links in this message',
+						description: 'Whether to disable link previews for links in this message',
 					},
 					{
 						displayName: 'Duration',

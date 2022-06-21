@@ -83,7 +83,7 @@ export class MauticTrigger implements INodeType {
 				default: 'credentials',
 			},
 			{
-				displayName: 'Events',
+				displayName: 'Event Names or IDs',
 				name: 'events',
 				type: 'multiOptions',
 				required: true,

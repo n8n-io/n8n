@@ -18,6 +18,7 @@ export class MailerLiteTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MailerLite Trigger',
 		name: 'mailerLiteTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:mailerLite.png',
 		group: ['trigger'],
 		version: 1,
@@ -53,14 +54,14 @@ export class MailerLiteTrigger implements INodeType {
 						description: 'Fired when campaign is sent',
 					},
 					{
-						name: 'Subscriber Added to Group',
-						value: 'subscriber.add_to_group',
-						description: 'Fired when a subscriber is added to a group',
-					},
-					{
 						name: 'Subscriber Added Throught Webform',
 						value: 'subscriber.added_through_webform',
 						description: 'Fired when a subscriber is added though a form',
+					},
+					{
+						name: 'Subscriber Added to Group',
+						value: 'subscriber.add_to_group',
+						description: 'Fired when a subscriber is added to a group',
 					},
 					{
 						name: 'Subscriber Autonomation Completed',
@@ -78,17 +79,17 @@ export class MailerLiteTrigger implements INodeType {
 						description: 'Fired when an email address bounces',
 					},
 					{
-						name: 'Subscriber Created',
-						value: 'subscriber.create',
-						description: 'Fired when a new subscriber is added to an account',
-					},
-					{
 						name: 'Subscriber Complained',
 						value: 'subscriber.complaint',
 						description: 'Fired when subscriber marks a campaign as a spam',
 					},
 					{
-						name: 'Subscriber Removed from Group',
+						name: 'Subscriber Created',
+						value: 'subscriber.create',
+						description: 'Fired when a new subscriber is added to an account',
+					},
+					{
+						name: 'Subscriber Removed From Group',
 						value: 'subscriber.remove_from_group',
 						description: 'Fired when a subscriber is removed from a group',
 					},

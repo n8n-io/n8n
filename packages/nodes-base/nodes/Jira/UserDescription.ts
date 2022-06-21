@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -124,7 +124,7 @@ export const userFields: INodeProperties[] = [
 				name: 'notification',
 				type: 'boolean',
 				default: false,
-				description: 'Send the user an email confirmation that they have been added to Jira',
+				description: 'Whether to send the user an email confirmation that they have been added to Jira',
 			},
 		],
 	},

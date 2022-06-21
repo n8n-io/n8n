@@ -7,6 +7,7 @@ export const adminOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,6 +53,7 @@ const adminEmailField = {
 	displayName: 'Email',
 	name: 'email',
 	type: 'string',
+	placeholder: 'name@email.com',
 	default: '',
 	description: 'The administrator\'s email address',
 } as INodeProperties;

@@ -7,6 +7,7 @@ export const callOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const callOperations: INodeProperties[] = [
 			},
 		],
 		default: 'make',
-		description: 'Operation to perform.',
 	},
 ];
 

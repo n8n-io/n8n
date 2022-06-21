@@ -64,6 +64,7 @@ export class Orbit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -83,7 +84,6 @@ export class Orbit implements INodeType {
 					},
 				],
 				default: 'member',
-				description: 'Resource to consume.',
 			},
 			// ACTIVITY
 			...activityOperations,

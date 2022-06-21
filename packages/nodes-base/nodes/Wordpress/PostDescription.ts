@@ -5,6 +5,7 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -85,14 +85,14 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
 				default: '',
-				description: 'The ID for the author of the object',
+				description: 'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -187,12 +187,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Standard',
-						value: 'standard',
-					},
-					{
 						name: 'Aside',
 						value: 'aside',
+					},
+					{
+						name: 'Audio',
+						value: 'audio',
 					},
 					{
 						name: 'Chat',
@@ -203,16 +203,20 @@ export const postFields: INodeProperties[] = [
 						value: 'gallery',
 					},
 					{
-						name: 'Link',
-						value: 'link',
-					},
-					{
 						name: 'Image',
 						value: 'image',
 					},
 					{
+						name: 'Link',
+						value: 'link',
+					},
+					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Standard',
+						value: 'standard',
 					},
 					{
 						name: 'Status',
@@ -221,10 +225,6 @@ export const postFields: INodeProperties[] = [
 					{
 						name: 'Video',
 						value: 'video',
-					},
-					{
-						name: 'Audio',
-						value: 'audio',
 					},
 				],
 				default: 'standard',
@@ -238,24 +238,24 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the category taxonomy',
+				description: 'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the post_tag taxonomy',
+				description: 'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -298,14 +298,14 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
 				default: '',
-				description: 'The ID for the author of the object',
+				description: 'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',
@@ -344,16 +344,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Publish',
-						value: 'publish',
+						name: 'Draft',
+						value: 'draft',
 					},
 					{
 						name: 'Future',
 						value: 'future',
-					},
-					{
-						name: 'Draft',
-						value: 'draft',
 					},
 					{
 						name: 'Pending',
@@ -362,6 +358,10 @@ export const postFields: INodeProperties[] = [
 					{
 						name: 'Private',
 						value: 'private',
+					},
+					{
+						name: 'Publish',
+						value: 'publish',
 					},
 				],
 				default: 'draft',
@@ -407,12 +407,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Standard',
-						value: 'standard',
-					},
-					{
 						name: 'Aside',
 						value: 'aside',
+					},
+					{
+						name: 'Audio',
+						value: 'audio',
 					},
 					{
 						name: 'Chat',
@@ -423,16 +423,20 @@ export const postFields: INodeProperties[] = [
 						value: 'gallery',
 					},
 					{
-						name: 'Link',
-						value: 'link',
-					},
-					{
 						name: 'Image',
 						value: 'image',
 					},
 					{
+						name: 'Link',
+						value: 'link',
+					},
+					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Standard',
+						value: 'standard',
 					},
 					{
 						name: 'Status',
@@ -441,10 +445,6 @@ export const postFields: INodeProperties[] = [
 					{
 						name: 'Video',
 						value: 'video',
-					},
-					{
-						name: 'Audio',
-						value: 'audio',
 					},
 				],
 				default: 'standard',
@@ -458,24 +458,24 @@ export const postFields: INodeProperties[] = [
 				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the category taxonomy',
+				description: 'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the post_tag taxonomy',
+				description: 'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -616,14 +616,14 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit response to posts published after a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Author',
+				displayName: 'Author Names or IDs',
 				name: 'author',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
-				description: 'Limit result set to posts assigned to specific authors',
+				description: 'Limit result set to posts assigned to specific authors. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Before',
@@ -633,14 +633,14 @@ export const postFields: INodeProperties[] = [
 				description: 'Limit response to posts published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy',
+				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Context',
@@ -664,6 +664,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Scope under which the request is made; determines fields present in response',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Exclude Categories',
 				name: 'excludedCategories',
 				type: 'multiOptions',
@@ -671,9 +672,10 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy',
+				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Exclude Tags',
 				name: 'excludedTags',
 				type: 'multiOptions',
@@ -681,7 +683,7 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy',
+				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Order',
@@ -722,6 +724,10 @@ export const postFields: INodeProperties[] = [
 						value: 'include',
 					},
 					{
+						name: 'Include Slugs',
+						value: 'include_slugs',
+					},
+					{
 						name: 'Modified',
 						value: 'modified',
 					},
@@ -736,10 +742,6 @@ export const postFields: INodeProperties[] = [
 					{
 						name: 'Slug',
 						value: 'slug',
-					},
-					{
-						name: 'Include Slugs',
-						value: 'include_slugs',
 					},
 					{
 						name: 'Title',
@@ -790,17 +792,17 @@ export const postFields: INodeProperties[] = [
 				name: 'sticky',
 				type: 'boolean',
 				default: false,
-				description: 'Limit result set to items that are sticky',
+				description: 'Whether to limit the result set to items that are sticky',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to all items that have the specified term assigned in the tags taxonomy',
+				description: 'Limit result set to all items that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

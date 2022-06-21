@@ -68,6 +68,7 @@ export class Compression implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Compress',
@@ -105,11 +106,11 @@ export class Compression implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'gzip',
+						name: 'Gzip',
 						value: 'gzip',
 					},
 					{
-						name: 'zip',
+						name: 'Zip',
 						value: 'zip',
 					},
 				],
@@ -256,6 +257,9 @@ export class Compression implements INodeType {
 					returnData.push({
 						json: items[i].json,
 						binary: binaryObject,
+						pairedItem: {
+							item: i,
+						},
 					});
 				}
 
@@ -313,6 +317,9 @@ export class Compression implements INodeType {
 							binary: {
 								[binaryPropertyOutput]: data,
 							},
+							pairedItem: {
+								item: i,
+							},
 						});
 					}
 
@@ -320,13 +327,23 @@ export class Compression implements INodeType {
 						returnData.push({
 							json: items[i].json,
 							binary: binaryObject,
+							pairedItem: {
+								item: i,
+							},
 						});
 					}
 				}
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;

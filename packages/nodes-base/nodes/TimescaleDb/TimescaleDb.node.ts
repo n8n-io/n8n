@@ -38,6 +38,7 @@ export class TimescaleDb implements INodeType {
 			},
 		],
 		properties: [
+			// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -60,7 +61,6 @@ export class TimescaleDb implements INodeType {
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -233,7 +233,7 @@ export class TimescaleDb implements INodeType {
 								description: 'Execute each query independently',
 							},
 							{
-								name: 'Multiple queries',
+								name: 'Multiple Queries',
 								value: 'multiple',
 								description: '<b>Default</b>. Sends multiple queries at once to database.',
 							},

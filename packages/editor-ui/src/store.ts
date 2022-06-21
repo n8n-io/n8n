@@ -176,7 +176,7 @@ export const store = new Vuex.Store({
 		setWorkflowInactive (state, workflowId: string) {
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
-				state.selectedNodes.splice(index, 1);
+				state.activeWorkflows.splice(index, 1);
 			}
 		},
 		// Set state condition dirty or not
@@ -437,6 +437,7 @@ export const store = new Vuex.Store({
 				state.stateIsDirty = true;
 			}
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
+			state.nodeMetadata = {};
 		},
 		updateNodeProperties (state, updateInformation: INodeUpdatePropertiesInformation) {
 			// Find the node that should be updated
@@ -610,6 +611,10 @@ export const store = new Vuex.Store({
 			Vue.set(state.workflow, 'tags', tags);
 		},
 
+		addWorkflowTagIds (state, tags: string[]) {
+			Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
+		},
+
 		removeWorkflowTagId (state, tagId: string) {
 			const tags = state.workflow.tags as string[];
 			const updated = tags.filter((id: string) => id !== tagId);
@@ -657,6 +662,9 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
+		executedNode: (state): string | undefined => {
+			return state.workflowExecutionData? state.workflowExecutionData.executedNode: undefined;
+		},
 		activeCredentialType: (state): string | null => {
 			return state.activeCredentialType;
 		},

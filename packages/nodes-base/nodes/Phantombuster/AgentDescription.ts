@@ -7,6 +7,7 @@ export const agentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const agentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'launch',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,9 +52,10 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent',
+		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
@@ -142,9 +143,10 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:getOutput                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent',
+		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
@@ -176,6 +178,7 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -208,20 +211,8 @@ export const agentFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Starting',
-						value: 'starting',
-					},
-					{
-						name: 'Running',
-						value: 'running',
-					},
-					{
 						name: 'Finished',
 						value: 'finished',
-					},
-					{
-						name: 'Unknown',
-						value: 'unknown',
 					},
 					{
 						name: 'Launch Error',
@@ -230,6 +221,18 @@ export const agentFields: INodeProperties[] = [
 					{
 						name: 'Never Launched',
 						value: 'never launched',
+					},
+					{
+						name: 'Running',
+						value: 'running',
+					},
+					{
+						name: 'Starting',
+						value: 'starting',
+					},
+					{
+						name: 'Unknown',
+						value: 'unknown',
 					},
 				],
 				default: '',
@@ -249,9 +252,10 @@ export const agentFields: INodeProperties[] = [
 	/*                                 agent:launch                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent',
+		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
@@ -283,6 +287,7 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -429,7 +434,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'manualLaunch',
 				type: 'boolean',
 				default: false,
-				description: 'If set, the agent will be considered as "launched manually"',
+				description: 'Whether the agent will be considered as "launched manually"',
 			},
 			{
 				displayName: 'Max Instance Count',
