@@ -88,7 +88,6 @@ export class TheHive implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				required: true,
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Alert',
