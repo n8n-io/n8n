@@ -644,7 +644,7 @@ return 0;`,
 							},
 						},
 						default: false,
-						description: 'If the field to aggregate is a list, whether to merge the output into a single flat list (rather than a list of lists)',
+						description: 'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
 					},
 					{
 						displayName: 'Keep Missing And Null Values',
