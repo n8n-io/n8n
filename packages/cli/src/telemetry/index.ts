@@ -4,6 +4,7 @@
 import TelemetryClient from '@rudderstack/rudder-sdk-node';
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import * as config from '../../config';
+import { IExecutionTrackProperties } from '../Interfaces';
 import { getLogger } from '../Logger';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
@@ -13,21 +14,13 @@ interface IExecutionTrackData {
 	first: Date;
 }
 
-interface IExecutionsBufferNew {
+interface IExecutionsBuffer {
 	[workflowId: string]: {
 		manual_error?: IExecutionTrackData;
 		manual_success?: IExecutionTrackData;
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
 	};
-}
-
-interface IExecutionTrackProperties {
-	workflow_id: string;
-	success: boolean;
-	error_node_type?: string;
-	is_manual: boolean;
-	[key: string]: unknown;
 }
 
 // eslint-disable-next-line import/no-default-export
@@ -40,7 +33,7 @@ export default class Telemetry {
 
 	private pulseIntervalReference: NodeJS.Timeout;
 
-	private executionCountsBuffer: IExecutionsBufferNew = {};
+	private executionCountsBuffer: IExecutionsBuffer = {};
 
 	constructor(instanceId: string, versionCli: string) {
 		this.instanceId = instanceId;
@@ -84,7 +77,7 @@ export default class Telemetry {
 			return Promise.resolve();
 		}
 
-		const allP = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
+		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
 			const promise = this.track('Workflow execution count', {
 				version_cli: this.versionCli,
 				workflow_id: workflowId,
@@ -95,8 +88,8 @@ export default class Telemetry {
 		});
 
 		this.executionCountsBuffer = {};
-		allP.push(this.track('pulse', { version_cli: this.versionCli }));
-		return Promise.all(allP);
+		allPromises.push(this.track('pulse', { version_cli: this.versionCli }));
+		return Promise.all(allPromises);
 	}
 
 	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
@@ -183,7 +176,7 @@ export default class Telemetry {
 
 	// test helpers
 
-	getCountsBuffer(): IExecutionsBufferNew {
+	getCountsBuffer(): IExecutionsBuffer {
 		return this.executionCountsBuffer;
 	}
 }

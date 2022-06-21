@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 import { BinaryDataManager } from 'n8n-core';
-import { IDataObject, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
+import { INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
 import { snakeCase } from 'change-case';
 import {
 	IDiagnosticInfo,
@@ -10,6 +10,7 @@ import {
 	IWorkflowDb,
 } from '.';
 import Telemetry from './telemetry';
+import { IExecutionTrackProperties } from './Interfaces';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -115,10 +116,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		userId?: string,
 	): Promise<void> {
 		const promises = [Promise.resolve()];
-		const properties: IDataObject = {
-			workflow_id: workflow.id,
+
+		if (!workflow.id) {
+			return Promise.resolve();
+		}
+
+		const properties: IExecutionTrackProperties = {
+			workflow_id: workflow.id.toString(),
 			is_manual: false,
 			version_cli: this.versionCli,
+			success: false,
 		};
 
 		if (userId) {
