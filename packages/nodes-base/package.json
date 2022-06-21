@@ -668,6 +668,7 @@
       "dist/nodes/UrlScanIo/UrlScanIo.node.js",
       "dist/nodes/Vero/Vero.node.js",
       "dist/nodes/Venafi/AsAService/VenafiAsAService.node.js",
+      "dist/nodes/Venafi/AsAService/VenafiAsAServiceTrigger.node.js",
       "dist/nodes/Venafi/Tpp/VenafiTpp.node.js",
       "dist/nodes/Venafi/Tpp/VenafiTppTrigger.node.js",
       "dist/nodes/Vonage/Vonage.node.js",
