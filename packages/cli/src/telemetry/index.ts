@@ -6,36 +6,7 @@ import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import * as config from '../../config';
 import { getLogger } from '../Logger';
 
-type CountBufferItemKey =
-	| 'manual_success_count'
-	| 'manual_error_count'
-	| 'prod_success_count'
-	| 'prod_error_count';
-
-type FirstExecutionItemKey =
-	| 'first_manual_success'
-	| 'first_manual_error'
-	| 'first_prod_success'
-	| 'first_prod_error';
-
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
-
-type IExecutionCountsBufferItem = {
-	[key in CountBufferItemKey]: number;
-};
-
-interface IExecutionCountsBuffer {
-	[workflowId: string]: IExecutionCountsBufferItem;
-}
-
-type IFirstExecutions = {
-	[key in FirstExecutionItemKey]: Date | undefined;
-};
-
-interface IExecutionsBuffer {
-	counts: IExecutionCountsBuffer;
-	firstExecutions: IFirstExecutions;
-}
 
 interface IExecutionTrackData {
 	count: number;
@@ -51,7 +22,7 @@ interface IExecutionsBufferNew {
 	};
 }
 
-export interface IExecutionTrackProperties {
+interface IExecutionTrackProperties {
 	workflow_id: string;
 	success: boolean;
 	error_node_type?: string;
@@ -69,17 +40,7 @@ export default class Telemetry {
 
 	private pulseIntervalReference: NodeJS.Timeout;
 
-	private executionCountsBuffer: IExecutionsBuffer = {
-		counts: {},
-		firstExecutions: {
-			first_manual_error: undefined,
-			first_manual_success: undefined,
-			first_prod_error: undefined,
-			first_prod_success: undefined,
-		},
-	};
-
-	private executionCountsBufferNew: IExecutionsBufferNew = {};
+	private executionCountsBuffer: IExecutionsBufferNew = {};
 
 	constructor(instanceId: string, versionCli: string) {
 		this.instanceId = instanceId;
@@ -123,17 +84,17 @@ export default class Telemetry {
 			return Promise.resolve();
 		}
 
-		const allP = Object.keys(this.executionCountsBufferNew).map(async (workflowId) => {
+		const allP = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
 			const promise = this.track('Workflow execution count', {
 				version_cli: this.versionCli,
 				workflow_id: workflowId,
-				...this.executionCountsBufferNew[workflowId],
+				...this.executionCountsBuffer[workflowId],
 			});
 
 			return promise;
 		});
 
-		this.executionCountsBufferNew = {};
+		this.executionCountsBuffer = {};
 		allP.push(this.track('pulse', { version_cli: this.versionCli }));
 		return Promise.all(allP);
 	}
@@ -142,66 +103,26 @@ export default class Telemetry {
 		if (this.client) {
 			const execTime = new Date();
 			const workflowId = properties.workflow_id;
-			this.executionCountsBuffer.counts[workflowId] = this.executionCountsBuffer.counts[
-				workflowId
-			] ?? {
-				manual_error_count: 0,
-				manual_success_count: 0,
-				prod_error_count: 0,
-				prod_success_count: 0,
-			};
 
-			this.executionCountsBufferNew[workflowId] = this.executionCountsBufferNew[workflowId] ?? {};
-
-			let countKey: CountBufferItemKey;
-			let firstExecKey: FirstExecutionItemKey;
+			this.executionCountsBuffer[workflowId] = this.executionCountsBuffer[workflowId] ?? {};
 
 			const key: ExecutionTrackDataKey = `${properties.is_manual ? 'manual' : 'prod'}_${
 				properties.success ? 'success' : 'error'
 			}`;
 
-			if (!this.executionCountsBufferNew[workflowId][key]) {
-				this.executionCountsBufferNew[workflowId][key] = {
+			if (!this.executionCountsBuffer[workflowId][key]) {
+				this.executionCountsBuffer[workflowId][key] = {
 					count: 1,
 					first: execTime,
 				};
 			} else {
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				this.executionCountsBufferNew[workflowId][key]!.count++;
+				this.executionCountsBuffer[workflowId][key]!.count++;
 			}
 
 			if (!properties.success && properties.error_node_type?.startsWith('n8n-nodes-base')) {
 				void this.track('Workflow execution errored', properties);
 			}
-
-			if (!properties.success) {
-				// if (properties.error_node_type?.startsWith('n8n-nodes-base')) {
-				// 	void this.track('Workflow execution errored', properties);
-				// }
-
-				if (properties.is_manual) {
-					firstExecKey = 'first_manual_error';
-					countKey = 'manual_error_count';
-				} else {
-					firstExecKey = 'first_prod_error';
-					countKey = 'prod_error_count';
-				}
-			} else if (properties.is_manual) {
-				countKey = 'manual_success_count';
-				firstExecKey = 'first_manual_success';
-			} else {
-				countKey = 'prod_success_count';
-				firstExecKey = 'first_prod_success';
-			}
-
-			if (
-				!this.executionCountsBuffer.firstExecutions[firstExecKey] &&
-				this.executionCountsBuffer.counts[workflowId][countKey] === 0
-			) {
-				this.executionCountsBuffer.firstExecutions[firstExecKey] = new Date();
-			}
-
-			this.executionCountsBuffer.counts[workflowId][countKey]++;
 		}
 	}
 
@@ -262,11 +183,7 @@ export default class Telemetry {
 
 	// test helpers
 
-	getCountsBuffer(): IExecutionsBuffer {
+	getCountsBuffer(): IExecutionsBufferNew {
 		return this.executionCountsBuffer;
-	}
-
-	getCountsBufferNew(): IExecutionsBufferNew {
-		return this.executionCountsBufferNew;
 	}
 }
