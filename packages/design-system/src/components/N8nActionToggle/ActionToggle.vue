@@ -13,8 +13,12 @@
 					:command="action.value"
 				>
 					{{action.label}}
-					<component v-if="action.type === 'external-link'" :is="$options.components.N8nIcon"
-						icon="external-link-alt" size="small"
+					<component
+						v-if="action.type === 'external-link'"
+						:is="$options.components.N8nIcon"
+						icon="external-link-alt"
+						size="xsmall"
+						color="text-base"
 					/>
 				</el-dropdown-item>
 			</el-dropdown-menu>
@@ -70,5 +74,9 @@ export default {
 	&:focus {
 		background-color: var(--color-background-xlight);
 	}
+}
+
+li:hover svg {
+	color: var(--color-primary-tint-1);
 }
 </style>

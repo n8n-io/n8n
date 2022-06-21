@@ -9,19 +9,21 @@
 				<div :class="$style.cardTitle">
 					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
 				</div>
-				<n8n-text :bold="true" size="small" color="text-light">
-					{{
-						$locale.baseText('settings.communityNodes.packageNodes.label', {
-							adjustToNumber: communityPackage.installedNodes.length,
-						})
-					}}:&nbsp;
-				</n8n-text>
-				<n8n-text size="small" color="text-light">
-					<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
-						{{ node.name }}
-						<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
-					</span>
-				</n8n-text>
+				<div :class="$style.cardSubtitle">
+					<n8n-text :bold="true" size="small" color="text-light">
+						{{
+							$locale.baseText('settings.communityNodes.packageNodes.label', {
+								adjustToNumber: communityPackage.installedNodes.length,
+							})
+						}}:&nbsp;
+					</n8n-text>
+					<n8n-text size="small" color="text-light">
+						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
+							{{ node.name.split('.')[1] }}
+							<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
+						</span>
+					</n8n-text>
+				</div>
 			</div>
 			<div :class="$style.cardControlsContainer">
 				<n8n-text :bold="true" size="large" color="text-light">
@@ -114,6 +116,7 @@ export default mixins(
 	padding: var(--spacing-s);
 	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
 	border-radius: var(--border-radius-large);
+	background-color: var(--color-background-xlight);
 }
 
 .packageCard, .cardSkeleton {
@@ -150,6 +153,14 @@ export default mixins(
 
 .cardTitle {
 	flex-basis: 100%;
+
+	span {
+		line-height: 1;
+	}
+}
+
+.cardSubtitle {
+	margin-top: 2px;
 }
 
 .cardControlsContainer {

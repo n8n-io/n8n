@@ -11,12 +11,11 @@
 		<template slot="content">
 			<n8n-text>{{ getModalContent.message }}</n8n-text>
 			<div :class="$style.descriptionContainer" v-if="this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
-				<div :class="$style.descriptionIcon">
-					<n8n-icon icon="info-circle" size="xlarge" />
-				</div>
-				<div :class="$style.descriptionText">
-					<n8n-text>{{ getModalContent.description }}</n8n-text>
-				</div>
+				<n8n-info-tip theme="info" type="note" :bold="false">
+					<template>
+						<span v-html="getModalContent.description"></span>
+					</template>
+				</n8n-info-tip>
 			</div>
 		</template>
 		<template slot="footer">
@@ -72,12 +71,12 @@ export default mixins(showMessage).extend({
 		getModalContent() {
 			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
 				return {
-					title: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.title', {
+					title: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.title'),
+					message: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.message', {
 						interpolate: {
 							packageName: this.activePackageName,
 						},
 					}),
-					message: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.message'),
 					buttonLabel: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.buttonLabel'),
 					buttonLoadingLabel: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel'),
 				};
@@ -122,11 +121,6 @@ export default mixins(showMessage).extend({
 				await this.$store.dispatch('communityNodes/uninstallPackage', this.activePackageName);
 				this.$showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
-					message: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.message', {
-						interpolate: {
-							packageName: this.activePackageName,
-						},
-					}),
 					type: 'success',
 				});
 			} catch (error) {
@@ -145,13 +139,14 @@ export default mixins(showMessage).extend({
 					package_version_new: this.activePackage.updateAvailable,
 				});
 				this.loading = true;
+				const updatedVersion = this.activePackage.updateAvailable;
 				await this.$store.dispatch('communityNodes/updatePackage', this.activePackageName);
 				this.$showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
 					message: this.$locale.baseText('settings.communityNodes.messages.update.success.message', {
 						interpolate: {
 							packageName: this.activePackageName,
-							version: this.activePackage.updateAvailable,
+							version: updatedVersion,
 						},
 					}),
 					type: 'success',

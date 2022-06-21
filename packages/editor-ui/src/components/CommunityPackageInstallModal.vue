@@ -12,9 +12,11 @@
 			<div :class="[$style.descriptionContainer, 'p-s']">
 				<div>
 					<n8n-text>
-						{{ $locale.baseText('settings.communityNodes.installModal.description') }}</n8n-text
-					>&nbsp;
-					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">{{ $locale.baseText('_reusableDynamicText.readMore') }}</n8n-link>
+						{{ $locale.baseText('settings.communityNodes.installModal.description') }}
+					</n8n-text> <n8n-link
+						:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">
+							{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
+					</n8n-link>
 				</div>
 				<n8n-button
 					:label="$locale.baseText('settings.communityNodes.browseButton.label')"
@@ -40,13 +42,6 @@
 						@blur="onInputBlur"
 					/>
 				</n8n-input-label>
-				<div :class="[$style.infoText, 'mt-4xs']">
-					<span
-						size="small"
-						:class="[$style.infoText, infoTextErrorMessage ? $style.error : '']"
-						v-html="infoTextErrorMessage || $locale.baseText('settings.communityNodes.installModal.packageName.infoText')"
-					></span>
-				</div>
 				<el-checkbox
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
@@ -56,7 +51,7 @@
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }}
 					</n8n-text><br />
-					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{ $locale.baseText('_reusableDynamicText.learnMore') }}</n8n-link>
+					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{ $locale.baseText('_reusableDynamicText.moreInfo') }}</n8n-link>
 				</el-checkbox>
 			</div>
 		</template>
@@ -167,6 +162,7 @@ export default mixins(
 	align-items: center;
 	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
 	border-radius: var(--border-radius-large);
+	background-color: var(--color-background-light);
 }
 
 .formContainer {
@@ -186,6 +182,21 @@ export default mixins(
 
 	span {
 		border-color: var(--color-danger);
+	}
+}
+</style>
+
+<style lang="scss">
+.el-tooltip__popper {
+	max-width: 240px;
+	img {
+		width: 100%;
+	}
+	p {
+		line-height: 1;
+	}
+	p + p {
+		margin-top: var(--spacing-2xs);
 	}
 }
 </style>
