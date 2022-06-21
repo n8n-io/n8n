@@ -89,6 +89,7 @@ export class GoogleDocs implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -96,7 +97,6 @@ export class GoogleDocs implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'The resource to operate on.',
 			},
 			...documentOperations,
 			...documentFields,
@@ -113,7 +113,7 @@ export class GoogleDocs implements INodeType {
 						value: 'myDrive',
 					},
 					{
-						name: 'Shared with me',
+						name: 'Shared with Me',
 						value: 'sharedWithMe',
 					},
 				];

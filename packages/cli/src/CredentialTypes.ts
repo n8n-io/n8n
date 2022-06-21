@@ -3,6 +3,7 @@ import {
 	ICredentialTypeData,
 	ICredentialTypes as ICredentialTypesInterface,
 } from 'n8n-workflow';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 class CredentialTypesClass implements ICredentialTypesInterface {
 	credentialTypes: ICredentialTypeData = {};
@@ -16,7 +17,11 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 	}
 
 	getByName(credentialType: string): ICredentialType {
-		return this.credentialTypes[credentialType].type;
+		try {
+			return this.credentialTypes[credentialType].type;
+		} catch (error) {
+			throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL}: ${credentialType}`);
+		}
 	}
 }
 

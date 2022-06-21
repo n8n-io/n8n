@@ -16,7 +16,7 @@ export const addConfigFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'user.email',
-		description: 'Name of the key to set.',
+		description: 'Name of the key to set',
 		required: true,
 	},
 	{
@@ -32,7 +32,7 @@ export const addConfigFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'name@example.com',
-		description: 'Value of the key to set.',
+		description: 'Value of the key to set',
 		required: true,
 	},
 	{
@@ -64,7 +64,7 @@ export const addConfigFields: INodeProperties[] = [
 					},
 				],
 				default: 'set',
-				description: 'Append setting rather than set it in the local config.',
+				description: 'Append setting rather than set it in the local config',
 			},
 		],
 	},

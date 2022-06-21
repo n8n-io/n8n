@@ -265,6 +265,7 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 export function displayParameter(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
+	node: INode | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
 ) {
 	if (!parameter.displayOptions) {
@@ -282,6 +283,8 @@ export function displayParameter(
 			if (propertyName.charAt(0) === '/') {
 				// Get the value from the root of the node
 				value = get(nodeValuesRoot, propertyName.slice(1));
+			} else if (propertyName === '@version') {
+				value = node?.typeVersion || 0;
 			} else {
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
@@ -313,6 +316,8 @@ export function displayParameter(
 			if (propertyName.charAt(0) === '/') {
 				// Get the value from the root of the node
 				value = get(nodeValuesRoot, propertyName.slice(1));
+			} else if (propertyName === '@version') {
+				value = node?.typeVersion || 0;
 			} else {
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
@@ -352,6 +357,7 @@ export function displayParameterPath(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
+	node: INode | null,
 ) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
@@ -364,7 +370,7 @@ export function displayParameterPath(
 		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
 	}
 
-	return displayParameter(resolvedNodeValues, parameter, nodeValuesRoot);
+	return displayParameter(resolvedNodeValues, parameter, node, nodeValuesRoot);
 }
 
 /**
@@ -433,6 +439,10 @@ export function getParamterDependencies(
 			// @ts-ignore
 			for (parameterName of Object.keys(nodeProperties.displayOptions[displayRule])) {
 				if (!dependencies[nodeProperties.name].includes(parameterName)) {
+					if (parameterName.charAt(0) === '@') {
+						// Is a special parameter so can be skipped
+						continue;
+					}
 					dependencies[nodeProperties.name].push(parameterName);
 				}
 			}
@@ -532,6 +542,7 @@ export function getNodeParameters(
 	nodeValues: INodeParameters,
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
+	node: INode | null,
 	onlySimpleTypes = false,
 	dataIsResolved = false,
 	nodeValuesRoot?: INodeParameters,
@@ -566,6 +577,7 @@ export function getNodeParameters(
 			nodeValues,
 			true,
 			true,
+			node,
 			true,
 			true,
 			nodeValuesRoot,
@@ -594,7 +606,7 @@ export function getNodeParameters(
 
 		if (
 			!returnNoneDisplayed &&
-			!displayParameter(nodeValuesDisplayCheck, nodeProperties, nodeValuesRoot)
+			!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)
 		) {
 			if (!returnNoneDisplayed || !returnDefaults) {
 				continue;
@@ -605,7 +617,7 @@ export function getNodeParameters(
 			// Is a simple property so can be set as it is
 
 			if (duplicateParameterNames.includes(nodeProperties.name)) {
-				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, nodeValuesRoot)) {
+				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)) {
 					continue;
 				}
 			}
@@ -677,6 +689,7 @@ export function getNodeParameters(
 					nodeValues[nodeProperties.name] as INodeParameters,
 					returnDefaults,
 					returnNoneDisplayed,
+					node,
 					false,
 					false,
 					nodeValuesRoot,
@@ -705,6 +718,18 @@ export function getNodeParameters(
 				if (propertyValues === undefined) {
 					propertyValues = JSON.parse(JSON.stringify(nodeProperties.default));
 				}
+			}
+
+			if (
+				!returnDefaults &&
+				nodeProperties.typeOptions?.multipleValues === false &&
+				propertyValues &&
+				Object.keys(propertyValues).length === 0
+			) {
+				// For fixedCollections, which only allow one value, it is important to still return
+				// the empty object which indicates that a value got added, even if it does not have
+				// anything set. If that is not done, the value would get lost.
+				return nodeValues;
 			}
 
 			// Iterate over all collections
@@ -737,6 +762,7 @@ export function getNodeParameters(
 							nodeValue,
 							returnDefaults,
 							returnNoneDisplayed,
+							node,
 							false,
 							false,
 							nodeValuesRoot,
@@ -764,6 +790,7 @@ export function getNodeParameters(
 							(nodeValues[nodeProperties.name] as INodeParameters)[itemName] as INodeParameters,
 							returnDefaults,
 							returnNoneDisplayed,
+							node,
 							false,
 							false,
 							nodeValuesRoot,
@@ -778,6 +805,25 @@ export function getNodeParameters(
 						collectionValues[itemName] = tempNodeParameters;
 					}
 				}
+			}
+
+			if (
+				!returnDefaults &&
+				nodeProperties.typeOptions?.multipleValues === false &&
+				collectionValues &&
+				Object.keys(collectionValues).length === 0 &&
+				propertyValues &&
+				propertyValues?.constructor.name === 'Object' &&
+				Object.keys(propertyValues).length !== 0
+			) {
+				// For fixedCollections, which only allow one value, it is important to still return
+				// the object with an empty collection property which indicates that a value got added
+				// which contains all default values. If that is not done, the value would get lost.
+				const returnValue = {} as INodeParameters;
+				Object.keys(propertyValues || {}).forEach((value) => {
+					returnValue[value] = {};
+				});
+				nodeParameters[nodeProperties.name] = returnValue;
 			}
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
@@ -893,6 +939,7 @@ export function getNodeWebhooks(
 			'internal',
 			additionalData.timezone,
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
@@ -901,6 +948,7 @@ export function getNodeWebhooks(
 			'internal',
 			additionalData.timezone,
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
@@ -911,6 +959,7 @@ export function getNodeWebhooks(
 			mode,
 			additionalData.timezone,
 			{},
+			undefined,
 			'GET',
 		);
 
@@ -1021,7 +1070,7 @@ export function getNodeParametersIssues(
 	}
 
 	for (const nodeProperty of nodePropertiesArray) {
-		propertyIssues = getParameterIssues(nodeProperty, node.parameters, '');
+		propertyIssues = getParameterIssues(nodeProperty, node.parameters, '', node);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 
@@ -1089,7 +1138,8 @@ export function addToIssuesIfMissing(
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && value === undefined)
+		(nodeProperties.type === 'dateTime' && value === undefined) ||
+		(nodeProperties.type === 'options' && (value === '' || value === undefined))
 	) {
 		// Parameter is requried but empty
 		if (foundIssues.parameters === undefined) {
@@ -1135,12 +1185,13 @@ export function getParameterIssues(
 	nodeProperties: INodeProperties,
 	nodeValues: INodeParameters,
 	path: string,
+	node: INode,
 ): INodeIssues {
 	const foundIssues: INodeIssues = {};
 	let value;
 
 	if (nodeProperties.required === true) {
-		if (displayParameterPath(nodeValues, nodeProperties, path)) {
+		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
 			value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 
 			if (
@@ -1235,7 +1286,7 @@ export function getParameterIssues(
 	let propertyIssues;
 
 	for (const optionData of checkChildNodeProperties) {
-		propertyIssues = getParameterIssues(optionData.data, nodeValues, optionData.basePath);
+		propertyIssues = getParameterIssues(optionData.data, nodeValues, optionData.basePath, node);
 		mergeIssues(foundIssues, propertyIssues);
 	}
 

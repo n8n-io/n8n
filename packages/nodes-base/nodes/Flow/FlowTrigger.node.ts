@@ -19,6 +19,7 @@ export class FlowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow Trigger',
 		name: 'flowTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:flow.png',
 		group: ['trigger'],
 		version: 1,
@@ -47,6 +48,7 @@ export class FlowTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				default: '',
 				options:
 					[
@@ -79,7 +81,7 @@ export class FlowTrigger implements INodeType {
 						],
 					},
 				},
-				description: `Lists ids, perhaps known better as "Projects" separated by a comma (,)`,
+				description: 'Lists IDs, perhaps known better as "Projects" separated by a comma (,)',
 			},
 			{
 				displayName: 'Task ID',
@@ -99,7 +101,7 @@ export class FlowTrigger implements INodeType {
 						],
 					},
 				},
-				description: `Task ids separated by a comma (,)`,
+				description: 'Task IDs separated by a comma (,)',
 			},
 		],
 

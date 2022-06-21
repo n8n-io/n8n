@@ -100,7 +100,7 @@ export const logFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 50,
+		default: 100,
 		description: 'Max number of results to return',
 	},
 	// required attributs
@@ -188,9 +188,10 @@ export const logFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {

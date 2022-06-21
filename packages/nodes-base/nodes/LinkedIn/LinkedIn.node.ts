@@ -19,6 +19,7 @@ export class LinkedIn implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:linkedin.png',
 		group: ['input'],
 		version: 1,
@@ -39,6 +40,7 @@ export class LinkedIn implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -46,7 +48,6 @@ export class LinkedIn implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The resource to consume',
 			},
 			//POST
 			...postOperations,

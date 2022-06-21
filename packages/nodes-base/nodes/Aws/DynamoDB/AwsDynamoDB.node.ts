@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -62,6 +63,7 @@ export class AwsDynamoDB implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Item',

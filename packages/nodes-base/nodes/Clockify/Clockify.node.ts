@@ -76,6 +76,7 @@ export class Clockify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Project',
@@ -95,16 +96,16 @@ export class Clockify implements INodeType {
 					},
 				],
 				default: 'project',
-				description: 'The resource to operate on.',
 			},
 			...projectOperations,
 			...tagOperations,
 			...taskOperations,
 			...timeEntryOperations,
 			{
-				displayName: 'Workspace ID',
+				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'listWorkspaces',
 				},
