@@ -123,24 +123,19 @@ export default class Telemetry {
 			return Promise.resolve();
 		}
 
-		const allPromises = Object.keys(this.executionCountsBuffer.counts).map(async (workflowId) => {
+		const allP = Object.keys(this.executionCountsBufferNew).map(async (workflowId) => {
 			const promise = this.track('Workflow execution count', {
 				version_cli: this.versionCli,
 				workflow_id: workflowId,
-				...this.executionCountsBuffer.counts[workflowId],
-				...this.executionCountsBuffer.firstExecutions,
+				...this.executionCountsBufferNew[workflowId],
 			});
-
-			this.executionCountsBuffer.counts[workflowId].manual_error_count = 0;
-			this.executionCountsBuffer.counts[workflowId].manual_success_count = 0;
-			this.executionCountsBuffer.counts[workflowId].prod_error_count = 0;
-			this.executionCountsBuffer.counts[workflowId].prod_success_count = 0;
 
 			return promise;
 		});
 
-		allPromises.push(this.track('pulse', { version_cli: this.versionCli }));
-		return Promise.all(allPromises);
+		this.executionCountsBufferNew = {};
+		allP.push(this.track('pulse', { version_cli: this.versionCli }));
+		return Promise.all(allP);
 	}
 
 	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
