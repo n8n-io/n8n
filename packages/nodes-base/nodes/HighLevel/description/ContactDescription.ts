@@ -273,22 +273,22 @@ const additionalFields: Array<INodeProperties> = [
 					}
 				}
 			},
-			// {
-			// 	displayName: 'Tags',
-			// 	name: 'tags',
-			// 	type: 'string',
-			// 	typeOptions: {
-			// 		multipleValues: true,
-			// 		multipleValueButtonText: 'Add Tag',
-			// 	},
-			// 	default: [],
-			// 	routing: {
-			// 		send: {
-			// 			type: 'body',
-			// 			property: 'tags',
-			// 		}
-			// 	},
-			// },
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Tag',
+				},
+				default: [],
+				routing: {
+					send: {
+						type: 'body',
+						property: 'tags',
+					}
+				},
+			},
 		],
 	}
 ]
