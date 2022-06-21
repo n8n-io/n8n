@@ -24,7 +24,6 @@
 						slot="content"
 						v-html="$locale.baseText('nodeCreator.mainPanel.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
 					>
-					<!-- nodeType.name.split('.')[0] -->
 					</div>
 					<n8n-icon icon="cube" color="foreground-xdark" />
 				</n8n-tooltip>
