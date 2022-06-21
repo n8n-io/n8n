@@ -202,7 +202,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'Create a private channel instead of a public one',
+				description: 'Whether to create a private channel instead of a public one',
 			},
 		],
 	},
@@ -232,7 +232,7 @@ export const channelFields: INodeProperties[] = [
 		description: 'The ID of the channel to invite user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'User IDs',
+		displayName: 'User Names or IDs',
 		name: 'userIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -250,7 +250,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the user to invite into channel',
+		description: 'The ID of the user to invite into channel. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -329,6 +329,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
@@ -352,6 +353,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -436,7 +438,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'excludeArchived',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to exclude archived channels from the list',
+				description: 'Whether to exclude archived channels from the list',
 			},
 			{
 				displayName: 'Types',
@@ -556,7 +558,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'inclusive',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages with latest or oldest timestamp in results only when either timestamp is specified',
+				description: 'Whether to include messages with latest or oldest timestamp in results only when either timestamp is specified',
 			},
 			{
 				displayName: 'Latest',
@@ -607,6 +609,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -679,7 +682,7 @@ export const channelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
+		description: 'Whether to resolve the data automatically. By default the response only contain the ID to resource.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -714,17 +717,17 @@ export const channelFields: INodeProperties[] = [
 				name: 'returnIm',
 				type: 'boolean',
 				default: false,
-				description: 'Boolean, indicates you want the full IM channel definition in the response',
+				description: 'Whether you want the full IM channel definition in the response',
 			},
 			{
-				displayName: 'Users',
+				displayName: 'User Names or IDs',
 				name: 'users',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users.',
+				description: 'If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -878,7 +881,7 @@ export const channelFields: INodeProperties[] = [
 				name: 'inclusive',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages with latest or oldest timestamp in results only when either timestamp is specified',
+				description: 'Whether to include messages with latest or oldest timestamp in results only when either timestamp is specified',
 			},
 			{
 				displayName: 'Latest',
