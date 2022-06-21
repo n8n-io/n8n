@@ -16,10 +16,7 @@
 				<font-awesome-icon icon="exclamation-triangle" />
 			</p>
 			<div class="missingNodeTitleContainer mt-s mb-xs">
-				<n8n-text
-					size="large"
-					bold
-				>
+				<n8n-text size="large" color="text-dark" bold>
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
 				</n8n-text>
 			</div>
@@ -657,6 +654,7 @@ export default mixins(
 		align-items: center;
 		justify-content: center;
 		text-align: center;
+		line-height: var(--font-line-height-regular);
 	}
 
 	.node-parameters-wrapper {

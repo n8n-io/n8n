@@ -853,11 +853,6 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-		isNodeTypeInNameClash: (state, getters) => (nodeType: INodeTypeDescription): boolean => {
-			// Check if there is existing node type with the same display name but in the different package
-			const basePackage = state.nodeTypes.find(type => type.displayName === nodeType.displayName) || null;
-			return basePackage != null && basePackage.name !== nodeType.name;
-		},
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */
