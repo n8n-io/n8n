@@ -261,18 +261,18 @@ const additionalFields: Array<INodeProperties> = [
 					}
 				}
 			},
-			// {
-			// 	displayName: 'DND',
-			// 	name: 'dnd',
-			// 	type: 'boolean',
-			// 	default: false,
-			// 	routing: {
-			// 		send: {
-			// 			type: 'body',
-			// 			property: 'dnd',
-			// 		}
-			// 	}
-			// },
+			{
+				displayName: 'DND',
+				name: 'dnd',
+				type: 'boolean',
+				default: false,
+				routing: {
+					send: {
+						type: 'body',
+						property: 'dnd',
+					}
+				}
+			},
 			// {
 			// 	displayName: 'Tags',
 			// 	name: 'tags',
