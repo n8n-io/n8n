@@ -79,6 +79,7 @@ export default class Telemetry {
 
 		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
 			const promise = this.track('Workflow execution count', {
+				event_version: '2',
 				version_cli: this.versionCli,
 				workflow_id: workflowId,
 				...this.executionCountsBuffer[workflowId],

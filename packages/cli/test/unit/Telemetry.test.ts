@@ -333,6 +333,7 @@ describe('Telemetry', () => {
             expect(spyTrack).toHaveBeenNthCalledWith(1, 'Workflow execution count', {
                 instance_id: instanceId,
                 version_cli: n8nVersion,
+                event_version: '2',
 				workflow_id: '1',
                 manual_error: {
                     count: 2,
@@ -354,6 +355,7 @@ describe('Telemetry', () => {
             expect(spyTrack).toHaveBeenNthCalledWith(2, 'Workflow execution count', {
                 instance_id: instanceId,
                 version_cli: n8nVersion,
+                event_version: '2',
 				workflow_id: '2',
                 prod_error: {
                     count: 2,
