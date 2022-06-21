@@ -66,10 +66,6 @@ export const taskOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks',
 					},
-					// HighLevel API V1.1.20 does not support /pipelines pagination
-					// send: {
-					// 	paginate: true,
-					// },
 					output: {
 						postReceive: [
 							{
@@ -333,24 +329,23 @@ const getAllOperations: Array<INodeProperties> = [
 		required: true,
 		description: 'Contact the task belongs to',
 	},
-	// HighLevel API V1.1.20 does not support /pipelines pagination
-	// {
-	// 	displayName: 'Return All',
-	// 	name: 'returnAll',
-	// 	type: 'boolean',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'task',
-	// 			],
-	// 			operation: [
-	// 				'getAll',
-	// 			],
-	// 		},
-	// 	},
-	// 	default: false,
-	// 	description: 'Whether to return all results or only up to a given limit',
-	// },
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
@@ -363,9 +358,9 @@ const getAllOperations: Array<INodeProperties> = [
 				operation: [
 					'getAll',
 				],
-				// returnAll: [
-				// 	false,
-				// ],
+				returnAll: [
+					false,
+				],
 			},
 		},
 		typeOptions: {
