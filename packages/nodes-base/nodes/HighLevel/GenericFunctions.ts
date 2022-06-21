@@ -2,8 +2,16 @@ import {
 	IExecutePaginationFunctions,
 	IRequestOptionsFromParameters,
 	INodeExecutionData,
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
 	IDataObject,
+	IHttpRequestOptions,
 } from "n8n-workflow";
+
+import {
+	DateTime,
+	ToISOTimeOptions
+} from 'luxon';
 
 export function wait(millis: number = 1000) {
 	return new Promise((resolve, _reject) => {
@@ -60,3 +68,20 @@ export async function highLevelApiPagination(this: IExecutePaginationFunctions, 
 
 	return responseData;
 };
+
+async function postReceiveAction(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+	const pipelineIdentifier = this.getNodeParameter('pipelineIdentifier') as string;
+	console.log('pipelineIdentifier', pipelineIdentifier);
+	console.log(items);
+	return items;
+}
+
+export async function dueDatePreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	const dueDateParam = this.getNodeParameter('dueDate') as string;
+	const options: ToISOTimeOptions = { suppressMilliseconds: true }
+	const dueDate = DateTime.fromISO(dueDateParam).toISO(options);
+	requestOptions.body = (requestOptions.body || {}) as object;
+	Object.assign(requestOptions.body, { dueDate });
+	// console.log({ dueDateParam, dueDate });
+	return requestOptions;
+}

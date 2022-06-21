@@ -1,13 +1,8 @@
 import {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
 	INodeProperties
 } from 'n8n-workflow';
 
-import {
-	DateTime,
-	ToISOTimeOptions
-} from 'luxon';
+import { dueDatePreSendAction } from '../GenericFunctions';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -95,16 +90,6 @@ export const taskOperations: INodeProperties[] = [
 						method: 'PUT',
 						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks/{{$parameter.identifier}}',
 					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'task',
-								},
-							},
-						],
-					},
 				},
 			},
 		],
@@ -172,7 +157,7 @@ const additionalFields: Array<INodeProperties> = [
 				default: 'incompleted',
 				routing: {
 					send: {
-						type: 'query',
+						type: 'body',
 						property: 'status',
 					}
 				}
@@ -244,15 +229,7 @@ const createOperations: Array<INodeProperties> = [
 				type: 'body',
 				property: 'dueDate',
 				preSend: [
-					async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-						const dueDateParam = this.getNodeParameter('dueDate') as string;
-						const options: ToISOTimeOptions = { suppressMilliseconds: true }
-						const dueDate = DateTime.fromISO(dueDateParam).toISO(options);
-						requestOptions.body = (requestOptions.body || {}) as object;
-						Object.assign(requestOptions.body, { dueDate });
-						// console.log({ dueDateParam, dueDate });
-						return requestOptions;
-					},
+					dueDatePreSendAction
 				],
 			}
 		}
@@ -409,9 +386,97 @@ const getAllOperations: Array<INodeProperties> = [
 	},
 ];
 
+const updateOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Contact Identifier',
+		name: 'contactIdentifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Contact the task belongs to',
+	},
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Task ID',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'title',
+			}
+		}
+	},
+	{
+		displayName: 'Due Date',
+		name: 'dueDate',
+		type: 'dateTime',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'dueDate',
+				preSend: [
+					dueDatePreSendAction
+				],
+			}
+		}
+	},
+];
+
 export const taskFields: INodeProperties[] = [
 	...createOperations,
-	// ...updateOperations,
+	...updateOperations,
 	...additionalFields,
 	...deleteOperations,
 	...getOperations,
