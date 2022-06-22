@@ -16,22 +16,24 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 	const resource = this.getNodeParameter('resource', 0) as string;
 
-	let credentials;
+	let service;
 
 	if (resource === 'receipt') {
-		credentials = await this.getCredentials('mindeeReceiptApi');
+		service = 'mindeeReceiptApi';
 	} else {
-		credentials = await this.getCredentials('mindeeInvoiceApi');
+		service = 'mindeeInvoiceApi';
 	}
 
+	const version = this.getNodeParameter('apiVersion', 0) as string;
+	// V1 of mindee is deprecated, we are keeping it for now but now V3 is active
+	const url = version === 'version1' ? `https://api.mindee.net/products${path}` : `https://api.mindee.net/v1/products/mindee${path}`;
+
 	const options: OptionsWithUri = {
-		headers: {
-			'X-Inferuser-Token': credentials.apiKey,
-		},
+		headers: {},
 		method,
 		body,
 		qs,
-		uri: `https://api.mindee.net/products${path}`,
+		uri: url,
 		json: true,
 	};
 	try {
@@ -44,20 +46,50 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+
+		return await this.helpers.requestWithAuthentication.call(this, service , options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export function cleanData(predictions: IDataObject[]) {
+export function cleanDataDepriciatedVersion(predictions: IDataObject[]) {
 
 	const newData: IDataObject = {};
 
 	for (const key of Object.keys(predictions[0])) {
 
 		const data = predictions[0][key] as IDataObject | IDataObject[];
+
+		if (key === 'taxes' && data.length) {
+			newData[key] = {
+				amount: (data as IDataObject[])[0].amount,
+				rate: (data as IDataObject[])[0].rate,
+			};
+		} else if (key === 'locale') {
+				//@ts-ignore
+				newData['currency'] = data.currency;
+				//@ts-ignore
+				newData['locale'] = data.value;
+		} else {
+			//@ts-ignore
+			newData[key] = data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+		}
+	}
+
+	return newData;
+}
+
+export function cleanData(document: IDataObject) {
+	// @ts-ignore
+	const prediction = document.inference.prediction as IDataObject;
+	const newData: IDataObject = {};
+	newData['id'] = document.id;
+	newData['name'] = document.name;
+	newData['number_of_pages'] = document.n_pages;
+	for (const key of Object.keys(prediction)) {
+
+		const data = prediction[key] as IDataObject | IDataObject[];
 
 		if (key === 'taxes' && data.length) {
 			newData[key] = {
