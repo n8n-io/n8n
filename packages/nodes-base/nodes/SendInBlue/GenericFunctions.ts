@@ -60,40 +60,42 @@ export async function validateAttachmentsData (this: IExecuteSingleFunctions, re
 
 	const { attachment } = body as unknown as JsonObject;
 
-	for(let [index, attachmentData] of attachments.entries()) {
-		const { useAttachmentUrl } = attachmentData;
-		const { content, name, url } = (attachment as EmailAttachment[])[index];
+	try {
+		for(let [index, attachmentData] of attachments.entries()) {
+			const { useAttachmentUrl } = attachmentData;
+			const { content = '', name = '', url = '' } = (attachment as EmailAttachment[])[index];
 
-		if(useAttachmentUrl) {
-			delete (attachment as EmailAttachment[])[index].content;
-			delete (attachment as EmailAttachment[])[index].name;
+			if(useAttachmentUrl) {
+				if(!validateURL(url!)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Please enter a valid attachment URL`,
+					);
+				}
+			} else {
+				// Ensure image has filetype
+				if(!validateAttchmentName(name!)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Please enter an attachment name with a filetype e.g (attachment.png)`,
+					);
+				}
 
-			if(!validateURL(url!)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Please enter a valid attachment URL`,
-				);
-			}
-		} else {
-			delete (attachment as EmailAttachment[])[index].url;
-
-			// Ensure image has filetype
-			if(!validateAttchmentName(name!)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Please enter an attachment name with a filetype e.g (attachment.png)`,
-				);
-			}
-
-			// Ensure base64 data is correctly formatted
-			if(!validateBase64Encoding(content!)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Please enter valid base64 file data`,
-				);
+				// Ensure base64 data is correctly formatted
+				if(!validateBase64Encoding(content!)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Please enter valid base64 file data`,
+					);
+				}
 			}
 		}
+		return requestOptions;
 	}
-
-	return requestOptions;
+	catch(err) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`${err}`
+		)
+	}
 }
