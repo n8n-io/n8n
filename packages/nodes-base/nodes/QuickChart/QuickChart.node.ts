@@ -39,6 +39,10 @@ const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 		value: 'bar',
 	},
 	{
+		name: 'Boxplot',
+		value: 'boxplot',
+	},
+	{
 		name: 'Bubble Chart',
 		value: 'bubble',
 	},
@@ -73,6 +77,10 @@ const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 	{
 		name: 'Sparkline',
 		value: 'sparkline',
+	},
+	{
+		name: 'Violin Chart',
+		value: 'violin',
 	},
 ];
 
