@@ -208,14 +208,6 @@ export interface IAuthenticateBase {
 		| IRequestOptionsSimplifiedAuth;
 }
 
-export interface IAuthenticateBasicAuth extends IAuthenticateBase {
-	type: 'basicAuth';
-	properties: {
-		userPropertyName?: string;
-		passwordPropertyName?: string;
-	};
-}
-
 export interface IAuthenticateGeneric extends IAuthenticateBase {
 	type: 'generic';
 	properties: IRequestOptionsSimplifiedAuth;
@@ -226,7 +218,6 @@ export type IAuthenticate =
 			credentials: ICredentialDataDecryptedObject,
 			requestOptions: IHttpRequestOptions,
 	  ) => Promise<IHttpRequestOptions>)
-	| IAuthenticateBasicAuth
 	| IAuthenticateGeneric;
 
 export interface IAuthenticateRuleBase {
