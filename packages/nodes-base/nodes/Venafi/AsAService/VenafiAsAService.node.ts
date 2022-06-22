@@ -28,6 +28,7 @@ import {
 
 import {
 	ICertficateRequest,
+	ICertficateKeystoreRequest,
 	ICsrAttributes,
 	IKeyTypeParameters,
 	ISubjectAltNamesByType,
@@ -290,17 +291,47 @@ export class VenafiAsAService implements INodeType {
 					if (operation === 'download') {
 						const certificateId = this.getNodeParameter('certificateId', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const downloadItem = this.getNodeParameter('downloadItem', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						Object.assign(qs, options);
 
-						responseData = await venafiApiRequest.call(
-							this,
-							'GET',
-							`/outagedetection/v1/certificates/${certificateId}/contents`,
-							{},
-							qs,
-						);
+
+						if (downloadItem === 'certificate') {
+							Object.assign(qs, options);
+							responseData = await venafiApiRequest.call(
+								this,
+								'GET',
+								`/outagedetection/v1/certificates/${certificateId}/contents`,
+								{},
+								qs,
+							);
+						} else {
+							const exportFormat = this.getNodeParameter('keystoreType', i) as string;
+
+							const body: ICertficateKeystoreRequest = {
+								exportFormat: exportFormat,
+							};
+
+							const encryptedPrivateKeyPassphrase = this.getNodeParameter('privateKeyPassphrase', i) as string;
+							const certificateLabel = this.getNodeParameter('certificateLabel', i) as string;
+
+							body.encryptedPrivateKeyPassphrase = encryptedPrivateKeyPassphrase;
+							body.certificateLabel = certificateLabel;
+
+							if (exportFormat === 'JKS') {
+								if (options.keystorePassphrase) {
+									body.encryptedKeystorePassphrase = options.keystorePassphrase as string;
+								}
+							}
+
+							responseData = await venafiApiRequest.call(
+								this,
+								'POST',
+								`/outagedetection/v1/certificates/${certificateId}/keystore`,
+								body,
+							);
+						}
+
 
 						const binaryData = await this.helpers.prepareBinaryData(Buffer.from(responseData));
 

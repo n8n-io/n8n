@@ -32,3 +32,10 @@ export interface ISubjectAltNamesByType {
 	ipAddresses?: string[];
 	uniformResourceIdentifiers?: string[];
 }
+
+export interface ICertficateKeystoreRequest {
+	exportFormat?: string;
+	encryptedPrivateKeyPassphrase?: string;
+	encryptedKeystorePassphrase?: string;
+	certificateLabel?: string;
+}
