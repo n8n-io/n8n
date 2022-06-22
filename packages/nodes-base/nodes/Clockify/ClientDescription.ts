@@ -69,23 +69,6 @@ export const clientFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Address',
-		name: 'address',
-		type: 'string',
-		default: '',
-		description: 'Address of client being created.',
-		displayOptions: {
-			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 client:delete                              */
 	/* -------------------------------------------------------------------------- */
@@ -270,23 +253,6 @@ export const clientFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Address',
-		name: 'address',
-		type: 'string',
-		default: '',
-		description: 'Address of client being created.',
-		displayOptions: {
-			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Archived',
 		name: 'archived',
 		type: 'boolean',
@@ -302,5 +268,31 @@ export const clientFields: INodeProperties[] = [
 			},
 		},
 	},
-
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+					'update',
+				],
+				resource: [
+					'client',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Address',
+				name: 'address',
+				type: 'string',
+				default: '',
+				description: 'Address of client being created/updated.',
+			},
+		],
+	},
 ];
