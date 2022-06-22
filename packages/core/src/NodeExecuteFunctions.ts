@@ -1454,10 +1454,21 @@ export function getNodeParameter(
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
 	}
 
-	const value = get(node.parameters, parameterName, fallbackValue);
+	let value = get(node.parameters, parameterName, fallbackValue);
 
 	if (value === undefined) {
-		throw new Error(`Could not get parameter "${parameterName}"!`);
+		const parameterPath = parameterName.split('.');
+		if (parameterPath.length) {
+			parameterPath.pop();
+			const parent = parameterPath.join('.');
+			value = get(node.parameters, parent, fallbackValue);
+			// check if there is atleast a parent
+			if (value === undefined) {
+				throw new Error(`Could not get parameter "${parameterName}"!`);
+			}
+			// reset here because we don't want the data
+			value = undefined;
+		}
 	}
 
 	let returnData;

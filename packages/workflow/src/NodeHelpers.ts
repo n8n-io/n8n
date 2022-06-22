@@ -301,10 +301,14 @@ export function displayParameter(
 				return true;
 			}
 
-			if (
-				values.length === 0 ||
-				!parameter.displayOptions.show[propertyName]!.some((v) => values.includes(v))
-			) {
+			// const show = parameter.displayOptions.show[propertyName]!.some((v) => values.includes(v));
+			const show = parameter.displayOptions.show[propertyName]!.some((v, i) => {
+				if (values[i] === undefined) {
+					return true;
+				}
+				return values.includes(v);
+			});
+			if (values.length === 0 || !show) {
 				return false;
 			}
 		}
@@ -330,10 +334,8 @@ export function displayParameter(
 				values.push.apply(values, value);
 			}
 
-			if (
-				values.length !== 0 &&
-				parameter.displayOptions.hide[propertyName]!.some((v) => values.includes(v))
-			) {
+			const hide = parameter.displayOptions.hide[propertyName]!.some((v) => values.includes(v));
+			if (values.length !== 0 && hide) {
 				return false;
 			}
 		}

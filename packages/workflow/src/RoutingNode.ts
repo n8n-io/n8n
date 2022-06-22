@@ -654,12 +654,14 @@ export class RoutingNode {
 
 					if (nodeProperties.routing.send.type === 'body') {
 						// Send in "body"
-						// eslint-disable-next-line no-lonely-if
-						if (nodeProperties.routing.send.propertyInDotNotation === false) {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(returnData.options.body as Record<string, any>)![propertyName] = value;
-						} else {
-							set(returnData.options.body as object, propertyName, value);
+						if (value !== undefined) {
+							// eslint-disable-next-line no-lonely-if
+							if (nodeProperties.routing.send.propertyInDotNotation === false) {
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								(returnData.options.body as Record<string, any>)![propertyName] = value;
+							} else {
+								set(returnData.options.body as object, propertyName, value);
+							}
 						}
 					} else {
 						// Send in "query"
@@ -800,8 +802,12 @@ export class RoutingNode {
 				}
 
 				const loopBasePath = `${basePath}${propertyOptions.name}`;
+				// eslint-disable-next-line no-console
+				console.log(`Outside of Loop Base Path: ${loopBasePath}`);
 				for (let i = 0; i < (value as INodeParameters[]).length; i++) {
 					for (const option of propertyOptions.values) {
+						// eslint-disable-next-line no-console
+						console.log(`Loop Base Path: ${loopBasePath}, option: ${option.name}`);
 						const tempOptions = this.getRequestOptionsFromParameters(
 							executeSingleFunctions,
 							option,
