@@ -301,6 +301,77 @@ const additionalFields: Array<INodeProperties> = [
 					}
 				}
 			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFields',
+				placeholder: 'Add Field',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'values',
+						displayName: 'Value',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								required: true,
+								default: '',
+								typeOptions: {
+									loadOptions: {
+										routing: {
+											request: {
+												url: '/custom-fields',
+												method: 'GET',
+											},
+											output: {
+												postReceive: [
+													{
+														type: 'rootProperty',
+														properties: {
+															property: 'customFields',
+														},
+													},
+													{
+														type: 'setKeyValue',
+														properties: {
+															name: '={{$responseItem.name}}',
+															value: '={{$responseItem.id}}',
+														},
+													},
+													{
+														type: 'sort',
+														properties: {
+															key: 'name',
+														},
+													},
+												],
+											},
+										},
+									}
+								},
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=customField.{{$parent.fieldId}}',
+										type: 'body',
+									},
+								},
+							},
+						],
+					},
+				],
+			},
 		],
 	}
 ]
