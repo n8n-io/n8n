@@ -106,19 +106,9 @@ export class MailchimpTrigger implements INodeType {
 				description: 'The events that can trigger the webhook and whether they are enabled',
 				options: [
 					{
-						name: 'Subscribe',
-						value: 'subscribe',
-						description: 'Whether the webhook is triggered when a list subscriber is added',
-					},
-					{
-						name: 'Unsubscribe',
-						value: 'unsubscribe',
-						description: 'Whether the webhook is triggered when a list member unsubscribes',
-					},
-					{
-						name: 'Profile Updated',
-						value: 'profile',
-						description: 'Whether the webhook is triggered when a subscriber\'s profile is updated',
+						name: 'Campaign Sent',
+						value: 'campaign',
+						description: 'Whether the webhook is triggered when a campaign is sent or cancelled',
 					},
 					{
 						name: 'Cleaned',
@@ -131,9 +121,19 @@ export class MailchimpTrigger implements INodeType {
 						description: 'Whether the webhook is triggered when a subscriber\'s email address is changed',
 					},
 					{
-						name: 'Campaign Sent',
-						value: 'campaign',
-						description: 'Whether the webhook is triggered when a campaign is sent or cancelled',
+						name: 'Profile Updated',
+						value: 'profile',
+						description: 'Whether the webhook is triggered when a subscriber\'s profile is updated',
+					},
+					{
+						name: 'Subscribe',
+						value: 'subscribe',
+						description: 'Whether the webhook is triggered when a list subscriber is added',
+					},
+					{
+						name: 'Unsubscribe',
+						value: 'unsubscribe',
+						description: 'Whether the webhook is triggered when a list member unsubscribes',
 					},
 				],
 			},

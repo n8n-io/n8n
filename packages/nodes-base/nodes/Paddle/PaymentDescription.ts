@@ -154,7 +154,7 @@ export const paymentFields: INodeProperties[] = [
 				name: 'isPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Payment is paid',
+				description: 'Whether payment is paid',
 			},
 			{
 				displayName: 'Plan ID',

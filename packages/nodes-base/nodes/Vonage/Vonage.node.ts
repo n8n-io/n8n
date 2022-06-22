@@ -17,6 +17,7 @@ export class Vonage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vonage',
 		name: 'vonage',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:vonage.png',
 		group: ['input'],
 		version: 1,
@@ -401,7 +402,7 @@ export class Vonage implements INodeType {
 						name: 'status-report-req',
 						type: 'boolean',
 						default: false,
-						description: 'Boolean indicating if you like to receive a Delivery Receipt',
+						description: 'Whether to receive a Delivery Receipt',
 					},
 					{
 						displayName: 'TTL (in Minutes)',
