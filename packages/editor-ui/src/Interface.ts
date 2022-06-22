@@ -248,6 +248,7 @@ export interface IWorkflowData {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: string[];
+	pinData?: { [nodeName: string]: IDataObject };
 }
 
 export interface IWorkflowDataUpdate {

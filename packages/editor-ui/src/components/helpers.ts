@@ -67,3 +67,7 @@ export function isString(value: unknown): value is string {
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
 }
+
+export function stringSizeInBytes(input: string): number {
+	return encodeURI(input).split(/%(?:u[0-9A-F]{2})?[0-9A-F]{2}|./).length - 1;
+}

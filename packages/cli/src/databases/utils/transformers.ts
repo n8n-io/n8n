@@ -1,3 +1,4 @@
+import { ValueTransformer } from 'typeorm';
 // eslint-disable-next-line import/no-cycle
 import { IPersonalizationSurveyAnswers } from '../../Interfaces';
 
@@ -22,4 +23,14 @@ export const answersFormatter = {
 			? (JSON.parse(answers) as IPersonalizationSurveyAnswers)
 			: answers;
 	},
+};
+
+/**
+ * Transformer to store object as string and retrieve string as object.
+ */
+export const serializer: ValueTransformer = {
+	to: (value: object | string): string =>
+		typeof value === 'object' ? JSON.stringify(value) : value,
+	from: (value: string | object): object =>
+		typeof value === 'string' ? (JSON.parse(value) as object) : value,
 };
