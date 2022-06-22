@@ -42,6 +42,13 @@
 						@blur="onInputBlur"
 					/>
 				</n8n-input-label>
+				<div :class="[$style.infoText, 'mt-4xs']">
+					<span
+						size="small"
+						:class="[$style.infoText, infoTextErrorMessage ? $style.error : '']"
+						v-html="infoTextErrorMessage"
+					></span>
+				</div>
 				<el-checkbox
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
