@@ -13,20 +13,27 @@ jest.mock('../../src/CommunityNodes/helpers',  () => ({
 	searchInstalledPackage: jest.fn(),
   executeCommand: jest.fn(),
 	checkPackageStatus: jest.fn(),
+	removePackageFromMissingList: jest.fn(),
 }));
 
 jest.mock('../../src/CommunityNodes/packageModel',  () => ({
 	getAllInstalledPackages: jest.requireActual('../../src/CommunityNodes/packageModel').getAllInstalledPackages,
-	removePackageFromDatabase: jest.requireActual('../../src/CommunityNodes/packageModel').removePackageFromDatabase,
+	removePackageFromDatabase: jest.fn(),
 	searchInstalledPackage: jest.fn(),
 }));
 
-import { executeCommand, checkPackageStatus, hasPackageLoadedSuccessfully } from '../../src/CommunityNodes/helpers';
-import { getAllInstalledPackages, searchInstalledPackage } from '../../src/CommunityNodes/packageModel';
+import { executeCommand, checkPackageStatus, hasPackageLoadedSuccessfully, removePackageFromMissingList } from '../../src/CommunityNodes/helpers';
+import { getAllInstalledPackages, searchInstalledPackage, removePackageFromDatabase } from '../../src/CommunityNodes/packageModel';
 import { CURRENT_PACKAGE_VERSION, UPDATED_PACKAGE_VERSION } from './shared/constants';
 import { installedPackagePayload } from './shared/utils';
 
 jest.mock('../../src/telemetry');
+
+jest.mock('../../src/LoadNodesAndCredentials', () => ({
+	LoadNodesAndCredentials: jest.fn(),
+}));
+import { LoadNodesAndCredentials } from '../../src/LoadNodesAndCredentials';
+
 
 
 let app: express.Application;
@@ -164,7 +171,7 @@ test('POST /nodes Should not install duplicate packages', async () => {
 	expect(response.body.message).toContain('already installed');
 });
 
-test('POST /nodes Should not install packages that could not be loaded', async () => {
+test('POST /nodes Should allow installing packages that could not be loaded', async () => {
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const requestBody = {
 		name: installedPackagePayload().packageName,
@@ -178,8 +185,26 @@ test('POST /nodes Should not install packages that could not be loaded', async (
 		return false;
 	});
 
+	// @ts-ignore
+	checkPackageStatus.mockImplementation(() => {
+		return {status:'OK'};
+	});
+
+	// @ts-ignore
+	LoadNodesAndCredentials.mockImplementation(() => {
+		return {
+			loadNpmModule: () => {
+				return {
+					installedNodes: [],
+				};
+			},
+		};
+	});
+
 	const response = await authOwnerAgent.post('/nodes').send(requestBody);
-	expect(response.status).toBe(500);
+
+	expect(removePackageFromMissingList).toHaveBeenCalled();
+	expect(response.status).toBe(200);
 });
 
 test('POST /nodes package should not install banned package', async () => {
@@ -225,11 +250,22 @@ test('DELETE /nodes package should be uninstall all conditions are true', async 
 	};
 	// @ts-ignore
 	searchInstalledPackage.mockImplementation(() => {
-		return true;
+		return {
+			installedNodes: [],
+		};
+	});
+
+	const removeNpmModuleMock = jest.fn();
+	// @ts-ignore
+	LoadNodesAndCredentials.mockImplementation(() => {
+		return {
+			removeNpmModule: removeNpmModuleMock,
+		};
 	});
 
 	const response = await authOwnerAgent.delete('/nodes').send(requestBody);
-	expect(executeCommand).toHaveBeenCalledTimes(1);
+	expect(removeNpmModuleMock).toHaveBeenCalledTimes(1);
+	expect(removePackageFromDatabase).toHaveBeenCalled();
 });
 
 // TEST PATCH ENDPOINT
@@ -239,7 +275,6 @@ test('PATCH /nodes package name should not be empty', async () => {
 	const response = await authOwnerAgent.patch('/nodes').send();
 
 	expect(response.statusCode).toBe(400);
-	console.log(response.body.message)
 });
 
 test('PATCH /nodes Should return error when package was not installed', async () => {
@@ -253,18 +288,31 @@ test('PATCH /nodes Should return error when package was not installed', async ()
 	expect(response.body.message).toContain('not installed');
 });
 
-test('PATCH /nodes package should be uptaded if all conditions are true', async () => {
+test('PATCH /nodes package should be updated if all conditions are true', async () => {
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const requestBody = {
 		name: installedPackagePayload().packageName,
 	};
 	// @ts-ignore
 	searchInstalledPackage.mockImplementation(() => {
-		return true;
+		return {
+			installedNodes: [],
+		};
+	});
+
+	const updatedNpmModuleMock = jest.fn(() => ({
+		installedNodes: [],
+	}));
+
+	// @ts-ignore
+	LoadNodesAndCredentials.mockImplementation(() => {
+		return {
+			updateNpmModule: updatedNpmModuleMock,
+		};
 	});
 
 	const response = await authOwnerAgent.patch('/nodes').send(requestBody);
-	expect(executeCommand).toHaveBeenCalledTimes(1);
+	expect(updatedNpmModuleMock).toHaveBeenCalledTimes(1);
 });
 
 async function saveMockPackage(payload: InstalledPackagePayload) {
