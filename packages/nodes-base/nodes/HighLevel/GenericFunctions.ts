@@ -7,7 +7,15 @@ import {
 	IDataObject,
 	IHttpRequestOptions,
 	NodeApiError,
+	IExecuteFunctions,
+	IWebhookFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 } from "n8n-workflow";
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	DateTime,
@@ -87,4 +95,35 @@ export async function dueDatePreSendAction(this: IExecuteSingleFunctions, reques
 	requestOptions.body = (requestOptions.body || {}) as object;
 	Object.assign(requestOptions.body, { dueDate });
 	return requestOptions;
+}
+
+
+export async function highLevelApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> {
+
+	const credentials = await this.getCredentials('highLevelApi');
+	const endpoint = 'https://rest.gohighlevel.com/v1';
+
+	let options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${credentials.apiKey}`,
+		},
+		method,
+		body,
+		qs: query,
+		uri: uri || `${endpoint}${resource}`,
+		json: true,
+	};
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
+	if (!Object.keys(query).length) {
+		delete options.qs;
+	}
+	options = Object.assign({}, options, option);
+	try {
+		return await this.helpers.request!(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }

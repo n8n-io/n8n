@@ -4,7 +4,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-import { isEmailValid, isPhoneValid } from '../GenericFunctions';
+import { isEmailValid, isPhoneValid, postReceiveAction } from '../GenericFunctions';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -265,7 +265,7 @@ const createOperations: Array<INodeProperties> = [
 	{
 		displayName: 'Stage ID',
 		name: 'stageId',
-		type: 'string',
+		type: 'options',
 		required: true,
 		displayOptions: {
 			show: {
@@ -278,6 +278,10 @@ const createOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
+		typeOptions: {
+			loadOptionsDependsOn: ['pipelineIdentifier'],
+			loadOptionsMethod: 'getPipelineStages'
+		},
 		routing: {
 			send: {
 				type: 'body',
