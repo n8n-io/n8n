@@ -64,7 +64,6 @@ export class HubspotDeveloperApi implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '',
-			description: 'The APP ID',
 		},
 		{
 			displayName: 'Scope',

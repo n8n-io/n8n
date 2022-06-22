@@ -1,24 +1,31 @@
-/* eslint-disable consistent-return */
-import { RequestHandler } from 'express';
-import { PaginatatedRequest } from '../../../types';
+/* eslint-disable @typescript-eslint/no-invalid-void-type */
+
+import express from 'express';
+
+import { AuthenticatedRequest, PaginatatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
-type Role = 'member' | 'owner';
+export const authorize =
+	(authorizedRoles: readonly string[]) =>
+	(
+		req: AuthenticatedRequest,
+		res: express.Response,
+		next: express.NextFunction,
+	): express.Response | void => {
+		const { name } = req.user.globalRole;
 
-export const authorize: (role: Role[]) => RequestHandler = (role: Role[]) => (req, res, next) => {
-	const {
-		globalRole: { name: userRole },
-	} = req.user as { globalRole: { name: Role } };
-	if (role.includes(userRole)) {
+		if (!authorizedRoles.includes(name)) {
+			return res.status(403).json({ message: 'Forbidden' });
+		}
+
 		return next();
-	}
-	return res.status(403).json({
-		message: 'Forbidden',
-	});
-};
+	};
 
-// @ts-ignore
-export const validCursor: RequestHandler = (req: PaginatatedRequest, res, next) => {
+export const validCursor = (
+	req: PaginatatedRequest,
+	res: express.Response,
+	next: express.NextFunction,
+): express.Response | void => {
 	if (req.query.cursor) {
 		const { cursor } = req.query;
 		try {
@@ -36,5 +43,6 @@ export const validCursor: RequestHandler = (req: PaginatatedRequest, res, next) 
 			});
 		}
 	}
-	next();
+
+	return next();
 };

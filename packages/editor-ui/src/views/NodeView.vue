@@ -29,7 +29,7 @@
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						@runWorkflow="runWorkflow"
+						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
 						:id="'node-' + getNodeIndex(nodeData.name)"
@@ -58,7 +58,7 @@
 				</div>
 			</div>
 		</div>
-		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
 			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"
@@ -104,7 +104,7 @@
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
 			<n8n-button
-				@click.stop="runWorkflow()"
+				@click.stop="onRunWorkflow"
 				:loading="workflowRunning"
 				:label="runButtonText"
 				size="large"
@@ -404,6 +404,14 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
+			onRunNode(nodeName: string, source: string) {
+				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				this.runWorkflow(nodeName, source);
+			},
+			onRunWorkflow() {
+				this.$telemetry.track('User clicked execute workflow button', { workflow_id: this.$store.getters.workflowId });
+				this.runWorkflow();
+			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
 				const buttonsWrapper = mouseinEvent.target as Element;
 

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {
 	databaseFields,
 	databaseOperations,
@@ -23,7 +24,7 @@ import {
 	databasePageOperations,
 } from '../DatabasePageDescription';
 
-import { 
+import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 

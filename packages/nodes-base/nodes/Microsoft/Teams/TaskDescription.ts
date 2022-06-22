@@ -89,6 +89,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'groupId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 			loadOptionsDependsOn: [
@@ -211,7 +212,7 @@ export const taskFields: INodeProperties[] = [
 				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -221,7 +222,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Labels to assign to the task',
+				description: 'Labels to assign to the task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Percent Complete',
@@ -317,6 +318,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'groupId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 			loadOptionsDependsOn: [
@@ -339,6 +341,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Member Name or ID',
 		name: 'memberId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getMembers',
 			loadOptionsDependsOn: [
@@ -364,6 +367,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Plan Name or ID',
 		name: 'planId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getPlans',
 			loadOptionsDependsOn: [
@@ -502,6 +506,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Group Name or ID',
 				name: 'groupId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 					loadOptionsDependsOn: [
@@ -511,7 +516,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -521,7 +526,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Labels to assign to the task',
+				description: 'Labels to assign to the task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Percent Complete',

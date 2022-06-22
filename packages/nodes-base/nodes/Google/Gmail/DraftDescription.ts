@@ -96,7 +96,7 @@ export const draftFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Switch ON if the message should also be included as HTML',
+		description: 'Whether the message should also be included as HTML',
 	},
 	{
 		displayName: 'HTML Message',
@@ -413,7 +413,7 @@ export const draftFields: INodeProperties[] = [
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages from SPAM and TRASH in the results',
+				description: 'Whether to include messages from SPAM and TRASH in the results',
 			},
 		],
 	},
