@@ -110,7 +110,7 @@ export class Discord implements INodeType {
 						name: 'tts',
 						type: 'boolean',
 						default: false,
-						description: 'Should this message be sent as a Text To Speech message?',
+						description: 'Whether this message be sent as a Text To Speech message',
 					},
 				],
 			},

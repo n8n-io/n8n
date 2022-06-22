@@ -150,7 +150,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Delete all contacts on the list',
+		description: 'Whether to delete all contacts on the list',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -189,7 +189,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Return the contact sample',
+		description: 'Whether to return the contact sample',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:update                                */
