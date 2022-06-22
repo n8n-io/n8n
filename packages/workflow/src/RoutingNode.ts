@@ -146,15 +146,28 @@ export class RoutingNode {
 					for (const key of Object.keys(nodeType.description.requestDefaults)) {
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
-						// If the value is an expression resolve it
-						value = this.getParameterValue(
-							value,
-							i,
-							runIndex,
-							executeData,
-							{ $credentials: credentials },
-							true,
-						) as string;
+
+						if (['headers', 'body'].includes(key)) {
+							for (const headerName of Object.keys(value)) {
+								value[headerName] = this.getParameterValue(
+									value[headerName],
+									i,
+									runIndex,
+									executeData,
+									{ $credentials: credentials },
+									true,
+								) as string;
+							}
+						} else {
+							value = this.getParameterValue(
+								value,
+								i,
+								runIndex,
+								executeData,
+								{ $credentials: credentials },
+								true,
+							) as string;
+						}
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(requestData.options as Record<string, any>)[key] = value;
 					}

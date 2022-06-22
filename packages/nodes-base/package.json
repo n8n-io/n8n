@@ -366,6 +366,7 @@
       "dist/nodes/Box/BoxTrigger.node.js",
       "dist/nodes/Brandfetch/Brandfetch.node.js",
       "dist/nodes/Bubble/Bubble.node.js",
+      "dist/nodes/BugNode/BugNode.node.js",
       "dist/nodes/Cal/CalTrigger.node.js",
       "dist/nodes/Calendly/CalendlyTrigger.node.js",
       "dist/nodes/Chargebee/Chargebee.node.js",
