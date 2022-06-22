@@ -125,6 +125,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 							);
 
 							// @ts-ignore
+							if (!requestOptions[outerKey]) {
+								// @ts-ignore
+								requestOptions[outerKey] = {};
+							}
+							// @ts-ignore
 							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
 					});

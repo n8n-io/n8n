@@ -1,9 +1,7 @@
 import { CredentialsHelper, CredentialTypes } from '../../src';
 import * as Helpers from './Helpers';
 import {
-	IAuthenticateBasicAuth,
-	IAuthenticateBearer,
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	ICredentialTypeData,
@@ -26,7 +24,7 @@ describe('CredentialsHelper', () => {
 			output: IHttpRequestOptions;
 		}> = [
 			{
-				description: 'built-in basicAuth, default property names',
+				description: 'basicAuth, default property names',
 				input: {
 					credentials: {
 						user: 'user1',
@@ -50,10 +48,15 @@ describe('CredentialsHelper', () => {
 							},
 						];
 
-						authenticate = {
-							type: 'basicAuth',
-							properties: {},
-						} as IAuthenticateBasicAuth;
+						authenticate: IAuthenticateGeneric = {
+							type: 'generic',
+							properties: {
+								auth: {
+									username: '={{$credentials.user}}',
+									password: '={{$credentials.password}}',
+								},
+							},
+						};
 					})(),
 				},
 				output: {
@@ -64,48 +67,7 @@ describe('CredentialsHelper', () => {
 				},
 			},
 			{
-				description: 'built-in basicAuth, custom property names',
-				input: {
-					credentials: {
-						customUser: 'user2',
-						customPassword: 'password2',
-					},
-					credentialType: new (class TestApi implements ICredentialType {
-						name = 'testApi';
-						displayName = 'Test API';
-						properties: INodeProperties[] = [
-							{
-								displayName: 'User',
-								name: 'user',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Password',
-								name: 'password',
-								type: 'string',
-								default: '',
-							},
-						];
-
-						authenticate = {
-							type: 'basicAuth',
-							properties: {
-								userPropertyName: 'customUser',
-								passwordPropertyName: 'customPassword',
-							},
-						} as IAuthenticateBasicAuth;
-					})(),
-				},
-				output: {
-					url: '',
-					headers: {},
-					auth: { username: 'user2', password: 'password2' },
-					qs: {},
-				},
-			},
-			{
-				description: 'built-in headerAuth',
+				description: 'headerAuth',
 				input: {
 					credentials: {
 						accessToken: 'test',
@@ -122,19 +84,20 @@ describe('CredentialsHelper', () => {
 							},
 						];
 
-						authenticate = {
-							type: 'headerAuth',
+						authenticate: IAuthenticateGeneric = {
+							type: 'generic',
 							properties: {
-								name: 'Authorization',
-								value: '=Bearer {{$credentials.accessToken}}',
+								headers: {
+									Authorization: '=Bearer {{$credentials.accessToken}}',
+								},
 							},
-						} as IAuthenticateHeaderAuth;
+						};
 					})(),
 				},
 				output: { url: '', headers: { Authorization: 'Bearer test' }, qs: {} },
 			},
 			{
-				description: 'built-in bearer, default property name',
+				description: 'headerAuth, key and value expressions',
 				input: {
 					credentials: {
 						accessToken: 'test',
@@ -151,44 +114,20 @@ describe('CredentialsHelper', () => {
 							},
 						];
 
-						authenticate = {
-							type: 'bearer',
-							properties: {},
-						} as IAuthenticateBearer;
-					})(),
-				},
-				output: { url: '', headers: { Authorization: 'Bearer test' }, qs: {} },
-			},
-			{
-				description: 'built-in bearer, custom property name',
-				input: {
-					credentials: {
-						myToken: 'test',
-					},
-					credentialType: new (class TestApi implements ICredentialType {
-						name = 'testApi';
-						displayName = 'Test API';
-						properties: INodeProperties[] = [
-							{
-								displayName: 'My Token',
-								name: 'myToken',
-								type: 'string',
-								default: '',
-							},
-						];
-
-						authenticate = {
-							type: 'bearer',
+						authenticate: IAuthenticateGeneric = {
+							type: 'generic',
 							properties: {
-								tokenPropertyName: 'myToken',
+								headers: {
+									'={{$credentials.accessToken}}': '=Bearer {{$credentials.accessToken}}',
+								},
 							},
-						} as IAuthenticateBearer;
+						};
 					})(),
 				},
-				output: { url: '', headers: { Authorization: 'Bearer test' }, qs: {} },
+				output: { url: '', headers: { test: 'Bearer test' }, qs: {} },
 			},
 			{
-				description: 'built-in queryAuth',
+				description: 'queryAuth',
 				input: {
 					credentials: {
 						accessToken: 'test',
@@ -208,7 +147,9 @@ describe('CredentialsHelper', () => {
 						authenticate = {
 							type: 'generic',
 							properties: {
-								accessToken: '={{$credentials.accessToken}}',
+								qs: {
+									accessToken: '={{$credentials.accessToken}}',
+								},
 							},
 						} as IAuthenticateGeneric;
 					})(),
