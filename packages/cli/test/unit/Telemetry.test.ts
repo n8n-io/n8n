@@ -275,13 +275,13 @@ describe('Telemetry', () => {
 
             expect(pulseSpy).toBeCalledTimes(1);
             expect(spyTrack).toHaveBeenCalledTimes(1);
-            expect(spyTrack).toHaveBeenCalledWith('pulse', { instance_id: instanceId, version_cli: n8nVersion });
+            expect(spyTrack).toHaveBeenCalledWith('pulse');
 
             jest.advanceTimersToNextTimer();
 
             expect(pulseSpy).toBeCalledTimes(2);
             expect(spyTrack).toHaveBeenCalledTimes(2);
-            expect(spyTrack).toHaveBeenCalledWith('pulse', { instance_id: instanceId, version_cli: n8nVersion });
+            expect(spyTrack).toHaveBeenCalledWith('pulse');
         });
 
         test('should track workflow counts correctly', async () => {
@@ -330,9 +330,8 @@ describe('Telemetry', () => {
 
             expect(pulseSpy).toBeCalledTimes(1);
             expect(spyTrack).toHaveBeenCalledTimes(3);
+            console.log(spyTrack.getMockImplementation());
             expect(spyTrack).toHaveBeenNthCalledWith(1, 'Workflow execution count', {
-                instance_id: instanceId,
-                version_cli: n8nVersion,
                 event_version: '2',
 				workflow_id: '1',
                 manual_error: {
@@ -353,8 +352,6 @@ describe('Telemetry', () => {
                 }
             });
             expect(spyTrack).toHaveBeenNthCalledWith(2, 'Workflow execution count', {
-                instance_id: instanceId,
-                version_cli: n8nVersion,
                 event_version: '2',
 				workflow_id: '2',
                 prod_error: {
@@ -362,7 +359,7 @@ describe('Telemetry', () => {
                     first: testDateTime,
                 }
             });
-            expect(spyTrack).toHaveBeenNthCalledWith(3, 'pulse', { instance_id: instanceId, version_cli: n8nVersion });
+            expect(spyTrack).toHaveBeenNthCalledWith(3, 'pulse');
             expect(Object.keys(execBuffer).length).toBe(0);
 
             jest.advanceTimersToNextTimer();
@@ -372,7 +369,7 @@ describe('Telemetry', () => {
 
             expect(pulseSpy).toBeCalledTimes(2);
             expect(spyTrack).toHaveBeenCalledTimes(4);
-            expect(spyTrack).toHaveBeenNthCalledWith(4, 'pulse', { instance_id: instanceId, version_cli: n8nVersion });
+            expect(spyTrack).toHaveBeenNthCalledWith(4, 'pulse');
         });
 	});
 });

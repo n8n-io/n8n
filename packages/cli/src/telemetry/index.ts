@@ -23,6 +23,11 @@ interface IExecutionsBuffer {
 	};
 }
 
+interface ITrackProperties {
+	[key: string]: unknown;
+	user_id?: string;
+}
+
 // eslint-disable-next-line import/no-default-export
 export default class Telemetry {
 	private client?: TelemetryClient;
@@ -80,7 +85,6 @@ export default class Telemetry {
 		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
 			const promise = this.track('Workflow execution count', {
 				event_version: '2',
-				version_cli: this.versionCli,
 				workflow_id: workflowId,
 				...this.executionCountsBuffer[workflowId],
 			});
@@ -89,7 +93,7 @@ export default class Telemetry {
 		});
 
 		this.executionCountsBuffer = {};
-		allPromises.push(this.track('pulse', { version_cli: this.versionCli }));
+		allPromises.push(this.track('pulse'));
 		return Promise.all(allPromises);
 	}
 
@@ -152,20 +156,22 @@ export default class Telemetry {
 		});
 	}
 
-	async track(
-		eventName: string,
-		properties: { [key: string]: unknown; user_id?: string } = {},
-	): Promise<void> {
+	async track(eventName: string, properties: ITrackProperties = {}): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
 				const { user_id } = properties;
-				Object.assign(properties, { instance_id: this.instanceId });
+				const updatedProperties: ITrackProperties = {
+					...properties,
+					instance_id: this.instanceId,
+					version_cli: this.versionCli,
+				};
+
 				this.client.track(
 					{
 						userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
 						anonymousId: '000000000000',
 						event: eventName,
-						properties,
+						properties: updatedProperties,
 					},
 					resolve,
 				);
