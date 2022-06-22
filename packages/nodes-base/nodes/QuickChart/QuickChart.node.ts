@@ -84,6 +84,7 @@ const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 	},
 ];
 
+const HORIZONTAL_CHARTS = ['bar', 'boxplot', 'violin'];
 const ITEM_STYLE_CHARTS = ['boxplot', 'horizontalBoxplot', 'violin', 'horizontalViolin'];
 
 export class QuickChart implements INodeType {
@@ -108,6 +109,19 @@ export class QuickChart implements INodeType {
 				default: 'bar',
 				options: CHART_TYPE_OPTIONS,
 				description: 'The type of chart to create',
+			},
+			{
+				displayName: 'Horizontal',
+				name: 'horizontal',
+				type: 'boolean',
+				default: false,
+				// tslint:disable-next-line:quotemark
+				description: "Whether the chart should it's Y axis horizontal",
+				displayOptions: {
+					show: {
+						chartType: HORIZONTAL_CHARTS,
+					},
+				},
 			},
 			{
 				displayName: 'JSON Labels',
@@ -359,7 +373,14 @@ export class QuickChart implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const datasets: IDataset[] = [];
-		const chartType = this.getNodeParameter('chartType', 0) as string;
+		let chartType = this.getNodeParameter('chartType', 0) as string;
+
+		if (HORIZONTAL_CHARTS.includes(chartType)) {
+			const horizontal = this.getNodeParameter('horizontal', 0) as boolean;
+			if (horizontal) {
+				chartType = 'horizontal' + chartType[0].toUpperCase() + chartType.substr(1);
+			}
+		}
 
 		// tslint:disable-next-line:no-any
 		let labels: any[] | undefined;
