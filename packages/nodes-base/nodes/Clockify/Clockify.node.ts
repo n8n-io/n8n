@@ -60,6 +60,7 @@ import {
 } from './UserDescription';
 
 import {
+	workspaceFields,
 	workspaceOperations,
 } from './WorkspaceDescription';
 
@@ -130,6 +131,7 @@ export class Clockify implements INodeType {
 			...timeEntryOperations,
 			...userOperations,
 			...workspaceOperations,
+			...workspaceFields,
 			{
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
@@ -931,7 +933,7 @@ export class Clockify implements INodeType {
 
 				if (resource === 'workspace') {
 					if (operation === 'getAll') {
-
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						responseData = await clockifyApiRequest.call(
 							this,
 							'GET',
@@ -939,6 +941,10 @@ export class Clockify implements INodeType {
 							{},
 							qs,
 						);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, qs.limit);
+						}
 					}
 				}
 
@@ -947,7 +953,6 @@ export class Clockify implements INodeType {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 
 				} else if (responseData !== undefined) {
-
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
