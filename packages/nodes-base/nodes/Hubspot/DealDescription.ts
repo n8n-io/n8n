@@ -302,7 +302,6 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Deal Stage Name or ID',
 				name: 'stage',
 				type: 'options',
-				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getDealStages',
 				},
@@ -446,7 +445,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Whether to include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Properties',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -456,7 +455,7 @@ export const dealFields: INodeProperties[] = [
 				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'multiOptions',
 				typeOptions: {
