@@ -41,6 +41,7 @@ class Logger implements ILogger {
 					}),
 				);
 			} else {
+				// @ts-ignore
 				format = winston.format.printf(({ message }) => message);
 			}
 
