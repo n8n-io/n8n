@@ -18,12 +18,12 @@ export class PipedriveApi implements ICredentialType {
 		},
 	];
 
-	authenticate = {
+	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			qs: {
 				api_token: '={{$credentials.apiToken}}',
 			},
 		}
-	} as IAuthenticateGeneric;
+	};
 }
