@@ -22,6 +22,7 @@ import * as config from '../../../config';
 import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
+import { serializer } from '../utils/transformers';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');
@@ -118,6 +119,7 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
 		nullable: true,
+		transformer: serializer,
 	})
 	pinData: { [nodeName: string]: IDataObject };
 
