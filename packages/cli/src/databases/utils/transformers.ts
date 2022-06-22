@@ -18,3 +18,13 @@ export const objectRetriever: ValueTransformer = {
 	from: (value: string | object): object =>
 		typeof value === 'string' ? (JSON.parse(value) as object) : value,
 };
+
+/**
+ * Transformer to store object as string and retrieve string as object.
+ */
+export const serializer: ValueTransformer = {
+	to: (value: object | string): string =>
+		typeof value === 'object' ? JSON.stringify(value) : value,
+	from: (value: string | object): object =>
+		typeof value === 'string' ? (JSON.parse(value) as object) : value,
+};
