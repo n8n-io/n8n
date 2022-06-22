@@ -675,13 +675,14 @@ export class RoutingNode {
 					}
 
 					if (nodeProperties.routing.send.type === 'body') {
-						// Send in "body"
-						// eslint-disable-next-line no-lonely-if
-						if (nodeProperties.routing.send.propertyInDotNotation === false) {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(returnData.options.body as Record<string, any>)![propertyName] = value;
-						} else {
-							set(returnData.options.body as object, propertyName, value);
+						if (value !== undefined) {
+							// eslint-disable-next-line no-lonely-if
+							if (nodeProperties.routing.send.propertyInDotNotation === false) {
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								(returnData.options.body as Record<string, any>)![propertyName] = value;
+							} else {
+								set(returnData.options.body as object, propertyName, value);
+							}
 						}
 					} else {
 						// Send in "query"

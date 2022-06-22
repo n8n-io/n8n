@@ -1493,10 +1493,29 @@ export function getNodeParameter(
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
 	}
 
-	const value = get(node.parameters, parameterName, fallbackValue);
+	let value = get(node.parameters, parameterName, fallbackValue);
 
 	if (value === undefined) {
-		throw new Error(`Could not get parameter "${parameterName}"!`);
+		// split the parameter name, we want to see if it's a child/sibling
+		// e.g. 'additionalParameters.attribute[0].url' -> '[additionalParameters, attribute[0], url]'
+		// this represents to us that url is not alone and we should consider the rest of the object
+		const parameterPath = parameterName.split('.');
+		if (parameterPath.length) {
+			// get rid of the property we can't find at the moment
+			parameterPath.pop();
+			const parent = parameterPath.join('.');
+			// check again if the parent is valid and we don't want to throw an error but we might want to skip 'url' as a property
+			value = get(node.parameters, parent, fallbackValue);
+			if (value === undefined) {
+				throw new Error(`Could not get parameter "${parameterName}"!`);
+			}
+
+			// reset here because we don't want the data
+			// we could possibly re-assign a unique object that will allow us to read this scenario better
+			value = undefined;
+		} else {
+			throw new Error(`Could not get parameter "${parameterName}"!`);
+		}
 	}
 
 	let returnData;
