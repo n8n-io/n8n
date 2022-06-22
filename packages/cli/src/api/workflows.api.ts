@@ -3,7 +3,7 @@
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
-import { IDataObject, INode, LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import { Db, ResponseHelper, whereClause, WorkflowHelpers } from '..';
 import config from '../../config';
@@ -27,28 +27,7 @@ workflowsController.post(
 
 		const newWorkflow = new WorkflowEntity();
 
-		const { nodes = [], ...restOfWorkflow } = req.body;
-
-		const { workflowNodes, workflowPinData } = nodes.reduce<{
-			workflowNodes: INode[];
-			workflowPinData: { [nodeName: string]: object };
-		}>(
-			(acc, node) => {
-				const { pinData: nodePinData, ...restOfNode } = node;
-				if (nodePinData) acc.workflowPinData[node.name] = nodePinData;
-				acc.workflowNodes.push(restOfNode);
-
-				return acc;
-			},
-			{ workflowNodes: [], workflowPinData: {} },
-		);
-
-		Object.assign(
-			newWorkflow,
-			{ nodes: workflowNodes },
-			{ pinData: Object.keys(workflowPinData).length > 0 ? JSON.stringify(workflowPinData) : null },
-			restOfWorkflow,
-		);
+		Object.assign(newWorkflow, req.body);
 
 		await validateEntity(newWorkflow);
 
@@ -144,26 +123,11 @@ workflowsController.get(
 		}
 
 		const {
-			workflow: { id, name, nodes, pinData, ...rest },
+			workflow: { id, ...rest },
 		} = shared;
-
-		const pinDataObject: { [nodeName: string]: IDataObject } | null =
-			typeof pinData === 'string' ? JSON.parse(pinData) : pinData;
-
-		const workflowNodes = nodes.map((node) => {
-			if (!pinDataObject) return node;
-
-			if (pinDataObject[node.name]) {
-				node.pinData = pinDataObject[node.name];
-			}
-
-			return node;
-		});
 
 		return {
 			id: id.toString(),
-			name,
-			nodes: workflowNodes,
 			...rest,
 		};
 	}),

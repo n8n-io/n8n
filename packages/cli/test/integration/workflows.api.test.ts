@@ -46,7 +46,7 @@ test('POST /workflows should store pin data for node in workflow', async () => {
 
 	const { pinData } = response.body.data;
 
-	expect(JSON.parse(pinData)).toMatchObject({ Spotify: { myKey: 'myValue' } });
+	expect(pinData).toMatchObject({ Spotify: { myKey: 'myValue' } });
 });
 
 test('POST /workflows should set pin data to null if no pin data', async () => {
@@ -64,7 +64,7 @@ test('POST /workflows should set pin data to null if no pin data', async () => {
 	expect(pinData).toBeNull();
 });
 
-test('GET /workflows/:id should return pin data at node level', async () => {
+test('GET /workflows/:id should return pin data', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
@@ -76,11 +76,9 @@ test('GET /workflows/:id should return pin data at node level', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	const { nodes } = response.body.data as { nodes: INode[] };
+	const { pinData } = response.body.data as { pinData: object };
 
-	const node = nodes.find((node) => node.name === 'Spotify');
-
-	expect(node?.pinData).toMatchObject({ myKey: 'myValue' });
+	expect(pinData).toMatchObject({ Spotify: { myKey: 'myValue' } });
 });
 
 function makeWorkflow({ withPinData }: { withPinData: boolean }) {
@@ -100,7 +98,7 @@ function makeWorkflow({ withPinData }: { withPinData: boolean }) {
 	];
 
 	if (withPinData) {
-		workflow.nodes[0].pinData = { myKey: 'myValue' };
+		workflow.pinData = { Spotify: { myKey: 'myValue' } };
 	}
 
 	return workflow;
