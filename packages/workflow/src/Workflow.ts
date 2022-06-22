@@ -48,8 +48,10 @@ import {
 
 import {
 	IConnection,
-	IDataObject,
 	IConnectedNode,
+	IDataObject,
+	IExecuteData,
+	INodeConnection,
 	IObservableObject,
 	IRun,
 	IRunNodeResponse,
@@ -805,33 +807,27 @@ export class Workflow {
 	}
 
 	/**
-	 * Returns via which output of the parent-node the node
-	 * is connected to.
+	 * Returns via which output of the parent-node and index the current node
+	 * they are connected
 	 *
 	 * @param {string} nodeName The node to check how it is connected with parent node
 	 * @param {string} parentNodeName The parent node to get the output index of
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
 	 * @param {string[]} [checkedNodes]
-	 * @returns {(number | undefined)}
+	 * @returns {(INodeConnection | undefined)}
 	 * @memberof Workflow
 	 */
-	getNodeConnectionOutputIndex(
+	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
 		type = 'main',
 		depth = -1,
 		checkedNodes?: string[],
-	): number | undefined {
+	): INodeConnection | undefined {
 		const node = this.getNode(parentNodeName);
 		if (node === null) {
 			return undefined;
-		}
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
-		if (nodeType.description.outputs.length === 1) {
-			// If the parent node has only one output, it can only be connected
-			// to that one. So no further checking is required.
-			return 0;
 		}
 
 		depth = depth === -1 ? -1 : depth;
@@ -860,11 +856,19 @@ export class Workflow {
 
 		checkedNodes.push(nodeName);
 
-		let outputIndex: number | undefined;
+		let outputIndex: INodeConnection | undefined;
 		for (const connectionsByIndex of this.connectionsByDestinationNode[nodeName][type]) {
-			for (const connection of connectionsByIndex) {
+			for (
+				let destinationIndex = 0;
+				destinationIndex < connectionsByIndex.length;
+				destinationIndex++
+			) {
+				const connection = connectionsByIndex[destinationIndex];
 				if (parentNodeName === connection.node) {
-					return connection.index;
+					return {
+						sourceIndex: connection.index,
+						destinationIndex,
+					};
 				}
 
 				if (checkedNodes.includes(connection.node)) {
@@ -872,7 +876,7 @@ export class Workflow {
 					continue;
 				}
 
-				outputIndex = this.getNodeConnectionOutputIndex(
+				outputIndex = this.getNodeConnectionIndexes(
 					connection.node,
 					parentNodeName,
 					type,
@@ -1157,8 +1161,7 @@ export class Workflow {
 	/**
 	 * Executes the given node.
 	 *
-	 * @param {INode} node
-	 * @param {ITaskDataConnections} inputData
+	 * @param {IExecuteData} executionData
 	 * @param {IRunExecutionData} runExecutionData
 	 * @param {number} runIndex
 	 * @param {IWorkflowExecuteAdditionalData} additionalData
@@ -1168,14 +1171,16 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	async runNode(
-		node: INode,
-		inputData: ITaskDataConnections,
+		executionData: IExecuteData,
 		runExecutionData: IRunExecutionData,
 		runIndex: number,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 	): Promise<IRunNodeResponse> {
+		const { node } = executionData;
+		let inputData = executionData.data;
+
 		if (node.disabled === true) {
 			// If node is disabled simply pass the data through
 			// return NodeRunHelpers.
@@ -1254,6 +1259,7 @@ export class Workflow {
 					node,
 					itemIndex,
 					additionalData,
+					executionData,
 					mode,
 				);
 
@@ -1283,6 +1289,7 @@ export class Workflow {
 				inputData,
 				node,
 				additionalData,
+				executionData,
 				mode,
 			);
 			return { data: await nodeType.execute.call(thisArgs) };
@@ -1356,7 +1363,13 @@ export class Workflow {
 			);
 
 			return {
-				data: await routingNode.runNode(inputData, runIndex, nodeType, nodeExecuteFunctions),
+				data: await routingNode.runNode(
+					inputData,
+					runIndex,
+					nodeType,
+					executionData,
+					nodeExecuteFunctions,
+				),
 			};
 		}
 

@@ -30,6 +30,7 @@ export class Bannerbear implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Bannerbear',
 		name: 'bannerbear',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:bannerbear.png',
 		group: ['output'],
 		version: 1,

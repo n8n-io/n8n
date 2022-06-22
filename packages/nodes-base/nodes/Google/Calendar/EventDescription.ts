@@ -51,9 +51,10 @@ export const eventFields: INodeProperties[] = [
 	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar ID',
+		displayName: 'Calendar Name or ID',
 		name: 'calendar',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCalendars',
 		},
@@ -169,14 +170,14 @@ export const eventFields: INodeProperties[] = [
 				description: 'The attendees of the event. Multiple ones can be separated by comma.',
 			},
 			{
-				displayName: 'Color',
+				displayName: 'Color Name or ID',
 				name: 'color',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getColors',
 				},
 				default: '',
-				description: 'The color of the event',
+				description: 'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Conference Data',
@@ -193,9 +194,10 @@ export const eventFields: INodeProperties[] = [
 						name: 'conferenceDataValues',
 						values: [
 							{
-								displayName: 'Type',
+								displayName: 'Type Name or ID',
 								name: 'conferenceSolution',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getConferenceSolutations',
 									loadOptionsDependsOn: [
@@ -261,7 +263,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Repeat Frecuency',
+				displayName: 'Repeat Frequency',
 				name: 'repeatFrecuency',
 				type: 'options',
 				options: [
@@ -304,7 +306,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'rrule',
 				type: 'string',
 				default: '',
-				description: 'Recurrence rule. When set, the parameters Repeat Frecuency, Repeat How Many Times and Repeat Until are ignored.',
+				description: 'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
 				displayName: 'Send Updates',
@@ -554,14 +556,14 @@ export const eventFields: INodeProperties[] = [
 				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -703,14 +705,14 @@ export const eventFields: INodeProperties[] = [
 				description: 'Lower bound (exclusive) for an event\'s end time to filter by',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Updated Min',
@@ -804,14 +806,14 @@ export const eventFields: INodeProperties[] = [
 				description: 'The attendees of the event. Multiple ones can be separated by comma.',
 			},
 			{
-				displayName: 'Color',
+				displayName: 'Color Name or ID',
 				name: 'color',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getColors',
 				},
 				default: '',
-				description: 'The color of the event',
+				description: 'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -872,7 +874,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Repeat Frecuency',
+				displayName: 'Repeat Frequency',
 				name: 'repeatFrecuency',
 				type: 'options',
 				options: [
@@ -915,7 +917,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'rrule',
 				type: 'string',
 				default: '',
-				description: 'Recurrence rule. When set, the parameters Repeat Frecuency, Repeat How Many Times and Repeat Until are ignored.',
+				description: 'Recurrence rule. When set, the parameters Repeat Frequency, Repeat How Many Times and Repeat Until are ignored.',
 			},
 			{
 				displayName: 'Send Updates',

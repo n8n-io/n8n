@@ -1,5 +1,5 @@
 <template functional>
-	<component :is="props.tag" :class="$options.methods.getClasses(props, $style)" :style="$options.methods.getStyles(props)">
+	<component :is="props.tag" :class="$options.methods.getClasses(props, $style, data)" :style="$options.methods.getStyles(props)" v-on="listeners">
 		<slot></slot>
 	</component>
 </template>
@@ -36,8 +36,13 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getClasses(props: {size: string, bold: boolean}, $style: any) {
-			return {[$style[`size-${props.size}`]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold};
+		getClasses(props: {size: string, bold: boolean}, $style: any, data: any) {
+			const classes = {[$style[`size-${props.size}`]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold};
+			if (data.staticClass) {
+				classes[data.staticClass] = true;
+			}
+
+			return classes;
 		},
 		getStyles(props: {color: string, align: string, compact: false}) {
 			const styles = {} as any;

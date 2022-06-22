@@ -69,12 +69,12 @@ export class SpreadsheetFile implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Read from file',
+						name: 'Read From File',
 						value: 'fromFile',
 						description: 'Reads data from a spreadsheet file',
 					},
 					{
-						name: 'Write to file',
+						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
 					},
@@ -192,7 +192,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Weather compression will be applied or not',
+						description: 'Whether compression will be applied or not',
 					},
 					{
 						displayName: 'File Name',
@@ -220,7 +220,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: true,
-						description: 'The first row of the file contains the header names',
+						description: 'Whether the first row of the file contains the header names',
 					},
 					{
 						displayName: 'Include Empty Cells',
@@ -234,6 +234,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'When reading from file the empty cells will be filled with an empty string in the JSON',
 					},
 					{
@@ -248,7 +249,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'If the data should be returned RAW instead of parsed',
+						description: 'Whether the data should be returned RAW instead of parsed',
 					},
 					{
 						displayName: 'Read As String',
@@ -262,6 +263,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'In some cases and file formats, it is necessary to read specifically as string else some special character get interpreted wrong',
 					},
 					{
@@ -391,17 +393,36 @@ export class SpreadsheetFile implements INodeType {
 					if (options.headerRow === false) {
 						// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
 						for (const rowData of sheetJson) {
-							newItems.push({ json: { row: rowData } } as INodeExecutionData);
+							newItems.push({
+								json: {
+									row: rowData,
+								},
+								pairedItem: {
+									item: i,
+								},
+							} as INodeExecutionData);
 						}
 					} else {
 						for (const rowData of sheetJson) {
-							newItems.push({ json: rowData } as INodeExecutionData);
+							newItems.push({
+								json: rowData,
+								pairedItem: {
+									item: i,
+								},
+							} as INodeExecutionData);
 						}
 					}
 
 				} catch (error) {
 					if (this.continueOnFail()) {
-						newItems.push({json:{ error: error.message }});
+						newItems.push({
+							json: {
+								error: error.message,
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 						continue;
 					}
 					throw error;
@@ -466,6 +487,9 @@ export class SpreadsheetFile implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
+					pairedItem: {
+						item: 0,
+					},
 				};
 
 				let fileName = `spreadsheet.${fileFormat}`;
@@ -478,7 +502,14 @@ export class SpreadsheetFile implements INodeType {
 				newItems.push(newItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					newItems.push({json:{ error: error.message }});
+					newItems.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: 0,
+						},
+					});
 				} else {
 					throw error;
 				}

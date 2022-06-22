@@ -164,7 +164,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'active',
 				type: 'boolean',
 				default: false,
-				description: 'Return only active dates in series',
+				description: 'Whether to return only active dates in series',
 			},
 			{
 				displayName: 'Session ID',
@@ -180,9 +180,10 @@ export const eventFields: INodeProperties[] = [
 	/*                                   event:register                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event ID',
+		displayName: 'Event Name or ID',
 		name: 'eventId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getEvents',
 		},
@@ -220,6 +221,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		description: 'The registrant\'s email address',
@@ -319,7 +321,7 @@ export const eventFields: INodeProperties[] = [
 				description: 'The value for the predefined Phone Number field',
 			},
 			{
-				displayName: 'Session ID',
+				displayName: 'Session Name or ID',
 				name: 'date_id',
 				type: 'options',
 				typeOptions: {
@@ -329,7 +331,7 @@ export const eventFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Event Session ID',
+				description: 'Event Session ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Website',
