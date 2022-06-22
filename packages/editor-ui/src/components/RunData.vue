@@ -1,5 +1,36 @@
 <template>
 	<div :class="$style.container">
+
+		<n8n-callout
+			v-if="paneType === 'output' && hasPinData"
+			theme="secondary"
+			icon="thumbtack"
+			:class="$style['pinned-data-callout']"
+		>
+			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
+			<template #actions>
+				<n8n-link
+					theme="secondary"
+					size="small"
+					:bold="true"
+					@click="onTogglePinData"
+				>
+					{{ $locale.baseText('runData.pindata.unpin') }}
+				</n8n-link>
+			</template>
+			<template #trailingContent>
+				<n8n-link
+					:to="dataPinningDocsUrl"
+					size="small"
+					theme="secondary"
+					:bold="true"
+					:underline="true"
+				>
+					Learn more
+				</n8n-link>
+			</template>
+		</n8n-callout>
+
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
 		<div :class="$style.header">
@@ -26,9 +57,9 @@
 							<p>
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
 							</p>
-							<n8n-link to="https://google.com" size="s">
+							<n8n-link to="https://google.com" size="small">
 								{{ $locale.baseText('ndv.pinData.pin.link') }}
-								<n8n-icon icon="external-link-alt" size="s" />
+								<n8n-icon icon="external-link-alt" size="small" />
 							</n8n-link>
 						</div>
 					</template>
@@ -302,6 +333,7 @@ import {
 } from '@/Interface';
 
 import {
+	DATA_PINNING_DOCS_URL,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 } from '@/constants';
@@ -404,6 +436,9 @@ export default mixins(
 			activeNode(): INodeUi {
 				return this.$store.getters.activeNode;
 			},
+			dataPinningDocsUrl(): string {
+				return DATA_PINNING_DOCS_URL;
+			},
 			displayMode(): IRunDataDisplayMode {
 				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
 			},
@@ -417,7 +452,7 @@ export default mixins(
 				return null;
 			},
 			hasPinData (): boolean {
-				return !!(this.node && this.node.pinData);
+				return this.node !== null && this.node.pinData !== undefined;
 			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
@@ -973,6 +1008,11 @@ export default mixins(
 	background-color: var(--color-background-base);
 	display: flex;
 	flex-direction: column;
+}
+
+.pinned-data-callout {
+	border-radius: inherit;
+	border-bottom-right-radius: 0;
 }
 
 .header {
