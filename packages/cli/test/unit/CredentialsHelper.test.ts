@@ -4,7 +4,6 @@ import {
 	IAuthenticateBasicAuth,
 	IAuthenticateBearer,
 	IAuthenticateHeaderAuth,
-	IAuthenticateQueryAuth,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	ICredentialTypeData,
@@ -207,12 +206,11 @@ describe('CredentialsHelper', () => {
 						];
 
 						authenticate = {
-							type: 'queryAuth',
+							type: 'generic',
 							properties: {
-								key: 'accessToken',
-								value: '={{$credentials.accessToken}}',
+								accessToken: '={{$credentials.accessToken}}',
 							},
-						} as IAuthenticateQueryAuth;
+						} as IAuthenticateGeneric;
 					})(),
 				},
 				output: { url: '', headers: {}, qs: { accessToken: 'test' } },

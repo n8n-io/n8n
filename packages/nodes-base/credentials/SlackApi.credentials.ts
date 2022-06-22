@@ -1,6 +1,5 @@
 import {
 	IAuthenticateBearer,
-	IAuthenticateQueryAuth,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,

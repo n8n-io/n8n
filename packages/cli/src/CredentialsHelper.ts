@@ -155,28 +155,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 						defaultTimezone,
 					);
 					requestOptions.headers[key] = value;
-				} else if (authenticate.type === 'queryAuth') {
-					const key = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.key,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-
-					const value = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.value,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-					if (!requestOptions.qs) {
-						requestOptions.qs = {};
-					}
-					requestOptions.qs[key] = value;
 				}
 			}
 		}

@@ -231,14 +231,6 @@ export interface IAuthenticateHeaderAuth extends IAuthenticateBase {
 	};
 }
 
-export interface IAuthenticateQueryAuth extends IAuthenticateBase {
-	type: 'queryAuth';
-	properties: {
-		key: string;
-		value: string;
-	};
-}
-
 export interface IAuthenticateGeneric extends IAuthenticateBase {
 	type: 'generic';
 	properties: IRequestOptionsSimplifiedAuth;
@@ -252,8 +244,7 @@ export type IAuthenticate =
 	| IAuthenticateBasicAuth
 	| IAuthenticateBearer
 	| IAuthenticateHeaderAuth
-	| IAuthenticateGeneric
-	| IAuthenticateQueryAuth;
+	| IAuthenticateGeneric;
 
 export interface IAuthenticateRuleBase {
 	type: string;
