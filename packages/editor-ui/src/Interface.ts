@@ -281,6 +281,7 @@ export interface IWorkflowDb {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: Record<string, undefined | IDataObject>;
 }
 
 // Identical to cli.Interfaces.ts

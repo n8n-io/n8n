@@ -92,6 +92,7 @@ const state: IRootState = {
 		nodes: [],
 		settings: {},
 		tags: [],
+		pinData: {},
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
@@ -209,21 +210,19 @@ export const store = new Vuex.Store({
 
 		// Pin data
 		pinData(state, payload: { node: INodeUi, data: IDataObject }) {
-			const node = state.workflow.nodes.find((node) => node.name === payload.node.name);
-			if (node) {
-				Vue.set(node, 'pinData', payload.data);
-
-				state.stateIsDirty = true;
+			if (state.workflow.pinData) {
+				Vue.set(state.workflow.pinData, payload.node.name, payload.data);
 			}
+
+			state.stateIsDirty = true;
 		},
 		unpinData(state, payload: { node: INodeUi }) {
-			const node = state.workflow.nodes.find((node) => node.name === payload.node.name);
-			if (node) {
-				Vue.set(node, 'pinData', undefined);
-				delete node.pinData;
-
-				state.stateIsDirty = true;
+			if (state.workflow.pinData) {
+				Vue.set(state.workflow.pinData, payload.node.name, undefined);
+				delete state.workflow.pinData[payload.node.name];
 			}
+
+			state.stateIsDirty = true;
 		},
 
 		// Active
@@ -872,6 +871,10 @@ export const store = new Vuex.Store({
 		 * Pin data
 		 */
 
+		pinDataByNodeName: (state) => (nodeName: string) => {
+			console.log({workflow: state.workflow, pinData: state.workflow.pinData, nodeName});
+			return state.workflow.pinData && state.workflow.pinData[nodeName];
+		},
 		pinDataSize: (state) => {
 			return state.workflow.nodes
 				.filter((node) => node.pinData)

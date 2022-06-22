@@ -64,8 +64,11 @@ export default mixins(
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
+		pinData (): boolean {
+			return this.node !== null && this.$store.getters['pinDataByNodeName'](this.node.name);
+		},
 		hasPinData (): boolean {
-			return this.node !== null && typeof this.node.pinData !== 'undefined';
+			return this.node !== null && typeof this.pinData !== 'undefined';
 		},
 		isTriggerNode (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('trigger'));

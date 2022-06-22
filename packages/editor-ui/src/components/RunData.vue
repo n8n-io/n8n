@@ -1,6 +1,5 @@
 <template>
 	<div :class="$style.container">
-
 		<n8n-callout
 			v-if="paneType === 'output' && hasPinData"
 			theme="secondary"
@@ -463,8 +462,11 @@ export default mixins(
 				}
 				return null;
 			},
+			pinData (): boolean {
+				return this.node !== null && this.$store.getters['pinDataByNodeName'](this.node.name);
+			},
 			hasPinData (): boolean {
-				return this.node !== null && typeof this.node.pinData !== 'undefined';
+				return this.node !== null && typeof this.pinData !== 'undefined';
 			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
@@ -547,13 +549,13 @@ export default mixins(
 			},
 			inputData (): INodeExecutionData[] {
 				let inputData;
-				if (this.node && this.node.pinData) {
-					inputData = Array.isArray(this.node.pinData)
-						? this.node.pinData.map((value) => ({
+				if (this.node && this.pinData) {
+					inputData = Array.isArray(this.pinData)
+						? this.pinData.map((value) => ({
 							json: value,
 						}))
 						: [{
-							json: this.node.pinData,
+							json: this.pinData,
 						}];
 				} else {
 					inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
