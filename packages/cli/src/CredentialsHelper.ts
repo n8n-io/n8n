@@ -116,13 +116,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 							);
 						});
 					});
-				} else if (authenticate.type === 'bearer') {
-					const tokenPropertyName: string =
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.tokenPropertyName ?? 'accessToken';
-					requestOptions.headers.Authorization = `Bearer ${
-						credentials[tokenPropertyName] as string
-					}`;
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				} else if (authenticate.type === 'basicAuth') {
 					const userPropertyName: string =

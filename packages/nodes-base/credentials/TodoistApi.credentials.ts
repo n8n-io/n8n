@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBearer,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -18,12 +18,14 @@ export class TodoistApi implements ICredentialType {
 
 	];
 
-	authenticate = {
-		type: 'bearer',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			tokenPropertyName: 'apiKey',
-		},
-	} as IAuthenticateBearer;
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
+		}
+	};
 
 	test: ICredentialTestRequest = {
 		request: {

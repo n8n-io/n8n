@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBearer,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -17,12 +17,15 @@ export class TwakeCloudApi implements ICredentialType {
 			default: '',
 		},
 	];
-	authenticate = {
-		type: 'bearer',
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			tokenPropertyName: 'workspaceKey',
-		},
-	} as IAuthenticateBearer;
+			headers: {
+				Authorization: '=Bearer {{$credentials.workspaceKey}}',
+			},
+		}
+	};
 
 	test: ICredentialTestRequest = {
 		request: {

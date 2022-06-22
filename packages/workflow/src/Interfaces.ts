@@ -216,13 +216,6 @@ export interface IAuthenticateBasicAuth extends IAuthenticateBase {
 	};
 }
 
-export interface IAuthenticateBearer extends IAuthenticateBase {
-	type: 'bearer';
-	properties: {
-		tokenPropertyName?: string;
-	};
-}
-
 export interface IAuthenticateHeaderAuth extends IAuthenticateBase {
 	type: 'headerAuth';
 	properties: {
@@ -242,7 +235,6 @@ export type IAuthenticate =
 			requestOptions: IHttpRequestOptions,
 	  ) => Promise<IHttpRequestOptions>)
 	| IAuthenticateBasicAuth
-	| IAuthenticateBearer
 	| IAuthenticateHeaderAuth
 	| IAuthenticateGeneric;
 
