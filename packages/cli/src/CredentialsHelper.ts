@@ -103,8 +103,20 @@ export class CredentialsHelper extends ICredentialsHelper {
 					requestOptions.headers = {};
 				}
 
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				if (authenticate.type === 'bearer') {
+				if (authenticate.type === 'generic') {
+					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
+						Object.entries(outerValue).forEach(([key, value]) => {
+							// @ts-ignore
+							requestOptions[outerKey][key] = this.resolveValue(
+								value as string,
+								{ $credentials: credentials },
+								workflow,
+								node,
+								defaultTimezone,
+							);
+						});
+					});
+				} else if (authenticate.type === 'bearer') {
 					const tokenPropertyName: string =
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						authenticate.properties.tokenPropertyName ?? 'accessToken';

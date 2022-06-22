@@ -150,6 +150,16 @@ export interface IRequestOptionsSimplified {
 	qs: IDataObject;
 }
 
+export interface IRequestOptionsSimplifiedAuth {
+	auth?: {
+		username: string;
+		password: string;
+	};
+	body?: IDataObject;
+	headers?: IDataObject;
+	qs?: IDataObject;
+}
+
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
 
@@ -191,9 +201,11 @@ export abstract class ICredentialsHelper {
 
 export interface IAuthenticateBase {
 	type: string;
-	properties: {
-		[key: string]: string;
-	};
+	properties:
+		| {
+				[key: string]: string;
+		  }
+		| IRequestOptionsSimplifiedAuth;
 }
 
 export interface IAuthenticateBasicAuth extends IAuthenticateBase {
@@ -227,6 +239,11 @@ export interface IAuthenticateQueryAuth extends IAuthenticateBase {
 	};
 }
 
+export interface IAuthenticateGeneric extends IAuthenticateBase {
+	type: 'generic';
+	properties: IRequestOptionsSimplifiedAuth;
+}
+
 export type IAuthenticate =
 	| ((
 			credentials: ICredentialDataDecryptedObject,
@@ -235,6 +252,7 @@ export type IAuthenticate =
 	| IAuthenticateBasicAuth
 	| IAuthenticateBearer
 	| IAuthenticateHeaderAuth
+	| IAuthenticateGeneric
 	| IAuthenticateQueryAuth;
 
 export interface IAuthenticateRuleBase {
