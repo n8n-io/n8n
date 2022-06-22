@@ -13,6 +13,7 @@ import _ from 'lodash';
 
 interface IDataset {
 	label?: string;
+	// tslint:disable-next-line:no-any
 	data: any;
 	backgroundColor?: string;
 	borderColor?: string;
@@ -21,8 +22,8 @@ interface IDataset {
 	fill?: boolean;
 }
 
-function validateJSON(json: string | undefined): any {
-	// tslint:disable-line:no-any
+function validateJSON(json: string | undefined) {
+	//// tslint:disable-next-line:no-any
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -32,7 +33,7 @@ function validateJSON(json: string | undefined): any {
 	return result;
 }
 
-const CHART_TYPE_OPTIONS: Array<INodePropertyOptions> = [
+const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
 	{
 		name: 'Bar Chart',
 		value: 'bar',
@@ -132,7 +133,6 @@ export class QuickChart implements INodeType {
 				displayOptions: {
 					show: {
 						jsonLabels: [false],
-						// chartType: XLABEL_CHARTS,
 					},
 				},
 				placeholder: 'Add Label',
@@ -302,6 +302,7 @@ export class QuickChart implements INodeType {
 		const datasets: IDataset[] = [];
 		const chartType = this.getNodeParameter('chartType', 0) as string;
 
+		// tslint:disable-next-line:no-any
 		let labels: any[] | undefined;
 		const jsonActive = this.getNodeParameter('jsonLabels', 0) as boolean;
 		if (jsonActive) {
@@ -314,6 +315,7 @@ export class QuickChart implements INodeType {
 		}
 
 		for (let i = 0; i < items.length; i++) {
+			// tslint:disable-next-line:no-any
 			const data = this.getNodeParameter('data', i) as any;
 			const datasetOptions = this.getNodeParameter('datasetOptions', i) as IDataObject;
 			const backgroundColor = datasetOptions.backgroundColor as string | undefined;
