@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-console */
+/* eslint-disable import/no-cycle */
 import { FindOneOptions } from 'typeorm';
 
-import { Db } from '../../../src';
-import { CredentialsService } from '../../../src/credentials/credentials.service';
-import { SharedCredentials } from '../../../src/databases/entities/SharedCredentials';
+import { Db } from '..';
+import { CredentialsService } from './credentials.service';
+import { SharedCredentials } from '../databases/entities/SharedCredentials';
 
-export class EECreditentialsService extends CredentialsService {
+export class EECredentialsService extends CredentialsService {
 	async getSharedCredentials(
 		userId: string,
 		credentialId: number | string,

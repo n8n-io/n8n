@@ -1,12 +1,13 @@
+/* eslint-disable no-console */
+/* eslint-disable import/no-cycle */
 import express from 'express';
 
-import * as config from '../../../config';
-import { credentialsService } from '../../../src/credentials/credentials.controller';
-import { CredentialRequest } from '../../../src/requests';
+import * as config from '../../config';
+import { credentialsService } from './credentials.controller';
+import { CredentialRequest } from '../requests';
 
 export const eeCredentialsController = express.Router();
 
-// @ts-ignore
 eeCredentialsController.use((req, res, next) => {
 	if (config.getEnv('deployment.paid')) {
 		// use ee router
@@ -30,5 +31,6 @@ eeCredentialsController.get('/:id', async (req: CredentialRequest.Get, res) => {
 		'credentials',
 	]);
 	console.log(shared);
+
 	return res.json({ enterprise: true });
 });

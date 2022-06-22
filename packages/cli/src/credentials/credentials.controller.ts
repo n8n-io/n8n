@@ -27,36 +27,21 @@ import { createCredentiasFromCredentialsEntity } from '../CredentialsHelper';
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
 import { externalHooks } from '../Server';
+
 import { CredentialsService } from './credentials.service';
-import { EECreditentialsService } from '../../ee/src/credentials/credentials.service';
-import { eeCredentialsController } from '../../ee/src/credentials/credentials.controller';
+import { EECredentialsService } from './credentials.service.ee';
+import { eeCredentialsController } from './credentials.controller.ee';
 
 export const credentialsController = express.Router();
-// eslint-disable-next-line import/no-mutable-exports
-export let credentialsService: CredentialsService | EECreditentialsService;
 
-export function setServices(): void {
-	// EE enabled
-	if (config.getEnv('deployment.paid')) {
-		credentialsService = new EECreditentialsService();
-		return;
-	}
+export const credentialsService = config.getEnv('deployment.paid')
+	? new EECredentialsService()
+	: new CredentialsService();
 
-	// FREE
-	credentialsService = new CredentialsService();
-}
-
-setServices();
-
-/**
- * Initialize Logger if needed
- */
 credentialsController.use((req, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
-	}
+	LoggerProxy.getInstance();
+	LoggerProxy.init(getLogger());
+
 	next();
 });
 
