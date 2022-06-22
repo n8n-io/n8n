@@ -166,6 +166,11 @@ export default class Telemetry {
 					version_cli: this.versionCli,
 				};
 
+				console.log({
+					event: eventName,
+					properties,
+				});
+
 				this.client.track(
 					{
 						userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,

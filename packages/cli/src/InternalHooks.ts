@@ -202,6 +202,20 @@ export class InternalHooksClass implements IInternalHooksClass {
 						}),
 					);
 				} else {
+					console.log('A');
+					if (nodeGraphResult.webhookNodeName) {
+						console.log('B');
+						// const webhookDomain =
+						const md =
+							runData.data.resultData.runData[nodeGraphResult.webhookNodeName as string][0].data
+								?.main[0];
+						if (md) {
+							console.log('C');
+							console.log(md[0].json.headers);
+						}
+						// console.log(md?[0].json?['headers']?['host'] as );
+					}
+					// manualExecEventProperties.webhook_domain = nodeGraphResult.webhookNodeName
 					promises.push(
 						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
 					);

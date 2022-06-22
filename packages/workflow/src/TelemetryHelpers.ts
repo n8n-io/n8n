@@ -1,4 +1,5 @@
 /* eslint-disable import/no-cycle */
+import * as psl from 'psl';
 import {
 	IConnection,
 	INode,
@@ -76,6 +77,10 @@ export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 	}
 }
 
+export function extractDomainFromURLString(host: string): string | null {
+	return psl.get(host);
+}
+
 function isSensitive(segment: string) {
 	if (/^v\d+$/.test(segment)) return false;
 
@@ -124,6 +129,7 @@ export function generateNodesGraph(
 		notes: {},
 	};
 	const nodeNameAndIndex: INodeNameIndex = {};
+	let webhookNodeName = null;
 
 	try {
 		const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
@@ -177,6 +183,8 @@ export function generateNodesGraph(
 				nodeItem.domain_base = getDomainBase(url);
 				nodeItem.domain_path = getDomainPath(url);
 				nodeItem.method = node.parameters.requestMethod as string;
+			} else if (node.type === 'n8n-nodes-base.httpRequest') {
+				webhookNodeName = node.name;
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -217,5 +225,5 @@ export function generateNodesGraph(
 		logger.warn((e as Error).stack ?? '');
 	}
 
-	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex };
+	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeName };
 }
