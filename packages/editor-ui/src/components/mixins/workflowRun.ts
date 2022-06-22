@@ -153,6 +153,7 @@ export const workflowRun = mixins(
 				const workflowData = await this.getWorkflowDataToSave();
 
 				const pinData = Object.values(workflow.nodes).reduce<PinDataPayload>((acc, node) => {
+					// @ts-ignore
 					if (node.pinData) acc[node.name] = node.pinData;
 
 					return acc;
