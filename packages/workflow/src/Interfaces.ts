@@ -216,14 +216,6 @@ export interface IAuthenticateBasicAuth extends IAuthenticateBase {
 	};
 }
 
-export interface IAuthenticateHeaderAuth extends IAuthenticateBase {
-	type: 'headerAuth';
-	properties: {
-		name: string;
-		value: string;
-	};
-}
-
 export interface IAuthenticateGeneric extends IAuthenticateBase {
 	type: 'generic';
 	properties: IRequestOptionsSimplifiedAuth;
@@ -235,7 +227,6 @@ export type IAuthenticate =
 			requestOptions: IHttpRequestOptions,
 	  ) => Promise<IHttpRequestOptions>)
 	| IAuthenticateBasicAuth
-	| IAuthenticateHeaderAuth
 	| IAuthenticateGeneric;
 
 export interface IAuthenticateRuleBase {

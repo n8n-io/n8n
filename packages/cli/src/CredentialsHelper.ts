@@ -98,6 +98,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			if (typeof credentialType.authenticate === 'object') {
 				// Predefined authentication method
 
+				let keyResolved: string;
+				let valueResolved: string;
 				const { authenticate } = credentialType;
 				if (requestOptions.headers === undefined) {
 					requestOptions.headers = {};
@@ -106,14 +108,24 @@ export class CredentialsHelper extends ICredentialsHelper {
 				if (authenticate.type === 'generic') {
 					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
 						Object.entries(outerValue).forEach(([key, value]) => {
-							// @ts-ignore
-							requestOptions[outerKey][key] = this.resolveValue(
+							keyResolved = this.resolveValue(
+								key,
+								{ $credentials: credentials },
+								workflow,
+								node,
+								defaultTimezone,
+							);
+
+							valueResolved = this.resolveValue(
 								value as string,
 								{ $credentials: credentials },
 								workflow,
 								node,
 								defaultTimezone,
 							);
+
+							// @ts-ignore
+							requestOptions[outerKey][keyResolved] = valueResolved;
 						});
 					});
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -129,25 +141,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 						username: credentials[userPropertyName] as string,
 						password: credentials[passwordPropertyName] as string,
 					};
-				} else if (authenticate.type === 'headerAuth') {
-					const key = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.name,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-
-					const value = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.value,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-					requestOptions.headers[key] = value;
 				}
 			}
 		}
