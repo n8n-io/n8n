@@ -6,6 +6,7 @@ import {
 	IN8nHttpFullResponse,
 	IDataObject,
 	IHttpRequestOptions,
+	NodeApiError,
 } from "n8n-workflow";
 
 import {
@@ -69,7 +70,7 @@ export async function highLevelApiPagination(this: IExecutePaginationFunctions, 
 	return responseData;
 };
 
-async function postReceiveAction(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+export async function postReceiveAction(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
 	const pipelineIdentifier = this.getNodeParameter('pipelineIdentifier') as string;
 	console.log('pipelineIdentifier', pipelineIdentifier);
 	console.log(items);
@@ -78,10 +79,12 @@ async function postReceiveAction(this: IExecuteSingleFunctions, items: INodeExec
 
 export async function dueDatePreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
 	const dueDateParam = this.getNodeParameter('dueDate') as string;
+	if (!dueDateParam) {
+		throw new NodeApiError(this.getNode(), {}, { message: 'dueDate is required', description: 'dueDate is required' })
+	}
 	const options: ToISOTimeOptions = { suppressMilliseconds: true }
 	const dueDate = DateTime.fromISO(dueDateParam).toISO(options);
 	requestOptions.body = (requestOptions.body || {}) as object;
 	Object.assign(requestOptions.body, { dueDate });
-	// console.log({ dueDateParam, dueDate });
 	return requestOptions;
 }
