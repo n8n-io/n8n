@@ -17,6 +17,7 @@ export class Peekalink implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Peekalink',
 		name: 'peekalink',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:peekalink.png',
 		group: ['output'],
 		version: 1,
@@ -38,9 +39,10 @@ export class Peekalink implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Is available',
+						name: 'Is Available',
 						value: 'isAvailable',
 						description: 'Check whether preview for a given link is available',
 					},
@@ -51,7 +53,6 @@ export class Peekalink implements INodeType {
 					},
 				],
 				default: 'preview',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'URL',

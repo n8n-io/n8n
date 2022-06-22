@@ -32,6 +32,7 @@ export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wordpress',
 		name: 'wordpress',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:wordpress.png',
 		group: ['output'],
 		version: 1,
@@ -53,6 +54,7 @@ export class Wordpress implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -64,7 +66,6 @@ export class Wordpress implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'Resource to consume.',
 			},
 			...postOperations,
 			...postFields,

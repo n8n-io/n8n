@@ -8,11 +8,35 @@ export class OAuth2Api implements ICredentialType {
 	name = 'oAuth2Api';
 	displayName = 'OAuth2 API';
 	documentationUrl = 'httpRequest';
+	genericAuth = true;
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'options',
+			options: [
+				{
+					name: 'Authorization Code',
+					value: 'authorizationCode',
+				},
+				{
+					name: 'Client Credentials',
+					value: 'clientCredentials',
+				},
+			],
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'string',
+			displayOptions: {
+				show: {
+					grantType: [
+						'authorizationCode',
+					],
+				},
+			},
 			default: '',
 			required: true,
 		},
@@ -50,6 +74,13 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'string',
+			displayOptions: {
+				show: {
+					grantType: [
+						'authorizationCode',
+					],
+				},
+			},
 			default: '',
 			description: 'For some services additional query parameters have to be set which can be defined here',
 			placeholder: 'access_type=offline',
@@ -58,6 +89,13 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'options',
+			displayOptions: {
+				show: {
+					grantType: [
+						'authorizationCode',
+					],
+				},
+			},
 			options: [
 				{
 					name: 'Body',

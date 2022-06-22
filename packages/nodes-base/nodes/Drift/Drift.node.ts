@@ -22,6 +22,7 @@ export class Drift implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Drift',
 		name: 'drift',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:drift.png',
 		group: ['output'],
 		version: 1,
@@ -72,12 +73,12 @@ export class Drift implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -85,7 +86,6 @@ export class Drift implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume.',
 			},
 			...contactOperations,
 			...contactFields,

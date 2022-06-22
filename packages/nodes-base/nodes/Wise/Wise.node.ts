@@ -28,7 +28,6 @@ import {
 import {
 	BorderlessAccount,
 	ExchangeRateAdditionalFields,
-	handleBinaryData,
 	Profile,
 	Recipient,
 	StatementAdditionalFields,
@@ -69,6 +68,7 @@ export class Wise implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -83,12 +83,12 @@ export class Wise implements INodeType {
 						value: 'profile',
 					},
 					{
-						name: 'Recipient',
-						value: 'recipient',
-					},
-					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Recipient',
+						value: 'recipient',
 					},
 					{
 						name: 'Transfer',
@@ -96,7 +96,6 @@ export class Wise implements INodeType {
 					},
 				],
 				default: 'account',
-				description: 'Resource to consume',
 			},
 			...accountOperations,
 			...accountFields,
@@ -175,7 +174,7 @@ export class Wise implements INodeType {
 
 		let responseData;
 		const returnData: IDataObject[] = [];
-		let downloadReceipt = false;
+		let binaryOutput = false;
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -221,7 +220,8 @@ export class Wise implements INodeType {
 
 						const profileId = this.getNodeParameter('profileId', i);
 						const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
-						const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.json`;
+						const format = this.getNodeParameter('format', i) as 'json' | 'csv' | 'pdf';
+						const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.${format}`;
 
 						const qs = {
 							currency: this.getNodeParameter('currency', i),
@@ -241,8 +241,19 @@ export class Wise implements INodeType {
 							qs.intervalEnd = moment().utc().format();
 						}
 
-						responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						if (format === 'json') {
+							responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						}
+						else {
+							const data = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs, {encoding: 'arraybuffer'});
+							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 
+							items[i].binary = items[i].binary ?? {};
+							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data, this.getNodeParameter('fileName', i) as string);
+
+							responseData = items;
+							binaryOutput = true;
+						}
 					}
 
 				} else if (resource === 'exchangeRate') {
@@ -281,7 +292,7 @@ export class Wise implements INodeType {
 						if (range !== undefined && time === undefined) {
 							qs.from = moment.tz(range.rangeProperties.from, timezone).utc().format();
 							qs.to = moment.tz(range.rangeProperties.to, timezone).utc().format();
-						} else {
+						} else if (time === undefined) {
 							qs.from = moment().subtract(1, 'months').utc().format();
 							qs.to = moment().format();
 						}
@@ -454,14 +465,20 @@ export class Wise implements INodeType {
 						// ----------------------------------
 
 						const transferId = this.getNodeParameter('transferId', i);
-						downloadReceipt = this.getNodeParameter('downloadReceipt', i) as boolean;
-
+						const downloadReceipt = this.getNodeParameter('downloadReceipt', i) as boolean;
+						
 						if (downloadReceipt) {
 
 							// https://api-docs.transferwise.com/#transfers-get-receipt-pdf
 
-							responseData = await handleBinaryData.call(this, items, i, `v1/transfers/${transferId}/receipt.pdf`);
+							const data = await wiseApiRequest.call(this, 'GET', `v1/transfers/${transferId}/receipt.pdf`, {}, {}, {encoding: 'arraybuffer'});
+							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 
+							items[i].binary = items[i].binary ?? {};
+							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data, this.getNodeParameter('fileName', i) as string);
+
+							responseData = items;
+							binaryOutput = true;
 						} else {
 
 							// https://api-docs.transferwise.com/#transfers-get-by-id
@@ -518,7 +535,7 @@ export class Wise implements INodeType {
 				: returnData.push(responseData);
 		}
 
-		if (downloadReceipt && responseData !== undefined) {
+		if (binaryOutput && responseData !== undefined) {
 			return this.prepareOutputData(responseData);
 		}
 

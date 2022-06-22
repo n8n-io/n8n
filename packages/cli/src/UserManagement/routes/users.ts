@@ -12,6 +12,7 @@ import {
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
+	isUserManagementDisabled,
 	sanitizeUser,
 	validatePassword,
 } from '../UserManagementHelper';
@@ -55,7 +56,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// TODO: this should be checked in the middleware rather than here
-			if (config.getEnv('userManagement.disabled')) {
+			if (isUserManagementDisabled()) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because user management is disabled',
 				);
@@ -155,6 +156,7 @@ export function usersNamespace(this: N8nApp): void {
 				void InternalHooksManager.getInstance().onUserInvite({
 					user_id: req.user.id,
 					target_user_id: Object.values(createUsers) as string[],
+					public_api: false,
 				});
 			} catch (error) {
 				Logger.error('Failed to create user shells', { userShells: createUsers });
@@ -192,11 +194,13 @@ export function usersNamespace(this: N8nApp): void {
 							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							user_id: id!,
 							message_type: 'New user invite',
+							public_api: false,
 						});
 					} else {
 						void InternalHooksManager.getInstance().onEmailFailed({
 							user_id: req.user.id,
 							message_type: 'New user invite',
+							public_api: false,
 						});
 						Logger.error('Failed to send email', {
 							userId: req.user.id,
@@ -377,6 +381,7 @@ export function usersNamespace(this: N8nApp): void {
 	 */
 	this.app.delete(
 		`/${this.restEndpoint}/users/:id`,
+		// @ts-ignore
 		ResponseHelper.send(async (req: UserRequest.Delete) => {
 			const { id: idToDelete } = req.params;
 
@@ -471,7 +476,7 @@ export function usersNamespace(this: N8nApp): void {
 				telemetryData.migration_user_id = transferId;
 			}
 
-			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData);
+			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
 
 			return { success: true };
 		}),
@@ -537,6 +542,7 @@ export function usersNamespace(this: N8nApp): void {
 				void InternalHooksManager.getInstance().onEmailFailed({
 					user_id: req.user.id,
 					message_type: 'Resend invite',
+					public_api: false,
 				});
 				Logger.error('Failed to send email', {
 					email: reinvitee.email,
@@ -553,11 +559,13 @@ export function usersNamespace(this: N8nApp): void {
 			void InternalHooksManager.getInstance().onUserReinvite({
 				user_id: req.user.id,
 				target_user_id: reinvitee.id,
+				public_api: false,
 			});
 
 			void InternalHooksManager.getInstance().onUserTransactionalEmail({
 				user_id: reinvitee.id,
 				message_type: 'Resend invite',
+				public_api: false,
 			});
 
 			return { success: true };

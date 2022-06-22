@@ -80,14 +80,14 @@ const postalAddressesFields: INodeProperties[] = [
 		name: 'primary',
 		type: 'boolean',
 		default: false,
-		description: 'Whether this is the person\'s primary address.',
+		description: 'Whether this is the person\'s primary address',
 	},
 	{
 		displayName: 'Address Line',
 		name: 'address_lines',
 		type: 'string', // The Action Network API expects a string array but ignores any string beyond the first, so this input field is simplified to string.
 		default: '',
-		description: 'Line for a person\'s address.',
+		description: 'Line for a person\'s address',
 	},
 	{
 		displayName: 'Locality',
@@ -101,14 +101,14 @@ const postalAddressesFields: INodeProperties[] = [
 		name: 'region',
 		type: 'string',
 		default: '',
-		description: 'State or subdivision code per ISO 3166-2.',
+		description: 'State or subdivision code per ISO 3166-2',
 	},
 	{
 		displayName: 'Postal Code',
 		name: 'postal_code',
 		type: 'string',
 		default: '',
-		description: 'Region specific postal code, such as ZIP code.',
+		description: 'Region specific postal code, such as ZIP code',
 	},
 	{
 		displayName: 'Country',
@@ -122,7 +122,7 @@ const postalAddressesFields: INodeProperties[] = [
 		name: 'language',
 		type: 'string',
 		default: '',
-		description: 'Language in which the address is recorded, per ISO 639.',
+		description: 'Language in which the address is recorded, per ISO 639',
 	},
 	{
 		displayName: 'Location',
@@ -139,14 +139,14 @@ const postalAddressesFields: INodeProperties[] = [
 						name: 'latitude',
 						type: 'string',
 						default: '',
-						description: 'Latitude of the location of the address.',
+						description: 'Latitude of the location of the address',
 					},
 					{
 						displayName: 'Longitude',
 						name: 'longitude',
 						type: 'string',
 						default: '',
-						description: 'Longitude of the location of the address.',
+						description: 'Longitude of the location of the address',
 					},
 				],
 			},
@@ -160,7 +160,7 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 		name: 'browser_url',
 		type: 'string',
 		default: '',
-		description: 'URL to this event’s page on the Action Network or a third party.',
+		description: 'URL to this event’s page on the Action Network or a third party',
 	},
 	{
 		displayName: 'Description',
@@ -174,14 +174,14 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 		name: 'end_date',
 		type: 'dateTime',
 		default: '',
-		description: 'End date and time of the event.',
+		description: 'End date and time of the event',
 	},
 	{
 		displayName: 'Featured Image URL',
 		name: 'featured_image_url',
 		type: 'string',
 		default: '',
-		description: 'URL to this event’s featured image on the Action Network.',
+		description: 'URL to this event’s featured image on the Action Network',
 	},
 	{
 		displayName: 'Instructions',
@@ -214,14 +214,14 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 		name: 'name',
 		type: 'string',
 		default: '',
-		description: 'Internal (not public) title of the event.',
+		description: 'Internal (not public) title of the event',
 	},
 	{
 		displayName: 'Start Date',
 		name: 'start_date',
 		type: 'dateTime',
 		default: '',
-		description: 'Start date and time of the event.',
+		description: 'Start date and time of the event',
 	},
 ];
 
@@ -231,14 +231,14 @@ export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 		name: 'family_name',
 		type: 'string',
 		default: '',
-		description: 'Person’s last name.',
+		description: 'Person’s last name',
 	},
 	{
 		displayName: 'Given Name',
 		name: 'given_name',
 		type: 'string',
 		default: '',
-		description: 'Person’s first name.',
+		description: 'Person’s first name',
 	},
 	{
 		displayName: 'Language Spoken',
@@ -265,21 +265,21 @@ export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 						name: 'number',
 						type: 'string',
 						default: '',
-						description: 'Person\'s mobile number, in international format without the plus sign.',
+						description: 'Person\'s mobile number, in international format without the plus sign',
 					},
 					{
 						displayName: 'Primary',
 						name: 'primary',
 						type: 'hidden',
 						default: true,
-						description: 'Whether this is the person\'s primary phone number.',
+						description: 'Whether this is the person\'s primary phone number',
 					},
 					{
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
 						default: 'subscribed',
-						description: 'Subscription status of this number.',
+						description: 'Subscription status of this number',
 						options: [
 							{
 								name: 'Bouncing',
@@ -329,40 +329,40 @@ export const petitionAdditionalFieldsOptions: INodeProperties[] = [
 		name: 'browser_url',
 		type: 'string',
 		default: '',
-		description: 'URL to this petition’s page on the Action Network or a third party.',
+		description: 'URL to this petition’s page on the Action Network or a third party',
 	},
 	{
 		displayName: 'Featured Image URL',
 		name: 'featured_image_url',
 		type: 'string',
 		default: '',
-		description: 'URL to this action’s featured image on the Action Network.',
+		description: 'URL to this action’s featured image on the Action Network',
 	},
 	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
 		default: '',
-		description: 'Internal (not public) title of the petition.',
+		description: 'Internal (not public) title of the petition',
 	},
 	{
 		displayName: 'Petition Text',
 		name: 'petition_text',
 		type: 'string',
 		default: '',
-		description: 'Text of the letter to the petition’s target.',
+		description: 'Text of the letter to the petition’s target',
 	},
 	{
 		displayName: 'Targets',
 		name: 'target',
 		type: 'string',
 		default: '',
-		description: 'Comma-separated names of targets for this petition.',
+		description: 'Comma-separated names of targets for this petition',
 	},
 ];
 
 export const makeSimpleField = (resource: Resource, operation: Operation): INodeProperties => ({
-	displayName: 'Simple',
+	displayName: 'Simplify',
 	name: 'simple',
 	type: 'boolean',
 	displayOptions: {
@@ -376,5 +376,5 @@ export const makeSimpleField = (resource: Resource, operation: Operation): INode
 		},
 	},
 	default: true,
-	description: 'Return a simplified version of the response instead of the raw data.',
+	description: 'Whether to return a simplified version of the response instead of the raw data',
 });

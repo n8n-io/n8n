@@ -51,6 +51,8 @@ import {
 } from '.';
 // eslint-disable-next-line import/no-cycle
 import { User } from './databases/entities/User';
+// eslint-disable-next-line import/no-cycle
+import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -190,6 +192,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			'internal',
 			defaultTimezone,
 			additionalKeys,
+			undefined,
 			'',
 		);
 
@@ -342,6 +345,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal as INodeParameters,
 			true,
 			false,
+			null,
 		) as ICredentialDataDecryptedObject;
 
 		if (decryptedDataOriginal.oauthTokenData !== undefined) {
@@ -365,6 +369,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					mode,
 					timezone,
 					{},
+					undefined,
 					false,
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
@@ -396,6 +401,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				mode,
 				defaultTimezone,
 				{},
+				undefined,
 				undefined,
 				decryptedData,
 			) as ICredentialDataDecryptedObject;
@@ -435,8 +441,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		// Add special database related data
 		newCredentialsData.updatedAt = new Date();
-
-		// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
 		// Save the credentials in DB
 		const findQuery = {
@@ -562,7 +566,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			parameters: {},
 			name: 'Temp-Node',
 			type: nodeType.description.name,
-			typeVersion: nodeType.description.version,
+			typeVersion: Array.isArray(nodeType.description.version)
+				? nodeType.description.version.slice(-1)[0]
+				: nodeType.description.version,
 			position: [0, 0],
 		};
 
@@ -641,6 +647,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				inputData,
 				runIndex,
 				nodeTypeCopy,
+				{ node, data: {}, source: null },
 				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);
@@ -762,4 +769,15 @@ export async function getCredentialWithoutUser(
 ): Promise<ICredentialsDb | undefined> {
 	const credential = await Db.collections.Credentials.findOne(credentialId);
 	return credential;
+}
+
+export function createCredentiasFromCredentialsEntity(
+	credential: CredentialsEntity,
+	encrypt = false,
+): Credentials {
+	const { id, name, type, nodesAccess, data } = credential;
+	if (encrypt) {
+		return new Credentials({ id: null, name }, type, nodesAccess);
+	}
+	return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
 }

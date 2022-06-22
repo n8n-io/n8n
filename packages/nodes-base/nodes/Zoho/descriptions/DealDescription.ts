@@ -13,6 +13,7 @@ export const dealOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -53,7 +54,6 @@ export const dealOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -104,9 +104,10 @@ export const dealFields: INodeProperties[] = [
 	//          deal: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Stage',
+		displayName: 'Stage Name or ID',
 		name: 'stage',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -147,7 +148,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Amount',
 				type: 'number',
 				default: '',
-				description: 'Monetary amount of the deal.',
+				description: 'Monetary amount of the deal',
 			},
 			{
 				displayName: 'Closing Date',
@@ -160,7 +161,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('deal'),
@@ -175,21 +176,21 @@ export const dealFields: INodeProperties[] = [
 				name: 'Lead_Conversion_Time',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal.',
+				description: 'Averge number of days to convert the lead into a deal',
 			},
 			{
 				displayName: 'Next Step',
 				name: 'Next_Step',
 				type: 'string',
 				default: '',
-				description: 'Description of the next step in the sales process.',
+				description: 'Description of the next step in the sales process',
 			},
 			{
 				displayName: 'Overall Sales Duration',
 				name: 'Overall_Sales_Duration',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal and to win the deal.',
+				description: 'Averge number of days to convert the lead into a deal and to win the deal',
 			},
 			{
 				displayName: 'Probability',
@@ -207,7 +208,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Sales_Cycle_Duration',
 				type: 'number',
 				default: 0,
-				description: 'Averge number of days for the deal to be won.',
+				description: 'Averge number of days for the deal to be won',
 			},
 		],
 	},
@@ -218,7 +219,7 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		description: 'ID of the deal to delete.',
+		description: 'ID of the deal to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -240,7 +241,7 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		description: 'ID of the deal to retrieve.',
+		description: 'ID of the deal to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -267,7 +268,7 @@ export const dealFields: INodeProperties[] = [
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
-		description: 'ID of the deal to update.',
+		description: 'ID of the deal to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -304,7 +305,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Amount',
 				type: 'number',
 				default: '',
-				description: 'Monetary amount of the deal.',
+				description: 'Monetary amount of the deal',
 			},
 			{
 				displayName: 'Closing Date',
@@ -317,7 +318,7 @@ export const dealFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'string',
 				default: '',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 			},
 			makeCustomFieldsFixedCollection('deal'),
 			{
@@ -337,21 +338,21 @@ export const dealFields: INodeProperties[] = [
 				name: 'Lead_Conversion_Time',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal.',
+				description: 'Averge number of days to convert the lead into a deal',
 			},
 			{
 				displayName: 'Next Step',
 				name: 'Next_Step',
 				type: 'string',
 				default: '',
-				description: 'Description of the next step in the sales process.',
+				description: 'Description of the next step in the sales process',
 			},
 			{
 				displayName: 'Overall Sales Duration',
 				name: 'Overall_Sales_Duration',
 				type: 'number',
 				default: '',
-				description: 'Averge number of days to convert the lead into a deal and to win the deal.',
+				description: 'Averge number of days to convert the lead into a deal and to win the deal',
 			},
 			{
 				displayName: 'Probability',
@@ -369,12 +370,13 @@ export const dealFields: INodeProperties[] = [
 				name: 'Sales_Cycle_Duration',
 				type: 'number',
 				default: 0,
-				description: 'Averge number of days to win the deal.',
+				description: 'Averge number of days to win the deal',
 			},
 			{
-				displayName: 'Stage',
+				displayName: 'Stage Name or ID',
 				name: 'Stage',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getDealStage',
 					},

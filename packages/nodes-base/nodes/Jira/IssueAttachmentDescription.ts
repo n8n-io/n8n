@@ -7,6 +7,7 @@ export const issueAttachmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const issueAttachmentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -78,7 +78,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
-		description: 'Object property name which holds binary data.',
+		description: 'Object property name which holds binary data',
 		required: true,
 	},
 
@@ -101,7 +101,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the attachment.',
+		description: 'The ID of the attachment',
 	},
 	{
 		displayName: 'Download',
@@ -138,7 +138,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Object property name which holds binary data.',
+		description: 'Object property name which holds binary data',
 		required: true,
 	},
 	/* -------------------------------------------------------------------------- */
@@ -176,7 +176,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -200,7 +200,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Download',
@@ -237,7 +237,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Object property name which holds binary data.',
+		description: 'Object property name which holds binary data',
 		required: true,
 	},
 	/* -------------------------------------------------------------------------- */
@@ -259,6 +259,6 @@ export const issueAttachmentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the attachment.',
+		description: 'The ID of the attachment',
 	},
 ];

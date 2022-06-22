@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -230,14 +230,14 @@ export const contactFields: INodeProperties[] = [
 								displayName: 'Key',
 								name: 'key',
 								type: 'string',
-								description: 'The end user specified key of the user defined data.',
+								description: 'The end user specified key of the user defined data',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data.',
+								description: 'The end user specified value of the user defined data',
 								default: '',
 							},
 						],
@@ -284,7 +284,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The email address.',
+								description: 'The email address',
 							},
 						],
 					},
@@ -296,7 +296,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'fixedCollection',
 				default: {},
 				placeholder: 'Add Event',
-				description: 'An event related to the person.',
+				description: 'An event related to the person',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -310,7 +310,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'date',
 								type: 'dateTime',
 								default: '',
-								description: 'The date of the event.',
+								description: 'The date of the event',
 							},
 							{
 								displayName: 'Type',
@@ -338,10 +338,10 @@ export const contactFields: INodeProperties[] = [
 				name: 'fileAs',
 				type: 'string',
 				default: '',
-				description: 'The name that should be used to sort the person in a list.',
+				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Names or IDs',
 				name: 'group',
 				type: 'multiOptions',
 				typeOptions: {
@@ -396,24 +396,28 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: 'Google Voice',
+										value: 'googleVoice',
+									},
+									{
 										name: 'Home',
 										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
 									},
 									{
 										name: 'Home Fax',
 										value: 'homeFax',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
+										name: 'Main',
+										value: 'main',
+									},
+									{
+										name: 'Mobile',
+										value: 'mobile',
+									},
+									{
+										name: 'Other',
+										value: 'other',
 									},
 									{
 										name: 'Other Fax',
@@ -424,24 +428,20 @@ export const contactFields: INodeProperties[] = [
 										value: 'pager',
 									},
 									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
+									},
+									{
 										name: 'Work Mobile',
 										value: 'workMobile',
 									},
 									{
 										name: 'Work Pager',
 										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
 									},
 								],
 								default: '',
@@ -451,7 +451,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The phone number.',
+								description: 'The phone number',
 							},
 						],
 					},
@@ -476,7 +476,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'person',
 								type: 'string',
 								default: '',
-								description: 'The name of the other person this relation refers to.',
+								description: 'The name of the other person this relation refers to',
 							},
 							{
 								displayName: 'Type',
@@ -719,7 +719,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `Returns the data exactly in the way it got received from the API.`,
+		description: 'Whether to return the data exactly in the way it got received from the API',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:getAll                             */
@@ -739,7 +739,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -763,7 +763,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Fields',
@@ -899,7 +899,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `Whether or not to use a query to filter the results`,
+		description: 'Whether or not to use a query to filter the results',
 	},
 	{
 		displayName: 'Query',
@@ -919,7 +919,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".`,
+		description: 'The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".',
 	},
 	{
 		displayName: 'RAW Data',
@@ -936,7 +936,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `Returns the data exactly in the way it got received from the API.`,
+		description: 'Whether to return the data exactly in the way it got received from the API',
 	},
 	{
 		displayName: 'Options',
@@ -966,26 +966,26 @@ export const contactFields: INodeProperties[] = [
 					{
 						name: 'Last Modified Ascending',
 						value: 'LAST_MODIFIED_ASCENDING',
-						description: 'Sort people by when they were changed; older entries first.',
+						description: 'Sort people by when they were changed; older entries first',
 					},
 					{
 						name: 'Last Modified Descending',
 						value: 'LAST_MODIFIED_DESCENDING',
-						description: 'Sort people by when they were changed; newer entries first.',
+						description: 'Sort people by when they were changed; newer entries first',
 					},
 					{
 						name: 'First Name Ascending',
 						value: 'FIRST_NAME_ASCENDING',
-						description: 'Sort people by first name.',
+						description: 'Sort people by first name',
 					},
 					{
 						name: 'Last Name Ascending',
 						value: 'LAST_NAME_ASCENDING',
-						description: 'Sort people by last name.',
+						description: 'Sort people by last name',
 					},
 				],
 				default: '',
-				description: 'The order of the contacts returned in the result.',
+				description: 'The order of the contacts returned in the result',
 			},
 		],
 	},
@@ -1295,14 +1295,14 @@ export const contactFields: INodeProperties[] = [
 								displayName: 'Key',
 								name: 'key',
 								type: 'string',
-								description: 'The end user specified key of the user defined data.',
+								description: 'The end user specified key of the user defined data',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data.',
+								description: 'The end user specified value of the user defined data',
 								default: '',
 							},
 						],
@@ -1349,7 +1349,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The email address.',
+								description: 'The email address',
 							},
 						],
 					},
@@ -1361,7 +1361,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'fixedCollection',
 				default: {},
 				placeholder: 'Add Event',
-				description: 'An event related to the person.',
+				description: 'An event related to the person',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -1375,7 +1375,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'date',
 								type: 'dateTime',
 								default: '',
-								description: 'The date of the event.',
+								description: 'The date of the event',
 							},
 							{
 								displayName: 'Type',
@@ -1403,10 +1403,10 @@ export const contactFields: INodeProperties[] = [
 				name: 'fileAs',
 				type: 'string',
 				default: '',
-				description: 'The name that should be used to sort the person in a list.',
+				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Names or IDs',
 				name: 'group',
 				type: 'multiOptions',
 				typeOptions: {
@@ -1461,24 +1461,28 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: 'Google Voice',
+										value: 'googleVoice',
+									},
+									{
 										name: 'Home',
 										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
 									},
 									{
 										name: 'Home Fax',
 										value: 'homeFax',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
+										name: 'Main',
+										value: 'main',
+									},
+									{
+										name: 'Mobile',
+										value: 'mobile',
+									},
+									{
+										name: 'Other',
+										value: 'other',
 									},
 									{
 										name: 'Other Fax',
@@ -1489,24 +1493,20 @@ export const contactFields: INodeProperties[] = [
 										value: 'pager',
 									},
 									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
+									},
+									{
 										name: 'Work Mobile',
 										value: 'workMobile',
 									},
 									{
 										name: 'Work Pager',
 										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
 									},
 								],
 								default: '',
@@ -1516,7 +1516,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The phone number.',
+								description: 'The phone number',
 							},
 						],
 					},
@@ -1541,7 +1541,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'person',
 								type: 'string',
 								default: '',
-								description: 'The name of the other person this relation refers to.',
+								description: 'The name of the other person this relation refers to',
 							},
 							{
 								displayName: 'Type',

@@ -1,15 +1,15 @@
 <template>
-	<div class="node-settings" @keydown.stop>
+	<div :class="{'node-settings': true, 'dragging': dragging}" @keydown.stop>
 		<div :class="$style.header">
 			<div class="header-side-menu">
-				<NodeTitle class="node-name" :value="node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
+				<NodeTitle class="node-name" :value="node && node.name" :nodeType="nodeType" @input="nameChanged" :readOnly="isReadOnly"></NodeTitle>
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" />
+					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" telemetrySource="parameters" />
 				</div>
 			</div>
-			<NodeTabs v-model="openPanel" :nodeType="nodeType" />
+			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
 			<n8n-text>
@@ -23,18 +23,40 @@
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
-				<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
-				<node-webhooks :node="node" :nodeType="nodeType" />
-				<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<node-webhooks
+					:node="node"
+					:nodeType="nodeType"
+				/>
+				<parameter-input-list
+					:parameters="parametersNoneSetting"
+					:hideDelete="true"
+					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
+					@activate="onWorkflowActivate"
+				>
+					<node-credentials
+						:node="node"
+						@credentialSelected="credentialSelected"
+					/>
+				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
-					{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</n8n-text>
 				</div>
+
+				<div v-if="isCustomApiCallSelected(nodeValues)" class="parameter-item parameter-notice">
+					<n8n-notice
+						:content="$locale.baseText(
+							'nodeSettings.useTheHttpRequestNode',
+							{ interpolate: { nodeTypeDisplayName: nodeType.displayName } }
+						)"
+					/>
+				</div>
+
 			</div>
 			<div v-show="openPanel === 'settings'">
-				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 				<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 			</div>
 		</div>
 	</div>
@@ -59,7 +81,7 @@ import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import NodeTabs from '@/components/NodeTabs.vue';
+import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
@@ -82,7 +104,7 @@ export default mixins(
 			NodeCredentials,
 			ParameterInputFull,
 			ParameterInputList,
-			NodeTabs,
+			NodeSettingsTabs,
 			NodeWebhooks,
 			NodeExecuteButton,
 		},
@@ -151,6 +173,12 @@ export default mixins(
 		props: {
 			eventBus: {
 			},
+			dragging: {
+				type: Boolean,
+			},
+			sessionId: {
+				type: String,
+			},
 		},
 		data () {
 			return {
@@ -171,25 +199,6 @@ export default mixins(
 				} as INodeParameters,
 
 				nodeSettings: [
-					{
-						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
-						name: 'notes',
-						type: 'string',
-						typeOptions: {
-							rows: 5,
-						},
-						default: '',
-						noDataExpression: true,
-						description: this.$locale.baseText('nodeSettings.notes.description'),
-					},
-					{
-						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
-						name: 'notesInFlow',
-						type: 'boolean',
-						default: false,
-						noDataExpression: true,
-						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
-					},
 					{
 						displayName: this.$locale.baseText('nodeSettings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
@@ -260,6 +269,25 @@ export default mixins(
 						noDataExpression: true,
 						description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
 					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notes.description'),
+					},
+					{
+						displayName: this.$locale.baseText('nodeSettings.notesInFlow.displayName'),
+						name: 'notesInFlow',
+						type: 'boolean',
+						default: false,
+						noDataExpression: true,
+						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
+					},
 				] as INodeProperties[],
 
 			};
@@ -270,6 +298,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			onWorkflowActivate() {
+				this.$emit('activate');
+			},
 			onNodeExecute () {
 				this.$emit('execute');
 			},
@@ -379,7 +410,7 @@ export default mixins(
 					}
 
 					// Get only the parameters which are different to the defaults
-					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
+					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false, node);
 					const oldNodeParameters = Object.assign({}, nodeParameters);
 
 					// Copy the data because it is the data of vuex so make sure that
@@ -415,7 +446,7 @@ export default mixins(
 
 					// Get the parameters with the now new defaults according to the
 					// from the user actually defined parameters
-					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false);
+					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false, node);
 
 					for (const key of Object.keys(nodeParameters as object)) {
 						if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
@@ -542,8 +573,13 @@ export default mixins(
 <style lang="scss">
 .node-settings {
 	overflow: hidden;
-	min-width: 350px;
-	max-width: 350px;
+	min-width: 360px;
+	max-width: 360px;
+	background-color: var(--color-background-xlight);
+	height: 100%;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	box-shadow: 0 4px 16px rgb(50 61 85 / 10%);
 
 	.no-parameters {
 		margin-top: var(--spacing-xs);
@@ -568,6 +604,11 @@ export default mixins(
 		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
+	}
+
+	&.dragging {
+		border-color: var(--color-primary);
+		box-shadow: 0px 6px 16px rgba(255, 74, 51, 0.15);
 	}
 }
 

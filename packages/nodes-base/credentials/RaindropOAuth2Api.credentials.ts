@@ -14,6 +14,12 @@ export class RaindropOAuth2Api implements ICredentialType {
 	documentationUrl = 'raindrop';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
