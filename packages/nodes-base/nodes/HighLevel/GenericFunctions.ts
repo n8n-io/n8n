@@ -78,13 +78,6 @@ export async function highLevelApiPagination(this: IExecutePaginationFunctions, 
 	return responseData;
 };
 
-export async function postReceiveAction(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
-	const pipelineIdentifier = this.getNodeParameter('pipelineIdentifier') as string;
-	console.log('pipelineIdentifier', pipelineIdentifier);
-	console.log(items);
-	return items;
-}
-
 export async function dueDatePreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
 	const dueDateParam = this.getNodeParameter('dueDate') as string;
 	if (!dueDateParam) {

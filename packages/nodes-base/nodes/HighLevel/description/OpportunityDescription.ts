@@ -4,7 +4,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-import { isEmailValid, isPhoneValid, postReceiveAction } from '../GenericFunctions';
+import { isEmailValid, isPhoneValid } from '../GenericFunctions';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -263,6 +263,7 @@ const createOperations: Array<INodeProperties> = [
 		}
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Stage ID',
 		name: 'stageId',
 		type: 'options',
