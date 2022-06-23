@@ -26,7 +26,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities',
+						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities',
 					},
 				},
 			},
@@ -36,7 +36,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities/{{$parameter.identifier}}',
+						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.identifier}}',
 					},
 					output: {
 						postReceive: [
@@ -56,7 +56,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities/{{$parameter.identifier}}',
+						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.identifier}}',
 					},
 				},
 			},
@@ -66,7 +66,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities',
+						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities',
 					},
 					send: {
 						paginate: true,
@@ -79,7 +79,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/pipelines/{{$parameter.pipelineIdentifier}}/opportunities/{{$parameter.identifier}}',
+						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.identifier}}',
 					},
 					output: {
 						postReceive: [
@@ -98,10 +98,10 @@ export const opportunityOperations: INodeProperties[] = [
 	},
 ];
 
-const pipelineIdentifier: INodeProperties =
+const pipelineId: INodeProperties =
 {
-	displayName: 'Pipeline Identifier',
-	name: 'pipelineIdentifier',
+	displayName: 'Pipeline ID',
+	name: 'pipelineId',
 	type: 'options',
 	displayOptions: {
 		show: {
@@ -280,7 +280,7 @@ const createOperations: Array<INodeProperties> = [
 		},
 		default: '',
 		typeOptions: {
-			loadOptionsDependsOn: ['pipelineIdentifier'],
+			loadOptionsDependsOn: ['pipelineId'],
 			loadOptionsMethod: 'getPipelineStages'
 		},
 		routing: {
@@ -601,7 +601,7 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 export const opportunityFields: INodeProperties[] = [
-	pipelineIdentifier,
+	pipelineId,
 	...createOperations,
 	// ...updateOperations,
 	...additionalFields,

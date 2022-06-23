@@ -89,10 +89,10 @@ export class HighLevel implements INodeType {
 	methods = {
 		loadOptions: {
 			async getPipelineStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const pipelineIdentifier = this.getCurrentNodeParameter('pipelineIdentifier') as string;
+				const pipelineId = this.getCurrentNodeParameter('pipelineId') as string;
 				const responseData = await highLevelApiRequest.call(this, 'GET', '/pipelines');
 				const pipelines = responseData.pipelines as [{ id: string, stages: [{ id: string, name: string }] }];
-				const pipeline = pipelines.find(p => p.id === pipelineIdentifier);
+				const pipeline = pipelines.find(p => p.id === pipelineId);
 				if (pipeline) {
 					const options: INodePropertyOptions[] = pipeline.stages.map(stage => {
 						const name = stage.name;
