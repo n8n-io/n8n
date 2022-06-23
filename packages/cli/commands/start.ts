@@ -34,8 +34,6 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
-import { getInstance } from '../src/UserManagement/email/UserManagementMailer';
-import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -62,6 +60,10 @@ export class Start extends Command {
 		tunnel: flags.boolean({
 			description:
 				'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
+		}),
+		reinstallMissingPackages: flags.boolean({
+			description:
+				'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
 		}),
 	};
 
@@ -210,14 +212,18 @@ export class Start extends Command {
 				await startDbInitPromise;
 
 				const installedPackages = await getAllInstalledPackages();
-				const missingPackages = new Set<string>();
+				const missingPackages = new Set<{
+					packageName: string;
+					version: string;
+				}>();
 				installedPackages.forEach((installedpackage) => {
 					installedpackage.installedNodes.forEach((installedNode) => {
 						if (!loadNodesAndCredentials.nodeTypes[installedNode.name]) {
 							// Leave the list ready for installing in case we need.
-							missingPackages.add(
-								`${installedpackage.packageName}@${installedpackage.installedVersion}`,
-							);
+							missingPackages.add({
+								packageName: installedpackage.packageName,
+								version: installedpackage.installedVersion,
+							});
 						}
 					});
 				});
@@ -232,25 +238,38 @@ export class Start extends Command {
 
 				config.set('nodes.packagesMissing', '');
 				if (missingPackages.size) {
-					// TODO: improve this message
 					LoggerProxy.error(
-						'n8n has detected that some of the pacakges with nodes are missing from the hard disk. Check the setup instructions for community packages in the docs on how to prevent this error in the future.',
+						'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
 					);
-					config.set('nodes.packagesMissing', Array.from(missingPackages).join(' '));
-					try {
-						if (
-							config.getEnv('userManagement.emails.mode') === 'smtp' &&
-							config.getEnv('userManagement.emails.smtp.host') !== '' &&
-							config.getEnv('userManagement.isInstanceOwnerSetUp')
-						) {
-							// Send an email async to instance owner whenever possible
-							void getInstanceOwner().then(async (user) => {
-								void (await getInstance()).warnAbouMissingPackages(user);
-							});
+
+					if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
+						LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
+						try {
+							// Optimistic approach - stop if any installation fails
+							// eslint-disable-next-line no-restricted-syntax
+							for (const missingPackage of missingPackages) {
+								// eslint-disable-next-line no-await-in-loop
+								void (await loadNodesAndCredentials.loadNpmModule(
+									missingPackage.packageName,
+									missingPackage.version,
+								));
+								missingPackages.delete(missingPackage);
+							}
+							LoggerProxy.info(
+								'Packages reinstalled successfully. Resuming regular intiailization.',
+							);
+						} catch (error) {
+							LoggerProxy.error('n8n was unable to install the missing packages.');
 						}
-					} catch (_error) {
-						// Do nothing
 					}
+				}
+				if (missingPackages.size) {
+					config.set(
+						'nodes.packagesMissing',
+						Array.from(missingPackages)
+							.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
+							.join(' '),
+					);
 				}
 
 				if (config.getEnv('executions.mode') === 'queue') {
