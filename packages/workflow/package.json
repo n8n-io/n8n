@@ -58,7 +58,7 @@
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
     "luxon": "^2.3.0",
-    "riot-tmpl": "github:n8n-io/tmpl",
+    "@n8n_io/riot-tmpl": "^1.0.1",
     "xml2js": "^0.4.23"
   },
   "jest": {
