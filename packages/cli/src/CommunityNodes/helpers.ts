@@ -141,10 +141,7 @@ export function matchMissingPackages(
 export async function checkPackageStatus(packageName: string): Promise<NpmPackageStatusCheck> {
 	// You can change this URL for testing - the default testing url below
 	// is a postman mock service
-	const n8nBackendServiceUrl =
-		config.getEnv('deployment.type') === 'n8n-internal'
-			? 'https://9d2a4b90-32c4-4916-aa3f-1d6be3960392.mock.pstmn.io/api/package'
-			: 'https://api.n8n.io/api/package';
+	const n8nBackendServiceUrl = 'https://api.n8n.io/api/package';
 
 	try {
 		const output = await axios.post(
