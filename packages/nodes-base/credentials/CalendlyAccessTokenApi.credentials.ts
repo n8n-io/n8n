@@ -5,14 +5,14 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class CalendlyApi implements ICredentialType {
-	name = 'calendlyApi';
-	displayName = 'Calendly API';
+export class CalendlyAccessTokenApi implements ICredentialType {
+	name = 'calendlyAccessTokenApi';
+	displayName = 'Calendly Api';
 	documentationUrl = 'calendly';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Key',
-			name: 'apiKey',
+			displayName: 'Access Token',
+			name: 'accessToken',
 			type: 'string',
 			default: '',
 		},
@@ -20,13 +20,13 @@ export class CalendlyApi implements ICredentialType {
 	authenticate: IAuthenticateHeaderAuth = {
 		type: 'headerAuth',
 		properties: {
-			name: 'X-TOKEN',
-			value: '={{$credentials?.apiKey}}',
+			name: 'Authorization',
+			value: '=Bearer {{$credentials?.accessToken}}',
 		},
 	};
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://calendly.com/api/v1',
+			baseURL: 'https://api.calendly.com',
 			url: '/users/me',
 		},
 	};
