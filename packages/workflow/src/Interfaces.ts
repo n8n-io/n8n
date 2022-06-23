@@ -558,6 +558,7 @@ export interface IExecuteFunctions {
 }
 
 export interface IExecuteSingleFunctions {
+	getCurrentItemIndex(): number;
 	continueOnFail(): boolean;
 	evaluateExpression(
 		expression: string,
