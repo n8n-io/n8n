@@ -668,6 +668,7 @@ export default mixins(
 				this.$store.commit('setWorkflowId', workflowId);
 				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
+				this.$store.commit('setWorkflowPinData', data.pinData || {});
 
 				const tags = (data.tags || []) as ITag[];
 				this.$store.commit('tags/upsertTags', tags);

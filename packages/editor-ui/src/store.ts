@@ -630,6 +630,10 @@ export const store = new Vuex.Store({
 			Vue.set(state.workflow, 'settings', workflowSettings);
 		},
 
+		setWorkflowPinData (state, pinData: Record<string, IDataObject>) {
+			Vue.set(state.workflow, 'pinData', pinData);
+		},
+
 		setWorkflowTagIds (state, tags: string[]) {
 			Vue.set(state.workflow, 'tags', tags);
 		},
