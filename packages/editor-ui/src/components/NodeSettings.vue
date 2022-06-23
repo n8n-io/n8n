@@ -592,7 +592,7 @@ export default mixins(
 			},
 			onMissingNodeLearnMoreLinkClick() {
 				this.$telemetry.track('user clicked cnr docs link', {
-					source: 'node details view',
+					source: 'missing node modal source',
 					package_name: this.node.type.split('.')[0],
 					node_type: this.node.type,
 				});
