@@ -4,7 +4,11 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -12,6 +16,8 @@ import {
 
 import {
 	calendlyApiRequest,
+	getAuthenticationType,
+	validateCredentials,
 } from './GenericFunctions';
 
 export class CalendlyTrigger implements INodeType {
@@ -31,27 +37,7 @@ export class CalendlyTrigger implements INodeType {
 			{
 				name: 'calendlyApi',
 				required: true,
-				displayOptions: {
-					show: {
-						'apiVersion': [
-							'version1',
-						],
-					},
-				},
-			},
-			{
-				name: 'calendlyAccessTokenApi',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'accessToken',
-						],
-						'apiVersion': [
-							'version2',
-						],
-					},
-				},
+				testedBy: 'calendlyApiCredentialTest',
 			},
 		],
 		webhooks: [
@@ -64,85 +50,12 @@ export class CalendlyTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'API Version',
-				name: 'apiVersion',
-				type: 'options',
-				isNodeSetting: true,
-				displayOptions: {
-					show: {
-						'@version': [
-							1,
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Version 1',
-						value: 'version1',
-					},
-					{
-						name: 'Version 2',
-						value: 'version2',
-					},
-				],
-				default: 'version2',
-			},
-			{
-				displayName: 'API Version',
-				name: 'apiVersion',
-				type: 'options',
-				isNodeSetting: true,
-				displayOptions: {
-					show: {
-						'@version': [
-							2,
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Version 1',
-						value: 'version1',
-					},
-					{
-						name: 'Version 2',
-						value: 'version2',
-					},
-				],
-				default: 'version2',
-			},
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Access Token',
-						value: 'accessToken',
-					},
-				],
-				default: 'accessToken',
-				displayOptions: {
-					show: {
-						'apiVersion': [
-							'version2',
-						],
-					},
-				},
-			},
-			{
 				displayName: 'Scope',
 				name: 'scope',
 				type: 'options',
 				default: 'user',
 				required: true,
-				displayOptions: {
-					show: {
-						'apiVersion': [
-							'version2',
-						],
-					},
-				},
+				hint: 'This parameter is ignored if you are using an API Key',
 				options: [
 					{
 						name: 'User',
@@ -177,6 +90,25 @@ export class CalendlyTrigger implements INodeType {
 
 	};
 
+	methods = {
+		credentialTest: {
+			async calendlyApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				try {
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: 'The security token included in the request is invalid',
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
@@ -184,11 +116,13 @@ export class CalendlyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string;
-				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+				const { apiKey } = await this.getCredentials('calendlyApi') as { apiKey: string };
+
+				const authenticationType = getAuthenticationType(apiKey);
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				if (apiVersion === 'version1') {
+				if (authenticationType === 'apiKey') {
 					const endpoint = '/hooks';
 					const { data } = await calendlyApiRequest.call(this, 'GET', endpoint, {});
 
@@ -206,7 +140,7 @@ export class CalendlyTrigger implements INodeType {
 					}
 				}
 
-				if (apiVersion === 'version2') {
+				if (authenticationType === 'accessToken') {
 					const scope = this.getNodeParameter('scope', 0) as string;
 					const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me');
 
@@ -246,10 +180,11 @@ export class CalendlyTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string;
-				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+				const { apiKey } = await this.getCredentials('calendlyApi') as { apiKey: string };
 
+				const authenticationType = getAuthenticationType(apiKey);
 
-				if (apiVersion === 'version1') {
+				if (authenticationType === 'apiKey') {
 					const endpoint = '/hooks';
 
 					const body = {
@@ -267,7 +202,7 @@ export class CalendlyTrigger implements INodeType {
 					webhookData.webhookId = responseData.id as string;
 				}
 
-				if (apiVersion === 'version2') {
+				if (authenticationType === 'accessToken') {
 					const scope = this.getNodeParameter('scope', 0) as string;
 					const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me');
 
@@ -296,9 +231,11 @@ export class CalendlyTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+				const events = this.getNodeParameter('events') as string;
+				const { apiKey } = await this.getCredentials('calendlyApi') as { apiKey: string };
+				const authenticationType = getAuthenticationType(apiKey);
 
-				if (apiVersion === 'version1') {
+				if (authenticationType === 'apiKey') {
 					if (webhookData.webhookId !== undefined) {
 
 						const endpoint = `/hooks/${webhookData.webhookId}`;
@@ -315,7 +252,7 @@ export class CalendlyTrigger implements INodeType {
 					}
 				}
 
-				if (apiVersion === 'version2') {
+				if (authenticationType === 'accessToken') {
 					if (webhookData.webhookURI !== undefined) {
 						try {
 							await calendlyApiRequest.call(this, 'DELETE', '', {}, {},  webhookData.webhookURI as string);
@@ -341,3 +278,4 @@ export class CalendlyTrigger implements INodeType {
 		};
 	}
 }
+

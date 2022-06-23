@@ -1,7 +1,7 @@
 import {
-	IAuthenticateHeaderAuth,
-	ICredentialTestRequest,
+	ICredentialDataDecryptedObject,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -11,23 +11,29 @@ export class CalendlyApi implements ICredentialType {
 	documentationUrl = 'calendly';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Key',
+			displayName: 'API Key or Personal Access Token',
 			name: 'apiKey',
 			type: 'string',
 			default: '',
 		},
 	];
-	authenticate: IAuthenticateHeaderAuth = {
-		type: 'headerAuth',
-		properties: {
-			name: 'X-TOKEN',
-			value: '={{$credentials?.apiKey}}',
-		},
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		//check whether the token is an API Key or an access token
+		const { apiKey } = credentials as { apiKey: string } ;
+		const tokenType = getAuthenticationType(apiKey);
+		// remove condition once v1 is deprecated
+		// and only inject credentials as an access token
+		if (tokenType === 'accessToken') {
+			requestOptions.headers!['Authorization'] = `Bearer ${apiKey}`;
+		} else {
+			requestOptions.headers!['X-TOKEN'] = apiKey;
+		}
+		return requestOptions;
 	};
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://calendly.com/api/v1',
-			url: '/users/me',
-		},
-	};
+}
+
+ const getAuthenticationType = (data: string): 'accessToken' | 'apiKey' => {
+	// The access token is a JWT, so it will always include dots to separate
+	// header, payoload and signature.
+	return data.includes('.') ? 'accessToken' : 'apiKey';
 }
