@@ -811,7 +811,7 @@ export interface INode {
 	pinData?: IDataObject;
 }
 
-export interface PinDataPayload {
+export interface PinData {
 	[nodeName: string]: IDataObject[];
 }
 
@@ -1313,7 +1313,7 @@ export interface IRunExecutionData {
 	resultData: {
 		error?: ExecutionError;
 		runData: IRunData;
-		pinData?: PinDataPayload;
+		pinData?: PinData;
 		lastNodeExecuted?: string;
 	};
 	executionData?: {
