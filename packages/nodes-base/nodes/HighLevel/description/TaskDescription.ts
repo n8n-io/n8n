@@ -24,7 +24,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks',
+						url: '=/contacts/{{$parameter.contactId}}/tasks',
 					},
 				},
 			},
@@ -34,7 +34,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks/{{$parameter.identifier}}',
+						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}',
 					},
 					output: {
 						postReceive: [
@@ -54,7 +54,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks/{{$parameter.identifier}}',
+						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}',
 					},
 				},
 			},
@@ -64,7 +64,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks',
+						url: '=/contacts/{{$parameter.contactId}}/tasks',
 					},
 					output: {
 						postReceive: [
@@ -84,7 +84,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/contacts/{{$parameter.contactIdentifier}}/tasks/{{$parameter.identifier}}',
+						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}',
 					},
 				},
 			},
@@ -164,8 +164,8 @@ const additionalFields: Array<INodeProperties> = [
 
 const createOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Contact Identifier',
-		name: 'contactIdentifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -234,8 +234,8 @@ const createOperations: Array<INodeProperties> = [
 
 const deleteOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Contact Identifier',
-		name: 'contactIdentifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -252,8 +252,8 @@ const deleteOperations: Array<INodeProperties> = [
 		description: 'Contact the task belongs to',
 	},
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Task ID',
+		name: 'taskId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -267,14 +267,13 @@ const deleteOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
 	},
 ];
 
 const getOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Contact Identifier',
-		name: 'contactIdentifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -291,8 +290,8 @@ const getOperations: Array<INodeProperties> = [
 		description: 'Contact the task belongs to',
 	},
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Task ID',
+		name: 'taskId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -306,14 +305,13 @@ const getOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
 	},
 ];
 
 const getAllOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Contact Identifier',
-		name: 'contactIdentifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -383,8 +381,8 @@ const getAllOperations: Array<INodeProperties> = [
 
 const updateOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Contact Identifier',
-		name: 'contactIdentifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -401,8 +399,8 @@ const updateOperations: Array<INodeProperties> = [
 		description: 'Contact the task belongs to',
 	},
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Task ID',
+		name: 'taskId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -416,7 +414,6 @@ const updateOperations: Array<INodeProperties> = [
 		},
 		default: '',
 		required: true,
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Title',
