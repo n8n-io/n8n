@@ -31,9 +31,10 @@ export const calendarFields: INodeProperties[] = [
 	/*                                 calendar:availability                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar ID',
+		displayName: 'Calendar Name or ID',
 		name: 'calendar',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCalendars',
 		},
@@ -125,14 +126,14 @@ export const calendarFields: INodeProperties[] = [
 				description: 'The format to return the data in',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. By default n8n timezone is used.',
+				description: 'Time zone used in the response. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

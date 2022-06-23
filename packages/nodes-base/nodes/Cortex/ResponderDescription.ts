@@ -34,7 +34,7 @@ export const respondersOperations: INodeProperties[] = [
 
 export const responderFields: INodeProperties[] = [
 	{
-		displayName: 'Responder Type',
+		displayName: 'Responder Type Name or ID',
 		name: 'responder',
 		type: 'options',
 		required: true,
@@ -49,10 +49,10 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Choose the responder',
+		description: 'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Entity Type',
+		displayName: 'Entity Type Name or ID',
 		name: 'entityType',
 		type: 'options',
 		required: true,
@@ -70,13 +70,14 @@ export const responderFields: INodeProperties[] = [
 			],
 		},
 		default: '',
-		description: 'Choose the Data type',
+		description: 'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonObject',
 		type: 'boolean',
 		default: false,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'Choose between providing JSON object or seperated attributes',
 		displayOptions: {
 			show: {
@@ -167,6 +168,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'flag',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Flag of the case default=false',
 					},
 					{
@@ -667,7 +669,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'ioc',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+						description: 'Whether the observable is an IOC (Indicator of compromise)',
 					},
 					{
 						displayName: 'Status',

@@ -36,6 +36,12 @@ export class Cron implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName: 'This workflow will run on the schedule you define here once you <a data-key="activate">activate</a> it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking ‘execute workflow’',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Trigger Times',
 				name: 'triggerTimes',
 				type: 'fixedCollection',
@@ -55,6 +61,7 @@ export class Cron implements INodeType {
 								displayName: 'Mode',
 								name: 'mode',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Every Minute',
@@ -158,6 +165,7 @@ export class Cron implements INodeType {
 										],
 									},
 								},
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Monday',

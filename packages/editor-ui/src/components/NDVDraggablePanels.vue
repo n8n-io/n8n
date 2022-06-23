@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div :class="$style.inputPanel" v-if="!isTriggerNode" :style="inputPanelStyles">
+		<div :class="$style.inputPanel" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
 		<div :class="$style.outputPanel" :style="outputPanelStyles">
@@ -10,7 +10,7 @@
 			<div :class="$style.dragButtonContainer" @click="close">
 				<PanelDragButton
 					:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-					v-if="!isTriggerNode"
+					v-if="isDraggable"
 					:canMoveLeft="canMoveLeft"
 					:canMoveRight="canMoveRight"
 					@dragstart="onDragStart"
@@ -29,6 +29,9 @@ import PanelDragButton from './PanelDragButton.vue';
 
 const MAIN_PANEL_WIDTH = 360;
 const SIDE_MARGIN = 24;
+const FIXED_PANEL_WIDTH = 320;
+const FIXED_PANEL_WIDTH_LARGE = 420;
+const MINIMUM_INPUT_PANEL_WIDTH = 320;
 
 export default Vue.extend({
 	name: 'NDVDraggablePanels',
@@ -36,8 +39,11 @@ export default Vue.extend({
 		PanelDragButton,
 	},
 	props: {
-		isTriggerNode: {
+		isDraggable: {
 			type: Boolean,
+		},
+		position: {
+			type: Number,
 		},
 	},
 	data() {
@@ -55,9 +61,20 @@ export default Vue.extend({
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
+		fixedPanelWidth() {
+			if (this.windowWidth > 1700) {
+				return FIXED_PANEL_WIDTH_LARGE;
+			}
+
+			return FIXED_PANEL_WIDTH;
+		},
 		mainPanelPosition(): number {
-			if (this.isTriggerNode) {
-				return 0;
+			if (typeof this.position === 'number') {
+				return this.position;
+			}
+
+			if (!this.isDraggable) {
+				return this.fixedPanelWidth + MAIN_PANEL_WIDTH / 2 + SIDE_MARGIN;
 			}
 
 			const relativePosition = this.$store.getters['ui/mainPanelPosition'] as number;
@@ -65,7 +82,7 @@ export default Vue.extend({
 			return relativePosition * this.windowWidth;
 		},
 		inputPanelMargin(): number {
-			return this.isTriggerNode ? 0 : 80;
+			return !this.isDraggable? 0 : 80;
 		},
 		minimumLeftPosition(): number {
 			return SIDE_MARGIN + this.inputPanelMargin;
@@ -93,6 +110,12 @@ export default Vue.extend({
 			};
 		},
 		inputPanelStyles(): { width: string } {
+			if (!this.isDraggable) {
+				return {
+					width: `${this.fixedPanelWidth}px`,
+				};
+			}
+
 			let width = this.mainPanelPosition - MAIN_PANEL_WIDTH / 2 - SIDE_MARGIN;
 			width = Math.min(
 				width,
@@ -109,7 +132,7 @@ export default Vue.extend({
 				width,
 				this.windowWidth - SIDE_MARGIN * 2 - this.inputPanelMargin - MAIN_PANEL_WIDTH,
 			);
-			width = Math.max(320, width);
+			width = Math.max(MINIMUM_INPUT_PANEL_WIDTH, width);
 			return {
 				width: `${width}px`,
 			};

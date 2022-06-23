@@ -21,6 +21,7 @@ export class Nasa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'NASA',
 		name: 'nasa',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:nasa.png',
 		group: ['transform'],
 		version: 1,
@@ -48,8 +49,8 @@ export class Nasa implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Astronomy Picture of the Day',
-						value: 'astronomyPictureOfTheDay',
+						name: 'Asteroid Neo-Browse',
+						value: 'asteroidNeoBrowse',
 					},
 					{
 						name: 'Asteroid Neo-Feed',
@@ -60,12 +61,16 @@ export class Nasa implements INodeType {
 						value: 'asteroidNeoLookup',
 					},
 					{
-						name: 'Asteroid Neo-Browse',
-						value: 'asteroidNeoBrowse',
+						name: 'Astronomy Picture of the Day',
+						value: 'astronomyPictureOfTheDay',
 					},
 					{
 						name: 'DONKI Coronal Mass Ejection',
 						value: 'donkiCoronalMassEjection',
+					},
+					{
+						name: 'DONKI High Speed Stream',
+						value: 'donkiHighSpeedStream',
 					},
 					// {
 					// 	name: 'DONKI Geomagnetic Storm',
@@ -76,40 +81,36 @@ export class Nasa implements INodeType {
 						value: 'donkiInterplanetaryShock',
 					},
 					{
-						name: 'DONKI Solar Flare',
-						value: 'donkiSolarFlare',
-					},
-					{
-						name: 'DONKI Solar Energetic Particle',
-						value: 'donkiSolarEnergeticParticle',
-					},
-					{
 						name: 'DONKI Magnetopause Crossing',
 						value: 'donkiMagnetopauseCrossing',
-					},
-					{
-						name: 'DONKI Radiation Belt Enhancement',
-						value: 'donkiRadiationBeltEnhancement',
-					},
-					{
-						name: 'DONKI High Speed Stream',
-						value: 'donkiHighSpeedStream',
-					},
-					{
-						name: 'DONKI WSA+EnlilSimulation',
-						value: 'donkiWsaEnlilSimulation',
 					},
 					{
 						name: 'DONKI Notification',
 						value: 'donkiNotifications',
 					},
 					{
-						name: 'Earth Imagery',
-						value: 'earthImagery',
+						name: 'DONKI Radiation Belt Enhancement',
+						value: 'donkiRadiationBeltEnhancement',
+					},
+					{
+						name: 'DONKI Solar Energetic Particle',
+						value: 'donkiSolarEnergeticParticle',
+					},
+					{
+						name: 'DONKI Solar Flare',
+						value: 'donkiSolarFlare',
+					},
+					{
+						name: 'DONKI WSA+EnlilSimulation',
+						value: 'donkiWsaEnlilSimulation',
 					},
 					{
 						name: 'Earth Asset',
 						value: 'earthAssets',
+					},
+					{
+						name: 'Earth Imagery',
+						value: 'earthImagery',
 					},
 				],
 				default: 'astronomyPictureOfTheDay',
@@ -600,7 +601,8 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default just the url of the image is returned. When set to true the image will be downloaded.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'By default just the URL of the image is returned. When set to true the image will be downloaded.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -681,14 +683,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start date',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End date',
+						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
@@ -720,14 +722,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start date',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End date',
+						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',

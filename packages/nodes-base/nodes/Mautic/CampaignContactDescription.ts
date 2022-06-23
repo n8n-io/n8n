@@ -56,9 +56,10 @@ export const campaignContactFields: INodeProperties[] = [
 	},
 	{
 
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {

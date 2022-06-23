@@ -12,6 +12,12 @@ export class MediumOAuth2Api implements ICredentialType {
 	documentationUrl = 'medium';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

@@ -54,6 +54,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:sendPrivate                         */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 		displayName: 'To',
 		name: 'to',
 		type: 'multiOptions',
@@ -72,7 +73,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -99,7 +100,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:sendStream                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Stream',
+		displayName: 'Stream Name or ID',
 		name: 'stream',
 		type: 'options',
 		typeOptions: {
@@ -117,10 +118,10 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Topic',
+		displayName: 'Topic Name or ID',
 		name: 'topic',
 		type: 'options',
 		typeOptions: {
@@ -141,7 +142,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The topic of the message. Only required if type is stream, ignored otherwise.',
+		description: 'The topic of the message. Only required if type is stream, ignored otherwise. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',

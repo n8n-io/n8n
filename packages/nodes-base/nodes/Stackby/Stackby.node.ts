@@ -20,6 +20,7 @@ export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stackby',
 		name: 'stackby',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:stackby.png',
 		group: ['transform'],
 		version: 1,
