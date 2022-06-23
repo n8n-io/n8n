@@ -19,7 +19,7 @@
 					</n8n-text>
 					<n8n-text size="small" color="text-light">
 						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
-							{{ node.name.split('.')[1] }}
+							{{ node.name }}
 							<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
 						</span>
 					</n8n-text>
