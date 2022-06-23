@@ -81,16 +81,6 @@ export const opportunityOperations: INodeProperties[] = [
 						method: 'PUT',
 						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.identifier}}',
 					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'opportunity',
-								},
-							},
-						],
-					},
 				},
 			},
 		],
@@ -268,29 +258,6 @@ const createOperations: Array<INodeProperties> = [
 		}
 	},
 	{
-		displayName: 'Title',
-		name: 'title',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'title',
-			}
-		}
-	},
-	{
 		displayName: 'Contact Identifier',
 		name: 'contactIdentifier',
 		required: true,
@@ -323,6 +290,29 @@ const createOperations: Array<INodeProperties> = [
 						return requestOptions;
 					},
 				],
+			}
+		}
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'title',
 			}
 		}
 	},
@@ -600,10 +590,123 @@ const getAllOperations: Array<INodeProperties> = [
 	},
 ];
 
+const updateOperations: Array<INodeProperties> = [
+	// {
+	// 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+	// 	displayName: 'Stage ID',
+	// 	name: 'stageId',
+	// 	type: 'options',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'opportunity',
+	// 			],
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: '',
+	// 	typeOptions: {
+	// 		loadOptionsDependsOn: ['pipelineId'],
+	// 		loadOptionsMethod: 'getPipelineStages'
+	// 	},
+	// 	routing: {
+	// 		send: {
+	// 			type: 'body',
+	// 			property: 'stageId',
+	// 		}
+	// 	}
+	// },
+	{
+		displayName: 'Identifier',
+		name: 'identifier',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'update',
+				]
+			},
+		},
+		default: '',
+		description: 'Opportunity ID',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'title',
+			}
+		}
+	},
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Open',
+				value: 'open',
+			},
+			{
+				name: 'Won',
+				value: 'won',
+			},
+			{
+				name: 'Lost',
+				value: 'lost',
+			},
+			{
+				name: 'Abandoned',
+				value: 'abandoned',
+			},
+		],
+		default: 'open',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'status',
+			}
+		}
+	},
+];
+
 export const opportunityFields: INodeProperties[] = [
 	pipelineId,
 	...createOperations,
-	// ...updateOperations,
+	...updateOperations,
 	...additionalFields,
 	...deleteOperations,
 	...getOperations,
