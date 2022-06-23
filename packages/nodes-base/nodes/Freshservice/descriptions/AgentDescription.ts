@@ -235,7 +235,8 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Member Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Member of Group Names/IDs',
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
@@ -251,7 +252,8 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Observer Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Observer of Group Names/IDs',
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],
@@ -593,7 +595,8 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Member Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Member of Group Names/IDs',
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
@@ -609,7 +612,8 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Observer Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Observer of Group Names/IDs',
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],
