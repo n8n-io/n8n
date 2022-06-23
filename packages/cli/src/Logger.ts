@@ -42,7 +42,7 @@ class Logger implements ILogger {
 					}),
 				);
 			} else {
-				format = winston.format.printf(({ message }) => message);
+				format = winston.format.printf(({ message }: { message: string }) => message);
 			}
 
 			this.logger.add(
