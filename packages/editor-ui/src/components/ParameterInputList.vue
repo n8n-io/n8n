@@ -81,6 +81,12 @@
 				/>
 			</div>
 		</div>
+		<div
+			:class="{indent}"
+			v-if="filteredParameters.length === 0"
+		>
+			<slot/>
+		</div>
 	</div>
 </template>
 
