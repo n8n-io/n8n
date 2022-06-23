@@ -385,6 +385,7 @@ export class Wait implements INodeType {
 				name: 'limitWaitTime',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'If no webhook call is received, the workflow will automatically resume execution after the specified limit type',
 				displayOptions: {
 					show: {
@@ -533,7 +534,7 @@ export class Wait implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Set to true if webhook will receive binary data',
+						description: 'Whether the webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
@@ -555,7 +556,7 @@ export class Wait implements INodeType {
 						name: 'ignoreBots',
 						type: 'boolean',
 						default: false,
-						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
+						description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 					},
 					{
 						displayName: 'Response Data',

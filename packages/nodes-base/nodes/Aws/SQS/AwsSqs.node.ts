@@ -103,7 +103,7 @@ export class AwsSqs implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the data the node receives as JSON to SQS',
+				description: 'Whether to send the data the node receives as JSON to SQS',
 			},
 			{
 				displayName: 'Message',

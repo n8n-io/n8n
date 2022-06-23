@@ -397,7 +397,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field',
+				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
 				displayName: 'File Content',
@@ -583,6 +583,10 @@ export class Dropbox implements INodeType {
 								value: 'document',
 							},
 							{
+								name: 'Dropbox Paper',
+								value: 'paper',
+							},
+							{
 								name: 'Folder',
 								value: 'folder',
 							},
@@ -594,10 +598,6 @@ export class Dropbox implements INodeType {
 							{
 								name: 'Other',
 								value: 'other',
-							},
-							{
-								name: 'Dropbox Paper',
-								value: 'paper',
 							},
 							{
 								name: 'PDF',
@@ -748,35 +748,35 @@ export class Dropbox implements INodeType {
 						name: 'include_deleted',
 						type: 'boolean',
 						default: false,
-						description: 'If true, the results will include entries for files and folders that used to exist but were deleted. The default for this field is False.',
+						description: 'Whether the results will include entries for files and folders that used to exist but were deleted. The default for this field is False.',
 					},
 					{
 						displayName: 'Include Shared Members',
 						name: 'include_has_explicit_shared_members',
 						type: 'boolean',
 						default: false,
-						description: 'If true, the results will include a flag for each file indicating whether or not that file has any explicit members. The default for this field is False.',
+						description: 'Whether the results will include a flag for each file indicating whether or not that file has any explicit members. The default for this field is False.',
 					},
 					{
 						displayName: 'Include Mounted Folders',
 						name: 'include_mounted_folders',
 						type: 'boolean',
 						default: true,
-						description: 'If true, the results will include entries under mounted folders which includes app folder, shared folder and team folder. The default for this field is True.',
+						description: 'Whether the results will include entries under mounted folders which includes app folder, shared folder and team folder. The default for this field is True.',
 					},
 					{
 						displayName: 'Include Non Downloadable Files',
 						name: 'include_non_downloadable_files',
 						type: 'boolean',
 						default: true,
-						description: 'If true, include files that are not downloadable, i.e. Google Docs. The default for this field is True.',
+						description: 'Whether to include files that are not downloadable, i.e. Google Docs. The default for this field is True.',
 					},
 					{
 						displayName: 'Recursive',
 						name: 'recursive',
 						type: 'boolean',
 						default: false,
-						description: 'If true, the list folder operation will be applied recursively to all subfolders and the response will contain contents of all subfolders. The default for this field is False.',
+						description: 'Whether the list folder operation will be applied recursively to all subfolders and the response will contain contents of all subfolders. The default for this field is False.',
 					},
 				],
 			},

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {
 	createDeferredPromise,
 	IDataObject,
@@ -26,6 +27,7 @@ export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ Trigger',
 		name: 'rabbitmqTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:rabbitmq.png',
 		group: ['trigger'],
 		version: 1,
@@ -63,7 +65,7 @@ export class RabbitMQTrigger implements INodeType {
 						name: 'contentIsBinary',
 						type: 'boolean',
 						default: false,
-						description: 'Saves the content as binary',
+						description: 'Whether to save the content as binary',
 					},
 					{
 						displayName: 'Delete From Queue When',
@@ -101,7 +103,7 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Parse the body to an object',
+						description: 'Whether to parse the body to an object',
 					},
 					{
 						displayName: 'Only Content',
@@ -115,7 +117,7 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Returns only the content property',
+						description: 'Whether to return only the content property',
 					},
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
