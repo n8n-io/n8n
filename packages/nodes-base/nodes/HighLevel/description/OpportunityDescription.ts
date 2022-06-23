@@ -240,29 +240,6 @@ const additionalFields: Array<INodeProperties> = [
 
 const createOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Title',
-		name: 'title',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'title',
-			}
-		}
-	},
-	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Stage ID',
 		name: 'stageId',
@@ -291,11 +268,34 @@ const createOperations: Array<INodeProperties> = [
 		}
 	},
 	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'title',
+			}
+		}
+	},
+	{
 		displayName: 'Contact Identifier',
 		name: 'contactIdentifier',
 		required: true,
 		type: 'string',
-		description: 'Either email, phone or contact ID',
+		description: 'Either Email, Phone or Contact ID',
 		displayOptions: {
 			show: {
 				resource: [
