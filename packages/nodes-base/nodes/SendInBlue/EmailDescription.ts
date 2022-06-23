@@ -9,9 +9,7 @@ export const emailOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
+				resource: ['email'],
 			},
 		},
 		options: [
@@ -41,12 +39,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		routing: {
@@ -64,12 +58,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		default: false,
@@ -80,15 +70,9 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-				sendHTML: [
-					false,
-				],
+				resource: ['email'],
+				operation: ['send'],
+				sendHTML: [false],
 			},
 		},
 		routing: {
@@ -106,15 +90,9 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-				sendHTML: [
-					true,
-				],
+				resource: ['email'],
+				operation: ['send'],
+				sendHTML: [true],
 			},
 		},
 		routing: {
@@ -134,12 +112,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		default: {},
@@ -165,6 +139,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 						routing: {
 							send: {
@@ -189,12 +164,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		default: {},
@@ -220,6 +191,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 						routing: {
 							send: {
@@ -243,12 +215,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		options: [
@@ -261,7 +229,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				default: {},
-				options:[
+				options: [
 					{
 						name: 'attachment',
 						displayName: 'Attachment Data',
@@ -269,92 +237,19 @@ const sendHtmlEmailFields: INodeProperties[] = [
 							{
 								default: '',
 								displayName: 'Input Data Field Name',
-								// displayOptions: {
-								// 	hide: {
-								// 		useAttachmentUrl: [true]
-								// 	}
-								// },
 								name: 'binaryPropertyName',
-								// routing: {
-								// 	send: {
-								// 		property: '=attachment[{{$index}}].content',
-								// 		type: 'body',
-								// 	},
-								// },
 								type: 'string',
-								description: 'The name of the incoming field containing the binary file data to be processed'
+								description:
+									'The name of the incoming field containing the binary file data to be processed',
 							},
-								// {
-								// 	default: false,
-								// 	displayName: 'Use Attachment Url',
-								// 	name: 'useAttachmentUrl',
-								// 	type: 'boolean',
-								// },
-								// {
-								// 	default: '',
-								// 	displayName: 'Attachment Url',
-								// 	displayOptions: {
-								// 		hide: {
-								// 			useAttachmentUrl: [false]
-								// 		}
-								// 	},
-								// 	name: 'url',
-								// 	placeholder: 'https://attachment.domain.com/myAttachmentFromUrl.jpg',
-								// 	routing: {
-								// 		send: {
-								// 			property: '=attachment[{{$index}}].url',
-								// 			type: 'body',
-								// 		},
-								// 	},
-								// 	type: 'string',
-								// },
-								// {
-								// 	default: '',
-								// 	displayName: 'Attachment Data',
-								// 	displayOptions: {
-								// 		hide: {
-								// 			useAttachmentUrl: [true]
-								// 		}
-								// 	},
-								// 	name: 'content',
-								// 	placeholder: 'b3JkZXIucGRm',
-								// 	routing: {
-								// 		send: {
-								// 			property: '=attachment[{{$index}}].content',
-								// 			type: 'body',
-								// 		},
-								// 	},
-								// 	type: 'string',
-								// },
-								// {
-								// 	default: '',
-								// 	description: 'Name of attachment to be shown, must include file type',
-								// 	displayName: 'Attachment Name',
-								// 	displayOptions: {
-								// 		hide: {
-								// 			useAttachmentUrl: [true]
-								// 		}
-								// 	},
-								// 	name: 'name',
-								// 	placeholder: 'myAttachment.pdf',
-								// 	routing: {
-								// 		send: {
-								// 			property: '=attachment[{{$index}}].name',
-								// 			type: 'body',
-								// 		},
-								// 	},
-								// 	type: 'string',
-								// }
-						]
-					}
+						],
+					},
 				],
 				routing: {
 					send: {
-						preSend: [
-							validateAttachmentsData
-						]
+						preSend: [validateAttachmentsData],
 					},
-				}
+				},
 			},
 			{
 				displayName: 'Receipients BCC',
@@ -387,6 +282,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								default: '',
 								routing: {
 									send: {
@@ -431,6 +327,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								default: '',
 								routing: {
 									send: {
@@ -466,8 +363,8 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 							{
 								type: 'rootProperty',
 								properties: {
-									property: 'templates'
-								}
+									property: 'templates',
+								},
 							},
 							{
 								type: 'setKeyValue',
@@ -482,19 +379,15 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 									key: 'value',
 								},
 							},
-						]
-					}
-				}
-			}
+						],
+					},
+				},
+			},
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
 			},
 		},
 		routing: {
@@ -514,12 +407,8 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
 			},
 		},
 		default: {},
@@ -545,6 +434,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 						routing: {
 							send: {
@@ -566,12 +456,8 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
 			},
 		},
 		options: [
