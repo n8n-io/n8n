@@ -12,9 +12,7 @@
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<n8n-tooltip :disabled="!option.tooltip" placement="top">
-					<div slot="content">
-						{{ option.tooltip }}
-					</div>
+					<div slot="content" v-html="option.tooltip"></div>
 					<a
 						v-if="option.href"
 						target="_blank"

@@ -27,7 +27,7 @@
 			</div>
 			<div :class="$style.cardControlsContainer">
 				<n8n-text :bold="true" size="large" color="text-light">
-					{{ communityPackage.installedVersion }}
+					v{{ communityPackage.installedVersion }}
 				</n8n-text>
 				<n8n-tooltip v-if="communityPackage.updateAvailable" placement="top">
 					<div slot="content">
@@ -161,6 +161,7 @@ export default mixins(
 
 .cardSubtitle {
 	margin-top: 2px;
+	padding-right: var(--spacing-m);
 }
 
 .cardControlsContainer {

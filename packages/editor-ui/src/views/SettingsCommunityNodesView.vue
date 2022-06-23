@@ -95,9 +95,9 @@ export default mixins(
 						package_name: p.packageName,
 						package_version: p.installedVersion,
 						package_nodes: p.installedNodes.map(node => `${node.name}-v${node.latestVersion}`),
+						is_update_available: p.updateAvailable !== undefined,
 					};
 				}),
-				is_update_available: packagesToUpdate.length > 0,
 				packages_to_update: packagesToUpdate.map(p => {
 					return {
 						package_name: p.packageName,
@@ -105,6 +105,7 @@ export default mixins(
 						package_version_available: p.updateAvailable,
 					};
 				}),
+				number_of_updates_available: packagesToUpdate.length,
 			});
 		} catch (error) {
 			this.$showError(

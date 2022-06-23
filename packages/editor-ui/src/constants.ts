@@ -57,7 +57,7 @@ export const BREAKPOINT_XL = 1920;
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
-export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=n8n-community-node-package`;
+export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=keywords%3An8n-community-node-package`;
 export const N8N_QUEUE_MODE_DOCS_URL = `https://docs.n8n.io/hosting/scaling/queue-mode/`;
 export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/installation/`;
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;

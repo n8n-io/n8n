@@ -8,6 +8,7 @@
 
 <script lang="ts">
 import { externalHooks } from '@/components/mixins/externalHooks';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 import { INodeUi, ITab } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
@@ -75,7 +76,7 @@ export default mixins(
 					icon: 'cube',
 					value: 'communityNode',
 					align: 'right',
-					tooltip: this.$locale.baseText('generic.communityNode'),
+					tooltip: this.$locale.baseText('nodeSettings.communityNodeTooltip', { interpolate: { docUrl: COMMUNITY_NODES_INSTALLATION_DOCS_URL } }),
 				});
 			}
 			// If both tabs have align right, both will have excessive left margin

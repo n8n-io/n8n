@@ -14,13 +14,16 @@
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.description') }}
 					</n8n-text> <n8n-link
-						:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">
+						:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
+						@click="onMoreInfoTopClick"
+					>
 							{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
 					</n8n-link>
 				</div>
 				<n8n-button
 					:label="$locale.baseText('settings.communityNodes.browseButton.label')"
 					icon="external-link-alt"
+					:class="$style.browseButton"
 					@click="openNPMPage"
 				/>
 			</div>
@@ -134,7 +137,12 @@ export default mixins(
 					});
 				} catch(error) {
 					if(error.httpStatusCode && error.httpStatusCode === 400) {
-						this.infoTextErrorMessage = error.message;
+						// TODO: Remove this once proper back-end response is available
+						if(error.message === 'Package name is not valid') {
+							this.infoTextErrorMessage = this.$locale.baseText('settings.communityNodes.installModal.error.packageNameNotValid');
+						} else {
+							this.infoTextErrorMessage = error.message;
+						}
 					} else {
 						this.$showError(
 							error,
@@ -155,8 +163,11 @@ export default mixins(
 		onInputBlur() {
 			this.packageName = this.packageName.replaceAll('npm i ', '').replaceAll('npm install ', '');
 		},
+		onMoreInfoTopClick() {
+			this.$telemetry.track('user clicked cnr docs link', { source: 'install package modal top' });
+		},
 		onLearnMoreLinkClick() {
-			this.$telemetry.track('user clicked cnr learn more link', { source: 'install package modal' });
+			this.$telemetry.track('user clicked cnr docs link', { source: 'install package modal bottom' });
 		},
 	},
 });
@@ -168,9 +179,19 @@ export default mixins(
 	justify-content: space-between;
 	align-items: center;
 	border: var(--border-width-base) var(--border-style-base) var(--color-info-tint-1);
-	border-radius: var(--border-radius-large);
+	border-radius: var(--border-radius-base);
 	background-color: var(--color-background-light);
+
+	button {
+		& > span {
+			flex-direction: row-reverse;
+			& > span {
+				margin-left: var(--spacing-3xs);
+			}
+		}
+	}
 }
+
 
 .formContainer {
 	font-size: var(--font-size-2xs);
@@ -200,7 +221,7 @@ export default mixins(
 		width: 100%;
 	}
 	p {
-		line-height: 1;
+		line-height: 1.2;
 	}
 	p + p {
 		margin-top: var(--spacing-2xs);
