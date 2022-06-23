@@ -356,6 +356,7 @@ import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { pinData } from '@/components/mixins/pinData';
 
 import mixins from 'vue-typed-mixins';
 
@@ -371,6 +372,7 @@ export default mixins(
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
+	pinData,
 )
 	.extend({
 		name: 'RunData',
@@ -461,12 +463,6 @@ export default mixins(
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 				return null;
-			},
-			pinData (): boolean {
-				return this.node !== null && this.$store.getters['pinDataByNodeName'](this.node.name);
-			},
-			hasPinData (): boolean {
-				return this.node !== null && typeof this.pinData !== 'undefined';
 			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
