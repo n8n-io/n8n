@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<n8n-callout
-			v-if="paneType === 'output' && hasPinData"
+			v-if="canPinData && hasPinData"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style['pinned-data-callout']"
@@ -41,7 +41,7 @@
 					:options="buttons"
 					@input="onDisplayModeChange"
 				/>
-				<n8n-tooltip placement="bottom-end">
+				<n8n-tooltip placement="bottom-end" v-if="canPinData">
 					<template #content v-if="hasPinData">
 						<div :class="$style['pin-data-tooltip']">
 							<strong>
@@ -53,9 +53,9 @@
 					<template #content v-else>
 						<div :class="$style['pin-data-tooltip']">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
-							<p>
+							<n8n-text size="small" tag="p">
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
-							</p>
+							</n8n-text>
 							<n8n-link to="https://google.com" size="small">
 								{{ $locale.baseText('ndv.pinData.pin.link') }}
 								<n8n-icon icon="external-link-alt" size="small" />
@@ -461,6 +461,9 @@ export default mixins(
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 				return null;
+			},
+			canPinData (): boolean {
+				return this.paneType === 'output' && !(this.binaryData && this.binaryData.length > 0);
 			},
 			pinData (): boolean {
 				return this.node !== null && this.$store.getters['pinDataByNodeName'](this.node.name);
