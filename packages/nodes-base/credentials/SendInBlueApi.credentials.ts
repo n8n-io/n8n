@@ -1,3 +1,4 @@
+// eslint-disable-next-line n8n-nodes-base/filesystem-wrong-cred-filename
 import {
 	IAuthenticateHeaderAuth,
 	ICredentialTestRequest,
@@ -5,7 +6,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class SendinblueApi implements ICredentialType {
+export class SendInBlueApi implements ICredentialType {
 	name = 'sendinblueApi';
 	displayName = 'Sendinblue API';
 	documentationUrl = 'sendinblue';
