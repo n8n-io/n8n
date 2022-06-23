@@ -42,7 +42,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(
-		['SharedCredentials', 'SharedWorkflow', 'User', 'Workflow', 'Credentials'],
+		['SharedCredentials', 'SharedWorkflow', 'Tag', 'User', 'Workflow', 'Credentials'],
 		testDbName,
 	);
 
@@ -411,6 +411,8 @@ test('GET /workflows/:id should retrieve workflow', async () => {
 
 	// create and assign workflow to owner
 	const workflow = await testDb.createWorkflow({}, member);
+
+	console.log(workflow);
 
 	const response = await authAgent.get(`/workflows/${workflow.id}`);
 
