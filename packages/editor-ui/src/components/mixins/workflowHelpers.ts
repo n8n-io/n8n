@@ -321,7 +321,7 @@ export const workflowHelpers = mixins(
 					nodes.push(nodeData);
 				}
 
-				const data: IWorkflowData = this.hoistPinData({
+				const data: IWorkflowData = {
 					name: this.$store.getters.workflowName,
 					nodes,
 					pinData,
@@ -329,7 +329,7 @@ export const workflowHelpers = mixins(
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,
 					tags: this.$store.getters.workflowTags,
-				});
+				};
 
 				const workflowId = this.$store.getters.workflowId;
 				if (workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
@@ -732,34 +732,6 @@ export const workflowHelpers = mixins(
 				}
 
 				return true;
-			},
-
-			/**
-			 * Consolidate pin data at the top level of a workflow payload.
-			 */
-			hoistPinData(workflow: IWorkflowData) {
-				if (!workflow.nodes) return workflow;
-
-				const { nodes, allPinData } = workflow.nodes.reduce<{
-					nodes: INode[]; allPinData: { [nodeName: string]: IDataObject };
-				}>(
-					(acc, node) => {
-						const { pinData: nodePinData, ...rest } = node;
-						if (nodePinData) acc.allPinData[node.name] = nodePinData;
-						acc.nodes.push(rest);
-
-						return acc;
-					},
-					{ nodes: [], allPinData: {} },
-				);
-
-				workflow.nodes = nodes;
-
-				if (Object.keys(allPinData).length > 0) {
-					workflow.pinData = allPinData;
-				}
-
-				return workflow;
 			},
 		},
 	});
