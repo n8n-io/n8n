@@ -15,6 +15,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 	PACKAGE_NOT_FOUND: 'Failed installing package: package was not found',
 	PACKAGE_VERSION_NOT_FOUND: 'The specified package version was not found',
 	PACKAGE_DOES_NOT_CONTAIN_NODES: 'The specified package does not contain any nodes',
+	DISK_IS_FULL: 'There appears to be insufficient disk space',
 };
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
@@ -22,6 +23,8 @@ export const AUTH_COOKIE_NAME = 'n8n-auth';
 export const NPM_COMMAND_TOKENS = {
 	NPM_PACKAGE_NOT_FOUND_ERROR: '404 Not Found',
 	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR: 'No matching version found for',
+	NPM_DISK_NO_SPACE: 'ENOSPC',
+	NPM_DISK_INSUFFICIENT_SPACE: 'insufficient space',
 };
 
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';

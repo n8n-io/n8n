@@ -29,7 +29,7 @@ export const parsePackageName = (originalString: string | undefined): ParsedNpmP
 	const packageNameWithoutScope = scope ? originalString.replace(`${scope}/`, '') : originalString;
 
 	if (!packageNameWithoutScope.startsWith(NODE_PACKAGE_PREFIX)) {
-		throw new Error('Package name is not valid');
+		throw new Error('Package name must start with n8n-nodes-');
 	}
 
 	const version = packageNameWithoutScope.includes('@')
@@ -75,6 +75,12 @@ export const executeCommand = async (command: string): Promise<string> => {
 		}
 		if (errorMessage.includes(NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR)) {
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND);
+		}
+		if (
+			errorMessage.includes(NPM_COMMAND_TOKENS.NPM_DISK_NO_SPACE) ||
+			errorMessage.includes(NPM_COMMAND_TOKENS.NPM_DISK_INSUFFICIENT_SPACE)
+		) {
+			throw new Error(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL);
 		}
 
 		throw error;
