@@ -144,6 +144,7 @@ export const timeEntryFields: INodeProperties[] = [
 				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -153,7 +154,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
 				typeOptions: {
@@ -235,14 +236,14 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'consider-duration-format',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, returned timeentry\'s duration will be rounded to minutes or seconds based on duration format (hh:mm or hh:mm:ss) from workspace settings',
+				description: 'Whether to return the time entry\'s duration rounded to minutes or seconds based on duration format (hh:mm or hh:mm:ss) from workspace settings',
 			},
 			{
 				displayName: 'Hydrated',
 				name: 'hydrated',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, returned timeentry\'s project,task and tags will be returned in full and not just their IDs',
+				description: 'Whether to return the time entry\'s project, task and tags in full and not just their IDs',
 			},
 		],
 	},
@@ -347,6 +348,7 @@ export const timeEntryFields: INodeProperties[] = [
 				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -362,7 +364,7 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
 				typeOptions: {

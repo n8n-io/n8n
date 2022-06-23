@@ -187,7 +187,7 @@ export const fields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'If the data should be returned RAW instead of parsed',
+				description: 'Whether the data should be returned RAW instead of parsed',
 			},
 		],
 	},

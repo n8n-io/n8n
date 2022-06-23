@@ -17,6 +17,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { getTriggerNodeServiceName } from '../helpers';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -266,10 +267,29 @@ export const pushConnection = mixins(
 
 						const execution = this.$store.getters.getWorkflowExecution;
 						if (execution && execution.executedNode) {
-							this.$showMessage({
-								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
-								type: 'success',
-							});
+							const node = this.$store.getters.getNodeByName(execution.executedNode);
+							const nodeType = node && this.$store.getters.nodeType(node.type, node.typeVersion);
+							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
+							if (node && nodeType && !nodeOutput) {
+								this.$showMessage({
+									title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
+										interpolate: {
+											service: getTriggerNodeServiceName(nodeType),
+										},
+									}),
+									message: this.$locale.baseText('pushConnection.pollingNode.dataNotFound.message', {
+										interpolate: {
+											service: getTriggerNodeServiceName(nodeType),
+										},
+									}),
+									type: 'success',
+								});
+							} else {
+								this.$showMessage({
+									title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
+									type: 'success',
+								});
+							}
 						}
 						else {
 							this.$showMessage({
