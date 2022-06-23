@@ -301,6 +301,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
@@ -445,6 +446,7 @@ export class Mailchimp implements INodeType {
 						name: 'vip',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Vip status for subscribers',
 					},
 					{
@@ -636,6 +638,7 @@ export class Mailchimp implements INodeType {
 								displayName: 'Category Name or ID',
 								name: 'categoryId',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getGroupCategories',
 									loadOptionsDependsOn: [
@@ -711,6 +714,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -754,6 +758,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -996,6 +1001,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
@@ -1094,6 +1100,7 @@ export class Mailchimp implements INodeType {
 										displayName: 'Category Name or ID',
 										name: 'categoryId',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getGroupCategories',
 											loadOptionsDependsOn: [
@@ -1208,7 +1215,7 @@ export class Mailchimp implements INodeType {
 						name: 'skipMergeValidation',
 						type: 'boolean',
 						default: false,
-						description: 'If skip_merge_validation is true, member data will be accepted without merge field values, even if the merge field is usually required',
+						description: 'Whether member data will be accepted without merge field values, even if the merge field is usually required',
 					},
 					{
 						displayName: 'Status',
@@ -1245,6 +1252,7 @@ export class Mailchimp implements INodeType {
 						name: 'vip',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Vip status for subscribers',
 					},
 					{
@@ -1397,6 +1405,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
@@ -1456,7 +1465,7 @@ export class Mailchimp implements INodeType {
 						name: 'isSyncing',
 						type: 'boolean',
 						default: false,
-						description: 'When is_syncing is true, automations based on the tags in the request will not fire',
+						description: 'Whether automations based on the tags in the request will not fire',
 					},
 				],
 			},
@@ -1489,6 +1498,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Group Category Name or ID',
 				name: 'groupCategory',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroupCategories',
 					loadOptionsDependsOn: [
@@ -1626,17 +1636,17 @@ export class Mailchimp implements INodeType {
 						description: 'Restrict the response to campaigns sent before the set time',
 					},
 					{
-						displayName: 'Exclude Fields',
+						displayName: 'Exclude Field Names or IDs',
 						name: 'excludeFields',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getCampaignsFields',
 						},
 						default: [],
-						description: 'A comma-separated list of fields to exclude',
+						description: 'A comma-separated list of fields to exclude. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
-						displayName: 'Fields',
+						displayName: 'Field Names or IDs',
 						name: 'fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1650,7 +1660,7 @@ export class Mailchimp implements INodeType {
 							'campaigns.settings.reply_to',
 							'campaigns.settings.title',
 						],
-						description: 'A comma-separated list of fields to return',
+						description: 'A comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'List Name or ID',

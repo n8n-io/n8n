@@ -55,6 +55,7 @@ export const subscriberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [
@@ -114,13 +115,14 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'gdpr',
 				type: 'boolean',
 				default: false,
-				description: 'If you\'re signing up EU users in a GDPR compliant manner, set this to "true"',
+				description: 'Whether you\'re signing up EU users in a GDPR compliant manner',
 			},
 			{
 				displayName: 'Honeypot',
 				name: 'hp',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Include this \'honeypot\' field to prevent spambots from signing up via this API call. When spambots fills in this field, this API call will exit, preventing them from signing up fake addresses to your form. This parameter is only supported in Sendy 3.0 onwards.',
 			},
 			{
@@ -149,6 +151,7 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'silent',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Set to "true" if your list is \'Double opt-in\' but you want to bypass that and signup the user to the list as \'Single Opt-in instead\' (optional)',
 			},
 		],
@@ -180,6 +183,7 @@ export const subscriberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [
@@ -217,6 +221,7 @@ export const subscriberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [
@@ -254,6 +259,7 @@ export const subscriberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [
