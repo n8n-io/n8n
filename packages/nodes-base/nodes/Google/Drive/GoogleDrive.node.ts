@@ -21,7 +21,7 @@ export class GoogleDrive implements INodeType {
 		name: 'googleDrive',
 		icon: 'file:googleDrive.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on Google Drive',
 		defaults: {
@@ -54,6 +54,54 @@ export class GoogleDrive implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					}
+				},
+				options: [
+					{
+						name: 'Version 1',
+						value: 'version1',
+					},
+					{
+						name: 'Version 2',
+						value: 'version2',
+					},
+				],
+				default: 'version1',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					}
+				},
+				options: [
+					{
+						name: 'Version 1',
+						value: 'version1',
+					},
+					{
+						name: 'Version 2',
+						value: 'version2',
+					},
+				],
+				default: 'version2',
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -1463,7 +1511,6 @@ export class GoogleDrive implements INodeType {
 								description: 'All drives',
 							},
 						],
-						required: true,
 						default: '',
 						description: 'The corpora to operate on',
 					},
@@ -2370,7 +2417,13 @@ export class GoogleDrive implements INodeType {
 
 						const files = response!.files;
 
-						returnData.push(...files);
+						const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+
+						if (apiVersion === 'version1') {
+							return [this.helpers.returnJsonArray(files as IDataObject[])];
+						} else {
+							returnData.push(...files);
+						}
 
 					} else if (operation === 'upload') {
 						// ----------------------------------
