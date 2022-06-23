@@ -149,8 +149,8 @@ export class CalendlyTrigger implements INodeType {
 						value: 'user',
 					},
 					{
-						name: 'Organisation',
-						value: 'organisation',
+						name: 'Organization',
+						value: 'organization',
 					},
 				],
 			},
@@ -218,7 +218,7 @@ export class CalendlyTrigger implements INodeType {
 						qs.user = resource.uri;
 					}
 
-					if (scope === 'organisation') {
+					if (scope === 'organization') {
 						qs.scope = 'organization';
 						qs.organization = resource.current_organization;
 					}
