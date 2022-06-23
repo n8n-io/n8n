@@ -431,7 +431,8 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Remove Tag Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Remove Tags',
 				name: 'removeTags',
 				type: 'multiOptions',
 				typeOptions: {
