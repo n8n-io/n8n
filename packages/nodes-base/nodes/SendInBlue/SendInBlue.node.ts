@@ -3,9 +3,9 @@ import { attributeFields, attributeOperations } from './AttributeDescription';
 import { contactFields, contactOperations } from './ContactDescription';
 import { emailFields, emailOperations } from './EmailDescription';
 import { senderFields, senderOperations } from './SenderDescrition';
-export class Sendinblue implements INodeType {
+export class SendInBlue implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Sendinblue',
+		displayName: 'SendInBlue',
 		name: 'sendinblue',
 		icon: 'file:sendinblue.svg',
 		group: ['transform'],
@@ -13,7 +13,7 @@ export class Sendinblue implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Sendinblue API',
 		defaults: {
-			name: 'Sendinblue',
+			name: 'SendInBlue',
 			color: '#044a75',
 		},
 		inputs: ['main'],

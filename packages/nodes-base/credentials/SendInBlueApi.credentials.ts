@@ -5,9 +5,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class SendinblueApi implements ICredentialType {
+export class SendInBlueApi implements ICredentialType {
 	name = 'sendinblueApi';
-	displayName = 'Sendinblue API';
+	displayName = 'SendInBlue API';
 	documentationUrl = 'sendinblue';
 	properties: INodeProperties[] = [
 		{
