@@ -42,7 +42,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/contacts/{{$parameter.identifier}}',
+						url: '=/contacts/{{$parameter.contactId}}',
 					},
 					output: {
 						postReceive: [
@@ -62,7 +62,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/contacts/{{$parameter.identifier}}',
+						url: '=/contacts/{{$parameter.contactId}}',
 					},
 					output: {
 						postReceive: [
@@ -115,7 +115,7 @@ export const contactOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/contacts/{{$parameter.identifier}}',
+						url: '=/contacts/{{$parameter.contactId}}',
 					},
 					output: {
 						postReceive: [
@@ -134,7 +134,125 @@ export const contactOperations: INodeProperties[] = [
 	},
 ];
 
-const additionalFields: Array<INodeProperties> = [
+const customFields: INodeProperties = {
+	displayName: 'Custom Fields',
+	name: 'customFields',
+	placeholder: 'Add Field',
+	type: 'fixedCollection',
+	default: {},
+	typeOptions: {
+		multipleValues: true,
+	},
+	options: [
+		{
+			name: 'values',
+			displayName: 'Value',
+			values: [
+				{
+					displayName: 'Field ID',
+					name: 'fieldId',
+					type: 'options',
+					required: true,
+					default: '',
+					typeOptions: {
+						loadOptions: {
+							routing: {
+								request: {
+									url: '/custom-fields',
+									method: 'GET',
+								},
+								output: {
+									postReceive: [
+										{
+											type: 'rootProperty',
+											properties: {
+												property: 'customFields',
+											},
+										},
+										{
+											type: 'setKeyValue',
+											properties: {
+												name: '={{$responseItem.name}}',
+												value: '={{$responseItem.id}}',
+											},
+										},
+										{
+											type: 'sort',
+											properties: {
+												key: 'name',
+											},
+										},
+									],
+								},
+							},
+						}
+					},
+				},
+				{
+					displayName: 'Field Value',
+					name: 'fieldValue',
+					type: 'string',
+					default: '',
+					routing: {
+						send: {
+							value: '={{$value}}',
+							property: '=customField.{{$parent.fieldId}}',
+							type: 'body',
+						},
+					},
+				},
+			],
+		},
+	],
+}
+
+const createOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		description: 'Email or Phone are required to create contact',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'email',
+			}
+		}
+	},
+	{
+		displayName: 'Phone',
+		name: 'phone',
+		type: 'string',
+		description: 'Phone or Email are required to create contact',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'phone',
+			}
+		}
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -148,7 +266,6 @@ const additionalFields: Array<INodeProperties> = [
 				],
 				operation: [
 					'create',
-					'update',
 				],
 			},
 		},
@@ -301,134 +418,15 @@ const additionalFields: Array<INodeProperties> = [
 					}
 				}
 			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customFields',
-				placeholder: 'Add Field',
-				type: 'fixedCollection',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'values',
-						displayName: 'Value',
-						values: [
-							{
-								displayName: 'Field ID',
-								name: 'fieldId',
-								type: 'options',
-								required: true,
-								default: '',
-								typeOptions: {
-									loadOptions: {
-										routing: {
-											request: {
-												url: '/custom-fields',
-												method: 'GET',
-											},
-											output: {
-												postReceive: [
-													{
-														type: 'rootProperty',
-														properties: {
-															property: 'customFields',
-														},
-													},
-													{
-														type: 'setKeyValue',
-														properties: {
-															name: '={{$responseItem.name}}',
-															value: '={{$responseItem.id}}',
-														},
-													},
-													{
-														type: 'sort',
-														properties: {
-															key: 'name',
-														},
-													},
-												],
-											},
-										},
-									}
-								},
-							},
-							{
-								displayName: 'Field Value',
-								name: 'fieldValue',
-								type: 'string',
-								default: '',
-								routing: {
-									send: {
-										value: '={{$value}}',
-										property: '=customField.{{$parent.fieldId}}',
-										type: 'body',
-									},
-								},
-							},
-						],
-					},
-				],
-			},
+			customFields
 		],
 	}
-]
-
-const createOperations: Array<INodeProperties> = [
-	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		description: 'Email or Phone are required to create contact',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'email',
-			}
-		}
-	},
-	{
-		displayName: 'Phone',
-		name: 'phone',
-		type: 'string',
-		description: 'Email or Phone are required to create contact',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'phone',
-			}
-		}
-	},
 ];
 
 const updateOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -442,13 +440,13 @@ const updateOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		description: 'Update Email of Contact',
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -459,43 +457,189 @@ const updateOperations: Array<INodeProperties> = [
 				],
 			},
 		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'email',
-			}
-		}
-	},
-	{
-		displayName: 'Phone',
-		name: 'phone',
-		type: 'string',
-		description: 'Update Phone of Contact',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+		options: [
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				routing: {
+					send:
+					{
+						type: 'body',
+						property: 'email',
+					}
+				}
 			},
-		},
-		default: '',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'phone',
-			}
-		}
-	},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'phone',
+					}
+				}
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'firstName',
+					}
+				}
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'lastName',
+					}
+				}
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'name',
+					}
+				}
+			},
+			{
+				displayName: 'Address 1',
+				name: 'address1',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'address1',
+					}
+				}
+			},
+			{
+				displayName: 'City',
+				name: 'city',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'city',
+					}
+				}
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'state',
+					}
+				}
+			},
+			{
+				displayName: 'Postal Code',
+				name: 'postalCode',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'postalCode',
+					}
+				}
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'website',
+					}
+				}
+			},
+			{
+				displayName: 'Timezone',
+				name: 'timezone',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'timezone',
+					}
+				}
+			},
+			{
+				displayName: 'DND',
+				name: 'dnd',
+				type: 'boolean',
+				default: false,
+				routing: {
+					send: {
+						type: 'body',
+						property: 'dnd',
+					}
+				}
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Tag',
+				},
+				default: [],
+				routing: {
+					send: {
+						type: 'body',
+						property: 'tags',
+					}
+				},
+			},
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'source',
+					}
+				}
+			},
+			customFields
+		],
+	}
 ];
 
 const deleteOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -508,14 +652,13 @@ const deleteOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	}
 ];
 
 const getOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Contact ID',
+		name: 'contactId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -529,7 +672,6 @@ const getOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 ];
 
@@ -722,7 +864,6 @@ const lookupOperations: Array<INodeProperties> = [
 export const contactFields: INodeProperties[] = [
 	...createOperations,
 	...updateOperations,
-	...additionalFields,
 	...deleteOperations,
 	...getOperations,
 	...getAllOperations,
