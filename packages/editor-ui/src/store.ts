@@ -875,6 +875,9 @@ export const store = new Vuex.Store({
 		 * Pin data
 		 */
 
+		pinData: (state): Record<string, IDataObject | undefined> | undefined => {
+			return state.workflow.pinData;
+		},
 		pinDataByNodeName: (state) => (nodeName: string) => {
 			console.log({workflow: state.workflow, pinData: state.workflow.pinData, nodeName});
 			return state.workflow.pinData && state.workflow.pinData[nodeName];
