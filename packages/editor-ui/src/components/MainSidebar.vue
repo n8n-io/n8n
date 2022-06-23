@@ -743,6 +743,12 @@ export default mixins(
 			}
 		}
 	}
+
+	.help-menu {
+		.el-submenu__title {
+			padding-left: 23px !important;
+		}
+	}
 }
 
 .about-icon {

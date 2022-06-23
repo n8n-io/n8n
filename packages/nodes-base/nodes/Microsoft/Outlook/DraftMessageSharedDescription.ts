@@ -100,7 +100,7 @@ export const draftMessageSharedFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
@@ -178,14 +178,14 @@ export const draftMessageSharedFields: INodeProperties[] = [
 			{
 				displayName: 'Is Read',
 				name: 'isRead',
-				description: 'Indicates whether the message has been read',
+				description: 'Whether the message has been read',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},

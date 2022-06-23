@@ -251,7 +251,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Survey IDs',
+				displayName: 'Survey Names or IDs',
 				name: 'surveyIds',
 				type: 'multiOptions',
 				displayOptions: {
@@ -277,6 +277,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				displayName: 'Survey Name or ID',
 				name: 'surveyId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						objectType: [
@@ -291,7 +292,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Collector IDs',
+				displayName: 'Collector Names or IDs',
 				name: 'collectorIds',
 				type: 'multiOptions',
 				displayOptions: {
@@ -323,6 +324,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				},
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
@@ -340,7 +342,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 	};

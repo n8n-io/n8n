@@ -30,13 +30,23 @@
 			<NDVDraggablePanels
 				:isTriggerNode="isTriggerNode"
 				:hideInputAndOutput="activeNodeType === null"
+				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
+				:isDraggable="!isTriggerNode"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
 				@dragend="onDragEnd"
 			>
 				<template #input>
+					<TriggerPanel
+						v-if="showTriggerPanel"
+						:nodeName="activeNode.name"
+						:sessionId="sessionId"
+						@execute="onNodeExecute"
+						@activate="onWorkflowActivate"
+					/>
 					<InputPanel
+						v-else-if="!isTriggerNode"
 						:workflow="workflow"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="inputRun"
@@ -70,6 +80,7 @@
 						:sessionId="sessionId"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
+						@activate="onWorkflowActivate"
 					/>
 					<a
 						v-if="featureRequestUrl"
@@ -107,19 +118,31 @@ import mixins from 'vue-typed-mixins';
 import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
+import TriggerPanel from './TriggerPanel.vue';
 import { mapGetters } from 'vuex';
-import { BASE_NODE_SURVEY_URL, START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import {
+	BASE_NODE_SURVEY_URL,
+	CRON_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
+	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/constants';
 import { editor } from 'monaco-editor';
+import { workflowActivate } from './mixins/workflowActivate';
 
-export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
+export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActivate).extend({
 	name: 'NodeDetailsView',
 	components: {
 		NodeSettings,
 		InputPanel,
 		OutputPanel,
 		NDVDraggablePanels,
+		TriggerPanel,
 	},
 	props: {
+		readOnly: {
+			type: Boolean,
+		},
 		renaming: {
 			type: Boolean,
 		},
@@ -174,6 +197,16 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 				return this.$store.getters.nodeType(this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
+		},
+		showTriggerPanel(): boolean {
+			const isWebhookBasedNode = this.activeNodeType && this.activeNodeType.webhooks && this.activeNodeType.webhooks.length;
+			const isPollingNode = this.activeNodeType && this.activeNodeType.polling;
+			const override = this.activeNodeType && this.activeNodeType.triggerPanel;
+			return Boolean(
+				!this.readOnly &&
+				this.isTriggerNode &&
+				(isWebhookBasedNode || isPollingNode || override),
+			);
 		},
 		workflow(): Workflow {
 			return this.getWorkflow();
@@ -332,6 +365,12 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onWorkflowActivate() {
+			this.$store.commit('setActiveNode', null);
+			setTimeout(() => {
+				this.activateCurrentWorkflow('ndv');
+			}, 1000);
+		},
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
 			this.$telemetry.track('User clicked ndv link', {
@@ -349,7 +388,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			this.isDragging = true;
 			this.mainPanelPosition = e.position;
 		},
-		onDragEnd(e: { windowWidth: number, position: number }) {
+		onDragEnd(e: { windowWidth: number; position: number }) {
 			this.isDragging = false;
 			this.$telemetry.track('User moved parameters pane', {
 				window_width: e.windowWidth,
@@ -480,7 +519,6 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	width: 100%;
 	display: flex;
 }
-
 </style>
 
 <style lang="scss" module>

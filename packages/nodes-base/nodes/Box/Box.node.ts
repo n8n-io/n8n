@@ -36,6 +36,7 @@ export class Box implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box',
 		name: 'box',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['input'],
 		version: 1,

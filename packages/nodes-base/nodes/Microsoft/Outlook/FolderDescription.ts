@@ -158,7 +158,7 @@ export const folderFields: INodeProperties[] = [
 	{
 		displayName: 'Include Nested Folders',
 		name: 'includeNestedFolders',
-		description: 'Include child folders in the search',
+		description: 'Whether to include child folders in the search',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -290,7 +290,7 @@ export const folderFields: INodeProperties[] = [
 			{
 				displayName: 'Include Nested Folders',
 				name: 'includeNestedFolders',
-				description: 'Include child folders in the search. Only for search folders.',
+				description: 'Whether to include child folders in the search. Only for search folders.',
 				type: 'boolean',
 				default: false,
 			},

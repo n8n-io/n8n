@@ -107,6 +107,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Stage Name or ID',
 		name: 'stage',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -375,6 +376,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'Stage',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getDealStage',
 					},

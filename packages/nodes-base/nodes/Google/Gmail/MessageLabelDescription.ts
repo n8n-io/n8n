@@ -53,7 +53,7 @@ export const messageLabelFields: INodeProperties[] = [
 		description: 'The message ID of your email',
 	},
 	{
-		displayName: 'Label IDs',
+		displayName: 'Label Names or IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -72,6 +72,6 @@ export const messageLabelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the label',
+		description: 'The ID of the label. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 ];

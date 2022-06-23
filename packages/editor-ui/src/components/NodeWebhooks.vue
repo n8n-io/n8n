@@ -9,10 +9,13 @@
 				<div class="url-selection">
 					<el-row>
 						<el-col :span="24">
-							<el-radio-group v-model="showUrlFor" size="mini">
-								<el-radio-button label="test">{{ $locale.baseText('nodeWebhooks.testUrl') }}</el-radio-button>
-								<el-radio-button label="production">{{ $locale.baseText('nodeWebhooks.productionUrl') }}</el-radio-button>
-							</el-radio-group>
+							<n8n-radio-buttons
+								v-model="showUrlFor"
+								:options="[
+									{ label: this.$locale.baseText('nodeWebhooks.testUrl'), value: 'test'},
+									{ label: this.$locale.baseText('nodeWebhooks.productionUrl'), value: 'production'},
+								]"
+							/>
 						</el-col>
 					</el-row>
 				</div>
@@ -21,7 +24,7 @@
 					<div class="webhook-wrapper">
 							<div class="http-field">
 								<div class="http-method">
-									{{getValue(webhook, 'httpMethod')}}<br />
+									{{getWebhookExpressionValue(webhook, 'httpMethod')}}<br />
 								</div>
 							</div>
 							<div class="url-field">
@@ -41,7 +44,6 @@
 import {
 	INodeTypeDescription,
 	IWebhookDescription,
-	NodeHelpers,
 } from 'n8n-workflow';
 
 import { WEBHOOK_NODE_TYPE } from '@/constants';
@@ -79,41 +81,23 @@ export default mixins(
 		},
 		methods: {
 			copyWebhookUrl (webhookData: IWebhookDescription): void {
-				const webhookUrl = this.getWebhookUrl(webhookData);
+				const webhookUrl = this.getWebhookUrlDisplay(webhookData);
 				this.copyToClipboard(webhookUrl);
 
 				this.$showMessage({
 					title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
 					type: 'success',
 				});
-			},
-			getValue (webhookData: IWebhookDescription, key: string): string {
-				if (webhookData[key] === undefined) {
-					return 'empty';
-				}
-				try {
-					return this.resolveExpression(webhookData[key] as string) as string;
-				} catch (e) {
-					return this.$locale.baseText('nodeWebhooks.invalidExpression');
-				}
-			},
-			getWebhookUrl (webhookData: IWebhookDescription): string {
-				if (webhookData.restartWebhook === true) {
-					return '$resumeWebhookUrl';
-				}
-				let baseUrl = this.$store.getters.getWebhookUrl;
-				if (this.showUrlFor === 'test') {
-					baseUrl = this.$store.getters.getWebhookTestUrl;
-				}
-
-				const workflowId = this.$store.getters.workflowId;
-				const path = this.getValue(webhookData, 'path');
-				const isFullPath = this.getValue(webhookData, 'isFullPath') as unknown as boolean || false;
-
-				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
+				this.$telemetry.track('User copied webhook URL', {
+					pane: 'parameters',
+					type: `${this.showUrlFor} url`,
+				});
 			},
 			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
-				return this.getWebhookUrl(webhookData);
+				if (this.node) {
+					return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
+				}
+				return '';
 			},
 		},
 		watch: {
@@ -146,7 +130,7 @@ export default mixins(
 }
 
 .http-method {
-	background-color: green;
+	background-color: var(--color-foreground-xdark);
 	width: 40px;
 	height: 16px;
 	line-height: 16px;
