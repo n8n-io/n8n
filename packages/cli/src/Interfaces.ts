@@ -229,6 +229,19 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	retryOf?: string;
 }
 
+export interface IExecutionResponseApi {
+	id: number | string;
+	mode: WorkflowExecuteMode;
+	startedAt: Date;
+	stoppedAt?: Date;
+	workflowId?: string;
+	finished: boolean;
+	retryOf?: number | string;
+	retrySuccessId?: number | string;
+	data?: object;
+	waitTill?: Date | null;
+	workflowData: IWorkflowBase;
+}
 export interface IExecutionsListResponse {
 	count: number;
 	// results: IExecutionShortResponse[];
@@ -363,16 +376,20 @@ export interface IInternalHooksClass {
 		firstWorkflowCreatedAt?: Date,
 	): Promise<unknown[]>;
 	onPersonalizationSurveySubmitted(userId: string, answers: Record<string, string>): Promise<void>;
-	onWorkflowCreated(userId: string, workflow: IWorkflowBase): Promise<void>;
-	onWorkflowDeleted(userId: string, workflowId: string): Promise<void>;
-	onWorkflowSaved(userId: string, workflow: IWorkflowBase): Promise<void>;
+	onWorkflowCreated(userId: string, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
+	onWorkflowDeleted(userId: string, workflowId: string, publicApi: boolean): Promise<void>;
+	onWorkflowSaved(userId: string, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
 	onWorkflowPostExecute(
 		executionId: string,
 		workflow: IWorkflowBase,
 		runData?: IRun,
 		userId?: string,
 	): Promise<void>;
-	onUserDeletion(userId: string, userDeletionData: ITelemetryUserDeletionData): Promise<void>;
+	onUserDeletion(
+		userId: string,
+		userDeletionData: ITelemetryUserDeletionData,
+		publicApi: boolean,
+	): Promise<void>;
 	onUserInvite(userInviteData: { user_id: string; target_user_id: string[] }): Promise<void>;
 	onUserReinvite(userReinviteData: { user_id: string; target_user_id: string }): Promise<void>;
 	onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void>;
@@ -468,6 +485,7 @@ export interface IN8nUISettings {
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
+	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 	hiringBannerEnabled: boolean;
@@ -494,6 +512,11 @@ export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+}
+export interface IPublicApiSettings {
+	enabled: boolean;
+	latestVersion: number;
+	path: string;
 }
 
 export interface IPackageVersions {

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -125,6 +126,7 @@ export class ICalendar implements INodeType {
 										displayName: 'Email',
 										name: 'email',
 										type: 'string',
+										placeholder: 'name@email.com',
 										required: true,
 										default: '',
 									},
@@ -245,6 +247,7 @@ export class ICalendar implements INodeType {
 										displayName: 'Email',
 										name: 'email',
 										type: 'string',
+										placeholder: 'name@email.com',
 										default: '',
 										required: true,
 									},

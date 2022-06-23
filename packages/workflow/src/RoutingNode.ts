@@ -564,7 +564,10 @@ export class RoutingNode {
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
-		if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+		if (
+			typeof parameterValue === 'object' ||
+			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
+		) {
 			return this.workflow.expression.getParameterValue(
 				parameterValue,
 				this.runExecutionData ?? null,
@@ -820,8 +823,18 @@ export class RoutingNode {
 					value = [value];
 				}
 
+				// Resolve expressions
+				value = this.getParameterValue(
+					value as INodeParameters[],
+					itemIndex,
+					runIndex,
+					executeSingleFunctions.getExecuteData(),
+					{ ...additionalKeys },
+					false,
+				) as INodeParameters[];
+
 				const loopBasePath = `${basePath}${propertyOptions.name}`;
-				for (let i = 0; i < (value as INodeParameters[]).length; i++) {
+				for (let i = 0; i < value.length; i++) {
 					for (const option of propertyOptions.values) {
 						const tempOptions = this.getRequestOptionsFromParameters(
 							executeSingleFunctions,

@@ -114,6 +114,7 @@ export const ecomOrderFields: INodeProperties[] = [
 		displayName: 'Customer Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -457,6 +458,7 @@ export const ecomOrderFields: INodeProperties[] = [
 				displayName: 'Customer Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address of the customer who placed the order',
 			},

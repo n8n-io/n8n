@@ -95,7 +95,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If this is set to true, then the event payload will include the full event body, including the stack trace',
+		description: 'Whether the event payload will include the full event body, including the stack trace',
 	},
 	{
 		displayName: 'Return All',
