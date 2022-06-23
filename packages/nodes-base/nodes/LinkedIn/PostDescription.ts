@@ -32,7 +32,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Post As',
 		name: 'postAs',
 		type: 'options',
-		default: '',
+		default: 'person',
 		description: 'If to post on behalf of a user or an organization',
 		options: [
 			{
