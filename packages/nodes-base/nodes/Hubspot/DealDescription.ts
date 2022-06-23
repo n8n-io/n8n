@@ -302,7 +302,6 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Deal Stage Name or ID',
 				name: 'stage',
 				type: 'options',
-				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getDealStages',
 				},
