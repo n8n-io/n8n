@@ -22,6 +22,10 @@
 					</span>
 				</div>
 
+				<span v-if="hasPinData" class="node-pin-data-icon">
+					<font-awesome-icon icon="thumbtack" />
+				</span>
+
 				<div class="node-executing-info" :title="$locale.baseText('node.nodeIsExecuting')">
 					<font-awesome-icon icon="sync-alt" spin />
 				</div>
@@ -80,6 +84,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { pinData } from '@/components/mixins/pinData';
 
 import {
 	INodeTypeDescription,
@@ -95,7 +100,13 @@ import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 
-export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
+export default mixins(
+	externalHooks,
+	nodeBase,
+	nodeHelpers,
+	workflowHelpers,
+	pinData,
+).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
@@ -257,11 +268,11 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
-				}
-				else if (this.waiting) {
+				} else if (this.waiting) {
 					borderColor = getStyleTokenValue('--color-secondary');
-				}
-				else if (this.workflowDataItems) {
+				} else if (this.hasPinData) {
+					borderColor = getStyleTokenValue('--color-secondary');
+				} else if (this.workflowDataItems) {
 					borderColor = getStyleTokenValue('--color-success');
 				}
 			}
@@ -495,6 +506,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			.items-count {
 				font-size: var(--font-size-s);
 			}
+		}
+
+		.node-pin-data-icon {
+			position: absolute;
+			bottom: 6px;
+			left: 6px;
+			color: var(--color-secondary);
 		}
 
 		.waiting {
