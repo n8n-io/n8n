@@ -4,7 +4,6 @@ import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 import { GenericHelpers } from '../..';
 import * as config from '../../../config';
-import { User } from '../../databases/entities/User';
 import {
 	InviteEmailData,
 	PasswordResetData,
