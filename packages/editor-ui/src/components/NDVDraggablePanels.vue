@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div :class="$style.inputPanel" v-if="!hideInputAndOutput && !isTriggerNode" :style="inputPanelStyles">
+		<div :class="$style.inputPanel" v-if="!hideInputAndOutput" :style="inputPanelStyles">
 			<slot name="input"></slot>
 		</div>
 		<div :class="$style.outputPanel" v-if="!hideInputAndOutput" :style="outputPanelStyles">
@@ -10,7 +10,7 @@
 			<div :class="$style.dragButtonContainer" @click="close">
 				<PanelDragButton
 					:class="{ [$style.draggable]: true, [$style.visible]: isDragging }"
-					v-if="!hideInputAndOutput && !isTriggerNode"
+					v-if="!hideInputAndOutput && !isDraggable"
 					:canMoveLeft="canMoveLeft"
 					:canMoveRight="canMoveRight"
 					@dragstart="onDragStart"
