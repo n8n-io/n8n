@@ -619,18 +619,6 @@ const updateOperations: Array<INodeProperties> = [
 					}
 				},
 			},
-			{
-				displayName: 'Source',
-				name: 'source',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'source',
-					}
-				}
-			},
 			customFields
 		],
 	}
