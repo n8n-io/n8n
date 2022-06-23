@@ -250,7 +250,7 @@ class LoadNodesAndCredentialsClass {
 					promises.push(
 						...loadedNodes.map(async (loadedNode) => {
 							const installedNodePayload = Object.assign(new InstalledNodes(), {
-								name: loadedNode.name,
+								name: this.nodeTypes[loadedNode.name].type.description.displayName,
 								type: loadedNode.name,
 								latestVersion: loadedNode.version,
 								package: packageName,
