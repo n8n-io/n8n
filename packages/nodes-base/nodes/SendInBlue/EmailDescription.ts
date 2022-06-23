@@ -266,67 +266,85 @@ const sendHtmlEmailFields: INodeProperties[] = [
 						name: 'attachment',
 						displayName: 'Attachment Data',
 						values: [
-								{
-									default: false,
-									displayName: 'Use Attachment Url',
-									name: 'useAttachmentUrl',
-									type: 'boolean',
-								},
-								{
-									default: '',
-									displayName: 'Attachment Url',
-									displayOptions: {
-										hide: {
-											useAttachmentUrl: [false]
-										}
-									},
-									name: 'url',
-									placeholder: 'https://attachment.domain.com/myAttachmentFromUrl.jpg',
-									routing: {
-										send: {
-											property: '=attachment[{{$index}}].url',
-											type: 'body',
-										},
-									},
-									type: 'string',
-								},
-								{
-									default: '',
-									displayName: 'Attachment Data',
-									displayOptions: {
-										hide: {
-											useAttachmentUrl: [true]
-										}
-									},
-									name: 'content',
-									placeholder: 'b3JkZXIucGRm',
-									routing: {
-										send: {
-											property: '=attachment[{{$index}}].content',
-											type: 'body',
-										},
-									},
-									type: 'string',
-								},
-								{
-									default: '',
-									description: 'Name of attachment to be shown, must include file type',
-									displayName: 'Attachment Name',
-									displayOptions: {
-										hide: {
-											useAttachmentUrl: [true]
-										}
-									},
-									name: 'name',
-									placeholder: 'myAttachment.pdf',
-									routing: {
-										send: {
-											property: '=attachment[{{$index}}].name',
-											type: 'body',
-										},
-									},
-									type: 'string',
-								}
+							{
+								default: '',
+								displayName: 'Input Data Field Name',
+								// displayOptions: {
+								// 	hide: {
+								// 		useAttachmentUrl: [true]
+								// 	}
+								// },
+								name: 'binaryPropertyName',
+								// routing: {
+								// 	send: {
+								// 		property: '=attachment[{{$index}}].content',
+								// 		type: 'body',
+								// 	},
+								// },
+								type: 'string',
+								description: 'The name of the incoming field containing the binary file data to be processed'
+							},
+								// {
+								// 	default: false,
+								// 	displayName: 'Use Attachment Url',
+								// 	name: 'useAttachmentUrl',
+								// 	type: 'boolean',
+								// },
+								// {
+								// 	default: '',
+								// 	displayName: 'Attachment Url',
+								// 	displayOptions: {
+								// 		hide: {
+								// 			useAttachmentUrl: [false]
+								// 		}
+								// 	},
+								// 	name: 'url',
+								// 	placeholder: 'https://attachment.domain.com/myAttachmentFromUrl.jpg',
+								// 	routing: {
+								// 		send: {
+								// 			property: '=attachment[{{$index}}].url',
+								// 			type: 'body',
+								// 		},
+								// 	},
+								// 	type: 'string',
+								// },
+								// {
+								// 	default: '',
+								// 	displayName: 'Attachment Data',
+								// 	displayOptions: {
+								// 		hide: {
+								// 			useAttachmentUrl: [true]
+								// 		}
+								// 	},
+								// 	name: 'content',
+								// 	placeholder: 'b3JkZXIucGRm',
+								// 	routing: {
+								// 		send: {
+								// 			property: '=attachment[{{$index}}].content',
+								// 			type: 'body',
+								// 		},
+								// 	},
+								// 	type: 'string',
+								// },
+								// {
+								// 	default: '',
+								// 	description: 'Name of attachment to be shown, must include file type',
+								// 	displayName: 'Attachment Name',
+								// 	displayOptions: {
+								// 		hide: {
+								// 			useAttachmentUrl: [true]
+								// 		}
+								// 	},
+								// 	name: 'name',
+								// 	placeholder: 'myAttachment.pdf',
+								// 	routing: {
+								// 		send: {
+								// 			property: '=attachment[{{$index}}].name',
+								// 			type: 'body',
+								// 		},
+								// 	},
+								// 	type: 'string',
+								// }
 						]
 					}
 				],

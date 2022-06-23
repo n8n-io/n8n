@@ -1,4 +1,5 @@
 import {
+	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
 	JsonObject, NodeOperationError,
@@ -58,38 +59,28 @@ export async function validateAttachmentsData (this: IExecuteSingleFunctions, re
 	const attachments = this.getNodeParameter('additionalParameters.emailAttachments.attachment') as JsonObject[];
 	const { body } = requestOptions;
 
-	const { attachment } = body as unknown as JsonObject;
+	const { attachment = [] } = body as {attachment :{content:string; name: string;}[];};
 
 	try {
-		for(let [index, attachmentData] of attachments.entries()) {
-			const { useAttachmentUrl } = attachmentData;
-			const { content = '', name = '', url = '' } = (attachment as EmailAttachment[])[index];
+		for(let [, attachmentData] of attachments.entries()) {
 
-			if(useAttachmentUrl) {
-				if(!validateURL(url!)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Please enter a valid attachment URL`,
-					);
-				}
-			} else {
-				// Ensure image has filetype
-				if(!validateAttchmentName(name!)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Please enter an attachment name with a filetype e.g (attachment.png)`,
-					);
-				}
+			const { binaryPropertyName } = attachmentData;
 
-				// Ensure base64 data is correctly formatted
-				if(!validateBase64Encoding(content!)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Please enter valid base64 file data`,
-					);
-				}
+			const item = this.getInputData();
+
+			if (item.binary![binaryPropertyName as string] === undefined) {
+				throw new NodeOperationError(this.getNode(), `No binary data property “${binaryPropertyName}” does not exists on item!`);
 			}
+
+			const { data: content, fileName: name = '' } = item.binary![binaryPropertyName as string];
+			//await this.helpers.getBinaryDataBuffer(0, binaryPropertyName);
+
+			attachment.push({ content, name: `${name}.jpeg` });
 		}
+
+
+		Object.assign(body as Object, { attachment });
+
 		return requestOptions;
 	}
 	catch(err) {
