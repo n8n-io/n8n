@@ -412,8 +412,6 @@ test('GET /workflows/:id should retrieve workflow', async () => {
 	// create and assign workflow to owner
 	const workflow = await testDb.createWorkflow({}, member);
 
-	console.log(workflow);
-
 	const response = await authAgent.get(`/workflows/${workflow.id}`);
 
 	expect(response.statusCode).toBe(200);
