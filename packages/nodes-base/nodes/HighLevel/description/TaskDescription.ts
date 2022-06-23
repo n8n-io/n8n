@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-import { dueDatePreSendAction } from '../GenericFunctions';
+import { dueDatePreSendAction, taskPostReceiceAction } from '../GenericFunctions';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -25,6 +25,11 @@ export const taskOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '=/contacts/{{$parameter.contactId}}/tasks',
+					},
+					output: {
+						postReceive: [
+							taskPostReceiceAction
+						],
 					},
 				},
 			},
@@ -56,6 +61,11 @@ export const taskOperations: INodeProperties[] = [
 						method: 'GET',
 						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}',
 					},
+					output: {
+						postReceive: [
+							taskPostReceiceAction
+						],
+					},
 				},
 			},
 			{
@@ -74,6 +84,7 @@ export const taskOperations: INodeProperties[] = [
 									property: 'tasks',
 								},
 							},
+							taskPostReceiceAction
 						],
 					},
 				}
@@ -85,6 +96,11 @@ export const taskOperations: INodeProperties[] = [
 					request: {
 						method: 'PUT',
 						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}',
+					},
+					output: {
+						postReceive: [
+							taskPostReceiceAction
+						],
 					},
 				},
 			},

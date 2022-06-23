@@ -41,6 +41,12 @@ export function isPhoneValid(phone: string): boolean {
 	return VALID_PHONE_REGEX.test(String(phone));
 }
 
+export async function taskPostReceiceAction(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse,): Promise<INodeExecutionData[]> {
+	const contactId = this.getNodeParameter('contactId');
+	items.forEach(item => item.json.contactId = contactId);
+	return items;
+}
+
 export async function highLevelApiPagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<INodeExecutionData[]> {
 
 	const responseData: INodeExecutionData[] = [];
