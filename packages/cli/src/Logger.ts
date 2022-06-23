@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { inspect } from 'util';
 import winston from 'winston';
 
 import { IDataObject, ILogger, LogTypes } from 'n8n-workflow';
@@ -36,12 +37,12 @@ class Logger implements ILogger {
 					winston.format.printf(({ level, message, timestamp, metadata }) => {
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						return `${timestamp} | ${level.padEnd(18)} | ${message}${
-							Object.keys(metadata).length ? ` ${JSON.stringify(metadata)}` : ''
+							Object.keys(metadata).length ? ` ${JSON.stringify(inspect(metadata))}` : ''
 						}`;
 					}),
 				);
 			} else {
-				format = winston.format.printf(({ message }) => message);
+				format = winston.format.printf(({ message }: { message: string }) => message);
 			}
 
 			this.logger.add(
