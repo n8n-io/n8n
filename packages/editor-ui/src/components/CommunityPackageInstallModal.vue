@@ -137,12 +137,7 @@ export default mixins(
 					});
 				} catch(error) {
 					if(error.httpStatusCode && error.httpStatusCode === 400) {
-						// TODO: Remove this once proper back-end response is available
-						if(error.message === 'Package name is not valid') {
-							this.infoTextErrorMessage = this.$locale.baseText('settings.communityNodes.installModal.error.packageNameNotValid');
-						} else {
-							this.infoTextErrorMessage = error.message;
-						}
+						this.infoTextErrorMessage = error.message;
 					} else {
 						this.$showError(
 							error,
