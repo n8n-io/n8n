@@ -591,7 +591,8 @@ export default mixins(
 				}
 			},
 			onMissingNodeLearnMoreLinkClick() {
-				this.$telemetry.track('user clicked how to install community nodes link', {
+				this.$telemetry.track('user clicked cnr docs link', {
+					source: 'node details view',
 					package_name: this.node.type.split('.')[0],
 					node_type: this.node.type,
 				});

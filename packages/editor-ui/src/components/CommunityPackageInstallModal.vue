@@ -14,7 +14,9 @@
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.description') }}
 					</n8n-text> <n8n-link
-						:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL">
+						:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
+						@click="onMoreInfoTopClick"
+					>
 							{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
 					</n8n-link>
 				</div>
@@ -155,8 +157,11 @@ export default mixins(
 		onInputBlur() {
 			this.packageName = this.packageName.replaceAll('npm i ', '').replaceAll('npm install ', '');
 		},
+		onMoreInfoTopClick() {
+			this.$telemetry.track('user clicked cnr docs link', { source: 'install package modal top' });
+		},
 		onLearnMoreLinkClick() {
-			this.$telemetry.track('user clicked cnr learn more link', { source: 'install package modal' });
+			this.$telemetry.track('user clicked cnr docs link', { source: 'install package modal bottom' });
 		},
 	},
 });
