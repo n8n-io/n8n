@@ -193,6 +193,8 @@ import {
 	IRun,
 	ITaskData,
 	INodeCredentialsDetails,
+	TelemetryHelpers,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -409,7 +411,13 @@ export default mixins(
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
-				this.$telemetry.track('User clicked execute workflow button', { workflow_id: this.$store.getters.workflowId });
+				this.getWorkflowDataToSave().then((workflowData) => {
+					this.$telemetry.track('User clicked execute workflow button', {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					});
+				});
+
 				this.runWorkflow();
 			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {

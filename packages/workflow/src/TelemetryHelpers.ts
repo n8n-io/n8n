@@ -11,8 +11,6 @@ import {
 } from '.';
 import { INodeType } from './Interfaces';
 
-import { getInstance as getLoggerInstance } from './LoggerProxy';
-
 const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
@@ -213,11 +211,8 @@ export function generateNodesGraph(
 				});
 			});
 		});
-	} catch (e) {
-		const logger = getLoggerInstance();
-		logger.warn(`Failed to generate nodes graph for workflowId: ${workflow.id as string | number}`);
-		logger.warn((e as Error).message);
-		logger.warn((e as Error).stack ?? '');
+	} catch (_) {
+		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeName };
 	}
 
 	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeName };
