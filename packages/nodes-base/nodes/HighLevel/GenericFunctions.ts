@@ -11,6 +11,7 @@ import {
 	IWebhookFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from "n8n-workflow";
 
 import {
@@ -21,14 +22,6 @@ import {
 	DateTime,
 	ToISOTimeOptions
 } from 'luxon';
-
-export function wait(millis: number = 1000) {
-	return new Promise((resolve, _reject) => {
-		setTimeout(() => {
-			resolve(true);
-		}, millis);
-	});
-}
 
 const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 const VALID_PHONE_REGEX = /((?:\+|00)[17](?: |\-)?|(?:\+|00)[1-9]\d{0,2}(?: |\-)?|(?:\+|00)1\-\d{3}(?: |\-)?)?(0\d|\([0-9]{3}\)|[1-9]{0,3})(?:((?: |\-)[0-9]{2}){4}|((?:[0-9]{2}){4})|((?: |\-)[0-9]{3}(?: |\-)[0-9]{4})|([0-9]{7}))/
@@ -46,43 +39,6 @@ export async function taskPostReceiceAction(this: IExecuteSingleFunctions, items
 	items.forEach(item => item.json.contactId = contactId);
 	return items;
 }
-
-export async function highLevelApiPagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<INodeExecutionData[]> {
-
-	const responseData: INodeExecutionData[] = [];
-	const resource = this.getNodeParameter('resource') as string;
-	const returnAll = this.getNodeParameter('returnAll', false) as boolean;
-	const resourceMapping: { [key: string]: string } = {
-		'contact': 'contacts',
-		'opportunity': 'opportunities'
-	}
-	const rootProperty = resourceMapping[resource]
-
-	requestData.options.qs = requestData.options.qs || {}
-	if (returnAll) requestData.options.qs.limit = 100;
-
-	let responseTotal = 0;
-
-	do {
-		// console.log(requestData.options);
-
-		const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
-		const items = pageResponseData[0].json[rootProperty] as [];
-		items.forEach(item => responseData.push({ json: item }));
-
-		const meta = pageResponseData[0].json.meta as IDataObject;
-		const startAfterId = meta.startAfterId as string;
-		const startAfter = meta.startAfter as number;
-		requestData.options.qs = { startAfterId, startAfter };
-		responseTotal = meta.total as number || 0;
-
-		// console.log(JSON.stringify(meta, null, 2));
-		// await wait();
-
-	} while (returnAll && responseTotal > responseData.length)
-
-	return responseData;
-};
 
 export async function dueDatePreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
 	const dueDateParam = this.getNodeParameter('dueDate') as string;
@@ -113,6 +69,39 @@ export async function contactIdentifierPreSendAction(this: IExecuteSingleFunctio
 	return requestOptions;
 }
 
+export async function highLevelApiPagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<INodeExecutionData[]> {
+
+	const responseData: INodeExecutionData[] = [];
+	const resource = this.getNodeParameter('resource') as string;
+	const returnAll = this.getNodeParameter('returnAll', false) as boolean;
+	const resourceMapping: { [key: string]: string } = {
+		'contact': 'contacts',
+		'opportunity': 'opportunities'
+	}
+	const rootProperty = resourceMapping[resource]
+
+	requestData.options.qs = requestData.options.qs || {}
+	if (returnAll) requestData.options.qs.limit = 100;
+
+	let responseTotal = 0;
+
+	do {
+
+		const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
+		const items = pageResponseData[0].json[rootProperty] as [];
+		items.forEach(item => responseData.push({ json: item }));
+
+		const meta = pageResponseData[0].json.meta as IDataObject;
+		const startAfterId = meta.startAfterId as string;
+		const startAfter = meta.startAfter as number;
+		requestData.options.qs = { startAfterId, startAfter };
+		responseTotal = meta.total as number || 0;
+
+	} while (returnAll && responseTotal > responseData.length)
+
+	return responseData;
+};
+
 export async function highLevelApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> {
 
 	const credentials = await this.getCredentials('highLevelApi');
@@ -141,4 +130,20 @@ export async function highLevelApiRequest(this: IExecuteFunctions | IWebhookFunc
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export async function getPipelineStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const pipelineId = this.getCurrentNodeParameter('pipelineId') as string;
+	const responseData = await highLevelApiRequest.call(this, 'GET', '/pipelines');
+	const pipelines = responseData.pipelines as [{ id: string, stages: [{ id: string, name: string }] }];
+	const pipeline = pipelines.find(p => p.id === pipelineId);
+	if (pipeline) {
+		const options: INodePropertyOptions[] = pipeline.stages.map(stage => {
+			const name = stage.name;
+			const value = stage.id;
+			return { name, value };
+		})
+		return options;
+	}
+	return []
 }

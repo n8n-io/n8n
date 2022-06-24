@@ -1,17 +1,13 @@
 import {
-	ILoadOptionsFunctions,
 	INodeProperties,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
-import { pipelineFields, pipelineOperations } from './description/PipelineDescription';
 import { taskFields, taskOperations } from './description/TaskDescription';
-import { highLevelApiPagination, highLevelApiRequest, wait } from './GenericFunctions';
-
+import { getPipelineStages, highLevelApiPagination } from './GenericFunctions';
 
 const ressources: INodeProperties[] = [
 	{
@@ -27,10 +23,6 @@ const ressources: INodeProperties[] = [
 			{
 				name: 'Opportunity',
 				value: 'opportunity',
-			},
-			{
-				name: 'Pipeline',
-				value: 'pipeline',
 			},
 			{
 				name: 'Task',
@@ -79,8 +71,6 @@ export class HighLevel implements INodeType {
 			...contactFields,
 			...opportunityOperations,
 			...opportunityFields,
-			...pipelineOperations,
-			...pipelineFields,
 			...taskOperations,
 			...taskFields,
 		],
@@ -88,21 +78,7 @@ export class HighLevel implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getPipelineStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const pipelineId = this.getCurrentNodeParameter('pipelineId') as string;
-				const responseData = await highLevelApiRequest.call(this, 'GET', '/pipelines');
-				const pipelines = responseData.pipelines as [{ id: string, stages: [{ id: string, name: string }] }];
-				const pipeline = pipelines.find(p => p.id === pipelineId);
-				if (pipeline) {
-					const options: INodePropertyOptions[] = pipeline.stages.map(stage => {
-						const name = stage.name;
-						const value = stage.id;
-						return { name, value };
-					})
-					return options;
-				}
-				return []
-			},
+			getPipelineStages
 		},
 	};
 }
