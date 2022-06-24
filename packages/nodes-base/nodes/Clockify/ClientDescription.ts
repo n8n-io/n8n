@@ -101,13 +101,7 @@ export const clientFields: INodeProperties[] = [
 	{
 		displayName: 'Client ID',
 		name: 'clientId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
-			loadOptionsMethod: 'loadClientsForWorkspace',
-		},
+		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
@@ -126,13 +120,7 @@ export const clientFields: INodeProperties[] = [
 	{
 		displayName: 'Client ID',
 		name: 'clientId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
-			loadOptionsMethod: 'loadClientsForWorkspace',
-		},
+		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
@@ -243,13 +231,7 @@ export const clientFields: INodeProperties[] = [
 	{
 		displayName: 'Client ID',
 		name: 'clientId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
-			loadOptionsMethod: 'loadClientsForWorkspace',
-		},
+		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
@@ -276,6 +258,8 @@ export const clientFields: INodeProperties[] = [
 				operation: [
 					'update',
 				],
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
