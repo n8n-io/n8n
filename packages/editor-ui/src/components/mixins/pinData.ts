@@ -2,17 +2,17 @@ import Vue from 'vue';
 import { INodeUi } from "@/Interface";
 import { IDataObject } from "n8n-workflow";
 
+interface PinDataContext extends Vue {
+	node?: INodeUi;
+}
+
 export const pinData = Vue.extend({
-	props: ['name'],
 	computed: {
-		node (): INodeUi | undefined {
-			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
-		},
 		pinData (): IDataObject {
-			return !!this.node && this.$store.getters['pinDataByNodeName'](this.node.name);
+			return !!(this as PinDataContext).node && this.$store.getters['pinDataByNodeName']((this as PinDataContext).node!.name);
 		},
 		hasPinData (): boolean {
-			return !!this.node && typeof this.pinData !== 'undefined';
+			return !!(this as PinDataContext).node && typeof this.pinData !== 'undefined';
 		},
 	},
 });
