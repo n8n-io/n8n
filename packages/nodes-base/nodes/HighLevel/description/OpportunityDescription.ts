@@ -144,93 +144,6 @@ const pipelineId: INodeProperties =
 	description: 'Pipeline the opportunity belongs to',
 }
 
-const additionalFields: Array<INodeProperties> = [
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-					'update',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Monetary Value',
-				name: 'monetaryValue',
-				type: 'number',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'monetaryValue',
-					}
-				}
-			},
-			{
-				displayName: 'Assigned To',
-				name: 'assignedTo',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'assignedTo',
-					}
-				}
-			},
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'name',
-					}
-				}
-			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Tag',
-				},
-				default: [],
-				routing: {
-					send: {
-						type: 'body',
-						property: 'tags',
-					}
-				},
-			},
-			{
-				displayName: 'Company Name',
-				name: 'companyName',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'companyName',
-					}
-				}
-			},
-		],
-	}
-]
-
 const createOperations: Array<INodeProperties> = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
@@ -360,6 +273,89 @@ const createOperations: Array<INodeProperties> = [
 			}
 		}
 	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Monetary Value',
+				name: 'monetaryValue',
+				type: 'number',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'monetaryValue',
+					}
+				}
+			},
+			{
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'assignedTo',
+					}
+				}
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'name',
+					}
+				}
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Tag',
+				},
+				default: [],
+				routing: {
+					send: {
+						type: 'body',
+						property: 'tags',
+					}
+				},
+			},
+			{
+				displayName: 'Company Name',
+				name: 'companyName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'companyName',
+					}
+				}
+			},
+		],
+	}
 ];
 
 const deleteOperations: Array<INodeProperties> = [
@@ -592,34 +588,6 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 const updateOperations: Array<INodeProperties> = [
-	// {
-	// 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-	// 	displayName: 'Stage ID',
-	// 	name: 'stageId',
-	// 	type: 'options',
-	// 	required: true,
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'opportunity',
-	// 			],
-	// 			operation: [
-	// 				'update',
-	// 			],
-	// 		},
-	// 	},
-	// 	default: '',
-	// 	typeOptions: {
-	// 		loadOptionsDependsOn: ['pipelineId'],
-	// 		loadOptionsMethod: 'getPipelineStages'
-	// 	},
-	// 	routing: {
-	// 		send: {
-	// 			type: 'body',
-	// 			property: 'stageId',
-	// 		}
-	// 	}
-	// },
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
@@ -701,13 +669,112 @@ const updateOperations: Array<INodeProperties> = [
 			}
 		}
 	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Stage ID',
+				name: 'stageId',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsDependsOn: ['pipelineId'],
+					loadOptionsMethod: 'getPipelineStages'
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'stageId',
+					}
+				}
+			},
+			{
+				displayName: 'Monetary Value',
+				name: 'monetaryValue',
+				type: 'number',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'monetaryValue',
+					}
+				}
+			},
+			{
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'assignedTo',
+					}
+				}
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'name',
+					}
+				}
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Tag',
+				},
+				default: [],
+				routing: {
+					send: {
+						type: 'body',
+						property: 'tags',
+					}
+				},
+			},
+			{
+				displayName: 'Company Name',
+				name: 'companyName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'companyName',
+					}
+				}
+			},
+		],
+	}
 ];
 
 export const opportunityFields: INodeProperties[] = [
 	pipelineId,
 	...createOperations,
 	...updateOperations,
-	...additionalFields,
 	...deleteOperations,
 	...getOperations,
 	...getAllOperations,
