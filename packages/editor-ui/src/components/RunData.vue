@@ -1140,7 +1140,7 @@ export default mixins(
 }
 
 .runSelector {
-	max-width: 200px;
+	max-width: 210px;
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 	display: flex;
