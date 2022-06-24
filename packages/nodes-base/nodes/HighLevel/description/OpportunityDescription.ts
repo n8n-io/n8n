@@ -199,19 +199,22 @@ const additionalFields: Array<INodeProperties> = [
 					}
 				}
 			},
-			// TODO: TAGS as Array
-			// {
-			// 	displayName: 'Tags',
-			// 	name: 'tags',
-			// 	type: 'string',
-			// 	default: '',
-			// 	routing: {
-			// 		send: {
-			// 			type: 'body',
-			// 			property: 'tags',
-			// 		}
-			// 	}
-			// },
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Tag',
+				},
+				default: [],
+				routing: {
+					send: {
+						type: 'body',
+						property: 'tags',
+					}
+				},
+			},
 			{
 				displayName: 'Company Name',
 				name: 'companyName',
