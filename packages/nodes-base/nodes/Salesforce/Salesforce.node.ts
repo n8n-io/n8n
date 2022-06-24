@@ -288,7 +288,7 @@ export class Salesforce implements INodeType {
 					const statusId = status.Id;
 					returnData.push({
 						name: statusName,
-						value: statusId,
+						value: statusName,
 					});
 				}
 				sortOptions(returnData);
