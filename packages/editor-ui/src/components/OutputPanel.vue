@@ -33,10 +33,8 @@
 		</template>
 
 		<template v-slot:node-not-run>
-			<n8n-text v-if="workflowRunning">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-else-if="isPollingTypeNode">{{ $locale.baseText('ndv.output.pollEventNodeHint') }}</n8n-text>
-			<n8n-text v-else-if="isTriggerNode && !isScheduleTrigger">{{ $locale.baseText('ndv.output.triggerEventNodeHint') }}</n8n-text>
-			<n8n-text v-else>{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
+			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
+			<n8n-text v-if="!workflowRunning && (isScheduleTrigger || !isTriggerNode)">{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
 		</template>
 
 		<template v-slot:no-output-data>
@@ -99,7 +97,7 @@ export default Vue.extend({
 		},
 		isNodeRunning(): boolean {
 			const executingNode = this.$store.getters.executingNode;
-			return executingNode === this.node.name;
+			return this.node && executingNode === this.node.name;
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
