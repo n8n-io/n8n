@@ -216,8 +216,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 					if (nodeGraphResult.webhookNodeName) {
 						manualExecEventProperties.webhook_domain = pslGet(
 							(
-								runData.data.resultData.runData[nodeGraphResult.webhookNodeName as string]?.[0]
-									?.data?.main?.[0]?.[0]?.json as { headers: { host: string } }
+								runData.data.resultData.runData[nodeGraphResult.webhookNodeName]?.[0]?.data
+									?.main?.[0]?.[0]?.json as { headers: { host: string } }
 							).headers.host,
 						);
 					}

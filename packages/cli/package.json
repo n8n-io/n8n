@@ -145,6 +145,7 @@
     "passport-jwt": "^4.0.0",
     "pg": "^8.3.0",
     "prom-client": "^13.1.0",
+    "psl": "^1.8.0",
     "request-promise-native": "^1.0.7",
     "shelljs": "^0.8.5",
     "sqlite3": "^5.0.2",

@@ -13,6 +13,7 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	ITelemetrySettings,
+	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	Workflow,
 	WorkflowExecuteMode,
@@ -672,10 +673,9 @@ export type WhereClause = Record<string, { id: string }>;
 //               telemetry
 // ----------------------------------
 
-export interface IExecutionTrackProperties {
+export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	workflow_id: string;
 	success: boolean;
 	error_node_type?: string;
 	is_manual: boolean;
-	[key: string]: unknown;
 }

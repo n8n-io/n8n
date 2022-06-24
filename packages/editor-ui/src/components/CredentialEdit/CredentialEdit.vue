@@ -108,11 +108,11 @@ import {
 	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
-	IDataObject,
 	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	ITelemetryTrackProperties,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -651,7 +651,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					this.testedSuccessfully = false;
 				}
 
-				const trackProperties: IDataObject = {
+				const trackProperties: ITelemetryTrackProperties = {
 					credential_type: credentialDetails.type,
 					workflow_id: this.$store.getters.workflowId,
 					credential_id: credential.id,

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import TelemetryClient from '@rudderstack/rudder-sdk-node';
-import { LoggerProxy } from 'n8n-workflow';
+import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
 import * as config from '../../config';
 import { IExecutionTrackProperties } from '../Interfaces';
 import { getLogger } from '../Logger';
@@ -21,11 +21,6 @@ interface IExecutionsBuffer {
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
 	};
-}
-
-interface ITrackProperties {
-	[key: string]: unknown;
-	user_id?: string;
 }
 
 // eslint-disable-next-line import/no-default-export
@@ -158,11 +153,11 @@ export default class Telemetry {
 		});
 	}
 
-	async track(eventName: string, properties: ITrackProperties = {}): Promise<void> {
+	async track(eventName: string, properties: ITelemetryTrackProperties = {}): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
 				const { user_id } = properties;
-				const updatedProperties: ITrackProperties = {
+				const updatedProperties: ITelemetryTrackProperties = {
 					...properties,
 					instance_id: this.instanceId,
 					version_cli: this.versionCli,
