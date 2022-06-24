@@ -636,11 +636,11 @@ export default mixins(
 				try {
 					data = JSON.parse(this.editMode.value);
 				} catch (error) {
-					const title = this.$locale.baseText('runData.invalidPinnedData');
+					const title = this.$locale.baseText('runData.editOutputInvalid');
 
 					const toRemove = new RegExp(/JSON\.parse:|of the JSON data/, 'g');
 					const message = error.message.replace(toRemove, '').trim();
-					error.message = message.charAt(0).toUpperCase() + message.slice(1);
+					error.message = message.charAt(0).toUpperCase() + message.slice(1) + '.';
 
 					this.$showError(error, title);
 					return;
