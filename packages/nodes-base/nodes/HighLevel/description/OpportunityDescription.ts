@@ -1,10 +1,10 @@
 import {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
 	INodeProperties
 } from 'n8n-workflow';
 
-import { isEmailValid, isPhoneValid } from '../GenericFunctions';
+import {
+	contactIdentifierPreSendAction
+} from '../GenericFunctions';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -193,18 +193,7 @@ const createOperations: Array<INodeProperties> = [
 		routing: {
 			send: {
 				preSend: [
-					async function (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-						requestOptions.body = (requestOptions.body || {}) as object;
-						const identifier = this.getNodeParameter('contactIdentifier') as string;
-						if (isEmailValid(identifier)) {
-							Object.assign(requestOptions.body, { email: identifier });
-						} else if (isPhoneValid(identifier)) {
-							Object.assign(requestOptions.body, { phone: identifier })
-						} else {
-							Object.assign(requestOptions.body, { contactId: identifier });
-						}
-						return requestOptions;
-					},
+					contactIdentifierPreSendAction
 				],
 			}
 		}
@@ -700,6 +689,20 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'stageId',
+					}
+				}
+			},
+			{
+				displayName: 'Contact Identifier',
+				name: 'contactIdentifier',
+				type: 'string',
+				description: 'Either Email, Phone or Contact ID',
+				default: '',
+				routing: {
+					send: {
+						preSend: [
+							contactIdentifierPreSendAction
+						],
 					}
 				}
 			},

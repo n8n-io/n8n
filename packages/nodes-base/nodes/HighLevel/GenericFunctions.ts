@@ -96,6 +96,22 @@ export async function dueDatePreSendAction(this: IExecuteSingleFunctions, reques
 	return requestOptions;
 }
 
+export async function contactIdentifierPreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	requestOptions.body = (requestOptions.body || {}) as object;
+	let identifier = this.getNodeParameter('contactIdentifier', null) as string;
+	if (!identifier) {
+		const fields = this.getNodeParameter('additionalFields') as { contactIdentifier: string };
+		identifier = fields.contactIdentifier;
+	}
+	if (isEmailValid(identifier)) {
+		Object.assign(requestOptions.body, { email: identifier });
+	} else if (isPhoneValid(identifier)) {
+		Object.assign(requestOptions.body, { phone: identifier })
+	} else {
+		Object.assign(requestOptions.body, { contactId: identifier });
+	}
+	return requestOptions;
+}
 
 export async function highLevelApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> {
 
