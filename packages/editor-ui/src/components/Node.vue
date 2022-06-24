@@ -268,9 +268,7 @@ export default mixins(
 			else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
-				} else if (this.waiting) {
-					borderColor = getStyleTokenValue('--color-secondary');
-				} else if (this.hasPinData) {
+				} else if (this.waiting || this.hasPinData) {
 					borderColor = getStyleTokenValue('--color-secondary');
 				} else if (this.workflowDataItems) {
 					borderColor = getStyleTokenValue('--color-success');
