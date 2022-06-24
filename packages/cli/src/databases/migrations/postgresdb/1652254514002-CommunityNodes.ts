@@ -35,7 +35,7 @@ export class CommunityNodes1652254514002 implements MigrationInterface {
 				'"latestVersion" integer NOT NULL DEFAULT 1, ' +
 				'"package" character(241) NOT NULL, ' +
 				`CONSTRAINT "PK_${tablePrefix}8ebd28194e4f792f96b5933423fc439df97d9689" PRIMARY KEY ("name"), ` +
-				`CONSTRAINT "FK_${tablePrefix}73f857fc5dce682cef8a99c11dbddbc969618951" FOREIGN KEY ("package") REFERENCES ${tablePrefix}installed_packages ("packageName")` +
+				`CONSTRAINT "FK_${tablePrefix}73f857fc5dce682cef8a99c11dbddbc969618951" FOREIGN KEY ("package") REFERENCES ${tablePrefix}installed_packages ("packageName") ON DELETE CASCADE ON UPDATE CASCADE ` +
 			');'
 		);
 		logMigrationEnd(this.name);
