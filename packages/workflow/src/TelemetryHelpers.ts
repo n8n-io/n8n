@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-import * as psl from 'psl';
 import {
 	IConnection,
 	INode,
@@ -75,10 +74,6 @@ export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 
 		return match.groups.protocolPlusDomain;
 	}
-}
-
-export function extractDomainFromURLString(host: string): string | null {
-	return psl.get(host);
 }
 
 function isSensitive(segment: string) {
@@ -183,7 +178,7 @@ export function generateNodesGraph(
 				nodeItem.domain_base = getDomainBase(url);
 				nodeItem.domain_path = getDomainPath(url);
 				nodeItem.method = node.parameters.requestMethod as string;
-			} else if (node.type === 'n8n-nodes-base.httpRequest') {
+			} else if (node.type === 'n8n-nodes-base.webhook') {
 				webhookNodeName = node.name;
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);

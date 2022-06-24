@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
+import { get as pslGet } from 'psl';
 import { BinaryDataManager } from 'n8n-core';
-import { INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
+import { INodesGraph, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
 import { snakeCase } from 'change-case';
 import {
 	IDiagnosticInfo,
@@ -172,14 +173,24 @@ export class InternalHooksClass implements IInternalHooksClass {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 				}
 
-				const manualExecEventProperties = {
-					workflow_id: workflow.id,
+				const manualExecEventProperties: {
+					workflow_id: string;
+					status: 'success' | 'failed';
+					error_message: string;
+					error_node_type: string | undefined;
+					node_graph: INodesGraph;
+					node_graph_string: string;
+					error_node_id: string;
+					webhook_domain: string | null;
+				} = {
+					workflow_id: workflow.id.toString(),
 					status: properties.success ? 'success' : 'failed',
-					error_message: properties.error_message,
+					error_message: properties.error_message as string,
 					error_node_type: properties.error_node_type,
-					node_graph: properties.node_graph,
-					node_graph_string: properties.node_graph_string,
-					error_node_id: properties.error_node_id,
+					node_graph: properties.node_graph as INodesGraph,
+					node_graph_string: properties.node_graph_string as string,
+					error_node_id: properties.error_node_id as string,
+					webhook_domain: null,
 				};
 
 				if (!manualExecEventProperties.node_graph) {
@@ -202,20 +213,15 @@ export class InternalHooksClass implements IInternalHooksClass {
 						}),
 					);
 				} else {
-					console.log('A');
 					if (nodeGraphResult.webhookNodeName) {
-						console.log('B');
-						// const webhookDomain =
-						const md =
-							runData.data.resultData.runData[nodeGraphResult.webhookNodeName as string][0].data
-								?.main[0];
-						if (md) {
-							console.log('C');
-							console.log(md[0].json.headers);
-						}
-						// console.log(md?[0].json?['headers']?['host'] as );
+						manualExecEventProperties.webhook_domain = pslGet(
+							(
+								runData.data.resultData.runData[nodeGraphResult.webhookNodeName as string]?.[0]
+									?.data?.main?.[0]?.[0]?.json as { headers: { host: string } }
+							).headers.host,
+						);
 					}
-					// manualExecEventProperties.webhook_domain = nodeGraphResult.webhookNodeName
+
 					promises.push(
 						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
 					);

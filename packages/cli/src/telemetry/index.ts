@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import TelemetryClient from '@rudderstack/rudder-sdk-node';
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import * as config from '../../config';
 import { IExecutionTrackProperties } from '../Interfaces';
 import { getLogger } from '../Logger';
@@ -136,7 +136,9 @@ export default class Telemetry {
 		});
 	}
 
-	async identify(traits?: IDataObject): Promise<void> {
+	async identify(traits?: {
+		[key: string]: string | number | boolean | object | undefined | null;
+	}): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.client) {
 				this.client.identify(
@@ -165,11 +167,6 @@ export default class Telemetry {
 					instance_id: this.instanceId,
 					version_cli: this.versionCli,
 				};
-
-				console.log({
-					event: eventName,
-					properties,
-				});
 
 				this.client.track(
 					{
