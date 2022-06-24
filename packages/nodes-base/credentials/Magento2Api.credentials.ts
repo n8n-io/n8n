@@ -36,6 +36,6 @@ export class Magento2Api implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.accessToken}}',
 			},
-		}
+		},
 	};
 }

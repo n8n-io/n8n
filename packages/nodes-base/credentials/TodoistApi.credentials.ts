@@ -24,7 +24,7 @@ export class TodoistApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.apiKey}}',
 			},
-		}
+		},
 	};
 
 	test: ICredentialTestRequest = {

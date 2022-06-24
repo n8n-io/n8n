@@ -37,7 +37,7 @@ export class GithubApi implements ICredentialType {
 			headers: {
 				Authorization: '=token {{$credentials?.accessToken}}',
 			},
-		}
+		},
 	};
 
 	test: ICredentialTestRequest = {

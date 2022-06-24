@@ -24,7 +24,7 @@ export class MailjetSmsApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.token}}',
 			},
-		}
+		},
 	};
 
 	test: ICredentialTestRequest = {

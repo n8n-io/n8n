@@ -25,7 +25,7 @@ export class SlackApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.accessToken}}',
 			},
-		}
+		},
 	};
 
 	test: ICredentialTestRequest = {

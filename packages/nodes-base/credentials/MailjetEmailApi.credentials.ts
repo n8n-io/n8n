@@ -38,7 +38,7 @@ export class MailjetEmailApi implements ICredentialType {
 			username: '={{$credentials.apiKey}}',
 			password: '={{$credentials.secretKey}}',
 		},
-	}
+	},
 };
 
  test: ICredentialTestRequest = {

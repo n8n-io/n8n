@@ -23,7 +23,7 @@ export class AsanaApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.accessToken}}',
 			},
-		}
+		},
 	};
 
 }

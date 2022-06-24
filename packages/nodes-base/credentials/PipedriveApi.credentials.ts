@@ -24,6 +24,6 @@ export class PipedriveApi implements ICredentialType {
 			qs: {
 				api_token: '={{$credentials.apiToken}}',
 			},
-		}
+		},
 	};
 }

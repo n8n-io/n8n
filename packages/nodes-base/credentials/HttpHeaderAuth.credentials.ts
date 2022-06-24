@@ -33,6 +33,6 @@ export class HttpHeaderAuth implements ICredentialType {
 			headers: {
 				'={{$credentials.name}}': '={{$credentials.value}}',
 			},
-		}
+		},
 	};
 }

@@ -30,7 +30,7 @@ export class CalApi implements ICredentialType {
 			qs: {
 				apiKey: '={{$credentials.apiKey}}',
 			},
-		}
+		},
 	};
 
 	test: ICredentialTestRequest = {

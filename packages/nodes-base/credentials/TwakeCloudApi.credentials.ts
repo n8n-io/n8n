@@ -24,7 +24,7 @@ export class TwakeCloudApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.workspaceKey}}',
 			},
-		}
+		},
 	};
 
 	test: ICredentialTestRequest = {

@@ -48,7 +48,7 @@ export class ServiceNowBasicApi implements ICredentialType {
 				username: '={{$credentials.user}}',
 				password: '={{$credentials.password}}',
 			},
-		}
+		},
 	};
 
 	test: ICredentialTestRequest = {
