@@ -23,30 +23,14 @@ import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { validateEntity } from '../GenericHelpers';
-import { createCredentiasFromCredentialsEntity } from '../CredentialsHelper';
+import { createCredentialsFromCredentialsEntity } from '../CredentialsHelper';
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
 import { externalHooks } from '../Server';
 import { CredentialsService } from './credentials.service';
-import { EECreditentialsService } from '../../ee/src/credentials/credentials.service';
-import { eeCredentialsController } from '../../ee/src/credentials/credentials.controller';
+import { EECredentialsController } from './credentials.controller.ee';
 
 export const credentialsController = express.Router();
-// eslint-disable-next-line import/no-mutable-exports
-export let credentialsService: CredentialsService | EECreditentialsService;
-
-export function setServices(): void {
-	// EE enabled
-	if (config.getEnv('deployment.paid')) {
-		credentialsService = new EECreditentialsService();
-		return;
-	}
-
-	// FREE
-	credentialsService = new CredentialsService();
-}
-
-setServices();
 
 /**
  * Initialize Logger if needed
@@ -60,7 +44,7 @@ credentialsController.use((req, res, next) => {
 	next();
 });
 
-credentialsController.use('/', eeCredentialsController);
+credentialsController.use('/', EECredentialsController);
 
 /**
  * GET /credentials
@@ -186,7 +170,7 @@ credentialsController.post(
 		}
 
 		// Encrypt the data
-		const coreCredential = createCredentiasFromCredentialsEntity(newCredential, true);
+		const coreCredential = createCredentialsFromCredentialsEntity(newCredential, true);
 
 		// @ts-ignore
 		coreCredential.setData(newCredential.data, encryptionKey);
@@ -318,7 +302,7 @@ credentialsController.patch(
 			);
 		}
 
-		const coreCredential = createCredentiasFromCredentialsEntity(credential);
+		const coreCredential = createCredentialsFromCredentialsEntity(credential);
 
 		const decryptedData = coreCredential.getData(encryptionKey);
 
@@ -390,7 +374,7 @@ credentialsController.get(
 		// 	}),
 		// });
 
-		const shared = await credentialsService.getSharedCredentials(req.user.id, credentialId, [
+		const shared = await CredentialsService.getSharedCredentials(req.user.id, credentialId, [
 			'credentials',
 		]);
 
@@ -426,7 +410,7 @@ credentialsController.get(
 			);
 		}
 
-		const coreCredential = credentialsService.createCredentiasFromCredentialsEntity(credential);
+		const coreCredential = CredentialsService.createCredentialsFromCredentialsEntity(credential);
 
 		return {
 			id: id.toString(),

@@ -7,7 +7,7 @@ import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 
 export class CredentialsService {
-	async getSharedCredentials(
+	static async getSharedCredentials(
 		userId: string,
 		credentialId: number | string,
 		relations?: string[],
@@ -26,7 +26,7 @@ export class CredentialsService {
 		return Db.collections.SharedCredentials.findOne(options);
 	}
 
-	createCredentiasFromCredentialsEntity(
+	static createCredentialsFromCredentialsEntity(
 		credential: CredentialsEntity,
 		encrypt = false,
 	): Credentials {
