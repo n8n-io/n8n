@@ -21,9 +21,11 @@ import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { workflowRun } from './mixins/workflowRun';
+import { pinData } from './mixins/pinData';
 
 export default mixins(
 	workflowRun,
+	pinData,
 ).extend({
 	props: {
 		nodeName: {
@@ -63,12 +65,6 @@ export default mixins(
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
-		},
-		pinData (): boolean {
-			return this.node !== null && this.$store.getters['pinDataByNodeName'](this.node.name);
-		},
-		hasPinData (): boolean {
-			return this.node !== null && typeof this.pinData !== 'undefined';
 		},
 		isTriggerNode (): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
