@@ -21,7 +21,7 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
-	PinDataPayload,
+	PinData,
 } from 'n8n-workflow';
 
 export * from 'n8n-design-system/src/types';
@@ -213,7 +213,7 @@ export interface IStartRunData {
 	startNodes?: string[];
 	destinationNode?: string;
 	runData?: IRunData;
-	pinData?: PinDataPayload;
+	pinData?: PinData;
 }
 
 export interface IRunDataUi {
@@ -248,7 +248,7 @@ export interface IWorkflowData {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: string[];
-	pinData?: { [nodeName: string]: IDataObject };
+	pinData?: PinData;
 }
 
 export interface IWorkflowDataUpdate {
@@ -281,7 +281,7 @@ export interface IWorkflowDb {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
-	pinData?: Record<string, undefined | IDataObject>;
+	pinData?: PinData;
 }
 
 // Identical to cli.Interfaces.ts

@@ -5,7 +5,6 @@ import Vuex from 'vuex';
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	DEFAULT_NODETYPE_VERSION,
-	MAX_WORKFLOW_PINNED_DATA_SIZE,
 } from '@/constants';
 
 import {
@@ -18,6 +17,7 @@ import {
 	IRunData,
 	ITaskData,
 	IWorkflowSettings,
+	PinData,
 } from 'n8n-workflow';
 
 import {
@@ -875,7 +875,7 @@ export const store = new Vuex.Store({
 		 * Pin data
 		 */
 
-		pinData: (state): Record<string, IDataObject | undefined> | undefined => {
+		pinData: (state): PinData | undefined => {
 			return state.workflow.pinData;
 		},
 		pinDataByNodeName: (state) => (nodeName: string) => {

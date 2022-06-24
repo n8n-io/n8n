@@ -305,7 +305,6 @@ export const workflowHelpers = mixins(
 			getWorkflowDataToSave (): Promise<IWorkflowData> {
 				const workflowNodes = this.$store.getters.allNodes;
 				const workflowConnections = this.$store.getters.allConnections;
-				const pinData = this.$store.getters.pinData;
 
 				let nodeData;
 
@@ -324,7 +323,7 @@ export const workflowHelpers = mixins(
 				const data: IWorkflowData = {
 					name: this.$store.getters.workflowName,
 					nodes,
-					pinData,
+					pinData: this.$store.getters.pinData,
 					connections: workflowConnections,
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,
