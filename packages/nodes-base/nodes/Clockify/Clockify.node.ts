@@ -332,8 +332,6 @@ export class Clockify implements INodeType {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const clientId = this.getNodeParameter('clientId', i) as string;
-
-						const archived = this.getNodeParameter('archived', i, false) as boolean;
 						const name = this.getNodeParameter('name', i) as string;
 
 						const additionalFields = this.getNodeParameter(
@@ -342,13 +340,10 @@ export class Clockify implements INodeType {
 						) as IDataObject;
 
 						const body: IDataObject = {
-							archived,
 							name,
 						};
 
 						Object.assign(body, additionalFields);
-
-						console.log(`\nbody: ${JSON.stringify(body,null,2)}`);
 
 						responseData = await clockifyApiRequest.call(
 							this,
