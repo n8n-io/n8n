@@ -329,7 +329,6 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Category',
 				name: 'category',
 				type: 'options',
-				required: true,
 				default: 'top',
 				description: 'Category of the posts to retrieve',
 				options: [
