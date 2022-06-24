@@ -3,6 +3,7 @@
 		:options="options"
 		:value="value"
 		@input="onTabSelect"
+		@tooltipClick="onTooltipClick"
 	/>
 </template>
 
@@ -111,6 +112,11 @@ export default mixins(
 
 			if (tab === 'settings' || tab === 'params') {
 				this.$emit('input', tab);
+			}
+		},
+		onTooltipClick(tab: string, event: MouseEvent) {
+			if (tab === 'communityNode' && (event.target as Element).localName === 'a') {
+				this.$telemetry.track('user clicked cnr docs link', { source: 'node details view' });
 			}
 		},
 	},

@@ -23,6 +23,7 @@
 						:class="$style['community-node-icon']"
 						slot="content"
 						v-html="$locale.baseText('nodeCreator.mainPanel.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+						@click="onCommunityNodeTooltipClick"
 					>
 					</div>
 					<n8n-icon icon="cube" color="foreground-xdark" />
@@ -143,6 +144,11 @@ export default Vue.extend({
 			setTimeout(() => {
 				this.draggablePosition = { x: -100, y: -100 };
 			}, 300);
+		},
+		onCommunityNodeTooltipClick(event: MouseEvent) {
+			if ((event.target as Element).localName === 'a') {
+				this.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
+			}
 		},
 	},
 });

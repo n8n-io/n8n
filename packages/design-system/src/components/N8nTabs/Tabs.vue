@@ -12,7 +12,7 @@
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<n8n-tooltip :disabled="!option.tooltip" placement="top">
-					<div slot="content" v-html="option.tooltip"></div>
+					<div slot="content" v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)"></div>
 					<a
 						v-if="option.href"
 						target="_blank"
@@ -88,6 +88,9 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		handleTooltipClick(tab: string, event: MouseEvent) {
+			this.$emit('tooltipClick', tab, event);
+		},
 		handleTabClick(tab: string) {
 			this.$emit('input', tab);
 		},
