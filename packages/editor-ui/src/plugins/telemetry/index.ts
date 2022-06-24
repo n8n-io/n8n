@@ -72,6 +72,7 @@ class Telemetry {
 			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
 			this.identify(instanceId, userId);
 			this.flushPageEvents();
+			this.track('Instance started');
 		}
 	}
 
