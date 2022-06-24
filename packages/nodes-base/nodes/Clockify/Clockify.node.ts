@@ -901,9 +901,9 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
-						Object.assign(qs, additionalFields);
+						Object.assign(qs, filters);
 
 						if (returnAll) {
 							responseData = await clockifyApiRequestAllItems.call(

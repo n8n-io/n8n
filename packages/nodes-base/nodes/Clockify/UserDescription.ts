@@ -73,10 +73,10 @@ export const userFields: INodeProperties[] = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
 				resource: [
