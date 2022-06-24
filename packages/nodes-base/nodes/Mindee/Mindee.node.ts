@@ -93,7 +93,7 @@ export class Mindee implements INodeType {
 						'@version': [
 							2,
 						],
-					}
+					},
 				},
 				options: [
 					{
