@@ -1,13 +1,8 @@
 # 1. Create an image to build n8n
 FROM node:16-alpine as builder
-
-# Update everything and install needed dependencies
 USER root
-
-# Install all needed dependencies
 RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates && \
-	npm_config_user=root npm install -g lerna run-script-os
-
+        npm_config_user=root npm install -g lerna run-script-os
 WORKDIR /data
 
 COPY lerna.json .
@@ -35,21 +30,19 @@ RUN apk add --update graphicsmagick tzdata tini su-exec git
 
 WORKDIR /data
 
-# Install all needed dependencies
 RUN npm_config_user=root npm install -g full-icu
 
-# Install fonts
 RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
-	update-ms-fonts && \
-	fc-cache -f && \
-	apk del fonts && \
-	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
+        update-ms-fonts && \
+        fc-cache -f && \
+        apk del fonts && \
+        find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
 
 ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
-
 COPY --from=builder /data ./
-
 COPY docker/images/n8n-custom/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x ./packages/cli/bin/n8n
+RUN chmod 755 /data
+RUN chmod +x /docker-entrypoint.sh
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
-
 EXPOSE 5678/tcp
