@@ -36,7 +36,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.identifier}}',
+						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
 					},
 					output: {
 						postReceive: [
@@ -56,7 +56,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.identifier}}',
+						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
 					},
 				},
 			},
@@ -79,7 +79,7 @@ export const opportunityOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.identifier}}',
+						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
 					},
 				},
 			},
@@ -361,8 +361,8 @@ const createOperations: Array<INodeProperties> = [
 
 const deleteOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Opportunity ID',
+		name: 'opportunityId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -376,14 +376,13 @@ const deleteOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
-		description: 'Opportunity ID',
 	},
 ];
 
 const getOperations: Array<INodeProperties> = [
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Opportunity ID',
+		name: 'opportunityId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -397,7 +396,6 @@ const getOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
-		description: 'Opportunity ID',
 	},
 ];
 
@@ -620,8 +618,8 @@ const updateOperations: Array<INodeProperties> = [
 	// 	}
 	// },
 	{
-		displayName: 'Identifier',
-		name: 'identifier',
+		displayName: 'Opportunity ID',
+		name: 'opportunityId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -635,7 +633,6 @@ const updateOperations: Array<INodeProperties> = [
 			},
 		},
 		default: '',
-		description: 'Opportunity ID',
 	},
 	{
 		displayName: 'Title',
