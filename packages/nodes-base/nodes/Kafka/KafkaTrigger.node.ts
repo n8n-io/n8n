@@ -95,6 +95,29 @@ export class KafkaTrigger implements INodeType {
 						description: 'Whether to allow sending message to a previously non exisiting topic',
 					},
 					{
+						displayName: 'Auto Commit Interval',
+						name: 'autoCommitInterval',
+						type: 'number',
+						default: 0,
+						description: 'The consumer will commit offsets after a given period, for example, five seconds',
+						hint: 'Value in milliseconds',
+					},
+					{
+						displayName: 'Auto Commit Threshold',
+						name: 'autoCommitThreshold',
+						type: 'number',
+						default: 0,
+						description: 'The consumer will commit offsets after resolving a given number of messages',
+					},
+					{
+						displayName: 'Heartbeat Interval',
+						name: 'heartbeatInterval',
+						type: 'number',
+						default: 3000,
+						description: 'Heartbeats are used to ensure that the consumer\'s session stays active',
+						hint: 'The value must be set lower than Session Timeout',
+					},
+					{
 						displayName: 'Read Messages From Beginning',
 						name: 'fromBeginning',
 						type: 'boolean',
@@ -128,6 +151,7 @@ export class KafkaTrigger implements INodeType {
 						type: 'number',
 						default: 30000,
 						description: 'The time to await a response in ms',
+						hint: 'Value in milliseconds',
 					},
 					{
 						displayName: 'Return Headers',
@@ -175,7 +199,11 @@ export class KafkaTrigger implements INodeType {
 
 		const kafka = new apacheKafka(config);
 
-		const consumer = kafka.consumer({ groupId });
+		const consumer = kafka.consumer({
+			groupId,
+			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
+			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
+		 });
 
 		await consumer.connect();
 
@@ -191,6 +219,8 @@ export class KafkaTrigger implements INodeType {
 
 		const startConsumer = async () => {
 			await consumer.run({
+				autoCommitInterval: options.autoCommitInterval as number || null,
+				autoCommitThreshold: options.autoCommitThreshold as number || null,
 				eachMessage: async ({ topic, message }) => {
 
 					let data: IDataObject = {};
