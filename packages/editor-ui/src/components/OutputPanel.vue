@@ -179,10 +179,15 @@ export default Vue.extend({
 		insertTestData() {
 			if (this.$refs.runData) {
 				(this.$refs.runData as Vue & {
-					enterEditMode: (data?: Array<Record<string, string>>) => {}
+					enterEditMode: (data?: Array<Record<string, string | number>>) => {}
 				}).enterEditMode([
 					{
-						propertyName: "value",
+						"name": "First item",
+						"code": 1,
+					},
+					{
+						"name": "Second item",
+						"code": 2,
 					},
 				]);
 			}
