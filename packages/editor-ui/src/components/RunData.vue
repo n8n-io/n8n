@@ -104,7 +104,7 @@
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
-		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
+		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" v-show="!editMode.enabled" :class="$style.itemsCount">
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', {adjustToNumber: dataCount}) }}
 			</n8n-text>

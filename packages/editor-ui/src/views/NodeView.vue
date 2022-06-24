@@ -2808,7 +2808,7 @@ export default mixins(
 				}
 
 				this.$store.commit('removeAllConnections', {setStateDirty: false});
-				this.$store.commit('removeAllNodes', {setStateDirty: false});
+				this.$store.commit('removeAllNodes', { setStateDirty: false, removePinData: true });
 
 				// Reset workflow execution data
 				this.$store.commit('setWorkflowExecutionData', null);
