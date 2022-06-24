@@ -49,6 +49,7 @@
 					class="ml-xs"
 					icon="pencil-alt"
 					type="tertiary"
+					:disabled="editModeEnabled"
 					@click="enterEditMode()"
 				/>
 				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0)">
@@ -77,7 +78,7 @@
 						type="tertiary"
 						active
 						icon="thumbtack"
-						:disabled="editMode.enabled || inputData.length === 0"
+						:disabled="editModeEnabled || inputData.length === 0"
 						@click="onTogglePinData"
 					/>
 				</n8n-tooltip>
@@ -110,7 +111,7 @@
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer">
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editModeEnabled" :class="$style['actions-group']">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<n8n-icon-button
@@ -139,8 +140,8 @@
 				<n8n-text>{{ executingMessage }}</n8n-text>
 			</div>
 
-			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
-				<code-editor v-model="editMode.value" />
+			<div v-else-if="editModeEnabled" :class="$style['edit-mode']">
+				<code-editor v-model="editModeValue" />
 				<div :class="$style['edit-mode-footer']">
 					<n8n-info-tip :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
@@ -436,10 +437,7 @@ export default mixins(
 				currentPage: 1,
 				pageSize: 10,
 				pageSizes: [10, 25, 50, 100],
-				editMode: {
-					enabled: false,
-					value: '',
-				},
+				editModeValue: '',
 			};
 		},
 		mounted() {
@@ -621,26 +619,40 @@ export default mixins(
 				}
 				return branches;
 			},
+			editModeEnabled(): boolean {
+				return this.$store.getters['ui/outputPanelEditMode'];
+			},
 		},
 		methods: {
 			enterEditMode(data?: Array<Record<string, string>>) {
-				this.editMode.enabled = true;
-				this.editMode.value = JSON.stringify(data || this.jsonData, null, 2);
+				this.$store.commit('ui/setOutputPanelEditMode', true);
+				this.editModeValue = JSON.stringify(data || this.jsonData, null, 2);
 			},
 			onClickCancelEdit() {
-				this.editMode.enabled = false;
-				this.editMode.value = '';
+				this.$store.commit('ui/setOutputPanelEditMode', false);
+				this.editModeValue = '';
 			},
 			onClickSaveEdit() {
 				let data;
 				try {
-					data = JSON.parse(this.editMode.value);
+					data = JSON.parse(this.editModeValue);
 				} catch (error) {
 					const title = this.$locale.baseText('runData.editOutputInvalid');
 
 					const toRemove = new RegExp(/JSON\.parse:|of the JSON data/, 'g');
 					const message = error.message.replace(toRemove, '').trim();
-					error.message = message.charAt(0).toUpperCase() + message.slice(1) + '.';
+					const positionMatch = error.message.match(/at position (\d+)/);
+
+					error.message = message.charAt(0).toUpperCase() + message.slice(1);
+
+					if (positionMatch) {
+						const position = parseInt(positionMatch[1], 10);
+						const lineBreaksUpToPosition = (this.editModeValue.slice(0, position).match(/\n/g) || []).length;
+
+						error.message += `, line ${lineBreaksUpToPosition + 1}`;
+					}
+
+					error.message += '.';
 
 					this.$showError(error, title);
 					return;
@@ -656,7 +668,7 @@ export default mixins(
 				}
 
 				if (this.verifyPinnedDataSize(data)) {
-					this.editMode.enabled = false;
+					this.$store.commit('ui/setOutputPanelEditMode', false);
 					this.$store.commit('pinData', { node: this.node, data });
 				}
 			},

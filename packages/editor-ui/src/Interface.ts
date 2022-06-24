@@ -874,6 +874,7 @@ export interface IUiState {
 		};
 		output: {
 			displayMode: IRunDataDisplayMode;
+			editMode: boolean;
 		};
 	};
 	mainPanelPosition: number;
