@@ -312,6 +312,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 			}
 			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
 		},
+		outputPanelEditMode(): { enabled: boolean; value: string; } {
+			return this.$store.getters['ui/outputPanelEditMode'];
+		},
 	},
 	watch: {
 		activeNode(node, oldNode) {
@@ -437,10 +440,26 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-		close() {
+		async close() {
 			if (this.isDragging) {
 				return;
 			}
+
+			if (this.outputPanelEditMode.enabled) {
+				const shouldPinDataBeforeClosing = await this.confirmMessage(
+					this.$locale.baseText('ndv.pinData.beforeClosing.description'),
+					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
+					null,
+					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
+					this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+				);
+
+				if (shouldPinDataBeforeClosing) {
+					// this.$store.commit('pinData', { node: this.node });
+					return;
+				}
+			}
+
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',

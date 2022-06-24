@@ -49,7 +49,7 @@
 					class="ml-xs"
 					icon="pencil-alt"
 					type="tertiary"
-					:disabled="editModeEnabled"
+					:disabled="editMode.enabled"
 					@click="enterEditMode()"
 				/>
 				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0)">
@@ -78,7 +78,7 @@
 						type="tertiary"
 						active
 						icon="thumbtack"
-						:disabled="editModeEnabled || inputData.length === 0"
+						:disabled="editMode.enabled || inputData.length === 0"
 						@click="onTogglePinData"
 					/>
 				</n8n-tooltip>
@@ -111,7 +111,7 @@
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer">
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editModeEnabled" :class="$style['actions-group']">
+			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<n8n-icon-button
@@ -140,8 +140,8 @@
 				<n8n-text>{{ executingMessage }}</n8n-text>
 			</div>
 
-			<div v-else-if="editModeEnabled" :class="$style['edit-mode']">
-				<code-editor v-model="editModeValue" />
+			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
+				<code-editor :value="editMode.value" @input="$store.commit('ui/setOutputPanelEditModeValue', $event)" />
 				<div :class="$style['edit-mode-footer']">
 					<n8n-info-tip :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
@@ -437,7 +437,6 @@ export default mixins(
 				currentPage: 1,
 				pageSize: 10,
 				pageSizes: [10, 25, 50, 100],
-				editModeValue: '',
 			};
 		},
 		mounted() {
@@ -619,23 +618,23 @@ export default mixins(
 				}
 				return branches;
 			},
-			editModeEnabled(): boolean {
+			editMode(): { enabled: boolean; value: string; } {
 				return this.$store.getters['ui/outputPanelEditMode'];
 			},
 		},
 		methods: {
 			enterEditMode(data?: Array<Record<string, string>>) {
-				this.$store.commit('ui/setOutputPanelEditMode', true);
-				this.editModeValue = JSON.stringify(data || this.jsonData, null, 2);
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
+				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data || this.jsonData, null, 2));
 			},
 			onClickCancelEdit() {
-				this.$store.commit('ui/setOutputPanelEditMode', false);
-				this.editModeValue = '';
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+				this.$store.commit('ui/setOutputPanelEditModeValue', '');
 			},
 			onClickSaveEdit() {
 				let data;
 				try {
-					data = JSON.parse(this.editModeValue);
+					data = JSON.parse(this.editMode.value);
 				} catch (error) {
 					const title = this.$locale.baseText('runData.editOutputInvalid');
 
@@ -647,7 +646,7 @@ export default mixins(
 
 					if (positionMatch) {
 						const position = parseInt(positionMatch[1], 10);
-						const lineBreaksUpToPosition = (this.editModeValue.slice(0, position).match(/\n/g) || []).length;
+						const lineBreaksUpToPosition = (this.editMode.value.slice(0, position).match(/\n/g) || []).length;
 
 						error.message += `, line ${lineBreaksUpToPosition + 1}`;
 					}
@@ -667,15 +666,15 @@ export default mixins(
 					return;
 				}
 
-				if (this.verifyPinnedDataSize(data)) {
-					this.$store.commit('ui/setOutputPanelEditMode', false);
+				if (this.isValidPinDataSize(data)) {
+					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 					this.$store.commit('pinData', { node: this.node, data });
 				}
 			},
 			async onTogglePinData() {
 				if (this.hasPinData) {
 					this.$store.commit('unpinData', { node: this.node });
-				} else if (this.verifyPinnedDataSize(this.jsonData)) {
+				} else if (this.isValidPinDataSize(this.jsonData)) {
 					this.$store.commit('pinData', { node: this.node, data: this.jsonData });
 
 					if (this.maxRunIndex > 0) {
@@ -692,7 +691,7 @@ export default mixins(
 					}
 				}
 			},
-			verifyPinnedDataSize(data: IDataObject[]): boolean {
+			isValidPinDataSize(data: IDataObject[]): boolean {
 				try {
 					if (this.$store.getters['pinDataSize'] + stringSizeInBytes(JSON.stringify(data)) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
 						throw new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description'));

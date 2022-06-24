@@ -96,7 +96,10 @@ const module: Module<IUiState, IRootState> = {
 			},
 			output: {
 				displayMode: 'table',
-				editMode: false,
+				editMode: {
+					enabled: false,
+					value: '',
+				},
 			},
 		},
 		mainPanelPosition: 0.5,
@@ -127,7 +130,7 @@ const module: Module<IUiState, IRootState> = {
 		},
 		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
-		outputPanelEditMode: (state: IUiState): boolean => state.ndv.output.editMode,
+		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 	},
 	mutations: {
@@ -172,8 +175,11 @@ const module: Module<IUiState, IRootState> = {
 		setPanelDisplayMode: (state: IUiState, params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}) => {
 			Vue.set(state.ndv[params.pane], 'displayMode', params.mode);
 		},
-		setOutputPanelEditMode: (state: IUiState, payload: boolean) => {
-			Vue.set(state.ndv.output, 'editMode', payload);
+		setOutputPanelEditModeEnabled: (state: IUiState, payload: boolean) => {
+			Vue.set(state.ndv.output.editMode, 'enabled', payload);
+		},
+		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
+			Vue.set(state.ndv.output.editMode, 'value', payload);
 		},
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
