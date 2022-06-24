@@ -35,13 +35,23 @@
 		<div :class="$style.header">
 			<slot name="header"></slot>
 
-			<div v-show="!hasRunError && hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0))" @click.stop :class="$style.displayModes">
+			<div v-show="!hasRunError" @click.stop :class="$style.displayModes">
 				<n8n-radio-buttons
+					v-show="hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0))"
 					:value="displayMode"
 					:options="buttons"
 					@input="onDisplayModeChange"
 				/>
-				<n8n-tooltip placement="bottom-end" v-if="canPinData">
+				<n8n-icon-button
+					v-if="canPinData"
+					:title="$locale.baseText('runData.editOutput')"
+					:circle="false"
+					class="ml-xs"
+					icon="pencil-alt"
+					type="tertiary"
+					@click="enterEditMode()"
+				/>
+				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0)">
 					<template #content v-if="hasPinData">
 						<div :class="$style['pin-data-tooltip']">
 							<strong>
@@ -122,14 +132,6 @@
 						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
-				<n8n-icon-button
-					:title="$locale.baseText('runData.editOutput')"
-					:circle="false"
-					class="ml-2xs"
-					icon="pencil-alt"
-					type="tertiary"
-					@click="enterEditMode()"
-				/>
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
