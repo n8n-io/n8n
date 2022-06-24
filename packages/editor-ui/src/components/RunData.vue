@@ -628,41 +628,9 @@ export default mixins(
 				this.$store.commit('ui/setOutputPanelEditModeValue', '');
 			},
 			onClickSaveEdit() {
-				let data;
-				try {
-					data = JSON.parse(this.editMode.value);
-				} catch (error) {
-					const title = this.$locale.baseText('runData.editOutputInvalid');
+				if (this.isValidPinDataJSON(this.editMode.value) && this.isValidPinDataSize(this.editMode.value)) {
+					const data = JSON.parse(this.editMode.value);
 
-					const toRemove = new RegExp(/JSON\.parse:|of the JSON data/, 'g');
-					const message = error.message.replace(toRemove, '').trim();
-					const positionMatch = error.message.match(/at position (\d+)/);
-
-					error.message = message.charAt(0).toUpperCase() + message.slice(1);
-
-					if (positionMatch) {
-						const position = parseInt(positionMatch[1], 10);
-						const lineBreaksUpToPosition = (this.editMode.value.slice(0, position).match(/\n/g) || []).length;
-
-						error.message += `, line ${lineBreaksUpToPosition + 1}`;
-					}
-
-					error.message += '.';
-
-					this.$showError(error, title);
-					return;
-				}
-
-				try {
-					if (this.$store.getters['pinDataSize'] + stringSizeInBytes(JSON.stringify(data)) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
-						throw new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description'));
-					}
-				} catch (error) {
-					this.$showError(error, this.$locale.baseText('ndv.pinData.error.tooLarge.title'));
-					return;
-				}
-
-				if (this.isValidPinDataSize(data)) {
 					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 					this.$store.commit('pinData', { node: this.node, data });
 				}
@@ -670,7 +638,7 @@ export default mixins(
 			async onTogglePinData() {
 				if (this.hasPinData) {
 					this.$store.commit('unpinData', { node: this.node });
-				} else if (this.isValidPinDataSize(this.jsonData)) {
+				} else if (this.isValidPinDataSize(JSON.stringify(this.jsonData))) {
 					this.$store.commit('pinData', { node: this.node, data: this.jsonData });
 
 					if (this.maxRunIndex > 0) {
@@ -685,18 +653,6 @@ export default mixins(
 							duration: 2000,
 						});
 					}
-				}
-			},
-			isValidPinDataSize(data: IDataObject[]): boolean {
-				try {
-					if (this.$store.getters['pinDataSize'] + stringSizeInBytes(JSON.stringify(data)) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
-						throw new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description'));
-					}
-
-					return true;
-				} catch (error) {
-					this.$showError(error, this.$locale.baseText('ndv.pinData.error.tooLarge.title'));
-					return false;
 				}
 			},
 			switchToBinary() {

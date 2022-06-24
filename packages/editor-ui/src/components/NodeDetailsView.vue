@@ -120,15 +120,19 @@ import TriggerPanel from './TriggerPanel.vue';
 import { mapGetters } from 'vuex';
 import {
 	BASE_NODE_SURVEY_URL,
-	CRON_NODE_TYPE,
-	ERROR_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { editor } from 'monaco-editor';
 import { workflowActivate } from './mixins/workflowActivate';
+import { pinData } from "@/components/mixins/pinData";
 
-export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActivate).extend({
+export default mixins(
+	externalHooks,
+	nodeHelpers,
+	workflowHelpers,
+	workflowActivate,
+	pinData,
+).extend({
 	name: 'NodeDetailsView',
 	components: {
 		NodeSettings,
@@ -455,8 +459,16 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 				);
 
 				if (shouldPinDataBeforeClosing) {
-					// this.$store.commit('pinData', { node: this.node });
+					if (this.isValidPinDataJSON(this.outputPanelEditMode.value) && this.isValidPinDataSize(this.outputPanelEditMode.value)) {
+						const data = JSON.parse(this.outputPanelEditMode.value);
+
+						this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+						this.$store.commit('pinData', { node: this.activeNode, data });
+					}
+
 					return;
+				} else {
+					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 				}
 			}
 
