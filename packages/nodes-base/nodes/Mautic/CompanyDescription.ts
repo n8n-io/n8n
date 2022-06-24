@@ -184,14 +184,14 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCompanyFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -217,9 +217,10 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Industry',
+				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getIndustries',
 				},
@@ -243,7 +244,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'overwriteWithBlank',
 				type: 'boolean',
 				default: false,
-				description: 'If true, then empty values are set to fields. Otherwise empty values are skipped.',
+				description: 'Whether empty values are set to fields. Otherwise empty values are skipped.',
 			},
 			{
 				displayName: 'Phone',
@@ -402,14 +403,14 @@ export const companyFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCompanyFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -435,9 +436,10 @@ export const companyFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Industry',
+				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getIndustries',
 				},
@@ -461,7 +463,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'overwriteWithBlank',
 				type: 'boolean',
 				default: false,
-				description: 'If true, then empty values are set to fields. Otherwise empty values are skipped.',
+				description: 'Whether empty values are set to fields. Otherwise, empty values are skipped.',
 			},
 			{
 				displayName: 'Phone',
@@ -612,14 +614,14 @@ export const companyFields: INodeProperties[] = [
 				description: 'Sort direction: asc or desc',
 			},
 			{
-				displayName: 'Order By',
+				displayName: 'Order By Name or ID',
 				name: 'orderBy',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyFields',
 				},
 				default: '',
-				description: 'Column to sort by. Can use any column listed in the response.',
+				description: 'Column to sort by. Can use any column listed in the response. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Search',

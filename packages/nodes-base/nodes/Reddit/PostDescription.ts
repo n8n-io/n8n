@@ -165,7 +165,7 @@ export const postFields: INodeProperties[] = [
 		name: 'resubmit',
 		type: 'boolean',
 		default: false,
-		description: 'If toggled on, the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
+		description: 'Whether the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -504,12 +504,12 @@ export const postFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'Top',
-						value: 'top',
-					},
-					{
 						name: 'Relevance',
 						value: 'relevance',
+					},
+					{
+						name: 'Top',
+						value: 'top',
 					},
 				],
 			},

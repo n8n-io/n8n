@@ -71,6 +71,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -105,7 +106,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'firstname ASC',
-				description: 'customer field to order by, eg: "firstname ASC", "city DESC" etc',
+				description: 'Customer field to order by, eg: "firstname ASC", "city DESC" etc',
 			},
 		],
 	},

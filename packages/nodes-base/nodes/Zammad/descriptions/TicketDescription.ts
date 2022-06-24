@@ -65,14 +65,14 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group Name/ID',
+		displayName: 'Group Name or ID',
 		name: 'group',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'loadGroupNames',
 		},
 		placeholder: 'First-Level Helpdesk',
-		description: 'Group that will own the ticket to create. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Group that will own the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -87,13 +87,13 @@ export const ticketDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Customer Email',
+		displayName: 'Customer Email Name or ID',
 		name: 'customer',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'loadCustomerEmails',
 		},
-		description: 'Email address of the customer concerned in the ticket to create. Choose from the list or specify an email using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Email address of the customer concerned in the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		default: '',
 		placeholder: 'hello@n8n.io',
 		required: true,
@@ -268,14 +268,14 @@ export const ticketDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'loadTicketCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',

@@ -60,7 +60,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'spaceId',
 		type: 'options',
 		typeOptions: {
@@ -68,7 +68,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the space to retrieve the work items from',
+		description: 'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -81,7 +81,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Status ID',
+		displayName: 'Status Name or ID',
 		name: 'statusId',
 		type: 'options',
 		typeOptions: {
@@ -90,7 +90,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the status to set on the item to create',
+		description: 'ID of the status to set on the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -172,24 +172,24 @@ export const workItemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Label IDs',
+				displayName: 'Label Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'ID of the label to set on the item to create',
+				description: 'ID of the label to set on the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Member IDs',
+				displayName: 'Member Names or IDs',
 				name: 'memberIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'ID of the user to assign to the item to create',
+				description: 'ID of the user to assign to the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -220,7 +220,7 @@ export const workItemFields: INodeProperties[] = [
 	//         workItem: getAll
 	// ----------------------------------
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'spaceId',
 		type: 'options',
 		typeOptions: {
@@ -228,7 +228,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the space to retrieve the work items from',
+		description: 'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -373,14 +373,14 @@ export const workItemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Status ID',
+				displayName: 'Status Name or ID',
 				name: 'statusId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 				},
 				default: [],
-				description: 'ID of the status to set on the item to update',
+				description: 'ID of the status to set on the item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',

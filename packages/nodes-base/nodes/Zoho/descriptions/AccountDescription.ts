@@ -138,9 +138,10 @@ export const accountFields: INodeProperties[] = [
 				description: 'Name of the account’s location, e.g. Headquarters or London',
 			},
 			{
-				displayName: 'Account Type',
+				displayName: 'Account Type Name or ID',
 				name: 'Account_Type',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getAccountType',
 					},
@@ -329,9 +330,10 @@ export const accountFields: INodeProperties[] = [
 				description: 'Name of the account’s location, e.g. Headquarters or London',
 			},
 			{
-				displayName: 'Account Type',
+				displayName: 'Account Type Name or ID',
 				name: 'Account_Type',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getAccountType',
 					},

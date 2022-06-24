@@ -39,9 +39,10 @@ export const formOperations: INodeProperties[] = [
 
 export const formFields: INodeProperties[] = [
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'id',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getForms',
 		},
@@ -63,6 +64,7 @@ export const formFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
