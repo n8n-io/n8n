@@ -676,7 +676,7 @@
 	"runData.pindata.unpin": "Unpin",
 	"runData.editor.save": "Save",
 	"runData.editor.cancel": "Cancel",
-	"runData.editor.copyDataInfo": "You can copy data from previous executions and paste them above",
+	"runData.editor.copyDataInfo": "You can copy data from previous executions and paste them above.",
 	"saveButton.save": "@:_reusableBaseText.save",
 	"saveButton.saved": "Saved",
 	"saveButton.saving": "Saving",

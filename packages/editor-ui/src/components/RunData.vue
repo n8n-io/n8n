@@ -37,7 +37,7 @@
 
 			<div v-show="!hasRunError" @click.stop :class="$style.displayModes">
 				<n8n-radio-buttons
-					v-show="hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0))"
+					v-show="hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) && !editMode.enabled"
 					:value="displayMode"
 					:options="buttons"
 					@input="onDisplayModeChange"
@@ -85,7 +85,7 @@
 			</div>
 		</div>
 
-		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
+		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
 			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop>
 				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
@@ -143,7 +143,7 @@
 			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
 				<code-editor :value="editMode.value" @input="$store.commit('ui/setOutputPanelEditModeValue', $event)" />
 				<div :class="$style['edit-mode-footer']">
-					<n8n-info-tip :class="$style['edit-mode-footer-infotip']">
+					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
 						<a href="https://google.com">
 							{{ $locale.baseText('generic.learnMore') }}
@@ -615,7 +615,9 @@ export default mixins(
 				return branches;
 			},
 			editMode(): { enabled: boolean; value: string; } {
-				return this.$store.getters['ui/outputPanelEditMode'];
+				return this.paneType === 'output'
+					? this.$store.getters['ui/outputPanelEditMode']
+					: { enabled: false, value: '' };
 			},
 		},
 		methods: {
