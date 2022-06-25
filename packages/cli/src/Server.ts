@@ -2311,7 +2311,7 @@ class App {
 							filterToAdd = { [key]: value };
 						}
 
-						Object.assign(findOptions.where, filterToAdd);
+						Object.assign(findOptions.where ?? {}, filterToAdd);
 					});
 
 					const rangeQuery: string[] = [];
@@ -2337,7 +2337,7 @@ class App {
 					}
 
 					if (rangeQuery.length) {
-						Object.assign(findOptions.where, {
+						Object.assign(findOptions.where ?? {}, {
 							id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
 						});
 					}
@@ -2659,10 +2659,10 @@ class App {
 						if (req.query.filter) {
 							const { workflowId } = JSON.parse(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-								Object.assign(findOptions.where, { workflowId });
+								Object.assign(findOptions.where ?? {}, { workflowId });
 							}
 						} else {
-							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
+							Object.assign(findOptions.where ?? {}, { workflowId: In(sharedWorkflowIds) });
 						}
 
 						const executions = await Db.collections.Execution.find(findOptions);

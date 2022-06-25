@@ -20,9 +20,9 @@ export class PushoverApi implements ICredentialType {
 	];
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
 		if (requestOptions.method === 'GET') {
-			Object.assign(requestOptions.qs, { token: credentials.apiKey });
+			Object.assign(requestOptions.qs ?? {}, { token: credentials.apiKey });
 		} else {
-			Object.assign(requestOptions.body, { token: credentials.apiKey });
+			Object.assign(requestOptions.body ?? {}, { token: credentials.apiKey });
 		}
 		return requestOptions;
 	}

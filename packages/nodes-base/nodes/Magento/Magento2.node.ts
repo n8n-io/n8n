@@ -344,7 +344,7 @@ export class Magento2 implements INodeType {
 							body.password = password;
 						}
 
-						Object.assign(body.customer, rest);
+						Object.assign(body.customer ?? {}, rest);
 
 						responseData = await magentoApiRequest.call(this, 'POST', '/rest/V1/customers', body);
 					}
@@ -461,7 +461,7 @@ export class Magento2 implements INodeType {
 							body.password = password;
 						}
 
-						Object.assign(body.customer, rest);
+						Object.assign(body.customer ?? {}, rest);
 
 						responseData = await magentoApiRequest.call(this, 'PUT', `/rest/V1/customers/${customerId}`, body);
 					}
@@ -577,7 +577,7 @@ export class Magento2 implements INodeType {
 
 						body.product!.custom_attributes = customAttributes?.customAttribute || {};
 
-						Object.assign(body.product, rest);
+						Object.assign(body.product ?? {}, rest);
 
 						responseData = await magentoApiRequest.call(this, 'POST', '/rest/default/V1/products', body);
 					}
@@ -664,7 +664,7 @@ export class Magento2 implements INodeType {
 
 						body.product!.custom_attributes = customAttributes?.customAttribute || {};
 
-						Object.assign(body.product, rest);
+						Object.assign(body.product ?? {}, rest);
 
 						responseData = await magentoApiRequest.call(this, 'PUT', `/rest/default/V1/products/${sku}`, body);
 					}

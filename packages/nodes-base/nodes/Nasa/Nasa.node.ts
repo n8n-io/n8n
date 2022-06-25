@@ -1188,7 +1188,7 @@ export class Nasa implements INodeType {
 					};
 
 					if (items[i].binary !== undefined) {
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary ?? {}, items[i].binary);
 					}
 
 					items[i] = newItem;
@@ -1215,7 +1215,7 @@ export class Nasa implements INodeType {
 						Object.assign(newItem.json, responseData);
 
 						if (items[i].binary !== undefined) {
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary ?? {}, items[i].binary);
 						}
 
 						items[i] = newItem;

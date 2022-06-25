@@ -299,10 +299,10 @@ export class NotionV1 implements INodeType {
 					if (filters.multipleCondition) {
 						const { or, and } = (filters.multipleCondition as IDataObject).condition as IDataObject;
 						if (Array.isArray(or) && or.length !== 0) {
-							Object.assign(body.filter, { or: (or as IDataObject[]).map((data) => mapFilters([data], timezone)) });
+							Object.assign(body.filter ?? {}, { or: (or as IDataObject[]).map((data) => mapFilters([data], timezone)) });
 						}
 						if (Array.isArray(and) && and.length !== 0) {
-							Object.assign(body.filter, { and: (and as IDataObject[]).map((data) => mapFilters([data], timezone)) });
+							Object.assign(body.filter ?? {}, { and: (and as IDataObject[]).map((data) => mapFilters([data], timezone)) });
 						}
 					}
 					if (!Object.keys(body.filter as IDataObject).length) {

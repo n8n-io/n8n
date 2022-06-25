@@ -1349,7 +1349,7 @@ export class Freshservice implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body.application, additionalFields);
+							Object.assign(body.application ?? {}, additionalFields);
 						}
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/applications', body);
@@ -1393,7 +1393,7 @@ export class Freshservice implements INodeType {
 
 						validateUpdateFields.call(this, updateFields, resource);
 
-						Object.assign(body.application, updateFields);
+						Object.assign(body.application ?? {}, updateFields);
 
 						const softwareId = this.getNodeParameter('softwareId', i);
 						const endpoint = `/applications/${softwareId}`;

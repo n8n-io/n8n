@@ -44,7 +44,7 @@ export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		options.uri = `https://mapi.storyblok.com${resource}`;
 
-		Object.assign(options.headers, { 'Authorization': credentials.accessToken });
+		Object.assign(options.headers ?? {}, { 'Authorization': credentials.accessToken });
 	}
 
 	try {

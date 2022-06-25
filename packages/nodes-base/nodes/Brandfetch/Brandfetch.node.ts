@@ -194,7 +194,7 @@ export class Brandfetch implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary ?? {}, items[i].binary);
 						}
 
 						newItem.json = response.response;
