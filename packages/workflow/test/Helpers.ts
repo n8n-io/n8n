@@ -387,6 +387,9 @@ export function getExecuteSingleFunctions(
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
 		return {
+			getCurrentItemIndex: () => {
+				return itemIndex;
+			},
 			continueOnFail: () => {
 				return false;
 			},
