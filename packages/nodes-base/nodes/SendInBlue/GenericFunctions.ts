@@ -52,10 +52,10 @@ export async function validateAttachmentsData (this: IExecuteSingleFunctions, re
 	const dataPropertyList = this.getNodeParameter('additionalParameters.emailAttachments.attachment') as JsonObject[];
 	const { body } = requestOptions;
 
-	const { attachment = [] } = body as {attachment :{content:string; name: string;}[];};
+	const { attachment = [] } = body as {attachment :Array<{content:string; name: string;}>;};
 
 	try {
-		for(let [, attachmentDataName] of dataPropertyList.entries()) {
+		for(const [, attachmentDataName] of dataPropertyList.entries()) {
 			const { binaryPropertyName } = attachmentDataName;
 
 			const item = this.getInputData();
@@ -82,7 +82,7 @@ export async function validateAttachmentsData (this: IExecuteSingleFunctions, re
 	catch(err) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`${err}`
-		)
+			`${err}`,
+		);
 	}
 }
