@@ -809,7 +809,7 @@ export async function prepareBinaryData(
 	filePath?: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
-	let fileExtension = '';
+	let fileExtension: string | undefined;
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
