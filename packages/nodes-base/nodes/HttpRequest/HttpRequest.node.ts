@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IOAuth2Options,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -1202,9 +1203,31 @@ export class HttpRequest implements INodeType {
 					);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
+
+				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
+					clickUpOAuth2Api: {
+						keepBearer: false,
+						tokenType: 'Bearer',
+					},
+					slackOAuth2Api: {
+						tokenType: 'Bearer',
+						property: 'authed_user.access_token',
+					},
+					boxOAuth2Api: {
+						includeCredentialsOnRefreshOnBody: true,
+					},
+				};
+
+				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
+
 				// service-specific cred: OAuth1, OAuth2, plain
 				requestPromises.push(
-					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),
+					this.helpers.requestWithAuthentication.call(
+						this,
+						nodeCredentialType,
+						requestOptions,
+						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+					),
 				);
 			}
 		}
