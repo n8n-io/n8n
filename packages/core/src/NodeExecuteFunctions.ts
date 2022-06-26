@@ -2255,9 +2255,6 @@ export function getExecuteSingleFunctions(
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
 		return {
-			getCurrentItemIndex() {
-				return itemIndex;
-			},
 			continueOnFail: () => {
 				return continueOnFail(node);
 			},
@@ -2319,6 +2316,9 @@ export function getExecuteSingleFunctions(
 				}
 
 				return allItems[itemIndex];
+			},
+			getItemIndex() {
+				return itemIndex;
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;

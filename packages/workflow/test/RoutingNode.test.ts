@@ -1929,7 +1929,7 @@ describe('RoutingNode', () => {
 						routingNode.mode,
 					);
 
-					currentItemIndex = routingNodeExecutionContext.getCurrentItemIndex();
+					currentItemIndex = routingNodeExecutionContext.getItemIndex();
 				}
 
 				const expectedItemIndex = inputData.main[0]!.length - 1;

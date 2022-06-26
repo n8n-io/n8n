@@ -558,7 +558,6 @@ export interface IExecuteFunctions {
 }
 
 export interface IExecuteSingleFunctions {
-	getCurrentItemIndex(): number;
 	continueOnFail(): boolean;
 	evaluateExpression(
 		expression: string,
@@ -567,6 +566,7 @@ export interface IExecuteSingleFunctions {
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getItemIndex(): number;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter(
