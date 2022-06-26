@@ -2320,6 +2320,9 @@ export function getExecuteSingleFunctions(
 
 				return allItems[itemIndex];
 			},
+			getItemIndex() {
+				return itemIndex;
+			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
 			},
