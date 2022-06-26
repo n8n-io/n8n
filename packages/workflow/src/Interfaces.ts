@@ -566,6 +566,7 @@ export interface IExecuteSingleFunctions {
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getItemIndex(): number;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter(
