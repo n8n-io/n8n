@@ -107,6 +107,7 @@ const pipelineId: INodeProperties =
 			],
 		},
 	},
+	description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 	typeOptions: {
 		loadOptions: {
 			routing: {
@@ -141,7 +142,6 @@ const pipelineId: INodeProperties =
 		}
 	},
 	default: '',
-	description: 'Pipeline the opportunity belongs to',
 }
 
 const createOperations: Array<INodeProperties> = [
@@ -151,6 +151,7 @@ const createOperations: Array<INodeProperties> = [
 		name: 'stageId',
 		type: 'options',
 		required: true,
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -297,6 +298,7 @@ const createOperations: Array<INodeProperties> = [
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers'
 				},
@@ -465,6 +467,7 @@ const getAllOperations: Array<INodeProperties> = [
 				name: 'stageId',
 				type: 'options',
 				default: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
 					loadOptionsMethod: 'getPipelineStages'
@@ -494,6 +497,7 @@ const getAllOperations: Array<INodeProperties> = [
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers'
 				},
@@ -694,6 +698,7 @@ const updateOperations: Array<INodeProperties> = [
 				name: 'stageId',
 				type: 'options',
 				default: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
 					loadOptionsMethod: 'getPipelineStages'
@@ -737,6 +742,7 @@ const updateOperations: Array<INodeProperties> = [
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers'
 				},
