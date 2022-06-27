@@ -456,10 +456,15 @@ const getAllOperations: Array<INodeProperties> = [
 		},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Stage ID',
 				name: 'stageId',
-				type: 'string',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsDependsOn: ['pipelineId'],
+					loadOptionsMethod: 'getPipelineStages'
+				},
 				routing: {
 					send: {
 						type: 'query',
