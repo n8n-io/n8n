@@ -101,14 +101,14 @@ export interface IWebhookDb {
 // ----------------------------------
 
 export interface IFeatureConfigDb {
-	data: string;
 	name: string;
+	data: string | ActiveDirectoryConfig;
 }
 
-export interface IActiveDirectoryFeatureConfig {
-	name: string;
-	data: ActiveDirectoryConfig;
-}
+// export interface IActiveDirectoryFeatureConfig {
+// 	name: string;
+// 	data: ActiveDirectoryConfig;
+// }
 
 // ----------------------------------
 //               settings
@@ -504,6 +504,9 @@ export interface IN8nUISettings {
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
+	activeDirectory: {
+		enabled: boolean;
+	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
@@ -531,6 +534,9 @@ export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+}
+export interface IActiveDirectorySettings {
+	enabled: boolean;
 }
 export interface IPublicApiSettings {
 	enabled: boolean;

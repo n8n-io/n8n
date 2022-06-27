@@ -13,10 +13,11 @@ import type { LoginRequest } from '../../requests';
 import config = require('../../../config');
 import { handleActiveDirectoryLogin } from '../../ActiveDirectory/helpers';
 
-const handleEmailLogin = async (email: string, password: string): Promise<{ user?: User }> => {
+const handleEmailLogin = async (email: string, password: string): Promise<User | undefined> => {
 	const user = await Db.collections.User.findOne(
 		{
 			email,
+			signInType: 'email',
 		},
 		{
 			relations: ['globalRole'],
@@ -24,12 +25,10 @@ const handleEmailLogin = async (email: string, password: string): Promise<{ user
 	);
 
 	if (user?.password && (await compareHash(password, user.password))) {
-		return {};
+		return undefined;
 	}
 
-	return {
-		user,
-	};
+	return user;
 };
 
 export function authenticationMethods(this: N8nApp): void {
@@ -51,9 +50,7 @@ export function authenticationMethods(this: N8nApp): void {
 				throw new Error('Password is required to log in');
 			}
 
-			const { user: adUser } = await handleActiveDirectoryLogin(email, password);
-
-			console.log('asasasasa')
+			const adUser = await handleActiveDirectoryLogin(email, password);
 
 			if (adUser) {
 				await issueCookie(res, adUser);
@@ -61,11 +58,7 @@ export function authenticationMethods(this: N8nApp): void {
 				return sanitizeUser(adUser);
 			}
 
-			console.log('asasasasa')
-
-			console.log('pase');
-
-			const { user: localUser } = await handleEmailLogin(email, password);
+			const localUser = await handleEmailLogin(email, password);
 
 			if (localUser) {
 				await issueCookie(res, localUser);

@@ -165,6 +165,8 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
+import { isActiveDirectoryEnabled } from './ActiveDirectory/helpers';
+import { activeDirectoryController } from './ActiveDirectory/routes/activeDirectoryController';
 
 require('body-parser-xml')(bodyParser);
 
@@ -315,6 +317,9 @@ class App {
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
+			},
+			activeDirectory: {
+				enabled: isActiveDirectoryEnabled(),
 			},
 			publicApi: {
 				enabled: config.getEnv('publicApi.disabled') === false,
@@ -704,6 +709,14 @@ class App {
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
+
+		// ----------------------------------------
+		// Active Directory
+		// ----------------------------------------
+
+		if (isActiveDirectoryEnabled()) {
+			this.app.use(`/${this.restEndpoint}/active-directory`, activeDirectoryController);
+		}
 
 		// ----------------------------------------
 		// Healthcheck

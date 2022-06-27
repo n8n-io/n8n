@@ -1,8 +1,7 @@
 /* eslint-disable import/no-cycle */
 import { Entry } from 'ldapts';
-import { Db, IActiveDirectoryFeatureConfig, IFeatureConfigDb } from '..';
+import { Db, IFeatureConfigDb } from '..';
 import config from '../../config';
-import { FeatureConfig } from '../databases/entities/FeatureConfig';
 import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
@@ -11,7 +10,9 @@ import { ActiveDirectoryConfig } from './types';
 
 const ACTIVE_DIRECTORY_DISABLED = 'activeDirectory.disabled';
 
-const activeDirectoryDisabled = () => config.getEnv(ACTIVE_DIRECTORY_DISABLED);
+const isActiveDirectoryDisabled = (): boolean => config.getEnv(ACTIVE_DIRECTORY_DISABLED);
+
+export const isActiveDirectoryEnabled = (): boolean => !config.getEnv(ACTIVE_DIRECTORY_DISABLED);
 
 const isFirstRunAfterFeatureEnabled = (databaseSettings: Settings[]) => {
 	const dbSetting = databaseSettings.find((setting) => setting.key === ACTIVE_DIRECTORY_DISABLED);
@@ -19,7 +20,11 @@ const isFirstRunAfterFeatureEnabled = (databaseSettings: Settings[]) => {
 	return !dbSetting;
 };
 
-const saveSetting = async () => {
+const randonPassword = () => {
+	return Math.random().toString(36).slice(-8);
+};
+
+const saveSettings = async () => {
 	const setting: Settings = {
 		key: ACTIVE_DIRECTORY_DISABLED,
 		value: 'false',
@@ -32,9 +37,9 @@ const saveSetting = async () => {
 };
 
 const saveFeatureConfiguration = async () => {
-	const featureConfig: FeatureConfig = {
+	const featureConfig: IFeatureConfigDb = {
 		name: 'activeDirectory',
-		data: JSON.stringify({
+		data: {
 			activeDirectoryLoginEnabled: false,
 			connection: {
 				url: config.getEnv('activeDirectory.connection.url'),
@@ -49,19 +54,23 @@ const saveFeatureConfiguration = async () => {
 				lastName: config.getEnv('activeDirectory.attributeMapping.lastName'),
 				email: config.getEnv('activeDirectory.attributeMapping.email'),
 				loginId: config.getEnv('activeDirectory.attributeMapping.loginId'),
+				username: config.getEnv('activeDirectory.attributeMapping.username'),
 			},
-		}),
+		},
 	};
-	await Db.collections.FeatureConfig.save(featureConfig);
+	await Db.collections.FeatureConfig.save<IFeatureConfigDb>(featureConfig);
 };
 
-const getActiveDirectoryConfig = async (): Promise<IActiveDirectoryFeatureConfig> => {
+export const getActiveDirectoryConfig = async (): Promise<{
+	name: string;
+	data: ActiveDirectoryConfig;
+}> => {
 	const configuration = await Db.collections.FeatureConfig.findOneOrFail({
 		name: 'activeDirectory',
 	});
 	return {
-		...configuration,
-		data: JSON.parse(configuration.data) as ActiveDirectoryConfig,
+		name: configuration.name,
+		data: configuration.data as ActiveDirectoryConfig,
 	};
 };
 
@@ -72,17 +81,21 @@ export const handleActiveDirectoryFirstInit = async (
 	if (!isUserManagementEnabled()) return;
 
 	if (isFirstRunAfterFeatureEnabled(databaseSettings)) {
-		await saveSetting();
+		await saveSettings();
 
 		await saveFeatureConfiguration();
 	}
+
+	const adConfig = await getActiveDirectoryConfig();
+
+	ActiveDirectoryManager.init(adConfig.data);
 };
 
 const findUserOnActiveDirectory = async (
 	email: string,
 	password: string,
 	loginIdAttribute: string,
-): Promise<{ user?: Entry }> => {
+): Promise<Entry | undefined> => {
 	const activeDirectoryService = ActiveDirectoryManager.getInstance();
 
 	const searchResult = await activeDirectoryService.searchWithAdminBinding(
@@ -90,7 +103,7 @@ const findUserOnActiveDirectory = async (
 	);
 
 	if (!searchResult.length) {
-		return {};
+		return undefined;
 	}
 
 	// get the last user in the results
@@ -103,17 +116,18 @@ const findUserOnActiveDirectory = async (
 	try {
 		await activeDirectoryService.validUser(user.dn, password);
 	} catch (error) {
-		return {};
+		return undefined;
 	}
 
-	return {
-		user,
-	};
+	return user;
 };
 
-const getUserByUsername = async (usernameAttribute: string) => {
+const getUserByUsername = async (usernameAttributeValue: string) => {
 	return Db.collections.User.findOne(
-		{ id: usernameAttribute },
+		{
+			username: usernameAttributeValue,
+			signInType: 'ldap',
+		},
 		{
 			relations: ['globalRole'],
 		},
@@ -135,10 +149,8 @@ const mapAttributesToLocalDb = (
 export const handleActiveDirectoryLogin = async (
 	email: string,
 	password: string,
-): Promise<{
-	user?: User;
-}> => {
-	if (activeDirectoryDisabled()) return {};
+): Promise<User | undefined> => {
+	if (isActiveDirectoryDisabled()) return undefined;
 
 	const adConfig = await getActiveDirectoryConfig();
 
@@ -146,27 +158,30 @@ export const handleActiveDirectoryLogin = async (
 		data: { attributeMapping },
 	} = adConfig;
 
-	ActiveDirectoryManager.getInstance().config = adConfig;
+	const adUser = await findUserOnActiveDirectory(email, password, attributeMapping.loginId);
 
-	const { user: adUser } = await findUserOnActiveDirectory(
-		email,
-		password,
-		attributeMapping.loginId,
-	);
+	if (!adUser) return undefined;
 
-	if (!adUser) {
-		return {};
-	}
+	const usernameAttributeValue = adUser[attributeMapping.username] as string | undefined;
 
-	const localUser = await getUserByUsername(attributeMapping.username);
+	if (!usernameAttributeValue) return undefined;
+
+	const localUser = await getUserByUsername(usernameAttributeValue);
 
 	if (!localUser) {
+		// move this to it's own function
+		const role = await Db.collections.Role.findOne({ scope: 'global', name: 'member' });
+
 		await Db.collections.User.save({
-			password: 'ramdonpassword',
+			password: randonPassword(),
 			signInType: 'ldap',
+			globalRole: role,
 			...mapAttributesToLocalDb(adUser, attributeMapping),
 		});
 	} else {
+		// @ts-ignore
+		delete localUser.isPending;
+		// move this to it's own function
 		await Db.collections.User.update(localUser.id, {
 			...localUser,
 			...mapAttributesToLocalDb(adUser, attributeMapping),
@@ -174,9 +189,7 @@ export const handleActiveDirectoryLogin = async (
 	}
 
 	// Retrieve the user again as user's data might have been updated
-	const updatedUser = await getUserByUsername(attributeMapping.username);
+	const updatedUser = await getUserByUsername(usernameAttributeValue);
 
-	return {
-		user: updatedUser,
-	};
+	return updatedUser;
 };

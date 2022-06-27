@@ -3,7 +3,6 @@
 
 import path from 'path';
 import * as core from 'n8n-core';
-import { string } from '@oclif/command/lib/flags';
 
 export const schema = {
 	database: {
@@ -730,8 +729,13 @@ export const schema = {
 			},
 			loginId: {
 				format: String,
-				default: '',
+				default: 'uid',
 				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_LOGINID',
+			},
+			username: {
+				format: String,
+				default: '',
+				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_USERNAME',
 			},
 		},
 	},

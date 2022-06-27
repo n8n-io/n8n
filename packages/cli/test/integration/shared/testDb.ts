@@ -183,6 +183,7 @@ function toTableName(collectionName: CollectionName) {
 		SharedCredentials: 'shared_credentials',
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
+		FeatureConfig: 'feature_config'
 	}[collectionName];
 }
 

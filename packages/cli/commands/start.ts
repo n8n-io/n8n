@@ -33,9 +33,6 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
-import { ActiveDirectoryManager } from '../src/ActiveDirectory/ActiveDirectoryManager';
-import { ActiveDirectoryService } from '../src/ActiveDirectory/ActiveDirectoryService';
-import { getActiveDirectorySyncInstance } from '../src/ActiveDirectory/ActiveDirectorySync';
 import { handleActiveDirectoryFirstInit } from '../src/ActiveDirectory/helpers';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
