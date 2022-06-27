@@ -7,7 +7,7 @@ import {
 import { contactFields, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
 import { taskFields, taskOperations } from './description/TaskDescription';
-import { getPipelineStages, highLevelApiPagination } from './GenericFunctions';
+import { getPipelineStages, getUsers, highLevelApiPagination } from './GenericFunctions';
 
 const ressources: INodeProperties[] = [
 	{
@@ -78,7 +78,8 @@ export class HighLevel implements INodeType {
 
 	methods = {
 		loadOptions: {
-			getPipelineStages
+			getPipelineStages,
+			getUsers
 		},
 	};
 }

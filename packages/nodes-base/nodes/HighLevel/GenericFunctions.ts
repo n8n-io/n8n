@@ -147,3 +147,15 @@ export async function getPipelineStages(this: ILoadOptionsFunctions): Promise<IN
 	}
 	return []
 }
+
+
+export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const responseData = await highLevelApiRequest.call(this, 'GET', '/users');
+	const users = responseData.users as [{ id: string, name: string, email: string }];
+	const options: INodePropertyOptions[] = users.map(user => {
+		const name = user.name;
+		const value = user.id;
+		return { name, value };
+	})
+	return options;
+}

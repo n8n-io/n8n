@@ -292,10 +292,14 @@ const createOperations: Array<INodeProperties> = [
 				}
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
-				type: 'string',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers'
+				},
 				routing: {
 					send: {
 						type: 'body',
@@ -485,10 +489,14 @@ const getAllOperations: Array<INodeProperties> = [
 				}
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
-				type: 'string',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers'
+				},
 				routing: {
 					send: {
 						type: 'query',
@@ -724,10 +732,14 @@ const updateOperations: Array<INodeProperties> = [
 				}
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
-				type: 'string',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers'
+				},
 				routing: {
 					send: {
 						type: 'body',
