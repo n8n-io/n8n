@@ -92,6 +92,7 @@
     "typescript": "~4.6.0"
   },
   "dependencies": {
+    "@oclif/core": "^1.9.3",
     "@apidevtools/swagger-cli": "4.0.0",
     "@oclif/command": "^1.5.18",
     "@oclif/errors": "^1.2.2",
