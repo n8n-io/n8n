@@ -538,6 +538,33 @@ export const responderFields: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
+						displayName: 'Binary Property',
+						name: 'binaryPropertyName',
+						type: 'string',
+						default: 'data',
+						displayOptions: {
+							show: {
+								dataType: [
+									'file',
+								],
+							},
+						},
+						description: 'Name of the binary property which contains the attachement data',
+					},
+					{
+						displayName: 'Data',
+						name: 'data',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							hide: {
+								dataType: [
+									'file',
+								],
+							},
+						},
+					},
+					{
 						displayName: 'DataType',
 						name: 'dataType',
 						type: 'options',
@@ -600,33 +627,6 @@ export const responderFields: INodeProperties[] = [
 								value: 'user-agent',
 							},
 						],
-					},
-					{
-						displayName: 'Data',
-						name: 'data',
-						type: 'string',
-						default: '',
-						displayOptions: {
-							hide: {
-								dataType: [
-									'file',
-								],
-							},
-						},
-					},
-					{
-						displayName: 'Binary Property',
-						name: 'binaryPropertyName',
-						type: 'string',
-						default: 'data',
-						displayOptions: {
-							show: {
-								dataType: [
-									'file',
-								],
-							},
-						},
-						description: 'Name of the binary property which contains the attachement data',
 					},
 					{
 						displayName: 'IOC',
