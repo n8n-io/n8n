@@ -57,6 +57,21 @@ class NodeTypesClass implements INodeTypes {
 		}
 		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	}
+
+	attachNodeType(
+		nodeTypeName: string,
+		nodeType: INodeType | INodeVersionedType,
+		sourcePath: string,
+	): void {
+		this.nodeTypes[nodeTypeName] = {
+			type: nodeType,
+			sourcePath,
+		};
+	}
+
+	removeNodeType(nodeType: string): void {
+		delete this.nodeTypes[nodeType];
+	}
 }
 
 let nodeTypesInstance: NodeTypesClass | undefined;

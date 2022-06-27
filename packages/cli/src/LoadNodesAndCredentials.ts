@@ -34,7 +34,7 @@ import path from 'path';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
-import { Db } from '.';
+import { Db, NodeTypes } from '.';
 import { InstalledPackages } from './databases/entities/InstalledPackages';
 import { InstalledNodes } from './databases/entities/InstalledNodes';
 import { executeCommand } from './CommunityNodes/helpers';
@@ -233,6 +233,8 @@ class LoadNodesAndCredentialsClass {
 			const packageFile = await this.readPackageJson(finalNodeUnpackedPath);
 			let installedPackage: InstalledPackages;
 
+			const nodeTypes = NodeTypes();
+
 			// Save info to DB
 			try {
 				await Db.transaction(async (transactionManager) => {
@@ -249,6 +251,12 @@ class LoadNodesAndCredentialsClass {
 
 					promises.push(
 						...loadedNodes.map(async (loadedNode) => {
+							nodeTypes.attachNodeType(
+								loadedNode.name,
+								this.nodeTypes[loadedNode.name].type,
+								this.nodeTypes[loadedNode.name].sourcePath,
+							);
+
 							const installedNodePayload = Object.assign(new InstalledNodes(), {
 								name: this.nodeTypes[loadedNode.name].type.description.displayName,
 								type: loadedNode.name,
@@ -286,8 +294,11 @@ class LoadNodesAndCredentialsClass {
 
 		await executeCommand(command);
 
+		const nodeTypes = NodeTypes();
+
 		installedNodes.forEach((installedNode) => {
-			delete this.nodeTypes[installedNode.name];
+			nodeTypes.removeNodeType(installedNode.type);
+			delete this.nodeTypes[installedNode.type];
 		});
 	}
 
@@ -307,9 +318,11 @@ class LoadNodesAndCredentialsClass {
 			}
 			throw error;
 		}
+		const nodeTypes = NodeTypes();
 
 		installedNodes.forEach((installedNode) => {
-			delete this.nodeTypes[installedNode.name];
+			nodeTypes.removeNodeType(installedNode.type);
+			delete this.nodeTypes[installedNode.type];
 		});
 
 		const folderName = packageName.includes('@') ? packageName.split('@')[0] : packageName;
@@ -342,8 +355,14 @@ class LoadNodesAndCredentialsClass {
 
 					promises.push(
 						...loadedNodes.map(async (loadedNode) => {
+							nodeTypes.attachNodeType(
+								loadedNode.name,
+								this.nodeTypes[loadedNode.name].type,
+								this.nodeTypes[loadedNode.name].sourcePath,
+							);
+
 							const installedNode = Object.assign(new InstalledNodes(), {
-								name: loadedNode.name,
+								name: this.nodeTypes[loadedNode.name].type.description.displayName,
 								type: loadedNode.name,
 								latestVersion: loadedNode.version,
 								package: packageName,
