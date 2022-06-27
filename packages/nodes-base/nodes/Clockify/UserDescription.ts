@@ -90,18 +90,18 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'If provided, you\'ll get a filtered list of users that contain the provided string in their name',
-			},
-			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
 				description: 'If provided, you\'ll get a filtered list of users that contain the provided string in their email address',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'If provided, you\'ll get a filtered list of users that contain the provided string in their name',
 			},
 			{
 				displayName: 'Status',
