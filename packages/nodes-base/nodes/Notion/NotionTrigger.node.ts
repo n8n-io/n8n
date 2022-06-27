@@ -34,7 +34,6 @@ export class NotionTrigger implements INodeType {
 			{
 				name: 'notionApi',
 				required: true,
-				testedBy: 'notionApiCredentialTest',
 			},
 		],
 		polling: true,
