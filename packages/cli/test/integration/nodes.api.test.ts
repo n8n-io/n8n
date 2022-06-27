@@ -125,7 +125,7 @@ test('GET /nodes should check for updates when there are packages installed', as
 
 	await authOwnerAgent.get('/nodes').send();
 
-	expect(executeCommand).toHaveBeenCalledWith('npm outdated --json');
+	expect(executeCommand).toHaveBeenCalledWith('npm outdated --json', {"doNotHandleError": true});
 });
 
 test('GET /nodes should mention updates when available', async () => {

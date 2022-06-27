@@ -5,7 +5,7 @@ import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 
 import { UserSettings } from 'n8n-core';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import { LoggerProxy, PublicInstalledPackage } from 'n8n-workflow';
 import axios from 'axios';
 import {
 	NODE_PACKAGE_PREFIX,
@@ -46,7 +46,12 @@ export const parsePackageName = (originalString: string | undefined): ParsedNpmP
 	};
 };
 
-export const executeCommand = async (command: string): Promise<string> => {
+export const executeCommand = async (
+	command: string,
+	options?: {
+		doNotHandleError?: boolean;
+	},
+): Promise<string> => {
 	const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 	// Make sure the node-download folder exists
 	try {
@@ -67,10 +72,16 @@ export const executeCommand = async (command: string): Promise<string> => {
 		const commandResult = await execAsync(command, execOptions);
 		return commandResult.stdout;
 	} catch (error) {
+		if (options?.doNotHandleError) {
+			throw error;
+		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const errorMessage = error.message as string;
 
-		if (errorMessage.includes(NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR)) {
+		if (
+			errorMessage.includes(NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR) ||
+			errorMessage.includes(NPM_COMMAND_TOKENS.NPM_NO_VERSION_AVAILABLE)
+		) {
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 		}
 		if (errorMessage.includes(NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR)) {
@@ -83,7 +94,10 @@ export const executeCommand = async (command: string): Promise<string> => {
 			throw new Error(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL);
 		}
 
-		throw error;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		LoggerProxy.warn('npm command failed; see message', { errorMessage });
+
+		throw new Error('Package could not be installed - check logs for details');
 	}
 };
 

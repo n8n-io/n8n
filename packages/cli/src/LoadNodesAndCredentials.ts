@@ -216,14 +216,7 @@ class LoadNodesAndCredentialsClass {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 		const command = `npm install ${packageName}${version ? `@${version}` : ''}`;
 
-		try {
-			await executeCommand(command);
-		} catch (error) {
-			if (error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
-				throw new Error(`The npm package "${packageName}" could not be found.`);
-			}
-			throw error;
-		}
+		await executeCommand(command);
 
 		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 

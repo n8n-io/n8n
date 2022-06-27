@@ -116,13 +116,13 @@ nodesController.post(
 			const errorMessage = error.message as string;
 			if (
 				errorMessage.includes(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND) ||
-				errorMessage.includes(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES)
+				errorMessage.includes(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES) ||
+				errorMessage.includes(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND)
 			) {
 				statusCode = 400;
 			}
 			throw new ResponseHelper.ResponseError(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-				`Error loading package "${name}": ${error.message}`,
+				`Error loading package "${name}": ${errorMessage}`,
 				undefined,
 				statusCode,
 			);
@@ -145,7 +145,7 @@ nodesController.get(
 			// Command succeeds when there are no updates.
 			// NPM handles this oddly. It exits with code 1 when there are updates.
 			// More here: https://github.com/npm/rfcs/issues/473
-			await executeCommand('npm outdated --json');
+			await executeCommand('npm outdated --json', { doNotHandleError: true });
 		} catch (error) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 			if (error.code === 1) {
