@@ -715,7 +715,6 @@ class App {
 		// ----------------------------------------
 
 		if (isActiveDirectoryEnabled()) {
-			console.log('aqui papa');
 			this.app.use(`/${this.restEndpoint}/active-directory`, activeDirectoryController);
 		}
 

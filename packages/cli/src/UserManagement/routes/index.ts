@@ -102,7 +102,10 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		}
 		// Not owner and user exists. We now protect restricted urls.
 		const postRestrictedUrls = [`/${this.restEndpoint}/users`, `/${this.restEndpoint}/owner`];
-		const getRestrictedUrls = [`/${this.restEndpoint}/users`];
+		const getRestrictedUrls = [
+			`/${this.restEndpoint}/users`,
+			`/${this.restEndpoint}/active-directory/config`,
+		];
 		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
 		if (
 			(req.method === 'POST' && postRestrictedUrls.includes(trimmedUrl)) ||
