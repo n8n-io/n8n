@@ -3,12 +3,6 @@ import {
 } from 'request';
 
 import {
-	IAnalyzer,
-	IJob,
-	IResponder,
-} from './AnalyzerInterface';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,

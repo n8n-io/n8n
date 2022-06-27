@@ -55,7 +55,7 @@ export class Cortex implements INodeType {
 		name: 'cortex',
 		icon: 'file:cortex.svg',
 		group: ['transform'],
-		subtitle: '={{$parameter["resource"]+ ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"]+ ": " + $parameter["resource"]}}',
 		version: 1,
 		description: 'Apply the Cortex analyzer/responder on the given entity',
 		defaults: {
