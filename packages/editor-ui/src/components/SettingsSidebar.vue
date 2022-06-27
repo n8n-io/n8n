@@ -25,7 +25,7 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/ad" v-if="canAccessApiSettings()" :class="$style.tab">
+			<n8n-menu-item index="/settings/ad" v-if="canAccessActiveDirectorySettings()" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="tree" />
 				</i>
@@ -62,6 +62,9 @@ export default mixins(
 		},
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
+		},
+		canAccessActiveDirectorySettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.ACTIVE_DIRECTORY_SETTINGS);
 		},
 		onVersionClick() {
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);

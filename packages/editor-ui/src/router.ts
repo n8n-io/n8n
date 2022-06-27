@@ -345,7 +345,7 @@ const router = new Router({
 			meta: {
 				permissions: {
 					allow: {
-						role: [ROLE.Default],
+						role: [ROLE.Owner],
 					},
 					deny: {
 						um: false,
