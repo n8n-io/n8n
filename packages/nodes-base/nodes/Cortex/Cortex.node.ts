@@ -112,7 +112,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'POST',
-					`/analyzer/_search`,
+					`/analyzer/_search?range=all`,
 				);
 
 				const returnData: INodePropertyOptions[] = [];
