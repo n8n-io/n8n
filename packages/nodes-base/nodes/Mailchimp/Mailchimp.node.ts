@@ -1221,7 +1221,6 @@ export class Mailchimp implements INodeType {
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
-						required: true,
 						options: [
 							{
 								name: 'Cleaned',

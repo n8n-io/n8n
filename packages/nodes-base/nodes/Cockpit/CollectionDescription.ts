@@ -147,7 +147,6 @@ export const collectionFields: INodeProperties[] = [
 				displayName: 'Populate',
 				name: 'populate',
 				type: 'boolean',
-				required: true,
 				default: true,
 				description: 'Whether to resolve linked collection items',
 			},

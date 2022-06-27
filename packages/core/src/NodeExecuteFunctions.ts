@@ -809,6 +809,7 @@ export async function prepareBinaryData(
 	filePath?: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
+	let fileExtension: string | undefined;
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
@@ -825,6 +826,7 @@ export async function prepareBinaryData(
 			const fileTypeData = await fromBuffer(binaryData);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
+				fileExtension = fileTypeData.ext;
 			}
 		}
 
@@ -836,6 +838,7 @@ export async function prepareBinaryData(
 
 	const returnData: IBinaryData = {
 		mimeType,
+		fileExtension,
 		data: '',
 	};
 
@@ -2316,6 +2319,9 @@ export function getExecuteSingleFunctions(
 				}
 
 				return allItems[itemIndex];
+			},
+			getItemIndex() {
+				return itemIndex;
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
