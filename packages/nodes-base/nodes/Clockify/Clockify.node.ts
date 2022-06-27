@@ -292,16 +292,10 @@ export class Clockify implements INodeType {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
 						const name = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
 
 						const body: IDataObject = {
 							name,
 						};
-
-						Object.assign(body, additionalFields);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -334,8 +328,8 @@ export class Clockify implements INodeType {
 						const clientId = this.getNodeParameter('clientId', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
+						const updateFields = this.getNodeParameter(
+							'updateFields',
 							i,
 						) as IDataObject;
 
@@ -343,7 +337,7 @@ export class Clockify implements INodeType {
 							name,
 						};
 
-						Object.assign(body, additionalFields);
+						Object.assign(body, updateFields);
 
 						responseData = await clockifyApiRequest.call(
 							this,
@@ -896,9 +890,9 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						Object.assign(qs, filters);
+						Object.assign(qs, additionalFields);
 
 						if (returnAll) {
 							responseData = await clockifyApiRequestAllItems.call(

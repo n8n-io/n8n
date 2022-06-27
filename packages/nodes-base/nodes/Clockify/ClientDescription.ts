@@ -7,6 +7,7 @@ export const clientOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const clientOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -57,7 +57,7 @@ export const clientFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Name of client being created.',
+		description: 'Name of client being created',
 		displayOptions: {
 			show: {
 				resource: [
@@ -68,32 +68,6 @@ export const clientFields: INodeProperties[] = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'client',
-				],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Address',
-				name: 'address',
-				type: 'string',
-				default: '',
-				description: 'Address of client being created/updated.',
-			},
-		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 client:delete                              */
@@ -151,7 +125,7 @@ export const clientFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -175,7 +149,7 @@ export const clientFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -205,6 +179,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
+				description: 'If provided, clients will be filtered by name',
 			},
 			{
 				displayName: 'Sort Order',
@@ -262,8 +237,8 @@ export const clientFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -283,7 +258,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'Address of client being created/updated.',
+				description: 'Address of client being created/updated',
 			},
 			{
 				displayName: 'Archived',

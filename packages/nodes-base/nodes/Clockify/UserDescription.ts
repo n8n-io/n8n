@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,14 +23,13 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const userFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 user:getAll                              */
+	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -46,7 +46,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -70,13 +70,13 @@ export const userFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
@@ -94,12 +94,14 @@ export const userFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
+				description: 'If provided, you\'ll get a filtered list of users that contain the provided string in their name',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
+				description: 'If provided, you\'ll get a filtered list of users that contain the provided string in their email address',
 			},
 			{
 				displayName: 'Status',
@@ -121,6 +123,27 @@ export const userFields: INodeProperties[] = [
 					{
 						name: 'Declined',
 						value: 'DECLINED',
+					},
+				],
+				default: '',
+				description: 'If provided, you\'ll get a filtered list of users with the corresponding status',
+			},
+			{
+				displayName: 'Sort Column',
+				name: 'sort-column',
+				type: 'options',
+				options: [
+					{
+						name: 'Email',
+						value: 'EMAIL',
+					},
+					{
+						name: 'Name',
+						value: 'NAME',
+					},
+					{
+						name: 'Hourly Rate',
+						value: 'HOURLYRATE',
 					},
 				],
 				default: '',

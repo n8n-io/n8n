@@ -1,5 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -18,13 +18,14 @@ export class ClockifyApi implements ICredentialType {
 			default: '',
 		},
 	];
-	authenticate = {
-		type: 'headerAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: 'X-Api-Key',
-			value: '={{$credentials.apiKey}}',
+			headers: {
+				'X-Api-Key': '={{$credentials.apiKey}}',
+			},
 		},
-	} as IAuthenticateHeaderAuth;
+	};
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.clockify.me/api/v1',
