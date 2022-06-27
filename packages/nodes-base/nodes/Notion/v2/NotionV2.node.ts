@@ -30,7 +30,6 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
-	validateCredentials,
 	validateJSON,
 } from '../GenericFunctions';
 
@@ -193,23 +192,6 @@ export class NotionV2 implements INodeType {
 					description: 'Timezone set in n8n',
 				});
 				return returnData;
-			},
-		},
-		credentialTest: {
-			async notionApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The security token included in the request is invalid',
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
 			},
 		},
 	};
