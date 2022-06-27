@@ -26,7 +26,7 @@
 						@click="onCommunityNodeTooltipClick"
 					>
 					</div>
-					<n8n-icon icon="cube" color="foreground-xdark" />
+					<n8n-icon icon="cube" />
 				</n8n-tooltip>
 			</div>
 			<div :class="$style.description">
@@ -241,5 +241,9 @@ export default Vue.extend({
 		opacity: 0;
 		transform: scale(0);
 	}
+}
+
+.el-tooltip svg {
+	color: var(--color-foreground-xdark);
 }
 </style>

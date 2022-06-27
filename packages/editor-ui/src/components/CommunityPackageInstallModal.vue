@@ -39,6 +39,7 @@
 						name="packageNameInput"
 						v-model="packageName"
 						type="text"
+						:maxlength="214"
 						:placeholder="$locale.baseText('settings.communityNodes.installModal.packageName.placeholder')"
 						:required="true"
 						:disabled="loading"

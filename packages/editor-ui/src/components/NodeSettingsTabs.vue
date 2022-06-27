@@ -122,3 +122,15 @@ export default mixins(
 	},
 });
 </script>
+
+<style lang="scss">
+
+#communityNode > div {
+	cursor: auto;
+
+	&:hover {
+		color: unset;
+	}
+}
+
+</style>

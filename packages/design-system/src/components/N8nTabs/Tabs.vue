@@ -9,9 +9,10 @@
 		<div ref="tabs" :class="$style.tabs">
 			<div  v-for="option in options"
 				:key="option.value"
+				:id="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
-				<n8n-tooltip :disabled="!option.tooltip" placement="top">
+				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
 					<div slot="content" v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)"></div>
 					<a
 						v-if="option.href"
