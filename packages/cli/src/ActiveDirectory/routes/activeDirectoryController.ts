@@ -8,6 +8,8 @@ import { ActiveDirectoryConfig } from '../types';
 export const activeDirectoryController = express.Router();
 
 activeDirectoryController.use((req: AuthenticatedRequest, res, next) => {
+	console.log(req.body);
+
 	if (req.user.globalRole.name !== 'owner') {
 		return res.status(403).json({
 			message: 'Unauthorized',

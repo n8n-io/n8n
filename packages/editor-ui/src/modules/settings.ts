@@ -13,6 +13,7 @@ import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
 import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
+import { getADConfig } from "@/api/active-directory";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -29,6 +30,9 @@ const module: Module<ISettingsState, IRootState> = {
 			enabled: false,
 			latestVersion: 0,
 			path: '/',
+		},
+		ad: {
+			enabled: false,
 		},
 	},
 	getters: {
@@ -93,6 +97,7 @@ const module: Module<ISettingsState, IRootState> = {
 			state.api.enabled = settings.publicApi.enabled;
 			state.api.latestVersion = settings.publicApi.latestVersion;
 			state.api.path = settings.publicApi.path;
+			state.ad.enabled = settings.activeDirectory.enabled;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);
@@ -174,6 +179,10 @@ const module: Module<ISettingsState, IRootState> = {
 		async getApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			const { apiKey } = await getApiKey(context.rootGetters['getRestApiContext']);
 			return apiKey;
+		},
+		async getADConfig(context: ActionContext<ISettingsState, IRootState>) {
+			const config = await getADConfig(context.rootGetters['getRestApiContext']);
+			return config;
 		},
 		async createApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			const { apiKey } = await createApiKey(context.rootGetters['getRestApiContext']);

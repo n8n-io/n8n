@@ -49,7 +49,6 @@ credentialsController.get(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
 		let credentials: ICredentialsDb[] = [];
-
 		const filter = req.query.filter ? (JSON.parse(req.query.filter) as Record<string, string>) : {};
 
 		try {

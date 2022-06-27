@@ -5,7 +5,7 @@
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import { Strategy } from 'passport-jwt';
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, response, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 

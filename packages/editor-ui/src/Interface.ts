@@ -559,6 +559,7 @@ export interface IPermissionGroup {
 	role?: IRole[];
 	um?: boolean;
 	api?: boolean;
+	ad?: boolean;
 }
 
 export interface IPermissions {
@@ -665,6 +666,9 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
+	};
+	activeDirectory: {
+		enabled: boolean;
 	};
 }
 
@@ -885,6 +889,9 @@ export interface ISettingsState {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
+	};
+	ad: {
+		enabled: boolean;
 	};
 }
 

@@ -5,7 +5,7 @@
 				<n8n-heading size="2xlarge">{{ "AD/LDAP" }}</n8n-heading>
 			</div>
 
-			<div :class="$style.enableFeatureContainer" >
+			<!-- <div :class="$style.enableFeatureContainer" >
 				<span>Enable Feature</span>
 				<el-switch
 					v-model="activeFeature"
@@ -14,13 +14,13 @@
 					:disabled="isReadOnly"
 					@change="valueChanged"
 				/>
-			</div>
+			</div> -->
 			<div>
 				<n8n-form-inputs
 					v-if="formInputs"
 					:inputs="formInputs"
 					:eventBus="formBus"
-					columnView="true"
+					columnView=true
 					@input="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
@@ -50,6 +50,8 @@ export default mixins(
 	},
 	data() {
 		return {
+			adConfig: {},
+			mounted: false,
 			activeFeature: true,
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
@@ -58,6 +60,8 @@ export default mixins(
 		};
 	},
 	mounted() {
+		this.getADConfig();
+
 		this.formInputs = [
 			{
 				name: 'connectionInfo',
@@ -220,6 +224,16 @@ export default mixins(
 			}
 			catch (e) {
 				this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
+			}
+		},
+		async getADConfig() {
+			try {
+				//this.adConfig = await this.$store.dispatch('settings/getApiKey');
+				this.adConfig = await this.$store.dispatch('settings/getADConfig');
+			} catch (error) {
+				//this.$showError(error, this.$locale.baseText('settings.api.view.error'));
+			} finally {
+				this.mounted = true;
 			}
 		},
 		onSaveClick() {
