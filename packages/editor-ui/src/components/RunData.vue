@@ -1362,6 +1362,7 @@ export default mixins(
 
 .edit-mode-footer {
 	display: flex;
+	width: 100%;
 	justify-content: space-between;
 	align-items: center;
 	padding-top: var(--spacing-s);
