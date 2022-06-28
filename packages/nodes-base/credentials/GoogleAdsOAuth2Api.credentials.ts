@@ -1,8 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
-	ICredentialDataDecryptedObject,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
