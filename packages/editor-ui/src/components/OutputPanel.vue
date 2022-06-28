@@ -17,7 +17,9 @@
 	>
 		<template v-slot:header>
 			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
+				<span :class="$style.title">
+					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
+				</span>
 				<RunInfo v-if="runsCount === 1" :taskData="runTaskData" />
 
 				<n8n-info-tip
@@ -173,6 +175,9 @@ export default Vue.extend({
 			}
 			const runAt = this.runTaskData.startTime;
 			return updatedAt > runAt;
+		},
+		outputPanelEditMode(): { enabled: boolean; value: string; } {
+			return this.$store.getters['ui/outputPanelEditMode'];
 		},
 	},
 	methods: {

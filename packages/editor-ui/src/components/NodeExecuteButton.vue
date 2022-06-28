@@ -4,7 +4,7 @@
 		<div>
 			<n8n-button
 				:loading="nodeRunning && !isListeningForEvents"
-				:disabled="!!disabledHint"
+				:disabled="disabled || !!disabledHint"
 				:label="buttonLabel"
 				:type="type"
 				:size="size"
@@ -30,6 +30,10 @@ export default mixins(
 	props: {
 		nodeName: {
 			type: String,
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
 		},
 		label: {
 			type: String,

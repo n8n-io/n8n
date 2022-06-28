@@ -54,7 +54,7 @@
 				/>
 				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0)">
 					<template #content v-if="hasPinData">
-						<div :class="$style['pin-data-tooltip']">
+						<div :class="$style['tooltip-container']">
 							<strong>
 								{{ $locale.baseText('ndv.pinData.unpin.title') }}
 							</strong>
@@ -62,7 +62,7 @@
 						</div>
 					</template>
 					<template #content v-else>
-						<div :class="$style['pin-data-tooltip']">
+						<div :class="$style['tooltip-container']">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
@@ -110,29 +110,44 @@
 			</n8n-text>
 		</div>
 
-		<div :class="$style.dataContainer" ref="dataContainer">
+		<div
+			:class="[$style['data-container'], copyDropdownOpen ? $style['copy-dropdown-open'] : '']"
+			ref="dataContainer"
+		>
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
-				<el-dropdown trigger="click" @command="handleCopyClick">
-					<span class="el-dropdown-link">
-						<n8n-icon-button
-							:title="$locale.baseText('runData.copyToClipboard')"
-							icon="copy"
-							type="tertiary"
-							:circle="false"
-						/>
-					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">
-							{{ $locale.baseText('runData.copyItemPath') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">
-							{{ $locale.baseText('runData.copyParameterPath') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">
-							{{ $locale.baseText('runData.copyValue') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
-				</el-dropdown>
+				<n8n-tooltip placement="bottom-end" :disabled="!!state.value">
+					<template #content>
+						<div :class="$style['tooltip-container']">
+							{{ $locale.baseText('runData.copyDisabled') }}
+						</div>
+					</template>
+					<el-dropdown
+						trigger="click"
+						:disabled="!state.value"
+						@command="handleCopyClick"
+						@visible-change="copyDropdownOpen = $event"
+					>
+						<span class="el-dropdown-link">
+							<n8n-icon-button
+								:title="$locale.baseText('runData.copyToClipboard')"
+								icon="copy"
+								type="tertiary"
+								:circle="false"
+							/>
+						</span>
+						<el-dropdown-menu slot="dropdown">
+							<el-dropdown-item :command="{command: 'value'}">
+								{{ $locale.baseText('runData.copyValue') }}
+							</el-dropdown-item>
+							<el-dropdown-item :command="{command: 'itemPath'}" divided>
+								{{ $locale.baseText('runData.copyItemPath') }}
+							</el-dropdown-item>
+							<el-dropdown-item :command="{command: 'parameterPath'}">
+								{{ $locale.baseText('runData.copyParameterPath') }}
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</el-dropdown>
+				</n8n-tooltip>
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
@@ -141,7 +156,11 @@
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
-				<code-editor :value="editMode.value" @input="$store.commit('ui/setOutputPanelEditModeValue', $event)" />
+				<code-editor
+					:value="editMode.value"
+					:options="{ scrollBeyondLastLine: false }"
+					@input="$store.commit('ui/setOutputPanelEditModeValue', $event)"
+				/>
 				<div :class="$style['edit-mode-footer']">
 					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
@@ -439,6 +458,7 @@ export default mixins(
 				currentPage: 1,
 				pageSize: 10,
 				pageSizes: [10, 25, 50, 100],
+				copyDropdownOpen: false,
 			};
 		},
 		mounted() {
@@ -955,6 +975,13 @@ export default mixins(
 					} else {
 						value = this.state.value.toString();
 					}
+
+					this.$showToast({
+						title: this.$locale.baseText('runData.copyValue.toast'),
+						message: '',
+						type: 'success',
+						duration: 2000,
+					});
 				} else {
 					let startPath = '';
 					let path = '';
@@ -963,9 +990,23 @@ export default mixins(
 						const index = pathParts[0].slice(1);
 						path = pathParts.slice(1).join(']');
 						startPath = `$item(${index}).$node["${this.node!.name}"].json`;
+
+						this.$showToast({
+							title: this.$locale.baseText('runData.copyItemPath.toast'),
+							message: '',
+							type: 'success',
+							duration: 2000,
+						});
 					} else if (commandData.command === 'parameterPath') {
 						path = newPath.split(']').slice(1).join(']');
 						startPath = `$node["${this.node!.name}"].json`;
+
+						this.$showToast({
+							title: this.$locale.baseText('runData.copyParameterPath.toast'),
+							message: '',
+							type: 'success',
+							duration: 2000,
+						});
 					}
 					if (!path.startsWith('[') && !path.startsWith('.') && path) {
 						path += '.';
@@ -1062,11 +1103,12 @@ export default mixins(
 	}
 }
 
-.dataContainer {
+.data-container {
 	position: relative;
 	height: 100%;
 
-	&:hover {
+	&:hover,
+	&.copy-dropdown-open {
 		.actions-group {
 			opacity: 1;
 		}
@@ -1243,7 +1285,7 @@ export default mixins(
 	flex-grow: 1;
 }
 
-.pin-data-tooltip {
+.tooltip-container {
 	max-width: 240px;
 }
 
@@ -1286,6 +1328,7 @@ export default mixins(
 	flex-direction: column;
 	justify-content: flex-end;
 	align-items: flex-end;
+	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 }
 
@@ -1294,7 +1337,6 @@ export default mixins(
 	justify-content: space-between;
 	align-items: center;
 	padding-top: var(--spacing-s);
-	padding-left: var(--spacing-s);
 }
 
 .edit-mode-footer-infotip {
@@ -1351,5 +1393,4 @@ export default mixins(
 .vjs-tree .vjs-tree__content.has-line {
 	border-left: 1px dotted var(--color-json-line);
 }
-
 </style>
