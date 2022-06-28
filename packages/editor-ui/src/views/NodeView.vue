@@ -75,7 +75,7 @@
 					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
 				>
 					<n8n-icon-button
-						size="large"
+						size="medium"
 						type="secondary"
 						:icon="['far', 'note-sticky']"
 						:title="$locale.baseText('nodeView.addSticky')"
