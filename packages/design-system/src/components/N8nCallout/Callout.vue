@@ -9,9 +9,6 @@
 				/>
 			</div>
 			<slot />
-			<div :class="$style['actions']">
-				<slot name="actions" />
-			</div>
 		</div>
 
 		<slot name="trailingContent" />
@@ -82,12 +79,6 @@ export default Vue.extend({
 
 .message-section {
 	display: flex;
-}
-
-.actions {
-	color: green;
-	padding-left: var(--spacing-4xs);
-	text-decoration: underline;
 }
 
 .info, .custom {
