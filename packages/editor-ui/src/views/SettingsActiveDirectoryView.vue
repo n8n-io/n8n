@@ -5,16 +5,15 @@
 				<n8n-heading size="2xlarge">{{ "AD/LDAP" }}</n8n-heading>
 			</div>
 
-			<!-- <div :class="$style.enableFeatureContainer" >
+			<div :class="$style.enableFeatureContainer" >
 				<span>Enable Feature</span>
 				<el-switch
-					v-model="activeFeature"
+					v-model="adConfig.activeDirectoryLoginEnabled"
 					active-color="#13ce66"
-					:value=true
 					:disabled="isReadOnly"
 					@change="valueChanged"
 				/>
-			</div> -->
+			</div>
 			<div>
 				<n8n-form-inputs
 					v-if="formInputs"
@@ -50,9 +49,25 @@ export default mixins(
 	},
 	data() {
 		return {
-			adConfig: {},
+			adConfig: {} as {
+				activeDirectoryLoginEnabled: boolean;
+				attributeMapping: {
+					email: string;
+					firstName: string;
+					lastName: string;
+					loginId: string;
+					username: string;
+				},
+				binding: {
+					adminDn: string;
+					adminPassword: string;
+					baseDn: string;
+				},
+				connection: {
+					url: string;
+				},
+			},
 			mounted: false,
-			activeFeature: true,
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
 			formBus: new Vue(),
@@ -61,136 +76,6 @@ export default mixins(
 	},
 	mounted() {
 		this.getADConfig();
-
-		this.formInputs = [
-			{
-				name: 'connectionInfo',
-				properties: {
-					label: 'Connection Details',
-					type: 'info',
-				},
-			},
-			{
-				name: 'serverAddress',
-				initialValue: this.currentUser.firstName,
-				properties: {
-					label: 'Server Address',
-					maxlength: 32,
-					required: true,
-					autocomplete: 'given-name',
-					capitalize: true,
-				},
-			},
-			{
-				name: 'baseDn',
-				initialValue: this.currentUser.lastName,
-				properties: {
-					label: 'Base DN',
-					maxlength: 32,
-					required: true,
-					autocomplete: 'family-name',
-					capitalize: true,
-				},
-			},
-			{
-				name: 'bindingType',
-				initialValue: 'admin',
-				properties: {
-					type: 'select',
-					label: 'Binding as',
-					options: [
-						{
-							value: 'admin',
-							label: 'Admin',
-						},
-						{
-							value: 'anonymous',
-							label: 'Anonymous',
-						},
-					],
-				},
-			},
-			{
-				name: 'adminDn',
-				initialValue: this.currentUser.lastName,
-				properties: {
-					label: 'Binding DN',
-					maxlength: 32,
-					required: true,
-					autocomplete: 'family-name',
-					capitalize: true,
-				},
-				shouldDisplay(values): boolean {
-					return values['bindingType'] === 'admin';
-				},
-			},
-			{
-				name: 'adminPassword',
-				initialValue: this.currentUser.email,
-				properties: {
-					label: 'Binding Password',
-					type: 'email',
-					validationRules: [{name: 'VALID_EMAIL'}],
-					autocomplete: 'email',
-					required: true,
-					capitalize: true,
-				},
-				shouldDisplay(values): boolean {
-					return values['bindingType'] === 'admin';
-				},
-			},
-			{
-				name: 'attributeMappingInfo',
-				properties: {
-					label: 'Attribute Mapping',
-					type: 'info',
-				},
-			},
-			{
-				name: 'loginId',
-				initialValue: this.currentUser.email,
-				properties: {
-					label: 'Login ID',
-					type: 'text',
-					autocomplete: 'email',
-					required: true,
-					capitalize: true,
-				},
-			},
-			{
-				name: 'email',
-				initialValue: this.currentUser.email,
-				properties: {
-					label: 'Email',
-					type: 'text',
-					autocomplete: 'email',
-					required: true,
-					capitalize: true,
-				},
-			},
-			{
-				name: 'firstName',
-				initialValue: this.currentUser.email,
-				properties: {
-					label: 'Fist Name',
-					type: 'text',
-					autocomplete: 'email',
-					required: true,
-					capitalize: true,
-				},
-			},
-			{
-				name: 'lastName',
-				initialValue: this.currentUser.email,
-				properties: {
-					label: 'Last Name',
-					type: 'text',
-					autocomplete: 'email',
-					required: true,
-					capitalize: true,
-				},
-			},
-		];
 	},
 	computed: {
 		currentUser() {
@@ -228,8 +113,134 @@ export default mixins(
 		},
 		async getADConfig() {
 			try {
-				//this.adConfig = await this.$store.dispatch('settings/getApiKey');
 				this.adConfig = await this.$store.dispatch('settings/getADConfig');
+				this.formInputs = [
+					{
+						name: 'connectionInfo',
+						properties: {
+							label: 'Connection Details',
+							type: 'info',
+						},
+					},
+					{
+						name: 'serverAddress',
+						initialValue: this.adConfig.connection.url,
+						properties: {
+							label: 'Server Address',
+							maxlength: 32,
+							required: true,
+							autocomplete: 'given-name',
+							capitalize: true,
+						},
+					},
+					{
+						name: 'baseDn',
+						initialValue: this.adConfig.binding.baseDn,
+						properties: {
+							label: 'Base DN',
+							maxlength: 32,
+							required: true,
+							autocomplete: 'family-name',
+							capitalize: true,
+						},
+					},
+					{
+						name: 'bindingType',
+						initialValue: 'admin',
+						properties: {
+							type: 'select',
+							label: 'Binding as',
+							options: [
+								{
+									value: 'admin',
+									label: 'Admin',
+								},
+								{
+									value: 'anonymous',
+									label: 'Anonymous',
+								},
+							],
+						},
+					},
+					{
+						name: 'adminDn',
+						initialValue: this.adConfig.binding.adminDn,
+						properties: {
+							label: 'Binding DN',
+							maxlength: 32,
+							required: true,
+							autocomplete: 'family-name',
+							capitalize: true,
+						},
+						shouldDisplay(values): boolean {
+							return values['bindingType'] === 'admin';
+						},
+					},
+					{
+						name: 'adminPassword',
+						initialValue:this.adConfig.binding.adminPassword,
+						properties: {
+							label: 'Binding Password',
+							type: 'password',
+							required: true,
+							capitalize: true,
+						},
+						shouldDisplay(values): boolean {
+							return values['bindingType'] === 'admin';
+						},
+					},
+					{
+						name: 'attributeMappingInfo',
+						properties: {
+							label: 'Attribute Mapping',
+							type: 'info',
+						},
+					},
+					{
+						name: 'loginId',
+						initialValue: this.adConfig.attributeMapping.loginId,
+						properties: {
+							label: 'Login ID',
+							type: 'text',
+							autocomplete: 'email',
+							required: true,
+							capitalize: true,
+						},
+					},
+					{
+						name: 'email',
+						initialValue: this.adConfig.attributeMapping.email,
+						properties: {
+							label: 'Email',
+							type: 'text',
+							autocomplete: 'email',
+							required: true,
+							capitalize: true,
+						},
+					},
+					{
+						name: 'firstName',
+						initialValue: this.adConfig.attributeMapping.firstName,
+						properties: {
+							label: 'Fist Name',
+							type: 'text',
+							autocomplete: 'email',
+							required: true,
+							capitalize: true,
+						},
+					},
+					{
+						name: 'lastName',
+						initialValue: this.adConfig.attributeMapping.lastName,
+						properties: {
+							label: 'Last Name',
+							type: 'text',
+							autocomplete: 'email',
+							required: true,
+							capitalize: true,
+						},
+					},
+				];
 			} catch (error) {
 				//this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {

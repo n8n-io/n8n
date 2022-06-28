@@ -51,6 +51,9 @@ const module: Module<ISettingsState, IRootState> = {
 		publicApiPath(state: ISettingsState): string {
 			return state.api.path;
 		},
+		isADEnabled(state: ISettingsState): boolean {
+			return state.ad.enabled;
+		},
 		showSetupPage(state: ISettingsState) {
 			return state.userManagement.showSetupOnFirstLoad;
 		},

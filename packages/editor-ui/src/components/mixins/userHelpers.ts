@@ -20,11 +20,13 @@ export const userHelpers = Vue.extend({
 			const currentUser = this.$store.getters['users/currentUser'];
 			const isUMEnabled = this.$store.getters['settings/isUserManagementEnabled'];
 			const isPublicApiEnabled = this.$store.getters['settings/isPublicApiEnabled'];
+			const isADEnabled = this.$store.getters['settings/isADEnabled'];
 
 			return permissions && isAuthorized(permissions, {
 				currentUser,
 				isUMEnabled,
 				isPublicApiEnabled,
+				isADEnabled,
 			});
 		},
 	},
