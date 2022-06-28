@@ -923,6 +923,7 @@ export interface INodeProperties {
 export interface INodePropertyOptions {
 	name: string;
 	value: string | number | boolean;
+	action?: string;
 	description?: string;
 	routing?: INodePropertyRouting;
 }
