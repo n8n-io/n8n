@@ -47,16 +47,16 @@ export const pinData = Vue.extend({
 			return true;
 		},
 		isValidPinDataSize(data: string): boolean {
-			try {
-				if (this.$store.getters['pinDataSize'] + stringSizeInBytes(data) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
-					throw new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description'));
-				}
+			if (this.$store.getters['pinDataSize'] + stringSizeInBytes(data) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
+				(this as unknown as PinDataContext).$showError(
+					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
+					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
+				);
 
-				return true;
-			} catch (error) {
-				(this as unknown as PinDataContext).$showError(error, this.$locale.baseText('ndv.pinData.error.tooLarge.title'));
 				return false;
 			}
+
+			return true;
 		},
 	},
 });
