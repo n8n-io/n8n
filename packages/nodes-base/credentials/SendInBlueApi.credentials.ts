@@ -8,7 +8,7 @@ import {
 
 export class SendInBlueApi implements ICredentialType {
 	name = 'sendinblueApi';
-	displayName = 'Sendinblue API';
+	displayName = 'SendInBlue API';
 	documentationUrl = 'sendinblue';
 	properties: INodeProperties[] = [
 		{

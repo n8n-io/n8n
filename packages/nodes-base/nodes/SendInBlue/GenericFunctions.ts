@@ -44,64 +44,44 @@ export const INTERCEPTORS = new Map<string, (body: JsonObject) => void>([
 		},
 	],
 ]);
-const base64EncodingRegExp = new RegExp(
-	'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$',
-);
-const fileTypeRegExp = new RegExp(
-	'^.*.(JPG|GIF|DOC|PDF|xlsx|xls|ods|docx|docm|doc|csv|pdf|txt|gif|jpg|jpeg|png|tif|tiff|rtf|bmp|cgm|css|shtml|html|htm|zip|xml|ppt|pptx|tar|ez|ics|mobi|msg|pub|eps|odt|mp3|m4a|m4v|wma|ogg|flac|wav|aif|aifc|aiff|mp4|mov|avi|mkv|mpeg|mpg|wmv|pkpass|xlsm)$',
-);
 
-const validateAttchmentName = (name: string) => {
-	return fileTypeRegExp.test(name);
-};
-
-const validateBase64Encoding = (data: string) => {
-	return base64EncodingRegExp.test(data);
-};
-
-const validateURL = (url: string) => {
-	try {
-		const result = new URL(url);
-	} catch (_) {
-		return false;
+function getFileName(itemIndex: number, mimeType: string, fileExt: string, fileName: string): string {
+	let ext = fileExt;
+	if(fileExt === '') {
+		ext = mimeType.split('/')[1];
 	}
 
-	return true;
-};
+	let name = `${fileName}.${ext}`;
+	if(fileName === '') {
+		name = `file-${itemIndex}.${ext}`;
+	}
+	return name;
+}
 
-export async function validateAttachmentsData(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const attachments = this.getNodeParameter(
-		'additionalParameters.emailAttachments.attachment',
-	) as JsonObject[];
+export async function validateAttachmentsData (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	const dataPropertyList = this.getNodeParameter('additionalParameters.emailAttachments.attachment') as JsonObject[];
 	const { body } = requestOptions;
 
 	const { attachment = [] } = body as { attachment: Array<{ content: string; name: string }> };
 
 	try {
-		for (const [, attachmentData] of attachments.entries()) {
-			const { binaryPropertyName } = attachmentData;
+		for(let [, attachmentDataName] of dataPropertyList.entries()) {
+			const { binaryPropertyName } = attachmentDataName;
 
 			const item = this.getInputData();
 
 			if (item.binary![binaryPropertyName as string] === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`No binary data property “${binaryPropertyName}” does not exists on item!`,
-				);
+				throw new NodeOperationError(this.getNode(), `No binary data property “${binaryPropertyName}” exists on item!`);
 			}
 
-			const {
-				data: content,
-				fileName = '',
-				mimeType,
-				fileExtension = '',
-			} = item.binary![binaryPropertyName as string];
+			const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(binaryPropertyName) as Buffer;
 
-			const fileExtensionType = fileExtension !== '' ? fileExtension : mimeType.split('/')[1];
-			attachment.push({ content, name: `${fileName}.${fileExtensionType}` });
+			const {data:content, mimeType, fileName, fileExt} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
+
+			const itemIndex = this.getCurrentItemIndex();
+			const name = getFileName(itemIndex, mimeType, fileExt, fileName);
+
+			attachment.push({ content, name });
 		}
 
 		Object.assign(body as {}, { attachment });
