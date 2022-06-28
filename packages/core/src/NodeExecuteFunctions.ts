@@ -2386,6 +2386,9 @@ export function getExecuteSingleFunctions(
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				async getBinaryDataBuffer(propertyName: string, inputIndex = 0): Promise<Buffer> {
+					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
+				},
 				httpRequest,
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
