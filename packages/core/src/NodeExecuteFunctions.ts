@@ -1141,7 +1141,6 @@ export async function httpRequestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-		console.log(requestOptions);
 
 		return await httpRequest(requestOptions);
 	} catch (error) {

@@ -1,4 +1,4 @@
-*import {
+import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
