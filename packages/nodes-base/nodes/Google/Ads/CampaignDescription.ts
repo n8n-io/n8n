@@ -11,6 +11,7 @@ export const campaignOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,7 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all the campaigns linked to that user',
+				description: 'Get all the campaigns linked to the specified account. Currencies are specified in micros, where one million is equivalent to one currency unit.',
 				routing: {
 					request: {
 						method: 'POST',
@@ -69,7 +70,7 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a specific campaign',
+				description: 'Get a specific campaign. Currencies are specified in micros, where one million is equivalent to one currency unit.',
 				routing: {
 					request: {
 						method: 'POST',
@@ -114,37 +115,8 @@ export const campaignOperations: INodeProperties[] = [
 					},
 				},
 			},
-			{
-				name: 'Custom Query',
-				value: 'customQuery',
-				description: 'Make a custom query against the campaign endpoint',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
-						returnFullResponse: true,
-						body: {
-							query: '={{$parameter["customGQL"]}}',
-						},
-						headers: {
-							'login-customer-id': '={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
-						},
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'results',
-								},
-							},
-						],
-					},
-				},
-			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -198,25 +170,6 @@ export const campaignFields: INodeProperties[] = [
 		description: 'ID of the campaign',
 	},
 	{
-		displayName: 'Google Query',
-		name: 'customGQL',
-		type: 'string',
-		required: true,
-		placeholder: 'SELECT campaign.id, campaign.name FROM campaign ORDER BY campaign.id DESC',
-		displayOptions: {
-			show: {
-				operation: [
-					'customQuery',
-				],
-				resource: [
-					'campaign',
-				],
-			},
-		},
-		default: '',
-		description: 'Custom GQL query',
-	},
-	{
 		displayName: 'Additional Options',
 		name: 'additionalOptions',
 		type: 'collection',
@@ -235,13 +188,14 @@ export const campaignFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		options: [
 			{
-				displayName: 'Date range',
+				displayName: 'Date Range',
 				name: 'dateRange',
 				description: 'Filters statistics by period',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'All time',
+						name: 'All Time',
 						value: 'allTime',
 						description: 'Fetch statistics for all period',
 					},
@@ -256,32 +210,32 @@ export const campaignFields: INodeProperties[] = [
 						description: 'Yesterday only',
 					},
 					{
-						name: 'Last 7 days',
+						name: 'Last 7 Days',
 						value: 'LAST_7_DAYS',
 						description: 'Last 7 days, not including today',
 					},
 					{
-						name: 'Last business week',
+						name: 'Last Business Week',
 						value: 'LAST_BUSINESS_WEEK',
 						description: 'The 5 day business week, Monday through Friday, of the previous business week',
 					},
 					{
-						name: 'This month',
+						name: 'This Month',
 						value: 'THIS_MONTH',
-						description: 'All days in the current month.',
+						description: 'All days in the current month',
 					},
 					{
-						name: 'Last month',
+						name: 'Last Month',
 						value: 'LAST_MONTH',
 						description: 'All days in the previous month',
 					},
 					{
-						name: 'Last 14 days',
+						name: 'Last 14 Days',
 						value: 'LAST_14_DAYS',
 						description: 'The last 14 days not including today',
 					},
 					{
-						name: 'Last 30 days',
+						name: 'Last 30 Days',
 						value: 'LAST_30_DAYS',
 						description: 'The last 30 days not including today',
 					},
@@ -289,7 +243,7 @@ export const campaignFields: INodeProperties[] = [
 				default: 'allTime',
 			},
 			{
-				displayName: 'Campaign status',
+				displayName: 'Show Campaigns by Status',
 				name: 'campaignStatus',
 				description: 'Filters campaigns by status',
 				type: 'options',

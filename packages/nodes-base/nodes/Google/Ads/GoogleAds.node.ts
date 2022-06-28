@@ -47,6 +47,7 @@ export class GoogleAds implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign',
@@ -54,7 +55,6 @@ export class GoogleAds implements INodeType {
 					},
 				],
 				default: 'campaign',
-				description: 'The resource to operate on.',
 			},
 			//-------------------------------
 			// Campaign Operations
