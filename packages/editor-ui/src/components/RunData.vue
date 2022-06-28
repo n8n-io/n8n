@@ -7,16 +7,17 @@
 			:class="$style['pinned-data-callout']"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<template #actions>
+			<span class="ml-4xs">
 				<n8n-link
 					theme="secondary"
 					size="small"
-					:bold="true"
+					underline
+					bold
 					@click="onTogglePinData"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
 				</n8n-link>
-			</template>
+			</span>
 			<template #trailingContent>
 				<n8n-link
 					:to="dataPinningDocsUrl"
@@ -52,7 +53,7 @@
 					:disabled="editMode.enabled"
 					@click="enterEditMode()"
 				/>
-				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0)">
+				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0 || hasPinData)">
 					<template #content v-if="hasPinData">
 						<div :class="$style['tooltip-container']">
 							<strong>
@@ -67,7 +68,7 @@
 							<n8n-text size="small" tag="p">
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
 							</n8n-text>
-							<n8n-link to="https://google.com" size="small">
+							<n8n-link :to="dataPinningDocsUrl" size="small">
 								{{ $locale.baseText('ndv.pinData.pin.link') }}
 								<n8n-icon icon="external-link-alt" size="small" />
 							</n8n-link>
@@ -78,7 +79,7 @@
 						type="tertiary"
 						active
 						icon="thumbtack"
-						:disabled="editMode.enabled || inputData.length === 0"
+						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData)"
 						@click="onTogglePinData"
 					/>
 				</n8n-tooltip>
@@ -156,17 +157,19 @@
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
-				<code-editor
-					:value="editMode.value"
-					:options="{ scrollBeyondLastLine: false }"
-					@input="$store.commit('ui/setOutputPanelEditModeValue', $event)"
-				/>
+				<div :class="$style['edit-mode-body']">
+					<code-editor
+						:value="editMode.value"
+						:options="{ scrollBeyondLastLine: false }"
+						@input="$store.commit('ui/setOutputPanelEditModeValue', $event)"
+					/>
+				</div>
 				<div :class="$style['edit-mode-footer']">
 					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
-						<a href="https://google.com">
+						<n8n-link :to="dataPinningDocsUrl" size="small">
 							{{ $locale.baseText('generic.learnMore') }}
-						</a>
+						</n8n-link>
 					</n8n-info-tip>
 					<div :class="$style['edit-mode-footer-buttons']">
 						<n8n-button
@@ -186,6 +189,15 @@
 
 			<div v-else-if="!hasNodeRun" :class="$style.center">
 				<slot name="node-not-run"></slot>
+			</div>
+
+			<div v-else-if="paneType === 'input' && node.disabled" :class="$style.center">
+				<n8n-text>
+					{{ $locale.baseText('ndv.input.disabled') }}
+					<n8n-link @click="enableNode">
+						{{ $locale.baseText('ndv.input.disabled.cta') }}
+					</n8n-link>
+				</n8n-text>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
@@ -349,10 +361,9 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription, IRun,
+	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
-	ITaskData,
 } from 'n8n-workflow';
 
 import {
@@ -367,7 +378,7 @@ import {
 import {
 	DATA_PINNING_DOCS_URL,
 	MAX_DISPLAY_DATA_SIZE,
-	MAX_DISPLAY_ITEMS_AUTO_ALL, MAX_WORKFLOW_PINNED_DATA_SIZE,
+	MAX_DISPLAY_ITEMS_AUTO_ALL,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -383,8 +394,7 @@ import { pinData } from '@/components/mixins/pinData';
 import mixins from 'vue-typed-mixins';
 
 import { saveAs } from 'file-saver';
-import {CodeEditor} from "@/components/forms";
-import { stringSizeInBytes } from './helpers';
+import { CodeEditor } from "@/components/forms";
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -1036,6 +1046,18 @@ export default mixins(
 			onRunIndexChange(run: number) {
 				this.$emit('runChange', run);
 			},
+			enableNode() {
+				if (this.node) {
+					const updateInformation = {
+						name: this.node.name,
+						properties: {
+							disabled: !this.node.disabled,
+						},
+					};
+
+					this.$store.commit('updateNodeProperties', updateInformation);
+				}
+			},
 		},
 		watch: {
 			node() {
@@ -1330,6 +1352,12 @@ export default mixins(
 	align-items: flex-end;
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
+}
+
+.edit-mode-body {
+	flex: 1 1 auto;
+	width: 100%;
+	height: 100%;
 }
 
 .edit-mode-footer {

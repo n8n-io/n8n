@@ -86,14 +86,22 @@ export default Vue.extend({
 				});
 			}
 		},
+		handleResize() {
+			if (this.monacoInstance) {
+				// Workaround to force Monaco to recompute its boundaries
+				this.monacoInstance.layout({} as unknown as undefined);
+			}
+		},
 	},
 	mounted() {
 		setTimeout(this.loadEditor);
+		window.addEventListener('resize', this.handleResize);
 	},
 	destroyed() {
 		if (this.monacoLibrary) {
 			this.monacoLibrary.dispose();
 		}
+		window.removeEventListener('resize', this.handleResize);
 	},
 });
 </script>
@@ -102,6 +110,7 @@ export default Vue.extend({
 .text-editor {
 	width: 100%;
 	height: 100%;
+	flex: 1 1 auto;
 }
 
 ::v-deep {
