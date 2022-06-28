@@ -153,7 +153,7 @@ export class RoutingNode {
 							runIndex,
 							executeData,
 							{ $credentials: credentials },
-							true,
+							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(requestData.options as Record<string, any>)[key] = value;

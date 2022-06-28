@@ -1,14 +1,14 @@
 // eslint-disable-next-line n8n-nodes-base/filesystem-wrong-cred-filename
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class SendInBlueApi implements ICredentialType {
+export class SendinblueApi implements ICredentialType {
 	name = 'sendinblueApi';
-	displayName = 'SendInBlue API';
+	displayName = 'Sendinblue API';
 	documentationUrl = 'sendinblue';
 	properties: INodeProperties[] = [
 		{
@@ -17,23 +17,18 @@ export class SendInBlueApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
-		{
-			displayName: 'Domain',
-			name: 'domain',
-			type: 'string',
-			default: 'https://api.sendinblue.com',
-		},
-	];
-	authenticate = {
-		type: 'headerAuth',
+	]
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: 'api-key',
-			value: '={{$credentials.apiKey}}',
+			headers: {
+				'api-key': '={{$credentials.apiKey}}',
+			},
 		},
-	} as IAuthenticateHeaderAuth;
+	};
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials?.domain}}/v3',
+			baseURL: 'https://api.sendinblue.com/v3',
 			url: '/account',
 		},
 	};

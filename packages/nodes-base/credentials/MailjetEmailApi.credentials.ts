@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBasicAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -30,13 +30,17 @@ export class MailjetEmailApi implements ICredentialType {
 			description: 'Whether to allow to run the API call in a Sandbox mode, where all validations of the payload will be done without delivering the message',
 		},
 	];
-	authenticate: IAuthenticateBasicAuth = {
-		type: 'basicAuth',
-		properties: {
-		 userPropertyName: 'apiKey',
-		 passwordPropertyName: 'secretKey',
-	 },
- };
+
+ authenticate: IAuthenticateGeneric = {
+	type: 'generic',
+	properties: {
+		auth: {
+			username: '={{$credentials.apiKey}}',
+			password: '={{$credentials.secretKey}}',
+		},
+	},
+};
+
  test: ICredentialTestRequest = {
 		request: {
 			baseURL: `https://api.mailjet.com`,

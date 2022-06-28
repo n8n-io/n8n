@@ -1,5 +1,5 @@
 import {
-	IDataObject,
+	IBinaryData,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
 	JsonObject,
@@ -74,14 +74,19 @@ export async function validateAttachmentsData (this: IExecuteSingleFunctions, re
 				throw new NodeOperationError(this.getNode(), `No binary data property “${binaryPropertyName}” exists on item!`);
 			}
 
-			const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(binaryPropertyName) as Buffer;
+			const buffer = await this.helpers.getBinaryDataBuffer(binaryPropertyName) as Buffer;
 
-			const {data:content, mimeType, fileName, fileExt} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
+			// const {data:content, mimeType, fileName, fileExt} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
 
-			const itemIndex = this.getCurrentItemIndex();
-			const name = getFileName(itemIndex, mimeType, fileExt, fileName);
+			// const itemIndex = this.getCurrentItemIndex();
+			// const name = getFileName(itemIndex, mimeType, fileExt, fileName);
 
-			attachment.push({ content, name });
+			const binaryData = item.binary![binaryPropertyName as string] as IBinaryData;
+
+			attachment.push({
+				name: binaryData.fileName || `attachment${binaryData.fileExtension}`,
+				content: Buffer.from(buffer).toString('base64'),
+			});
 		}
 
 		Object.assign(body as {}, { attachment });
