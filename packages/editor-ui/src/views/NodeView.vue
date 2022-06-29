@@ -1143,6 +1143,17 @@ export default mixins(
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
 						type: 'success',
 					});
+
+					this.getWorkflowDataToSave().then((workflowData) => {
+						const trackProps = {
+							workflow_id: this.$store.getters.workflowId,
+							node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+						};
+
+						console.log('User stopped workflow execution', trackProps);
+
+						this.$telemetry.track('User stopped workflow execution', trackProps);
+					});
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
 					const execution = await this.restApi().getExecution(executionId);
