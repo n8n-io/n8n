@@ -4,24 +4,26 @@ import { IDataObject } from "n8n-workflow";
 import {stringSizeInBytes} from "@/components/helpers";
 import {MAX_WORKFLOW_PINNED_DATA_SIZE} from "@/constants";
 
-interface PinDataContext extends Vue {
-	node?: INodeUi;
-	$showError: (error: Error, title: string) => void;
+interface PinDataContext {
+	node: INodeUi;
+	$showError(error: Error, title: string): void;
 }
 
-export const pinData = Vue.extend({
+export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend({
 	computed: {
 		pinData (): IDataObject {
-			return !!(this as unknown as PinDataContext).node && this.$store.getters['pinDataByNodeName']((this as unknown as PinDataContext).node!.name);
+			return !!this.node && this.$store.getters['pinDataByNodeName'](this.node!.name);
 		},
 		hasPinData (): boolean {
-			return !!(this as unknown as PinDataContext).node && typeof this.pinData !== 'undefined';
+			return !!this.node && typeof this.pinData !== 'undefined';
 		},
 	},
 	methods: {
 		isValidPinDataJSON(data: string): boolean {
 			try {
 				JSON.parse(data);
+
+				return true;
 			} catch (error) {
 				const title = this.$locale.baseText('runData.editOutputInvalid');
 
@@ -40,15 +42,14 @@ export const pinData = Vue.extend({
 
 				error.message += '.';
 
-				(this as unknown as PinDataContext).$showError(error, title);
+				this.$showError(error, title);
+
 				return false;
 			}
-
-			return true;
 		},
 		isValidPinDataSize(data: string): boolean {
 			if (this.$store.getters['pinDataSize'] + stringSizeInBytes(data) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
-				(this as unknown as PinDataContext).$showError(
+				this.$showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
 				);
