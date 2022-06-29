@@ -65,7 +65,7 @@ export async function validateAttachmentsData (this: IExecuteSingleFunctions, re
 	const { attachment = [] } = body as { attachment: Array<{ content: string; name: string }> };
 
 	try {
-		for(let [, attachmentDataName] of dataPropertyList.entries()) {
+		for(const [, attachmentDataName] of dataPropertyList.entries()) {
 			const { binaryPropertyName } = attachmentDataName;
 
 			const item = this.getInputData();

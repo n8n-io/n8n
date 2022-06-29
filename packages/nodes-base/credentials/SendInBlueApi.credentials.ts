@@ -17,7 +17,7 @@ export class SendinblueApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
-	]
+	];
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
