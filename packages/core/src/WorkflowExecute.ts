@@ -928,11 +928,10 @@ export class WorkflowExecute {
 
 							if (pinData && pinData[executionNode.name] !== undefined) {
 								const nodePinData = pinData[executionNode.name];
-
-								// output the same pindata for every run that has no pindata
-								const nodePinDataPerRun = nodePinData[runIndex] ?? nodePinData[0];
-
-								nodeSuccessData = [[{ json: nodePinDataPerRun }]];
+								const itemsPerRun = nodePinData.map((item, index) => {
+									return { json: item, pairedItem: { item: index } };
+								});
+								nodeSuccessData = [itemsPerRun]; // always zeroth runIndex
 							} else {
 								Logger.debug(`Running node "${executionNode.name}" started`, {
 									node: executionNode.name,
