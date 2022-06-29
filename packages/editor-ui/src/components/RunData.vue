@@ -660,7 +660,7 @@ export default mixins(
 				this.$store.commit('ui/setOutputPanelEditModeValue', '');
 			},
 			onClickSaveEdit() {
-				if (this.isValidPinDataJSON(this.editMode.value) && this.isValidPinDataSize(this.editMode.value)) {
+				if (this.isValidPinData(this.editMode.value)) {
 					const data = JSON.parse(this.editMode.value);
 
 					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);

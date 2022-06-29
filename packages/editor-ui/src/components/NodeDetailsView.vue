@@ -459,7 +459,7 @@ export default mixins(
 				);
 
 				if (shouldPinDataBeforeClosing) {
-					if (this.isValidPinDataJSON(this.outputPanelEditMode.value) && this.isValidPinDataSize(this.outputPanelEditMode.value)) {
+					if (this.isValidPinData(this.outputPanelEditMode.value)) {
 						const data = JSON.parse(this.outputPanelEditMode.value);
 
 						this.$store.commit('ui/setOutputPanelEditModeEnabled', false);

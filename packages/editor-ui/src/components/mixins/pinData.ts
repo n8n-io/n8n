@@ -58,5 +58,8 @@ export const pinData = Vue.extend({
 
 			return true;
 		},
+		isValidPinData(data: string): boolean {
+			return this.isValidPinDataJSON(data) && this.isValidPinDataSize(data);
+		},
 	},
 });
