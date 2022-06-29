@@ -2136,7 +2136,7 @@ export class Hubspot implements INodeType {
 							}
 							if (filters.includeDetails) {
 								for (const prop  of detailingProperties) {
-									if (qs.properties) {
+									if (qs.properties && Array.isArray(qs.properties)) {
 										if(!qs.properties?.includes(prop.name)) qs.properties.push(prop.name);
 									} else {
 										qs.properties = [prop.name];
