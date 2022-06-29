@@ -897,9 +897,11 @@ export const store = new Vuex.Store({
 		},
 		pinDataSize: (state) => {
 			return state.workflow.nodes
-				.filter((node) => node.pinData && node.name !== state.activeNode)
 				.reduce((acc, node) => {
-					acc += stringSizeInBytes(node.pinData as IDataObject);
+					if (typeof node.pinData !== 'undefined' && node.name !== state.activeNode) {
+						acc += stringSizeInBytes(node.pinData);
+					}
+
 					return acc;
 				}, 0);
 		},
