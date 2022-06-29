@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-labels */
