@@ -333,7 +333,7 @@
 	"ndv.input.notConnected.title": "Wire me up",
 	"ndv.input.notConnected.message": "This node can only receive input data if you connect it to another node.",
 	"ndv.input.notConnected.learnMore": "Learn more",
-	"ndv.input.disabled": "Previous node is disabled and won’t execute.",
+	"ndv.input.disabled": "The '{nodeName}' node is disabled and won’t execute.",
 	"ndv.input.disabled.cta": "Enable it",
 	"ndv.output": "Output",
 	"ndv.output.edit": "Edit Output",
