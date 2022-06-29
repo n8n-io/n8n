@@ -12,6 +12,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	IPollFunctions,
 } from "n8n-workflow";
 
 import {
@@ -102,7 +103,7 @@ export async function highLevelApiPagination(this: IExecutePaginationFunctions, 
 	return responseData;
 };
 
-export async function highLevelApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> {
+export async function highLevelApiRequest(this: IExecuteFunctions | IWebhookFunctions | IPollFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> {
 
 	const credentials = await this.getCredentials('highLevelApi');
 	const endpoint = 'https://rest.gohighlevel.com/v1';
