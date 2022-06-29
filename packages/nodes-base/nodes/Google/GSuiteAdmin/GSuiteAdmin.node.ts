@@ -31,6 +31,7 @@ export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'G Suite Admin',
 		name: 'gSuiteAdmin',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:gSuiteAdmin.png',
 		group: ['input'],
 		version: 1,
