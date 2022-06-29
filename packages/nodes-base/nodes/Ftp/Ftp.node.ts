@@ -167,7 +167,6 @@ export class Ftp implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether folders can be deleted',
-						required: true,
 					},
 					{
 						displayName: 'Recursive',
@@ -182,7 +181,6 @@ export class Ftp implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to remove all files and directories in target directory',
-						required: true,
 					},
 				],
 			},

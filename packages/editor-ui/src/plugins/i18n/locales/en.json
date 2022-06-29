@@ -666,6 +666,7 @@
 	"runData.executionTime": "Execution Time",
 	"runData.fileExtension": "File Extension",
 	"runData.fileName": "File Name",
+	"runData.invalidPinnedData": "Invalid pinned data",
 	"runData.items": "Items",
 	"runData.json": "JSON",
 	"runData.mimeType": "Mime Type",

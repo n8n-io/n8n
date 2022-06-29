@@ -1160,7 +1160,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 	expect(name).toBe(payload.name);
 	expect(connections).toEqual(payload.connections);
 	expect(settings).toEqual(payload.settings);
-	expect(staticData).toEqual(payload.staticData);
+	expect(staticData).toMatchObject(JSON.parse(payload.staticData));
 	expect(nodes).toEqual(payload.nodes);
 	expect(active).toBe(false);
 	expect(createdAt).toBe(workflow.createdAt.toISOString());
@@ -1235,7 +1235,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 	expect(name).toBe(payload.name);
 	expect(connections).toEqual(payload.connections);
 	expect(settings).toEqual(payload.settings);
-	expect(staticData).toEqual(payload.staticData);
+	expect(staticData).toMatchObject(JSON.parse(payload.staticData));
 	expect(nodes).toEqual(payload.nodes);
 	expect(active).toBe(false);
 	expect(createdAt).toBe(workflow.createdAt.toISOString());

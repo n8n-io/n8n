@@ -166,7 +166,7 @@ export default Vue.extend({
 	}
 }
 
-$loading-overlay-background-color: rgba(255, 255, 255, 0.35);
+$loading-overlay-background-color: rgba(255, 255, 255, 0);
 
 /**
  * Colors

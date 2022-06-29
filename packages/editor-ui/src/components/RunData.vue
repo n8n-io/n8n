@@ -18,6 +18,7 @@
 					{{ $locale.baseText('runData.pindata.unpin') }}
 				</n8n-link>
 			</span>
+			</template>
 			<template #trailingContent>
 				<n8n-link
 					:to="dataPinningDocsUrl"
@@ -362,7 +363,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
+	INodeTypeDescription, IRun,
 	IRunData,
 	IRunExecutionData,
 } from 'n8n-workflow';
@@ -379,7 +380,8 @@ import {
 import {
 	DATA_PINNING_DOCS_URL,
 	MAX_DISPLAY_DATA_SIZE,
-	MAX_DISPLAY_ITEMS_AUTO_ALL, MULTIPLE_OUTPUT_NODE_TYPES,
+	MAX_DISPLAY_ITEMS_AUTO_ALL,
+	MULTIPLE_OUTPUT_NODE_TYPES,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';

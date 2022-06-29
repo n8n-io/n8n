@@ -1126,7 +1126,6 @@ export class Pipedrive implements INodeType {
 						name: 'org_id',
 						type: 'number',
 						default: 0,
-						required: true,
 						displayOptions: {
 							show: {
 								'/associateWith': [
@@ -1731,7 +1730,6 @@ export class Pipedrive implements INodeType {
 							numberPrecision: 2,
 						},
 						default: 0.00,
-						required: true,
 						description: 'Price at which to add or update this product in a deal',
 					},
 					{
@@ -1742,7 +1740,6 @@ export class Pipedrive implements INodeType {
 						typeOptions: {
 							minValue: 1,
 						},
-						required: true,
 						description: 'How many items of this product to add/update in a deal',
 					},
 					{
