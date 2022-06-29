@@ -3,8 +3,12 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -17,6 +21,7 @@ import {
 import {
 	mauticApiRequest,
 	mauticApiRequestAllItems,
+	validateCredentials,
 	validateJSON,
 } from './GenericFunctions';
 
@@ -80,6 +85,7 @@ export class Mautic implements INodeType {
 						],
 					},
 				},
+				testedBy: 'mauticCredentialTest',
 			},
 			{
 				name: 'mauticOAuth2Api',
@@ -148,7 +154,6 @@ export class Mautic implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume',
 			},
 			...companyOperations,
 			...companyFields,
@@ -166,6 +171,29 @@ export class Mautic implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async mauticCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				try {
+					let responseData;
+					responseData = await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+					if (responseData.id) {
+						return {
+							status: 'OK',
+							message: 'Authentication successful!',
+						};
+					}
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: 'Invalid credentials',
+					};
+				}
+				return {
+					status: 'Error',
+					message: 'Invalid credentials',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the available companies to display them to user so that he can
 			// select them easily
@@ -322,7 +350,7 @@ export class Mautic implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let qs: IDataObject;
 		let responseData;
 

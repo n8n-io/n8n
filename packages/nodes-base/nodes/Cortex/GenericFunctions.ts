@@ -3,12 +3,6 @@ import {
 } from 'request';
 
 import {
-	IAnalyzer,
-	IJob,
-	IResponder,
-} from './AnalyzerInterface';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -19,20 +13,14 @@ import {
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('cortexApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
-	const headerWithAuthentication = Object.assign({}, { Authorization: ` Bearer ${credentials.cortexApiKey}` });
-
 	let options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+		headers: {},
 		method,
 		qs: query,
 		uri: uri || `${credentials.host}/api${resource}`,
@@ -51,7 +39,7 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'cortexApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

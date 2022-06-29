@@ -53,6 +53,7 @@ export class MonicaCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Monica CRM',
 		name: 'monicaCrm',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:monicaCrm.png',
 		group: ['transform'],
 		version: 1,
@@ -74,6 +75,7 @@ export class MonicaCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',

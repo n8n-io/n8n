@@ -1,0 +1,6 @@
+name: id
+in: path
+description: The ID of the execution.
+required: true
+schema:
+  type: number

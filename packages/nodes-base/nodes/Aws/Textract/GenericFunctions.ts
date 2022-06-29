@@ -43,17 +43,19 @@ function getEndpointForService(service: string, credentials: ICredentialDataDecr
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('aws');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	// Sign AWS API request with the user credentials
 	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
-	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
+	const securityHeaders = {
+		accessKeyId: `${credentials.accessKeyId}`.trim(),
+		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined,
+	};
 
+	sign(signOpts, securityHeaders);
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
@@ -69,7 +71,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 			const errorMessage = error?.response?.data || error?.response?.body;
 			if (errorMessage.includes('AccessDeniedException')) {
 				const user = JSON.parse(errorMessage).Message.split(' ')[1];
-				throw new NodeApiError(this.getNode(), error, { 
+				throw new NodeApiError(this.getNode(), error, {
 					message: 'Unauthorized — please check your AWS policy configuration',
 					description: `Make sure an identity-based policy allows user ${user} to perform textract:AnalyzeExpense` });
 			}
@@ -126,7 +128,7 @@ export interface IExpenseDocument {
 		}];
 }
 
-export async function validateCrendetials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject, service: string): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject, service: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = decryptedCredentials;
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
@@ -134,7 +136,13 @@ export async function validateCrendetials(this: ICredentialTestFunctions, decryp
 
 	// Sign AWS API request with the user credentials
 	const signOpts = { host: endpoint.host, method: 'POST', path: '?Action=GetCallerIdentity&Version=2011-06-15' } as Request;
-	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
+	const securityHeaders = {
+		accessKeyId: `${credentials.accessKeyId}`.trim(),
+		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined,
+	};
+
+	sign(signOpts, securityHeaders);
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,

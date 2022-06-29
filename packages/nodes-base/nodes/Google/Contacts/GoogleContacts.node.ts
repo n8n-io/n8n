@@ -23,13 +23,14 @@ import {
 	contactOperations,
 } from './ContactDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 import { IData } from '../Analytics/Interfaces';
 
 export class GoogleContacts implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Contacts',
 		name: 'googleContacts',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googleContacts.png',
 		group: ['input'],
 		version: 1,
@@ -51,6 +52,7 @@ export class GoogleContacts implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -58,7 +60,6 @@ export class GoogleContacts implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 			...contactOperations,
 			...contactFields,
@@ -95,7 +96,7 @@ export class GoogleContacts implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

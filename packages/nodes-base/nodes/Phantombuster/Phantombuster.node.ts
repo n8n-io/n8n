@@ -29,6 +29,7 @@ export class Phantombuster implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Phantombuster',
 		name: 'phantombuster',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:phantombuster.png',
 		group: ['input'],
 		version: 1,
@@ -50,6 +51,7 @@ export class Phantombuster implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Agent',
@@ -57,7 +59,6 @@ export class Phantombuster implements INodeType {
 					},
 				],
 				default: 'agent',
-				description: 'The resource to operate on.',
 			},
 			...agentOperations,
 			...agentFields,
@@ -115,7 +116,7 @@ export class Phantombuster implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

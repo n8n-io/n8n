@@ -100,12 +100,13 @@ import {
 	pascalCase,
 } from 'change-case';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Keap',
 		name: 'keap',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:keap.png',
 		group: ['input'],
 		version: 1,
@@ -127,6 +128,7 @@ export class Keap implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -162,7 +164,6 @@ export class Keap implements INodeType {
 					},
 				],
 				default: 'company',
-				description: 'The resource to operate on.',
 			},
 			// COMPANY
 			...companyOperations,
@@ -289,7 +290,7 @@ export class Keap implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

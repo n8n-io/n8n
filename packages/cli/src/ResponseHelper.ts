@@ -96,15 +96,13 @@ export function sendSuccessResponse(
 	}
 }
 
-export function sendErrorResponse(res: Response, error: ResponseError, shouldLog = true) {
+export function sendErrorResponse(res: Response, error: ResponseError) {
 	let httpStatusCode = 500;
 	if (error.httpStatusCode) {
 		httpStatusCode = error.httpStatusCode;
 	}
 
-	shouldLog = !process.argv[1].split('/').includes('jest');
-
-	if (process.env.NODE_ENV !== 'production' && shouldLog) {
+	if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
 		console.error('ERROR RESPONSE');
 		console.error(error);
 	}
@@ -132,7 +130,6 @@ export function sendErrorResponse(res: Response, error: ResponseError, shouldLog
 		// @ts-ignore
 		response.stack = error.stack;
 	}
-
 	res.status(httpStatusCode).json(response);
 }
 
@@ -149,12 +146,13 @@ const isUniqueConstraintError = (error: Error) =>
  * @returns
  */
 
-export function send(processFunction: (req: Request, res: Response) => Promise<any>) {
+export function send(processFunction: (req: Request, res: Response) => Promise<any>, raw = false) {
+	// eslint-disable-next-line consistent-return
 	return async (req: Request, res: Response) => {
 		try {
 			const data = await processFunction(req, res);
 
-			sendSuccessResponse(res, data);
+			sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error && isUniqueConstraintError(error)) {
 				error.message = 'There is already an entry with this name';

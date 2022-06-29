@@ -9,9 +9,15 @@ export class GithubOAuth2Api implements ICredentialType {
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'Github OAuth2 API';
+	displayName = 'GitHub OAuth2 API';
 	documentationUrl = 'github';
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Github Server',
 			name: 'server',

@@ -43,7 +43,7 @@ import {
 	omit,
 } from 'lodash';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
@@ -70,6 +70,7 @@ export class GoToWebinar implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Attendee',
@@ -97,7 +98,6 @@ export class GoToWebinar implements INodeType {
 					},
 				],
 				default: 'attendee',
-				description: 'Resource to consume',
 			},
 			...attendeeOperations,
 			...attendeeFields,

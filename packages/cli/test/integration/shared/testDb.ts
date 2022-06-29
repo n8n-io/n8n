@@ -1,27 +1,36 @@
-import { createConnection, getConnection, ConnectionOptions } from 'typeorm';
+import { exec as callbackExec } from 'child_process';
+import { promisify } from 'util';
+
+import { createConnection, getConnection, ConnectionOptions, Connection } from 'typeorm';
 import { Credentials, UserSettings } from 'n8n-core';
 
-import config = require('../../../config');
+import config from '../../../config';
 import { BOOTSTRAP_MYSQL_CONNECTION_NAME, BOOTSTRAP_POSTGRES_CONNECTION_NAME } from './constants';
-import { DatabaseType, Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
-import { randomEmail, randomName, randomString, randomValidPassword } from './random';
+import { Db, ICredentialsDb, IDatabaseCollections } from '../../../src';
+import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
-
-import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
+import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
 import { entities } from '../../../src/databases/entities';
-import { mysqlMigrations } from '../../../src/databases/mysqldb/migrations';
-import { postgresMigrations } from '../../../src/databases/postgresdb/migrations';
-import { sqliteMigrations } from '../../../src/databases/sqlite/migrations';
+import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
+import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
+import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
+import { categorize, getPostgresSchemaSection } from './utils';
+import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
 import type { Role } from '../../../src/databases/entities/Role';
-import type { User } from '../../../src/databases/entities/User';
-import type { CredentialPayload } from './types';
+import { User } from '../../../src/databases/entities/User';
+import type { CollectionName, CredentialPayload } from './types';
+import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
+import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
+import { TagEntity } from '../../../src/databases/entities/TagEntity';
+
+const exec = promisify(callbackExec);
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
@@ -34,20 +43,43 @@ export async function init() {
 
 	if (dbType === 'postgresdb') {
 		let bootstrapPostgres;
-		const bootstrapPostgresOptions = getBootstrapPostgresOptions();
+		const pgOptions = getBootstrapPostgresOptions();
 
 		try {
-			bootstrapPostgres = await createConnection(bootstrapPostgresOptions);
+			bootstrapPostgres = await createConnection(pgOptions);
 		} catch (error) {
-			const { username, password, host, port, schema } = bootstrapPostgresOptions;
-			console.error(
-				`ERROR: Failed to connect to Postgres default DB 'postgres'.\nPlease review your Postgres connection options:\n\thost: "${host}"\n\tusername: "${username}"\n\tpassword: "${password}"\n\tport: "${port}"\n\tschema: "${schema}"\nFix by setting correct values via environment variables:\n\texport DB_POSTGRESDB_HOST=value\n\texport DB_POSTGRESDB_USER=value\n\texport DB_POSTGRESDB_PASSWORD=value\n\texport DB_POSTGRESDB_PORT=value\n\texport DB_POSTGRESDB_SCHEMA=value`,
-			);
+			const pgConfig = getPostgresSchemaSection();
+
+			if (!pgConfig) throw new Error("Failed to find config schema section for 'postgresdb'");
+
+			const message = [
+				"ERROR: Failed to connect to Postgres default DB 'postgres'",
+				'Please review your Postgres connection options:',
+				`host: ${pgOptions.host} | port: ${pgOptions.port} | schema: ${pgOptions.schema} | username: ${pgOptions.username} | password: ${pgOptions.password}`,
+				'Fix by setting correct values via environment variables:',
+				`${pgConfig.host.env} | ${pgConfig.port.env} | ${pgConfig.schema.env} | ${pgConfig.user.env} | ${pgConfig.password.env}`,
+				'Otherwise, make sure your Postgres server is running.',
+			].join('\n');
+
+			console.error(message);
+
 			process.exit(1);
 		}
 
 		const testDbName = `pg_${randomString(6, 10)}_${Date.now()}_n8n_test`;
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName};`);
+
+		try {
+			const schema = config.getEnv('database.postgresdb.schema');
+			await exec(`psql -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`);
+		} catch (error) {
+			if (error instanceof Error && error.message.includes('command not found')) {
+				console.error(
+					'psql command not found. Make sure psql is installed and added to your PATH.',
+				);
+			}
+			process.exit(1);
+		}
 
 		await Db.init(getPostgresOptions({ name: testDbName }));
 
@@ -72,7 +104,7 @@ export async function init() {
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate(testDbName: string) {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = config.getEnv('database.type');
 
 	if (dbType === 'sqlite') {
 		await getConnection(testDbName).close();
@@ -96,22 +128,51 @@ export async function terminate(testDbName: string) {
 }
 
 /**
- * Truncate DB tables for specified entities.
+ * Truncate DB tables for collections.
  *
- * @param entities Array of entity names whose tables to truncate.
+ * @param collections Array of entity names whose tables to truncate.
  * @param testDbName Name of the test DB to truncate tables in.
  */
-export async function truncate(entities: Array<keyof IDatabaseCollections>, testDbName: string) {
-	const dbType = config.get('database.type');
+export async function truncate(collections: CollectionName[], testDbName: string) {
+	const dbType = config.getEnv('database.type');
+
+	const testDb = getConnection(testDbName);
 
 	if (dbType === 'sqlite') {
-		const testDb = getConnection(testDbName);
 		await testDb.query('PRAGMA foreign_keys=OFF');
-		await Promise.all(entities.map((entity) => Db.collections[entity]!.clear()));
+		await Promise.all(collections.map((collection) => Db.collections[collection].clear()));
 		return testDb.query('PRAGMA foreign_keys=ON');
 	}
 
-	const map: { [K in keyof IDatabaseCollections]: string } = {
+	if (dbType === 'postgresdb') {
+		return Promise.all(
+			collections.map((collection) => {
+				const schema = config.getEnv('database.postgresdb.schema');
+				const fullTableName = `${schema}.${toTableName(collection)}`;
+
+				testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
+			}),
+		);
+	}
+
+	/**
+	 * MySQL `TRUNCATE` requires enabling and disabling the global variable `foreign_key_checks`,
+	 * which cannot be safely manipulated by parallel tests, so use `DELETE` and `AUTO_INCREMENT`.
+	 * Clear shared tables first to avoid deadlock: https://stackoverflow.com/a/41174997
+	 */
+	if (dbType === 'mysqldb') {
+		const { pass: isShared, fail: isNotShared } = categorize(
+			collections,
+			(collectionName: CollectionName) => collectionName.toLowerCase().startsWith('shared'),
+		);
+
+		await truncateMySql(testDb, isShared);
+		await truncateMySql(testDb, isNotShared);
+	}
+}
+
+function toTableName(collectionName: CollectionName) {
+	return {
 		Credentials: 'credentials_entity',
 		Workflow: 'workflow_entity',
 		Execution: 'execution_entity',
@@ -122,27 +183,17 @@ export async function truncate(entities: Array<keyof IDatabaseCollections>, test
 		SharedCredentials: 'shared_credentials',
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
-	};
+	}[collectionName];
+}
 
-	if (dbType === 'postgresdb') {
-		return Promise.all(
-			entities.map((entity) =>
-				getConnection(testDbName).query(
-					`TRUNCATE TABLE "${map[entity]}" RESTART IDENTITY CASCADE;`,
-				),
-			),
-		);
-	}
-
-	// MySQL truncation requires globals, which cannot be safely manipulated by parallel tests
-	if (dbType === 'mysqldb') {
-		await Promise.all(
-			entities.map(async (entity) => {
-				await Db.collections[entity]!.delete({});
-				await getConnection(testDbName).query(`ALTER TABLE ${map[entity]} AUTO_INCREMENT = 1;`);
-			}),
-		);
-	}
+function truncateMySql(connection: Connection, collections: Array<keyof IDatabaseCollections>) {
+	return Promise.all(
+		collections.map(async (collection) => {
+			const tableName = toTableName(collection);
+			await connection.query(`DELETE FROM ${tableName};`);
+			await connection.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
+		}),
+	);
 }
 
 // ----------------------------------
@@ -164,11 +215,11 @@ export async function saveCredential(
 
 	Object.assign(newCredential, encryptedData);
 
-	const savedCredential = await Db.collections.Credentials!.save(newCredential);
+	const savedCredential = await Db.collections.Credentials.save(newCredential);
 
 	savedCredential.data = newCredential.data;
 
-	await Db.collections.SharedCredentials!.save({
+	await Db.collections.SharedCredentials.save({
 		user,
 		credentials: savedCredential,
 		role,
@@ -178,7 +229,7 @@ export async function saveCredential(
 }
 
 // ----------------------------------
-//          user creation
+//           user creation
 // ----------------------------------
 
 /**
@@ -188,53 +239,62 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	const user = {
 		email: email ?? randomEmail(),
-		password: password ?? randomValidPassword(),
+		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
 		...rest,
 	};
 
-	return Db.collections.User!.save(user);
+	return Db.collections.User.save(user);
 }
 
-export async function createOwnerShell() {
-	const globalRole = await getGlobalOwnerRole();
-	return Db.collections.User!.save({ globalRole });
+export function createUserShell(globalRole: Role): Promise<User> {
+	if (globalRole.scope !== 'global') {
+		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
+	}
+
+	const shell: Partial<User> = { globalRole };
+
+	if (globalRole.name !== 'owner') {
+		shell.email = randomEmail();
+	}
+
+	return Db.collections.User.save(shell);
 }
 
-export async function createMemberShell() {
-	const globalRole = await getGlobalMemberRole();
-	return Db.collections.User!.save({ globalRole });
+export function addApiKey(user: User): Promise<User> {
+	user.apiKey = randomApiKey();
+	return Db.collections.User.save(user);
 }
 
 // ----------------------------------
 //          role fetchers
 // ----------------------------------
 
-export async function getGlobalOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getGlobalOwnerRole() {
+	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
 }
 
-export async function getGlobalMemberRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getGlobalMemberRole() {
+	return Db.collections.Role.findOneOrFail({
 		name: 'member',
 		scope: 'global',
 	});
 }
 
-export async function getWorkflowOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getWorkflowOwnerRole() {
+	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'workflow',
 	});
 }
 
-export async function getCredentialOwnerRole() {
-	return await Db.collections.Role!.findOneOrFail({
+export function getCredentialOwnerRole() {
+	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});
@@ -247,6 +307,180 @@ export function getAllRoles() {
 		getWorkflowOwnerRole(),
 		getCredentialOwnerRole(),
 	]);
+}
+
+// ----------------------------------
+//          Execution helpers
+// ----------------------------------
+
+export async function createManyExecutions(
+	amount: number,
+	workflow: WorkflowEntity,
+	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
+) {
+	const executionsRequests = [...Array(amount)].map((_) => callback(workflow));
+	return Promise.all(executionsRequests);
+}
+
+/**
+ * Store a execution in the DB and assign it to a workflow.
+ */
+export async function createExecution(
+	attributes: Partial<ExecutionEntity> = {},
+	workflow: WorkflowEntity,
+) {
+	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
+
+	const execution = await Db.collections.Execution.save({
+		data: data ?? '[]',
+		finished: finished ?? true,
+		mode: mode ?? 'manual',
+		startedAt: startedAt ?? new Date(),
+		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id.toString() }),
+		stoppedAt: stoppedAt ?? new Date(),
+		waitTill: waitTill ?? null,
+	});
+
+	return execution;
+}
+
+/**
+ * Store a successful execution in the DB and assign it to a workflow.
+ */
+export async function createSuccessfulExecution(workflow: WorkflowEntity) {
+	return await createExecution(
+		{
+			finished: true,
+		},
+		workflow,
+	);
+}
+
+/**
+ * Store an error execution in the DB and assign it to a workflow.
+ */
+export async function createErrorExecution(workflow: WorkflowEntity) {
+	return await createExecution(
+		{
+			finished: false,
+			stoppedAt: new Date(),
+		},
+		workflow,
+	);
+}
+
+/**
+ * Store a waiting execution in the DB and assign it to a workflow.
+ */
+export async function createWaitingExecution(workflow: WorkflowEntity) {
+	return await createExecution(
+		{
+			finished: false,
+			waitTill: new Date(),
+		},
+		workflow,
+	);
+}
+
+// ----------------------------------
+//          Tags
+// ----------------------------------
+
+export async function createTag(attributes: Partial<TagEntity> = {}) {
+	const { name } = attributes;
+
+	return await Db.collections.Tag.save({
+		name: name ?? randomName(),
+		...attributes,
+	});
+}
+
+// ----------------------------------
+//          Workflow helpers
+// ----------------------------------
+
+export async function createManyWorkflows(
+	amount: number,
+	attributes: Partial<WorkflowEntity> = {},
+	user?: User,
+) {
+	const workflowRequests = [...Array(amount)].map((_) => createWorkflow(attributes, user));
+	return Promise.all(workflowRequests);
+}
+
+/**
+ * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
+	const { active, name, nodes, connections } = attributes;
+
+	const workflow = await Db.collections.Workflow.save({
+		active: active ?? false,
+		name: name ?? 'test workflow',
+		nodes: nodes ?? [
+			{
+				name: 'Start',
+				parameters: {},
+				position: [-20, 260],
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+			},
+		],
+		connections: connections ?? {},
+		...attributes,
+	});
+
+	if (user) {
+		await Db.collections.SharedWorkflow.save({
+			user,
+			workflow,
+			role: await getWorkflowOwnerRole(),
+		});
+	}
+	return workflow;
+}
+
+/**
+ * Store a workflow in the DB (with a trigger) and optionally assign it to a user.
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflowWithTrigger(
+	attributes: Partial<WorkflowEntity> = {},
+	user?: User,
+) {
+	const workflow = await createWorkflow(
+		{
+			nodes: [
+				{
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+				{
+					parameters: { options: {} },
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [780, 300],
+				},
+			],
+			connections: { Cron: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+			...attributes,
+		},
+		user,
+	);
+
+	return workflow;
 }
 
 // ----------------------------------
@@ -275,11 +509,11 @@ export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions 
  * to create and drop test Postgres databases.
  */
 export const getBootstrapPostgresOptions = () => {
-	const username = config.get('database.postgresdb.user');
-	const password = config.get('database.postgresdb.password');
-	const host = config.get('database.postgresdb.host');
-	const port = config.get('database.postgresdb.port');
-	const schema = config.get('database.postgresdb.schema');
+	const username = config.getEnv('database.postgresdb.user');
+	const password = config.getEnv('database.postgresdb.password');
+	const host = config.getEnv('database.postgresdb.host');
+	const port = config.getEnv('database.postgresdb.port');
+	const schema = config.getEnv('database.postgresdb.schema');
 
 	return {
 		name: BOOTSTRAP_POSTGRES_CONNECTION_NAME,
@@ -294,11 +528,11 @@ export const getBootstrapPostgresOptions = () => {
 };
 
 export const getPostgresOptions = ({ name }: { name: string }): ConnectionOptions => {
-	const username = config.get('database.postgresdb.user');
-	const password = config.get('database.postgresdb.password');
-	const host = config.get('database.postgresdb.host');
-	const port = config.get('database.postgresdb.port');
-	const schema = config.get('database.postgresdb.schema');
+	const username = config.getEnv('database.postgresdb.user');
+	const password = config.getEnv('database.postgresdb.password');
+	const host = config.getEnv('database.postgresdb.host');
+	const port = config.getEnv('database.postgresdb.port');
+	const schema = config.getEnv('database.postgresdb.schema');
 
 	return {
 		name,
@@ -325,10 +559,10 @@ export const getPostgresOptions = ({ name }: { name: string }): ConnectionOption
  * to create and drop test MySQL databases.
  */
 export const getBootstrapMySqlOptions = (): ConnectionOptions => {
-	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password');
-	const host = config.get('database.mysqldb.host');
-	const port = config.get('database.mysqldb.port');
+	const username = config.getEnv('database.mysqldb.user');
+	const password = config.getEnv('database.mysqldb.password');
+	const host = config.getEnv('database.mysqldb.host');
+	const port = config.getEnv('database.mysqldb.port');
 
 	return {
 		name: BOOTSTRAP_MYSQL_CONNECTION_NAME,
@@ -346,10 +580,10 @@ export const getBootstrapMySqlOptions = (): ConnectionOptions => {
  * one per test suite run.
  */
 export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions => {
-	const username = config.get('database.mysqldb.user');
-	const password = config.get('database.mysqldb.password');
-	const host = config.get('database.mysqldb.host');
-	const port = config.get('database.mysqldb.port');
+	const username = config.getEnv('database.mysqldb.user');
+	const password = config.getEnv('database.mysqldb.password');
+	const host = config.getEnv('database.mysqldb.host');
+	const port = config.getEnv('database.mysqldb.port');
 
 	return {
 		name,
@@ -372,15 +606,7 @@ export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions =
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const encryptionKey = await UserSettings.getEncryptionKey();
 
-	if (!encryptionKey) {
-		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
-	}
-
-	const coreCredential = new Credentials(
-		{ id: null, name: credential.name },
-		credential.type,
-		credential.nodesAccess,
-	);
+	const coreCredential = createCredentiasFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
 	coreCredential.setData(credential.data, encryptionKey);

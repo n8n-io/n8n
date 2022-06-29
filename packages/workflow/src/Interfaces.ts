@@ -9,6 +9,7 @@ import { URLSearchParams } from 'url';
 import { IDeferredPromise } from './DeferredPromise';
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
+import { WorkflowActivationError } from './WorkflowActivationError';
 import { WorkflowOperationError } from './WorkflowErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 
@@ -56,7 +57,11 @@ export interface IConnection {
 	index: number;
 }
 
-export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeApiError;
+export type ExecutionError =
+	| WorkflowActivationError
+	| WorkflowOperationError
+	| NodeOperationError
+	| NodeApiError;
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -145,6 +150,16 @@ export interface IRequestOptionsSimplified {
 	qs: IDataObject;
 }
 
+export interface IRequestOptionsSimplifiedAuth {
+	auth?: {
+		username: string;
+		password: string;
+	};
+	body?: IDataObject;
+	headers?: IDataObject;
+	qs?: IDataObject;
+}
+
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
 
@@ -160,6 +175,7 @@ export abstract class ICredentialsHelper {
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
+		defaultTimezone: string,
 	): Promise<IHttpRequestOptions>;
 
 	abstract getCredentials(
@@ -171,6 +187,7 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
+		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -184,40 +201,16 @@ export abstract class ICredentialsHelper {
 
 export interface IAuthenticateBase {
 	type: string;
-	properties: {
-		[key: string]: string;
-	};
+	properties:
+		| {
+				[key: string]: string;
+		  }
+		| IRequestOptionsSimplifiedAuth;
 }
 
-export interface IAuthenticateBasicAuth extends IAuthenticateBase {
-	type: 'basicAuth';
-	properties: {
-		userPropertyName?: string;
-		passwordPropertyName?: string;
-	};
-}
-
-export interface IAuthenticateBearer extends IAuthenticateBase {
-	type: 'bearer';
-	properties: {
-		tokenPropertyName?: string;
-	};
-}
-
-export interface IAuthenticateHeaderAuth extends IAuthenticateBase {
-	type: 'headerAuth';
-	properties: {
-		name: string;
-		value: string;
-	};
-}
-
-export interface IAuthenticateQueryAuth extends IAuthenticateBase {
-	type: 'queryAuth';
-	properties: {
-		key: string;
-		value: string;
-	};
+export interface IAuthenticateGeneric extends IAuthenticateBase {
+	type: 'generic';
+	properties: IRequestOptionsSimplifiedAuth;
 }
 
 export type IAuthenticate =
@@ -225,10 +218,7 @@ export type IAuthenticate =
 			credentials: ICredentialDataDecryptedObject,
 			requestOptions: IHttpRequestOptions,
 	  ) => Promise<IHttpRequestOptions>)
-	| IAuthenticateBasicAuth
-	| IAuthenticateBearer
-	| IAuthenticateHeaderAuth
-	| IAuthenticateQueryAuth;
+	| IAuthenticateGeneric;
 
 export interface IAuthenticateRuleBase {
 	type: string;
@@ -246,9 +236,17 @@ export interface IAuthenticateRuleResponseCode extends IAuthenticateRuleBase {
 	};
 }
 
+export interface IAuthenticateRuleResponseSuccessBody extends IAuthenticateRuleBase {
+	type: 'responseSuccessBody';
+	properties: {
+		message: string;
+		key: string;
+		value: any;
+	};
+}
 export interface ICredentialTestRequest {
 	request: IHttpRequestOptions;
-	rules?: IAuthenticateRuleResponseCode[];
+	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
 export interface ICredentialTestRequestData {
@@ -266,6 +264,7 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	authenticate?: IAuthenticate;
 	test?: ICredentialTestRequest;
+	genericAuth?: boolean;
 }
 
 export interface ICredentialTypes {
@@ -294,6 +293,11 @@ export interface ICredentialDataDecryptedObject {
 // First array index: The output/input-index (if node has multiple inputs/outputs of the same type)
 // Second array index: The different connections (if one node is connected to multiple nodes)
 export type NodeInputConnections = IConnection[][];
+
+export interface INodeConnection {
+	sourceIndex: number;
+	destinationIndex: number;
+}
 
 export interface INodeConnections {
 	// Input name
@@ -339,6 +343,10 @@ export interface IGetExecuteTriggerFunctions {
 	): ITriggerFunctions;
 }
 
+export interface IRunNodeResponse {
+	data: INodeExecutionData[][] | null | undefined;
+	closeFunction?: () => Promise<void>;
+}
 export interface IGetExecuteFunctions {
 	(
 		workflow: Workflow,
@@ -348,6 +356,7 @@ export interface IGetExecuteFunctions {
 		inputData: ITaskDataConnections,
 		node: INode,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 	): IExecuteFunctions;
 }
@@ -362,6 +371,7 @@ export interface IGetExecuteSingleFunctions {
 		node: INode,
 		itemIndex: number,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executeData: IExecuteData,
 		mode: WorkflowExecuteMode,
 	): IExecuteSingleFunctions;
 }
@@ -388,9 +398,17 @@ export interface IGetExecuteWebhookFunctions {
 	): IWebhookFunctions;
 }
 
+export interface ISourceDataConnections {
+	// Key for each input type and because there can be multiple inputs of the same type it is an array
+	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
+	// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
+	[key: string]: Array<ISourceData[] | null>;
+}
+
 export interface IExecuteData {
 	data: ITaskDataConnections;
 	node: INode;
+	source: ITaskDataConnectionsSource | null;
 }
 
 export type IContextObject = {
@@ -481,10 +499,7 @@ export interface IExecuteFunctions {
 		inputData?: INodeExecutionData[],
 	): Promise<any>;
 	getContext(type: string): IContextObject;
-	getCredentials(
-		type: string,
-		itemIndex?: number,
-	): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -502,6 +517,7 @@ export interface IExecuteFunctions {
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
 	getTimezone(): string;
+	getExecuteData(): IExecuteData;
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(
 		outputData: INodeExecutionData[],
@@ -531,8 +547,9 @@ export interface IExecuteSingleFunctions {
 		itemIndex: number | undefined,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	getContext(type: string): IContextObject;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getItemIndex(): number;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter(
@@ -541,6 +558,7 @@ export interface IExecuteSingleFunctions {
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
+	getExecuteData(): IExecuteData;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -581,7 +599,7 @@ export interface ICredentialTestFunctions {
 }
 
 export interface ILoadOptionsFunctions {
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getNode(): INode;
 	getNodeParameter(
 		parameterName: string,
@@ -622,7 +640,7 @@ export interface ILoadOptionsFunctions {
 }
 
 export interface IHookFunctions {
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -652,7 +670,7 @@ export interface IHookFunctions {
 
 export interface IPollFunctions {
 	__emit(data: INodeExecutionData[][]): void;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -682,8 +700,10 @@ export interface ITriggerFunctions {
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		donePromise?: IDeferredPromise<IRun>,
 	): void;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -711,7 +731,7 @@ export interface ITriggerFunctions {
 
 export interface IWebhookFunctions {
 	getBodyData(): IDataObject;
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -787,11 +807,25 @@ export interface IBinaryKeyData {
 	[key: string]: IBinaryData;
 }
 
+export interface IPairedItemData {
+	item: number;
+	input?: number; // If undefined "0" gets used
+}
+
 export interface INodeExecutionData {
-	[key: string]: IDataObject | IBinaryKeyData | NodeApiError | NodeOperationError | undefined;
+	[key: string]:
+		| IDataObject
+		| IBinaryKeyData
+		| IPairedItemData
+		| IPairedItemData[]
+		| NodeApiError
+		| NodeOperationError
+		| number
+		| undefined;
 	json: IDataObject;
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
+	pairedItem?: IPairedItemData | IPairedItemData[] | number;
 }
 
 export interface INodeExecuteFunctions {
@@ -823,7 +857,8 @@ export type NodePropertyTypes =
 	| 'multiOptions'
 	| 'number'
 	| 'options'
-	| 'string';
+	| 'string'
+	| 'credentialsSelect';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -880,6 +915,9 @@ export interface INodeProperties {
 	noDataExpression?: boolean;
 	required?: boolean;
 	routing?: INodePropertyRouting;
+	credentialTypes?: Array<
+		'extends:oAuth2Api' | 'extends:oAuth1Api' | 'has:authenticate' | 'has:genericAuth'
+	>;
 }
 export interface INodePropertyOptions {
 	name: string;
@@ -1105,7 +1143,7 @@ export interface IRequestOptionsFromParameters {
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
-	version: number;
+	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
@@ -1126,6 +1164,22 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	};
 	webhooks?: IWebhookDescription[];
 	translation?: { [key: string]: object };
+	mockManualExecution?: true;
+	triggerPanel?: {
+		header?: string;
+		executionsHelp?:
+			| string
+			| {
+					active: string;
+					inactive: string;
+			  };
+		activationHint?:
+			| string
+			| {
+					active: string;
+					inactive: string;
+			  };
+	};
 }
 
 export interface INodeHookDescription {
@@ -1244,6 +1298,7 @@ export interface IRunExecutionData {
 		contextData: IExecuteContextData;
 		nodeExecutionStack: IExecuteData[];
 		waitingExecution: IWaitingForExecution;
+		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	waitTill?: Date;
 }
@@ -1259,9 +1314,16 @@ export interface ITaskData {
 	executionTime: number;
 	data?: ITaskDataConnections;
 	error?: ExecutionError;
+	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 }
 
-// The data for al the different kind of connectons (like main) and all the indexes
+export interface ISourceData {
+	previousNode: string;
+	previousNodeOutput?: number; // If undefined "0" gets used
+	previousNodeRun?: number; // If undefined "0" gets used
+}
+
+// The data for all the different kind of connectons (like main) and all the indexes
 export interface ITaskDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
 	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
@@ -1275,6 +1337,21 @@ export interface IWaitingForExecution {
 	[key: string]: {
 		// Run index
 		[key: number]: ITaskDataConnections;
+	};
+}
+
+export interface ITaskDataConnectionsSource {
+	// Key for each input type and because there can be multiple inputs of the same type it is an array
+	// null is also allowed because if we still need data for a later while executing the workflow set teompoary to null
+	// the nodes get as input TaskDataConnections which is identical to this one except that no null is allowed.
+	[key: string]: Array<ISourceData | null>;
+}
+
+export interface IWaitingForExecutionSource {
+	// Node name
+	[key: string]: {
+		// Run index
+		[key: number]: ITaskDataConnectionsSource;
 	};
 }
 
@@ -1402,19 +1479,36 @@ export interface INodesGraph {
 	node_types: string[];
 	node_connections: IDataObject[];
 	nodes: INodesGraphNode;
+	notes: INotesGraphNode;
 }
 
 export interface INodesGraphNode {
 	[key: string]: INodeGraphItem;
 }
 
+export interface INotesGraphNode {
+	[key: string]: INoteGraphItem;
+}
+
+export interface INoteGraphItem {
+	overlapping: boolean;
+	position: [number, number];
+	height: number;
+	width: number;
+}
+
 export interface INodeGraphItem {
 	type: string;
 	resource?: string;
 	operation?: string;
-	domain?: string;
+	domain?: string; // HTTP Request node v1
+	domain_base?: string; // HTTP Request node v2
+	domain_path?: string; // HTTP Request node v2
 	position: [number, number];
 	mode?: string;
+	credential_type?: string; // HTTP Request node v2
+	credential_set?: boolean; // HTTP Request node v2
+	method?: string; // HTTP Request node v2
 }
 
 export interface INodeNameIndex {
@@ -1434,4 +1528,26 @@ export interface ITelemetryClientConfig {
 export interface ITelemetrySettings {
 	enabled: boolean;
 	config?: ITelemetryClientConfig;
+}
+
+export interface IConnectedNode {
+	name: string;
+	indicies: number[];
+	depth: number;
+}
+
+export enum OAuth2GrantType {
+	authorizationCode = 'authorizationCode',
+	clientCredentials = 'clientCredentials',
+}
+export interface IOAuth2Credentials {
+	grantType: 'authorizationCode' | 'clientCredentials';
+	clientId: string;
+	clientSecret: string;
+	accessTokenUrl: string;
+	authUrl: string;
+	authQueryParameters: string;
+	authentication: 'body' | 'header';
+	scope: string;
+	oauthTokenData?: IDataObject;
 }

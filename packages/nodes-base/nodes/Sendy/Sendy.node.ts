@@ -29,6 +29,7 @@ export class Sendy implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sendy',
 		name: 'sendy',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:sendy.png',
 		group: ['input'],
 		version: 1,
@@ -50,6 +51,7 @@ export class Sendy implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign',
@@ -61,7 +63,6 @@ export class Sendy implements INodeType {
 					},
 				],
 				default: 'subscriber',
-				description: 'The resource to operate on.',
 			},
 			...campaignOperations,
 			...campaignFields,
@@ -73,7 +74,7 @@ export class Sendy implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

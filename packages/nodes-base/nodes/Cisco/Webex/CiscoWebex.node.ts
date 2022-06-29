@@ -28,12 +28,13 @@ import {
 	messageOperations,
 } from './descriptions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class CiscoWebex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webex by Cisco',
 		name: 'ciscoWebex',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:ciscoWebex.png',
 		group: ['transform'],
 		version: 1,
@@ -55,6 +56,7 @@ export class CiscoWebex implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Meeting',
@@ -70,7 +72,6 @@ export class CiscoWebex implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'Resource to consume',
 			},
 			...meetingOperations,
 			...meetingFields,

@@ -18,6 +18,7 @@ export class PushcutTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pushcut Trigger',
 		name: 'pushcutTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:pushcut.png',
 		group: ['trigger'],
 		version: 1,
@@ -46,7 +47,7 @@ export class PushcutTrigger implements INodeType {
 				displayName: 'Action Name',
 				name: 'actionName',
 				type: 'string',
-				description: 'Choose any name you would like. It will show up as a server action in the app',
+				description: 'Choose any name you would like. It will show up as a server action in the app.',
 				default: '',
 			},
 		],

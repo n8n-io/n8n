@@ -27,10 +27,6 @@ export async function deepLApiRequest(
 
 	const credentials = await this.getCredentials('deepLApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -52,10 +48,6 @@ export async function deepLApiRequest(
 		}
 
 		const credentials = await this.getCredentials('deepLApi');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		options.qs.auth_key = credentials.apiKey;
 

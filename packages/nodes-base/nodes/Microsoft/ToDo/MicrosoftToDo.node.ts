@@ -32,7 +32,7 @@ import {
 	listOperations,
 } from './ListDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class MicrosoftToDo implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,6 +59,7 @@ export class MicrosoftToDo implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Linked Resource',
@@ -74,7 +75,6 @@ export class MicrosoftToDo implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 			...linkedResourceOperations,
 			...linkedResourceFields,
@@ -106,7 +106,7 @@ export class MicrosoftToDo implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();

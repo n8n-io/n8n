@@ -1,8 +1,9 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-
 
 export class SlackApi implements ICredentialType {
 	name = 'slackApi';
@@ -17,4 +18,30 @@ export class SlackApi implements ICredentialType {
 			required: true,
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.accessToken}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://slack.com',
+			url: '/api/users.profile.get',
+		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'error',
+					value: 'invalid_auth',
+					message: 'Invalid access token',
+				},
+			},
+		],
+	};
 }
