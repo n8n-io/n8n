@@ -387,9 +387,6 @@ const getAllOperations: Array<INodeProperties> = [
 				type: 'query',
 				property: 'limit',
 			},
-			output: {
-				maxResults: '={{$value}}', // Set maxResults to the value of current parameter
-			},
 		},
 		description: 'Max number of results to return',
 	},
