@@ -349,7 +349,7 @@
 	"ndv.output.of": " of ",
 	"ndv.output.pageSize": "Page Size",
 	"ndv.output.run": "Run",
-	"ndv.output.runNodeHint": "Execute this node to output data or ",
+	"ndv.output.runNodeHint": "Execute this node to output data",
 	"ndv.output.insertTestData": "insert test data",
 	"ndv.output.staleDataWarning": "Node parameters have changed. <br /> Execute node again to refresh output.",
 	"ndv.output.tooMuchData.message": "The node contains {size} MB of data. Displaying it may cause problems. <br /> If you do decide to display it, avoid the JSON view.",

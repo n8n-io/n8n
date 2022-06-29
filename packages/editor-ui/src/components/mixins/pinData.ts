@@ -11,8 +11,8 @@ interface PinDataContext {
 
 export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend({
 	computed: {
-		pinData (): IDataObject {
-			return !!this.node && this.$store.getters['pinDataByNodeName'](this.node!.name);
+		pinData (): IDataObject | undefined {
+			return this.node ? this.$store.getters['pinDataByNodeName'](this.node!.name) : undefined;
 		},
 		hasPinData (): boolean {
 			return !!this.node && typeof this.pinData !== 'undefined';
