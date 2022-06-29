@@ -70,7 +70,5 @@ export function isNumber(value: unknown): value is number {
 }
 
 export function stringSizeInBytes(input: string | IDataObject): number {
-	return encodeURI(typeof input === 'string' ? input : JSON.stringify(input))
-		.split(/%(?:u[0-9A-F]{2})?[0-9A-F]{2}|./)
-		.length - 1;
+	return new Blob([typeof input === 'string' ? input : JSON.stringify(input)]).size;
 }
