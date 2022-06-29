@@ -10,7 +10,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {FormatDueDatetime, todoistApiRequest,} from './GenericFunctions';
+import {todoistApiRequest,} from './GenericFunctions';
 
 import {OperationType, TodoistService} from './Service';
 interface IBodyCreateTask {
