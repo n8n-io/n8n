@@ -23,7 +23,7 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all the campaigns linked to the specified account. Currencies are specified in micros, where one million is equivalent to one currency unit.',
+				description: 'Get all the campaigns linked to the specified account',
 				routing: {
 					request: {
 						method: 'POST',
@@ -70,7 +70,7 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a specific campaign. Currencies are specified in micros, where one million is equivalent to one currency unit.',
+				description: 'Get a specific campaign',
 				routing: {
 					request: {
 						method: 'POST',
