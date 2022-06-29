@@ -904,7 +904,6 @@ export interface INodeProperties {
 	displayName: string;
 	name: string;
 	type: NodePropertyTypes;
-	action?: string;
 	typeOptions?: INodePropertyTypeOptions;
 	default: NodeParameterValue | INodeParameters | INodeParameters[] | NodeParameterValue[];
 	description?: string;
