@@ -20,6 +20,37 @@ export class ShopifyOAuth2Api implements ICredentialType {
 			description: 'Only the subdomain without .myshopify.com',
 		},
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			default: '',
+			required: true,
+			hint: 'Be aware that Shopify refers to the Client ID as API Key'
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+			hint: 'Be aware that Shopify refers to the Client Secret as API Secret Key'
+		},
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

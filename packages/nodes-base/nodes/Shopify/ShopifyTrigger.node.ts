@@ -45,7 +45,7 @@ export class ShopifyTrigger implements INodeType {
 				},
 			},
 			{
-				name: 'shopifyTokenApi',
+				name: 'shopifyAccessTokenApi',
 				required: true,
 				displayOptions: {
 					show: {
@@ -92,7 +92,6 @@ export class ShopifyTrigger implements INodeType {
 					{
 						name: 'API Key',
 						value: 'apiKey',
-						description: 'Private apps are deprecated and can\'t be created as of January 2022',
 					},
 				],
 				default: 'accessToken',

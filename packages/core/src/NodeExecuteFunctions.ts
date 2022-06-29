@@ -1156,7 +1156,6 @@ export async function httpRequestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-
 		return await httpRequest(requestOptions);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

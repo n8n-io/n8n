@@ -5,8 +5,8 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class ShopifyTokenApi implements ICredentialType {
-	name = 'shopifyTokenApi';
+export class ShopifyAccessTokenApi implements ICredentialType {
+	name = 'shopifyAccessTokenApi';
 	displayName = 'Shopify Access Token API';
 	documentationUrl = 'shopify';
 	properties: INodeProperties[] = [
@@ -18,7 +18,7 @@ export class ShopifyTokenApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'App Secret Key',
+			displayName: 'APP Secret Key',
 			name: 'appSecretKey',
 			required: true,
 			type: 'string',
