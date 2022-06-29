@@ -38,7 +38,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'X-Shopify-Access-Token': '={{$credentials?.accessToken}}'
+				'X-Shopify-Access-Token': '={{$credentials?.accessToken}}',
 			},
 		},
 	};

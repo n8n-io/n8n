@@ -31,7 +31,7 @@ export class ShopifyOAuth2Api implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			hint: 'Be aware that Shopify refers to the Client ID as API Key'
+			hint: 'Be aware that Shopify refers to the Client ID as API Key',
 		},
 		{
 			displayName: 'Client Secret',
@@ -42,7 +42,7 @@ export class ShopifyOAuth2Api implements ICredentialType {
 			},
 			default: '',
 			required: true,
-			hint: 'Be aware that Shopify refers to the Client Secret as API Secret Key'
+			hint: 'Be aware that Shopify refers to the Client Secret as API Secret Key',
 		},
 		{
 			displayName: 'Grant Type',

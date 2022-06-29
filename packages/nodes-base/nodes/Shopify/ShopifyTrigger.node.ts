@@ -94,8 +94,8 @@ export class ShopifyTrigger implements INodeType {
 						value: 'apiKey',
 					},
 				],
-				default: 'accessToken',
-		},
+				default: 'apiKey',
+			},
 			{
 				displayName: 'Topic',
 				name: 'topic',
@@ -407,6 +407,7 @@ export class ShopifyTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const authentication = this.getNodeParameter('authentication') as string;
 		let secret = '';
+		console.log('llego request');
 
 		if (authentication === 'apiKey') {
 			const credentials = await this.getCredentials('shopifyApi');
@@ -414,7 +415,7 @@ export class ShopifyTrigger implements INodeType {
 		}
 
 		if (authentication === 'accessToken') {
-			const credentials = await this.getCredentials('shopifyTokenApi');
+			const credentials = await this.getCredentials('shopifyAccessTokenApi');
 			secret = credentials.appSecretKey as string;
 		}
 
@@ -430,6 +431,7 @@ export class ShopifyTrigger implements INodeType {
 			&& headerData['x-shopify-api-version'] !== undefined) {
 			// @ts-ignore
 			const computedSignature = createHmac('sha256', secret).update(req.rawBody).digest('base64');
+
 			if (headerData['x-shopify-hmac-sha256'] !== computedSignature) {
 				return {};
 			}

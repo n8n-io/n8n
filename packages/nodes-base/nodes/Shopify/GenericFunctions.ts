@@ -51,7 +51,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	if (authenticationMethod === 'apiKey') {
-		Object.assign(options, { auth: { username: credentials.apiKey, password: credentials.password  } })
+		Object.assign(options, { auth: { username: credentials.apiKey, password: credentials.password  } });
 	}
 
 	if (Object.keys(option).length !== 0) {

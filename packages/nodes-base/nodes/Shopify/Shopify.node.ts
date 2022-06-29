@@ -107,8 +107,8 @@ export class Shopify implements INodeType {
 						value: 'apiKey',
 					},
 				],
-				default: 'accessToken',
-		},
+				default: 'apiKey',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
