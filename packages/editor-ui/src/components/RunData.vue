@@ -161,6 +161,7 @@
 					<code-editor
 						:value="editMode.value"
 						:options="{ scrollBeyondLastLine: false }"
+						type="json"
 						@input="$store.commit('ui/setOutputPanelEditModeValue', $event)"
 					/>
 				</div>
