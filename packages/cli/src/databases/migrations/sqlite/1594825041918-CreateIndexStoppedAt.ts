@@ -11,7 +11,7 @@ export class CreateIndexStoppedAt1594825041918 implements MigrationInterface {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefix}cefb067df2402f6aed0638a6c1" ON "${tablePrefix}execution_entity" ("stoppedAt") `,
+			`CREATE INDEX "IDX_${tablePrefix}cefb067df2402f6aed0638a6c" ON "${tablePrefix}execution_entity" ("stoppedAt") `,
 		);
 
 		logMigrationEnd(this.name);
@@ -20,6 +20,6 @@ export class CreateIndexStoppedAt1594825041918 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}cefb067df2402f6aed0638a6c1"`);
+		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}cefb067df2402f6aed0638a6c"`);
 	}
 }
