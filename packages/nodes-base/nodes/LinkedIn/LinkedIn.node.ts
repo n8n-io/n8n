@@ -19,10 +19,10 @@ export class LinkedIn implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:linkedin.png',
+		icon: 'file:linkedin.svg',
 		group: ['input'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume LinkedIn API',
 		defaults: {
 			name: 'LinkedIn',
@@ -76,7 +76,8 @@ export class LinkedIn implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let body = {};
+
+		let body:any = {};// tslint:disable-line:no-any
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -220,6 +221,15 @@ export class LinkedIn implements INodeType {
 									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
 								},
 							};
+
+							if (description === '') {
+								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].description;
+							}
+
+							if (title === '') {
+								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].title;
+							}
+
 						} else {
 							body = {
 								author: authorUrn,
