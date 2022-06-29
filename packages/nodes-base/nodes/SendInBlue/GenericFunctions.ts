@@ -45,48 +45,63 @@ export const INTERCEPTORS = new Map<string, (body: JsonObject) => void>([
 	],
 ]);
 
-function getFileName(itemIndex: number, mimeType: string, fileExt: string, fileName: string): string {
+function getFileName(
+	itemIndex: number,
+	mimeType: string,
+	fileExt: string,
+	fileName: string,
+): string {
 	let ext = fileExt;
-	if(fileExt === '') {
+	if (fileExt === undefined) {
 		ext = mimeType.split('/')[1];
 	}
 
 	let name = `${fileName}.${ext}`;
-	if(fileName === '') {
+	if (fileName === undefined) {
 		name = `file-${itemIndex}.${ext}`;
 	}
 	return name;
 }
 
-export async function validateAttachmentsData (this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-	const dataPropertyList = this.getNodeParameter('additionalParameters.emailAttachments.attachment') as JsonObject[];
+export async function validateAttachmentsData(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const dataPropertyList = this.getNodeParameter(
+		'additionalParameters.emailAttachments.attachment',
+	) as JsonObject[];
 	const { body } = requestOptions;
 
 	const { attachment = [] } = body as { attachment: Array<{ content: string; name: string }> };
 
 	try {
-		for(const [, attachmentDataName] of dataPropertyList.entries()) {
+		for (const [, attachmentDataName] of dataPropertyList.entries()) {
 			const { binaryPropertyName } = attachmentDataName;
 
 			const item = this.getInputData();
 
 			if (item.binary![binaryPropertyName as string] === undefined) {
-				throw new NodeOperationError(this.getNode(), `No binary data property “${binaryPropertyName}” exists on item!`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`No binary data property “${binaryPropertyName}” exists on item!`,
+				);
 			}
 
-			const buffer = await this.helpers.getBinaryDataBuffer(binaryPropertyName) as Buffer;
+			const bufferFromIncomingData = (await this.helpers.getBinaryDataBuffer(
+				binaryPropertyName,
+			)) as Buffer;
 
-			// const {data:content, mimeType, fileName, fileExt} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
+			const {
+				data: content,
+				mimeType,
+				fileName,
+				fileExtension,
+			} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
 
-			// const itemIndex = this.getCurrentItemIndex();
-			// const name = getFileName(itemIndex, mimeType, fileExt, fileName);
+			const itemIndex = this.getItemIndex();
+			const name = getFileName(itemIndex, mimeType, fileExtension, fileName);
 
-			const binaryData = item.binary![binaryPropertyName as string] as IBinaryData;
-
-			attachment.push({
-				name: binaryData.fileName || `attachment${binaryData.fileExtension}`,
-				content: Buffer.from(buffer).toString('base64'),
-			});
+			attachment.push({ content, name });
 		}
 
 		Object.assign(body as {}, { attachment });
