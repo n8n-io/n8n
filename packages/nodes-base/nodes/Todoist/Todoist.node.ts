@@ -698,7 +698,7 @@ export class Todoist implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'task') {
-					responseData = (await service.execute(this, OperationType[operation as keyof typeof OperationType]));
+					responseData = (await service.execute(this, OperationType[operation as keyof typeof OperationType], i));
 				}
 				if (Array.isArray(responseData?.data)) {
 					returnData.push.apply(returnData, responseData?.data as IDataObject[]);
