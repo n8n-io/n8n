@@ -11,7 +11,6 @@ import {
 } from 'n8n-core';
 
 import {
-	IAdditionalCredentialOptions,
 	IDataObject, IOAuth2Options, NodeApiError,
 } from 'n8n-workflow';
 
