@@ -371,13 +371,16 @@ module.exports = {
 			},
 		},
 		{
-			files: [
-				'./packages/nodes-base/nodes/**/*.ts',
-				'./packages/nodes-base/credentials/*.credentials.ts',
-			],
+			files: ['./packages/nodes-base/credentials/*.credentials.ts'],
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
 				'n8n-nodes-base/cred-filename-against-convention': 'error',
+			},
+		},
+		{
+			files: ['./packages/nodes-base/nodes/**/*.ts'],
+			plugins: ['eslint-plugin-n8n-nodes-base'],
+			rules: {
 				'n8n-nodes-base/node-class-description-empty-string': 'error',
 				'n8n-nodes-base/node-class-description-icon-not-svg': 'error',
 				'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'error',
