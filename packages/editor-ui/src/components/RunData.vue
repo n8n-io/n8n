@@ -18,7 +18,6 @@
 					{{ $locale.baseText('runData.pindata.unpin') }}
 				</n8n-link>
 			</span>
-			</template>
 			<template #trailingContent>
 				<n8n-link
 					:to="dataPinningDocsUrl"
