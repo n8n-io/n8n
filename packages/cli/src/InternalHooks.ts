@@ -50,6 +50,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 		]);
 	}
 
+	async onFrontendSettingsAPI(sessionId?: string): Promise<void> {
+		return this.telemetry.track('Session started', { session_id: sessionId });
+	}
+
 	async onPersonalizationSurveySubmitted(
 		userId: string,
 		answers: Record<string, string>,
