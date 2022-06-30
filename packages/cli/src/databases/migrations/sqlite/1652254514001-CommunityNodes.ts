@@ -17,6 +17,8 @@ export class CommunityNodes1652254514001 implements MigrationInterface {
 			`CREATE TABLE "${tablePrefix}installed_packages" (` +
 				`"packageName"	char(214) NOT NULL,` +
 				`"installedVersion"	char(50) NOT NULL,` +
+				`"authorName"	char(70) NULL,` +
+				`"authorEmail"	char(70) NULL,` +
 				`"createdAt"	datetime(3) NOT NULL DEFAULT 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')',` +
 				`"updatedAt"	datetime(3) NOT NULL DEFAULT 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')',` +
 				`PRIMARY KEY("packageName")` +

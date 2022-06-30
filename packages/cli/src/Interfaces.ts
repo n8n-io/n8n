@@ -471,6 +471,10 @@ export interface IN8nNodePackageJson {
 		credentials?: string[];
 		nodes?: string[];
 	};
+	author?: {
+		name?: string;
+		email?: string;
+	};
 }
 
 export interface IN8nUISettings {

@@ -36,6 +36,12 @@ export class InstalledPackages {
 	@Column()
 	installedVersion: string;
 
+	@Column()
+	authorName?: string;
+
+	@Column()
+	authorEmail?: string;
+
 	@OneToMany(() => InstalledNodes, (installedNode) => installedNode.package)
 	@JoinColumn({ referencedColumnName: 'package' })
 	installedNodes: InstalledNodes[];

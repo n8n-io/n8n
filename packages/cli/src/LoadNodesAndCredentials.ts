@@ -236,6 +236,8 @@ class LoadNodesAndCredentialsClass {
 					const installedPackagePayload = Object.assign(new InstalledPackages(), {
 						packageName,
 						installedVersion: packageFile.version,
+						authorName: packageFile.author?.name,
+						authorEmail: packageFile.author?.email,
 					});
 					installedPackage = await transactionManager.save<InstalledPackages>(
 						installedPackagePayload,
@@ -342,6 +344,8 @@ class LoadNodesAndCredentialsClass {
 					const installedPackage = Object.assign(new InstalledPackages(), {
 						packageName,
 						installedVersion: packageFile.version,
+						authorName: packageFile.author?.name,
+						authorEmail: packageFile.author?.email,
 					});
 					returnedPackage = await transactionManager.save<InstalledPackages>(installedPackage);
 					returnedPackage.installedNodes = [];

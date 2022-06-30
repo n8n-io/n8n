@@ -1555,6 +1555,8 @@ export interface IOAuth2Credentials {
 export type PublicInstalledPackage = {
 	packageName: string;
 	installedVersion: string;
+	authorName?: string;
+	authorEmail?: string;
 	installedNodes: PublicInstalledNode[];
 	createdAt: Date;
 	updatedAt: Date;
