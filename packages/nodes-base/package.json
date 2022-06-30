@@ -472,7 +472,6 @@
       "dist/nodes/HelpScout/HelpScout.node.js",
       "dist/nodes/HelpScout/HelpScoutTrigger.node.js",
       "dist/nodes/HighLevel/HighLevel.node.js",
-      "dist/nodes/HighLevel/HighLevelTrigger.node.js",
       "dist/nodes/HomeAssistant/HomeAssistant.node.js",
       "dist/nodes/HtmlExtract/HtmlExtract.node.js",
       "dist/nodes/HttpRequest/HttpRequest.node.js",
