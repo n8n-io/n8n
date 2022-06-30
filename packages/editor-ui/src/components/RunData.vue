@@ -54,16 +54,8 @@
 					:disabled="editMode.enabled"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
-				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0 || hasPinData)">
-					<template #content v-if="hasPinData">
-						<div :class="$style['tooltip-container']">
-							<strong>
-								{{ $locale.baseText('ndv.pinData.unpin.title') }}
-							</strong>
-							{{ $locale.baseText('ndv.pinData.unpin.description') }}
-						</div>
-					</template>
-					<template #content v-else>
+				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0)">
+					<template #content>
 						<div :class="$style['tooltip-container']">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
@@ -71,7 +63,6 @@
 							</n8n-text>
 							<n8n-link :to="dataPinningDocsUrl" size="small">
 								{{ $locale.baseText('ndv.pinData.pin.link') }}
-								<n8n-icon icon="external-link-alt" size="small" />
 							</n8n-link>
 						</div>
 					</template>
