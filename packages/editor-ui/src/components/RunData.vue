@@ -46,15 +46,19 @@
 				/>
 				<n8n-icon-button
 					v-if="canPinData"
+					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
 					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
-					:disabled="editMode.enabled"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
-				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0)">
+				<n8n-tooltip
+					placement="bottom-end"
+					v-if="canPinData && (jsonData && jsonData.length > 0)"
+					v-show="!editMode.enabled"
+				>
 					<template #content>
 						<div :class="$style['tooltip-container']">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
