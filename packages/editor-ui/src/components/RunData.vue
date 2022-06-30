@@ -381,7 +381,7 @@ import {
 	DATA_PINNING_DOCS_URL,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
-	MULTIPLE_OUTPUT_NODE_TYPES,
+	MULTIPLE_OUTPUT_NODE_TYPES, TEST_PIN_DATA,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -405,7 +405,6 @@ import { stringSizeInBytes } from './helpers';
 const deselectedPlaceholder = '_!^&*';
 
 export type EnterEditModeArgs = {
-	data?: Array<Record<string, string | number>>,
 	origin: 'editIconButton' | 'insertTestDataLink',
 };
 
@@ -685,9 +684,13 @@ export default mixins(
 					type: 'data-pinning-docs',
 				});
 			},
-			enterEditMode({ data, origin }: EnterEditModeArgs) {
+			enterEditMode({ origin }: EnterEditModeArgs) {
+				const data = this.jsonData && this.jsonData.length > 0
+					? this.jsonData
+					: TEST_PIN_DATA;
+
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
-				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data || this.jsonData, null, 2));
+				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data, null, 2));
 
 				this.$telemetry.track('User opened ndv edit state', {
 					node_type: this.activeNode.type,

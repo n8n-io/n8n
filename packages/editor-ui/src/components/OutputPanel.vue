@@ -196,7 +196,6 @@ export default Vue.extend({
 		insertTestData() {
 			if (this.$refs.runData) {
 				(this.$refs.runData as RunData).enterEditMode({
-					data: TEST_PIN_DATA,
 					origin: 'insertTestDataLink',
 				});
 
