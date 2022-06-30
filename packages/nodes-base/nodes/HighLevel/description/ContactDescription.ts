@@ -272,6 +272,43 @@ const createOperations: Array<INodeProperties> = [
 		},
 		options: [
 			{
+				displayName: 'Address 1',
+				name: 'address1',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'address1',
+					}
+				}
+			},
+			{
+				displayName: 'City',
+				name: 'city',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'city',
+					}
+				}
+			},
+			customFields,
+			{
+				displayName: 'DND',
+				name: 'dnd',
+				type: 'boolean',
+				default: false,
+				routing: {
+					send: {
+						type: 'body',
+						property: 'dnd',
+					}
+				}
+			},
+			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
@@ -308,42 +345,6 @@ const createOperations: Array<INodeProperties> = [
 				}
 			},
 			{
-				displayName: 'Address 1',
-				name: 'address1',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'address1',
-					}
-				}
-			},
-			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'city',
-					}
-				}
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'state',
-					}
-				}
-			},
-			{
 				displayName: 'Postal Code',
 				name: 'postalCode',
 				type: 'string',
@@ -356,38 +357,26 @@ const createOperations: Array<INodeProperties> = [
 				}
 			},
 			{
-				displayName: 'Website',
-				name: 'website',
+				displayName: 'Source',
+				name: 'source',
 				type: 'string',
 				default: '',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'website',
+						property: 'source',
 					}
 				}
 			},
 			{
-				displayName: 'Timezone',
-				name: 'timezone',
+				displayName: 'State',
+				name: 'state',
 				type: 'string',
 				default: '',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'timezone',
-					}
-				}
-			},
-			{
-				displayName: 'DND',
-				name: 'dnd',
-				type: 'boolean',
-				default: false,
-				routing: {
-					send: {
-						type: 'body',
-						property: 'dnd',
+						property: 'state',
 					}
 				}
 			},
@@ -408,18 +397,29 @@ const createOperations: Array<INodeProperties> = [
 				},
 			},
 			{
-				displayName: 'Source',
-				name: 'source',
+				displayName: 'Timezone',
+				name: 'timezone',
 				type: 'string',
 				default: '',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'source',
+						property: 'timezone',
 					}
 				}
 			},
-			customFields
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'website',
+					}
+				}
+			},
 		],
 	}
 ];
@@ -460,6 +460,43 @@ const updateOperations: Array<INodeProperties> = [
 		},
 		options: [
 			{
+				displayName: 'Address 1',
+				name: 'address1',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'address1',
+					}
+				}
+			},
+			{
+				displayName: 'City',
+				name: 'city',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'city',
+					}
+				}
+			},
+			customFields,
+			{
+				displayName: 'DND',
+				name: 'dnd',
+				type: 'boolean',
+				default: false,
+				routing: {
+					send: {
+						type: 'body',
+						property: 'dnd',
+					}
+				}
+			},
+			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
@@ -469,18 +506,6 @@ const updateOperations: Array<INodeProperties> = [
 					{
 						type: 'body',
 						property: 'email',
-					}
-				}
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'phone',
 					}
 				}
 			},
@@ -521,38 +546,14 @@ const updateOperations: Array<INodeProperties> = [
 				}
 			},
 			{
-				displayName: 'Address 1',
-				name: 'address1',
+				displayName: 'Phone',
+				name: 'phone',
 				type: 'string',
 				default: '',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'address1',
-					}
-				}
-			},
-			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'city',
-					}
-				}
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'state',
+						property: 'phone',
 					}
 				}
 			},
@@ -569,38 +570,14 @@ const updateOperations: Array<INodeProperties> = [
 				}
 			},
 			{
-				displayName: 'Website',
-				name: 'website',
+				displayName: 'State',
+				name: 'state',
 				type: 'string',
 				default: '',
 				routing: {
 					send: {
 						type: 'body',
-						property: 'website',
-					}
-				}
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'timezone',
-					}
-				}
-			},
-			{
-				displayName: 'DND',
-				name: 'dnd',
-				type: 'boolean',
-				default: false,
-				routing: {
-					send: {
-						type: 'body',
-						property: 'dnd',
+						property: 'state',
 					}
 				}
 			},
@@ -620,7 +597,30 @@ const updateOperations: Array<INodeProperties> = [
 					}
 				},
 			},
-			customFields
+			{
+				displayName: 'Timezone',
+				name: 'timezone',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'timezone',
+					}
+				}
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'website',
+					}
+				}
+			},
 		],
 	}
 ];
@@ -765,28 +765,6 @@ const getAllOperations: Array<INodeProperties> = [
 		},
 		options: [
 			{
-				displayName: 'Sort By',
-				name: 'sortBy',
-				type: 'options',
-				options: [
-					{
-						name: 'Date Added',
-						value: 'date_added',
-					},
-					{
-						name: 'Date Updated',
-						value: 'date_updated',
-					},
-				],
-				default: 'date_added',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'sortBy',
-					}
-				}
-			},
-			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'options',
@@ -805,6 +783,28 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'order',
+					}
+				}
+			},
+			{
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'options',
+				options: [
+					{
+						name: 'Date Added',
+						value: 'date_added',
+					},
+					{
+						name: 'Date Updated',
+						value: 'date_updated',
+					},
+				],
+				default: 'date_added',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'sortBy',
 					}
 				}
 			},
