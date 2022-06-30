@@ -22,7 +22,7 @@
 					<div
 						:class="$style['community-node-icon']"
 						slot="content"
-						v-html="$locale.baseText('nodeCreator.mainPanel.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+						v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
 						@click="onCommunityNodeTooltipClick"
 					>
 					</div>
