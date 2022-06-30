@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBasicAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -31,11 +31,13 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			placeholder: 'https://example.atlassian.net',
 		},
 	];
-	authenticate: IAuthenticateBasicAuth = {
-		type: 'basicAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			userPropertyName: 'email',
-			passwordPropertyName: 'apiToken',
+			auth:{
+				username: '={{$credentials.email}}',
+				password: '={{$credentials.apiToken}}',
+			},
 		},
 	};
 	test: ICredentialTestRequest = {

@@ -531,7 +531,6 @@ export const issueFields: INodeProperties[] = [
 		},
 		default: false,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
-		hint: 'You can use the Jira\'s renderedFields for "Simplify Output" by adding them into an "Expand" option under "Additional Fields"',
 	},
 	{
 		displayName: 'Additional Fields',
