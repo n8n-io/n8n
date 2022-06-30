@@ -1,32 +1,50 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { IDataObject, INodeProperties } from 'n8n-workflow';
+import { addTemplateComponents } from './MessageFunctions';
 
-
-export const mediaTypes = [
-	'image',
-	'video',
-	'audio',
-	'sticker',
-	'document',
-];
+export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
 export const messageFields: INodeProperties[] = [
 	{
-		displayName: 'Phone number ID',
+		displayName: 'Messaging Product',
+		name: 'messagingProduct',
+		default: 'whatsapp',
+		type: 'hidden',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'messaging_product',
+			},
+		},
+	},
+	{
+		displayName: 'Phone Number ID',
 		name: 'phoneNumberId',
 		type: 'string',
 		default: '',
 		placeholder: '',
 		required: true,
-		description: 'The ID of the business account\'s phone number from which the message will be sent from',
+		description:
+			"The ID of the business account's phone number from which the message will be sent from",
+		routing: {
+			request: {
+				method: 'POST',
+				url: '={{$value}}/messages',
+			},
+		},
 	},
 	{
-		displayName: 'Recipient\'s phone number',
+		displayName: "Recipient's Phone Number",
 		name: 'recipientPhoneNumber',
 		type: 'string',
 		default: '',
-		description: 'Phone number of the recipient of the message, starting with the country code without the leading +',
+		description:
+			'Phone number of the recipient of the message, starting with the country code without the leading +',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'to',
+			},
+		},
 	},
 	{
 		displayName: 'Type',
@@ -35,32 +53,38 @@ export const messageFields: INodeProperties[] = [
 		placeholder: '',
 		options: [
 			{
-				name: 'Text',
-				value: 'text',
-			},
-			{
-				name: 'Template',
-				value: 'template',
-			},
-			{
-				name: 'Image',
-				value: 'image',
+				name: 'Audio',
+				value: 'audio',
 			},
 			{
 				name: 'Document',
 				value: 'document',
 			},
 			{
-				name: 'Audio',
-				value: 'audio',
+				name: 'Image',
+				value: 'image',
+			},
+			{
+				name: 'Template',
+				value: 'template',
+			},
+			{
+				name: 'Text',
+				value: 'text',
 			},
 			{
 				name: 'Video',
 				value: 'video',
 			},
 		],
-		default: 'text',
+		default: 'template',
 		description: 'The type of the message',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'type',
+			},
+		},
 	},
 ];
 
@@ -76,9 +100,13 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'The body of the message (max 4096 characters)',
 		displayOptions: {
 			show: {
-				type: [
-					'text',
-				],
+				type: ['text'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'text.body',
 			},
 		},
 	},
@@ -87,12 +115,16 @@ export const messageTypeFields: INodeProperties[] = [
 		name: 'previewUrl',
 		type: 'boolean',
 		default: false,
-		description: 'Allows for URL previews in text messages',
+		description: 'Whether to display URL previews in text messages',
 		displayOptions: {
 			show: {
-				type: [
-					'text',
-				],
+				type: ['text'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'text.preview_url',
 			},
 		},
 	},
@@ -109,7 +141,8 @@ export const messageTypeFields: INodeProperties[] = [
 			{
 				name: 'Link',
 				value: 'useMediaLink',
-				description: 'When using a ink, WhatsApp will download the media, saving you the step of uploading media yourself',
+				description:
+					'When using a link, WhatsApp will download the media, saving you the step of uploading media yourself',
 			},
 			{
 				name: 'ID',
@@ -132,9 +165,13 @@ export const messageTypeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				type: mediaTypes,
-				mediaPath: [
-					'useMediaLink',
-				],
+				mediaPath: ['useMediaLink'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: '={{$parameter["type"]}}.link',
 			},
 		},
 	},
@@ -147,9 +184,13 @@ export const messageTypeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				type: mediaTypes,
-				mediaPath: [
-					'useMediaId',
-				],
+				mediaPath: ['useMediaId'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: '={{$parameter["type"]}}.id',
 			},
 		},
 	},
@@ -159,14 +200,16 @@ export const messageTypeFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'The name of the file (required when using a file ID)',
-		displayOptions:{
+		displayOptions: {
 			show: {
-				type: [
-					'document',
-				],
-				mediaPath: [
-					'useMediaId',
-				],
+				type: ['document'],
+				mediaPath: ['useMediaId'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: '={{$parameter["type"]}}.filename',
 			},
 		},
 	},
@@ -176,13 +219,15 @@ export const messageTypeFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'The caption of the media',
-		displayOptions:{
+		displayOptions: {
 			show: {
-				type: [
-					'image',
-					'video',
-					'document',
-				],
+				type: ['image', 'video', 'document'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: '={{$parameter["type"]}}.caption',
 			},
 		},
 	},
@@ -197,129 +242,129 @@ export const messageTypeFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				type: [
-					'template',
-				],
+				type: ['template'],
 			},
 		},
 		required: true,
 		description: 'Name of the template',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'template.name',
+			},
+		},
 	},
 	{
 		//TODO: would be nice to change this to a searchable dropdown with all the possible language codes
-		displayName: 'Language code',
+		displayName: 'Language Code',
 		name: 'templateLanguageCode',
 		type: 'string',
 		default: 'en_US',
 		displayOptions: {
 			show: {
-				type: [
-					'template',
-				],
+				type: ['template'],
 			},
 		},
-		description: 'The code of the language or locale to use. Accepts both language and language_locale formats (e.g., en and en_US).',
-
+		description:
+			'The code of the language or locale to use. Accepts both language and language_locale formats (e.g., en and en_US).',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'template.language.code',
+			},
+		},
 	},
-	//TODO: dynamic template components
-	// {
-	// 	displayName: 'Template header',
-	// 	name: 'templateHeader',
-	// 	placeholder: 'Add Component',
-	// 	type: 'fixedCollection',
-	// 	typeOptions: {
-	// 		multipleValues: true,
-	// 	},
-	// 	displayOptions: {
-	// 		show: {
-	// 			type: [
-	// 				'template',
-	// 			],
-	// 		},
-	// 	},
-	// 	default: {},
-	// 	options: [
-	// 		{
-	// 			name: 'componentParameters',
-	// 			displayName: 'Component parameters',
-	// 			values: [
-	// 			{
-	// 				displayName: 'Parameters type',
-	// 				name: 'templateParametersType',
-	// 				type: 'options',
-	// 				options: [
-	// 					{
-	// 						name: 'Text',
-	// 						value: 'text',
-	// 					},
-	// 					{
-	// 						name: 'Image',
-	// 						value: 'image',
-	// 					},
-	// 					{
-	// 						name: 'Document',
-	// 						value: 'document',
-	// 					},
-	// 					{
-	// 						name: 'Video',
-	// 						value: 'video',
-	// 					},
-	// 				],
-	// 				default: 0,
-	// 				description: 'The type of the parameter',
-	// 			},
-	// 				// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
-	// 				{
-	// 					displayName: 'Text',
-	// 					name: 'componentText',
-	// 					type: 'string',
-	// 					default: '',
-	// 					description: 'Operation to decide where the the data should be mapped to',
-	// 				},
-	// 				{
-	// 					displayName: 'Value 2',
-	// 					name: 'value2',
-	// 					type: 'string',
-	// 					displayOptions: {
-	// 						hide: {
-	// 							operation: [
-	// 								'regex',
-	// 								'notRegex',
-	// 							],
-	// 						},
-	// 					},
-	// 					default: '',
-	// 					description: 'The value to compare with the first one',
-	// 				},
-	// 				{
-	// 					displayName: 'Regex',
-	// 					name: 'value2',
-	// 					type: 'string',
-	// 					displayOptions: {
-	// 						show: {
-	// 							operation: [
-	// 								'regex',
-	// 								'notRegex',
-	// 							],
-	// 						},
-	// 					},
-	// 					default: '',
-	// 					placeholder: '/text/i',
-	// 					description: 'The regex which has to match',
-	// 				},
-	// 				{
-	// 					displayName: 'Output',
-	// 					name: 'output',
-	// 					type: 'number',
-	// 					typeOptions: {
-	// 						minValue: 0,
-	// 						maxValue: 3,
-	// 					},
-	// 					default: 0,
-	// 					description: 'The index of output to which to send data to if rule matches',
-	// 				},
-	// 			],
-	// 		},
-	// 	],
-	// },
+	{
+		displayName: 'Template Components',
+		name: 'templateComponents',
+		placeholder: 'Add Component',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: { type: ['template'] },
+		},
+		default: {},
+		routing: {
+			send: {
+				preSend: [addTemplateComponents],
+			},
+		},
+		options: [
+			{
+				displayName: 'Component',
+				name: 'component',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Button',
+								value: 'button',
+							},
+							{
+								name: 'Header',
+								value: 'header',
+							},
+						],
+						default: 'body',
+					},
+					{
+						displayName: 'Parameters',
+						name: 'parameters',
+						type: 'fixedCollection',
+						default: {},
+						typeOptions: {
+							multipleValues: true,
+						},
+						placeholder: 'Add Parameter',
+						options: [
+							{
+								displayName: 'Parameter',
+								name: 'parameter',
+								values: [
+									// TODO: Multiple types
+									// {
+									// 	displayName: 'Type',
+									// 	name: 'type',
+									// 	type: 'options',
+									// 	options: [
+									// 		{
+									// 			name: 'Text',
+									// 			value: 'text',
+									// 		},
+									// 		{
+									// 			name: 'Currency',
+									// 			value: 'currency',
+									// 		},
+									// 	],
+									// 	default: 'text',
+									// },
+									{
+										displayName: 'Type',
+										type: 'hidden',
+										name: 'type',
+										default: 'text',
+									},
+									{
+										displayName: 'Text',
+										name: 'text',
+										default: '',
+										type: 'string',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		],
+	},
 ];
