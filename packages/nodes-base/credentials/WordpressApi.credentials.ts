@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBasicAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -33,13 +33,15 @@ export class WordpressApi implements ICredentialType {
 			placeholder: 'https://example.com',
 		},
 	];
-	authenticate: IAuthenticateBasicAuth = {
-		type: 'basicAuth',
-		properties: {
-		 userPropertyName: 'username',
-		 passwordPropertyName: 'password',
-	 },
- };
+ authenticate: IAuthenticateGeneric = {
+	type: 'generic',
+	properties: {
+		auth: {
+			username: '={{$credentials.username}}',
+			password: '={{$credentials.password}}',
+		},
+	},
+};
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}/wp-json/wp/v2',
