@@ -42,6 +42,12 @@ export class NotionTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName: 'To access content, make sure it\'s shared with your integration in Notion',
+				name: 'notionNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Event',
 				name: 'event',
 				type: 'options',
