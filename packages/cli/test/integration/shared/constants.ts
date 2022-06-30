@@ -77,6 +77,11 @@ export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
 export const SMTP_TEST_TIMEOUT = 30_000;
 
 /**
+ * Timeout (in milliseconds) to account for DB being slow to initialize.
+ */
+export const DB_INITIALIZATION_TIMEOUT = 30_000;
+
+/**
  * Mapping tables having no entity representation.
  */
 export const MAPPING_TABLES = {
