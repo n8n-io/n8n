@@ -1258,7 +1258,6 @@ export default mixins(
 	margin-bottom: var(--spacing-s);
 	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 	position: relative;
-	height: 30px;
 
 	> *:first-child {
 		flex-grow: 1;
