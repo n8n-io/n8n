@@ -35,14 +35,14 @@ beforeAll(async () => {
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
+	utils.initConfigFile();
 	await utils.initNodeTypes();
-	await utils.initConfigFile();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 
 beforeEach(async () => {
 	await testDb.truncate(
-		['SharedCredentials', 'SharedWorkflow', 'User', 'Workflow', 'Credentials'],
+		['SharedCredentials', 'SharedWorkflow', 'User', 'Workflow', 'Credentials', 'Tag'],
 		testDbName,
 	);
 
