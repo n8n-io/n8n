@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 import { get as pslGet } from 'psl';
 import { BinaryDataManager } from 'n8n-core';
-import { INodesGraph, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
+import { INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
 import { snakeCase } from 'change-case';
 import {
 	IDiagnosticInfo,
@@ -79,7 +79,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User created workflow', {
 			user_id: userId,
 			workflow_id: workflow.id,
-			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
 			public_api: publicApi,
 		});
@@ -104,7 +103,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User saved workflow', {
 			user_id: userId,
 			workflow_id: workflow.id,
-			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
 			notes_count_overlapping: overlappingCount,
 			notes_count_non_overlapping: notesCount - overlappingCount,
@@ -182,7 +180,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 					status: 'success' | 'failed';
 					error_message: string;
 					error_node_type: string | undefined;
-					node_graph: INodesGraph;
 					node_graph_string: string;
 					error_node_id: string;
 					webhook_domain: string | null;
@@ -191,18 +188,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 					status: properties.success ? 'success' : 'failed',
 					error_message: properties.error_message as string,
 					error_node_type: properties.error_node_type,
-					node_graph: properties.node_graph as INodesGraph,
 					node_graph_string: properties.node_graph_string as string,
 					error_node_id: properties.error_node_id as string,
 					webhook_domain: null,
 				};
 
-				if (!manualExecEventProperties.node_graph) {
+				if (!manualExecEventProperties.node_graph_string) {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-					manualExecEventProperties.node_graph = nodeGraphResult.nodeGraph;
-					manualExecEventProperties.node_graph_string = JSON.stringify(
-						manualExecEventProperties.node_graph,
-					);
+					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
 
 				if (runData.data.startData?.destinationNode) {
