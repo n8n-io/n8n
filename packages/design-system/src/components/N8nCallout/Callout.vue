@@ -9,9 +9,6 @@
 				/>
 			</div>
 			<slot />
-			<div :class="$style['actions']">
-				<slot name="actions" />
-			</div>
 		</div>
 
 		<slot name="trailingContent" />
@@ -21,8 +18,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nIcon from '../N8nIcon';
-import N8nLink from '../N8nLink';
-import N8nText from '../N8nText';
 
 const CALLOUT_DEFAULT_ICONS = {
 	info: 'info-circle',
@@ -35,8 +30,6 @@ export default Vue.extend({
 	name: 'n8n-callout',
 	components: {
 		N8nIcon,
-		N8nLink,
-		N8nText
 	},
 	props: {
 		theme: {
@@ -82,12 +75,6 @@ export default Vue.extend({
 
 .message-section {
 	display: flex;
-}
-
-.actions {
-	color: green;
-	padding-left: var(--spacing-4xs);
-	text-decoration: underline;
 }
 
 .info, .custom {

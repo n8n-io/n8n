@@ -65,6 +65,7 @@
 						:runIndex="outputRun"
 						:linkedRuns="linked"
 						:sessionId="sessionId"
+						:isReadOnly="readOnly"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -120,15 +121,20 @@ import TriggerPanel from './TriggerPanel.vue';
 import { mapGetters } from 'vuex';
 import {
 	BASE_NODE_SURVEY_URL,
-	CRON_NODE_TYPE,
-	ERROR_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { editor } from 'monaco-editor';
 import { workflowActivate } from './mixins/workflowActivate';
+import { pinData } from "@/components/mixins/pinData";
+import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 
-export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActivate).extend({
+export default mixins(
+	externalHooks,
+	nodeHelpers,
+	workflowHelpers,
+	workflowActivate,
+	pinData,
+).extend({
 	name: 'NodeDetailsView',
 	components: {
 		NodeSettings,
@@ -312,6 +318,9 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 			}
 			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
 		},
+		outputPanelEditMode(): { enabled: boolean; value: string; } {
+			return this.$store.getters['ui/outputPanelEditMode'];
+		},
 	},
 	watch: {
 		activeNode(node, oldNode) {
@@ -437,10 +446,45 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, workflowActiv
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-		close() {
+		async close() {
 			if (this.isDragging) {
 				return;
 			}
+
+			if (this.outputPanelEditMode.enabled) {
+				const shouldPinDataBeforeClosing = await this.confirmMessage(
+					this.$locale.baseText('ndv.pinData.beforeClosing.description'),
+					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
+					null,
+					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
+					this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+				);
+
+				if (shouldPinDataBeforeClosing) {
+					const { value } = this.outputPanelEditMode;
+
+					if (!this.isValidPinDataSize(value)) {
+						dataPinningEventBus.$emit(
+							'data-pinning-error', { errorType: 'data-too-large', source: 'on-ndv-close-modal' },
+						);
+						return;
+					}
+
+					if (!this.isValidPinDataJSON(value)) {
+						dataPinningEventBus.$emit(
+							'data-pinning-error', { errorType: 'invalid-json', source: 'on-ndv-close-modal' },
+						);
+						return;
+					}
+
+					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+					this.$store.commit('pinData', { node: this.activeNode, data: JSON.parse(value) });
+					return;
+				} else {
+					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+				}
+			}
+
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',

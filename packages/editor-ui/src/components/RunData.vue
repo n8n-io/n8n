@@ -1,31 +1,33 @@
 <template>
 	<div :class="$style.container">
 		<n8n-callout
-			v-if="paneType === 'output' && hasPinData"
+			v-if="canPinData && hasPinData"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style['pinned-data-callout']"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<template #actions>
+			<span class="ml-4xs">
 				<n8n-link
 					theme="secondary"
 					size="small"
-					:bold="true"
-					@click="onTogglePinData"
+					underline
+					bold
+					@click="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
 				</n8n-link>
-			</template>
+			</span>
 			<template #trailingContent>
 				<n8n-link
 					:to="dataPinningDocsUrl"
 					size="small"
 					theme="secondary"
-					:bold="true"
-					:underline="true"
+					bold
+					underline
+					@click="onClickDataPinningDocsLink"
 				>
-					Learn more
+					{{ $locale.baseText('runData.pindata.learnMore') }}
 				</n8n-link>
 			</template>
 		</n8n-callout>
@@ -35,15 +37,26 @@
 		<div :class="$style.header">
 			<slot name="header"></slot>
 
-			<div v-show="!hasRunError && hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0))" @click.stop :class="$style.displayModes">
+			<div v-show="!hasRunError" @click.stop :class="$style.displayModes">
 				<n8n-radio-buttons
+					v-show="hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) && !editMode.enabled"
 					:value="displayMode"
 					:options="buttons"
 					@input="onDisplayModeChange"
 				/>
-				<n8n-tooltip placement="bottom-end">
+				<n8n-icon-button
+					v-if="canPinData"
+					:title="$locale.baseText('runData.editOutput')"
+					:circle="false"
+					class="ml-xs"
+					icon="pencil-alt"
+					type="tertiary"
+					:disabled="editMode.enabled"
+					@click="enterEditMode({ origin: 'editIconButton' })"
+				/>
+				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0 || hasPinData)">
 					<template #content v-if="hasPinData">
-						<div :class="$style['pin-data-tooltip']">
+						<div :class="$style['tooltip-container']">
 							<strong>
 								{{ $locale.baseText('ndv.pinData.unpin.title') }}
 							</strong>
@@ -51,12 +64,12 @@
 						</div>
 					</template>
 					<template #content v-else>
-						<div :class="$style['pin-data-tooltip']">
+						<div :class="$style['tooltip-container']">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
-							<p>
+							<n8n-text size="small" tag="p">
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
-							</p>
-							<n8n-link to="https://google.com" size="small">
+							</n8n-text>
+							<n8n-link :to="dataPinningDocsUrl" size="small">
 								{{ $locale.baseText('ndv.pinData.pin.link') }}
 								<n8n-icon icon="external-link-alt" size="small" />
 							</n8n-link>
@@ -67,14 +80,14 @@
 						type="tertiary"
 						active
 						icon="thumbtack"
-						:disabled="editMode.enabled || inputData.length === 0"
-						@click="onTogglePinData"
+						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData)"
+						@click="onTogglePinData({ source: 'pin-icon-click' })"
 					/>
 				</n8n-tooltip>
 			</div>
 		</div>
 
-		<div :class="$style.runSelector" v-if="maxRunIndex > 0" >
+		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
 			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop>
 				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
@@ -93,43 +106,50 @@
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
-		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" :class="$style.itemsCount">
+		<div v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0" v-show="!editMode.enabled" :class="$style.itemsCount">
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', {adjustToNumber: dataCount}) }}
 			</n8n-text>
 		</div>
 
-		<div :class="$style.dataContainer" ref="dataContainer">
+		<div
+			:class="[$style['data-container'], copyDropdownOpen ? $style['copy-dropdown-open'] : '']"
+			ref="dataContainer"
+		>
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
-				<el-dropdown trigger="click" @command="handleCopyClick">
-					<span class="el-dropdown-link">
-						<n8n-icon-button
-							:title="$locale.baseText('runData.copyToClipboard')"
-							icon="copy"
-							type="tertiary"
-							:circle="false"
-						/>
-					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">
-							{{ $locale.baseText('runData.copyItemPath') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">
-							{{ $locale.baseText('runData.copyParameterPath') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">
-							{{ $locale.baseText('runData.copyValue') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
-				</el-dropdown>
-				<n8n-icon-button
-					:title="$locale.baseText('runData.editOutput')"
-					:circle="false"
-					class="ml-2xs"
-					icon="pencil-alt"
-					type="tertiary"
-					@click="enterEditMode()"
-				/>
+				<n8n-tooltip placement="bottom-end" :disabled="!!state.value">
+					<template #content>
+						<div :class="$style['tooltip-container']">
+							{{ $locale.baseText('runData.copyDisabled') }}
+						</div>
+					</template>
+					<el-dropdown
+						trigger="click"
+						:disabled="!state.value"
+						@command="handleCopyClick"
+						@visible-change="copyDropdownOpen = $event"
+					>
+						<span class="el-dropdown-link">
+							<n8n-icon-button
+								:title="$locale.baseText('runData.copyToClipboard')"
+								icon="copy"
+								type="tertiary"
+								:circle="false"
+							/>
+						</span>
+						<el-dropdown-menu slot="dropdown">
+							<el-dropdown-item :command="{command: 'value'}">
+								{{ $locale.baseText('runData.copyValue') }}
+							</el-dropdown-item>
+							<el-dropdown-item :command="{command: 'itemPath'}" divided>
+								{{ $locale.baseText('runData.copyItemPath') }}
+							</el-dropdown-item>
+							<el-dropdown-item :command="{command: 'parameterPath'}">
+								{{ $locale.baseText('runData.copyParameterPath') }}
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</el-dropdown>
+				</n8n-tooltip>
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
@@ -138,13 +158,20 @@
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style['edit-mode']">
-				<code-editor v-model="editMode.value" />
+				<div :class="$style['edit-mode-body']">
+					<code-editor
+						:value="editMode.value"
+						:options="{ scrollBeyondLastLine: false }"
+						type="json"
+						@input="$store.commit('ui/setOutputPanelEditModeValue', $event)"
+					/>
+				</div>
 				<div :class="$style['edit-mode-footer']">
-					<n8n-info-tip :class="$style['edit-mode-footer-infotip']">
+					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
-						<a href="https://google.com">
+						<n8n-link :to="dataPinningDocsUrl" size="small">
 							{{ $locale.baseText('generic.learnMore') }}
-						</a>
+						</n8n-link>
 					</n8n-info-tip>
 					<div :class="$style['edit-mode-footer-buttons']">
 						<n8n-button
@@ -164,6 +191,15 @@
 
 			<div v-else-if="!hasNodeRun" :class="$style.center">
 				<slot name="node-not-run"></slot>
+			</div>
+
+			<div v-else-if="paneType === 'input' && node.disabled" :class="$style.center">
+				<n8n-text>
+					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
+					<n8n-link @click="enableNode">
+						{{ $locale.baseText('ndv.input.disabled.cta') }}
+					</n8n-link>
+				</n8n-text>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.errorDisplay">
@@ -327,10 +363,9 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription, IRun,
+	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
-	ITaskData,
 } from 'n8n-workflow';
 
 import {
@@ -345,7 +380,8 @@ import {
 import {
 	DATA_PINNING_DOCS_URL,
 	MAX_DISPLAY_DATA_SIZE,
-	MAX_DISPLAY_ITEMS_AUTO_ALL, MAX_WORKFLOW_PINNED_DATA_SIZE,
+	MAX_DISPLAY_ITEMS_AUTO_ALL,
+	MULTIPLE_OUTPUT_NODE_TYPES,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -361,11 +397,17 @@ import { pinData } from '@/components/mixins/pinData';
 import mixins from 'vue-typed-mixins';
 
 import { saveAs } from 'file-saver';
-import {CodeEditor} from "@/components/forms";
+import { CodeEditor } from "@/components/forms";
+import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { stringSizeInBytes } from './helpers';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
+
+export type EnterEditModeArgs = {
+	data?: Array<Record<string, string | number>>,
+	origin: 'editIconButton' | 'insertTestDataLink',
+};
 
 export default mixins(
 	copyPaste,
@@ -436,14 +478,21 @@ export default mixins(
 				currentPage: 1,
 				pageSize: 10,
 				pageSizes: [10, 25, 50, 100],
-				editMode: {
-					enabled: false,
-					value: '',
-				},
+				copyDropdownOpen: false,
+				eventBus: dataPinningEventBus,
 			};
 		},
 		mounted() {
 			this.init();
+
+			if (this.paneType === 'output') {
+				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
+				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
+			}
+		},
+		destroyed() {
+			this.eventBus.$off('data-pinning-error', this.onDataPinningError);
+			this.eventBus.$off('data-unpinning', this.onDataUnpinning);
 		},
 		computed: {
 			activeNode(): INodeUi {
@@ -463,6 +512,14 @@ export default mixins(
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 				return null;
+			},
+			isMultipleOutputsNodeType(): boolean {
+				return !!this.node && MULTIPLE_OUTPUT_NODE_TYPES.includes(this.node.type);
+			},
+			canPinData (): boolean {
+				return this.paneType === 'output' &&
+					!this.isMultipleOutputsNodeType &&
+					!(this.binaryData && this.binaryData.length > 0);
 			},
 			buttons(): Array<{label: string, value: string}> {
 				const defaults = [
@@ -612,75 +669,145 @@ export default mixins(
 				}
 				return branches;
 			},
+			editMode(): { enabled: boolean; value: string; } {
+				return this.paneType === 'output'
+					? this.$store.getters['ui/outputPanelEditMode']
+					: { enabled: false, value: '' };
+			},
 		},
 		methods: {
-			enterEditMode(data?: Array<Record<string, string>>) {
-				this.editMode.enabled = true;
-				this.editMode.value = JSON.stringify(data || this.jsonData, null, 2);
+			onClickDataPinningDocsLink() {
+				this.$telemetry.track('User clicked ndv link', {
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					node_type: this.activeNode.type,
+					pane: 'output',
+					type: 'data-pinning-docs',
+				});
+			},
+			enterEditMode({ data, origin }: EnterEditModeArgs) {
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
+				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data || this.jsonData, null, 2));
+
+				this.$telemetry.track('User opened ndv edit state', {
+					node_type: this.activeNode.type,
+					click_type: origin === 'editIconButton' ? 'button' : 'link',
+					session_id: this.sessionId,
+					run_index: this.runIndex,
+					is_output_present: this.hasNodeRun || this.hasPinData,
+					view: !this.hasNodeRun && !this.hasPinData ? 'undefined' : this.displayMode,
+					is_data_pinned: this.hasPinData,
+				});
 			},
 			onClickCancelEdit() {
-				this.editMode.enabled = false;
-				this.editMode.value = '';
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+				this.$store.commit('ui/setOutputPanelEditModeValue', '');
+				this.onExitEditMode({ type: 'cancel' });
 			},
 			onClickSaveEdit() {
-				let data;
-				try {
-					data = JSON.parse(this.editMode.value);
-				} catch (error) {
-					const title = this.$locale.baseText('runData.invalidPinnedData');
+				const { value } = this.editMode;
 
-					const toRemove = new RegExp(/JSON\.parse:|of the JSON data/, 'g');
-					const message = error.message.replace(toRemove, '').trim();
-					error.message = message.charAt(0).toUpperCase() + message.slice(1);
-
-					this.$showError(error, title);
+				if (!this.isValidPinDataSize(value)) {
+					this.onDataPinningError({ errorType: 'data-too-large', source: 'save-edit' });
 					return;
 				}
 
-				try {
-					if (this.$store.getters['pinDataSize'] + stringSizeInBytes(JSON.stringify(data)) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
-						throw new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description'));
-					}
-				} catch (error) {
-					this.$showError(error, this.$locale.baseText('ndv.pinData.error.tooLarge.title'));
+				if (!this.isValidPinDataJSON(value)) {
+					this.onDataPinningError({ errorType: 'invalid-json', source: 'save-edit' });
 					return;
 				}
 
-				if (this.verifyPinnedDataSize(data)) {
-					this.editMode.enabled = false;
-					this.$store.commit('pinData', { node: this.node, data });
-				}
+				this.onDataPinningSuccess({ source: 'save-edit' });
+
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+				this.$store.commit('pinData', { node: this.node, data: JSON.parse(value) });
+
+				this.onExitEditMode({ type: 'save' });
 			},
-			async onTogglePinData() {
+			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
+				this.$telemetry.track('User closed ndv edit state', {
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					run_index: this.runIndex,
+					view: this.displayMode,
+					type,
+				});
+			},
+			onDataUnpinning(
+				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
+			) {
+				this.$telemetry.track('User unpinned ndv data', {
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					run_index: this.runIndex,
+					source,
+					data_size: stringSizeInBytes(this.pinData),
+				});
+			},
+			onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
+				this.$telemetry.track('Ndv data pinning success', {
+					pinning_source: source,
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					data_size: stringSizeInBytes(this.pinData),
+					view: this.displayMode,
+					run_index: this.runIndex,
+				});
+			},
+			onDataPinningError(
+				{ errorType, source }: {
+					errorType: 'data-too-large' | 'invalid-json',
+					source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit'
+				},
+			) {
+				this.$telemetry.track('Ndv data pinning failure', {
+					pinning_source: source,
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					data_size: stringSizeInBytes(this.pinData),
+					view: this.displayMode,
+					run_index: this.runIndex,
+					error_type: errorType,
+				});
+			},
+			async onTogglePinData(
+				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
+			) {
+				if (source === 'pin-icon-click') {
+					this.$telemetry.track('User clicked pin data icon', {
+						node_type: this.activeNode.type,
+						session_id: this.sessionId,
+						run_index: this.runIndex,
+						view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
+					});
+				}
+
 				if (this.hasPinData) {
+					this.onDataUnpinning({ source });
 					this.$store.commit('unpinData', { node: this.node });
-				} else if (this.verifyPinnedDataSize(this.jsonData)) {
-					this.$store.commit('pinData', { node: this.node, data: this.jsonData });
-
-					if (this.maxRunIndex > 0) {
-						this.$showToast({
-							title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
-								interpolate: {
-									index: `${this.runIndex}`,
-								},
-							}),
-							message: this.$locale.baseText('ndv.pinData.pin.multipleRuns.description'),
-							type: 'success',
-							duration: 2000,
-						});
-					}
+					return;
 				}
-			},
-			verifyPinnedDataSize(data: IDataObject[]): boolean {
-				try {
-					if (this.$store.getters['pinDataSize'] + stringSizeInBytes(JSON.stringify(data)) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
-						throw new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description'));
-					}
 
-					return true;
-				} catch (error) {
-					this.$showError(error, this.$locale.baseText('ndv.pinData.error.tooLarge.title'));
-					return false;
+				if (!this.isValidPinDataSize(this.jsonData)) {
+					this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
+					return;
+				}
+
+				this.onDataPinningSuccess({ source: 'save-edit' });
+
+				this.$store.commit('pinData', { node: this.node, data: this.jsonData });
+
+				if (this.maxRunIndex > 0) {
+					this.$showToast({
+						title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
+							interpolate: {
+								index: `${this.runIndex}`,
+							},
+						}),
+						message: this.$locale.baseText('ndv.pinData.pin.multipleRuns.description'),
+						type: 'success',
+						duration: 2000,
+					});
 				}
 			},
 			switchToBinary() {
@@ -981,6 +1108,13 @@ export default mixins(
 					} else {
 						value = this.state.value.toString();
 					}
+
+					this.$showToast({
+						title: this.$locale.baseText('runData.copyValue.toast'),
+						message: '',
+						type: 'success',
+						duration: 2000,
+					});
 				} else {
 					let startPath = '';
 					let path = '';
@@ -989,15 +1123,46 @@ export default mixins(
 						const index = pathParts[0].slice(1);
 						path = pathParts.slice(1).join(']');
 						startPath = `$item(${index}).$node["${this.node!.name}"].json`;
+
+						this.$showToast({
+							title: this.$locale.baseText('runData.copyItemPath.toast'),
+							message: '',
+							type: 'success',
+							duration: 2000,
+						});
 					} else if (commandData.command === 'parameterPath') {
 						path = newPath.split(']').slice(1).join(']');
 						startPath = `$node["${this.node!.name}"].json`;
+
+						this.$showToast({
+							title: this.$locale.baseText('runData.copyParameterPath.toast'),
+							message: '',
+							type: 'success',
+							duration: 2000,
+						});
 					}
 					if (!path.startsWith('[') && !path.startsWith('.') && path) {
 						path += '.';
 					}
 					value = `{{ ${startPath + path} }}`;
 				}
+
+				const copyType = {
+					value: 'selection',
+					itemPath: 'item_path',
+					parameterPath: 'parameter_path',
+				}[commandData.command];
+
+				this.$telemetry.track('User copied ndv data', {
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					run_index: this.runIndex,
+					view: this.displayMode,
+					copy_type: copyType,
+					workflow_id: this.$store.getters.workflowId,
+					pane: 'output',
+					in_execution_log: this.isReadOnly,
+				});
 
 				this.copyToClipboard(value);
 			},
@@ -1020,6 +1185,18 @@ export default mixins(
 			},
 			onRunIndexChange(run: number) {
 				this.$emit('runChange', run);
+			},
+			enableNode() {
+				if (this.node) {
+					const updateInformation = {
+						name: this.node.name,
+						properties: {
+							disabled: !this.node.disabled,
+						},
+					};
+
+					this.$store.commit('updateNodeProperties', updateInformation);
+				}
 			},
 		},
 		watch: {
@@ -1088,11 +1265,12 @@ export default mixins(
 	}
 }
 
-.dataContainer {
+.data-container {
 	position: relative;
 	height: 100%;
 
-	&:hover {
+	&:hover,
+	&.copy-dropdown-open {
 		.actions-group {
 			opacity: 1;
 		}
@@ -1269,7 +1447,7 @@ export default mixins(
 	flex-grow: 1;
 }
 
-.pin-data-tooltip {
+.tooltip-container {
 	max-width: 240px;
 }
 
@@ -1312,15 +1490,23 @@ export default mixins(
 	flex-direction: column;
 	justify-content: flex-end;
 	align-items: flex-end;
+	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
+}
+
+.edit-mode-body {
+	flex: 1 1 auto;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
 }
 
 .edit-mode-footer {
 	display: flex;
+	width: 100%;
 	justify-content: space-between;
 	align-items: center;
 	padding-top: var(--spacing-s);
-	padding-left: var(--spacing-s);
 }
 
 .edit-mode-footer-infotip {
@@ -1377,5 +1563,4 @@ export default mixins(
 .vjs-tree .vjs-tree__content.has-line {
 	border-left: 1px dotted var(--color-json-line);
 }
-
 </style>

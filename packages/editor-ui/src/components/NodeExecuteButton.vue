@@ -4,7 +4,7 @@
 		<div>
 			<n8n-button
 				:loading="nodeRunning && !isListeningForEvents"
-				:disabled="!!disabledHint"
+				:disabled="disabled || !!disabledHint"
 				:label="buttonLabel"
 				:type="type"
 				:size="size"
@@ -22,6 +22,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { workflowRun } from './mixins/workflowRun';
 import { pinData } from './mixins/pinData';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 
 export default mixins(
 	workflowRun,
@@ -30,6 +31,10 @@ export default mixins(
 	props: {
 		nodeName: {
 			type: String,
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
 		},
 		label: {
 			type: String,
@@ -162,23 +167,27 @@ export default mixins(
 			if (this.isListeningForEvents) {
 				this.stopWaitingForWebhook();
 			} else {
+				let shouldUnpinAndExecute = false;
 				if (this.hasPinData) {
-					const shouldUnpin = await this.confirmMessage(
-						this.$locale.baseText('ndv.pinData.unpinOnExecute.description'),
-						this.$locale.baseText('ndv.pinData.unpinOnExecute.title'),
+					shouldUnpinAndExecute = await this.confirmMessage(
+						this.$locale.baseText('ndv.pinData.unpinAndExecute.description'),
+						this.$locale.baseText('ndv.pinData.unpinAndExecute.title'),
 						null,
-						this.$locale.baseText('ndv.pinData.unpinOnExecute.confirm'),
-						this.$locale.baseText('ndv.pinData.unpinOnExecute.cancel'),
+						this.$locale.baseText('ndv.pinData.unpinAndExecute.confirm'),
+						this.$locale.baseText('ndv.pinData.unpinAndExecute.cancel'),
 					);
 
-					if (shouldUnpin) {
+					if (shouldUnpinAndExecute) {
+						dataPinningEventBus.$emit('data-unpinning', { source: 'unpin-and-execute-modal' });
 						this.$store.commit('unpinData', { node: this.node });
 					}
 				}
 
-				this.$telemetry.track('User clicked execute node button', { node_type: this.nodeName, workflow_id: this.$store.getters.workflowId, source: this.telemetrySource });
-				this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
-				this.$emit('execute');
+				if (!this.hasPinData || shouldUnpinAndExecute) {
+					this.$telemetry.track('User clicked execute node button', { node_type: this.nodeName, workflow_id: this.$store.getters.workflowId, source: this.telemetrySource });
+					this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					this.$emit('execute');
+				}
 			}
 		},
 	},

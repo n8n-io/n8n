@@ -23,6 +23,10 @@ export default Vue.extend({
 		autocomplete: {
 			type: Function,
 		},
+		options: {
+			type: Object,
+			default: () => ({}),
+		},
 	},
 	data() {
 		return {
@@ -44,6 +48,7 @@ export default Vue.extend({
 				minimap: {
 					enabled: false,
 				},
+				...this.options,
 			});
 
 			this.monacoInstance.onDidChangeModelContent(() => {
@@ -81,14 +86,22 @@ export default Vue.extend({
 				});
 			}
 		},
+		handleResize() {
+			if (this.monacoInstance) {
+				// Workaround to force Monaco to recompute its boundaries
+				this.monacoInstance.layout({} as unknown as undefined);
+			}
+		},
 	},
 	mounted() {
 		setTimeout(this.loadEditor);
+		window.addEventListener('resize', this.handleResize);
 	},
 	destroyed() {
 		if (this.monacoLibrary) {
 			this.monacoLibrary.dispose();
 		}
+		window.removeEventListener('resize', this.handleResize);
 	},
 });
 </script>
@@ -97,5 +110,21 @@ export default Vue.extend({
 .text-editor {
 	width: 100%;
 	height: 100%;
+	flex: 1 1 auto;
+}
+
+::v-deep {
+	.monaco-editor {
+		border: 1px solid var(--color-foreground-base);
+		border-radius: var(--border-radius-base);
+		overflow: hidden;
+
+		&,
+		&-background,
+		.inputarea.ime-input,
+		.margin {
+			background-color: var(--color-background-xlight) !important;
+		}
+	}
 }
 </style>

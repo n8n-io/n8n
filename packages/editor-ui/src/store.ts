@@ -355,6 +355,11 @@ export const store = new Vuex.Store({
 
 			Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
 			Vue.delete(state.nodeMetadata, nameData.old);
+
+			if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(nameData.old)) {
+				Vue.set(state.workflow.pinData, nameData.new, state.workflow.pinData[nameData.old]);
+				Vue.delete(state.workflow.pinData, nameData.old);
+			}
 		},
 
 		resetAllNodesIssues (state) {
@@ -447,6 +452,10 @@ export const store = new Vuex.Store({
 		removeNode (state, node: INodeUi) {
 			Vue.delete(state.nodeMetadata, node.name);
 
+			if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(node.name)) {
+				Vue.delete(state.workflow.pinData, node.name);
+			}
+
 			for (let i = 0; i < state.workflow.nodes.length; i++) {
 				if (state.workflow.nodes[i].name === node.name) {
 					state.workflow.nodes.splice(i, 1);
@@ -459,6 +468,11 @@ export const store = new Vuex.Store({
 			if (data.setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
+
+			if (data.removePinData) {
+				state.workflow.pinData = {};
+			}
+
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
 			state.nodeMetadata = {};
 		},
@@ -883,9 +897,11 @@ export const store = new Vuex.Store({
 		},
 		pinDataSize: (state) => {
 			return state.workflow.nodes
-				.filter((node) => node.pinData)
 				.reduce((acc, node) => {
-					acc += stringSizeInBytes(JSON.stringify(node.pinData));
+					if (typeof node.pinData !== 'undefined' && node.name !== state.activeNode) {
+						acc += stringSizeInBytes(node.pinData);
+					}
+
 					return acc;
 				}, 0);
 		},

@@ -9,6 +9,7 @@
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
+		:isReadOnly="isReadOnly"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
@@ -17,7 +18,9 @@
 	>
 		<template v-slot:header>
 			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
+				<span :class="$style.title">
+					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
+				</span>
 				<RunInfo v-if="runsCount === 1" :taskData="runTaskData" />
 
 				<n8n-info-tip
@@ -35,9 +38,10 @@
 
 		<template v-slot:node-not-run>
 			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-if="!workflowRunning && (isScheduleTrigger || !isTriggerNode)">
+			<n8n-text v-if="!workflowRunning">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
-				<span @click="insertTestData">
+				<span @click="insertTestData" v-if="canPinData">
+					{{ $locale.baseText('generic.or') }}
 					<n8n-text
 						tag="a"
 						size="medium"
@@ -68,8 +72,11 @@
 import { IExecutionResponse, INodeUi } from '@/Interface';
 import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import Vue from 'vue';
-import RunData from './RunData.vue';
+import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
+import {MULTIPLE_OUTPUT_NODE_TYPES, TEST_PIN_DATA} from "@/constants";
+
+type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
 export default Vue.extend({
 	name: 'OutputPanel',
@@ -77,6 +84,9 @@ export default Vue.extend({
 	props: {
 		runIndex: {
 			type: Number,
+		},
+		isReadOnly: {
+			type: Boolean,
 		},
 		linkedRuns: {
 			type: Boolean,
@@ -174,17 +184,28 @@ export default Vue.extend({
 			const runAt = this.runTaskData.startTime;
 			return updatedAt > runAt;
 		},
+		outputPanelEditMode(): { enabled: boolean; value: string; } {
+			return this.$store.getters['ui/outputPanelEditMode'];
+		},
+		canPinData(): boolean {
+			return !!this.node && !MULTIPLE_OUTPUT_NODE_TYPES.includes(this.node.type);
+		},
 	},
 	methods: {
 		insertTestData() {
 			if (this.$refs.runData) {
-				(this.$refs.runData as Vue & {
-					enterEditMode: (data?: Array<Record<string, string>>) => {}
-				}).enterEditMode([
-					{
-						propertyName: "value",
-					},
-				]);
+				(this.$refs.runData as RunData).enterEditMode({
+					data: TEST_PIN_DATA,
+					origin: 'insertTestDataLink',
+				});
+
+				this.$telemetry.track('User clicked ndv link', {
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					node_type: this.node.type,
+					pane: 'output',
+					type: 'insert-test-data',
+				});
 			}
 		},
 		onLinkRun() {

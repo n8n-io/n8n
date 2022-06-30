@@ -1,5 +1,5 @@
-export const MAX_WORKFLOW_SIZE = 16777216;
-export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912;
+export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
+export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 export const NODE_NAME_PREFIX = 'node-';
@@ -91,6 +91,11 @@ export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger'
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
+
+export const MULTIPLE_OUTPUT_NODE_TYPES = [
+	IF_NODE_TYPE,
+	SWITCH_NODE_TYPE,
+];
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -245,3 +250,14 @@ export enum VIEWS {
 	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",
 }
+
+export const TEST_PIN_DATA = [
+	{
+		name: "First item",
+		code: 1,
+	},
+	{
+		name: "Second item",
+		code: 2,
+	},
+];
