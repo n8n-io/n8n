@@ -32,6 +32,7 @@ export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wordpress',
 		name: 'wordpress',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:wordpress.png',
 		group: ['output'],
 		version: 1,
@@ -53,20 +54,18 @@ export class Wordpress implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
 						value: 'post',
-						description: '',
 					},
 					{
 						name: 'User',
 						value: 'user',
-						description: '',
 					},
 				],
 				default: 'post',
-				description: 'Resource to consume.',
 			},
 			...postOperations,
 			...postFields,
@@ -131,7 +130,7 @@ export class Wordpress implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

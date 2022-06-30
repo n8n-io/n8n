@@ -10,7 +10,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as redis from 'redis';
+import redis from 'redis';
 
 export class RedisTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,7 +38,7 @@ export class RedisTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: `Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported`,
+				description: 'Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported.',
 			},
 			{
 				displayName: 'Options',
@@ -52,14 +52,14 @@ export class RedisTrigger implements INodeType {
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
-						description: 'Try to parse the message to an object',
+						description: 'Whether to try to parse the message to an object',
 					},
 					{
 						displayName: 'Only Message',
 						name: 'onlyMessage',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the message property',
+						description: 'Whether to return only the message property',
 					},
 				],
 			},
@@ -69,10 +69,6 @@ export class RedisTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 
 		const credentials = await this.getCredentials('redis');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const redisOptions: redis.ClientOpts = {
 			host: credentials.host as string,

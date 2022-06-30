@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,15 +43,15 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const taskFields: INodeProperties[] = [
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'workspaceId',
@@ -106,7 +107,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Assignee Names or IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
 				default: [],
@@ -187,7 +189,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -211,7 +213,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -313,7 +315,8 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignee IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Assignee Names or IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
 				default: [],

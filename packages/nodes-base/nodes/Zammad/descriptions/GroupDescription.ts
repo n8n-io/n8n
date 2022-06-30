@@ -150,7 +150,7 @@ export const groupDescription: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -161,14 +161,14 @@ export const groupDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'loadGroupCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -219,7 +219,7 @@ export const groupDescription: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				placeholder: 'Add Custom Field',
 				typeOptions: {
 					multipleValues: true,
@@ -230,14 +230,14 @@ export const groupDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'loadGroupCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',

@@ -1,21 +1,20 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 
-import express = require('express');
+import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
-import { genSaltSync, hashSync } from 'bcryptjs';
 import validator from 'validator';
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { N8nApp } from '../Interfaces';
-import { getInstanceBaseUrl, validatePassword } from '../UserManagementHelper';
+import { getInstanceBaseUrl, hashPassword, validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
-import config = require('../../../config');
+import * as config from '../../../config';
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
@@ -26,7 +25,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/forgot-password`,
 		ResponseHelper.send(async (req: PasswordResetRequest.Email) => {
-			if (config.get('userManagement.emails.mode') === '') {
+			if (config.getEnv('userManagement.emails.mode') === '') {
 				Logger.debug('Request to send password reset email failed because emailing was not set up');
 				throw new ResponseHelper.ResponseError(
 					'Email sending must be set up in order to request a password reset email',
@@ -54,7 +53,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User!.findOne({ email, password: Not(IsNull()) });
+			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
 
 			if (!user || !user.password) {
 				Logger.debug(
@@ -70,7 +69,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
 
-			await Db.collections.User!.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
+			await Db.collections.User.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getInstanceBaseUrl();
 			const url = new URL(`${baseUrl}/change-password`);
@@ -90,6 +89,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				void InternalHooksManager.getInstance().onEmailFailed({
 					user_id: user.id,
 					message_type: 'Reset password',
+					public_api: false,
 				});
 				if (error instanceof Error) {
 					throw new ResponseHelper.ResponseError(
@@ -104,6 +104,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			void InternalHooksManager.getInstance().onUserTransactionalEmail({
 				user_id: id,
 				message_type: 'Reset password',
+				public_api: false,
 			});
 
 			void InternalHooksManager.getInstance().onUserPasswordResetRequestClick({
@@ -135,7 +136,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User!.findOne({
+			const user = await Db.collections.User.findOne({
 				id,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -188,7 +189,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User!.findOne({
+			const user = await Db.collections.User.findOne({
 				id: userId,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -205,8 +206,8 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User!.update(userId, {
-				password: hashSync(validPassword, genSaltSync(10)),
+			await Db.collections.User.update(userId, {
+				password: await hashPassword(validPassword),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,
 			});

@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,22 +43,58 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const taskFields: INodeProperties[] = [
+	{
+		displayName: 'Group Source',
+		name: 'groupSource',
+		required: true,
+		type: 'options',
+		default: 'all',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+					'create',
+					'update',
+				],
+				resource: [
+					'task',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'All Groups',
+				value: 'all',
+				description: 'From all groups',
+			},
+			{
+				name: 'My Groups',
+				value: 'mine',
+				description: 'Only load groups that account is member of',
+			},
+		],
+	},
+
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
+
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
+			loadOptionsDependsOn: [
+				'groupSource',
+			],
 		},
 		displayOptions: {
 			show: {
@@ -70,10 +107,9 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Group ID',
 	},
 	{
-		displayName: 'Plan ID',
+		displayName: 'Plan Name or ID',
 		name: 'planId',
 		required: true,
 		type: 'options',
@@ -94,10 +130,10 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Plan.',
+		description: 'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Bucket ID',
+		displayName: 'Bucket Name or ID',
 		name: 'bucketId',
 		required: true,
 		type: 'options',
@@ -118,7 +154,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Bucket.',
+		description: 'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Title',
@@ -136,7 +172,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Title of the task.',
+		description: 'Title of the task',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -156,7 +192,7 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assignedTo',
 				type: 'options',
 				typeOptions: {
@@ -166,17 +202,17 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -186,7 +222,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Labels to assign to the task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Percent Complete',
@@ -197,7 +233,7 @@ export const taskFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 		],
 	},
@@ -221,7 +257,6 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -243,19 +278,52 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
+
 	{
-		displayName: 'Group ID',
+		displayName: 'Tasks For',
+		name: 'tasksFor',
+		default: 'member',
+		required: true,
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Group Member',
+				value: 'member',
+				description: 'Tasks assigned to group member',
+			},
+			{
+				name: 'Plan',
+				value: 'plan',
+				description: 'Tasks in group plan',
+			},
+		],
+	},
+	{
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
+			loadOptionsDependsOn: [
+				'groupSource',
+			],
 		},
 		displayOptions: {
 			show: {
@@ -268,13 +336,12 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Group ID',
 	},
 	{
-		displayName: 'Member ID',
+		displayName: 'Member Name or ID',
 		name: 'memberId',
-		required: false,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getMembers',
 			loadOptionsDependsOn: [
@@ -289,10 +356,38 @@ export const taskFields: INodeProperties[] = [
 				resource: [
 					'task',
 				],
+				tasksFor: [
+					'member',
+				],
 			},
 		},
 		default: '',
-		description: 'Member ID',
+	},
+	{
+		displayName: 'Plan Name or ID',
+		name: 'planId',
+		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getPlans',
+			loadOptionsDependsOn: [
+				'groupId',
+			],
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
+				tasksFor: [
+					'plan',
+				],
+			},
+		},
+		default: '',
 	},
 	{
 		displayName: 'Return All',
@@ -309,7 +404,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -332,8 +427,8 @@ export const taskFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -355,7 +450,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Task.',
+		description: 'The ID of the Task',
 	},
 	{
 		displayName: 'Update Fields',
@@ -375,7 +470,7 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Assigned To',
+				displayName: 'Assigned To Name or ID',
 				name: 'assignedTo',
 				type: 'options',
 				typeOptions: {
@@ -385,41 +480,53 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Bucket ID',
+				displayName: 'Bucket Name or ID',
 				name: 'bucketId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getBuckets',
+					loadOptionsDependsOn: [
+						'updateFields.planId',
+					],
+				},
 				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams.',
+				description: 'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',
-				description: `Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.`,
+				description: 'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
-				displayName: 'Group ID',
+				displayName: 'Group Name or ID',
 				name: 'groupId',
-				type: 'string',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getGroups',
+					loadOptionsDependsOn: [
+						'groupSource',
+					],
+				},
 				default: '',
-				description: 'Group ID',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 					loadOptionsDependsOn: [
-						'planId',
+						'updateFields.planId',
 					],
 				},
 				default: [],
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Labels to assign to the task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Percent Complete',
@@ -430,21 +537,27 @@ export const taskFields: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
-				description: `Percentage of task completion. When set to 100, the task is considered completed.`,
+				description: 'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 			{
-				displayName: 'Plan ID',
+				displayName: 'Plan Name or ID',
 				name: 'planId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getPlans',
+					loadOptionsDependsOn: [
+						'groupId',
+					],
+				},
 				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams.',
+				description: 'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the task.',
+				description: 'Title of the task',
 			},
 		],
 	},

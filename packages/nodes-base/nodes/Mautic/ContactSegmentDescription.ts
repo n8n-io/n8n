@@ -7,6 +7,7 @@ export const contactSegmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const contactSegmentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -53,13 +53,13 @@ export const contactSegmentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 
-		displayName: 'Segment ID',
+		displayName: 'Segment Name or ID',
 		name: 'segmentId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {
@@ -76,7 +76,6 @@ export const contactSegmentFields: INodeProperties[] = [
 			loadOptionsMethod: 'getSegments',
 		},
 		default: '',
-		description: 'Segment ID',
 
 	},
 ];

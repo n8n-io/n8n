@@ -16,7 +16,7 @@ import {
 
 import {
 	dropcontactApiRequest,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
@@ -95,6 +95,7 @@ export class Dropcontact implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -122,6 +123,7 @@ export class Dropcontact implements INodeType {
 					},
 				},
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.',
 			},
 			{
@@ -235,14 +237,14 @@ export class Dropcontact implements INodeType {
 							},
 						},
 						default: 45,
-						description: 'When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step',
+						description: 'When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step.',
 					},
 					{
 						displayName: 'French Company Enrich',
 						name: 'siren',
 						type: 'boolean',
 						default: false,
-						description: `Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies`,
+						description: 'Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies.',
 					},
 					{
 						displayName: 'Language',
@@ -270,7 +272,7 @@ export class Dropcontact implements INodeType {
 		credentialTest: {
 			async dropcontactApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					return {
 						status: 'Error',

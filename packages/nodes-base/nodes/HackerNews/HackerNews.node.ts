@@ -19,6 +19,7 @@ export class HackerNews implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hacker News',
 		name: 'hackerNews',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:hackernews.png',
 		group: ['transform'],
 		version: 1,
@@ -37,6 +38,7 @@ export class HackerNews implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'All',
@@ -52,7 +54,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'article',
-				description: 'Resource to consume.',
 			},
 
 
@@ -63,6 +64,7 @@ export class HackerNews implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -78,12 +80,12 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'getAll',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -99,12 +101,12 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -120,7 +122,6 @@ export class HackerNews implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'Operation to perform.',
 			},
 			// ----------------------------------
 			//         Fields
@@ -166,7 +167,7 @@ export class HackerNews implements INodeType {
 				name: 'returnAll',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return all results for the query or only up to a limit.',
+				description: 'Whether to return all results or only up to a given limit',
 				displayOptions: {
 					show: {
 						resource: [
@@ -182,8 +183,11 @@ export class HackerNews implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				default: 100,
-				description: 'Limit of Hacker News articles to be returned for the query.',
+				description: 'Max number of results to return',
 				displayOptions: {
 					show: {
 						resource: [
@@ -216,11 +220,11 @@ export class HackerNews implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include comments',
+						displayName: 'Include Comments',
 						name: 'includeComments',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to include all the comments in a Hacker News article.',
+						description: 'Whether to include all the comments in a Hacker News article',
 					},
 				],
 			},
@@ -246,7 +250,7 @@ export class HackerNews implements INodeType {
 						name: 'keyword',
 						type: 'string',
 						default: '',
-						description: 'The keyword for filtering the results of the query.',
+						description: 'The keyword for filtering the results of the query',
 					},
 					{
 						displayName: 'Tags',
@@ -254,14 +258,19 @@ export class HackerNews implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'Story',
-								value: 'story',
-								description: 'Returns query results filtered by story tag',
+								name: 'Ask HN',
+								value: 'ask_hn', // snake case per HN tags
+								description: 'Returns query results filtered by Ask HN tag',
 							},
 							{
 								name: 'Comment',
 								value: 'comment',
 								description: 'Returns query results filtered by comment tag',
+							},
+							{
+								name: 'Front Page',
+								value: 'front_page', // snake case per HN tags
+								description: 'Returns query results filtered by Front Page tag',
 							},
 							{
 								name: 'Poll',
@@ -274,18 +283,13 @@ export class HackerNews implements INodeType {
 								description: 'Returns query results filtered by Show HN tag',
 							},
 							{
-								name: 'Ask HN',
-								value: 'ask_hn', // snake case per HN tags
-								description: 'Returns query results filtered by Ask HN tag',
-							},
-							{
-								name: 'Front Page',
-								value: 'front_page', // snake case per HN tags
-								description: 'Returns query results filtered by Front Page tag',
+								name: 'Story',
+								value: 'story',
+								description: 'Returns query results filtered by story tag',
 							},
 						],
-						default: '',
-						description: 'Tags for filtering the results of the query.',
+						default: [],
+						description: 'Tags for filtering the results of the query',
 					},
 				],
 			},

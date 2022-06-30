@@ -23,6 +23,7 @@ import {
 	ICredentialsDecrypted,
 	INodeCredentialTestResult,
 	INodeTypeDescription,
+	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
 
@@ -118,6 +119,35 @@ const module: Module<ICredentialsState, IRootState> = {
 
 					return false;
 				});
+			};
+		},
+		getScopesByCredentialType (_: ICredentialsState, getters: any) { // tslint:disable-line:no-any
+			return (credentialTypeName: string) => {
+				const credentialType = getters.getCredentialTypeByName(credentialTypeName) as {
+					properties: INodeProperties[];
+				};
+
+				const scopeProperty = credentialType.properties.find((p) => p.name === 'scope');
+
+				if (
+					!scopeProperty ||
+					!scopeProperty.default ||
+					typeof scopeProperty.default !== 'string' ||
+					scopeProperty.default === ''
+				) {
+					return [];
+				}
+
+				let { default: scopeDefault } = scopeProperty;
+
+				// disregard expressions for display
+				scopeDefault = scopeDefault.replace(/^=/, '').replace(/\{\{.*\}\}/, '');
+
+				if (/ /.test(scopeDefault)) return scopeDefault.split(' ');
+
+				if (/,/.test(scopeDefault)) return scopeDefault.split(',');
+
+				return [scopeDefault];
 			};
 		},
 	},

@@ -17,14 +17,14 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import get = require('lodash.get');
+import get from 'lodash.get';
 
-import { 
+import {
 	query,
 } from './Queries';
 
 export async function linearApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('linearApi') as IDataObject;
+	const credentials = await this.getCredentials('linearApi');
 
 	const endpoint = 'https://api.linear.app/graphql';
 
@@ -69,7 +69,7 @@ export async function linearApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	return returnData;
 }
 
-export async function validateCrendetials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = decryptedCredentials;
 
 	const options: OptionsWithUri = {

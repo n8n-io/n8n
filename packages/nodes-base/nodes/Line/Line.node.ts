@@ -24,6 +24,7 @@ export class Line implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Line',
 		name: 'line',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:line.png',
 		group: ['input'],
 		version: 1,
@@ -52,6 +53,7 @@ export class Line implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Notification',
@@ -59,7 +61,6 @@ export class Line implements INodeType {
 					},
 				],
 				default: 'notification',
-				description: 'The resource to operate on.',
 			},
 			...notificationOperations,
 			...notificationFields,
@@ -69,7 +70,7 @@ export class Line implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

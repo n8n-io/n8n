@@ -11,6 +11,7 @@ export const messageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,7 +42,6 @@ export const messageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -77,10 +77,10 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
-		description: ' The room ID',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',
 		},
@@ -133,7 +133,6 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'toPersonId',
-		description: 'The person ID',
 		type: 'string',
 		required: true,
 		default: '',
@@ -249,7 +248,6 @@ export const messageFields: INodeProperties[] = [
 													},
 												],
 												default: 'textBlock',
-												description: '',
 											},
 											...getTextBlockProperties(),
 											...getInputTextProperties(),
@@ -290,7 +288,6 @@ export const messageFields: INodeProperties[] = [
 													},
 												],
 												default: 'openUrl',
-												description: '',
 											},
 											{
 												displayName: 'URL',
@@ -319,7 +316,7 @@ export const messageFields: INodeProperties[] = [
 													},
 												},
 												default: '',
-												description: 'Any extra data to pass along. These are essentially ‘hidden’ properties',
+												description: 'Any extra data to pass along. These are essentially ‘hidden’ properties.',
 											},
 											{
 												displayName: 'Verb',
@@ -373,7 +370,6 @@ export const messageFields: INodeProperties[] = [
 									},
 								],
 								default: 'url',
-								description: '',
 							},
 							{
 								displayName: 'Input Field With File',
@@ -413,7 +409,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'markdown',
 				type: 'string',
 				default: '',
-				description: 'The message in markdown format. When used the text parameter is used to provide alternate text for UI clients that do not support rich text',
+				description: 'The message in markdown format. When used the text parameter is used to provide alternate text for UI clients that do not support rich text.',
 			},
 		],
 	},
@@ -466,9 +462,9 @@ export const messageFields: INodeProperties[] = [
 	//             message: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
-		description: 'List messages in a room, by ID',
+		description: 'List messages in a room, by ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',
@@ -491,7 +487,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -508,7 +504,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -569,7 +565,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'mentionedPeople',
 				type: 'string',
 				default: '',
-				description: `List only messages with certain person mentioned. Enter their ID. You can use 'me' as a shorthand for yourself`,
+				description: 'List only messages with certain person mentioned. Enter their ID. You can use \'me\' as a shorthand for yourself',
 			},
 		],
 	},
@@ -637,7 +633,7 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Markdown',
 		name: 'markdownText',
-		description: 'The message, in Markdown format. The maximum message length is 7439 bytes',
+		description: 'The message, in Markdown format. The maximum message length is 7439 bytes.',
 		type: 'string',
 		required: true,
 		default: '',

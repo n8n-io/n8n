@@ -30,6 +30,7 @@ export class Automizy implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Automizy',
 		name: 'automizy',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:automizy.png',
 		group: ['input'],
 		version: 1,
@@ -51,6 +52,7 @@ export class Automizy implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -62,7 +64,6 @@ export class Automizy implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.',
 			},
 
 			...contactOperations,
@@ -137,7 +138,7 @@ export class Automizy implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

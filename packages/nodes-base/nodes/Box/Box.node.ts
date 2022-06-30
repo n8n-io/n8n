@@ -26,7 +26,7 @@ import {
 	folderOperations,
 } from './FolderDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import {
 	noCase,
@@ -36,6 +36,7 @@ export class Box implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box',
 		name: 'box',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['input'],
 		version: 1,
@@ -57,6 +58,7 @@ export class Box implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -68,7 +70,6 @@ export class Box implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 			...fileOperations,
 			...fileFields,
@@ -80,7 +81,7 @@ export class Box implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();

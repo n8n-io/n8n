@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,7 +53,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -62,9 +62,10 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -82,9 +83,10 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -122,9 +124,10 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -148,9 +151,10 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -174,9 +178,10 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -235,7 +240,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignees',
+				displayName: 'Assignee Names or IDs',
 				name: 'assignees',
 				type: 'multiOptions',
 				typeOptions: {
@@ -254,6 +259,7 @@ export const taskFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 				description: 'Custom fields to set as JSON in the format: <code>[ {"id": "", "value": ""} ]</code>',
 			},
 			{
@@ -319,9 +325,10 @@ export const taskFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 					loadOptionsDependsOn: [
@@ -331,7 +338,7 @@ export const taskFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -341,13 +348,13 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The array of tags applied to this task',
+				description: 'The array of tags applied to this task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Time Estimate',
 				name: 'timeEstimate',
 				type: 'number',
-				description: 'time estimate in minutes',
+				description: 'Time estimate in minutes',
 				default: 1,
 			},
 		],
@@ -372,7 +379,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -396,7 +402,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'addAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma',
+				description: 'Assignees IDs. Multiple ca be added separated by comma.',
 			},
 			{
 				displayName: 'Content',
@@ -459,14 +465,13 @@ export const taskFields: INodeProperties[] = [
 				name: 'removeAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma',
+				description: 'Assignees IDs. Multiple ca be added separated by comma.',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'status',
 			},
 			{
 				displayName: 'Start Date',
@@ -484,7 +489,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Time Estimate',
 				name: 'timeEstimate',
 				type: 'number',
-				description: 'time estimate in minutes',
+				description: 'Time estimate in minutes',
 				default: 1,
 			},
 		],
@@ -510,16 +515,16 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -537,9 +542,10 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -577,9 +583,10 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Folder ID',
+		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -603,9 +610,10 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -629,9 +637,10 @@ export const taskFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -669,7 +678,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -693,7 +702,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -719,7 +728,7 @@ export const taskFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Assignees',
+				displayName: 'Assignee Names or IDs',
 				name: 'assignees',
 				type: 'multiOptions',
 				typeOptions: {
@@ -739,7 +748,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -747,14 +756,14 @@ export const taskFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Operator',
@@ -762,8 +771,8 @@ export const taskFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Equal',
-										value: 'equal',
+										name: '!=',
+										value: '!=',
 									},
 									{
 										name: '<',
@@ -782,20 +791,20 @@ export const taskFields: INodeProperties[] = [
 										value: '>=',
 									},
 									{
-										name: '!=',
-										value: '!=',
-									},
-									{
-										name: 'Is Null',
-										value: 'IS NULL',
+										name: 'Equal',
+										value: 'equal',
 									},
 									{
 										name: 'Is Not Null',
 										value: 'IS NOT NULL',
 									},
+									{
+										name: 'Is Null',
+										value: 'IS NULL',
+									},
 								],
 								default: 'equal',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 							{
 								displayName: 'Value',
@@ -810,7 +819,7 @@ export const taskFields: INodeProperties[] = [
 									},
 								},
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -863,6 +872,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'includeClosed',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The response does by default not include closed tasks. Set this to true and dont send a status filter to include closed tasks.',
 			},
 			{
@@ -890,7 +900,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Statuses',
+				displayName: 'Status Names or IDs',
 				name: 'statuses',
 				type: 'multiOptions',
 				typeOptions: {
@@ -906,10 +916,10 @@ export const taskFields: INodeProperties[] = [
 				name: 'subtasks',
 				type: 'boolean',
 				default: false,
-				description: 'Include subtasks, default false',
+				description: 'Whether to include subtasks, default false',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -919,7 +929,7 @@ export const taskFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The array of tags applied to this task',
+				description: 'The array of tags applied to this task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -943,7 +953,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'task ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -965,7 +974,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Task ID',
 	},
 	{
 		displayName: 'Return All',
@@ -982,7 +990,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -1006,7 +1014,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1028,7 +1036,7 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the task to add custom field to.',
+		description: 'The ID of the task to add custom field to',
 	},
 	{
 		displayName: 'Field ID',
@@ -1046,10 +1054,10 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the field to add custom field to.',
+		description: 'The ID of the field to add custom field to',
 	},
 	{
-		displayName: 'Value is JSON',
+		displayName: 'Value Is JSON',
 		name: 'jsonParse',
 		type: 'boolean',
 		displayOptions: {
@@ -1063,9 +1071,8 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: `The value is JSON and will be parsed as such. Is needed
-		if for example needed for labels which expects the value
-		to be an array.`,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description: 'The value is JSON and will be parsed as such. Is needed if for example needed for labels which expects the value to be an array.',
 	},
 	{
 		displayName: 'Value',
@@ -1083,6 +1090,6 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The value to set on custom field.',
+		description: 'The value to set on custom field',
 	},
 ];

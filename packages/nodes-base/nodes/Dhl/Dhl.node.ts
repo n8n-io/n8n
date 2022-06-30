@@ -15,7 +15,7 @@ import {
 
 import {
 	dhlApiRequest,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunctions';
 
 export class Dhl implements INodeType {
@@ -92,7 +92,7 @@ export class Dhl implements INodeType {
 						name: 'recipientPostalCode',
 						type: 'string',
 						default: '',
-						description: `DHL will return more detailed information on the shipment when you provide the Recipient's Postal Code - it acts as a verification step`,
+						description: 'DHL will return more detailed information on the shipment when you provide the Recipient\'s Postal Code - it acts as a verification step',
 					},
 				],
 			},
@@ -103,7 +103,7 @@ export class Dhl implements INodeType {
 		credentialTest: {
 			async dhlApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					if (error.statusCode === 401) {
 						return {

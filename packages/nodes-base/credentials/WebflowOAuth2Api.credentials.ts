@@ -12,6 +12,12 @@ export class WebflowOAuth2Api implements ICredentialType {
 	documentationUrl = 'webflow';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
@@ -36,7 +42,7 @@ export class WebflowOAuth2Api implements ICredentialType {
 			name: 'authQueryParameters',
 			type: 'hidden',
 			default: '',
-			description: 'For some services additional query parameters have to be set which can be defined here.',
+			description: 'For some services additional query parameters have to be set which can be defined here',
 			placeholder: '',
 		},
 		{
@@ -44,7 +50,6 @@ export class WebflowOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
-			description: '',
 		},
 	];
 }
