@@ -8,6 +8,7 @@ import config from '../../../config';
 import {
 	BOOTSTRAP_MYSQL_CONNECTION_NAME,
 	BOOTSTRAP_POSTGRES_CONNECTION_NAME,
+	DB_INITIALIZATION_TIMEOUT,
 	MAPPING_TABLES,
 	MAPPING_TABLES_TO_CLEAR,
 } from './constants';
@@ -38,6 +39,8 @@ export async function init() {
 	const dbType = config.getEnv('database.type');
 
 	if (dbType === 'sqlite') {
+		jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
+
 		// no bootstrap connection required
 		const testDbName = `n8n_test_sqlite_${randomString(6, 10)}_${Date.now()}`;
 		await Db.init(getSqliteOptions({ name: testDbName }));
@@ -47,6 +50,8 @@ export async function init() {
 	}
 
 	if (dbType === 'postgresdb') {
+		jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
+
 		let bootstrapPostgres;
 		const pgOptions = getBootstrapPostgresOptions();
 
@@ -92,6 +97,8 @@ export async function init() {
 	}
 
 	if (dbType === 'mysqldb') {
+		// initialization timeout in test/setup.ts
+
 		const bootstrapMysql = await createConnection(getBootstrapMySqlOptions());
 
 		const testDbName = `mysql_${randomString(6, 10)}_${Date.now()}_n8n_test`;
@@ -147,7 +154,9 @@ async function truncateMappingTables(
 
 	if (dbType === 'sqlite') {
 		const promises = mappingTables.map((tableName) =>
-			testDb.query(`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`),
+			testDb.query(
+				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
+			),
 		);
 
 		return Promise.all(promises);
