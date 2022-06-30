@@ -219,7 +219,7 @@ export class WebflowTrigger implements INodeType {
 						webhookData.webhookId = webhook._id;
 						return true;
 					}
-				};
+				}
 
 				return false;
 			},
