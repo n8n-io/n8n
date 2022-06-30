@@ -61,7 +61,7 @@ export class GoogleAds implements INodeType {
 			//-------------------------------
 			...campaignOperations,
 			{
-				displayName: 'All fields named with <i>micros</i> are expressed in micros, i.e. one million means 1 local unit',
+				displayName: 'Divide field names expressed with <i>micros</i> by 1,000,000 to get the actual value',
 				name: 'campaigsNotice',
 				type: 'notice',
 				default: '',
