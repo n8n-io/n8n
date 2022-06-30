@@ -671,6 +671,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 					trackProperties.node_type = this.$store.getters.activeNode.type;
 				}
 
+				if (this.authError && this.authError !== '') {
+					trackProperties.authError = this.authError;
+				}
+
 				this.$telemetry.track('User saved credentials', trackProperties);
 			}
 
