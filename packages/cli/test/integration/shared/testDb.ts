@@ -2,7 +2,7 @@ import { exec as callbackExec } from 'child_process';
 import { promisify } from 'util';
 
 import { createConnection, getConnection, ConnectionOptions, Connection } from 'typeorm';
-import { Credentials, UserSettings } from 'n8n-core';
+import { UserSettings } from 'n8n-core';
 
 import config from '../../../config';
 import {
@@ -163,13 +163,15 @@ async function truncateMappingTables(
 	}
 
 	if (dbType === 'postgresdb') {
-		const promises = mappingTables.map((tableName) => {
-			const schema = config.getEnv('database.postgresdb.schema');
-			const fullTableName = `${schema}.${tableName}`;
-			testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
-		});
+		const schema = config.getEnv('database.postgresdb.schema');
 
-		return Promise.all(promises);
+		// `TRUNCATE` in postgres cannot be parallelized
+		for (const tableName of mappingTables) {
+			const fullTableName = `${schema}.${tableName}`;
+			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
+		}
+
+		return Promise.resolve([]);
 	}
 
 	// mysqldb, mariadb
@@ -210,16 +212,16 @@ export async function truncate(collections: Array<CollectionName>, testDbName: s
 	}
 
 	if (dbType === 'postgresdb') {
-		const truncationPromises = collections.map((collection) => {
-			const schema = config.getEnv('database.postgresdb.schema');
+		const schema = config.getEnv('database.postgresdb.schema');
+
+		// `TRUNCATE` in postgres cannot be parallelized
+		for (const collection of collections) {
 			const fullTableName = `${schema}.${toTableName(collection)}`;
+			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
+		}
 
-			return testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
-		});
-
-		truncationPromises.push(truncateMappingTables(dbType, collections, testDb));
-
-		return Promise.all(truncationPromises);
+		return await truncateMappingTables(dbType, collections, testDb);
+		// return Promise.resolve([])
 	}
 
 	/**
