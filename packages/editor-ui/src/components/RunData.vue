@@ -695,7 +695,7 @@ export default mixins(
 					session_id: this.sessionId,
 					run_index: this.runIndex,
 					is_output_present: this.hasNodeRun || this.hasPinData,
-					view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
+					view: !this.hasNodeRun && !this.hasPinData ? 'undefined' : this.displayMode,
 					is_data_pinned: this.hasPinData,
 				});
 			},
@@ -757,7 +757,7 @@ export default mixins(
 			onDataPinningError(
 				{ errorType, source }: {
 					errorType: 'data-too-large' | 'invalid-json',
-					source: 'on-close' | 'pin-icon-click' | 'save-edit'
+					source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit'
 				},
 			) {
 				this.$telemetry.track('Ndv data pinning failure', {
@@ -1161,7 +1161,7 @@ export default mixins(
 					copy_type: copyType,
 					workflow_id: this.$store.getters.workflowId,
 					pane: 'output',
-					in_execution_log: false, // TODO: Confirm with Niv
+					in_execution_log: this.isReadOnly,
 				});
 
 				this.copyToClipboard(value);

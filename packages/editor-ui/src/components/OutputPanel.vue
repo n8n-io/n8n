@@ -9,6 +9,7 @@
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
+		:isReadOnly="isReadOnly"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
@@ -83,6 +84,9 @@ export default Vue.extend({
 	props: {
 		runIndex: {
 			type: Number,
+		},
+		isReadOnly: {
+			type: Boolean,
 		},
 		linkedRuns: {
 			type: Boolean,
