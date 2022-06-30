@@ -117,39 +117,33 @@
 			ref="dataContainer"
 		>
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
-				<n8n-tooltip placement="bottom-end" :disabled="!!state.value">
-					<template #content>
-						<div :class="$style['tooltip-container']">
-							{{ $locale.baseText('runData.copyDisabled') }}
-						</div>
-					</template>
-					<el-dropdown
-						trigger="click"
-						:disabled="!state.value"
-						@command="handleCopyClick"
-						@visible-change="copyDropdownOpen = $event"
-					>
-						<span class="el-dropdown-link">
-							<n8n-icon-button
-								:title="$locale.baseText('runData.copyToClipboard')"
-								icon="copy"
-								type="tertiary"
-								:circle="false"
-							/>
-						</span>
-						<el-dropdown-menu slot="dropdown">
-							<el-dropdown-item :command="{command: 'value'}">
-								{{ $locale.baseText('runData.copyValue') }}
-							</el-dropdown-item>
-							<el-dropdown-item :command="{command: 'itemPath'}" divided>
-								{{ $locale.baseText('runData.copyItemPath') }}
-							</el-dropdown-item>
-							<el-dropdown-item :command="{command: 'parameterPath'}">
-								{{ $locale.baseText('runData.copyParameterPath') }}
-							</el-dropdown-item>
-						</el-dropdown-menu>
-					</el-dropdown>
-				</n8n-tooltip>
+				<el-dropdown
+					trigger="hover"
+					:disabled="!state.value"
+					@command="handleCopyClick"
+					@visible-change="copyDropdownOpen = $event"
+				>
+					<span class="el-dropdown-link">
+						<n8n-icon-button
+							:title="$locale.baseText('runData.copyToClipboard')"
+							icon="copy"
+							type="tertiary"
+							:circle="false"
+							@click="handleCopyClick({ command: 'value' })"
+						/>
+					</span>
+					<el-dropdown-menu slot="dropdown">
+						<el-dropdown-item :command="{command: 'value'}">
+							{{ $locale.baseText('runData.copyValue') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}" divided>
+							{{ $locale.baseText('runData.copyItemPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">
+							{{ $locale.baseText('runData.copyParameterPath') }}
+						</el-dropdown-item>
+					</el-dropdown-menu>
+				</el-dropdown>
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
