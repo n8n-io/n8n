@@ -21,7 +21,7 @@
 				<span :class="$style.title">
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
-				<RunInfo v-if="runsCount === 1" :taskData="runTaskData" />
+				<RunInfo v-if="runsCount === 1" v-show="!outputPanelEditMode.enabled" :taskData="runTaskData" />
 
 				<n8n-info-tip
 					theme="warning"
@@ -75,7 +75,7 @@ import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8
 import Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import {MULTIPLE_OUTPUT_NODE_TYPES, TEST_PIN_DATA} from "@/constants";
+import {MULTIPLE_OUTPUT_NODE_TYPES} from "@/constants";
 
 type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
