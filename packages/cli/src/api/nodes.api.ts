@@ -3,7 +3,7 @@ import express = require('express');
 import { LoggerProxy, PublicInstalledPackage } from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
-import { ResponseHelper, LoadNodesAndCredentials, Push } from '..';
+import { ResponseHelper, LoadNodesAndCredentials, Push, InternalHooksManager } from '..';
 import { NodeRequest } from '../requests';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import {
@@ -109,6 +109,15 @@ nodesController.post(
 				});
 			});
 
+			void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
+				user_id: req.user.id,
+				input_string: name,
+				package_name: parsedPackageName.packageName,
+				success: true,
+				package_version: parsedPackageName.version,
+				package_node_names: installedPackage.installedNodes.map((nodeData) => nodeData.name),
+			});
+
 			return installedPackage;
 		} catch (error) {
 			let statusCode = 500;
@@ -121,6 +130,15 @@ nodesController.post(
 			) {
 				statusCode = 400;
 			}
+
+			void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
+				user_id: req.user.id,
+				input_string: name,
+				package_name: parsedPackageName.packageName,
+				success: false,
+				package_version: parsedPackageName.version,
+				failure_reason: errorMessage,
+			});
 			throw new ResponseHelper.ResponseError(
 				`Error loading package "${name}": ${errorMessage}`,
 				undefined,
@@ -201,6 +219,13 @@ nodesController.delete(
 					version: installedNode.latestVersion,
 				});
 			});
+
+			void InternalHooksManager.getInstance().onCommunityPackageDeleteFinished({
+				user_id: req.user.id,
+				package_name: name,
+				package_version: installedPackage.installedVersion,
+				package_node_names: installedPackage.installedNodes.map((nodeData) => nodeData.name),
+			});
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
@@ -258,6 +283,15 @@ nodesController.patch(
 					version: nodeData.latestVersion,
 				});
 			});
+
+			void InternalHooksManager.getInstance().onCommunityPackageUpdateFinished({
+				user_id: req.user.id,
+				package_name: name,
+				package_version_current: packagePreviouslyInstalled.installedVersion,
+				package_version_new: newInstalledPackage.installedVersion,
+				package_node_names: newInstalledPackage.installedNodes.map((node) => node.name),
+			});
+
 			return newInstalledPackage;
 		} catch (error) {
 			packagePreviouslyInstalled.installedNodes.forEach((installedNode) => {
