@@ -836,7 +836,7 @@ export class Gitlab implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Order by',
+						displayName: 'Order By',
 						name: 'order_by',
 						type: 'options',
 						options: [

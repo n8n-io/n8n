@@ -37,7 +37,7 @@ export const imageFields: INodeProperties[] = [
 /*                                image:create                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
 		typeOptions: {
@@ -55,7 +55,7 @@ export const imageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The template ID you want to use',
+		description: 'The template ID you want to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -86,7 +86,7 @@ export const imageFields: INodeProperties[] = [
 				name: 'waitForImage',
 				type: 'boolean',
 				default: false,
-				description: 'Wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait Max Tries".',
+				description: 'Whether to wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait Max Tries".',
 			},
 			{
 				displayName: 'Wait Max Tries',
@@ -111,7 +111,7 @@ export const imageFields: INodeProperties[] = [
 				name: 'webhookUrl',
 				type: 'string',
 				default: '',
-				description: 'A url to POST the Image object to upon rendering completed',
+				description: 'A URL to POST the Image object to upon rendering completed',
 			},
 		],
 	},
@@ -140,7 +140,7 @@ export const imageFields: INodeProperties[] = [
 				name: 'modificationsValues',
 				values: [
 					{
-						displayName: 'Name',
+						displayName: 'Name or ID',
 						name: 'name',
 						type: 'options',
 						typeOptions: {
@@ -150,7 +150,7 @@ export const imageFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The name of the item you want to change',
+						description: 'The name of the item you want to change. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Text',
@@ -178,7 +178,7 @@ export const imageFields: INodeProperties[] = [
 						name: 'imageUrl',
 						type: 'string',
 						default: '',
-						description: 'Replacement image url you want to use (must be publicly viewable)',
+						description: 'Replacement image URL you want to use (must be publicly viewable)',
 					},
 				],
 			},

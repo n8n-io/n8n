@@ -21,7 +21,7 @@ export const collectionOperations: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
-				name: 'Get all Entries',
+				name: 'Get All Entries',
 				value: 'getAll',
 				description: 'Get all collection entries',
 			},
@@ -37,7 +37,7 @@ export const collectionOperations: INodeProperties[] = [
 
 export const collectionFields: INodeProperties[] = [
 	{
-		displayName: 'Collection',
+		displayName: 'Collection Name or ID',
 		name: 'collection',
 		type: 'options',
 		default: '',
@@ -52,7 +52,7 @@ export const collectionFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Name of the collection to operate on',
+		description: 'Name of the collection to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 
 	// Collection:entry:getAll
@@ -147,16 +147,15 @@ export const collectionFields: INodeProperties[] = [
 				displayName: 'Populate',
 				name: 'populate',
 				type: 'boolean',
-				required: true,
 				default: true,
-				description: 'Resolve linked collection items',
+				description: 'Whether to resolve linked collection items',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Skip',
@@ -198,7 +197,7 @@ export const collectionFields: INodeProperties[] = [
 	// Collection:entry:create
 	// Collection:entry:update
 	{
-		displayName: 'JSON Data fields',
+		displayName: 'JSON Data Fields',
 		name: 'jsonDataFields',
 		type: 'boolean',
 		default: false,
@@ -213,7 +212,7 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If new entry fields should be set via the value-key pair UI or JSON',
+		description: 'Whether new entry fields should be set via the value-key pair UI or JSON',
 	},
 	{
 		displayName: 'Entry Data',
