@@ -116,6 +116,8 @@ export default mixins(showMessage).extend({
 					package_name: this.activePackage.packageName,
 					package_node_names: this.activePackage.installedNodes.map(node => node.name),
 					package_version: this.activePackage.installedVersion,
+					package_author: this.activePackage.authorName,
+					package_author_email: this.activePackage.authorEmail,
 				});
 				this.loading = true;
 				await this.$store.dispatch('communityNodes/uninstallPackage', this.activePackageName);
@@ -137,6 +139,8 @@ export default mixins(showMessage).extend({
 					package_node_names: this.activePackage.installedNodes.map(node => node.name),
 					package_version_current: this.activePackage.installedVersion,
 					package_version_new: this.activePackage.updateAvailable,
+					package_author: this.activePackage.authorName,
+					package_author_email: this.activePackage.authorEmail,
 				});
 				this.loading = true;
 				const updatedVersion = this.activePackage.updateAvailable;
