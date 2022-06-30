@@ -211,25 +211,15 @@ export class WebflowTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const siteId = this.getNodeParameter('site') as string;
 
-				if (webhookData.webhookId) {
-					const endpoint = `/sites/${siteId}/webhooks/${webhookData.webhookId}`;
-					try {
-						await webflowApiRequest.call(this, 'GET', endpoint);
-					} catch (error) {
-						return false;
-					}
-					return true;
-				} else {
-					const event = this.getNodeParameter('event') as string;
-					const registeredWebhooks = await webflowApiRequest.call(this, 'GET', `/sites/${siteId}/webhooks`) as IDataObject[];
+				const event = this.getNodeParameter('event') as string;
+				const registeredWebhooks = await webflowApiRequest.call(this, 'GET', `/sites/${siteId}/webhooks`) as IDataObject[];
 
-					for (const webhook of registeredWebhooks) {
-						if (webhook.url === webhookUrl && webhook.triggerType === event) {
-							webhookData.webhookId = webhook._id;
-							return true;
-						}
+				for (const webhook of registeredWebhooks) {
+					if (webhook.url === webhookUrl && webhook.triggerType === event) {
+						webhookData.webhookId = webhook._id;
+						return true;
 					}
-				}
+				};
 
 				return false;
 			},
