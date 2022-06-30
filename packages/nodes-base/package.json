@@ -739,7 +739,6 @@
     "cron": "~1.7.2",
     "entities": "^3.0.1",
     "eventsource": "^1.0.7",
-    "entities": "^3.0.1",
     "eventsource": "^2.0.2",
     "fast-glob": "^3.2.5",
     "fflate": "^0.7.0",
