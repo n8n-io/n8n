@@ -2144,6 +2144,14 @@ export default mixins(
 
 				await this.addNodes([newNodeData]);
 
+				const pinData = this.$store.getters['pinDataByNodeName'](nodeName);
+				if (pinData) {
+					this.$store.commit('pinData', {
+						node: newNodeData,
+						data: pinData,
+					});
+				}
+
 				this.$store.commit('setStateDirty', true);
 
 				// Automatically deselect all nodes and select the current one and also active
