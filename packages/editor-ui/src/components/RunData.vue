@@ -1456,10 +1456,6 @@ export default mixins(
 		color: var(--color-primary);
 		background: var(--color-primary-tint-2);
 	}
-
-	svg {
-		transform: rotate(45deg);
-	}
 }
 
 .spinner {
