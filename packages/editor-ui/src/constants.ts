@@ -250,3 +250,14 @@ export enum VIEWS {
 	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",
 }
+
+export const TEST_PIN_DATA = [
+	{
+		name: "First item",
+		code: 1,
+	},
+	{
+		name: "Second item",
+		code: 2,
+	},
+];

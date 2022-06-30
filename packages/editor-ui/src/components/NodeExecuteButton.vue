@@ -22,6 +22,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { workflowRun } from './mixins/workflowRun';
 import { pinData } from './mixins/pinData';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 
 export default mixins(
 	workflowRun,
@@ -177,6 +178,7 @@ export default mixins(
 					);
 
 					if (shouldUnpinAndExecute) {
+						dataPinningEventBus.$emit('data-unpinning', { source: 'unpin-and-execute-modal' });
 						this.$store.commit('unpinData', { node: this.node });
 					}
 				}
