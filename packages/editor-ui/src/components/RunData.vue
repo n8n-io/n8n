@@ -48,7 +48,7 @@
 					v-if="canPinData"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
-					class="ml-xs"
+					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
 					:disabled="editMode.enabled"
@@ -76,7 +76,7 @@
 						</div>
 					</template>
 					<n8n-icon-button
-						:class="`ml-xs ${$style['pin-data-button']} ${hasPinData ? $style['pin-data-button-active'] : ''}`"
+						:class="`ml-2xs ${$style['pin-data-button']} ${hasPinData ? $style['pin-data-button-active'] : ''}`"
 						type="tertiary"
 						active
 						icon="thumbtack"
@@ -1250,6 +1250,9 @@ export default mixins(
 .pinned-data-callout {
 	border-radius: inherit;
 	border-bottom-right-radius: 0;
+	border-top: 0;
+	border-left: 0;
+	border-right: 0;
 }
 
 .header {
