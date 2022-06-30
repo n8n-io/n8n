@@ -42,12 +42,6 @@ export class NotionTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'To access content, make sure it\'s shared with your integration in Notion',
-				name: 'notionNotice',
-				type: 'notice',
-				default: '',
-			},
-			{
 				displayName: 'Event',
 				name: 'event',
 				type: 'options',
@@ -62,6 +56,12 @@ export class NotionTrigger implements INodeType {
 					},
 				],
 				required: true,
+				default: '',
+			},
+			{
+				displayName: 'In Notion, make sure you share your database with your integration. Otherwise it won\'t be accessible, or listed here.',
+				name: 'notionNotice',
+				type: 'notice',
 				default: '',
 			},
 			{
