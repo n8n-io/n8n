@@ -194,6 +194,7 @@ import {
 	ITaskData,
 	INodeCredentialsDetails,
 	TelemetryHelpers,
+	ITelemetryTrackProperties,
 	IWorkflowBase,
 } from 'n8n-workflow';
 import {
@@ -1518,7 +1519,7 @@ export default mixins(
 					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
 				} else {
 					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-					const trackProperties: IDataObject = {
+					const trackProperties: ITelemetryTrackProperties = {
 						node_type: nodeTypeName,
 						workflow_id: this.$store.getters.workflowId,
 						drag_and_drop: options.dragAndDrop,

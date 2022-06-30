@@ -1,6 +1,7 @@
 import _Vue from "vue";
 import {
 	ITelemetrySettings,
+	ITelemetryTrackProperties,
 	IDataObject,
 } from 'n8n-workflow';
 import { ILogLevel, INodeCreateElement, IRootState } from "@/Interface";
@@ -87,7 +88,7 @@ class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: IDataObject) {
+	track(event: string, properties?: ITelemetryTrackProperties) {
 		if (this.telemetry) {
 			const updatedProperties = {
 				...properties,
