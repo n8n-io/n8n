@@ -129,6 +129,23 @@ const additionalFields: Array<INodeProperties> = [
 		},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				type: 'options',
+				default: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers'
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'assignedTo',
+					}
+				}
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
@@ -137,18 +154,6 @@ const additionalFields: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'description',
-					}
-				}
-			},
-			{
-				displayName: 'Assigned To',
-				name: 'assignedTo',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'assignedTo',
 					}
 				}
 			},
