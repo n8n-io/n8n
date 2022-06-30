@@ -65,6 +65,7 @@
 						:runIndex="outputRun"
 						:linkedRuns="linked"
 						:sessionId="sessionId"
+						:isReadOnly="readOnly"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -125,6 +126,7 @@ import {
 } from '@/constants';
 import { workflowActivate } from './mixins/workflowActivate';
 import { pinData } from "@/components/mixins/pinData";
+import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 
 export default mixins(
 	externalHooks,
@@ -459,13 +461,24 @@ export default mixins(
 				);
 
 				if (shouldPinDataBeforeClosing) {
-					if (this.isValidPinData(this.outputPanelEditMode.value)) {
-						const data = JSON.parse(this.outputPanelEditMode.value);
+					const { value } = this.outputPanelEditMode;
 
-						this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-						this.$store.commit('pinData', { node: this.activeNode, data });
+					if (!this.isValidPinDataSize(value)) {
+						dataPinningEventBus.$emit(
+							'data-pinning-error', { errorType: 'data-too-large', source: 'on-ndv-close-modal' },
+						);
+						return;
 					}
 
+					if (!this.isValidPinDataJSON(value)) {
+						dataPinningEventBus.$emit(
+							'data-pinning-error', { errorType: 'invalid-json', source: 'on-ndv-close-modal' },
+						);
+						return;
+					}
+
+					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+					this.$store.commit('pinData', { node: this.activeNode, data: JSON.parse(value) });
 					return;
 				} else {
 					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);

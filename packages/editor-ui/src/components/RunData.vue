@@ -13,7 +13,7 @@
 					size="small"
 					underline
 					bold
-					@click="onTogglePinData"
+					@click="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
 				</n8n-link>
@@ -23,10 +23,11 @@
 					:to="dataPinningDocsUrl"
 					size="small"
 					theme="secondary"
-					:bold="true"
-					:underline="true"
+					bold
+					underline
+					@click="onClickDataPinningDocsLink"
 				>
-					Learn more
+					{{ $locale.baseText('runData.pindata.learnMore') }}
 				</n8n-link>
 			</template>
 		</n8n-callout>
@@ -51,7 +52,7 @@
 					icon="pencil-alt"
 					type="tertiary"
 					:disabled="editMode.enabled"
-					@click="enterEditMode()"
+					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0 || hasPinData)">
 					<template #content v-if="hasPinData">
@@ -80,7 +81,7 @@
 						active
 						icon="thumbtack"
 						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData)"
-						@click="onTogglePinData"
+						@click="onTogglePinData({ source: 'pin-icon-click' })"
 					/>
 				</n8n-tooltip>
 			</div>
@@ -362,7 +363,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription, IRun,
+	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 } from 'n8n-workflow';
@@ -397,9 +398,16 @@ import mixins from 'vue-typed-mixins';
 
 import { saveAs } from 'file-saver';
 import { CodeEditor } from "@/components/forms";
+import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
+import { stringSizeInBytes } from './helpers';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
+
+export type EnterEditModeArgs = {
+	data?: Array<Record<string, string | number>>,
+	origin: 'editIconButton' | 'insertTestDataLink',
+};
 
 export default mixins(
 	copyPaste,
@@ -471,10 +479,20 @@ export default mixins(
 				pageSize: 10,
 				pageSizes: [10, 25, 50, 100],
 				copyDropdownOpen: false,
+				eventBus: dataPinningEventBus,
 			};
 		},
 		mounted() {
 			this.init();
+
+			if (this.paneType === 'output') {
+				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
+				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
+			}
+		},
+		destroyed() {
+			this.eventBus.$off('data-pinning-error', this.onDataPinningError);
+			this.eventBus.$off('data-unpinning', this.onDataUnpinning);
 		},
 		computed: {
 			activeNode(): INodeUi {
@@ -658,40 +676,138 @@ export default mixins(
 			},
 		},
 		methods: {
-			enterEditMode(data?: Array<Record<string, string>>) {
+			onClickDataPinningDocsLink() {
+				this.$telemetry.track('User clicked ndv link', {
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					node_type: this.activeNode.type,
+					pane: 'output',
+					type: 'data-pinning-docs',
+				});
+			},
+			enterEditMode({ data, origin }: EnterEditModeArgs) {
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
 				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data || this.jsonData, null, 2));
+
+				this.$telemetry.track('User opened ndv edit state', {
+					node_type: this.activeNode.type,
+					click_type: origin === 'editIconButton' ? 'button' : 'link',
+					session_id: this.sessionId,
+					run_index: this.runIndex,
+					is_output_present: this.hasNodeRun || this.hasPinData,
+					view: !this.hasNodeRun && !this.hasPinData ? 'undefined' : this.displayMode,
+					is_data_pinned: this.hasPinData,
+				});
 			},
 			onClickCancelEdit() {
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 				this.$store.commit('ui/setOutputPanelEditModeValue', '');
+				this.onExitEditMode({ type: 'cancel' });
 			},
 			onClickSaveEdit() {
-				if (this.isValidPinData(this.editMode.value)) {
-					const data = JSON.parse(this.editMode.value);
+				const { value } = this.editMode;
 
-					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-					this.$store.commit('pinData', { node: this.node, data });
+				if (!this.isValidPinDataSize(value)) {
+					this.onDataPinningError({ errorType: 'data-too-large', source: 'save-edit' });
+					return;
 				}
-			},
-			async onTogglePinData() {
-				if (this.hasPinData) {
-					this.$store.commit('unpinData', { node: this.node });
-				} else if (this.isValidPinDataSize(JSON.stringify(this.jsonData))) {
-					this.$store.commit('pinData', { node: this.node, data: this.jsonData });
 
-					if (this.maxRunIndex > 0) {
-						this.$showToast({
-							title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
-								interpolate: {
-									index: `${this.runIndex}`,
-								},
-							}),
-							message: this.$locale.baseText('ndv.pinData.pin.multipleRuns.description'),
-							type: 'success',
-							duration: 2000,
-						});
-					}
+				if (!this.isValidPinDataJSON(value)) {
+					this.onDataPinningError({ errorType: 'invalid-json', source: 'save-edit' });
+					return;
+				}
+
+				this.onDataPinningSuccess({ source: 'save-edit' });
+
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+				this.$store.commit('pinData', { node: this.node, data: JSON.parse(value) });
+
+				this.onExitEditMode({ type: 'save' });
+			},
+			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
+				this.$telemetry.track('User closed ndv edit state', {
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					run_index: this.runIndex,
+					view: this.displayMode,
+					type,
+				});
+			},
+			onDataUnpinning(
+				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
+			) {
+				this.$telemetry.track('User unpinned ndv data', {
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					run_index: this.runIndex,
+					source,
+					data_size: stringSizeInBytes(this.pinData),
+				});
+			},
+			onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
+				this.$telemetry.track('Ndv data pinning success', {
+					pinning_source: source,
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					data_size: stringSizeInBytes(this.pinData),
+					view: this.displayMode,
+					run_index: this.runIndex,
+				});
+			},
+			onDataPinningError(
+				{ errorType, source }: {
+					errorType: 'data-too-large' | 'invalid-json',
+					source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit'
+				},
+			) {
+				this.$telemetry.track('Ndv data pinning failure', {
+					pinning_source: source,
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					data_size: stringSizeInBytes(this.pinData),
+					view: this.displayMode,
+					run_index: this.runIndex,
+					error_type: errorType,
+				});
+			},
+			async onTogglePinData(
+				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
+			) {
+				if (source === 'pin-icon-click') {
+					this.$telemetry.track('User clicked pin data icon', {
+						node_type: this.activeNode.type,
+						session_id: this.sessionId,
+						run_index: this.runIndex,
+						view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
+					});
+				}
+
+				if (this.hasPinData) {
+					this.onDataUnpinning({ source });
+					this.$store.commit('unpinData', { node: this.node });
+					return;
+				}
+
+				if (!this.isValidPinDataSize(this.jsonData)) {
+					this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
+					return;
+				}
+
+				this.onDataPinningSuccess({ source: 'save-edit' });
+
+				this.$store.commit('pinData', { node: this.node, data: this.jsonData });
+
+				if (this.maxRunIndex > 0) {
+					this.$showToast({
+						title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
+							interpolate: {
+								index: `${this.runIndex}`,
+							},
+						}),
+						message: this.$locale.baseText('ndv.pinData.pin.multipleRuns.description'),
+						type: 'success',
+						duration: 2000,
+					});
 				}
 			},
 			switchToBinary() {
@@ -1030,6 +1146,23 @@ export default mixins(
 					}
 					value = `{{ ${startPath + path} }}`;
 				}
+
+				const copyType = {
+					value: 'selection',
+					itemPath: 'item_path',
+					parameterPath: 'parameter_path',
+				}[commandData.command];
+
+				this.$telemetry.track('User copied ndv data', {
+					node_type: this.activeNode.type,
+					session_id: this.sessionId,
+					run_index: this.runIndex,
+					view: this.displayMode,
+					copy_type: copyType,
+					workflow_id: this.$store.getters.workflowId,
+					pane: 'output',
+					in_execution_log: this.isReadOnly,
+				});
 
 				this.copyToClipboard(value);
 			},

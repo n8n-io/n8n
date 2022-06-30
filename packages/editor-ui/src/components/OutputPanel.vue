@@ -9,6 +9,7 @@
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
+		:isReadOnly="isReadOnly"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
@@ -71,9 +72,11 @@
 import { IExecutionResponse, INodeUi } from '@/Interface';
 import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import Vue from 'vue';
-import RunData from './RunData.vue';
+import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import {MULTIPLE_OUTPUT_NODE_TYPES} from "@/constants";
+import {MULTIPLE_OUTPUT_NODE_TYPES, TEST_PIN_DATA} from "@/constants";
+
+type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
 export default Vue.extend({
 	name: 'OutputPanel',
@@ -81,6 +84,9 @@ export default Vue.extend({
 	props: {
 		runIndex: {
 			type: Number,
+		},
+		isReadOnly: {
+			type: Boolean,
 		},
 		linkedRuns: {
 			type: Boolean,
@@ -188,18 +194,18 @@ export default Vue.extend({
 	methods: {
 		insertTestData() {
 			if (this.$refs.runData) {
-				(this.$refs.runData as Vue & {
-					enterEditMode: (data?: Array<Record<string, string | number>>) => {}
-				}).enterEditMode([
-					{
-						"name": "First item",
-						"code": 1,
-					},
-					{
-						"name": "Second item",
-						"code": 2,
-					},
-				]);
+				(this.$refs.runData as RunData).enterEditMode({
+					data: TEST_PIN_DATA,
+					origin: 'insertTestDataLink',
+				});
+
+				this.$telemetry.track('User clicked ndv link', {
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					node_type: this.node.type,
+					pane: 'output',
+					type: 'insert-test-data',
+				});
 			}
 		},
 		onLinkRun() {

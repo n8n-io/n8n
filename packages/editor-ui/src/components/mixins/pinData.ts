@@ -47,7 +47,9 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend(
 				return false;
 			}
 		},
-		isValidPinDataSize(data: string): boolean {
+		isValidPinDataSize(data: string | object): boolean {
+			if (typeof data === 'object') data = JSON.stringify(data);
+
 			if (this.$store.getters['pinDataSize'] + stringSizeInBytes(data) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
 				this.$showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
@@ -58,9 +60,6 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend(
 			}
 
 			return true;
-		},
-		isValidPinData(data: string): boolean {
-			return this.isValidPinDataJSON(data) && this.isValidPinDataSize(data);
 		},
 	},
 });
