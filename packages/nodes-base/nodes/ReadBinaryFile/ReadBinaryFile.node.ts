@@ -33,7 +33,7 @@ export class ReadBinaryFile implements INodeType {
 				default: '',
 				required: true,
 				placeholder: '/data/example.jpg',
-				description: 'Path of the file to read.',
+				description: 'Path of the file to read',
 			},
 			{
 				displayName: 'Property Name',
@@ -41,7 +41,7 @@ export class ReadBinaryFile implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 		],
 	};
@@ -76,6 +76,9 @@ export class ReadBinaryFile implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: item.json,
 					binary: {},
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 
 				if (item.binary !== undefined) {
@@ -90,7 +93,14 @@ export class ReadBinaryFile implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

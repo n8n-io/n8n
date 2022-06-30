@@ -7,6 +7,7 @@ export const adminOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,6 +53,7 @@ const adminEmailField = {
 	displayName: 'Email',
 	name: 'email',
 	type: 'string',
+	placeholder: 'name@email.com',
 	default: '',
 	description: 'The administrator\'s email address',
 } as INodeProperties;
@@ -109,7 +111,7 @@ export const adminFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -133,7 +135,7 @@ export const adminFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayOptions: {

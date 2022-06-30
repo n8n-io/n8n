@@ -318,14 +318,24 @@ Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.de
 {
 	"nodeView.resource.displayName": "🇩🇪 Resource",
 	"nodeView.resource.description": "🇩🇪 Resource to operate on",
-	"nodeView.resource.options.file.displayName": "🇩🇪 File",
-	"nodeView.resource.options.issue.displayName": "🇩🇪 Issue",
+	"nodeView.resource.options.file.name": "🇩🇪 File",
+	"nodeView.resource.options.issue.name": "🇩🇪 Issue",
 }
 ```
 
 <p align="center">
 	<img src="img/node2.png" width="400">
 </p>
+
+For nodes whose credentials may be used in the HTTP Request node, an additional option `Custom API Call` is injected into the `Resource` and `Operation` parameters. Use the `__CUSTOM_API_CALL__` key to translate this additional option.
+
+```json
+{
+	"nodeView.resource.options.file.name": "🇩🇪 File",
+	"nodeView.resource.options.issue.name": "🇩🇪 Issue",
+	"nodeView.resource.options.__CUSTOM_API_CALL__.name": "🇩🇪 Custom API Call",
+}
+```
 
 #### `collection` and `fixedCollection` parameters
 

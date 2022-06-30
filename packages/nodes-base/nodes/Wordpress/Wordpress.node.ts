@@ -65,7 +65,6 @@ export class Wordpress implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'Resource to consume',
 			},
 			...postOperations,
 			...postFields,

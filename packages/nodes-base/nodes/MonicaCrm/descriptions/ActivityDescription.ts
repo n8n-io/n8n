@@ -7,6 +7,7 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -50,9 +51,10 @@ export const activityFields: INodeProperties[] = [
 	//             activity: create
 	// ----------------------------------------
 	{
-		displayName: 'Activity Type',
+		displayName: 'Activity Type Name or ID',
 		name: 'activityTypeId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -222,7 +224,7 @@ export const activityFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -280,9 +282,10 @@ export const activityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Activity Type',
+				displayName: 'Activity Type Name or ID',
 				name: 'activity_type_id',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getActivityTypes',

@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -106,9 +106,10 @@ export const userFields: INodeProperties[] = [
 		description: 'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 	},
 	{
-		displayName: 'Domain',
+		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDomains',
 		},
@@ -140,7 +141,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user's final email address will be jhon@example.com.`,
+		description: 'The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user\'s final email address will be jhon@example.com.',
 	},
 	{
 		displayName: 'Make Admin',
@@ -158,7 +159,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Makes a user a super administrator',
+		description: 'Whether to make a user a super administrator',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -182,7 +183,7 @@ export const userFields: INodeProperties[] = [
 				name: 'changePasswordAtNextLogin',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the user is forced to change their password at next login.',
+				description: 'Whether the user is forced to change their password at next login',
 			},
 			{
 				displayName: 'Phones',
@@ -236,6 +237,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 										name: 'isdn',
 										value: 'isdn',
 									},
@@ -268,6 +270,7 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 										name: 'tty tdd',
 										value: 'tty_tdd',
 									},
@@ -302,7 +305,7 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description: `Indicates if this is the user's primary phone number. A user may only have one primary phone number.`,
+								description: 'Whether this is the user\'s primary phone number. A user may only have one primary phone number.',
 							},
 						],
 					},
@@ -374,7 +377,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The value can be the user's primary email address, alias email address, or unique user ID.`,
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
@@ -395,7 +398,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The value can be the user's primary email address, alias email address, or unique user ID.`,
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	{
 		displayName: 'Projection',
@@ -450,7 +453,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schemas',
+				displayName: 'Custom Schema Names or IDs',
 				name: 'customFieldMask',
 				type: 'multiOptions',
 				displayOptions: {
@@ -464,7 +467,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: `A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.`,
+				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'View Type',
@@ -505,7 +508,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -529,7 +532,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Projection',
@@ -584,7 +587,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schemas',
+				displayName: 'Custom Schema Names or IDs',
 				name: 'customFieldMask',
 				type: 'multiOptions',
 				displayOptions: {
@@ -598,7 +601,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: `A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.`,
+				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Customer',
@@ -633,7 +636,7 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Property to use for sorting results.',
+				description: 'Property to use for sorting results',
 			},
 			{
 				displayName: 'Query',
@@ -647,7 +650,7 @@ export const userFields: INodeProperties[] = [
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'If set to true, retrieves the list of deleted users.',
+				description: 'Whether to retrieve the list of deleted users',
 			},
 			{
 				displayName: 'Sort Order',
@@ -706,7 +709,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The value can be the user's primary email address, alias email address, or unique user ID.`,
+		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -730,14 +733,14 @@ export const userFields: INodeProperties[] = [
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if user is archived.',
+				description: 'Whether user is archived',
 			},
 			{
 				displayName: 'Change Password At Next Login',
 				name: 'changePasswordAtNextLogin',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the user is forced to change their password at next login.',
+				description: 'Whether the user is forced to change their password at next login',
 			},
 			{
 				displayName: 'First Name',
@@ -810,7 +813,7 @@ export const userFields: INodeProperties[] = [
 										value: 'home_fax',
 									},
 									{
-										name: 'isdn',
+										name: 'Isdn',
 										value: 'isdn',
 									},
 									{
@@ -842,7 +845,7 @@ export const userFields: INodeProperties[] = [
 										value: 'telex',
 									},
 									{
-										name: 'tty tdd',
+										name: 'Tty Tdd',
 										value: 'tty_tdd',
 									},
 									{
@@ -876,7 +879,7 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description: `Indicates if this is the user's primary phone number. A user may only have one primary phone number.`,
+								description: 'Whether this is the user\'s primary phone number. A user may only have one primary phone number.',
 							},
 						],
 					},
@@ -887,7 +890,7 @@ export const userFields: INodeProperties[] = [
 				name: 'primaryEmail',
 				type: 'string',
 				default: '',
-				description: `The user's primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.`,
+				description: 'The user\'s primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.',
 			},
 			{
 				displayName: 'Secondary Emails',

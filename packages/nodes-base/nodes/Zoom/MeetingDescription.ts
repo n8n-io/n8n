@@ -7,6 +7,7 @@ export const meetingOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const meetingOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -69,7 +69,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Topic of the meeting.`,
+		description: 'Topic of the meeting',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -97,7 +97,7 @@ export const meetingFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Meeting agenda.',
+				description: 'Meeting agenda',
 			},
 			{
 				displayName: 'Duration',
@@ -107,21 +107,21 @@ export const meetingFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'Meeting duration (minutes).',
+				description: 'Meeting duration (minutes)',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Password to join the meeting with maximum 10 characters.',
+				description: 'Password to join the meeting with maximum 10 characters',
 			},
 			{
 				displayName: 'Schedule For',
 				name: 'scheduleFor',
 				type: 'string',
 				default: '',
-				description: 'Schedule meeting for someone else from your account, provide their email ID.',
+				description: 'Schedule meeting for someone else from your account, provide their email ID',
 			},
 			{
 				displayName: 'Settings',
@@ -150,14 +150,14 @@ export const meetingFields: INodeProperties[] = [
 
 						],
 						default: 'both',
-						description: 'Determine how participants can join audio portion of the meeting.',
+						description: 'Determine how participants can join audio portion of the meeting',
 					},
 					{
 						displayName: 'Alternative Hosts',
 						name: 'alternativeHosts',
 						type: 'string',
 						default: '',
-						description: 'Alternative hosts email IDs.',
+						description: 'Alternative hosts email IDs',
 					},
 					{
 						displayName: 'Auto Recording',
@@ -196,28 +196,28 @@ export const meetingFields: INodeProperties[] = [
 						name: 'hostVideo',
 						type: 'boolean',
 						default: false,
-						description: 'Start video when host joins the meeting.',
+						description: 'Whether to start a video when host joins the meeting',
 					},
 					{
 						displayName: 'Join Before Host',
 						name: 'joinBeforeHost',
 						type: 'boolean',
 						default: false,
-						description: 'Allow participants to join the meeting before host starts it.',
+						description: 'Whether to allow participants to join the meeting before host starts it',
 					},
 					{
 						displayName: 'Muting Upon Entry',
 						name: 'muteUponEntry',
 						type: 'boolean',
 						default: false,
-						description: 'Mute participants upon entry.',
+						description: 'Whether to mute participants upon entry',
 					},
 					{
 						displayName: 'Participant Video',
 						name: 'participantVideo',
 						type: 'boolean',
 						default: false,
-						description: 'Start video when participant joins the meeting.',
+						description: 'Whether to start a video when participant joins the meeting',
 					},
 					{
 						displayName: 'Registration Type',
@@ -225,14 +225,17 @@ export const meetingFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees register once and can attend any of the occurrences',
 								value: 1,
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees need to register for every occurrence',
 								value: 2,
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees register once and can choose one or more occurrences to attend',
 								value: 3,
 							},
@@ -245,7 +248,7 @@ export const meetingFields: INodeProperties[] = [
 						name: 'watermark',
 						type: 'boolean',
 						default: false,
-						description: 'Adds watermark when viewing a shared screen.',
+						description: 'Whether to add a watermark when viewing a shared screen',
 					},
 				],
 			},
@@ -257,14 +260,14 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Type',
@@ -280,17 +283,17 @@ export const meetingFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Recurring Meeting with no fixed time',
+						name: 'Recurring Meeting with No Fixed Time',
 						value: 3,
 					},
 					{
-						name: 'Recurring Meeting with fixed time',
+						name: 'Recurring Meeting with Fixed Time',
 						value: 8,
 					},
 
 				],
 				default: 2,
-				description: 'Meeting type.',
+				description: 'Meeting type',
 			},
 		],
 	},
@@ -313,7 +316,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
+		description: 'Meeting ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -338,14 +341,14 @@ export const meetingFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'To view meeting details of a particular occurrence of the recurring meeting.',
+				description: 'To view meeting details of a particular occurrence of the recurring meeting',
 			},
 			{
 				displayName: 'Show Previous Occurrences',
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: false,
-				description: 'To view meeting details of all previous occurrences of the recurring meeting.',
+				description: 'Whether to view meeting details of all previous occurrences of the recurring meeting',
 			},
 		],
 	},
@@ -367,7 +370,7 @@ export const meetingFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -391,7 +394,7 @@ export const meetingFields: INodeProperties[] = [
 			maxValue: 300,
 		},
 		default: 30,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -433,7 +436,7 @@ export const meetingFields: INodeProperties[] = [
 					},
 				],
 				default: 'live',
-				description: `Meeting type.`,
+				description: 'Meeting type',
 			},
 		],
 	},
@@ -456,7 +459,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
+		description: 'Meeting ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -480,14 +483,14 @@ export const meetingFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Meeting occurrence ID.',
+				description: 'Meeting occurrence ID',
 			},
 			{
 				displayName: 'Schedule Reminder',
 				name: 'scheduleForReminder',
 				type: 'boolean',
 				default: false,
-				description: 'Notify hosts and alternative hosts about meeting cancellation via email',
+				description: 'Whether to notify hosts and alternative hosts about meeting cancellation via email',
 			},
 		],
 
@@ -511,7 +514,7 @@ export const meetingFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
+		description: 'Meeting ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -538,7 +541,7 @@ export const meetingFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Meeting agenda.',
+				description: 'Meeting agenda',
 			},
 			{
 				displayName: 'Duration',
@@ -548,21 +551,21 @@ export const meetingFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'Meeting duration (minutes).',
+				description: 'Meeting duration (minutes)',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Password to join the meeting with maximum 10 characters.',
+				description: 'Password to join the meeting with maximum 10 characters',
 			},
 			{
 				displayName: 'Schedule For',
 				name: 'scheduleFor',
 				type: 'string',
 				default: '',
-				description: 'Schedule meeting for someone else from your account, provide their email ID.',
+				description: 'Schedule meeting for someone else from your account, provide their email ID',
 			},
 			{
 				displayName: 'Settings',
@@ -591,14 +594,14 @@ export const meetingFields: INodeProperties[] = [
 
 						],
 						default: 'both',
-						description: 'Determine how participants can join audio portion of the meeting.',
+						description: 'Determine how participants can join audio portion of the meeting',
 					},
 					{
 						displayName: 'Alternative Hosts',
 						name: 'alternativeHosts',
 						type: 'string',
 						default: '',
-						description: 'Alternative hosts email IDs.',
+						description: 'Alternative hosts email IDs',
 					},
 					{
 						displayName: 'Auto Recording',
@@ -637,28 +640,28 @@ export const meetingFields: INodeProperties[] = [
 						name: 'hostVideo',
 						type: 'boolean',
 						default: false,
-						description: 'Start video when host joins the meeting.',
+						description: 'Whether to start a video when host joins the meeting',
 					},
 					{
 						displayName: 'Join Before Host',
 						name: 'joinBeforeHost',
 						type: 'boolean',
 						default: false,
-						description: 'Allow participants to join the meeting before host starts it.',
+						description: 'Whether to allow participants to join the meeting before host starts it',
 					},
 					{
 						displayName: 'Muting Upon Entry',
 						name: 'muteUponEntry',
 						type: 'boolean',
 						default: false,
-						description: 'Mute participants upon entry.',
+						description: 'Whether to mute participants upon entry',
 					},
 					{
 						displayName: 'Participant Video',
 						name: 'participantVideo',
 						type: 'boolean',
 						default: false,
-						description: 'Start video when participant joins the meeting.',
+						description: 'Whether to start a video when participant joins the meeting',
 					},
 					{
 						displayName: 'Registration Type',
@@ -666,15 +669,15 @@ export const meetingFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Attendees register once and can attend any of the occurrences',
+								name: 'Attendees Register Once and Can Attend Any of the Occurrences',
 								value: 1,
 							},
 							{
-								name: 'Attendees need to register for every occurrence',
+								name: 'Attendees Need to Register for Every Occurrence',
 								value: 2,
 							},
 							{
-								name: 'Attendees register once and can choose one or more occurrences to attend',
+								name: 'Attendees Register Once and Can Choose One or More Occurrences to Attend',
 								value: 3,
 							},
 						],
@@ -686,7 +689,7 @@ export const meetingFields: INodeProperties[] = [
 						name: 'watermark',
 						type: 'boolean',
 						default: false,
-						description: 'Adds watermark when viewing a shared screen.',
+						description: 'Whether to add watermark when viewing a shared screen',
 					},
 				],
 			},
@@ -698,21 +701,21 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: `Meeting topic.`,
+				description: 'Meeting topic',
 			},
 			{
 				displayName: 'Type',
@@ -728,17 +731,17 @@ export const meetingFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Recurring Meeting with no fixed time',
+						name: 'Recurring Meeting with No Fixed Time',
 						value: 3,
 					},
 					{
-						name: 'Recurring Meeting with fixed time',
+						name: 'Recurring Meeting with Fixed Time',
 						value: 8,
 					},
 
 				],
 				default: 2,
-				description: 'Meeting type.',
+				description: 'Meeting type',
 			},
 		],
 	},

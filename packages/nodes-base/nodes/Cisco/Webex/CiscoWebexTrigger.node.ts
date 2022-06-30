@@ -27,6 +27,7 @@ export class CiscoWebexTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webex by Cisco Trigger',
 		name: 'ciscoWebexTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:ciscoWebex.png',
 		group: ['trigger'],
 		version: 1,
@@ -56,7 +57,12 @@ export class CiscoWebexTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: '[All]',
+						value: 'all',
+					},
 					{
 						name: 'Attachment Action',
 						value: 'attachmentAction',
@@ -85,10 +91,6 @@ export class CiscoWebexTrigger implements INodeType {
 						name: 'Room',
 						value: 'room',
 					},
-					{
-						name: '*',
-						value: 'all',
-					},
 				],
 				default: 'meeting',
 				required: true,
@@ -106,6 +108,7 @@ export class CiscoWebexTrigger implements INodeType {
 					},
 				},
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
@@ -131,7 +134,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Limit to messages which contain file content attachments',
+						description: 'Whether to limit to messages which contain file content attachments',
 					},
 					{
 						displayName: 'Is Locked',
@@ -149,7 +152,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Limit to rooms that are locked',
+						description: 'Whether to limit to rooms that are locked',
 					},
 					{
 						displayName: 'Is Moderator',
@@ -168,7 +171,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Limit to moderators of a room',
+						description: 'Whether to limit to moderators of a room',
 					},
 					{
 						displayName: 'Mentioned People',
@@ -186,7 +189,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas`,
+						description: 'Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas',
 					},
 					{
 						displayName: 'Message ID',
@@ -390,7 +393,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to a particular room type`,
+						description: 'Limit to a particular room type',
 					},
 					{
 						displayName: 'Type',
@@ -418,7 +421,7 @@ export class CiscoWebexTrigger implements INodeType {
 							},
 						},
 						default: '',
-						description: `Limit to a particular room type`,
+						description: 'Limit to a particular room type',
 					},
 					// {
 					// 	displayName: 'Call Type',

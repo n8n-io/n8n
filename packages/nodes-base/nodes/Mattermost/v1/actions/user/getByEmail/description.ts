@@ -7,6 +7,7 @@ export const userGetByEmailDescription: UserProperties = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -19,6 +20,6 @@ export const userGetByEmailDescription: UserProperties = [
 			},
 		},
 		default: '',
-		description: `User's email`,
+		description: 'User\'s email',
 	},
 ];

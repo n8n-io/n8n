@@ -7,6 +7,7 @@ export const incidentNoteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,11 +24,10 @@ export const incidentNoteOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: `Get all incident's notes`,
+				description: 'Get all incident\'s notes',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +52,7 @@ export const incidentNoteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the incident.',
+		description: 'Unique identifier for the incident',
 	},
 	{
 		displayName: 'Content',
@@ -79,6 +79,7 @@ export const incidentNoteFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -91,7 +92,7 @@ export const incidentNoteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The email address of a valid user associated with the account making the request.`,
+		description: 'The email address of a valid user associated with the account making the request',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 incidentNote:getAll                        */
@@ -112,7 +113,7 @@ export const incidentNoteFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the incident.',
+		description: 'Unique identifier for the incident',
 	},
 	{
 		displayName: 'Return All',
@@ -129,7 +130,7 @@ export const incidentNoteFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -153,6 +154,6 @@ export const incidentNoteFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

@@ -1,0 +1,10 @@
+Cursor:
+  $ref: './cursor.yml'
+Limit:
+  $ref: './limit.yml'
+ExecutionId:
+  $ref: '../../../handlers/executions/spec/schemas/parameters/executionId.yml'
+WorkflowId:
+  $ref: '../../../handlers/workflows/spec/schemas/parameters/workflowId.yml'
+IncludeData:
+  $ref: '../../../handlers/executions/spec/schemas/parameters/includeData.yml'

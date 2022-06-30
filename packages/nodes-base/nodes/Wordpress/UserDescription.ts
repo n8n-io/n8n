@@ -125,6 +125,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -277,6 +278,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address for the user',
 			},
@@ -562,6 +564,6 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Reassign the deleted user's posts and links to this user ID`,
+		description: 'Reassign the deleted user\'s posts and links to this user ID',
 	},
 ];
