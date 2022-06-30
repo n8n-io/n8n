@@ -376,6 +376,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		package_version?: string;
 		package_node_names?: string[];
 		package_author?: string;
+		package_author_email?: string;
 		failure_reason?: string;
 	}): Promise<void> {
 		return this.telemetry.track('cnr package install finished', installationData);
@@ -388,6 +389,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		package_version_new: string;
 		package_node_names: string[];
 		package_author?: string;
+		package_author_email?: string;
 	}): Promise<void> {
 		return this.telemetry.track('cnr package updated', updateData);
 	}
@@ -398,6 +400,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		package_version: string;
 		package_node_names: string[];
 		package_author?: string;
+		package_author_email?: string;
 	}): Promise<void> {
 		return this.telemetry.track('cnr package deleted', updateData);
 	}

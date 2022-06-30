@@ -116,6 +116,8 @@ nodesController.post(
 				success: true,
 				package_version: parsedPackageName.version,
 				package_node_names: installedPackage.installedNodes.map((nodeData) => nodeData.name),
+				package_author: installedPackage.authorName,
+				package_author_email: installedPackage.authorEmail,
 			});
 
 			return installedPackage;
@@ -225,6 +227,8 @@ nodesController.delete(
 				package_name: name,
 				package_version: installedPackage.installedVersion,
 				package_node_names: installedPackage.installedNodes.map((nodeData) => nodeData.name),
+				package_author: installedPackage.authorName,
+				package_author_email: installedPackage.authorEmail,
 			});
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
@@ -290,6 +294,8 @@ nodesController.patch(
 				package_version_current: packagePreviouslyInstalled.installedVersion,
 				package_version_new: newInstalledPackage.installedVersion,
 				package_node_names: newInstalledPackage.installedNodes.map((node) => node.name),
+				package_author: newInstalledPackage.authorName,
+				package_author_email: newInstalledPackage.authorEmail,
 			});
 
 			return newInstalledPackage;
