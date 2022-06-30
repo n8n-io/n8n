@@ -45,6 +45,9 @@ export default Vue.extend({
 				tabSize: 2,
 				wordBasedSuggestions: false,
 				readOnly: this.readonly,
+				padding: {
+					top: 16,
+				},
 				minimap: {
 					enabled: false,
 				},
@@ -111,18 +114,21 @@ export default Vue.extend({
 	width: 100%;
 	height: 100%;
 	flex: 1 1 auto;
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-base);
 }
 
 ::v-deep {
 	.monaco-editor {
-		border: 1px solid var(--color-foreground-base);
-		border-radius: var(--border-radius-base);
-		overflow: hidden;
+		.slider {
+			border-radius: var(--border-radius-base);
+		}
 
 		&,
 		&-background,
 		.inputarea.ime-input,
 		.margin {
+			border-radius: var(--border-radius-base);
 			background-color: var(--color-background-xlight) !important;
 		}
 	}
