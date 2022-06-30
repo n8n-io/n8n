@@ -13,13 +13,15 @@
 					:command="action.value"
 				>
 					{{action.label}}
-					<component
-						v-if="action.type === 'external-link'"
-						:is="$options.components.N8nIcon"
-						icon="external-link-alt"
-						size="xsmall"
-						color="text-base"
-					/>
+					<div :class="$style.iconContainer">
+						<component
+							v-if="action.type === 'external-link'"
+							:is="$options.components.N8nIcon"
+							icon="external-link-alt"
+							size="xsmall"
+							color="text-base"
+						/>
+					</div>
 				</el-dropdown-item>
 			</el-dropdown-menu>
 		</el-dropdown>
@@ -76,7 +78,11 @@ export default {
 	}
 }
 
-li:hover svg {
+.iconContainer {
+	display: inline;
+}
+
+li:hover .iconContainer svg {
 	color: var(--color-primary-tint-1);
 }
 </style>

@@ -58,6 +58,10 @@ export default mixins(
 			}
 			return false;
 		},
+		packageName(): string {
+			const nodeType = this.nodeType as INodeTypeDescription;
+			return nodeType.name.split('.')[0];
+		},
 		options (): ITab[] {
 			const options: ITab[] = [
 				{
@@ -77,7 +81,12 @@ export default mixins(
 					icon: 'cube',
 					value: 'communityNode',
 					align: 'right',
-					tooltip: this.$locale.baseText('nodeSettings.communityNodeTooltip', { interpolate: { docUrl: COMMUNITY_NODES_INSTALLATION_DOCS_URL } }),
+					tooltip: this.$locale.baseText('generic.communityNode.tooltip', {
+						interpolate: {
+							docUrl: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+							packageName: this.packageName,
+						},
+					}),
 				});
 			}
 			// If both tabs have align right, both will have excessive left margin
