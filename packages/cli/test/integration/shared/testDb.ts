@@ -174,9 +174,10 @@ async function truncateMappingTables(
 
 	// mysqldb, mariadb
 
-	const promises = mappingTables.map((tableName) =>
-		testDb.query(`DELETE FROM ${tableName}; ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`),
-	);
+	const promises = mappingTables.flatMap((tableName) => [
+		testDb.query(`DELETE FROM ${tableName};`),
+		testDb.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`),
+	]);
 
 	return Promise.all(promises);
 }
