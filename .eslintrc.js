@@ -376,7 +376,6 @@ module.exports = {
 			rules: {
 				'n8n-nodes-base/cred-filename-against-convention': 'error',
 				'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
-				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 			},
 		},
 		{
@@ -460,6 +459,7 @@ module.exports = {
 				'n8n-nodes-base/node-dirname-against-convention': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
+				'n8n-nodes-base/node-execute-block-missing-continue-on-fail': 'error',
 			},
 		},
 	],
