@@ -4,26 +4,6 @@
 		"build": {
 			"dependsOn": ["^build"]
 		},
-		"n8n-core#build": {
-			"outputs": ["dist"],
-			"dependsOn": ["n8n-workflow#build"]
-		},
-		"n8n#build": {
-			"outputs": ["dist"],
-			"dependsOn": ["n8n-core#build"]
-		},
-		"n8n-design-system#build": {
-			"outputs": ["dist", "theme/dist"],
-			"dependsOn": ["n8n-core#build"]
-		},
-		"n8n-editor-ui#build": {
-			"outputs": ["dist"],
-			"dependsOn": ["n8n-core#build"]
-		},
-		"n8n-nodes-base#build": {
-			"outputs": ["dist"],
-			"dependsOn": ["n8n-core#build"]
-		},
 		"test": {
 			"dependsOn": ["build"],
 			"inputs": [

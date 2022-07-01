@@ -5,7 +5,7 @@
   "homepage": "https://n8n.io",
   "scripts": {
     "bootstrap": "lerna bootstrap --hoist --no-ci",
-    "build": "turbo run build --parallel",
+    "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "clean:dist": "lerna exec -- rimraf ./dist",
     "format": "lerna exec npm run format",
@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "lerna": "^3.13.1",
-    "npm-run-all": "4.1.5",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7",
     "turbo": "^1.2.16"

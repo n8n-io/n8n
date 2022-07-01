@@ -19,7 +19,7 @@
     "build": "rimraf dist && npm-run-all --parallel build:esbuild build:gulp build:tsc",
     "build:esbuild": "node scripts/build.mjs",
     "build:gulp": "gulp build:assets build:translations",
-    "build:tsc": "tsc --project tsconfig.json --emitDeclarationOnly",
+    "build:tsc": "tsc --emitDeclarationOnly",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
     "lint": "tslint -p tsconfig.json -c tslint.json",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json",

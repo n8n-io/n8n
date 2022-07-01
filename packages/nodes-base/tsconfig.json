@@ -17,7 +17,6 @@
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2019",
-		"sourceMap": false,
 		"esModuleInterop": true,
 		"useUnknownInCatchVariables": false,
 	},
