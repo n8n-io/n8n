@@ -462,6 +462,7 @@ module.exports = {
 				'n8n-nodes-base/node-dirname-against-convention': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
+				'n8n-nodes-base/node-class-description-credentials-name-unsuffixed': 'error',
 			},
 		},
 	],
