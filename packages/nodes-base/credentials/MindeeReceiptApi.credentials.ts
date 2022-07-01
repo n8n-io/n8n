@@ -1,5 +1,4 @@
 import {
-	IAuthenticateHeaderAuth,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
