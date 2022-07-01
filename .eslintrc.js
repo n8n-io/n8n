@@ -457,6 +457,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-description-missing-from-dynamic-multi-options': 'error',
 				'n8n-nodes-base/node-param-array-type-assertion': 'error',
 				'n8n-nodes-base/node-dirname-against-convention': 'error',
+				'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
 			},
 		},
 	],
