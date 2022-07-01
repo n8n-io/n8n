@@ -37,7 +37,7 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend(
 					const position = parseInt(positionMatch[1], 10);
 					const lineBreaksUpToPosition = (data.slice(0, position).match(/\n/g) || []).length;
 
-					error.message += `, line ${lineBreaksUpToPosition + 1}`;
+					error.message = `On line ${lineBreaksUpToPosition + 1}: ${error.message}`;
 				}
 
 				error.message += '.';
