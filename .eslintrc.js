@@ -375,6 +375,7 @@ module.exports = {
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
 				'n8n-nodes-base/cred-filename-against-convention': 'error',
+				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 			},
 		},
 		{
