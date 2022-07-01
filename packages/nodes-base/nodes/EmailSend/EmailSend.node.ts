@@ -4,7 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
@@ -224,7 +224,9 @@ export class EmailSend implements INodeType {
 					});
 					continue;
 				}
-				throw error;
+				// Remove object that creates circular reference
+				delete error.cert;
+				throw new NodeApiError(this.getNode(), error );
 			}
 		}
 
