@@ -104,6 +104,7 @@ export const labelFields: INodeProperties[] = [
 	{
 		displayName: 'Color',
 		name: 'color',
+		// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 		type: 'options',
 		required: true,
 		displayOptions: {
@@ -413,7 +414,7 @@ export const labelFields: INodeProperties[] = [
 			{
 				displayName: 'Color',
 				name: 'color',
-				type: 'options',
+				type: 'color',
 				options: [
 					{
 						name: 'Black',

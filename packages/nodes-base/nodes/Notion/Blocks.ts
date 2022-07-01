@@ -128,6 +128,7 @@ const annotation: INodeProperties[] = [
 			{
 				displayName: 'Color',
 				name: 'color',
+				// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 				type: 'options',
 				options: colors,
 				default: '',

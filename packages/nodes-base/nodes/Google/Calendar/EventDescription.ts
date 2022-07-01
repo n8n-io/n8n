@@ -172,6 +172,7 @@ export const eventFields: INodeProperties[] = [
 			{
 				displayName: 'Color Name or ID',
 				name: 'color',
+				// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getColors',
@@ -808,7 +809,7 @@ export const eventFields: INodeProperties[] = [
 			{
 				displayName: 'Color Name or ID',
 				name: 'color',
-				type: 'options',
+				type: 'color',
 				typeOptions: {
 					loadOptionsMethod: 'getColors',
 				},
