@@ -5,17 +5,12 @@
 			"dependsOn": ["^build"]
 		},
 		"test": {
-			"dependsOn": ["build"],
-			"inputs": [
-				"src/**/*.tsx",
-				"src/**/*.ts",
-				"test/**/*.ts"
-			],
-			"outputMode": "full"
+			"dependsOn": ["build"]
 		},
+		"lint": {},
+		"format": {},
 		"dev": {
-			"cache": false,
-			"outputMode": "full"
+			"cache": false
 		}
 	}
 }
