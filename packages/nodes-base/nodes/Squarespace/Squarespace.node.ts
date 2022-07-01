@@ -33,6 +33,13 @@ export class Squarespace implements INodeType {
 				required: true,
 			},
 		],
+		requestDefaults: {
+			baseURL: 'https://api.squarespace.com/1.0/commerce',
+			headers: {
+				"User-Agent": "n8n",
+				"Content-Type": "application/json"
+			},
+		},
 		properties: [
 		],
 	};
