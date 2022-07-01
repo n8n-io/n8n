@@ -281,18 +281,6 @@ const createOperations: Array<INodeProperties> = [
 		},
 		options: [
 			{
-				displayName: 'Monetary Value',
-				name: 'monetaryValue',
-				type: 'number',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'monetaryValue',
-					}
-				}
-			},
-			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
 				name: 'assignedTo',
@@ -309,6 +297,31 @@ const createOperations: Array<INodeProperties> = [
 					}
 				}
 			},
+			{
+				displayName: 'Company Name',
+				name: 'companyName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'companyName',
+					}
+				}
+			},
+			{
+				displayName: 'Monetary Value',
+				name: 'monetaryValue',
+				type: 'number',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'monetaryValue',
+					}
+				}
+			},
+
 			{
 				displayName: 'Name',
 				name: 'name',
@@ -336,18 +349,6 @@ const createOperations: Array<INodeProperties> = [
 						property: 'tags',
 					}
 				},
-			},
-			{
-				displayName: 'Company Name',
-				name: 'companyName',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'companyName',
-					}
-				}
 			},
 		],
 	}
@@ -438,9 +439,6 @@ const getAllOperations: Array<INodeProperties> = [
 				type: 'query',
 				property: 'limit',
 			},
-			output: {
-				maxResults: '={{$value}}', // Set maxResults to the value of current parameter
-			},
 		},
 		description: 'Max number of results to return',
 	},
@@ -461,36 +459,6 @@ const getAllOperations: Array<INodeProperties> = [
 			},
 		},
 		options: [
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Stage ID',
-				name: 'stageId',
-				type: 'options',
-				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
-				typeOptions: {
-					loadOptionsDependsOn: ['pipelineId'],
-					loadOptionsMethod: 'getPipelineStages'
-				},
-				routing: {
-					send: {
-						type: 'query',
-						property: 'stageId',
-					}
-				}
-			},
-			{
-				displayName: 'Monetary Value',
-				name: 'monetaryValue',
-				type: 'number',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'monetaryValue',
-					}
-				}
-			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Assigned To',
@@ -521,19 +489,6 @@ const getAllOperations: Array<INodeProperties> = [
 				}
 			},
 			{
-				displayName: 'Start Date',
-				name: 'startDate',
-				type: 'number',
-				default: '',
-				description: 'Epoch timestamp. for ex: 1598107050459.',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'startDate',
-					}
-				}
-			},
-			{
 				displayName: 'End Date',
 				name: 'endDate',
 				type: 'number',
@@ -547,15 +502,45 @@ const getAllOperations: Array<INodeProperties> = [
 				}
 			},
 			{
-				displayName: 'Query',
-				name: 'query',
-				type: 'string',
+				displayName: 'Monetary Value',
+				name: 'monetaryValue',
+				type: 'number',
 				default: '',
-				description: 'Query will search on these fields: Name, Phone, Email, Tags, and Company Name',
 				routing: {
 					send: {
 						type: 'query',
-						property: 'query',
+						property: 'monetaryValue',
+					}
+				}
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Stage ID',
+				name: 'stageId',
+				type: 'options',
+				default: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				typeOptions: {
+					loadOptionsDependsOn: ['pipelineId'],
+					loadOptionsMethod: 'getPipelineStages'
+				},
+				routing: {
+					send: {
+						type: 'query',
+						property: 'stageId',
+					}
+				}
+			},
+			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'number',
+				default: '',
+				description: 'Epoch timestamp. for ex: 1598107050459.',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'startDate',
 					}
 				}
 			},
@@ -586,6 +571,19 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'status',
+					}
+				}
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Query will search on these fields: Name, Phone, Email, Tags, and Company Name',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'query',
 					}
 				}
 			},
@@ -694,19 +692,30 @@ const updateOperations: Array<INodeProperties> = [
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Stage ID',
-				name: 'stageId',
+				displayName: 'Assigned To',
+				name: 'assignedTo',
 				type: 'options',
 				default: '',
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: ['pipelineId'],
-					loadOptionsMethod: 'getPipelineStages'
+					loadOptionsMethod: 'getUsers'
 				},
 				routing: {
 					send: {
 						type: 'body',
-						property: 'stageId',
+						property: 'assignedTo',
+					}
+				}
+			},
+			{
+				displayName: 'Company Name',
+				name: 'companyName',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'companyName',
 					}
 				}
 			},
@@ -737,23 +746,6 @@ const updateOperations: Array<INodeProperties> = [
 				}
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Assigned To',
-				name: 'assignedTo',
-				type: 'options',
-				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers'
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'assignedTo',
-					}
-				}
-			},
-			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
@@ -762,6 +754,24 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'name',
+					}
+				}
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Stage ID',
+				name: 'stageId',
+				type: 'options',
+				default: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				typeOptions: {
+					loadOptionsDependsOn: ['pipelineId'],
+					loadOptionsMethod: 'getPipelineStages'
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'stageId',
 					}
 				}
 			},
@@ -780,18 +790,6 @@ const updateOperations: Array<INodeProperties> = [
 						property: 'tags',
 					}
 				},
-			},
-			{
-				displayName: 'Company Name',
-				name: 'companyName',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'companyName',
-					}
-				}
 			},
 		],
 	}
