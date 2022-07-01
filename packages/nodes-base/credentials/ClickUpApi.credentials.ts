@@ -21,7 +21,7 @@ export class ClickUpApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '{{$credentials.accessToken}}',
+				Authorization: '={{$credentials.accessToken}}',
 			},
 		},
 	};

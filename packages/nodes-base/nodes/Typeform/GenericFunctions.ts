@@ -64,12 +64,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-
-			const credentials = await this.getCredentials('typeformApi');
-
-			options.headers!['Authorization'] = `bearer ${credentials.accessToken}`;
-
-			return await this.helpers.request!(options);
+			return await this.helpers.requestWithAuthentication.call(this, 'typeformApi',options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
 		}
