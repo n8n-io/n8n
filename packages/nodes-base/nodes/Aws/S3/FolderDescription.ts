@@ -104,7 +104,7 @@ export const folderFields: INodeProperties[] = [
 				name: 'requesterPays',
 				type: 'boolean',
 				default: false,
-				description: 'Weather the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
+				description: 'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
 			},
 			{
 				displayName: 'Storage Class',
@@ -265,6 +265,7 @@ export const folderFields: INodeProperties[] = [
 				name: 'fetchOwner',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
 			},
 			{
