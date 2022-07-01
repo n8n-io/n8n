@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeBaseDescription, INodeVersionedType } from './Interfaces';
+import type { INodeType, INodeTypeBaseDescription, INodeVersionedType } from './Interfaces';
 
 export class NodeVersionedType implements INodeVersionedType {
 	currentVersion: number;
