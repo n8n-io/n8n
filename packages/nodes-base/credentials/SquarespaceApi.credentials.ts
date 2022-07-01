@@ -1,4 +1,6 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	NodePropertyTypes,
 } from 'n8n-workflow';
@@ -15,4 +17,20 @@ export class SquarespaceApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			url: 'https://api.squarespace.com/1.0/commerce/store_pages',
+			method: 'GET',
+		},
+	};
 }
