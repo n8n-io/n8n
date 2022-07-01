@@ -30,12 +30,12 @@ import { OAuthRequest } from '../requests';
 import { externalHooks } from '../Server';
 import config from '../../config';
 
-export const oauth2CredentialsController = express.Router();
+export const oauth2CredentialController = express.Router();
 
 /**
  * Initialize Logger if needed
  */
-oauth2CredentialsController.use((req, res, next) => {
+oauth2CredentialController.use((req, res, next) => {
 	try {
 		LoggerProxy.getInstance();
 	} catch (error) {
@@ -51,7 +51,7 @@ const restEndpoint = config.getEnv('endpoints.rest');
  *
  * Authorize OAuth Data
  */
-oauth2CredentialsController.get(
+oauth2CredentialController.get(
 	'/auth',
 	ResponseHelper.send(async (req: OAuthRequest.OAuth1Credential.Auth): Promise<string> => {
 		const { id: credentialId } = req.query;
@@ -165,7 +165,7 @@ oauth2CredentialsController.get(
  * Verify and store app code. Generate access tokens and store for respective credential.
  */
 
-oauth2CredentialsController.get(
+oauth2CredentialController.get(
 	'/callback',
 	async (req: OAuthRequest.OAuth2Credential.Callback, res: express.Response) => {
 		try {
