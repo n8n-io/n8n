@@ -375,11 +375,11 @@ module.exports = {
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
 				'n8n-nodes-base/cred-filename-against-convention': 'error',
+				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 			},
 		},
 		{
-			files: ['./packages/nodes-base/nodes/**/*.ts',
-			'./packages/nodes-base/credentials/*.credentials.ts'],
+			files: ['./packages/nodes-base/nodes/**/*.ts'],
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
 				'n8n-nodes-base/node-class-description-empty-string': 'error',
@@ -453,7 +453,6 @@ module.exports = {
 				'n8n-nodes-base/node-param-resource-with-plural-option': 'error',
 				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
-				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 			},
 		},
 	],
