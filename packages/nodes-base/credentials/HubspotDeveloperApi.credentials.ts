@@ -12,6 +12,7 @@ const scopes = [
 	'crm.schemas.deals.read',
 ];
 
+// eslint-disable-next-line n8n-nodes-base/cred-class-name-missing-oauth2-suffix
 export class HubspotDeveloperApi implements ICredentialType {
 	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-missing-oauth2
 	name = 'hubspotDeveloperApi';
