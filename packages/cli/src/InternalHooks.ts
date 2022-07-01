@@ -10,7 +10,7 @@ import {
 	IWorkflowBase,
 	IWorkflowDb,
 } from '.';
-import Telemetry from './telemetry';
+import { Telemetry } from './telemetry';
 import { IExecutionTrackProperties } from './Interfaces';
 
 export class InternalHooksClass implements IInternalHooksClass {

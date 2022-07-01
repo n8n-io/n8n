@@ -23,8 +23,7 @@ interface IExecutionsBuffer {
 	};
 }
 
-// eslint-disable-next-line import/no-default-export
-export default class Telemetry {
+export class Telemetry {
 	private client?: TelemetryClient;
 
 	private instanceId: string;

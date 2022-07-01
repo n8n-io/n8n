@@ -1,4 +1,4 @@
-import Telemetry from '../../src/telemetry';
+import { Telemetry } from '../../src/telemetry';
 
 jest.spyOn(Telemetry.prototype as any, 'createTelemetryClient').mockImplementation(() => {
     return {
