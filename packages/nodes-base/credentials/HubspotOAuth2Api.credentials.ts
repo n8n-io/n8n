@@ -23,7 +23,6 @@ export class HubspotOAuth2Api implements ICredentialType {
 	extends = [
 		'oAuth2Api',
 	];
-	// eslint-disable-next-line n8n-nodes-base/cred-class-field-display-name-missing-oauth2
 	displayName = 'HubSpot OAuth2 API';
 	documentationUrl = 'hubspot';
 	properties: INodeProperties[] = [
