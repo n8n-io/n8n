@@ -4,17 +4,6 @@ const os = require("os");
 module.exports = {
 	chainWebpack: config => {
 		config.resolve.symlinks(false);
-
-		config
-			.plugin('fork-ts-checker')
-			.tap(args => {
-				const totalMemory = Math.floor(os.totalmem() / (1024 * 1024)); // in MB
-				if (totalMemory > 4096) {
-					args[0].memoryLimit = 4096;
-				}
-
-				return args;
-			});
 		// config.plugins.delete("prefetch"); // enable when language package grows
 	},
 	// transpileDependencies: [
