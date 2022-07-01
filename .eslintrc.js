@@ -375,6 +375,7 @@ module.exports = {
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
 				'n8n-nodes-base/cred-filename-against-convention': 'error',
+				'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 			},
 		},
@@ -455,6 +456,8 @@ module.exports = {
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
 				'n8n-nodes-base/node-param-description-missing-from-dynamic-multi-options': 'error',
 				'n8n-nodes-base/node-execute-block-wrong-error-thrown': 'error',
+				'n8n-nodes-base/node-param-array-type-assertion': 'error',
+				'n8n-nodes-base/node-dirname-against-convention': 'error',
 			},
 		},
 	],
