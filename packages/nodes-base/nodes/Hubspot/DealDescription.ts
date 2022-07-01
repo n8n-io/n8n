@@ -115,6 +115,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Associated Company Names or IDs',
 				name: 'associatedCompany',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -124,6 +125,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Associated Vid Names or IDs',
 				name: 'associatedVids',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
 				},
