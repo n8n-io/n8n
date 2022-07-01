@@ -4,11 +4,11 @@
 		"build": {
 			"dependsOn": ["^build"]
 		},
-		"test": {
-			"dependsOn": ["build"]
-		},
-		"lint": {},
 		"format": {},
+		"lint": {},
+		"lintfix": {},
+		"test": {},
+		"watch": {},
 		"dev": {
 			"cache": false
 		}
