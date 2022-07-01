@@ -42,3 +42,7 @@ With the debugger you can actually debug any Javascript (derived from Typescript
 - core
 - workflow
 - nodes-base
+
+## Further reading
+
+Please check [VSCode's docs about debugging](https://code.visualstudio.com/docs/editor/debugging) for more information.
