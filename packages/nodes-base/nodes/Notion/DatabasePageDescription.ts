@@ -16,7 +16,7 @@ import {
 	filters,
 } from './Filters';
 
-export const databasePageOperations = [
+export const databasePageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -90,7 +90,7 @@ export const databasePageOperations = [
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
 export const databasePageFields = [
 
