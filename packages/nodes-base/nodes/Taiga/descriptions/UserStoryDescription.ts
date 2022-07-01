@@ -195,7 +195,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -210,6 +210,7 @@ export const userStoryFields: INodeProperties[] = [
 				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'projectId',
@@ -403,6 +404,7 @@ export const userStoryFields: INodeProperties[] = [
 				displayName: 'Role Name or ID',
 				name: 'role',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'projectId',
@@ -425,7 +427,7 @@ export const userStoryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -593,7 +595,7 @@ export const userStoryFields: INodeProperties[] = [
 				description: 'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
@@ -608,6 +610,7 @@ export const userStoryFields: INodeProperties[] = [
 				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'projectId',

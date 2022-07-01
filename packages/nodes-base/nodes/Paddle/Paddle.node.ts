@@ -55,6 +55,7 @@ export class Paddle implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Paddle',
 		name: 'paddle',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:paddle.png',
 		group: ['output'],
 		version: 1,

@@ -16,16 +16,15 @@ let globalMemberRole: Role;
 let workflowOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 
+jest.mock('../../../src/telemetry');
+
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
-	const [
-		fetchedGlobalOwnerRole,
-		fetchedGlobalMemberRole,
-		fetchedWorkflowOwnerRole,
-	] = await testDb.getAllRoles();
+	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole] =
+		await testDb.getAllRoles();
 
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
@@ -33,15 +32,13 @@ beforeAll(async () => {
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
+	utils.initConfigFile();
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(
-		['SharedCredentials', 'SharedWorkflow', 'User', 'Workflow', 'Credentials'],
-		testDbName,
-	);
+	await testDb.truncate(['SharedWorkflow', 'User', 'Workflow'], testDbName);
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -381,7 +378,7 @@ test('GET /workflows/:id should fail due to invalid API Key', async () => {
 	expect(response.statusCode).toBe(401);
 });
 
-test('GET /workflows/:id should fail due to non existing workflow', async () => {
+test('GET /workflows/:id should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
@@ -413,7 +410,7 @@ test('GET /workflows/:id should retrieve workflow', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
+	const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt, tags } =
 		response.body;
 
 	expect(id).toEqual(workflow.id);
@@ -422,6 +419,7 @@ test('GET /workflows/:id should retrieve workflow', async () => {
 	expect(active).toBe(false);
 	expect(staticData).toEqual(workflow.staticData);
 	expect(nodes).toEqual(workflow.nodes);
+	expect(tags).toEqual([]);
 	expect(settings).toEqual(workflow.settings);
 	expect(createdAt).toEqual(workflow.createdAt.toISOString());
 	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
@@ -491,7 +489,7 @@ test('DELETE /workflows/:id should fail due to invalid API Key', async () => {
 	expect(response.statusCode).toBe(401);
 });
 
-test('DELETE /workflows/:id should fail due to non existing workflow', async () => {
+test('DELETE /workflows/:id should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
@@ -615,7 +613,7 @@ test('POST /workflows/:id/activate should fail due to invalid API Key', async ()
 	expect(response.statusCode).toBe(401);
 });
 
-test('POST /workflows/:id/activate should fail due to non existing workflow', async () => {
+test('POST /workflows/:id/activate should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
@@ -647,7 +645,7 @@ test('POST /workflows/:id/activate should fail due to trying to activate a workf
 	expect(response.statusCode).toBe(400);
 });
 
-test.skip('POST /workflows/:id/activate should set workflow as active', async () => {
+test('POST /workflows/:id/activate should set workflow as active', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
 	const authAgent = utils.createAgent(app, {
@@ -691,7 +689,7 @@ test.skip('POST /workflows/:id/activate should set workflow as active', async ()
 	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(true);
 });
 
-test.skip('POST /workflows/:id/activate should set non-owned workflow as active when owner', async () => {
+test('POST /workflows/:id/activate should set non-owned workflow as active when owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -777,7 +775,7 @@ test('POST /workflows/:id/deactivate should fail due to invalid API Key', async 
 	expect(response.statusCode).toBe(401);
 });
 
-test('POST /workflows/:id/deactivate should fail due to non existing workflow', async () => {
+test('POST /workflows/:id/deactivate should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
@@ -1032,7 +1030,7 @@ test('PUT /workflows/:id should fail due to invalid API Key', async () => {
 	expect(response.statusCode).toBe(401);
 });
 
-test('PUT /workflows/:id should fail due to non existing workflow', async () => {
+test('PUT /workflows/:id should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
@@ -1156,7 +1154,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 	expect(name).toBe(payload.name);
 	expect(connections).toEqual(payload.connections);
 	expect(settings).toEqual(payload.settings);
-	expect(staticData).toEqual(payload.staticData);
+	expect(staticData).toMatchObject(JSON.parse(payload.staticData));
 	expect(nodes).toEqual(payload.nodes);
 	expect(active).toBe(false);
 	expect(createdAt).toBe(workflow.createdAt.toISOString());
@@ -1231,7 +1229,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 	expect(name).toBe(payload.name);
 	expect(connections).toEqual(payload.connections);
 	expect(settings).toEqual(payload.settings);
-	expect(staticData).toEqual(payload.staticData);
+	expect(staticData).toMatchObject(JSON.parse(payload.staticData));
 	expect(nodes).toEqual(payload.nodes);
 	expect(active).toBe(false);
 	expect(createdAt).toBe(workflow.createdAt.toISOString());

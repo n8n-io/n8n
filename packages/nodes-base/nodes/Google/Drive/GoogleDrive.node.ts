@@ -434,7 +434,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'If a query string should be used to filter results',
+				description: 'Whether a query string should be used to filter results',
 			},
 			{
 				displayName: 'Query String',
@@ -805,7 +805,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field',
+				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
 				displayName: 'File Content',
@@ -964,12 +964,12 @@ export class GoogleDrive implements INodeType {
 								value: 'exportLinks',
 							},
 							{
-								name: 'iconLink',
-								value: 'iconLink',
-							},
-							{
 								name: 'hasThumbnail',
 								value: 'hasThumbnail',
+							},
+							{
+								name: 'iconLink',
+								value: 'iconLink',
 							},
 							{
 								name: 'ID',
@@ -980,12 +980,12 @@ export class GoogleDrive implements INodeType {
 								value: 'kind',
 							},
 							{
-								name: 'Name',
-								value: 'name',
-							},
-							{
 								name: 'mimeType',
 								value: 'mimeType',
+							},
+							{
+								name: 'Name',
+								value: 'name',
 							},
 							{
 								name: 'Permissions',
@@ -1020,7 +1020,6 @@ export class GoogleDrive implements INodeType {
 								value: 'webViewLink',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The fields to return',
 					},
@@ -1064,6 +1063,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the response only contain the ID of the file. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
@@ -1168,7 +1168,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Set to true to opt in to API behavior that aims for all items to have exactly one parent. This parameter only takes effect if the item is not in a shared drive.',
+						description: 'Whether to opt in to API behavior that aims for all items to have exactly one parent. This parameter only takes effect if the item is not in a shared drive.',
 					},
 					{
 						displayName: 'Fields',
@@ -1197,12 +1197,12 @@ export class GoogleDrive implements INodeType {
 								value: 'exportLinks',
 							},
 							{
-								name: 'iconLink',
-								value: 'iconLink',
-							},
-							{
 								name: 'hasThumbnail',
 								value: 'hasThumbnail',
+							},
+							{
+								name: 'iconLink',
+								value: 'iconLink',
 							},
 							{
 								name: 'ID',
@@ -1213,12 +1213,12 @@ export class GoogleDrive implements INodeType {
 								value: 'kind',
 							},
 							{
-								name: 'Name',
-								value: 'name',
-							},
-							{
 								name: 'mimeType',
 								value: 'mimeType',
+							},
+							{
+								name: 'Name',
+								value: 'name',
 							},
 							{
 								name: 'Permissions',
@@ -1253,7 +1253,6 @@ export class GoogleDrive implements INodeType {
 								value: 'webViewLink',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The fields to return',
 					},
@@ -1273,6 +1272,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: '<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner\'s My Drive root folder and all prior parents removed.</p>',
 					},
 					{
@@ -1345,7 +1345,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
+						description: 'Whether to perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
 					},
 
 					{
@@ -1421,7 +1421,6 @@ export class GoogleDrive implements INodeType {
 								value: 'photos',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The spaces to operate on',
 					},
@@ -1461,7 +1460,6 @@ export class GoogleDrive implements INodeType {
 								description: 'All drives',
 							},
 						],
-						required: true,
 						default: '',
 						description: 'The corpora to operate on',
 					},
@@ -1825,7 +1823,7 @@ export class GoogleDrive implements INodeType {
 						name: 'useDomainAdminAccess',
 						type: 'boolean',
 						default: false,
-						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
+						description: 'Whether to issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
 					},
 				],
 			},
@@ -1902,7 +1900,7 @@ export class GoogleDrive implements INodeType {
 						name: 'useDomainAdminAccess',
 						type: 'boolean',
 						default: false,
-						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
+						description: 'Whether to issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
 					},
 				],
 			},

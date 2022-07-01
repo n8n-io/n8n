@@ -145,7 +145,7 @@ export const subredditFields: INodeProperties[] = [
 				name: 'trending',
 				type: 'boolean',
 				default: false,
-				description: 'Currently trending subreddits in all of Reddit',
+				description: 'Whether to fetch currently trending subreddits in all of Reddit',
 			},
 		],
 		displayOptions: {
