@@ -13,6 +13,7 @@ const scopes = [
 ];
 
 export class HubspotDeveloperApi implements ICredentialType {
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-missing-oauth2
 	name = 'hubspotDeveloperApi';
 	displayName = 'HubSpot Developer API';
 	documentationUrl = 'hubspot';
