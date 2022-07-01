@@ -21,7 +21,6 @@ import {
 import {
 	mauticApiRequest,
 	mauticApiRequestAllItems,
-	validateCredentials,
 	validateJSON,
 } from './GenericFunctions';
 
@@ -85,7 +84,6 @@ export class Mautic implements INodeType {
 						],
 					},
 				},
-				testedBy: 'mauticCredentialTest',
 			},
 			{
 				name: 'mauticOAuth2Api',
