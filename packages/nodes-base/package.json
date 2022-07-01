@@ -23,7 +23,6 @@
     "lintfix:original": "tslint --fix -p tsconfig.json -c tslint.json",
     "lint": "cd ../../ && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials",
     "lintfix": "cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials --fix",
-    "nodelinter": "nodelinter",
     "watch": "tsc --watch",
     "test": "jest"
   },
@@ -720,7 +719,6 @@
     "gulp": "^4.0.0",
     "jest": "^27.4.7",
     "n8n-workflow": "~0.106.0",
-    "nodelinter": "^0.1.9",
     "ts-jest": "^27.1.3",
     "tslint": "^6.1.2",
     "typescript": "~4.6.0"
