@@ -18,12 +18,7 @@ export async function urlScanIoApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey } = await this.getCredentials('urlScanIoApi') as { apiKey: string };
-
 	const options: OptionsWithUri = {
-		headers: {
-			'API-KEY': apiKey,
-		},
 		method,
 		body,
 		qs,
@@ -40,7 +35,7 @@ export async function urlScanIoApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

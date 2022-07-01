@@ -3,11 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
-	INodeCredentialTestResult,
-	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -46,7 +42,6 @@ export class UrlScanIo implements INodeType {
 			{
 				name: 'urlScanIoApi',
 				required: true,
-				testedBy: 'urlScanIoApiTest',
 			},
 		],
 		properties: [
@@ -66,39 +61,6 @@ export class UrlScanIo implements INodeType {
 			...scanOperations,
 			...scanFields,
 		],
-	};
-
-	methods = {
-		credentialTest: {
-			async urlScanIoApiTest(
-				this: ICredentialTestFunctions,
-				credentials: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				const { apiKey } = credentials.data as { apiKey: string };
-
-				const options: OptionsWithUri = {
-					headers: {
-						'API-KEY': apiKey,
-					},
-					method: 'GET',
-					uri: 'https://urlscan.io/user/quotas',
-					json: true,
-				};
-
-				try {
-					await this.helpers.request(options);
-					return {
-						status: 'OK',
-						message: 'Authentication successful',
-					};
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: error.message,
-					};
-				}
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
