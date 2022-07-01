@@ -455,6 +455,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
 				'n8n-nodes-base/node-param-description-missing-from-dynamic-multi-options': 'error',
+				'n8n-nodes-base/node-dirname-against-convention': 'error',
 			},
 		},
 	],
