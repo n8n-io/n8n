@@ -379,6 +379,7 @@ module.exports = {
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-uppercase-first-char': 'error',
 				'n8n-nodes-base/cred-class-name-missing-oauth2-suffix': 'error',
+				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-class-name-unsuffixed': 'error',
 			},
 		},
