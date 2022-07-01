@@ -33,6 +33,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+          cache: false
       -
         name: Install dependencies
         run: |
