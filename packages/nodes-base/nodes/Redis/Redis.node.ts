@@ -484,21 +484,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether to operate on data at the tail of the list',
-			},
-			{
-				displayName: 'Overwrite',
-				name: 'overwrite',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'pop',
-						],
-					},
-				},
-				default: false,
-				description: 'Whether to overwrite item data with returned data',
+				description: 'Whether to push or pop data from the end of the list',
 			},
 			{
 				displayName: 'Name',
@@ -508,9 +494,6 @@ export class Redis implements INodeType {
 					show: {
 						operation: [
 							'pop',
-						],
-						overwrite: [
-							false,
 						],
 					},
 				},
@@ -525,9 +508,6 @@ export class Redis implements INodeType {
 					show: {
 						operation: [
 							'pop',
-						],
-						overwrite: [
-							false,
 						],
 					},
 				},
@@ -773,42 +753,31 @@ export class Redis implements INodeType {
 								const redisList = this.getNodeParameter('list', itemIndex) as string;
 								const messageData = this.getNodeParameter('messageData', itemIndex) as string;
 								const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-
-								const action = tail ? client.rpushx : client.lpushx;
+								const action = tail ? client.RPUSH : client.LPUSH;
 								const clientPush = util.promisify(action).bind(client);
-
+								// @ts-ignore: typescript not understanding generic function signatures
 								await clientPush(redisList, messageData);
-								throw Error;
 								returnItems.push(items[itemIndex]);
 							} else if (operation === 'pop'){
 								const redisList = this.getNodeParameter('list', itemIndex) as string;
 								const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-								const overwrite = this.getNodeParameter('overwrite', itemIndex, false) as boolean;
 								const propertyName = this.getNodeParameter('propertyName', itemIndex, 'data') as string;
 
 								const action = tail ? client.rpop : client.lpop;
 								const clientPush = util.promisify(action).bind(client);
 								const value = await clientPush(redisList);
 
-								let valueJSON;
+								let outputValue;
 								try {
-									valueJSON = JSON.parse(value);
+									outputValue = JSON.parse(value);
 								} catch {
-									valueJSON = undefined;
+									outputValue = value;
 								}
-								if (overwrite) {
-									if (valueJSON) {
-										item = {json: valueJSON};
-									} else {
-										item = {json: {data: value}};
-									}
+								const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+								if (options.dotNotation === false) {
+									item.json[propertyName] = outputValue;
 								} else {
-									const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
-									if (options.dotNotation === false) {
-										item.json[propertyName] = valueJSON ? valueJSON : value;
-									} else {
-										set(item.json, propertyName, valueJSON ? valueJSON : value);
-									}
+									set(item.json, propertyName, outputValue);
 								}
 								returnItems.push(item);
 							}
