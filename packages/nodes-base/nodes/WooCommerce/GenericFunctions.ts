@@ -40,27 +40,19 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	const credentials = await this.getCredentials('wooCommerceApi');
 
 	let options: OptionsWithUri = {
-		auth: {
-			user: credentials.consumerKey as string,
-			password: credentials.consumerSecret as string,
-		},
 		method,
 		qs,
 		body,
 		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
 		json: true,
 	};
-	if (credentials.includeCredentialsInQuery === true) {
-		delete options.auth;
-		Object.assign(qs, { consumer_key: credentials.consumerKey, consumer_secret: credentials.consumerSecret });
-	}
 
 	if (!Object.keys(body).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this,'wooCommerceApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
