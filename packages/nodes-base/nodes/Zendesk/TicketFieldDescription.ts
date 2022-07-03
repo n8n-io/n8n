@@ -2,11 +2,12 @@ import {
 	INodeProperties,
  } from 'n8n-workflow';
 
-export const ticketFieldOperations = [
+export const ticketFieldOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,11 +28,10 @@ export const ticketFieldOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const ticketFieldFields = [
+export const ticketFieldFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 ticketField:get                            */
@@ -52,7 +52,6 @@ export const ticketFieldFields = [
 				],
 			},
 		},
-		description: 'ticketField ID',
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -73,7 +72,7 @@ export const ticketFieldFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -97,6 +96,6 @@ export const ticketFieldFields = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

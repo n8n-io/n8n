@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const folderOperations = [
+export const folderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,11 +33,10 @@ export const folderOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const folderFields = [
+export const folderFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                folder:create                               */
@@ -97,14 +97,14 @@ export const folderFields = [
 				name: 'parentFolderKey',
 				type: 'string',
 				default: '',
-				description: 'Parent folder you want to create the folder in'
+				description: 'Parent folder you want to create the folder in',
 			},
 			{
 				displayName: 'Requester Pays',
 				name: 'requesterPays',
 				type: 'boolean',
 				default: false,
-				description: 'Weather the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
+				description: 'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
 			},
 			{
 				displayName: 'Storage Class',
@@ -116,16 +116,16 @@ export const folderFields = [
 						value: 'deepArchive',
 					},
 					{
+						name: 'Glacier',
+						value: 'glacier',
+					},
+					{
 						name: 'Intelligent Tiering',
 						value: 'intelligentTiering',
 					},
 					{
 						name: 'One Zone IA',
 						value: 'onezoneIA',
-					},
-					{
-						name: 'Glacier',
-						value: 'glacier',
 					},
 					{
 						name: 'Reduced Redundancy',
@@ -141,7 +141,7 @@ export const folderFields = [
 					},
 				],
 				default: 'standard',
-				description: 'Amazon S3 storage classes.'
+				description: 'Amazon S3 storage classes',
 			},
 		],
 	},
@@ -217,7 +217,7 @@ export const folderFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -241,7 +241,7 @@ export const folderFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -265,7 +265,8 @@ export const folderFields = [
 				name: 'fetchOwner',
 				type: 'boolean',
 				default: false,
-				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
 			},
 			{
 				displayName: 'Folder Key',
@@ -275,4 +276,4 @@ export const folderFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

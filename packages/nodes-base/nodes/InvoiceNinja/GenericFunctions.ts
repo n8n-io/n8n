@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -8,16 +10,15 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import {
+	get,
+} from 'lodash';
 
 export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('invoiceNinjaApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('invoiceNinjaApi');
 
 	const baseUrl = credentials!.url || 'https://app.invoiceninja.com';
 	const options: OptionsWithUri = {
@@ -29,20 +30,12 @@ export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunc
 		qs: query,
 		uri: uri || `${baseUrl}/api/v1${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.errors) {
-			// Try to return the error prettier
-			const errorMessages = Object.keys(error.response.body.errors).map(errorName => {
-				return (error.response.body.errors[errorName] as [string]).join('');
-			});
-			throw new Error(`Invoice Ninja error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

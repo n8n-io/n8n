@@ -5,29 +5,30 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
-	woocommerceApiRequest,
 	getAutomaticSecret,
+	woocommerceApiRequest,
 } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+import {
+	createHmac,
+} from 'crypto';
 
 export class WooCommerceTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'WooCommerce Trigger',
 		name: 'wooCommerceTrigger',
-		icon: 'file:wooCommerce.png',
+		icon: 'file:wooCommerce.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle WooCommerce events via webhooks',
 		defaults: {
 			name: 'WooCommerce Trigger',
-			color: '#96588a',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -35,7 +36,7 @@ export class WooCommerceTrigger implements INodeType {
 			{
 				name: 'wooCommerceApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -58,51 +59,51 @@ export class WooCommerceTrigger implements INodeType {
 						value: 'coupon.created',
 					},
 					{
-						name: 'coupon.updated',
-						value: 'coupon.updated',
-					},
-					{
 						name: 'coupon.deleted',
 						value: 'coupon.deleted',
+					},
+					{
+						name: 'coupon.updated',
+						value: 'coupon.updated',
 					},
 					{
 						name: 'customer.created',
 						value: 'customer.created',
 					},
 					{
-						name: 'customer.updated',
-						value: 'customer.updated',
-					},
-					{
 						name: 'customer.deleted',
 						value: 'customer.deleted',
+					},
+					{
+						name: 'customer.updated',
+						value: 'customer.updated',
 					},
 					{
 						name: 'order.created',
 						value: 'order.created',
 					},
 					{
-						name: 'order.updated',
-						value: 'order.updated',
-					},
-					{
 						name: 'order.deleted',
 						value: 'order.deleted',
+					},
+					{
+						name: 'order.updated',
+						value: 'order.updated',
 					},
 					{
 						name: 'product.created',
 						value: 'product.created',
 					},
 					{
-						name: 'product.updated',
-						value: 'product.updated',
-					},
-					{
 						name: 'product.deleted',
 						value: 'product.deleted',
 					},
+					{
+						name: 'product.updated',
+						value: 'product.updated',
+					},
 				],
-				description: 'Determines which resource events the webhook is triggered for.',
+				description: 'Determines which resource events the webhook is triggered for',
 			},
 		],
 
@@ -112,24 +113,29 @@ export class WooCommerceTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
-					return false;
+				const currentEvent = this.getNodeParameter('event') as string;
+				const endpoint = `/webhooks`;
+
+				const webhooks = await woocommerceApiRequest.call(this, 'GET', endpoint, {}, { status: 'active', per_page: 100 });
+
+				for (const webhook of webhooks) {
+					if (webhook.status === 'active'
+					&& webhook.delivery_url === webhookUrl
+					&& webhook.topic === currentEvent) {
+						webhookData.webhookId = webhook.id;
+						return true;
+					}
 				}
-				const endpoint = `/webhooks/${webhookData.webhookId}`;
-				try {
-					await woocommerceApiRequest.call(this, 'GET', endpoint);
-				} catch (e) {
-					return false;
-				}
-				return true;
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = this.getCredentials('wooCommerceApi');
+				const credentials = await this.getCredentials('wooCommerceApi');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
-				const secret = getAutomaticSecret(credentials!);
+				const secret = getAutomaticSecret(credentials);
 				const endpoint = '/webhooks';
 				const body: IDataObject = {
 					delivery_url: webhookUrl,

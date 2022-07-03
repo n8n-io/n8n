@@ -11,17 +11,17 @@ To get the entire list of events as a JS array, scrape the website:
 ```js
 types = []
 $$('ul#event-types li').forEach(el => {
-  const value = el.querySelector('.method-list-item-label-name').innerText
+	const value = el.querySelector('.method-list-item-label-name').innerText
 
-  types.push({
-    name: value
-      .replace(/(\.|_)/, ' ')
-      .split(' ')
-      .map((s) => s.charAt(0).toUpperCase() + s.substring(1))
-      .join(' '),
-    value,
-    description: el.querySelector('.method-list-item-description').innerText
-  })
+	types.push({
+		name: value
+			.replace(/(\.|_)/, ' ')
+			.split(' ')
+			.map((s) => s.charAt(0).toUpperCase() + s.substring(1))
+			.join(' '),
+		value,
+		description: el.querySelector('.method-list-item-description').innerText
+	})
 })
 copy(types)
 ```

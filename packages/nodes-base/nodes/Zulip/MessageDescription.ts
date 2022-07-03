@@ -1,10 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const messageOperations = [
+export const messageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,20 +42,19 @@ export const messageOperations = [
 			{
 				name: 'Upload a File',
 				value: 'updateFile',
-				description: 'Upload a file',
 			},
 		],
 		default: 'sendPrivate',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const messageFields = [
+export const messageFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                message:sendPrivate                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                message:sendPrivate                         */
+	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 		displayName: 'To',
 		name: 'to',
 		type: 'multiOptions',
@@ -62,7 +62,7 @@ export const messageFields = [
 			loadOptionsMethod: 'getUsers',
 		},
 		required: true,
-		default: '',
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [
@@ -73,7 +73,7 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -91,16 +91,16 @@ export const messageFields = [
 				],
 				operation: [
 					'sendPrivate',
-				]
+				],
 			},
 		},
-		description: 'The content of the message.',
+		description: 'The content of the message',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                message:sendStream                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                message:sendStream                          */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Stream',
+		displayName: 'Stream Name or ID',
 		name: 'stream',
 		type: 'options',
 		typeOptions: {
@@ -118,14 +118,16 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma separated list containing the usernames (emails) of the recipients.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Topic',
+		displayName: 'Topic Name or ID',
 		name: 'topic',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: 'stream',
+			loadOptionsDependsOn: [
+				'stream',
+			],
 			loadOptionsMethod: 'getTopics',
 		},
 		required: true,
@@ -140,7 +142,7 @@ export const messageFields = [
 			},
 		},
 		default: '',
-		description: 'The topic of the message. Only required if type is stream, ignored otherwise.',
+		description: 'The topic of the message. Only required if type is stream, ignored otherwise. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -158,14 +160,14 @@ export const messageFields = [
 				],
 				operation: [
 					'sendStream',
-				]
+				],
 			},
 		},
-		description: 'The content of the message.',
+		description: 'The content of the message',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 message:update                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -179,10 +181,10 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
 	{
 		displayName: 'Update Fields',
@@ -237,13 +239,13 @@ export const messageFields = [
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: 'The topic of the message. Only required for stream messages',
+				description: 'The topic of the message. Only required for stream messages.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 message:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -257,14 +259,14 @@ export const messageFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 message:delete                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Message ID',
 		name: 'messageId',
@@ -278,14 +280,14 @@ export const messageFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the message.',
+		description: 'Unique identifier for the message',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 message:updateFile                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:updateFile                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Binary Property',
 		name: 'dataBinaryProperty',
@@ -299,9 +301,9 @@ export const messageFields = [
 				],
 				operation: [
 					'updateFile',
-				]
+				],
 			},
 		},
-		description: 'Name of the binary property to which to<br />write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
-] as INodeProperties[];
+];

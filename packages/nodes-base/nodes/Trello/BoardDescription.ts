@@ -1,6 +1,8 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const boardOperations = [
+export const boardOperations: INodeProperties[] = [
 	// ----------------------------------
 	//         board
 	// ----------------------------------
@@ -8,6 +10,7 @@ export const boardOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,11 +41,10 @@ export const boardOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
-	}
-] as INodeProperties[];
+	},
+];
 
-export const boardFields = [
+export const boardFields: INodeProperties[] = [
 
 	// ----------------------------------
 	//         board:create
@@ -115,14 +117,14 @@ export const boardFields = [
 					},
 				],
 				default: 'regular',
-				description: 'Determines the type of card aging that should take place on the board if card aging is enabled.',
+				description: 'Determines the type of card aging that should take place on the board if card aging is enabled',
 			},
 			{
 				displayName: 'Background',
 				name: 'prefs_background',
 				type: 'string',
 				default: 'blue',
-				description: 'The id of a custom background or one of: blue, orange, green, red, purple, pink, lime, sky, grey.',
+				description: 'The ID of a custom background or one of: blue, orange, green, red, purple, pink, lime, sky, grey',
 			},
 			{
 				displayName: 'Comments',
@@ -151,14 +153,14 @@ export const boardFields = [
 					},
 				],
 				default: 'members',
-				description: 'Who can comment on cards on this board.',
+				description: 'Who can comment on cards on this board',
 			},
 			{
 				displayName: 'Covers',
 				name: 'prefs_cardCovers',
 				type: 'boolean',
 				default: true,
-				description: 'Determines whether card covers are enabled.',
+				description: 'Whether card covers are enabled',
 			},
 			{
 				displayName: 'Invitations',
@@ -175,35 +177,35 @@ export const boardFields = [
 					},
 				],
 				default: 'members',
-				description: 'Determines what types of members can invite users to join.',
+				description: 'Determines what types of members can invite users to join',
 			},
 			{
 				displayName: 'Keep From Source',
 				name: 'keepFromSource',
 				type: 'string',
 				default: 'none',
-				description: 'To keep cards from the original board pass in the value cards.',
+				description: 'To keep cards from the original board pass in the value cards',
 			},
 			{
 				displayName: 'Labels',
 				name: 'defaultLabels',
 				type: 'boolean',
 				default: true,
-				description: 'Determines whether to use the default set of labels.',
+				description: 'Whether to use the default set of labels',
 			},
 			{
 				displayName: 'Lists',
 				name: 'defaultLists',
 				type: 'boolean',
 				default: true,
-				description: 'Determines whether to add the default set of lists to a board(To Do, Doing, Done).It is ignored if idBoardSource is provided.',
+				description: 'Whether to add the default set of lists to a board(To Do, Doing, Done).It is ignored if idBoardSource is provided',
 			},
 			{
 				displayName: 'Organization ID',
 				name: 'idOrganization',
 				type: 'string',
 				default: '',
-				description: 'The id or name of the team the board should belong to.',
+				description: 'The ID or name of the team the board should belong to',
 			},
 			{
 				displayName: 'Permission Level',
@@ -224,7 +226,7 @@ export const boardFields = [
 					},
 				],
 				default: 'private',
-				description: 'The permissions level of the board.',
+				description: 'The permissions level of the board',
 			},
 			{
 				displayName: 'Power Ups',
@@ -253,21 +255,21 @@ export const boardFields = [
 					},
 				],
 				default: 'all',
-				description: 'The Power-Ups that should be enabled on the new board.',
+				description: 'The Power-Ups that should be enabled on the new board',
 			},
 			{
 				displayName: 'Self Join',
 				name: 'prefs_selfJoin',
 				type: 'boolean',
 				default: true,
-				description: 'Determines whether users can join the boards themselves or whether they have to be invited.',
+				description: 'Whether users can join the boards themselves or whether they have to be invited',
 			},
 			{
 				displayName: 'Source IDs',
 				name: 'idBoardSource',
 				type: 'string',
 				default: '',
-				description: 'The id of a board to copy into the new board.',
+				description: 'The ID of a board to copy into the new board',
 			},
 			{
 				displayName: 'Voting',
@@ -296,7 +298,7 @@ export const boardFields = [
 					},
 				],
 				default: 'disabled',
-				description: 'Who can vote on this board.',
+				description: 'Who can vote on this board',
 			},
 		],
 	},
@@ -320,7 +322,7 @@ export const boardFields = [
 				],
 			},
 		},
-		description: 'The ID of the board to delete.',
+		description: 'The ID of the board to delete',
 	},
 
 	// ----------------------------------
@@ -342,7 +344,7 @@ export const boardFields = [
 				],
 			},
 		},
-		description: 'The ID of the board to get.',
+		description: 'The ID of the board to get',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -366,14 +368,14 @@ export const boardFields = [
 				name: 'fields',
 				type: 'string',
 				default: 'all',
-				description: 'Fields to return. Either "all" or a comma-separated list:<br />closed, dateLastActivity, dateLastView, desc, descData,<br />idOrganization, invitations, invited, labelNames, memberships,<br />name, pinned, powerUps, prefs, shortLink, shortUrl,<br />starred, subscribed, url',
+				description: 'Fields to return. Either "all" or a comma-separated list: closed, dateLastActivity, dateLastView, desc, descData, idOrganization, invitations, invited, labelNames, memberships, name, pinned, powerUps, prefs, shortLink, shortUrl, starred, subscribed, URL.',
 			},
 			{
 				displayName: 'Plugin Data',
 				name: 'pluginData',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include pluginData on the card with the response.',
+				description: 'Whether to include pluginData on the card with the response',
 			},
 		],
 	},
@@ -397,7 +399,7 @@ export const boardFields = [
 				],
 			},
 		},
-		description: 'The ID of the board to update.',
+		description: 'The ID of the board to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -421,7 +423,7 @@ export const boardFields = [
 				name: 'closed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the board is closed.',
+				description: 'Whether the board is closed',
 			},
 			{
 				displayName: 'Description',
@@ -442,16 +444,15 @@ export const boardFields = [
 				name: 'idOrganization',
 				type: 'string',
 				default: '',
-				description: 'The id of the team the board should be moved to.',
+				description: 'The ID of the team the board should be moved to',
 			},
 			{
 				displayName: 'Subscribed',
 				name: 'subscribed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the acting user is subscribed to the board.',
+				description: 'Whether the acting user is subscribed to the board',
 			},
 		],
 	},
-
-] as INodeProperties[];
+];

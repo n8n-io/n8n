@@ -1,10 +1,11 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const taskOperations = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -35,11 +36,10 @@ export const taskOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 task:create                               */
 /* -------------------------------------------------------------------------- */
@@ -61,9 +61,10 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -91,9 +92,10 @@ export const taskFields = [
 				default: '',
 			},
 			{
-				displayName: 'Project',
+				displayName: 'Project Name or ID',
 				name: 'project',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjects',
 				},
@@ -157,6 +159,7 @@ export const taskFields = [
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -176,6 +179,7 @@ export const taskFields = [
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -237,7 +241,7 @@ export const taskFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -261,7 +265,7 @@ export const taskFields = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -295,4 +299,4 @@ export const taskFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

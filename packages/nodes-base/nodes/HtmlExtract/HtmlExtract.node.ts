@@ -1,11 +1,14 @@
-import * as cheerio from 'cheerio';
+import cheerio from 'cheerio';
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
+	NodeOperationError,
 } from 'n8n-workflow';
+
+type Cheerio = ReturnType<typeof cheerio>;
 
 interface IValueData {
 	attribute?: string;
@@ -71,7 +74,7 @@ export class HtmlExtract implements INodeType {
 					},
 				],
 				default: 'json',
-				description: 'If HTML should be read from binary or json data.',
+				description: 'If HTML should be read from binary or JSON data',
 			},
 			{
 				displayName: 'Binary Property',
@@ -86,7 +89,7 @@ export class HtmlExtract implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property in which the HTML to extract the data from can be found.',
+				description: 'Name of the binary property in which the HTML to extract the data from can be found',
 			},
 			{
 				displayName: 'JSON Property',
@@ -101,7 +104,7 @@ export class HtmlExtract implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the json property in which the HTML to extract the data from can be found.<br />The property can either contain a string or an array of strings.',
+				description: 'Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
 			},
 			{
 				displayName: 'Extraction Values',
@@ -111,7 +114,6 @@ export class HtmlExtract implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The extraction values.',
 				default: {},
 				options: [
 					{
@@ -123,7 +125,7 @@ export class HtmlExtract implements INodeType {
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'The key under which the extracted value should be saved.',
+								description: 'The key under which the extracted value should be saved',
 							},
 							{
 								displayName: 'CSS Selector',
@@ -131,7 +133,7 @@ export class HtmlExtract implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: '.price',
-								description: 'The CSS selector to use.',
+								description: 'The CSS selector to use',
 							},
 							{
 								displayName: 'Return Value',
@@ -141,26 +143,26 @@ export class HtmlExtract implements INodeType {
 									{
 										name: 'Attribute',
 										value: 'attribute',
-										description: 'Get an attribute value like "class" from an element.',
+										description: 'Get an attribute value like "class" from an element',
 									},
 									{
 										name: 'HTML',
 										value: 'html',
-										description: 'Get the HTML the element contains.',
+										description: 'Get the HTML the element contains',
 									},
 									{
 										name: 'Text',
 										value: 'text',
-										description: 'Get only the text content of the element.',
+										description: 'Get only the text content of the element',
 									},
 									{
 										name: 'Value',
 										value: 'value',
-										description: 'Get value of an input, select or textarea.',
+										description: 'Get value of an input, select or textarea',
 									},
 								],
 								default: 'text',
-								description: 'What kind of data should be returned.',
+								description: 'What kind of data should be returned',
 							},
 							{
 								displayName: 'Attribute',
@@ -175,14 +177,14 @@ export class HtmlExtract implements INodeType {
 								},
 								default: '',
 								placeholder: 'class',
-								description: 'The name of the attribute to return the value off.',
+								description: 'The name of the attribute to return the value off',
 							},
 							{
 								displayName: 'Return Array',
 								name: 'returnArray',
 								type: 'boolean',
 								default: false,
-								description: 'Returns the values as an array so if multiple ones get found they also get<br />returned separately.If not set all will be returned as a single string.',
+								description: 'Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
 							},
 						],
 					},
@@ -201,11 +203,11 @@ export class HtmlExtract implements INodeType {
 						name: 'trimValues',
 						type: 'boolean',
 						default: true,
-						description: 'Removes automatically all spaces and newlines from<br />the beginning and end of the values.',
+						description: 'Whether to remove automatically all spaces and newlines from the beginning and end of the values',
 					},
 				],
-			}
-		]
+			},
+		],
 	};
 
 
@@ -216,59 +218,79 @@ export class HtmlExtract implements INodeType {
 
 		let item: INodeExecutionData;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
-			const extractionValues = this.getNodeParameter('extractionValues', itemIndex) as IDataObject;
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
-			const sourceData = this.getNodeParameter('sourceData', itemIndex) as string;
+			try {
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const extractionValues = this.getNodeParameter('extractionValues', itemIndex) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const sourceData = this.getNodeParameter('sourceData', itemIndex) as string;
 
-			item = items[itemIndex];
+				item = items[itemIndex];
 
-			let htmlArray: string[] | string = [];
-			if (sourceData === 'json') {
-				if (item.json[dataPropertyName] === undefined) {
-					throw new Error(`No property named "${dataPropertyName}" exists!`);
-				}
-				htmlArray = item.json[dataPropertyName] as string;
-			} else {
-				if (item.binary === undefined) {
-					throw new Error(`No item does not contain binary data!`);
-				}
-				if (item.binary[dataPropertyName] === undefined) {
-					throw new Error(`No property named "${dataPropertyName}" exists!`);
-				}
-				htmlArray = Buffer.from(item.binary[dataPropertyName].data, 'base64').toString('utf8');
-			}
-
-			// Convert it always to array that it works with a string or an array of strings
-			if (!Array.isArray(htmlArray)) {
-				htmlArray = [htmlArray];
-			}
-
-			for (const html of htmlArray as string[]) {
-				const $ = cheerio.load(html);
-
-				const newItem: INodeExecutionData = {
-					json: {},
-				};
-
-				// Itterate over all the defined values which should be extracted
-				let htmlElement;
-				for (const valueData of extractionValues.values as IValueData[]) {
-					htmlElement = $(valueData.cssSelector);
-
-					if (valueData.returnArray === true) {
-						// An array should be returned so itterate over one
-						// value at a time
-						newItem.json[valueData.key as string] = [];
-						htmlElement.each((i, el) => {
-							(newItem.json[valueData.key as string] as Array<string | undefined>).push(getValue($(el), valueData, options));
-						});
-					} else {
-						// One single value should be returned
-						newItem.json[valueData.key as string] = getValue(htmlElement, valueData, options);
+				let htmlArray: string[] | string = [];
+				if (sourceData === 'json') {
+					if (item.json[dataPropertyName] === undefined) {
+						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
 					}
+					htmlArray = item.json[dataPropertyName] as string;
+				} else {
+					if (item.binary === undefined) {
+						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`);
+					}
+					if (item.binary[dataPropertyName] === undefined) {
+						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
+					}
+
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+					htmlArray = binaryDataBuffer.toString('utf-8');
 				}
-				returnData.push(newItem);
+
+				// Convert it always to array that it works with a string or an array of strings
+				if (!Array.isArray(htmlArray)) {
+					htmlArray = [htmlArray];
+				}
+
+				for (const html of htmlArray as string[]) {
+					const $ = cheerio.load(html);
+
+					const newItem: INodeExecutionData = {
+						json: {},
+						pairedItem: {
+							item: itemIndex,
+						},
+					};
+
+					// Itterate over all the defined values which should be extracted
+					let htmlElement;
+					for (const valueData of extractionValues.values as IValueData[]) {
+						htmlElement = $(valueData.cssSelector);
+
+						if (valueData.returnArray === true) {
+							// An array should be returned so itterate over one
+							// value at a time
+							newItem.json[valueData.key as string] = [];
+							htmlElement.each((i, el) => {
+								(newItem.json[valueData.key as string] as Array<string | undefined>).push(getValue($(el), valueData, options));
+							});
+						} else {
+							// One single value should be returned
+							newItem.json[valueData.key as string] = getValue(htmlElement, valueData, options);
+						}
+					}
+					returnData.push(newItem);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
+					continue;
+				}
+				throw error;
 			}
 		}
 

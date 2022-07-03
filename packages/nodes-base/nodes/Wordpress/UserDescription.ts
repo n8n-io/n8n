@@ -1,10 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,11 +41,10 @@ export const userOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                user:create                                 */
@@ -62,10 +62,10 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
-		description: 'Login name for the user.',
+		description: 'Login name for the user',
 	},
 	{
 		displayName: 'Name',
@@ -80,10 +80,10 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
-		description: 'Display name for the user.',
+		description: 'Display name for the user',
 	},
 	{
 		displayName: 'First Name',
@@ -98,10 +98,10 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
-		description: 'First name for the user.',
+		description: 'First name for the user',
 	},
 	{
 		displayName: 'Last Name',
@@ -116,15 +116,16 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
-		description: 'Last name for the user.',
+		description: 'Last name for the user',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -134,10 +135,10 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
-		description: 'The email address for the user.',
+		description: 'The email address for the user',
 	},
 	{
 		displayName: 'Password',
@@ -152,7 +153,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Password for the user (never included)',
@@ -179,7 +180,7 @@ export const userFields = [
 				name: 'url',
 				type: 'string',
 				default: '',
-				description: 'URL of the user.',
+				description: 'URL of the user',
 			},
 			{
 				displayName: 'Description',
@@ -189,23 +190,23 @@ export const userFields = [
 				},
 				type: 'string',
 				default: '',
-				description: 'Description of the user.',
+				description: 'Description of the user',
 			},
 			{
 				displayName: 'Nickname',
 				name: 'nickname',
 				type: 'string',
 				default: '',
-				description: 'The nickname for the user.',
+				description: 'The nickname for the user',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'An alphanumeric identifier for the user.',
+				description: 'An alphanumeric identifier for the user',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 user:update                                */
@@ -223,10 +224,10 @@ export const userFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the user.',
+		description: 'Unique identifier for the user',
 	},
 	{
 		displayName: 'Update Fields',
@@ -250,35 +251,36 @@ export const userFields = [
 				name: 'username',
 				type: 'string',
 				default: '',
-				description: 'Login name for the user.',
+				description: 'Login name for the user',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Display name for the user.',
+				description: 'Display name for the user',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'First name for the user.',
+				description: 'First name for the user',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Last name for the user.',
+				description: 'Last name for the user',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'The email address for the user.',
+				description: 'The email address for the user',
 			},
 			{
 				displayName: 'Password',
@@ -292,7 +294,7 @@ export const userFields = [
 				name: 'url',
 				type: 'string',
 				default: '',
-				description: 'URL of the user.',
+				description: 'URL of the user',
 			},
 			{
 				displayName: 'Description',
@@ -302,23 +304,23 @@ export const userFields = [
 				},
 				type: 'string',
 				default: '',
-				description: 'Description of the user.',
+				description: 'Description of the user',
 			},
 			{
 				displayName: 'Nickname',
 				name: 'nickname',
 				type: 'string',
 				default: '',
-				description: 'The nickname for the user.',
+				description: 'The nickname for the user',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'An alphanumeric identifier for the user.',
+				description: 'An alphanumeric identifier for the user',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 user:get                                   */
@@ -336,10 +338,10 @@ export const userFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the user.',
+		description: 'Unique identifier for the user',
 	},
 	{
 		displayName: 'Options',
@@ -377,9 +379,9 @@ export const userFields = [
 					},
 				],
 				default: 'view',
-				description: 'Scope under which the request is made; determines fields present in response.',
+				description: 'Scope under which the request is made; determines fields present in response',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 user:getAll                                */
@@ -399,7 +401,7 @@ export const userFields = [
 		},
 	},
 	default: false,
-	description: 'If all results should be returned or only up to a given limit.',
+	description: 'Whether to return all results or only up to a given limit',
 },
 {
 	displayName: 'Limit',
@@ -423,7 +425,7 @@ export const userFields = [
 		maxValue: 10,
 	},
 	default: 5,
-	description: 'How many results to return.',
+	description: 'Max number of results to return',
 },
 {
 	displayName: 'Options',
@@ -461,7 +463,7 @@ export const userFields = [
 				},
 			],
 			default: 'view',
-			description: 'Scope under which the request is made; determines fields present in response.',
+			description: 'Scope under which the request is made; determines fields present in response',
 		},
 		{
 			displayName: 'Order By',
@@ -502,7 +504,7 @@ export const userFields = [
 				},
 			],
 			default: 'id',
-			description: 'Sort collection by object attribute.',
+			description: 'Sort collection by object attribute',
 		},
 		{
 			displayName: 'Order',
@@ -519,14 +521,14 @@ export const userFields = [
 				},
 			],
 			default: 'desc',
-			description: 'Order sort attribute ascending or descending.',
+			description: 'Order sort attribute ascending or descending',
 		},
 		{
 			displayName: 'Search',
 			name: 'search',
 			type: 'string',
 			default: '',
-			description: 'Limit results to those matching a string.',
+			description: 'Limit results to those matching a string',
 		},
 		{
 			displayName: 'Who',
@@ -539,9 +541,9 @@ export const userFields = [
 				},
 			],
 			default: 'authors',
-			description: 'Limit result set to users who are considered authors.',
+			description: 'Limit result set to users who are considered authors',
 		},
-	]
+	],
 },
 /* -------------------------------------------------------------------------- */
 /*                                 user:delete                                */
@@ -559,9 +561,9 @@ export const userFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
-		description: `Reassign the deleted user's posts and links to this user ID.`,
+		description: 'Reassign the deleted user\'s posts and links to this user ID',
 	},
-] as INodeProperties[];
+];

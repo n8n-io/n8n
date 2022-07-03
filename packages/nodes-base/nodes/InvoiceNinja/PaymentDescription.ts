@@ -1,10 +1,11 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const paymentOperations = [
+export const paymentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -35,18 +36,18 @@ export const paymentOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const paymentFields = [
+export const paymentFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 payment:create                             */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice',
+		displayName: 'Invoice Name or ID',
 		name: 'invoice',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getInvoices',
 		},
@@ -104,6 +105,18 @@ export const paymentFields = [
 				type: 'options',
 				options: [
 					{
+						name: 'ACH',
+						value: 5,
+					},
+					{
+						name: 'Alipay',
+						value: 28,
+					},
+					{
+						name: 'American Express',
+						value: 8,
+					},
+					{
 						name: 'Apply Credit',
 						value: 1,
 					},
@@ -112,68 +125,52 @@ export const paymentFields = [
 						value: 2,
 					},
 					{
-						name: 'Cash',
-						value: 3,
-					},
-					{
-						name: 'Debit',
-						value: 4,
-					},
-					{
-						name: 'ACH',
-						value: 5,
-					},
-					{
-						name: 'Visa Card',
-						value: 6,
-					},
-					{
-						name: 'MasterCard',
-						value: 7,
-					},
-					{
-						name: 'American Express',
-						value: 8,
-					},
-					{
-						name: 'Discover Card',
-						value: 9,
-					},
-					{
-						name: 'Diners Card',
-						value: 10,
-					},
-					{
-						name: 'EuroCard',
-						value: 11,
-					},
-					{
-						name: 'Nova',
-						value: 12,
-					},
-					{
-						name: 'Credit Card Other',
-						value: 13,
-					},
-					{
-						name: 'Paypal',
-						value: 14,
-					},
-					{
-						name: 'Google Wallet',
-						value: 15,
-					},
-					{
-						name: 'Check',
-						value: 16,
+						name: 'Bitcoin',
+						value: 32,
 					},
 					{
 						name: 'Carte Blanche',
 						value: 17,
 					},
 					{
-						name: 'UnionPay',
-						value: 18,
+						name: 'Cash',
+						value: 3,
+					},
+					{
+						name: 'Check',
+						value: 16,
+					},
+					{
+						name: 'Credit Card Other',
+						value: 13,
+					},
+					{
+						name: 'Debit',
+						value: 4,
+					},
+					{
+						name: 'Diners Card',
+						value: 10,
+					},
+					{
+						name: 'Discover Card',
+						value: 9,
+					},
+					{
+						name: 'EuroCard',
+						value: 11,
+					},
+					{
+						name: 'GoCardless',
+						value: 31,
+					},
+					{
+						name: 'Google Wallet',
+						value: 15,
+					},
+					{
+						name: 'iZettle',
+						value: 24,
 					},
 					{
 						name: 'JCB',
@@ -188,56 +185,52 @@ export const paymentFields = [
 						value: 21,
 					},
 					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
-						name: 'iZettle',
-						value: 24,
-					},
-					{
-						name: 'Swish',
-						value: 25,
-					},
-					{
-						name: 'Venmo',
-						value: 26,
+						name: 'MasterCard',
+						value: 7,
 					},
 					{
 						name: 'Money Order',
 						value: 27,
 					},
 					{
-						name: 'Alipay',
-						value: 28,
+						name: 'Nova',
+						value: 12,
 					},
 					{
-						name: 'Sofort',
-						value: 29,
+						name: 'Paypal',
+						value: 14,
 					},
 					{
 						name: 'SEPA',
 						value: 30,
 					},
 					{
-						name: 'GoCardless',
-						value: 31,
+						name: 'Sofort',
+						value: 29,
 					},
 					{
-						name: 'Bitcoin',
-						value: 32,
+						name: 'Solo',
+						value: 22,
+					},
+					{
+						name: 'Swich',
+						value: 23,
+					},
+					{
+						name: 'Swish',
+						value: 25,
+					},
+					{
+						name: 'UnionPay',
+						value: 18,
+					},
+					{
+						name: 'Venmo',
+						value: 26,
+					},
+					{
+						name: 'Visa Card',
+						value: 6,
 					},
 				],
 				default: 1,
@@ -267,6 +260,7 @@ export const paymentFields = [
 		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -286,6 +280,7 @@ export const paymentFields = [
 		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -347,7 +342,7 @@ export const paymentFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -371,7 +366,7 @@ export const paymentFields = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -405,4 +400,4 @@ export const paymentFields = [
 		],
 	},
 
-] as INodeProperties[];
+];

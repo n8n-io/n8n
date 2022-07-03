@@ -1,38 +1,40 @@
+/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
 import {IExecuteFunctions} from 'n8n-core';
 import {
 	ILoadOptionsFunctions,
 	INodeExecutionData, INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
 import {OptionsWithUri} from 'request';
 import {
-	layoutsApiRequest,
 	getFields,
 	getPortals,
 	getScripts,
 	getToken,
-	parseSort,
+	layoutsApiRequest,
+	logout,
+	parseFields,
 	parsePortals,
 	parseQuery,
 	parseScripts,
-	parseFields,
-	logout
-} from "./GenericFunctions";
+	parseSort,
+} from './GenericFunctions';
 
 export class FileMaker implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FileMaker',
 		name: 'filemaker',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:filemaker.png',
 		group: ['input'],
 		version: 1,
-		description: 'Retrieve data from FileMaker data API.',
+		description: 'Retrieve data from the FileMaker data API',
 		defaults: {
 			name: 'FileMaker',
-			color: '#665533',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -58,6 +60,22 @@ export class FileMaker implements INodeType {
 						value: 'logout',
 					},*/
 					{
+						name: 'Create Record',
+						value: 'create',
+					},
+					{
+						name: 'Delete Record',
+						value: 'delete',
+					},
+					{
+						name: 'Duplicate Record',
+						value: 'duplicate',
+					},
+					{
+						name: 'Edit Record',
+						value: 'edit',
+					},
+					{
 						name: 'Find Records',
 						value: 'find',
 					},
@@ -66,38 +84,21 @@ export class FileMaker implements INodeType {
 						value: 'records',
 					},
 					{
-						name: 'Get Records By Id',
+						name: 'Get Records By ID',
 						value: 'record',
 					},
 					{
 						name: 'Perform Script',
 						value: 'performscript',
 					},
-					{
-						name: 'Create Record',
-						value: 'create',
-					},
-					{
-						name: 'Edit Record',
-						value: 'edit',
-					},
-					{
-						name: 'Duplicate Record',
-						value: 'duplicate',
-					},
-					{
-						name: 'Delete Record',
-						value: 'delete',
-					},
 				],
-				description: 'Action to perform.',
 			},
 
 			// ----------------------------------
 			//         shared
 			// ----------------------------------
 			{
-				displayName: 'Layout',
+				displayName: 'Layout Name or ID',
 				name: 'layout',
 				type: 'options',
 				typeOptions: {
@@ -108,10 +109,10 @@ export class FileMaker implements INodeType {
 				required: true,
 				displayOptions: {},
 				placeholder: 'Layout Name',
-				description: 'FileMaker Layout Name.',
+				description: 'FileMaker Layout Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Record Id',
+				displayName: 'Record ID',
 				name: 'recid',
 				type: 'number',
 				default: '',
@@ -133,9 +134,9 @@ export class FileMaker implements INodeType {
 				displayName: 'Offset',
 				name: 'offset',
 				placeholder: '0',
-				description: 'The record number of the first record in the range of records.',
+				description: 'The record number of the first record in the range of records',
 				type: 'number',
-				default: '1',
+				default: 1,
 				displayOptions: {
 					show: {
 						action: [
@@ -143,15 +144,18 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 					},
-				}
+				},
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				placeholder: '100',
-				description: 'The maximum number of records that should be returned. If not specified, the default value is 100.',
+				description: 'Max number of results to return',
 				type: 'number',
-				default: '100',
+				typeOptions: {
+					minValue: 1,
+				},
+				default: 100,
 				displayOptions: {
 					show: {
 						action: [
@@ -159,14 +163,14 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 					},
-				}
+				},
 			},
 			{
-				displayName: 'Get portals',
+				displayName: 'Get Portals',
 				name: 'getPortals',
 				type: 'boolean',
 				default: false,
-				description: 'Should we get portal data as well ?',
+				description: 'Whether to get portal data as well',
 				displayOptions: {
 					show: {
 						action: [
@@ -178,7 +182,7 @@ export class FileMaker implements INodeType {
 				},
 			},
 			{
-				displayName: 'Portals',
+				displayName: 'Portals Name or ID',
 				name: 'portals',
 				type: 'options',
 				typeOptions: {
@@ -201,25 +205,25 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Portals',
-				description: 'The portal result set to return. Use the portal object name or portal<br />table name. If this parameter is omitted, the API will return all<br />portal objects and records in the layout. For best performance<br />, pass the portal object name or portal table name.',
+				description: 'The portal result set to return. Use the portal object name or portal table name. If this parameter is omitted, the API will return all portal objects and records in the layout. For best performance, pass the portal object name or portal table name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			// ----------------------------------
 			//         find/records
 			// ----------------------------------
 			{
-				displayName: 'Response Layout',
+				displayName: 'Response Layout Name or ID',
 				name: 'responseLayout',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getResponseLayouts',
 				},
 				options: [],
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
-							'find'
+							'find',
 						],
 					},
 				},
@@ -239,7 +243,6 @@ export class FileMaker implements INodeType {
 						],
 					},
 				},
-				description: 'Queries ',
 				default: {},
 				options: [
 					{
@@ -260,7 +263,7 @@ export class FileMaker implements INodeType {
 									displayName: 'Field',
 									values: [
 										{
-											displayName: 'Field',
+											displayName: 'Field Name or ID',
 											name: 'name',
 											type: 'options',
 											default: '',
@@ -268,7 +271,7 @@ export class FileMaker implements INodeType {
 												loadOptionsMethod: 'getFields',
 											},
 											options: [],
-											description: 'Search Field',
+											description: 'Search Field. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 										},
 										{
 											displayName: 'Value',
@@ -277,8 +280,8 @@ export class FileMaker implements INodeType {
 											default: '',
 											description: 'Value to search',
 										},
-									]
-								}
+									],
+								},
 								],
 								description: 'Field Name',
 							},
@@ -286,18 +289,18 @@ export class FileMaker implements INodeType {
 								displayName: 'Omit',
 								name: 'omit',
 								type: 'boolean',
-								default: false
+								default: false,
 							},
-						]
+						],
 					},
 				],
 			},
 			{
-				displayName: 'Sort data?',
+				displayName: 'Sort Data?',
 				name: 'setSort',
 				type: 'boolean',
 				default: false,
-				description: 'Should we sort data ?',
+				description: 'Whether to sort data',
 				displayOptions: {
 					show: {
 						action: [
@@ -335,7 +338,7 @@ export class FileMaker implements INodeType {
 						displayName: 'Rules',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								default: '',
@@ -343,7 +346,7 @@ export class FileMaker implements INodeType {
 									loadOptionsMethod: 'getFields',
 								},
 								options: [],
-								description: 'Field Name.',
+								description: 'Field Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Order',
@@ -353,25 +356,25 @@ export class FileMaker implements INodeType {
 								options: [
 									{
 										name: 'Ascend',
-										value: 'ascend'
+										value: 'ascend',
 									},
 									{
 										name: 'Descend',
-										value: 'descend'
+										value: 'descend',
 									},
 								],
-								description: 'Sort order.',
+								description: 'Sort order',
 							},
-						]
+						],
 					},
 				],
 			},
 			{
-				displayName: 'Before find script',
+				displayName: 'Before Find Script',
 				name: 'setScriptBefore',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run before the action specified by the API call and after the subsequent sort.',
+				description: 'Whether to define a script to be run before the action specified by the API call and after the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -379,11 +382,11 @@ export class FileMaker implements INodeType {
 							'record',
 							'records',
 						],
-					}
+					},
 				},
 			},
 			{
-				displayName: 'Script Name',
+				displayName: 'Script Name or ID',
 				name: 'scriptBefore',
 				type: 'options',
 				typeOptions: {
@@ -400,19 +403,18 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptBefore: [
-							true
+							true,
 						],
 					},
 				},
 				placeholder: 'Script Name',
-				description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort.',
+				description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Script Parameter',
 				name: 'scriptBeforeParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -421,19 +423,19 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptBefore: [
-							true
+							true,
 						],
 					},
 				},
 				placeholder: 'Script Parameters',
-				description: 'A parameter for the FileMaker script.',
+				description: 'A parameter for the FileMaker script',
 			},
 			{
-				displayName: 'Before sort script',
+				displayName: 'Before Sort Script',
 				name: 'setScriptSort',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort.',
+				description: 'Whether to define a script to be run after the action specified by the API call but before the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -441,11 +443,11 @@ export class FileMaker implements INodeType {
 							'record',
 							'records',
 						],
-					}
+					},
 				},
 			},
 			{
-				displayName: 'Script Name',
+				displayName: 'Script Name or ID',
 				name: 'scriptSort',
 				type: 'options',
 				typeOptions: {
@@ -462,19 +464,18 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptSort: [
-							true
+							true,
 						],
 					},
 				},
 				placeholder: 'Script Name',
-				description: 'The name of the FileMaker script to be run after the action specified by the API call but before the subsequent sort.',
+				description: 'The name of the FileMaker script to be run after the action specified by the API call but before the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Script Parameter',
 				name: 'scriptSortParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -483,19 +484,19 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptSort: [
-							true
+							true,
 						],
 					},
 				},
 				placeholder: 'Script Parameters',
-				description: 'A parameter for the FileMaker script.',
+				description: 'A parameter for the FileMaker script',
 			},
 			{
-				displayName: 'After sort script',
+				displayName: 'After Sort Script',
 				name: 'setScriptAfter',
 				type: 'boolean',
 				default: false,
-				description: 'Define a script to be run after the action specified by the API call but before the subsequent sort.',
+				description: 'Whether to define a script to be run after the action specified by the API call but before the subsequent sort',
 				displayOptions: {
 					show: {
 						action: [
@@ -503,11 +504,11 @@ export class FileMaker implements INodeType {
 							'record',
 							'records',
 						],
-					}
+					},
 				},
 			},
 			{
-				displayName: 'Script Name',
+				displayName: 'Script Name or ID',
 				name: 'scriptAfter',
 				type: 'options',
 				typeOptions: {
@@ -524,19 +525,18 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptAfter: [
-							true
+							true,
 						],
 					},
 				},
 				placeholder: 'Script Name',
-				description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort.',
+				description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Script Parameter',
 				name: 'scriptAfterParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
@@ -545,12 +545,12 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptAfter: [
-							true
+							true,
 						],
 					},
 				},
 				placeholder: 'Script Parameters',
-				description: 'A parameter for the FileMaker script.',
+				description: 'A parameter for the FileMaker script',
 			},
 			// ----------------------------------
 			//         create/edit
@@ -572,7 +572,7 @@ export class FileMaker implements INodeType {
 				}
 			},*/
 			{
-				displayName: 'Mod Id',
+				displayName: 'Mod ID',
 				name: 'modId',
 				description: 'The last modification ID. When you use modId, a record is edited only when the modId matches.',
 				type: 'number',
@@ -583,7 +583,7 @@ export class FileMaker implements INodeType {
 							'edit',
 						],
 					},
-				}
+				},
 			},
 			{
 				displayName: 'Fields',
@@ -609,7 +609,7 @@ export class FileMaker implements INodeType {
 						displayName: 'Fields',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								default: '',
@@ -617,7 +617,7 @@ export class FileMaker implements INodeType {
 									loadOptionsMethod: 'getFields',
 								},
 								options: [],
-								description: 'Field Name.',
+								description: 'Field Name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -625,7 +625,7 @@ export class FileMaker implements INodeType {
 								type: 'string',
 								default: '',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -633,7 +633,7 @@ export class FileMaker implements INodeType {
 			//         performscript
 			// ----------------------------------
 			{
-				displayName: 'Script Name',
+				displayName: 'Script Name or ID',
 				name: 'script',
 				type: 'options',
 				typeOptions: {
@@ -645,30 +645,29 @@ export class FileMaker implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'performscript'
+							'performscript',
 						],
 					},
 				},
 				placeholder: 'Script Name',
-				description: 'The name of the FileMaker script to be run.',
+				description: 'The name of the FileMaker script to be run. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Script Parameter',
 				name: 'scriptParam',
 				type: 'string',
 				default: '',
-				required: false,
 				displayOptions: {
 					show: {
 						action: [
-							'performscript'
+							'performscript',
 						],
 					},
 				},
 				placeholder: 'Script Parameters',
-				description: 'A parameter for the FileMaker script.',
+				description: 'A parameter for the FileMaker script',
 			},
-		]
+		],
 	};
 
 	methods = {
@@ -680,8 +679,8 @@ export class FileMaker implements INodeType {
 
 				try {
 					returnData = await layoutsApiRequest.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 
 				return returnData;
@@ -696,8 +695,8 @@ export class FileMaker implements INodeType {
 				let layouts;
 				try {
 					layouts = await layoutsApiRequest.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const layout of layouts) {
 					returnData.push({
@@ -714,8 +713,8 @@ export class FileMaker implements INodeType {
 				let fields;
 				try {
 					fields = await getFields.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const field of fields) {
 					returnData.push({
@@ -732,8 +731,8 @@ export class FileMaker implements INodeType {
 				let scripts;
 				try {
 					scripts = await getScripts.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const script of scripts) {
 					if (!script.isFolder) {
@@ -752,8 +751,8 @@ export class FileMaker implements INodeType {
 				let portals;
 				try {
 					portals = await getPortals.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				Object.keys(portals).forEach((portal) => {
 					returnData.push({
@@ -772,17 +771,13 @@ export class FileMaker implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const credentials = this.getCredentials('fileMaker');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
+		const credentials = await this.getCredentials('fileMaker');
 
 		let token;
 		try {
 			token = await getToken.call(this);
-		} catch (e) {
-			throw new Error(`Login fail: ${e}`);
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), `Login fail: ${error}`);
 		}
 
 		let requestOptions: OptionsWithUri;
@@ -803,7 +798,7 @@ export class FileMaker implements INodeType {
 						'Authorization': `Bearer ${token}`,
 					},
 					method: 'GET',
-					json: true
+					json: true,
 				};
 
 				const layout = this.getNodeParameter('layout', i) as string;
@@ -813,7 +808,7 @@ export class FileMaker implements INodeType {
 					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
 					requestOptions.qs = {
 						'portal': JSON.stringify(parsePortals.call(this, i)),
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else if (action === 'records') {
 					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
@@ -821,7 +816,7 @@ export class FileMaker implements INodeType {
 						'_offset': this.getNodeParameter('offset', i),
 						'_limit': this.getNodeParameter('limit', i),
 						'portal': JSON.stringify(parsePortals.call(this, i)),
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 					const sort = parseSort.call(this, i);
 					if (sort) {
@@ -835,7 +830,7 @@ export class FileMaker implements INodeType {
 						'offset': this.getNodeParameter('offset', i),
 						'limit': this.getNodeParameter('limit', i),
 						'layout.response': this.getNodeParameter('responseLayout', i),
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 					const sort = parseSort.call(this, i);
 					if (sort) {
@@ -850,7 +845,7 @@ export class FileMaker implements INodeType {
 					requestOptions.body = {
 						fieldData: {...parseFields.call(this, i)},
 						portalData: {},
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else if (action === 'edit') {
 					const recid = this.getNodeParameter('recid', i) as string;
@@ -862,7 +857,7 @@ export class FileMaker implements INodeType {
 					requestOptions.body = {
 						fieldData: {...parseFields.call(this, i)},
 						portalData: {},
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else if (action === 'performscript') {
 					const scriptName = this.getNodeParameter('script', i) as string;
@@ -876,17 +871,17 @@ export class FileMaker implements INodeType {
 					requestOptions.method = 'POST';
 					requestOptions.headers!['Content-Type'] = 'application/json';
 					requestOptions.qs = {
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else if (action === 'delete') {
 					const recid = this.getNodeParameter('recid', i) as string;
 					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
 					requestOptions.method = 'DELETE';
 					requestOptions.qs = {
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else {
-					throw new Error(`The action "${action}" is not implemented yet!`);
+					throw new NodeOperationError(this.getNode(), `The action "${action}" is not implemented yet!`);
 				}
 
 				// Now that the options are all set make the actual http request
@@ -898,13 +893,18 @@ export class FileMaker implements INodeType {
 				}
 
 				if (typeof response === 'string') {
-					throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 				}
 				returnData.push({json: response});
 			}
 		} catch (error) {
 			await logout.call(this, token);
-			throw new Error(`The action "${error.message}" is not implemented yet!`);
+
+			if (error.node) {
+				throw error;
+			}
+
+			throw new NodeOperationError(this.getNode(), `The action "${error.message}" is not implemented yet!`);
 		}
 
 		return this.prepareOutputData(returnData);

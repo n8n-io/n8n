@@ -1,6 +1,7 @@
 import {
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
+	IPushDataConsoleMessage,
 	IPushDataExecutionFinished,
 	IPushDataExecutionStarted,
 	IPushDataNodeExecuteAfter,
@@ -8,20 +9,30 @@ import {
 	IPushDataTestWebhook,
 } from '../../Interface';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { getTriggerNodeServiceName } from '../helpers';
 
 export const pushConnection = mixins(
+	externalHooks,
 	nodeHelpers,
 	showMessage,
+	titleChange,
+	workflowHelpers,
 )
 	.extend({
 		data () {
 			return {
 				eventSource: null as EventSource | null,
 				reconnectTimeout: null as NodeJS.Timeout | null,
+				retryTimeout: null as NodeJS.Timeout | null,
+				pushMessageQueue: [] as Array<{ event: Event, retriesLeft: number }>,
 			};
 		},
 		computed: {
@@ -50,7 +61,7 @@ export const pushConnection = mixins(
 
 				const connectionUrl = `${this.$store.getters.getRestUrl}/push?sessionId=${this.sessionId}`;
 
-				this.eventSource = new EventSource(connectionUrl);
+				this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
 				this.eventSource.addEventListener('message', this.pushMessageReceived, false);
 
 				this.eventSource.addEventListener('open', () => {
@@ -96,89 +107,196 @@ export const pushConnection = mixins(
 			 * @param {number} retryAttempts
 			 * @returns
 			 */
-			retryPushMessage (event: Event, retryAttempts: number) {
-				retryAttempts = retryAttempts - 1;
+			queuePushMessage (event: Event, retryAttempts: number) {
+				this.pushMessageQueue.push({ event, retriesLeft: retryAttempts });
 
-				if (retryAttempts <= 0) {
-					return;
+				if (this.retryTimeout === null) {
+					this.retryTimeout = setTimeout(this.processWaitingPushMessages, 20);
+				}
+			},
+
+
+			/**
+			 * Process the push messages which are waiting in the queue
+			 */
+			processWaitingPushMessages () {
+				if (this.retryTimeout !== null) {
+					clearTimeout(this.retryTimeout);
+					this.retryTimeout = null;
 				}
 
-				setTimeout(() => {
-					this.pushMessageReceived(event, retryAttempts);
-				}, 200);
+				const queueLength = this.pushMessageQueue.length;
+				for (let i = 0; i < queueLength; i++) {
+					const messageData = this.pushMessageQueue.shift();
+
+					if (this.pushMessageReceived(messageData!.event, true) === false) {
+						// Was not successful
+						messageData!.retriesLeft -= 1;
+
+						if (messageData!.retriesLeft > 0) {
+							// If still retries are left add it back and stop execution
+							this.pushMessageQueue.unshift(messageData!);
+						}
+						break;
+					}
+				}
+
+				if (this.pushMessageQueue.length !== 0 && this.retryTimeout === null) {
+					this.retryTimeout = setTimeout(this.processWaitingPushMessages, 25);
+				}
 			},
+
 
 			/**
 			 * Process a newly received message
 			 *
 			 * @param {Event} event The event data with the message data
-			 * @returns {void}
+			 * @param {boolean} [isRetry] If it is a retry
+			 * @returns {boolean} If message could be processed
 			 */
-			pushMessageReceived (event: Event, retryAttempts?: number): void {
-				retryAttempts = retryAttempts || 5;
-
+			pushMessageReceived (event: Event, isRetry?: boolean): boolean {
+				const retryAttempts = 5;
 				let receivedData: IPushData;
 				try {
 					// @ts-ignore
 					receivedData = JSON.parse(event.data);
 				} catch (error) {
-					console.error('The received push data is not valid JSON.'); // eslint-disable-line no-console
-					return;
+					return false;
 				}
 
-				if (['nodeExecuteAfter', 'nodeExecuteBefore'].includes(receivedData.type)) {
+				if (receivedData.type === 'sendConsoleMessage') {
+					const pushData = receivedData.data;
+					console.log(pushData.source, ...pushData.messages); // eslint-disable-line no-console
+					return true;
+				}
+
+				if (!['testWebhookReceived'].includes(receivedData.type) && isRetry !== true && this.pushMessageQueue.length) {
+					// If there are already messages in the queue add the new one that all of them
+					// get executed in order
+					this.queuePushMessage(event, retryAttempts);
+					return false;
+				}
+
+				if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
 					if (this.$store.getters.isActionActive('workflowRunning') === false) {
 						// No workflow is running so ignore the messages
-						return;
+						return false;
 					}
-					const pushData = receivedData.data as IPushDataNodeExecuteBefore;
+					const pushData = receivedData.data;
 					if (this.$store.getters.activeExecutionId !== pushData.executionId) {
 						// The data is not for the currently active execution or
 						// we do not have the execution id yet.
-						this.retryPushMessage(event, retryAttempts);
-						return;
+						if (isRetry !== true) {
+							this.queuePushMessage(event, retryAttempts);
+						}
+						return false;
 					}
 				}
 
 				if (receivedData.type === 'executionFinished') {
 					// The workflow finished executing
-					const pushData = receivedData.data as IPushDataExecutionFinished;
+					const pushData = receivedData.data;
 
 					this.$store.commit('finishActiveExecution', pushData);
 
 					if (this.$store.getters.isActionActive('workflowRunning') === false) {
 						// No workflow is running so ignore the messages
-						return;
+						return false;
 					}
 
-					if (this.$store.getters.activeExecutionId !== pushData.executionIdActive) {
+					if (this.$store.getters.activeExecutionId !== pushData.executionId) {
 						// The workflow which did finish execution did either not get started
 						// by this session or we do not have the execution id yet.
-						this.retryPushMessage(event, retryAttempts);
-						return;
+						if (isRetry !== true) {
+							this.queuePushMessage(event, retryAttempts);
+						}
+						return false;
 					}
 
 					const runDataExecuted = pushData.data;
 
-					if (runDataExecuted.finished !== true) {
-						// There was a problem with executing the workflow
-						let errorMessage = 'There was a problem executing the workflow!';
-						if (runDataExecuted.data.resultData.error && runDataExecuted.data.resultData.error.message) {
-							errorMessage = `There was a problem executing the workflow:<br /><strong>"${runDataExecuted.data.resultData.error.message}"</strong>`;
+					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
+
+					// @ts-ignore
+					const workflow = this.getWorkflow();
+					if (runDataExecuted.waitTill !== undefined) {
+						const {
+							activeExecutionId,
+							workflowSettings,
+							saveManualExecutions,
+						} = this.$store.getters;
+
+						const isSavingExecutions= workflowSettings.saveManualExecutions === undefined ? saveManualExecutions : workflowSettings.saveManualExecutions;
+
+						let action;
+						if (!isSavingExecutions) {
+							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
+						else {
+							action = `<a href="/execution/${activeExecutionId}" target="_blank">View the execution</a> to see what happened after this node.`;
+						}
+
+						// Workflow did start but had been put to wait
+						this.$titleSet(workflow.name as string, 'IDLE');
+						this.$showToast({
+							title: 'Workflow started waiting',
+							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+							type: 'success',
+							duration: 0,
+							onLinkClick: async (e: HTMLLinkElement) => {
+								if (e.classList.contains('open-settings')) {
+									if (this.$store.getters.isNewWorkflow) {
+										await this.saveAsNewWorkflow();
+									}
+									this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+								}
+							},
+						});
+					} else if (runDataExecuted.finished !== true) {
+						this.$titleSet(workflow.name as string, 'ERROR');
 
 						this.$showMessage({
 							title: 'Problem executing workflow',
-							message: errorMessage,
+							message: runDataExecutedErrorMessage,
 							type: 'error',
+							duration: 0,
 						});
 					} else {
 						// Workflow did execute without a problem
-						this.$showMessage({
-							title: 'Workflow got executed',
-							message: 'Workflow did get executed successfully!',
-							type: 'success',
-						});
+						this.$titleSet(workflow.name as string, 'IDLE');
+
+						const execution = this.$store.getters.getWorkflowExecution;
+						if (execution && execution.executedNode) {
+							const node = this.$store.getters.getNodeByName(execution.executedNode);
+							const nodeType = node && this.$store.getters.nodeType(node.type, node.typeVersion);
+							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
+							if (node && nodeType && !nodeOutput) {
+								this.$showMessage({
+									title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
+										interpolate: {
+											service: getTriggerNodeServiceName(nodeType),
+										},
+									}),
+									message: this.$locale.baseText('pushConnection.pollingNode.dataNotFound.message', {
+										interpolate: {
+											service: getTriggerNodeServiceName(nodeType),
+										},
+									}),
+									type: 'success',
+								});
+							} else {
+								this.$showMessage({
+									title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
+									type: 'success',
+								});
+							}
+						}
+						else {
+							this.$showMessage({
+								title: this.$locale.baseText('pushConnection.workflowExecutedSuccessfully'),
+								type: 'success',
+							});
+						}
 					}
 
 					// It does not push the runData as it got already pushed with each
@@ -193,11 +311,25 @@ export const pushConnection = mixins(
 					// Set the node execution issues on all the nodes which produced an error so that
 					// it can be displayed in the node-view
 					this.updateNodesExecutionIssues();
+
+					let itemsCount = 0;
+					if(runDataExecuted.data.resultData.lastNodeExecuted && !runDataExecutedErrorMessage) {
+						itemsCount = runDataExecuted.data.resultData.runData[runDataExecuted.data.resultData.lastNodeExecuted][0].data!.main[0]!.length;
+					}
+
+					this.$externalHooks().run('pushConnection.executionFinished', {
+						itemsCount,
+						nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
+						errorMessage: runDataExecutedErrorMessage,
+						runDataExecutedStartData: runDataExecuted.data.startData,
+						resultDataError: runDataExecuted.data.resultData.error,
+					});
+
 				} else if (receivedData.type === 'executionStarted') {
-					const pushData = receivedData.data as IPushDataExecutionStarted;
+					const pushData = receivedData.data;
 
 					const executionData: IExecutionsCurrentSummaryExtended = {
-						idActive: pushData.executionId,
+						id: pushData.executionId,
 						finished: false,
 						mode: pushData.mode,
 						startedAt: pushData.startedAt,
@@ -209,15 +341,15 @@ export const pushConnection = mixins(
 					this.$store.commit('addActiveExecution', executionData);
 				} else if (receivedData.type === 'nodeExecuteAfter') {
 					// A node finished to execute. Add its data
-					const pushData = receivedData.data as IPushDataNodeExecuteAfter;
+					const pushData = receivedData.data;
 					this.$store.commit('addNodeExecutionData', pushData);
 				} else if (receivedData.type === 'nodeExecuteBefore') {
 					// A node started to be executed. Set it as executing.
-					const pushData = receivedData.data as IPushDataNodeExecuteBefore;
+					const pushData = receivedData.data;
 					this.$store.commit('setExecutingNode', pushData.nodeName);
 				} else if (receivedData.type === 'testWebhookDeleted') {
-					// A test-webhook got deleted
-					const pushData = receivedData.data as IPushDataTestWebhook;
+					// A test-webhook was deleted
+					const pushData = receivedData.data;
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {
 						this.$store.commit('setExecutionWaitingForWebhook', false);
@@ -225,13 +357,16 @@ export const pushConnection = mixins(
 					}
 				} else if (receivedData.type === 'testWebhookReceived') {
 					// A test-webhook did get called
-					const pushData = receivedData.data as IPushDataTestWebhook;
+					const pushData = receivedData.data;
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {
 						this.$store.commit('setExecutionWaitingForWebhook', false);
 						this.$store.commit('setActiveExecutionId', pushData.executionId);
 					}
+
+					this.processWaitingPushMessages();
 				}
+				return true;
 			},
 		},
 	});

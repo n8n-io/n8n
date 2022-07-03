@@ -1,10 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const linkOperations = [
+export const linkOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -30,11 +31,10 @@ export const linkOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const linkFields = [
+export const linkFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                link:create                                 */
@@ -81,16 +81,17 @@ export const linkFields = [
 				default: 'bit.ly',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],
@@ -98,7 +99,7 @@ export const linkFields = [
 					loadOptionsMethod: 'getTags',
 					loadOptionsDependsOn: [
 						'group',
-					]
+					],
 				},
 			},
 			{
@@ -157,7 +158,7 @@ export const linkFields = [
 						type: 'string',
 						default: '',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -206,9 +207,10 @@ export const linkFields = [
 				default: false,
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
@@ -221,7 +223,7 @@ export const linkFields = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],
@@ -229,7 +231,7 @@ export const linkFields = [
 					loadOptionsMethod: 'getTags',
 					loadOptionsDependsOn: [
 						'group',
-					]
+					],
 				},
 			},
 			{
@@ -288,7 +290,7 @@ export const linkFields = [
 						type: 'string',
 						default: '',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -313,4 +315,4 @@ export const linkFields = [
 			},
 		},
 	},
-] as INodeProperties[];
+];

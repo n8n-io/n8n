@@ -1,10 +1,11 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const userOpeations = [
+export const userOpeations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,6 +18,11 @@ export const userOpeations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new user',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a user',
 			},
 			{
 				name: 'Get',
@@ -33,23 +39,16 @@ export const userOpeations = [
 				value: 'update',
 				description: 'Update a user',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a user',
-			}
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 user:delete                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -66,13 +65,12 @@ export const userFields = [
 			},
 		},
 		default: '',
-		description: 'The Intercom defined id representing the Lead',
+		description: 'The Intercom defined ID representing the Lead',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  user:getAll                                 */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                  user:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -88,7 +86,7 @@ export const userFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -112,7 +110,7 @@ export const userFields = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -142,15 +140,9 @@ export const userFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address of the user',
-			},
-			{
-				displayName: 'Tag ID',
-				name: 'tag_id',
-				type: 'string',
-				default: '',
-				description: 'Tag representing the user',
 			},
 			{
 				displayName: 'Segment ID',
@@ -159,14 +151,20 @@ export const userFields = [
 				default: '',
 				description: 'Segment representing the user',
 			},
+			{
+				displayName: 'Tag ID',
+				name: 'tag_id',
+				type: 'string',
+				default: '',
+				description: 'Tag representing the user',
+			},
 		],
 	},
 
 
-/* -------------------------------------------------------------------------- */
-/*                                  user:get                                 */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                  user:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Select By',
 		name: 'selectBy',
@@ -186,7 +184,7 @@ export const userFields = [
 				name: 'ID',
 				value: 'id',
 				default: '',
-				description: 'The Intercom defined id representing the Lead',
+				description: 'The Intercom defined ID representing the Lead',
 			},
 			{
 				name: 'User ID',
@@ -196,7 +194,7 @@ export const userFields = [
 			},
 		],
 		default: '',
-		description: 'The property to select the user by.',
+		description: 'The property to select the user by',
 	},
 	{
 		displayName: 'Value',
@@ -217,10 +215,9 @@ export const userFields = [
 		description: 'View by value',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 user:update                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update By',
 		name: 'updateBy',
@@ -239,7 +236,7 @@ export const userFields = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined id representing the user',
+				description: 'The Intercom defined ID representing the user',
 			},
 			{
 				name: 'Email',
@@ -254,7 +251,7 @@ export const userFields = [
 
 		],
 		default: 'id',
-		description: 'The property via which to query the user.',
+		description: 'The property via which to query the user',
 	},
 	{
 		displayName: 'Value',
@@ -275,10 +272,9 @@ export const userFields = [
 		description: 'Value of the property to identify the user to update',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 user:create                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Identifier Type',
 		name: 'identifierType',
@@ -302,7 +298,7 @@ export const userFields = [
 			{
 				name: 'Email',
 				value: 'email',
-				description: `The user's email address. It is required on creation if a user_id is not supplied.`,
+				description: 'The user\'s email address. It is required on creation if a user_id is not supplied.',
 			},
 		],
 		default: '',
@@ -331,7 +327,6 @@ export const userFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -339,7 +334,7 @@ export const userFields = [
 					'update',
 				],
 				resource: [
-					'user'
+					'user',
 				],
 			},
 		},
@@ -357,11 +352,28 @@ export const userFields = [
 					'update',
 				],
 				resource: [
-					'user'
+					'user',
 				],
 			},
 		},
 		options: [
+			{
+				displayName: 'Avatar',
+				name: 'avatar',
+				type: 'string',
+				default: '',
+				description: 'An avatar image URL. note: the image URL needs to be https.',
+			},
+			{
+				displayName: 'Company Names or IDs',
+				name: 'companies',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getCompanies',
+				},
+				default: [],
+				description: 'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			},
 			{
 				displayName: 'Email',
 				name: 'email',
@@ -371,48 +383,19 @@ export const userFields = [
 							'update',
 						],
 						'/resource': [
-							'user'
+							'user',
 						],
 					},
 					hide: {
 						'/updateBy': [
 							'email',
-						]
+						],
 					},
 				},
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Email of the user',
-			},
-			{
-				displayName: 'User ID',
-				name: 'userId',
-				displayOptions: {
-					show: {
-						'/operation': [
-							'update',
-						],
-						'/resource': [
-							'user'
-						],
-					},
-					hide: {
-						'/updateBy': [
-							'email',
-							'userId',
-						]
-					},
-				},
-				type: 'string',
-				default: '',
-				description: 'Email of the user',
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description: 'The phone number of the user',
 			},
 			{
 				displayName: 'Name',
@@ -423,10 +406,48 @@ export const userFields = [
 				description: 'Name of the user',
 			},
 			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description: 'The phone number of the user',
+			},
+			{
+				displayName: 'Session Count',
+				name: 'sessionCount',
+				type: 'number',
+				default: false,
+				options: [],
+				description: 'How many sessions the user has recorded',
+			},
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				displayOptions: {
+					show: {
+						'/operation': [
+							'update',
+						],
+						'/resource': [
+							'user',
+						],
+					},
+					hide: {
+						'/updateBy': [
+							'email',
+							'userId',
+						],
+					},
+				},
+				type: 'string',
+				default: '',
+				description: 'Email of the user',
+			},
+			{
 				displayName: 'Unsubscribed From Emails',
 				name: 'unsubscribedFromEmails',
 				type: 'boolean',
-				default: '',
+				default: false,
 				placeholder: '',
 				description: 'Whether the user is unsubscribed from emails',
 			},
@@ -436,46 +457,7 @@ export const userFields = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: 'A boolean value, which if true, instructs Intercom to update the users<br />last_request_at value to the current API service time in UTC.',
-			},
-			{
-				displayName: 'Session Count',
-				name: 'sessionCount',
-				type: 'number',
-				default: false,
-				options: [],
-				description: `How many sessions the user has recorded`,
-			},
-			{
-				displayName: 'Companies',
-				name: 'companies',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCompanies',
-				},
-				default: [],
-				description: 'Identifies the companies this user belongs to.',
-			},
-			{
-				displayName: 'Avatar',
-				name: 'avatar',
-				type: 'string',
-				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
-			},
-			{
-				displayName: 'UTM Source',
-				name: 'utmSource',
-				type: 'string',
-				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
-			},
-			{
-				displayName: 'UTM Medium',
-				name: 'utmMedium',
-				type: 'string',
-				default: '',
-				description: 'Identifies what type of link was used',
+				description: 'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -485,26 +467,39 @@ export const userFields = [
 				description: 'Identifies a specific product promotion or strategic campaign',
 			},
 			{
-				displayName: 'UTM Term',
-				name: 'utmTerm',
-				type: 'string',
-				default: '',
-				description: 'Identifies search terms',
-			},
-			{
 				displayName: 'UTM Content',
 				name: 'utmContent',
 				type: 'string',
 				default: '',
 				description: 'Identifies what specifically was clicked to bring the user to the site',
 			},
-		]
+			{
+				displayName: 'UTM Medium',
+				name: 'utmMedium',
+				type: 'string',
+				default: '',
+				description: 'Identifies what type of link was used',
+			},
+			{
+				displayName: 'UTM Source',
+				name: 'utmSource',
+				type: 'string',
+				default: '',
+				description: 'An avatar image URL. note: the image URL needs to be https.',
+			},
+			{
+				displayName: 'UTM Term',
+				name: 'utmTerm',
+				type: 'string',
+				default: '',
+				description: 'Identifies search terms',
+			},
+		],
 	},
 	{
 		displayName: 'Custom Attributes',
 		name: 'customAttributesJson',
 		type: 'json',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -523,18 +518,17 @@ export const userFields = [
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
 		displayName: 'Custom Attributes',
 		name: 'customAttributesUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Attribute',
 		typeOptions: {
 			multipleValues: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -567,8 +561,8 @@ export const userFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
-] as INodeProperties[];
+];

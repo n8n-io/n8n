@@ -1,30 +1,41 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
-import * as _ from 'lodash';
+import {
+	IDataObject, NodeApiError,
+} from 'n8n-workflow';
 
-export async function todoistApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('todoistApi');
+export type Context = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+export function FormatDueDatetime(isoString: string): string {
+	// Assuming that the problem with incorrect date format was caused by milliseconds
+	// Replacing the last 5 characters of ISO-formatted string with just Z char
+	return isoString.replace(new RegExp('.000Z$'), 'Z');
+}
 
-	const headerWithAuthentication = Object.assign({}, headers, { Authorization: `Bearer ${credentials.apiKey}` });
+export async function todoistApiRequest(
+	this: Context,
+	method: string,
+	resource: string,
+	body: any = {}, // tslint:disable-line:no-any
+	qs: IDataObject = {},
+): Promise<any> { // tslint:disable-line:no-any
+	const authentication = this.getNodeParameter('authentication', 0) as string;
 
 	const endpoint = 'api.todoist.com/rest/v1';
 
 	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
 		method,
+		qs,
 		uri: `https://${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(body).length !== 0) {
@@ -32,13 +43,38 @@ export async function todoistApiRequest(this: IHookFunctions | IExecuteFunctions
 	}
 
 	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
+		const credentialType = authentication === 'apiKey' ? 'todoistApi' : 'todoistOAuth2Api';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.response.body;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), (error));
+	}
+}
+
+export async function todoistSyncRequest(
+	this: Context,
+	body: any = {}, // tslint:disable-line:no-any
+	qs: IDataObject = {},
+): Promise<any> { // tslint:disable-line:no-any
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
+
+	const options: OptionsWithUri = {
+		headers: {},
+		method: 'POST',
+		qs,
+		uri: `https://api.todoist.com/sync/v8/sync`,
+		json: true,
+	};
+
+	if (Object.keys(body).length !== 0) {
+		options.body = body;
+	}
+
+	try {
+		const credentialType = authentication === 'oAuth2' ? 'todoistOAuth2Api' : 'todoistApi';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), (error));
 	}
 }

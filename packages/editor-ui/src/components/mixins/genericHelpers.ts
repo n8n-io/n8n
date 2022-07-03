@@ -1,7 +1,6 @@
-import dateformat from 'dateformat';
-
 import { showMessage } from '@/components/mixins/showMessage';
-import { MessageType } from '@/Interface';
+import { VIEWS } from '@/constants';
+import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
@@ -9,40 +8,36 @@ export const genericHelpers = mixins(showMessage).extend({
 	data () {
 		return {
 			loadingService: null as any | null, // tslint:disable-line:no-any
+			debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 		};
 	},
 	computed: {
 		isReadOnly (): boolean {
-			if (['NodeViewExisting', 'NodeViewNew'].includes(this.$route.name as string)) {
-				return false;
-			}
-			return true;
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.$route.name as VIEWS);
 		},
 	},
 	methods: {
-		convertToDisplayDate (epochTime: number) {
-			return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
-		},
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (showMs === false) {
-					return `${Math.floor(msPassed / 1000)} sec.`;
+					return `${Math.floor(msPassed / 1000)} ${this.$locale.baseText('genericHelpers.sec')}`;
 				}
 
-				return `${msPassed / 1000} sec.`;
+				return `${msPassed / 1000} ${this.$locale.baseText('genericHelpers.sec')}`;
 			}
 
 			const secondsPassed = Math.floor(msPassed / 1000);
 			const minutesPassed = Math.floor(secondsPassed / 60);
 			const secondsLeft = (secondsPassed - (minutesPassed * 60)).toString().padStart(2, '0');
 
-			return `${minutesPassed}:${secondsLeft} min.`;
+			return `${minutesPassed}:${secondsLeft} ${this.$locale.baseText('genericHelpers.min')}`;
 		},
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
 				this.$showMessage({
-					title: 'Workflow can not be changed!',
-					message: `The workflow can not be edited as a past execution gets displayed. To make changed either open the original workflow of which the execution gets displayed or save it under a new name first.`,
+					// title: 'Workflow can not be changed!',
+					title: this.$locale.baseText('genericHelpers.showMessage.title'),
+					message: this.$locale.baseText('genericHelpers.showMessage.message'),
 					type: 'error',
 					duration: 0,
 				});
@@ -52,19 +47,23 @@ export const genericHelpers = mixins(showMessage).extend({
 			return true;
 		},
 
-		startLoading () {
+		startLoading (text?: string) {
 			if (this.loadingService !== null) {
 				return;
 			}
 
+			// @ts-ignore
 			this.loadingService = this.$loading(
 				{
 					lock: true,
-					text: 'Loading',
+					text: text || this.$locale.baseText('genericHelpers.loading'),
 					spinner: 'el-icon-loading',
 					background: 'rgba(255, 255, 255, 0.8)',
 				},
 			);
+		},
+		setLoadingText (text: string) {
+			this.loadingService.text = text;
 		},
 		stopLoading () {
 			if (this.loadingService !== null) {
@@ -73,19 +72,17 @@ export const genericHelpers = mixins(showMessage).extend({
 			}
 		},
 
-		async confirmMessage (message: string, headline: string, type = 'warning' as MessageType, confirmButtonText = 'OK', cancelButtonText = 'Cancel'): Promise<boolean> {
-			try {
-				await this.$confirm(message, headline, {
-					confirmButtonText,
-					cancelButtonText,
-					type,
-					dangerouslyUseHTMLString: true,
-				});
-				return true;
-			} catch (e) {
-				return false;
-			}
-		},
+		async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
+			const functionName = inputParameters.shift() as string;
+			const { trailing, debounceTime }  = inputParameters.shift();
 
+			// @ts-ignore
+			if (this.debouncedFunctions[functionName] === undefined) {
+				// @ts-ignore
+				this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, trailing ? { trailing } : { leading: true } );
+			}
+			// @ts-ignore
+			await this.debouncedFunctions[functionName].apply(this, inputParameters);
+		},
 	},
 });

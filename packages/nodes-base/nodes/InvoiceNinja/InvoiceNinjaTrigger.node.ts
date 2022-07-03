@@ -4,8 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -17,13 +17,12 @@ export class InvoiceNinjaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Invoice Ninja Trigger',
 		name: 'invoiceNinjaTrigger',
-		icon: 'file:invoiceNinja.png',
+		icon: 'file:invoiceNinja.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Invoice Ninja events occure.',
+		description: 'Starts the workflow when Invoice Ninja events occur',
 		defaults: {
 			name: 'Invoice Ninja Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -112,7 +111,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 
 					try {
 						await invoiceNinjaApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

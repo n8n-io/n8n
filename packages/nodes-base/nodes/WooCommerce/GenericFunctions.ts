@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
-import { createHash } from 'crypto';
-import { snakeCase } from 'change-case';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,22 +9,36 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
+
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
-	ICredentialDataDecryptedObject
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
+
 import {
-	 IShoppingLine,
-	 IFeeLine,
-	 ILineItem,
-	 ICouponLine
+	ICouponLine,
+	IFeeLine,
+	ILineItem,
+	IShoppingLine,
 } from './OrderInterface';
 
+import {
+	createHash,
+} from 'crypto';
+
+import {
+	snakeCase,
+} from 'change-case';
+
+import {
+	omit
+} from 'lodash';
+
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('wooCommerceApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('wooCommerceApi');
+
 	let options: OptionsWithUri = {
 		auth: {
 			user: credentials.consumerKey as string,
@@ -33,9 +47,14 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials.url}/wp-json/wc/v3${resource}`,
-		json: true
+		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
+		json: true,
 	};
+	if (credentials.includeCredentialsInQuery === true) {
+		delete options.auth;
+		Object.assign(qs, { consumer_key: credentials.consumerKey, consumer_secret: credentials.consumerSecret });
+	}
+
 	if (!Object.keys(body).length) {
 		delete options.form;
 	}
@@ -43,22 +62,11 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The WooCommerce credentials are not valid!');
-		}
-
-		if (error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`WooCommerce Error [${error.statusCode}]: ${error.response.body.message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw new Error('WooCommerce Error: ' + error.message);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -67,7 +75,11 @@ export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | IL
 	query.per_page = 100;
 	do {
 		responseData = await woocommerceApiRequest.call(this, method, endpoint, body, query, uri, { resolveWithFullResponse: true });
-		uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>','');
+		const links = responseData.headers.link.split(',');
+		const nextLink = links.find((link: string) => link.indexOf('rel="next"') !== -1);
+		if (nextLink) {
+			uri = nextLink.split(';')[0].replace(/<(.*)>/, '$1');
+		}
 		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers['link'] !== undefined &&
@@ -136,3 +148,29 @@ export function toSnakeCase(data:
 		}
 	}
 }
+
+export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
+	for(const fields in fieldsToSet) {
+		if (fields === 'tags') {
+			body['tags'] = (fieldsToSet[fields] as string[]).map(tag => ({id: parseInt(tag, 10)}));
+		} else {
+			body[snakeCase(fields.toString())] = fieldsToSet[fields];
+		}
+
+	}
+}
+
+export function adjustMetadata(fields: IDataObject & Metadata) {
+	if (!fields.meta_data) return fields;
+
+	return {
+		...omit(fields, ['meta_data']),
+		meta_data: fields.meta_data.meta_data_fields,
+	};
+}
+
+type Metadata = {
+	meta_data?: {
+		meta_data_fields: Array<{ key: string; value: string }>;
+	}
+};

@@ -1,12 +1,17 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['user'];
+const resource = [
+	'user',
+];
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -16,12 +21,12 @@ export const userOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a user`,
+				description: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a user`,
+				description: 'Delete a user',
 			},
 			{
 				name: 'Get',
@@ -42,19 +47,18 @@ export const userOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a user`,
+				description: 'Update a user',
 			},
 		],
 		default: 'me',
-		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                user:getAll                            */
+	/*                                user:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -70,7 +74,7 @@ export const userFields = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your users.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -92,7 +96,7 @@ export const userFields = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -114,14 +118,14 @@ export const userFields = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active users and false to return inactive users.',
+				description: 'Whether to only return active users and false to return inactive users',
 			},
 			{
 				displayName: 'Updated Since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return users belonging to the user with the given ID.',
+				description: 'Only return users belonging to the user with the given ID',
 			},
 			{
 				displayName: 'Page',
@@ -131,16 +135,16 @@ export const userFields = [
 					minValue: 1,
 				},
 				default: 1,
-				description: 'The page number to use in pagination..',
-			}
-		]
+				description: 'The page number to use in pagination',
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                user:get                            */
+	/*                                user:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -153,14 +157,14 @@ export const userFields = [
 				resource,
 			},
 		},
-		description: 'The ID of the user you are retrieving.',
+		description: 'The ID of the user you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                user:delete                            */
+	/*                                user:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -173,11 +177,11 @@ export const userFields = [
 				resource,
 			},
 		},
-		description: 'The ID of the user you want to delete.',
+		description: 'The ID of the user you want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                user:create                           */
+	/*                                user:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'First Name',
@@ -193,7 +197,7 @@ export const userFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The first name of the user.',
+		description: 'The first name of the user',
 	},
 	{
 		displayName: 'Last Name',
@@ -209,12 +213,13 @@ export const userFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The last name of the user.',
+		description: 'The last name of the user',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
@@ -225,7 +230,7 @@ export const userFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The email of the user.',
+		description: 'The email of the user',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -243,25 +248,25 @@ export const userFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Can Create Projects',
-				name: 'can_create_projects',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the user can create projects. Only applicable to Project Managers.'
-			},
-			{
 				displayName: 'Can Create Invoices',
 				name: 'can_create_invoices',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user can create invoices. Only applicable to Project Managers.'
+				description: 'Whether the user can create invoices. Only applicable to Project Managers.',
+			},
+			{
+				displayName: 'Can Create Projects',
+				name: 'can_create_projects',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the user can create projects. Only applicable to Project Managers.',
 			},
 			{
 				displayName: 'Can See Rates',
 				name: 'can_see_rates',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user can see billable rates on projects. Only applicable to Project Managers.'
+				description: 'Whether the user can see billable rates on projects. Only applicable to Project Managers.',
 			},
 			{
 				displayName: 'Cost Rate',
@@ -271,63 +276,64 @@ export const userFields = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount.'
+				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
 				type: 'string',
 				default: '0',
-				description: 'The billable rate to use for this user when they are added to a project.'
+				description: 'The billable rate to use for this user when they are added to a project',
 			},
 			{
 				displayName: 'Has Access To All Future Projects',
 				name: 'has_access_to_all_future_projects',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user should be automatically added to future projects.'
+				description: 'Whether the user should be automatically added to future projects',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the user is active or archived.'
+				description: 'Whether the user is active or archived',
 			},
 			{
 				displayName: 'Is Admin',
 				name: 'is_admin',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user has Admin permissions.'
+				description: 'Whether the user has Admin permissions',
 			},
 			{
 				displayName: 'Is Contractor',
 				name: 'is_contractor',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user is a contractor or an employee.'
+				description: 'Whether the user is a contractor or an employee',
 			},
 			{
 				displayName: 'Is Project Manager',
 				name: 'is_project_manager',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user has Project Manager permissions.'
+				description: 'Whether the user has Project Manager permissions',
 			},
 			{
 				displayName: 'Roles',
 				name: 'roles',
 				type: 'string',
 				default: '',
-				description: 'The role names assigned to this person.'
+				description: 'The role names assigned to this person',
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'string',
 				default: '',
-				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.'
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-url-missing-protocol
+				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
 				displayName: 'Weekly Capacity',
@@ -337,17 +343,16 @@ export const userFields = [
 					minValue: 0,
 				},
 				default: 126000,
-				description: 'The number of hours per week this person is available to work in seconds. Defaults to <code class="language-plaintext highlighter-rouge">126000</code> seconds (35 hours).'
+				description: 'The number of hours per week this person is available to work in seconds. Defaults to <code class="language-plaintext highlighter-rouge">126000</code> seconds (35 hours).',
 			},
 		],
 	},
 
-
 	/* -------------------------------------------------------------------------- */
-	/*                                user:update                           */
+	/*                                user:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -360,7 +365,7 @@ export const userFields = [
 				resource,
 			},
 		},
-		description: 'The ID of the time entry to update.',
+		description: 'The ID of the time entry to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -372,31 +377,31 @@ export const userFields = [
 				operation: [
 					'update',
 				],
-				resource
+				resource,
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Can Create Projects',
-				name: 'can_create_projects',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the user can create projects. Only applicable to Project Managers.'
-			},
-			{
 				displayName: 'Can Create Invoices',
 				name: 'can_create_invoices',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user can create invoices. Only applicable to Project Managers.'
+				description: 'Whether the user can create invoices. Only applicable to Project Managers.',
+			},
+			{
+				displayName: 'Can Create Projects',
+				name: 'can_create_projects',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the user can create projects. Only applicable to Project Managers.',
 			},
 			{
 				displayName: 'Can See Rates',
 				name: 'can_see_rates',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user can see billable rates on projects. Only applicable to Project Managers.'
+				description: 'Whether the user can see billable rates on projects. Only applicable to Project Managers.',
 			},
 			{
 				displayName: 'Cost Rate',
@@ -406,84 +411,86 @@ export const userFields = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount.'
+				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
 				type: 'string',
 				default: '0',
-				description: 'The billable rate to use for this user when they are added to a project.'
+				description: 'The billable rate to use for this user when they are added to a project',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'The user email'
+				description: 'The user email',
 			},
 			{
 				displayName: 'First Name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
-				description: 'The user first name'
+				description: 'The user first name',
 			},
 			{
 				displayName: 'Has Access To All Future Projects',
 				name: 'has_access_to_all_future_projects',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user should be automatically added to future projects.'
+				description: 'Whether the user should be automatically added to future projects',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the user is active or archived.'
+				description: 'Whether the user is active or archived',
 			},
 			{
 				displayName: 'Is Admin',
 				name: 'is_admin',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user has Admin permissions.'
+				description: 'Whether the user has Admin permissions',
 			},
 			{
 				displayName: 'Is Contractor',
 				name: 'is_contractor',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user is a contractor or an employee.'
+				description: 'Whether the user is a contractor or an employee',
 			},
 			{
 				displayName: 'Is Project Manager',
 				name: 'is_project_manager',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user has Project Manager permissions.'
+				description: 'Whether the user has Project Manager permissions',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'The user last name'
+				description: 'The user last name',
 			},
 			{
 				displayName: 'Roles',
 				name: 'roles',
 				type: 'string',
 				default: '',
-				description: 'The role names assigned to this person.'
+				description: 'The role names assigned to this person',
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'string',
 				default: '',
-				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.'
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-url-missing-protocol
+				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
 				displayName: 'Weekly Capacity',
@@ -493,9 +500,9 @@ export const userFields = [
 					minValue: 0,
 				},
 				default: 126000,
-				description: 'The number of hours per week this person is available to work in seconds. Defaults to <code class="language-plaintext highlighter-rouge">126000</code> seconds (35 hours).'
+				description: 'The number of hours per week this person is available to work in seconds. Defaults to <code class="language-plaintext highlighter-rouge">126000</code> seconds (35 hours).',
 			},
 		],
 	},
 
-] as INodeProperties[];
+];

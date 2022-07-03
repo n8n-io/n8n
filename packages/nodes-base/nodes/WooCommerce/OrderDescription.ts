@@ -1,10 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const orderOperations = [
+export const orderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,11 +41,10 @@ export const orderOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const orderFields = [
+export const orderFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                order:create                                */
@@ -78,7 +78,7 @@ export const orderFields = [
 				name: 'customerId',
 				type: 'string',
 				default: '',
-				description: 'User ID who owns the order. 0 for guests',
+				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
 				displayName: 'Customer Note',
@@ -88,35 +88,33 @@ export const orderFields = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Note left by customer during checkout.',
+				description: 'Note left by customer during checkout',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Parent order ID.',
+				description: 'Parent order ID',
 			},
 			{
 				displayName: 'Payment Method ID',
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
-				description: 'Payment method ID.',
 			},
 			{
 				displayName: 'Payment Method Title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
-				description: 'Payment method title.',
 			},
 			{
 				displayName: 'Set Paid',
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Define if the order is paid. It will set the status to processing and reduce stock items',
+				description: 'Whether the order is paid. It will set the status to processing and reduce stock items.',
 			},
 			{
 				displayName: 'Status',
@@ -124,15 +122,15 @@ export const orderFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					},
 					{
-						name: 'failed',
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
@@ -140,24 +138,24 @@ export const orderFields = [
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],
 				default: 'pending',
-				description: 'A named status for the order.',
+				description: 'A named status for the order',
 			},
 			{
 				displayName: 'Transaction ID',
@@ -173,7 +171,7 @@ export const orderFields = [
 		name: 'billingUi',
 		placeholder: 'Add Billing',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -184,7 +182,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Billing address',
@@ -228,11 +226,11 @@ export const orderFields = [
 						name: 'city',
 						type: 'string',
 						default: '',
-						description: 'ISO code or name of the state, province or district.',
+						description: 'ISO code or name of the state, province or district',
 					},
 					{
 						displayName: 'Postal Code',
-						name: 'postalCode',
+						name: 'postcode',
 						type: 'string',
 						default: '',
 					},
@@ -246,6 +244,7 @@ export const orderFields = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -263,7 +262,7 @@ export const orderFields = [
 		name: 'couponLinesUi',
 		placeholder: 'Add Coupon Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -274,7 +273,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Coupons line data',
@@ -288,14 +287,14 @@ export const orderFields = [
 						name: 'code',
 						type: 'string',
 						default: '',
-						description: 'Coupon code.',
+						description: 'Coupon code',
 					},
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -310,14 +309,14 @@ export const orderFields = [
 										name: 'key',
 										type: 'string',
 										default: '',
-										description: 'Name of the metadata key to add.',
+										description: 'Name of the metadata key to add',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value to set for the metadata key.',
+										description: 'Value to set for the metadata key',
 									},
 								],
 							},
@@ -332,7 +331,7 @@ export const orderFields = [
 		name: 'feeLinesUi',
 		placeholder: 'Add Fee Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -343,7 +342,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Fee line data',
@@ -360,14 +359,14 @@ export const orderFields = [
 						description: 'Fee name',
 					},
 					{
-						displayName: 'Tax Class	',
+						displayName: 'Tax Class',
 						name: 'taxClass',
 						type: 'string',
-						description: 'Tax class of fee.',
+						description: 'Tax class of fee',
 						default: '',
 					},
 					{
-						displayName: 'Tax Status	',
+						displayName: 'Tax Status',
 						name: 'taxStatus',
 						type: 'options',
 						options: [
@@ -381,21 +380,21 @@ export const orderFields = [
 							},
 						],
 						default: '',
-						description: 'Tax class of fee.',
+						description: 'Tax class of fee',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
-						description: 'Line total (after discounts).',
+						description: 'Line total (after discounts)',
 					},
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -410,14 +409,14 @@ export const orderFields = [
 										name: 'key',
 										type: 'string',
 										default: '',
-										description: 'Name of the metadata key to add.',
+										description: 'Name of the metadata key to add',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value to set for the metadata key.',
+										description: 'Value to set for the metadata key',
 									},
 								],
 							},
@@ -432,7 +431,7 @@ export const orderFields = [
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -443,7 +442,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Line item data',
@@ -457,56 +456,55 @@ export const orderFields = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Product name.',
+						description: 'Product name',
 					},
 					{
 						displayName: 'Product ID',
 						name: 'productId',
 						type: 'number',
 						default: 0,
-						description: 'Product ID.',
 					},
 					{
 						displayName: 'Variation ID',
 						name: 'variationId',
 						type: 'number',
 						default: 0,
-						description: 'Variation ID, if applicable.',
+						description: 'Variation ID, if applicable',
 					},
 					{
 						displayName: 'Quantity',
 						name: 'quantity',
 						type: 'number',
 						default: 1,
-						description: 'Quantity ordered.',
+						description: 'Quantity ordered',
 					},
 					{
 						displayName: 'Tax Class',
 						name: 'taxClass',
 						type: 'string',
 						default: '',
-						description: 'Slug of the tax class of product.',
+						description: 'Slug of the tax class of product',
 					},
 					{
 						displayName: 'Subtotal',
 						name: 'subtotal',
 						type: 'string',
 						default: '',
-						description: 'Line subtotal (before discounts).',
+						description: 'Line subtotal (before discounts)',
 					},
 					{
 						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
-						description: 'Line total (after discounts).',
+						description: 'Line total (after discounts)',
 					},
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -521,14 +519,14 @@ export const orderFields = [
 										name: 'key',
 										type: 'string',
 										default: '',
-										description: 'Name of the metadata key to add.',
+										description: 'Name of the metadata key to add',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value to set for the metadata key.',
+										description: 'Value to set for the metadata key',
 									},
 								],
 							},
@@ -543,7 +541,7 @@ export const orderFields = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -554,7 +552,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -568,14 +566,14 @@ export const orderFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the metadata key to add.',
+						description: 'Name of the metadata key to add',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the metadata key.',
+						description: 'Value to set for the metadata key',
 					},
 				],
 			},
@@ -586,7 +584,7 @@ export const orderFields = [
 		name: 'shippingUi',
 		placeholder: 'Add Shipping',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -597,7 +595,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Shipping address',
@@ -641,11 +639,11 @@ export const orderFields = [
 						name: 'city',
 						type: 'string',
 						default: '',
-						description: 'ISO code or name of the state, province or district.',
+						description: 'ISO code or name of the state, province or district',
 					},
 					{
 						displayName: 'Postal Code',
-						name: 'postalCode',
+						name: 'postcode',
 						type: 'string',
 						default: '',
 					},
@@ -664,7 +662,7 @@ export const orderFields = [
 		name: 'shippingLinesUi',
 		placeholder: 'Add Shipping Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -675,7 +673,7 @@ export const orderFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Shipping line data',
@@ -692,25 +690,25 @@ export const orderFields = [
 						description: 'Shipping method name',
 					},
 					{
-						displayName: 'Method ID	',
+						displayName: 'Method ID',
 						name: 'method ID',
 						type: 'string',
-						description: 'Shipping method ID.',
+						description: 'Shipping method ID',
 						default: '',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
-						description: 'Line total (after discounts).',
+						description: 'Line total (after discounts)',
 					},
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -725,14 +723,14 @@ export const orderFields = [
 										name: 'key',
 										type: 'string',
 										default: '',
-										description: 'Name of the metadata key to add.',
+										description: 'Name of the metadata key to add',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value to set for the metadata key.',
+										description: 'Value to set for the metadata key',
 									},
 								],
 							},
@@ -760,7 +758,6 @@ export const orderFields = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -791,7 +788,7 @@ export const orderFields = [
 				name: 'customerId',
 				type: 'string',
 				default: '',
-				description: 'User ID who owns the order. 0 for guests',
+				description: 'User ID who owns the order. 0 for guests.',
 			},
 			{
 				displayName: 'Customer Note',
@@ -801,28 +798,26 @@ export const orderFields = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Note left by customer during checkout.',
+				description: 'Note left by customer during checkout',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Parent order ID.',
+				description: 'Parent order ID',
 			},
 			{
 				displayName: 'Payment Method ID',
 				name: 'paymentMethodId',
 				type: 'string',
 				default: '',
-				description: 'Payment method ID.',
 			},
 			{
 				displayName: 'Payment Method Title',
 				name: 'paymentMethodTitle',
 				type: 'string',
 				default: '',
-				description: 'Payment method title.',
 			},
 			{
 				displayName: 'Status',
@@ -830,15 +825,15 @@ export const orderFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					},
 					{
-						name: 'failed',
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
@@ -846,24 +841,24 @@ export const orderFields = [
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],
 				default: 'pending',
-				description: 'A named status for the order.',
+				description: 'A named status for the order',
 			},
 			{
 				displayName: 'Transaction ID',
@@ -879,7 +874,7 @@ export const orderFields = [
 		name: 'billingUi',
 		placeholder: 'Add Billing',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -890,7 +885,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Billing address',
@@ -934,7 +929,7 @@ export const orderFields = [
 						name: 'city',
 						type: 'string',
 						default: '',
-						description: 'ISO code or name of the state, province or district.',
+						description: 'ISO code or name of the state, province or district',
 					},
 					{
 						displayName: 'Postal Code',
@@ -952,6 +947,7 @@ export const orderFields = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -969,7 +965,7 @@ export const orderFields = [
 		name: 'couponLinesUi',
 		placeholder: 'Add Coupon Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -980,7 +976,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Coupons line data',
@@ -994,14 +990,14 @@ export const orderFields = [
 						name: 'code',
 						type: 'string',
 						default: '',
-						description: 'Coupon code.',
+						description: 'Coupon code',
 					},
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1016,14 +1012,14 @@ export const orderFields = [
 										name: 'key',
 										type: 'string',
 										default: '',
-										description: 'Name of the metadata key to add.',
+										description: 'Name of the metadata key to add',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value to set for the metadata key.',
+										description: 'Value to set for the metadata key',
 									},
 								],
 							},
@@ -1038,7 +1034,7 @@ export const orderFields = [
 		name: 'feeLinesUi',
 		placeholder: 'Add Fee Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1049,7 +1045,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Fee line data',
@@ -1066,14 +1062,14 @@ export const orderFields = [
 						description: 'Fee name',
 					},
 					{
-						displayName: 'Tax Class	',
+						displayName: 'Tax Class',
 						name: 'taxClass',
 						type: 'string',
-						description: 'Tax class of fee.',
+						description: 'Tax class of fee',
 						default: '',
 					},
 					{
-						displayName: 'Tax Status	',
+						displayName: 'Tax Status',
 						name: 'taxStatus',
 						type: 'options',
 						options: [
@@ -1087,21 +1083,21 @@ export const orderFields = [
 							},
 						],
 						default: '',
-						description: 'Tax class of fee.',
+						description: 'Tax class of fee',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
-						description: 'Line total (after discounts).',
+						description: 'Line total (after discounts)',
 					},
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1116,14 +1112,14 @@ export const orderFields = [
 										name: 'key',
 										type: 'string',
 										default: '',
-										description: 'Name of the metadata key to add.',
+										description: 'Name of the metadata key to add',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value to set for the metadata key.',
+										description: 'Value to set for the metadata key',
 									},
 								],
 							},
@@ -1138,7 +1134,7 @@ export const orderFields = [
 		name: 'lineItemsUi',
 		placeholder: 'Add Line Item',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1149,7 +1145,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Line item data',
@@ -1163,56 +1159,55 @@ export const orderFields = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Product name.',
+						description: 'Product name',
 					},
 					{
 						displayName: 'Product ID',
 						name: 'productId',
 						type: 'number',
 						default: 0,
-						description: 'Product ID.',
 					},
 					{
 						displayName: 'Variation ID',
 						name: 'variationId',
 						type: 'number',
 						default: 0,
-						description: 'Variation ID, if applicable.',
+						description: 'Variation ID, if applicable',
 					},
 					{
 						displayName: 'Quantity',
 						name: 'quantity',
 						type: 'number',
 						default: 1,
-						description: 'Quantity ordered.',
+						description: 'Quantity ordered',
 					},
 					{
 						displayName: 'Tax Class',
 						name: 'taxClass',
 						type: 'string',
 						default: '',
-						description: 'Slug of the tax class of product.',
+						description: 'Slug of the tax class of product',
 					},
 					{
 						displayName: 'Subtotal',
 						name: 'subtotal',
 						type: 'string',
 						default: '',
-						description: 'Line subtotal (before discounts).',
+						description: 'Line subtotal (before discounts)',
 					},
 					{
 						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
-						description: 'Line total (after discounts).',
+						description: 'Line total (after discounts)',
 					},
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1227,14 +1222,14 @@ export const orderFields = [
 										name: 'key',
 										type: 'string',
 										default: '',
-										description: 'Name of the metadata key to add.',
+										description: 'Name of the metadata key to add',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value to set for the metadata key.',
+										description: 'Value to set for the metadata key',
 									},
 								],
 							},
@@ -1249,7 +1244,7 @@ export const orderFields = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1260,7 +1255,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Meta data',
@@ -1274,14 +1269,14 @@ export const orderFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the metadata key to add.',
+						description: 'Name of the metadata key to add',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the metadata key.',
+						description: 'Value to set for the metadata key',
 					},
 				],
 			},
@@ -1292,7 +1287,7 @@ export const orderFields = [
 		name: 'shippingUi',
 		placeholder: 'Add Shipping',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
@@ -1303,7 +1298,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Shipping address',
@@ -1347,7 +1342,7 @@ export const orderFields = [
 						name: 'city',
 						type: 'string',
 						default: '',
-						description: 'ISO code or name of the state, province or district.',
+						description: 'ISO code or name of the state, province or district',
 					},
 					{
 						displayName: 'Postal Code',
@@ -1370,7 +1365,7 @@ export const orderFields = [
 		name: 'shippingLinesUi',
 		placeholder: 'Add Shipping Line',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -1381,7 +1376,7 @@ export const orderFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Shipping line data',
@@ -1398,25 +1393,25 @@ export const orderFields = [
 						description: 'Shipping method name',
 					},
 					{
-						displayName: 'Method ID	',
+						displayName: 'Method ID',
 						name: 'method ID',
 						type: 'string',
-						description: 'Shipping method ID.',
+						description: 'Shipping method ID',
 						default: '',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
-						description: 'Line total (after discounts).',
+						description: 'Line total (after discounts)',
 					},
 					{
 						displayName: 'Metadata',
 						name: 'metadataUi',
 						placeholder: 'Add Metadata',
 						type: 'fixedCollection',
-						default: '',
+						default: {},
 						typeOptions: {
 							multipleValues: true,
 						},
@@ -1431,14 +1426,14 @@ export const orderFields = [
 										name: 'key',
 										type: 'string',
 										default: '',
-										description: 'Name of the metadata key to add.',
+										description: 'Name of the metadata key to add',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value to set for the metadata key.',
+										description: 'Value to set for the metadata key',
 									},
 								],
 							},
@@ -1466,7 +1461,6 @@ export const orderFields = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:getAll                           */
@@ -1486,7 +1480,7 @@ export const orderFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -1510,7 +1504,7 @@ export const orderFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -1534,7 +1528,7 @@ export const orderFields = [
 				name: 'after',
 				type: 'dateTime',
 				default: '',
-				description: 'Limit response to resources published after a given ISO8601 compliant date.',
+				description: 'Limit response to resources published after a given ISO8601 compliant date',
 			},
 			{
 				displayName: 'Before',
@@ -1548,7 +1542,7 @@ export const orderFields = [
 				name: 'customer',
 				type: 'string',
 				default: '',
-				description: 'Limit result set to orders assigned a specific customer.',
+				description: 'Limit result set to orders assigned a specific customer',
 			},
 			{
 				displayName: 'Decimal Points',
@@ -1559,7 +1553,7 @@ export const orderFields = [
 					maxValue: 10,
 				},
 				default: 2,
-				description: 'Number of decimal points to use in each resource.',
+				description: 'Number of decimal points to use in each resource',
 			},
 			{
 				displayName: 'Order',
@@ -1576,14 +1570,14 @@ export const orderFields = [
 					},
 				],
 				default: 'desc',
-				description: 'Order sort attribute ascending or descending.',
+				description: 'Order sort attribute ascending or descending',
 			},
 			{
 				displayName: 'Product',
 				name: 'product',
 				type: 'string',
 				default: '',
-				description: 'Limit result set to orders assigned a specific product.',
+				description: 'Limit result set to orders assigned a specific product',
 			},
 			{
 				displayName: 'Order By',
@@ -1612,14 +1606,14 @@ export const orderFields = [
 					},
 				],
 				default: 'id',
-				description: 'Sort collection by object attribute.',
+				description: 'Sort collection by object attribute',
 			},
 			{
 				displayName: 'Search',
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Limit results to those matching a string.',
+				description: 'Limit results to those matching a string',
 			},
 			{
 				displayName: 'Status',
@@ -1631,42 +1625,42 @@ export const orderFields = [
 						value: 'any',
 					},
 					{
-						name: 'completed',
-						value: 'completed',
-					},
-					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'failed',
+						name: 'Completed',
+						value: 'completed',
+					},
+					{
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
-						name: 'on-hold',
+						name: 'On-Hold',
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],
 				default: 'any',
-				description: 'Limit result set to orders assigned a specific status.',
+				description: 'Limit result set to orders assigned a specific status',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   order:delete                           */
@@ -1686,6 +1680,5 @@ export const orderFields = [
 			},
 		},
 		default: '',
-		description: 'order ID.',
 	},
-] as INodeProperties[];
+];

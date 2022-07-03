@@ -1,0 +1,86 @@
+@use "mixins/mixins";
+@use "./common/var";
+
+@include mixins.b(timeline-item) {
+	position: relative;
+	padding-bottom: 20px;
+
+	@include mixins.e(wrapper) {
+		position: relative;
+		padding-left: 28px;
+		top: -3px;
+	}
+
+	@include mixins.e(tail) {
+		position: absolute;
+		left: 4px;
+		height: 100%;
+		border-left: 2px solid var.$timeline-node-color;
+	}
+
+	@include mixins.e(icon) {
+		color: var.$color-white;
+		font-size: var.$font-size-small;
+	}
+
+	@include mixins.e(node) {
+		position: absolute;
+		background-color: var.$timeline-node-color;
+		border-radius: 50%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		@include mixins.m(normal) {
+			left: -1px;
+			width: var.$timeline-node-size-normal;
+			height: var.$timeline-node-size-normal;
+		}
+		@include mixins.m(large) {
+			left: -2px;
+			width: var.$timeline-node-size-large;
+			height: var.$timeline-node-size-large;
+		}
+
+		@include mixins.m(primary) {
+			background-color: var(--color-primary);
+		}
+		@include mixins.m(success) {
+			background-color: var(--color-success);
+		}
+		@include mixins.m(warning) {
+			background-color: var(--color-warning);
+		}
+		@include mixins.m(danger) {
+			background-color: var(--color-danger);
+		}
+		@include mixins.m(info) {
+			background-color: var(--color-info);
+		}
+	}
+
+	@include mixins.e(dot) {
+		position: absolute;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	@include mixins.e(content) {
+		color: var(--color-text-dark);
+	}
+
+	@include mixins.e(timestamp) {
+		color: var(--color-text-light);
+		line-height: 1;
+		font-size: var.$font-size-small;
+
+		@include mixins.when(top) {
+			margin-bottom: 8px;
+			padding-top: 4px;
+		}
+		@include mixins.when(bottom) {
+			margin-top: 8px;
+		}
+	}
+}

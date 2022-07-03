@@ -1,20 +1,24 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('affinityApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('affinityApi');
 
 	const apiKey = `:${credentials.apiKey}`;
 
@@ -29,7 +33,7 @@ export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunct
 		body,
 		qs: query,
 		uri: uri || `${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;
@@ -41,11 +45,7 @@ export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunct
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response) {
-			const errorMessage = error.response.body.message || error.response.body.description || error.message;
-			throw new Error(`Affinity error response: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

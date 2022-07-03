@@ -1,10 +1,17 @@
-import { INodeProperties } from 'n8n-workflow';
-const resource = ['task'];
-export const taskOperations = [
+import {
+	INodeProperties
+} from 'n8n-workflow';
+
+const resource = [
+	'task',
+];
+
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -14,12 +21,12 @@ export const taskOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a task`,
+				description: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a task`,
+				description: 'Delete a task',
 			},
 			{
 				name: 'Get',
@@ -34,21 +41,19 @@ export const taskOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a task`,
+				description: 'Update a task',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
-] as INodeProperties[];
+];
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:getAll                            */
+	/*                                task:getAll                                 */
 	/* -------------------------------------------------------------------------- */
-
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -62,7 +67,7 @@ export const taskFields = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your tasks.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -84,7 +89,7 @@ export const taskFields = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -106,7 +111,7 @@ export const taskFields = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active tasks and false to return inactive tasks.',
+				description: 'Whether to only return active tasks and false to return inactive tasks',
 			},
 			{
 				displayName: 'Page',
@@ -116,23 +121,23 @@ export const taskFields = [
 					minValue: 1,
 				},
 				default: 1,
-				description: 'The page number to use in pagination.',
+				description: 'The page number to use in pagination',
 			},
 			{
 				displayName: 'Updated Since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return tasks belonging to the task with the given ID.',
+				description: 'Only return tasks belonging to the task with the given ID',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:get                            */
+	/*                                task:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -145,14 +150,14 @@ export const taskFields = [
 				resource,
 			},
 		},
-		description: 'The ID of the task you are retrieving.',
+		description: 'The ID of the task you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:delete                            */
+	/*                                task:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -165,11 +170,11 @@ export const taskFields = [
 				resource,
 			},
 		},
-		description: 'The ID of the task you wan to delete.',
+		description: 'The ID of the task you want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:create                           */
+	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -185,7 +190,7 @@ export const taskFields = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the task.',
+		description: 'The name of the task',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -206,35 +211,52 @@ export const taskFields = [
 				displayName: 'Billable By Default',
 				name: 'billable_by_default',
 				type: 'boolean',
-				default: '',
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.'
+				default: true,
+				description: 'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
-				type: 'string',
-				default: '0',
-				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.'
-			},
-			{
-				displayName: 'Is Default',
-				name: 'is_default',
-				type: 'boolean',
-				default: false,
-				description: 'Whether this task should be automatically added to future projects. Defaults to false.'
+				type: 'number',
+				default: 0,
+				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this task is active or archived. Defaults to true'
+				description: 'Whether this task is active or archived. Defaults to true.',
+			},
+			{
+				displayName: 'Is Default',
+				name: 'is_default',
+				type: 'boolean',
+				default: false,
+				description: 'Whether this task should be automatically added to future projects. Defaults to false.',
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
-	/*                                task:update                           */
+	/*                                task:update                                 */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		description: 'The ID of the task you want to update',
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -255,39 +277,39 @@ export const taskFields = [
 				displayName: 'Billable By Default',
 				name: 'billable_by_default',
 				type: 'boolean',
-				default: '',
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.'
+				default: false,
+				description: 'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
-				type: 'string',
-				default: '0',
-				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.'
+				type: 'number',
+				default: 0,
+				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this task is active or archived. Defaults to true'
+				description: 'Whether this task is active or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Is Default',
 				name: 'is_default',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this task should be automatically added to future projects. Defaults to false.'
+				description: 'Whether this task should be automatically added to future projects. Defaults to false.',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the task.'
+				description: 'Name of the task',
 			},
 		],
 	},
 
 
-] as INodeProperties[];
+];

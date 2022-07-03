@@ -1,12 +1,13 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,14 +17,14 @@ export const contactOperations = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update a contact',
+				description: 'Create a new contact, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a contacts',
+				description: 'Delete a contact',
 			},
 			{
 				name: 'Get',
@@ -40,21 +41,26 @@ export const contactOperations = [
 				value: 'getRecentlyCreatedUpdated',
 				description: 'Get recently created/updated contacts',
 			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search contacts',
+			},
 		],
 		default: 'upsert',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                contact:upsert                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:upsert                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -83,7 +89,8 @@ export const contactFields = [
 			},
 		},
 		default: true,
-		description: 'By default the response only includes the ID. If this option gets activated it<br />will resolve the data automatically.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description: 'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -112,14 +119,14 @@ export const contactFields = [
 				default: 0,
 			},
 			{
-				displayName: 'Associated Company ID',
+				displayName: 'Associated Company Name or ID',
 				name: 'associatedCompanyId',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:'getCompanies' ,
+					loadOptionsMethod: 'getCompanies',
 				},
 				default: '',
-				description: 'Companies associated with the ticket'
+				description: 'Companies associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'City',
@@ -152,9 +159,10 @@ export const contactFields = [
 				default: '',
 			},
 			{
-				displayName: 'Contact Owner',
+				displayName: 'Contact Owner Name or ID',
 				name: 'contactOwner',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getOwners',
 				},
@@ -165,6 +173,41 @@ export const contactFields = [
 				name: 'country',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Custom Properties',
+				name: 'customPropertiesUi',
+				placeholder: 'Add Custom Property',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customPropertiesValues',
+						displayName: 'Custom Property',
+						values: [
+							{
+								displayName: 'Property Name or ID',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactCustomProperties',
+								},
+								default: '',
+								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the property',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Date of Birth',
@@ -195,14 +238,14 @@ export const contactFields = [
 				name: 'fieldOfStudy',
 				type: 'string',
 				default: '',
-				description: `A contact's field of study. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
+				description: 'A contact\'s field of study. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `A contact's first name`,
+				description: 'A contact\'s first name',
 			},
 			{
 				displayName: 'Gender',
@@ -221,7 +264,7 @@ export const contactFields = [
 				name: 'graduationDate',
 				type: 'dateTime',
 				default: '',
-				description: `A contact's graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
+				description: 'A contact\'s graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 			{
 				displayName: 'Industry',
@@ -235,58 +278,58 @@ export const contactFields = [
 				name: 'jobFunction',
 				type: 'string',
 				default: '',
-				description: `A contact's job function. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
+				description: 'A contact\'s job function. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 			{
 				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
-				description: `A contact's job title`,
+				description: 'A contact\'s job title',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: `A contact's last name`,
+				description: 'A contact\'s last name',
 			},
 			{
-				displayName: 'Lead Status',
+				displayName: 'Lead Status Name or ID',
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getContactLeadStatuses',
 				},
 				default: '',
-				description: `The contact's sales, prospecting or outreach status`,
+				description: 'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Legal Basic For Processing Contact Data',
+				displayName: 'Legal Basic For Processing Contact Data Name or ID',
 				name: 'processingContactData',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getContactLealBasics',
 				},
 				default: '',
-				description: `Legal basis for processing contact's data; 'Not applicable' will exempt the contact from GDPR protections`,
+				description: 'Legal basis for processing contact\'s data; \'Not applicable\' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Lifecycle Stage',
+				displayName: 'Lifecycle Stage Name or ID',
 				name: 'lifeCycleStage',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getContactLifeCycleStages'
+					loadOptionsMethod: 'getContactLifeCycleStages',
 				},
 				default: '',
-				description: `The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis.`,
+				description: 'The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Marital Status',
 				name: 'maritalStatus',
 				type: 'string',
 				default: '',
-				description: `A contact's marital status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
+				description: 'A contact\'s marital status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 			{
 				displayName: 'Membership Note',
@@ -296,7 +339,7 @@ export const contactFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `The notes relating to the contact's content membership.`,
+				description: 'The notes relating to the contact\'s content membership',
 			},
 			{
 				displayName: 'Message',
@@ -306,16 +349,17 @@ export const contactFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'A default property to be used for any message or comments a contact may want to leave on a form.',
+				description: 'A default property to be used for any message or comments a contact may want to leave on a form',
 			},
 			{
 				displayName: 'Mobile Phone Number',
 				name: 'mobilePhoneNumber',
 				type: 'string',
 				default: '',
-				description: `A contact's mobile phone number`,
+				description: 'A contact\'s mobile phone number',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
 				type: 'options',
@@ -323,27 +367,27 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactNumberOfEmployees',
 				},
 				default: '',
-				description: 'The number of company employees',
+				description: 'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Original Source',
+				displayName: 'Original Source Name or ID',
 				name: 'originalSource',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getContactOriginalSources',
 				},
 				default: '',
-				description: `The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually.`,
+				description: 'The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
-				description: `A contact's primary phone number`
+				description: 'A contact\'s primary phone number',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -356,114 +400,112 @@ export const contactFields = [
 						],
 					},
 				},
-				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				default: [],
+				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Postal Code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
-				description: `The contact's zip code. This might be set via import, form, or integration.`
+				description: 'The contact\'s zip code. This might be set via import, form, or integration.',
 			},
 			{
-				displayName: 'Preffered Language',
+				displayName: 'Preffered Language Name or ID',
 				name: 'prefferedLanguage',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getContactPrefferedLanguages',
 				},
 				default: '',
-				description: `Set your contact's preferred language for communications. This property can be changed from an import, form, or integration.`
+				description: 'Set your contact\'s preferred language for communications. This property can be changed from an import, form, or integration. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Relationship Status',
 				name: 'relationshipStatus',
 				type: 'string',
 				default: '',
-				description: `A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: 'A contact\'s relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 			{
 				displayName: 'Salutation',
 				name: 'salutation',
 				type: 'string',
 				default: '',
-				description: `The title used to address a contact`
+				description: 'The title used to address a contact',
 			},
 			{
 				displayName: 'School',
 				name: 'school',
 				type: 'string',
 				default: '',
-				description: `A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: 'A contact\'s school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 			{
 				displayName: 'Seniority',
 				name: 'seniority',
 				type: 'string',
 				default: '',
-				description: `A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: 'A contact\'s seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: `A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: 'A contact\'s start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 			{
 				displayName: 'State/Region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
-				description: `The contact's state of residence. This might be set via import, form, or integration.`
+				description: 'The contact\'s state of residence. This might be set via import, form, or integration.',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getContactStatuses',
 				},
 				default: '',
-				description: `The status of the contact's content membership.`
+				description: 'The status of the contact\'s content membership. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Street Address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
-				description: `A contact's street address, including apartment or unit #`
+				description: 'A contact\'s street address, including apartment or unit #',
 			},
 			{
 				displayName: 'Twitter Username',
 				name: 'twitterUsername',
 				type: 'string',
 				default: '',
-				description: `The contact's Twitter handle. This is set by HubSpot using the contact's email address.`
+				description: 'The contact\'s Twitter handle. This is set by HubSpot using the contact\'s email address.',
 			},
 			{
 				displayName: 'Website URL',
 				name: 'websiteUrl',
 				type: 'string',
 				default: '',
-				description: `The contact's company website`
+				description: 'The contact\'s company website',
 			},
 			{
 				displayName: 'Work Email',
 				name: 'workEmail',
 				type: 'string',
 				default: '',
-				description: `A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: 'A contact\'s work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  contact:get                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  contact:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -522,27 +564,24 @@ export const contactFields = [
 					},
 				],
 				default: 'all',
-				description: `Specify which form submissions should be fetched.`,
+				description: 'Specify which form submissions should be fetched',
 			},
 			{
 				displayName: 'List Memberships',
 				name: 'listMerberships',
 				type: 'boolean',
 				default: true,
-				description: 'Whether current list memberships should be fetched for the contact.',
+				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
-				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				default: [],
+				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Property Mode',
@@ -559,13 +598,14 @@ export const contactFields = [
 					},
 				],
 				default: 'valueAndHistory',
-				description: `Specify if the current value for a property should be fetched, or the value and all the historical values for that property.`,
+				description: 'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contact:getAll                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -581,7 +621,7 @@ export const contactFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -605,7 +645,7 @@ export const contactFields = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -647,27 +687,24 @@ export const contactFields = [
 					},
 				],
 				default: 'all',
-				description: `Specify which form submissions should be fetched.`,
+				description: 'Specify which form submissions should be fetched',
 			},
 			{
 				displayName: 'List Memberships',
 				name: 'listMerberships',
 				type: 'boolean',
 				default: true,
-				description: 'Whether current list memberships should be fetched for the contact.',
+				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
-				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				default: [],
+				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Property Mode',
@@ -684,13 +721,14 @@ export const contactFields = [
 					},
 				],
 				default: 'valueAndHistory',
-				description: `Specify if the current value for a property should be fetched, or the value and all the historical values for that property.`,
+				description: 'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contact:delete                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -709,9 +747,10 @@ export const contactFields = [
 		default: '',
 		description: 'Unique identifier for a particular contact',
 	},
-/* -------------------------------------------------------------------------- */
-/*               contact:getRecentlyCreatedUpdated                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*               contact:getRecentlyCreatedUpdated                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -727,7 +766,7 @@ export const contactFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -751,7 +790,7 @@ export const contactFields = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -793,27 +832,24 @@ export const contactFields = [
 					},
 				],
 				default: 'all',
-				description: `Specify which form submissions should be fetched.`,
+				description: 'Specify which form submissions should be fetched',
 			},
 			{
 				displayName: 'List Memberships',
 				name: 'listMerberships',
 				type: 'boolean',
 				default: true,
-				description: 'Whether current list memberships should be fetched for the contact.',
+				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
-				default: '',
-				description: `Used to include specific company properties in the results.<br/>
-				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
-				Including this parameter will include the data for the specified property in the results.<br/>
-				You can include this parameter multiple times to request multiple properties separed by ,.`,
+				default: [],
+				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Property Mode',
@@ -830,8 +866,237 @@ export const contactFields = [
 					},
 				],
 				default: 'valueAndHistory',
-				description: `Specify if the current value for a property should be fetched, or the value and all the historical values for that property.`,
+				description: 'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
 			},
 		],
 	},
-] as INodeProperties[];
+
+	//*-------------------------------------------------------------------------- */
+	/*                                 contact:search                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 250,
+		},
+		default: 100,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Filter Groups',
+		name: 'filterGroupsUi',
+		type: 'fixedCollection',
+		default: {},
+		placeholder: 'Add Filter Group',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'filterGroupsValues',
+				displayName: 'Filter Group',
+				values: [
+					{
+						displayName: 'Filters',
+						name: 'filtersUi',
+						type: 'fixedCollection',
+						default: {},
+						placeholder: 'Add Filter',
+						typeOptions: {
+							multipleValues: true,
+						},
+						options: [
+							{
+								name: 'filterValues',
+								displayName: 'Filter',
+								values: [
+									{
+										displayName: 'Property Name or ID',
+										name: 'propertyName',
+										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+										typeOptions: {
+											loadOptionsMethod: 'getContactProperties',
+										},
+										default: '',
+									},
+									{
+										displayName: 'Operator',
+										name: 'operator',
+										type: 'options',
+										options: [
+											{
+												name: 'Contains Exactly',
+												value: 'CONTAINS_TOKEN',
+											},
+											{
+												name: 'Equal',
+												value: 'EQ',
+											},
+											{
+												name: 'Greater Than',
+												value: 'GT',
+											},
+											{
+												name: 'Greater Than Or Equal',
+												value: 'GTE',
+											},
+											{
+												name: 'Is Known',
+												value: 'HAS_PROPERTY',
+											},
+											{
+												name: 'Is Unknown',
+												value: 'NOT_HAS_PROPERTY',
+											},
+											{
+												name: 'Less Than',
+												value: 'LT',
+											},
+											{
+												name: 'Less Than Or Equal',
+												value: 'LTE',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
+											},
+										],
+										default: 'EQ',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										displayOptions: {
+											hide: {
+												operator: [
+													'HAS_PROPERTY',
+													'NOT_HAS_PROPERTY',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
+					},
+				],
+			},
+		],
+		description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Direction',
+				name: 'direction',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'ASCENDING',
+					},
+					{
+						name: 'DESC',
+						value: 'DESCENDING',
+					},
+				],
+				default: 'DESCENDING',
+				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
+			},
+			{
+				displayName: 'Field Names or IDs',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getContactProperties',
+				},
+				default: [
+					'firstname',
+					'lastname',
+					'email',
+				],
+				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Perform a text search against all property values for an object type',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getContactProperties',
+				},
+				default: 'createdate',
+			},
+		],
+	},
+];

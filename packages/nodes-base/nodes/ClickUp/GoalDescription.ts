@@ -1,12 +1,13 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export const goalOperations = [
+export const goalOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,19 +43,19 @@ export const goalOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const goalFields = [
+export const goalFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                goal:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                goal:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -140,9 +141,10 @@ export const goalFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                goal:delete                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                goal:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Goal ID',
 		name: 'goal',
@@ -160,9 +162,10 @@ export const goalFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                goal:get                                    */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                goal:get                                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Goal ID',
 		name: 'goal',
@@ -180,13 +183,15 @@ export const goalFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                goal:getAll                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                goal:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -222,11 +227,12 @@ export const goalFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                goal:update                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                goal:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Goal ID',
 		name: 'goal',
@@ -302,4 +308,4 @@ export const goalFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

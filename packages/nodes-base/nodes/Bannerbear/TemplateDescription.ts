@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const templateOperations = [
+export const templateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,11 +28,10 @@ export const templateOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const templateFields = [
+export const templateFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 template:get                               */
@@ -49,9 +49,9 @@ export const templateFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the template.',
+		description: 'Unique identifier for the template',
 	},
-] as INodeProperties[];
+];

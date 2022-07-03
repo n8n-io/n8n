@@ -1,10 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,11 +20,10 @@ export const companyOperations = [
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                 company:enrich                             */
@@ -43,7 +43,7 @@ export const companyFields = [
 				],
 			},
 		},
-		description: 'the name of the company (e.g – amazon)',
+		description: 'The name of the company (e.g – amazon)',
 	},
 	{
 		displayName: 'Domain',
@@ -60,6 +60,6 @@ export const companyFields = [
 				],
 			},
 		},
-		description: 'the domain name (e.g – amazon.com)',
+		description: 'The domain name (e.g – amazon.com)',
 	},
-] as INodeProperties[];
+];

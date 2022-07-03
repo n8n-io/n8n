@@ -11,38 +11,43 @@ import {
 
 import {
 	IDataObject,
+	JsonObject,
+	NodeApiError,
  } from 'n8n-workflow';
 
 export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('zendeskApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
+	let credentials;
+
+	if (authenticationMethod === 'apiToken') {
+		credentials = await this.getCredentials('zendeskApi') as { subdomain: string };
+	} else {
+		credentials = await this.getCredentials('zendeskOAuth2Api') as { subdomain: string };
 	}
-	const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64');
+
 	let options: OptionsWithUri = {
-		headers: { 'Authorization': `Basic ${base64Key}`},
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials.url}/api/v2${resource}.json`,
-		json: true
+		uri: uri || getUri(resource, credentials.subdomain),
+		json: true,
+		qsStringifyOptions: {
+			arrayFormat: 'brackets',
+		},
 	};
+
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-	try {
-		return await this.helpers.request!(options);
-	} catch (err) {
-		let errorMessage = err.message;
-		if (err.response && err.response.body && err.response.body.error) {
-			errorMessage = err.response.body.error;
-			if (typeof err.response.body.error !== 'string') {
-				errorMessage = JSON.stringify(errorMessage);
-			}
-		}
 
-		throw new Error(`Zendesk error response [${err.statusCode}]: ${errorMessage}`);
+	const credentialType = authenticationMethod === 'apiToken' ? 'zendeskApi' : 'zendeskOAuth2Api';
+
+	try {
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	} catch(error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -81,4 +86,12 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = undefined;
 	}
 	return result;
+}
+
+function getUri(resource: string, subdomain: string) {
+	if (resource.includes('webhooks')) {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
+	} else {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
+	}
 }

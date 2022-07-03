@@ -1,10 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -14,48 +15,46 @@ export const userOperations = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
-				value: 'create',
-				description: `Creates a new user profile if the user doesn’t exist yet.
-				Otherwise, the user profile is updated based on the properties provided.`,
+				name: 'Add Tags',
+				value: 'addTags',
+				description: 'Adds a tag to a users profile',
 			},
 			{
 				name: 'Alias',
 				value: 'alias',
-				description: 'Changes a user’s identifier.',
+				description: 'Change a users identifier',
 			},
 			{
-				name: 'Unsubscribe',
-				value: 'unsubscribe',
-				description: 'Unsubscribes a single user.',
-			},
-			{
-				name: 'Re-subscribe',
-				value: 'resubscribe',
-				description: 'Resubscribe a single user.',
+				name: 'Create/Update',
+				value: 'create',
+				description: 'Create or update a user profile',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a single user.',
+				description: 'Delete a user',
 			},
 			{
-				name: 'Add Tags',
-				value: 'addTags',
-				description: 'Adds a tag to a user’s profile.',
+				name: 'Re-Subscribe',
+				value: 'resubscribe',
+				description: 'Resubscribe a user',
 			},
 			{
 				name: 'Remove Tags',
 				value: 'removeTags',
-				description: 'Removes a tag from a user’s profile.',
+				description: 'Removes a tag from a users profile',
+			},
+			{
+				name: 'Unsubscribe',
+				value: 'unsubscribe',
+				description: 'Unsubscribe a user',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                user:create                                 */
@@ -74,7 +73,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the customer',
@@ -84,7 +83,6 @@ export const userFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -92,9 +90,9 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
-		}
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -117,16 +115,17 @@ export const userFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'The table to create the row in.',
+				description: 'The table to create the row in',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Data',
 		name: 'dataAttributesUi',
 		placeholder: 'Add Data',
-		description: 'key value pairs that represent the custom user properties you want to update',
+		description: 'Key value pairs that represent the custom user properties you want to update',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -155,16 +154,16 @@ export const userFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the property to set.',
+						description: 'Name of the property to set',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the property to set.',
+						description: 'Value of the property to set',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -173,11 +172,10 @@ export const userFields = [
 		name: 'dataAttributesJson',
 		type: 'json',
 		default: '',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'key value pairs that represent the custom user properties you want to update',
+		description: 'Key value pairs that represent the custom user properties you want to update',
 		displayOptions: {
 			show: {
 				resource: [
@@ -209,7 +207,7 @@ export const userFields = [
 				],
 				operation: [
 					'alias',
-				]
+				],
 			},
 		},
 		description: 'The old unique identifier of the user',
@@ -227,7 +225,7 @@ export const userFields = [
 				],
 				operation: [
 					'alias',
-				]
+				],
 			},
 		},
 		description: 'The new unique identifier of the user',
@@ -248,7 +246,7 @@ export const userFields = [
 				],
 				operation: [
 					'unsubscribe',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -269,7 +267,7 @@ export const userFields = [
 				],
 				operation: [
 					'resubscribe',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -290,7 +288,7 @@ export const userFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -311,7 +309,7 @@ export const userFields = [
 				],
 				operation: [
 					'addTags',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -329,7 +327,7 @@ export const userFields = [
 				],
 				operation: [
 					'addTags',
-				]
+				],
 			},
 		},
 		description: 'Tags to add separated by ","',
@@ -350,7 +348,7 @@ export const userFields = [
 				],
 				operation: [
 					'removeTags',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -368,9 +366,9 @@ export const userFields = [
 				],
 				operation: [
 					'removeTags',
-				]
+				],
 			},
 		},
 		description: 'Tags to remove separated by ","',
 	},
-] as INodeProperties[];
+];

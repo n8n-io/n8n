@@ -1,10 +1,11 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const clientOperations = [
+export const clientOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -35,11 +36,10 @@ export const clientOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const clientFields = [
+export const clientFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                                 client:create                              */
 /* -------------------------------------------------------------------------- */
@@ -99,7 +99,7 @@ export const clientFields = [
 				type: 'string',
 				default: '',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Billing Address',
@@ -156,9 +156,10 @@ export const clientFields = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -208,6 +209,7 @@ export const clientFields = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -275,9 +277,10 @@ export const clientFields = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -294,6 +297,7 @@ export const clientFields = [
 		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -313,6 +317,7 @@ export const clientFields = [
 		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -374,7 +379,7 @@ export const clientFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -398,7 +403,7 @@ export const clientFields = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -431,4 +436,4 @@ export const clientFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

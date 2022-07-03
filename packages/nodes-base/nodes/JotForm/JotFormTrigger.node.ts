@@ -9,8 +9,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -28,13 +28,13 @@ export class JotFormTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'JotForm Trigger',
 		name: 'jotFormTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:jotform.png',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle JotForm events via webhooks',
 		defaults: {
 			name: 'JotForm Trigger',
-			color: '#fa8900',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -42,7 +42,7 @@ export class JotFormTrigger implements INodeType {
 			{
 				name: 'jotFormApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -54,29 +54,30 @@ export class JotFormTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form',
+				displayName: 'Form Name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getForms'
+					loadOptionsMethod: 'getForms',
 				},
 				default: '',
-				description: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			},
 			{
 				displayName: 'Resolve Data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data use internal keys instead of the names.<br />If this option gets activated it will resolve the keys automatically to the actual names.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
 			},
 			{
 				displayName: 'Only Answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 
@@ -123,7 +124,7 @@ export class JotFormTrigger implements INodeType {
 
 					const webhookIds = Object.keys(responseData.content);
 					webhookData.webhookId = webhookIds[webhookUrls.indexOf(webhookUrl)];
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -167,7 +168,7 @@ export class JotFormTrigger implements INodeType {
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 		const onlyAnswers = this.getNodeParameter('onlyAnswers', false) as boolean;
 
-		const form = new formidable.IncomingForm();
+		const form = new formidable.IncomingForm({});
 
 		return new Promise((resolve, reject) => {
 

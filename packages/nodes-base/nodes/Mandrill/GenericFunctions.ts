@@ -8,14 +8,11 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import * as _ from 'lodash';
+import _ from 'lodash';
+import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('mandrillApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = await this.getCredentials('mandrillApi');
 
 	const data = Object.assign({}, body, { key: credentials.apiKey });
 
@@ -26,28 +23,14 @@ export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunction
 		method,
 		uri: `https://${endpoint}${resource}${action}.json`,
 		body: data,
-		json: true
+		json: true,
 	};
 
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.error(error);
-
-		const errorMessage = error.response.body.message || error.response.body.Message;
-		if (error.name === 'Invalid_Key') {
-			throw new Error('The provided API key is not a valid Mandrill API key');
-		} else if (error.name === 'ValidationError') {
-			throw new Error('The parameters passed to the API call are invalid or not provided when required');
-		} else if (error.name === 'GeneralError') {
-			throw new Error('An unexpected error occurred processing the request. Mandrill developers will be notified.');
-		}
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.response.body;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -58,13 +41,13 @@ export function getToEmailArray(toEmail: string): any { // tslint:disable-line:n
 		toEmailArray = _.map(array, (email) => {
 			return {
 				email,
-				type: 'to'
+				type: 'to',
 			};
 		});
 	} else {
 		toEmailArray = [{
 			email: toEmail,
-			type: 'to'
+			type: 'to',
 		}];
 	}
 	return toEmailArray;

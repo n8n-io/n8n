@@ -2,12 +2,12 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/constants';
 
 import {
 	IConnection,
 	IConnections,
-	ICredentialType,
+	IDataObject,
 	INodeConnections,
 	INodeIssueData,
 	INodeTypeDescription,
@@ -17,64 +17,97 @@ import {
 } from 'n8n-workflow';
 
 import {
-	ICredentialsResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-	IPushDataExecutionFinished,
-	IPushDataNodeExecuteAfter,
-	IWorkflowDb,
+	IRootState,
+	IMenuItem,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
+	IPushDataExecutionFinished,
+	IPushDataNodeExecuteAfter,
 	IUpdateInformation,
-	XYPositon,
+	IWorkflowDb,
+	XYPosition,
+	IRestApiContext,
 } from './Interface';
 
-import { get } from 'lodash';
+import credentials from './modules/credentials';
+import settings from './modules/settings';
+import tags from './modules/tags';
+import ui from './modules/ui';
+import users from './modules/users';
+import workflows from './modules/workflows';
+import versions from './modules/versions';
+import templates from './modules/templates';
 
 Vue.use(Vuex);
 
+const state: IRootState = {
+	activeExecutions: [],
+	activeWorkflows: [],
+	activeActions: [],
+	activeNode: null,
+	activeCredentialType: null,
+	// @ts-ignore
+	baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
+	defaultLocale: 'en',
+	endpointWebhook: 'webhook',
+	endpointWebhookTest: 'webhook-test',
+	executionId: null,
+	executingNode: '',
+	executionWaitingForWebhook: false,
+	pushConnectionActive: true,
+	saveDataErrorExecution: 'all',
+	saveDataSuccessExecution: 'all',
+	saveManualExecutions: false,
+	timezone: 'America/New_York',
+	stateIsDirty: false,
+	executionTimeout: -1,
+	maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
+	versionCli: '0.0.0',
+	oauthCallbackUrls: {},
+	n8nMetadata: {},
+	workflowExecutionData: null,
+	lastSelectedNode: null,
+	lastSelectedNodeOutputIndex: null,
+	nodeIndex: [],
+	nodeTypes: [],
+	nodeViewOffsetPosition: [0, 0],
+	nodeViewMoveInProgress: false,
+	selectedNodes: [],
+	sessionId: Math.random().toString(36).substring(2, 15),
+	urlBaseWebhook: 'http://localhost:5678/',
+	workflow: {
+		id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+		name: '',
+		active: false,
+		createdAt: -1,
+		updatedAt: -1,
+		connections: {},
+		nodes: [],
+		settings: {},
+		tags: [],
+	},
+	sidebarMenuItems: [],
+	instanceId: '',
+	nodeMetadata: {},
+};
+
+const modules = {
+	credentials,
+	tags,
+	settings,
+	templates,
+	workflows,
+	versions,
+	users,
+	ui,
+};
+
 export const store = new Vuex.Store({
 	strict: process.env.NODE_ENV !== 'production',
-	state: {
-		activeExecutions: [] as IExecutionsCurrentSummaryExtended[],
-		activeWorkflows: [] as string[],
-		activeActions: [] as string[],
-		activeNode: null as string | null,
-		baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : '/',
-		credentials: null as ICredentialsResponse[] | null,
-		credentialTypes: null as ICredentialType[] | null,
-		endpointWebhook: 'webhook',
-		endpointWebhookTest: 'webhook-test',
-		executionId: null as string | null,
-		executingNode: '' as string | null,
-		executionWaitingForWebhook: false,
-		pushConnectionActive: false,
-		saveDataErrorExecution: 'all',
-		saveDataSuccessExecution: 'all',
-		saveManualExecutions: false,
-		timezone: 'America/New_York',
-		versionCli: '0.0.0',
-		workflowExecutionData: null as IExecutionResponse | null,
-		lastSelectedNode: null as string | null,
-		lastSelectedNodeOutputIndex: null as number | null,
-		nodeIndex: [] as Array<string | null>,
-		nodeTypes: [] as INodeTypeDescription[],
-		nodeViewOffsetPosition: [0, 0] as XYPositon,
-		nodeViewMoveInProgress: false,
-		selectedNodes: [] as INodeUi[],
-		sessionId: Math.random().toString(36).substring(2, 15),
-		urlBaseWebhook: 'http://localhost:5678/',
-		workflow: {
-			id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
-			name: '',
-			active: false,
-			createdAt: -1,
-			updatedAt: -1,
-			connections: {} as IConnections,
-			nodes: [] as INodeUi[],
-			settings: {} as IWorkflowSettings,
-		} as IWorkflowDb,
-	},
+	modules,
+	state,
 	mutations: {
 		// Active Actions
 		addActiveAction (state, action: string) {
@@ -82,6 +115,7 @@ export const store = new Vuex.Store({
 				state.activeActions.push(action);
 			}
 		},
+
 		removeActiveAction (state, action: string) {
 			const actionIndex = state.activeActions.indexOf(action);
 			if (actionIndex !== -1) {
@@ -93,7 +127,7 @@ export const store = new Vuex.Store({
 		addActiveExecution (state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
 			// Check if the execution exists already
 			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.idActive === newActiveExecution.idActive;
+				return execution.id === newActiveExecution.id;
 			});
 
 			if (activeExecution !== undefined) {
@@ -109,7 +143,7 @@ export const store = new Vuex.Store({
 		finishActiveExecution (state, finishedActiveExecution: IPushDataExecutionFinished) {
 			// Find the execution to set to finished
 			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.idActive === finishedActiveExecution.executionIdActive;
+				return execution.id === finishedActiveExecution.executionId;
 			});
 
 			if (activeExecution === undefined) {
@@ -117,8 +151,8 @@ export const store = new Vuex.Store({
 				return;
 			}
 
-			if (finishedActiveExecution.executionIdDb !== undefined) {
-				Vue.set(activeExecution, 'id', finishedActiveExecution.executionIdDb);
+			if (finishedActiveExecution.executionId !== undefined) {
+				Vue.set(activeExecution, 'id', finishedActiveExecution.executionId);
 			}
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
@@ -133,6 +167,7 @@ export const store = new Vuex.Store({
 			state.activeWorkflows = newActiveWorkflows;
 		},
 		setWorkflowActive (state, workflowId: string) {
+			state.stateIsDirty = false;
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index === -1) {
 				state.activeWorkflows.push(workflowId);
@@ -141,8 +176,13 @@ export const store = new Vuex.Store({
 		setWorkflowInactive (state, workflowId: string) {
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
-				state.selectedNodes.splice(index, 1);
+				state.activeWorkflows.splice(index, 1);
 			}
+		},
+		// Set state condition dirty or not
+		// ** Dirty: if current workflow state has been synchronized with database AKA has it been saved
+		setStateDirty (state, dirty : boolean) {
+			state.stateIsDirty = dirty;
 		},
 
 		// Selected Nodes
@@ -173,6 +213,10 @@ export const store = new Vuex.Store({
 				// All connections need two entries
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
+			}
+
+			if (data.setStateDirty === true) {
+				state.stateIsDirty = true;
 			}
 
 			const sourceData: IConnection = data.connection[0];
@@ -210,6 +254,7 @@ export const store = new Vuex.Store({
 			if (connectionExists === false) {
 				state.workflow.connections[sourceData.node][sourceData.type][sourceData.index].push(destinationData);
 			}
+
 		},
 		removeConnection (state, data) {
 			const sourceData = data.connection[0];
@@ -225,6 +270,8 @@ export const store = new Vuex.Store({
 				return;
 			}
 
+			state.stateIsDirty = true;
+
 			const connections = state.workflow.connections[sourceData.node][sourceData.type][sourceData.index];
 			for (const index in connections) {
 				if (connections[index].node === destinationData.node && connections[index].type === destinationData.type && connections[index].index === destinationData.index) {
@@ -232,11 +279,16 @@ export const store = new Vuex.Store({
 					connections.splice(parseInt(index, 10), 1);
 				}
 			}
+
 		},
-		removeAllConnections (state) {
+		removeAllConnections (state, data) {
+			if (data && data.setStateDirty === true) {
+				state.stateIsDirty = true;
+			}
 			state.workflow.connections = {};
 		},
 		removeAllNodeConnection (state, node: INodeUi) {
+			state.stateIsDirty = true;
 			// Remove all source connections
 			if (state.workflow.connections.hasOwnProperty(node.name)) {
 				delete state.workflow.connections[node.name];
@@ -264,42 +316,8 @@ export const store = new Vuex.Store({
 			}
 		},
 
-		// Credentials
-		addCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials !== null) {
-				state.credentials.push(credentialData);
-			}
-		},
-		removeCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials === null) {
-				return;
-			}
-			for (let i = 0; i < state.credentials.length; i++) {
-				if (state.credentials[i].id === credentialData.id) {
-					state.credentials.splice(i, 1);
-					return;
-				}
-			}
-		},
-		updateCredentials (state, credentialData: ICredentialsResponse) {
-			if (state.credentials === null) {
-				return;
-			}
-			for (let i = 0; i < state.credentials.length; i++) {
-				if (state.credentials[i].id === credentialData.id) {
-					state.credentials[i] = credentialData;
-					return;
-				}
-			}
-		},
-		setCredentials (state, credentials: ICredentialsResponse[]) {
-			Vue.set(state, 'credentials', credentials);
-		},
-		setCredentialTypes (state, credentialTypes: ICredentialType[]) {
-			Vue.set(state, 'credentialTypes', credentialTypes);
-		},
-
 		renameNodeSelectedAndExecution (state, nameData) {
+			state.stateIsDirty = true;
 			// If node has any WorkflowResultData rename also that one that the data
 			// does still get displayed also after node got renamed
 			if (state.workflowExecutionData !== null && state.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
@@ -311,16 +329,21 @@ export const store = new Vuex.Store({
 			if (state.lastSelectedNode === nameData.old) {
 				state.lastSelectedNode = nameData.new;
 			}
+
+			Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
+			Vue.delete(state.nodeMetadata, nameData.old);
 		},
 
 		resetAllNodesIssues (state) {
 			state.workflow.nodes.forEach((node) => {
 				node.issues = undefined;
 			});
+
 			return true;
 		},
 
 		setNodeIssue (state, nodeIssueData: INodeIssueData) {
+
 			const node = state.workflow.nodes.find(node => {
 				return node.name === nodeIssueData.node;
 			});
@@ -355,8 +378,37 @@ export const store = new Vuex.Store({
 		},
 
 		// Name
-		setWorkflowName (state, newName: string) {
-			state.workflow.name = newName;
+		setWorkflowName (state, data) {
+			if (data.setStateDirty === true) {
+				state.stateIsDirty = true;
+			}
+			state.workflow.name = data.newName;
+		},
+
+		// replace invalid credentials in workflow
+		replaceInvalidWorkflowCredentials(state, {credentials, invalid, type }) {
+			state.workflow.nodes.forEach((node) => {
+				if (!node.credentials || !node.credentials[type]) {
+					return;
+				}
+				const nodeCredentials = node.credentials[type];
+
+				if (typeof nodeCredentials === 'string' && nodeCredentials === invalid.name) {
+					node.credentials[type] = credentials;
+					return;
+				}
+
+				if (nodeCredentials.id === null) {
+					if (nodeCredentials.name === invalid.name){
+						node.credentials[type] = credentials;
+					}
+					return;
+				}
+
+				if (nodeCredentials.id === invalid.id) {
+					node.credentials[type] = credentials;
+				}
+			});
 		},
 
 		// Nodes
@@ -370,15 +422,22 @@ export const store = new Vuex.Store({
 			state.workflow.nodes.push(nodeData);
 		},
 		removeNode (state, node: INodeUi) {
+			Vue.delete(state.nodeMetadata, node.name);
+
 			for (let i = 0; i < state.workflow.nodes.length; i++) {
 				if (state.workflow.nodes[i].name === node.name) {
 					state.workflow.nodes.splice(i, 1);
+					state.stateIsDirty = true;
 					return;
 				}
 			}
 		},
-		removeAllNodes (state) {
+		removeAllNodes (state, data) {
+			if (data.setStateDirty === true) {
+				state.stateIsDirty = true;
+			}
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
+			state.nodeMetadata = {};
 		},
 		updateNodeProperties (state, updateInformation: INodeUpdatePropertiesInformation) {
 			// Find the node that should be updated
@@ -388,6 +447,7 @@ export const store = new Vuex.Store({
 
 			if (node) {
 				for (const key of Object.keys(updateInformation.properties)) {
+					state.stateIsDirty = true;
 					Vue.set(node, key, updateInformation.properties[key]);
 				}
 			}
@@ -402,6 +462,7 @@ export const store = new Vuex.Store({
 				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
 			}
 
+			state.stateIsDirty = true;
 			Vue.set(node, updateInformation.key, updateInformation.value);
 		},
 		setNodeParameters (state, updateInformation: IUpdateInformation) {
@@ -414,7 +475,13 @@ export const store = new Vuex.Store({
 				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
 			}
 
+			state.stateIsDirty = true;
 			Vue.set(node, 'parameters', updateInformation.value);
+
+			if (!state.nodeMetadata[node.name]) {
+				Vue.set(state.nodeMetadata, node.name, {});
+			}
+			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
 		// Node-Index
@@ -432,8 +499,8 @@ export const store = new Vuex.Store({
 		setNodeViewMoveInProgress (state, value: boolean) {
 			state.nodeViewMoveInProgress = value;
 		},
-		setNodeViewOffsetPosition (state, newOffset: XYPositon) {
-			state.nodeViewOffsetPosition = newOffset;
+		setNodeViewOffsetPosition (state, data) {
+			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
 		// Node-Types
@@ -480,22 +547,32 @@ export const store = new Vuex.Store({
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
-		setVersionCli (state, version: string) {
+		setExecutionTimeout (state, executionTimeout: number) {
+			Vue.set(state, 'executionTimeout', executionTimeout);
+		},
+		setMaxExecutionTimeout (state, maxExecutionTimeout: number) {
+			Vue.set(state, 'maxExecutionTimeout', maxExecutionTimeout);
+		},
+		setVersionCli(state, version: string) {
 			Vue.set(state, 'versionCli', version);
 		},
-
-		addNodeType (state, typeData: INodeTypeDescription) {
-			if (!typeData.hasOwnProperty('name')) {
-				// All node-types have to have a name
-				// TODO: Check if there is an error or whatever that is supposed to be returned
-				return;
-			}
-
-			state.nodeTypes.push(typeData);
+		setInstanceId(state, instanceId: string) {
+			Vue.set(state, 'instanceId', instanceId);
 		},
-
+		setOauthCallbackUrls(state, urls: IDataObject) {
+			Vue.set(state, 'oauthCallbackUrls', urls);
+		},
+		setN8nMetadata(state, metadata: IDataObject) {
+			Vue.set(state, 'n8nMetadata', metadata);
+		},
+		setDefaultLocale(state, locale: string) {
+			Vue.set(state, 'defaultLocale', locale);
+		},
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
+		},
+		setActiveCredentialType (state, activeCredentialType: string) {
+			state.activeCredentialType = activeCredentialType;
 		},
 
 		setLastSelectedNode (state, nodeName: string) {
@@ -516,12 +593,33 @@ export const store = new Vuex.Store({
 			if (state.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
 				Vue.set(state.workflowExecutionData.data.resultData.runData, pushData.nodeName, []);
 			}
-
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
+		},
+		clearNodeExecutionData (state, nodeName: string): void {
+			if (state.workflowExecutionData === null) {
+				return;
+			}
+
+			Vue.delete(state.workflowExecutionData.data.resultData.runData, nodeName);
 		},
 
 		setWorkflowSettings (state, workflowSettings: IWorkflowSettings) {
 			Vue.set(state.workflow, 'settings', workflowSettings);
+		},
+
+		setWorkflowTagIds (state, tags: string[]) {
+			Vue.set(state.workflow, 'tags', tags);
+		},
+
+		addWorkflowTagIds (state, tags: string[]) {
+			Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
+		},
+
+		removeWorkflowTagId (state, tagId: string) {
+			const tags = state.workflow.tags as string[];
+			const updated = tags.filter((id: string) => id !== tagId);
+
+			Vue.set(state.workflow, 'tags', updated);
 		},
 
 		// Workflow
@@ -550,15 +648,45 @@ export const store = new Vuex.Store({
 				Vue.set(state.workflow, 'settings', {});
 			}
 		},
+
+		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
+			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
+			Vue.set(state, 'nodeTypes', newNodesState);
+			state.nodeTypes = newNodesState;
+		},
+
+		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
+			const updated = state.sidebarMenuItems.concat(menuItems);
+			Vue.set(state, 'sidebarMenuItems', updated);
+		},
 	},
 	getters: {
+		executedNode: (state): string | undefined => {
+			return state.workflowExecutionData? state.workflowExecutionData.executedNode: undefined;
+		},
+		activeCredentialType: (state): string | null => {
+			return state.activeCredentialType;
+		},
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
 		},
 
+		isNewWorkflow: (state) => {
+			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+		},
+
+		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
+			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
+		},
+
 		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
 			return state.activeExecutions;
+		},
+
+		getParametersLastUpdated: (state): ((name: string) => number | undefined) => {
+			return (nodeName: string) => state.nodeMetadata[nodeName] && state.nodeMetadata[nodeName].parametersLastUpdatedAt;
 		},
 
 		getBaseUrl: (state): string => {
@@ -571,11 +699,32 @@ export const store = new Vuex.Store({
 			}
 			return `${state.baseUrl}${endpoint}`;
 		},
+		getRestApiContext(state): IRestApiContext {
+			let endpoint = 'rest';
+			if (process.env.VUE_APP_ENDPOINT_REST) {
+				endpoint = process.env.VUE_APP_ENDPOINT_REST;
+			}
+			return {
+				baseUrl: `${state.baseUrl}${endpoint}`,
+				sessionId: state.sessionId,
+			};
+		},
+		getWebhookBaseUrl: (state): string => {
+			return state.urlBaseWebhook;
+		},
 		getWebhookUrl: (state): string => {
 			return `${state.urlBaseWebhook}${state.endpointWebhook}`;
 		},
 		getWebhookTestUrl: (state): string => {
 			return `${state.urlBaseWebhook}${state.endpointWebhookTest}`;
+		},
+
+		getStateIsDirty: (state) : boolean => {
+			return state.stateIsDirty;
+		},
+
+		instanceId: (state): string => {
+			return state.instanceId;
 		},
 
 		saveDataErrorExecution: (state): string => {
@@ -590,8 +739,23 @@ export const store = new Vuex.Store({
 		timezone: (state): string => {
 			return state.timezone;
 		},
+		executionTimeout: (state): number => {
+			return state.executionTimeout;
+		},
+		maxExecutionTimeout: (state): number => {
+			return state.maxExecutionTimeout;
+		},
 		versionCli: (state): string => {
 			return state.versionCli;
+		},
+		oauthCallbackUrls: (state): object => {
+			return state.oauthCallbackUrls;
+		},
+		n8nMetadata: (state): object => {
+			return state.n8nMetadata;
+		},
+		defaultLocale: (state): string => {
+			return state.defaultLocale;
 		},
 
 		// Push Connection
@@ -607,6 +771,13 @@ export const store = new Vuex.Store({
 			return state.activeWorkflows;
 		},
 
+		workflowTriggerNodes: (state, getters) => {
+			return state.workflow.nodes.filter(node => {
+				const nodeType = getters.nodeType(node.type, node.typeVersion);
+				return nodeType && nodeType.group.includes('trigger');
+			});
+		},
+
 		// Node-Index
 		getNodeIndex: (state) => (nodeName: string): number => {
 			return state.nodeIndex.indexOf(nodeName);
@@ -615,7 +786,7 @@ export const store = new Vuex.Store({
 			return state.nodeIndex[index];
 		},
 
-		getNodeViewOffsetPosition: (state): XYPositon => {
+		getNodeViewOffsetPosition: (state): XYPosition => {
 			return state.nodeViewOffsetPosition;
 		},
 		isNodeViewMoveInProgress: (state): boolean => {
@@ -642,9 +813,7 @@ export const store = new Vuex.Store({
 		allConnections: (state): IConnections => {
 			return state.workflow.connections;
 		},
-		// connectionsByNodeName: (state) => (nodeName: string): {[key: string]: Connection[][]} | null => {
-		// connectionsByNodeName: (state) => (nodeName: string): { [key: string]: NodeConnections} | null => {
-		connectionsByNodeName: (state) => (nodeName: string): INodeConnections => {
+		outgoingConnectionsByNodeName: (state) => (nodeName: string): INodeConnections => {
 			if (state.workflow.connections.hasOwnProperty(nodeName)) {
 				return state.workflow.connections[nodeName];
 			}
@@ -653,15 +822,14 @@ export const store = new Vuex.Store({
 		allNodes: (state): INodeUi[] => {
 			return state.workflow.nodes;
 		},
-		nodeByName: (state) => (nodeName: string): INodeUi | null => {
-			const foundNode = state.workflow.nodes.find(node => {
-				return node.name === nodeName;
-			});
-
-			if (foundNode === undefined) {
-				return null;
-			}
-			return foundNode;
+		nodesByName: (state: IRootState): {[name: string]: INodeUi} => {
+			return state.workflow.nodes.reduce((accu: {[name: string]: INodeUi}, node) => {
+				accu[node.name] = node;
+				return accu;
+			}, {});
+		},
+		getNodeByName: (state, getters) => (nodeName: string): INodeUi | null => {
+			return getters.nodesByName[nodeName] || null;
 		},
 		nodesIssuesExist: (state): boolean => {
 			for (const node of state.workflow.nodes) {
@@ -672,38 +840,31 @@ export const store = new Vuex.Store({
 			}
 			return false;
 		},
-		allCredentialTypes: (state): ICredentialType[] | null => {
-			return state.credentialTypes;
-		},
-		allCredentials: (state): ICredentialsResponse[] | null => {
-			return state.credentials;
-		},
-		credentialsByType: (state) => (credentialType: string): ICredentialsResponse[] | null => {
-			if (state.credentials === null) {
-				return null;
-			}
-
-			return state.credentials.filter((credentialData) => credentialData.type === credentialType);
-		},
-		credentialType: (state) => (credentialType: string): ICredentialType | null => {
-			if (state.credentialTypes === null) {
-				return null;
-			}
-			const foundType = state.credentialTypes.find(credentialData => {
-				return credentialData.name === credentialType;
-			});
-
-			if (foundType === undefined) {
-				return null;
-			}
-			return foundType;
-		},
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-		nodeType: (state) => (nodeType: string): INodeTypeDescription | null => {
+
+		/**
+		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
+		 */
+		nativelyNumberSuffixedDefaults: (_, getters): string[] => {
+			const { allNodeTypes } = getters as {
+				allNodeTypes: Array<INodeTypeDescription & { defaults: { name: string } }>;
+			};
+
+			return allNodeTypes.reduce<string[]>((acc, cur) => {
+				if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
+				return acc;
+			}, []);
+		},
+
+		nodeType: (state, getters) => (nodeType: string, version?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType;
+				const typeVersion = Array.isArray(typeData.version)
+					? typeData.version
+					: [typeData.version];
+
+				return typeData.name === nodeType && typeVersion.includes(version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
 			});
 
 			if (foundType === undefined) {
@@ -712,10 +873,10 @@ export const store = new Vuex.Store({
 			return foundType;
 		},
 		activeNode: (state, getters): INodeUi | null => {
-			return getters.nodeByName(state.activeNode);
+			return getters.getNodeByName(state.activeNode);
 		},
 		lastSelectedNode: (state, getters): INodeUi | null => {
-			return getters.nodeByName(state.lastSelectedNode);
+			return getters.getNodeByName(state.lastSelectedNode);
 		},
 		lastSelectedNodeOutputIndex: (state, getters): number | null => {
 			return state.lastSelectedNodeOutputIndex;
@@ -738,6 +899,7 @@ export const store = new Vuex.Store({
 		workflowId: (state): string => {
 			return state.workflow.id;
 		},
+
 		workflowSettings: (state): IWorkflowSettings => {
 			if (state.workflow.settings === undefined) {
 				return {};
@@ -745,12 +907,16 @@ export const store = new Vuex.Store({
 			return state.workflow.settings;
 		},
 
+		workflowTags: (state): string[] => {
+			return state.workflow.tags as string[];
+		},
+
 		// Workflow Result Data
 		getWorkflowExecution: (state): IExecutionResponse | null => {
 			return state.workflowExecutionData;
 		},
 		getWorkflowRunData: (state): IRunData | null => {
-			if (state.workflowExecutionData === null) {
+			if (!state.workflowExecutionData || !state.workflowExecutionData.data || !state.workflowExecutionData.data.resultData) {
 				return null;
 			}
 
@@ -768,23 +934,8 @@ export const store = new Vuex.Store({
 			return workflowRunData[nodeName];
 		},
 
+		sidebarMenuItems: (state): IMenuItem[] => {
+			return state.sidebarMenuItems;
+		},
 	},
-
 });
-
-// import Vue from 'vue';
-// import Vuex from 'vuex';
-
-// Vue.use(Vuex)
-
-// export default new Vuex.Store({
-// 	state: {
-
-// 	},
-// 	mutations: {
-
-// 	},
-// 	actions: {
-
-// 	}
-// });

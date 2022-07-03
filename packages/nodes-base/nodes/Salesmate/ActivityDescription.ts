@@ -1,10 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const activityOperations = [
+export const activityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,17 +17,17 @@ export const activityOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a activity',
+				description: 'Create an activity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a activity',
+				description: 'Delete an activity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a activity',
+				description: 'Get an activity',
 			},
 			{
 				name: 'Get All',
@@ -36,15 +37,14 @@ export const activityOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a activity',
+				description: 'Update an activity',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const activityFields = [
+export const activityFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                activity:create                             */
@@ -67,9 +67,10 @@ export const activityFields = [
 		required: true,
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
@@ -101,7 +102,7 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'This field displays activity type such as call, meeting etc.',
+		description: 'This field displays activity type such as call, meeting etc',
 		required: true,
 	},
 	{
@@ -119,7 +120,7 @@ export const activityFields = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -146,7 +147,7 @@ export const activityFields = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the activity.',
+				description: 'This field contains details related to the activity',
 			},
 			{
 				displayName: 'Tags',
@@ -160,28 +161,28 @@ export const activityFields = [
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Expiry date of an activity.',
+				description: 'Expiry date of an activity',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
 				type: 'number',
 				default: '',
-				description: 'Time duration of an activity.',
+				description: 'Time duration of an activity',
 			},
 			{
 				displayName: 'Is Calendar Invite',
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
-				description: 'This field is used to send calendar invite.',
+				description: 'Whether to send calendar invite',
 			},
 			{
 				displayName: 'Is Completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
-				description: 'This field indicates whether the activity is completed or not.',
+				description: 'Whether the activity is completed or not',
 			},
 		],
 	},
@@ -204,7 +205,6 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -221,7 +221,7 @@ export const activityFields = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -266,7 +266,7 @@ export const activityFields = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the activity.',
+				description: 'This field contains details related to the activity',
 			},
 			{
 				displayName: 'Tags',
@@ -280,28 +280,28 @@ export const activityFields = [
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Expiry date of an activity.',
+				description: 'Expiry date of an activity',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
 				type: 'number',
 				default: '',
-				description: 'Time duration of an activity.',
+				description: 'Time duration of an activity',
 			},
 			{
 				displayName: 'Is Calendar Invite',
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
-				description: 'This field is used to send calendar invite.',
+				description: 'Whether to send calendar invite',
 			},
 			{
 				displayName: 'Is Completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
-				description: 'This field indicates whether the activity is completed or not.',
+				description: 'Whether the activity is completed or not',
 			},
 		],
 
@@ -325,7 +325,6 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'activity ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -342,7 +341,7 @@ export const activityFields = [
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 activity:getAll                            */
@@ -362,7 +361,7 @@ export const activityFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -386,14 +385,13 @@ export const activityFields = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -427,14 +425,14 @@ export const activityFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
-				description: 'The field to sort by.',
+				description: 'The field to sort by',
 			},
 			{
 				displayName: 'Sort Order',
@@ -451,8 +449,7 @@ export const activityFields = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
-			}
+			},
 		],
 	},
 	{
@@ -554,6 +551,7 @@ export const activityFields = [
 										displayName: 'Condition',
 										name: 'condition',
 										type: 'options',
+										// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 										options: [
 											{
 												name: 'Equals',
@@ -564,20 +562,20 @@ export const activityFields = [
 												value: 'NOT_EQUALS',
 											},
 											{
-												name: 'Empty',
-												value: 'EMPTY',
-											},
-											{
-												name: 'Not Empty',
-												value: 'NOT_EMPTY',
-											},
-											{
 												name: 'CONTAINS',
 												value: 'Contains',
 											},
 											{
 												name: 'Does Not Contains',
 												value: 'DOES_NOT_CONTAINS',
+											},
+											{
+												name: 'Empty',
+												value: 'EMPTY',
+											},
+											{
+												name: 'Not Empty',
+												value: 'NOT_EMPTY',
 											},
 											{
 												name: 'Starts With',
@@ -589,19 +587,19 @@ export const activityFields = [
 											},
 										],
 										default: 'EQUALS',
-										description: 'Value of the property to set.',
+										description: 'Value of the property to set',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-									}
-								]
+									},
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -626,4 +624,4 @@ export const activityFields = [
 		},
 		description: 'If more than one activity add them separated by ,',
 	},
-] as INodeProperties[];
+];

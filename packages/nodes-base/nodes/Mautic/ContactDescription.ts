@@ -1,10 +1,13 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,9 +22,19 @@ export const contactOperations = [
 				description: 'Create a new contact',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a contact',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a contact',
+			},
+			{
+				name: 'Edit Contact Points',
+				value: 'editContactPoint',
+				description: 'Edit contact\'s points',
+			},
+			{
+				name: 'Edit Do Not Contact List',
+				value: 'editDoNotContactList',
+				description: 'Add/remove contacts from/to the do not contact list',
 			},
 			{
 				name: 'Get',
@@ -34,27 +47,30 @@ export const contactOperations = [
 				description: 'Get data of all contacts',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a contact',
+				name: 'Send Email',
+				value: 'sendEmail',
+				description: 'Send email to contact',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a contact',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                contact:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -70,6 +86,7 @@ export const contactFields = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [
@@ -80,11 +97,11 @@ export const contactFields = [
 				],
 				jsonParameters: [
 					false,
-				]
+				],
 			},
 		},
 		default: '',
-		description: 'Email address of the contact.',
+		description: 'Email address of the contact',
 	},
 	{
 		displayName: 'First Name',
@@ -100,11 +117,10 @@ export const contactFields = [
 				],
 				jsonParameters: [
 					false,
-				]
+				],
 			},
 		},
 		default: '',
-		description: 'First Name',
 	},
 	{
 		displayName: 'Last Name',
@@ -124,12 +140,12 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Last Name',
 	},
 	{
-		displayName: 'Primary Company',
+		displayName: 'Primary Company Name or ID',
 		name: 'company',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCompanies',
 		},
@@ -147,7 +163,6 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Primary company',
 	},
 	{
 		displayName: 'Position',
@@ -167,7 +182,6 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Position',
 	},
 	{
 		displayName: 'Title',
@@ -187,7 +201,6 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Title',
 	},
 	{
 		displayName: 'Body',
@@ -227,6 +240,130 @@ export const contactFields = [
 		},
 		options: [
 			{
+				displayName: 'Address',
+				name: 'addressUi',
+				placeholder: 'Address',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						name: 'addressValues',
+						displayName: 'Address',
+						values: [
+							{
+								displayName: 'Address Line 1',
+								name: 'address1',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Address Line 2',
+								name: 'address2',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'City',
+								name: 'city',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'State',
+								name: 'state',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Country',
+								name: 'country',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zipCode',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'B2B or B2C',
+				name: 'b2bOrb2c',
+				type: 'options',
+				options: [
+					{
+						name: 'B2B',
+						value: 'B2B',
+					},
+					{
+						name: 'B2C',
+						value: 'B2C',
+					},
+				],
+				default: '',
+			},
+			{
+				displayName: 'CRM ID',
+				name: 'crmId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Fields',
+				description: 'Adds a custom fields to set also values which have not been predefined',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customFieldValues',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field Name or ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactFields',
+								},
+								default: '',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Fax',
+				name: 'fax',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Has Purchased',
+				name: 'hasPurchased',
+				type: 'boolean',
+				default: false,
+			},
+			{
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
@@ -241,18 +378,131 @@ export const contactFields = [
 				description: 'Date/time in UTC;',
 			},
 			{
+				displayName: 'Mobile',
+				name: 'mobile',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Owner ID',
 				name: 'ownerId',
 				type: 'string',
 				default: '',
 				description: 'ID of a Mautic user to assign this contact to',
 			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Prospect or Customer',
+				name: 'prospectOrCustomer',
+				type: 'options',
+				options: [
+					{
+						name: 'Prospect',
+						value: 'Prospect',
+					},
+					{
+						name: 'Customer',
+						value: 'Customer',
+					},
+				],
+				default: '',
+			},
+			{
+				displayName: 'Sandbox',
+				name: 'sandbox',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Stage Name or ID',
+				name: 'stage',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getStages',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Tag Names or IDs',
+				name: 'tags',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: [],
+			},
+			{
+				displayName: 'Social Media',
+				name: 'socialMediaUi',
+				placeholder: 'Social Media',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						name: 'socialMediaValues',
+						displayName: 'Social Media',
+						values: [
+							{
+								displayName: 'Facebook',
+								name: 'facebook',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Foursquare',
+								name: 'foursquare',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Instagram',
+								name: 'instagram',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'LinkedIn',
+								name: 'linkedIn',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Skype',
+								name: 'skype',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Twitter',
+								name: 'twitter',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                               contact:update                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               contact:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -268,14 +518,12 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -319,8 +567,92 @@ export const contactFields = [
 				description: 'Contact parameters',
 			},
 			{
-				displayName: 'Email',
-				name: 'email',
+				displayName: 'Address',
+				name: 'addressUi',
+				placeholder: 'Address',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						name: 'addressValues',
+						displayName: 'Address',
+						values: [
+							{
+								displayName: 'Address Line 1',
+								name: 'address1',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Address Line 2',
+								name: 'address2',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'City',
+								name: 'city',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'State',
+								name: 'state',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Country',
+								name: 'country',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zipCode',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'B2B or B2C',
+				name: 'b2bOrb2c',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'B2B',
+						value: 'B2B',
+					},
+					{
+						name: 'B2C',
+						value: 'B2C',
+					},
+				],
+				default: '',
+			},
+			{
+				displayName: 'CRM ID',
+				name: 'crmId',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -330,7 +662,70 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: 'Email address of the contact.',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Fields',
+				description: 'Adds a custom fields to set also values which have not been predefined',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customFieldValues',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field Name or ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactFields',
+								},
+								default: '',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				placeholder: 'name@email.com',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
+				description: 'Email address of the contact',
+			},
+			{
+				displayName: 'Fax',
+				name: 'fax',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
 			},
 			{
 				displayName: 'First Name',
@@ -344,7 +739,47 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: 'First Name',
+			},
+			{
+				displayName: 'Has Purchased',
+				name: 'hasPurchased',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: false,
+			},
+			{
+				displayName: 'IP Address',
+				name: 'ipAddress',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
+				description: 'IP address to associate with the contact',
+			},
+			{
+				displayName: 'Last Active',
+				name: 'lastActive',
+				type: 'dateTime',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
+				description: 'Date/time in UTC;',
 			},
 			{
 				displayName: 'Last Name',
@@ -361,12 +796,9 @@ export const contactFields = [
 				description: 'LastName',
 			},
 			{
-				displayName: 'Primary Company',
-				name: 'company',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getCompanies',
-				},
+				displayName: 'Mobile',
+				name: 'mobile',
+				type: 'string',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -375,7 +807,33 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: 'Primary company',
+			},
+			{
+				displayName: 'Owner ID',
+				name: 'ownerId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
+				description: 'ID of a Mautic user to assign this contact to',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
 			},
 			{
 				displayName: 'Position',
@@ -389,7 +847,92 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: 'Position',
+			},
+			{
+				displayName: 'Primary Company Name or ID',
+				name: 'company',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getCompanies',
+				},
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Prospect or Customer',
+				name: 'prospectOrCustomer',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Prospect',
+						value: 'Prospect',
+					},
+					{
+						name: 'Customer',
+						value: 'Customer',
+					},
+				],
+				default: '',
+			},
+			{
+				displayName: 'Sandbox',
+				name: 'sandbox',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: false,
+			},
+			{
+				displayName: 'Stage Name or ID',
+				name: 'stage',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					loadOptionsMethod: 'getStages',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Tag Names or IDs',
+				name: 'tags',
+				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: [],
 			},
 			{
 				displayName: 'Title',
@@ -403,35 +946,280 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: 'Title',
+			},
+			{
+				displayName: 'Social Media',
+				name: 'socialMediaUi',
+				placeholder: 'Social Media',
+				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						name: 'socialMediaValues',
+						displayName: 'Social Media',
+						values: [
+							{
+								displayName: 'Facebook',
+								name: 'facebook',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Foursquare',
+								name: 'foursquare',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Instagram',
+								name: 'instagram',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'LinkedIn',
+								name: 'linkedIn',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Skype',
+								name: 'skype',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Twitter',
+								name: 'twitter',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
 			},
 			{
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
 				default: '',
 				description: 'IP address to associate with the contact',
-			},
-			{
-				displayName: 'Last Active',
-				name: 'lastActive',
-				type: 'dateTime',
-				default: '',
-				description: 'Date/time in UTC;',
-			},
-			{
-				displayName: 'Owner ID',
-				name: 'ownerId',
-				type: 'string',
-				default: '',
-				description: 'ID of a Mautic user to assign this contact to',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 contact:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                   contact:editDoNotContactList                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'editDoNotContactList',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: [
+					'editDoNotContactList',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Add',
+				value: 'add',
+			},
+			{
+				name: 'Remove',
+				value: 'remove',
+			},
+		],
+		default: 'add',
+	},
+	{
+		displayName: 'Channel',
+		name: 'channel',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'editDoNotContactList',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Email',
+				value: 'email',
+			},
+			{
+				name: 'SMS',
+				value: 'sms',
+			},
+		],
+		default: 'email',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'editDoNotContactList',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Reason To Do Not Contact',
+				name: 'reason',
+				type: 'options',
+				options: [
+					{
+						name: 'Unsubscribed',
+						value: '1',
+					},
+					{
+						name: 'Bounced',
+						value: '2',
+					},
+					{
+						name: 'Manual',
+						value: '3',
+					},
+				],
+				default: '3',
+			},
+			{
+				displayName: 'Comments',
+				name: 'comments',
+				type: 'string',
+				default: '',
+				description: 'A text describing details of Do Not Contact entry',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                   contact:editContactPoint                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'editContactPoint',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: [
+					'editContactPoint',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Add',
+				value: 'add',
+			},
+			{
+				name: 'Remove',
+				value: 'remove',
+			},
+		],
+		default: 'add',
+	},
+	{
+		displayName: 'Points',
+		name: 'points',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'editContactPoint',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: 0,
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -447,12 +1235,11 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                contact:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -468,7 +1255,7 @@ export const contactFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -492,12 +1279,12 @@ export const contactFields = [
 			maxValue: 30,
 		},
 		default: 30,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                               contact:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               contact:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -513,12 +1300,11 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Contact ID',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 contact:all                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:all                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -527,6 +1313,13 @@ export const contactFields = [
 			show: {
 				'resource': [
 					'contact',
+				],
+			},
+			hide: {
+				operation: [
+					'sendEmail',
+					'editDoNotContactList',
+					'editContactPoint',
 				],
 			},
 		},
@@ -548,7 +1341,7 @@ export const contactFields = [
 					},
 				},
 				default: '',
-				description: 'String or search command to filter entities by.',
+				description: 'String or search command to filter entities by',
 			},
 			{
 				displayName: 'Order By',
@@ -592,7 +1385,7 @@ export const contactFields = [
 						value: 'desc',
 					},
 				],
-				description: 'Sort direction: ASC or DESC.',
+				description: 'Sort direction: ASC or DESC',
 			},
 			{
 				displayName: 'Published Only',
@@ -609,7 +1402,7 @@ export const contactFields = [
 					},
 				},
 				default: false,
-				description: 'Only return currently published entities.',
+				description: 'Whether to return currently published entities',
 			},
 			{
 				displayName: 'Minimal',
@@ -626,17 +1419,57 @@ export const contactFields = [
 					},
 				},
 				default: false,
-				description: 'Return only array of entities without additional lists in it.',
+				description: 'Whether to return array of entities without additional lists in it',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
-				default: false,
-				description: `By default only the data of the fields get returned. If this<br />
-							  options gets set the RAW response with all data gets returned.`,
+				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'By default only the data of the fields get returned. If this options gets set the RAW response with all data gets returned.',
 			},
-		]
+		],
 	},
-
-] as INodeProperties[];
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:sendEmail                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Campaign Email Name or ID',
+		name: 'campaignEmailId',
+		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'sendEmail',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getCampaignEmails',
+		},
+		default: '',
+	},
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'sendEmail',
+				],
+			},
+		},
+		default: '',
+	},
+];

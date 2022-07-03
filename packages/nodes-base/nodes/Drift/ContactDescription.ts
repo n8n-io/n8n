@@ -1,10 +1,11 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,11 +41,10 @@ export const contactOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 
 /* -------------------------------------------------------------------------- */
 /*                                contact:create                              */
@@ -53,6 +53,7 @@ export const contactFields = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -65,7 +66,7 @@ export const contactFields = [
 				],
 			},
 		},
-		description: 'The email of the contact.',
+		description: 'The email of the contact',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -89,14 +90,14 @@ export const contactFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the contact.',
+				description: 'The name of the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'The phone number associated with the contact.',
+				description: 'The phone number associated with the contact',
 			},
 		],
 	},
@@ -116,10 +117,10 @@ export const contactFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the contact.',
+		description: 'Unique identifier for the contact',
 	},
 	{
 		displayName: 'Update Fields',
@@ -142,24 +143,25 @@ export const contactFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'The email of the contact.',
+				description: 'The email of the contact',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the contact.',
+				description: 'The name of the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'The phone number associated with the contact.',
+				description: 'The phone number associated with the contact',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 contact:get                                */
@@ -177,10 +179,10 @@ export const contactFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the contact.',
+		description: 'Unique identifier for the contact',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 contact:delete                             */
@@ -198,9 +200,9 @@ export const contactFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
-		description: 'Unique identifier for the contact.',
+		description: 'Unique identifier for the contact',
 	},
-] as INodeProperties[];
+];

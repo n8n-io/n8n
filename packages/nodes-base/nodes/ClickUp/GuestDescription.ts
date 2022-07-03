@@ -1,12 +1,13 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export const guestOperations = [
+export const guestOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,19 +38,19 @@ export const guestOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const guestFields = [
+export const guestFields: INodeProperties[] = [
 
-/* -------------------------------------------------------------------------- */
-/*                                guest:create                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                guest:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -70,6 +71,7 @@ export const guestFields = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		displayOptions: {
 			show: {
@@ -112,20 +114,22 @@ export const guestFields = [
 				default: false,
 			},
 			{
-				displayName: 'Can See Time estimated',
+				displayName: 'Can See Time Estimated',
 				name: 'can_see_time_estimated',
 				type: 'boolean',
 				default: false,
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                guest:delete                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                guest:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -159,13 +163,15 @@ export const guestFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                guest:get                                   */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                guest:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -199,13 +205,15 @@ export const guestFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                guest:update                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                guest:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -269,7 +277,7 @@ export const guestFields = [
 				default: false,
 			},
 			{
-				displayName: 'Can See Time estimated',
+				displayName: 'Can See Time Estimated',
 				name: 'can_see_time_estimated',
 				type: 'boolean',
 				default: false,
@@ -282,4 +290,4 @@ export const guestFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

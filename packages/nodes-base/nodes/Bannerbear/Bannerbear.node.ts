@@ -30,6 +30,7 @@ export class Bannerbear implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Bannerbear',
 		name: 'bannerbear',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:bannerbear.png',
 		group: ['output'],
 		version: 1,
@@ -37,7 +38,6 @@ export class Bannerbear implements INodeType {
 		description: 'Consume Bannerbear API',
 		defaults: {
 			name: 'Bannerbear',
-			color: '#f9d749',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -52,6 +52,7 @@ export class Bannerbear implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Image',
@@ -63,7 +64,6 @@ export class Bannerbear implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume.',
 			},
 			// IMAGE
 			...imageOperations,
@@ -76,7 +76,7 @@ export class Bannerbear implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available escalation policies to display them to user so that he can
+			// Get all the available templates to display them to user so that he can
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -91,13 +91,30 @@ export class Bannerbear implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the available modifications to display them to user so that he can
+			// select them easily
+			async getModificationNames(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const templateId = this.getCurrentNodeParameter('templateId');
+				const returnData: INodePropertyOptions[] = [];
+				const { available_modifications } = await bannerbearApiRequest.call(this, 'GET', `/templates/${templateId}`);
+				for (const modification of available_modifications) {
+					const modificationName = modification.name;
+					const modificationId = modification.name;
+					returnData.push({
+						name: modificationName,
+						value: modificationId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -130,6 +147,29 @@ export class Bannerbear implements INodeType {
 						}
 					}
 					responseData = await bannerbearApiRequest.call(this, 'POST', '/images', body);
+					if (additionalFields.waitForImage && responseData.status !== 'completed') {
+						let maxTries = (additionalFields.waitForImageMaxTries as number) || 3;
+
+						const promise = (uid: string) => {
+							let data: IDataObject = {};
+							return new Promise((resolve, reject) => {
+								const timeout = setInterval(async () => {
+									data = await bannerbearApiRequest.call(this, 'GET', `/images/${uid}`);
+
+									if (data.status === 'completed') {
+										clearInterval(timeout);
+										resolve(data);
+									}
+									if (--maxTries === 0) {
+										clearInterval(timeout);
+										reject(new Error('Image did not finish processing after multiple tries.'));
+									}
+								}, 2000);
+							});
+						};
+
+						responseData = await promise(responseData.uid);
+					}
 				}
 				//https://developers.bannerbear.com/#get-a-specific-image
 				if (operation === 'get') {

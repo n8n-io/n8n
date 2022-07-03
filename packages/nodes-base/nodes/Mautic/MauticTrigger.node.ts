@@ -8,12 +8,12 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
-	INodePropertyOptions,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -24,13 +24,12 @@ export class MauticTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mautic Trigger',
 		name: 'mauticTrigger',
-		icon: 'file:mautic.png',
+		icon: 'file:mautic.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Mautic events via webhooks',
 		defaults: {
 			name: 'Mautic Trigger',
-			color: '#52619b',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -38,7 +37,25 @@ export class MauticTrigger implements INodeType {
 			{
 				name: 'mauticApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'credentials',
+						],
+					},
+				},
+			},
+			{
+				name: 'mauticOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -50,7 +67,23 @@ export class MauticTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Events',
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Credentials',
+						value: 'credentials',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'credentials',
+			},
+			{
+				displayName: 'Event Names or IDs',
 				name: 'events',
 				type: 'multiOptions',
 				required: true,
@@ -58,7 +91,8 @@ export class MauticTrigger implements INodeType {
 					loadOptionsMethod: 'getEvents',
 				},
 				default: [],
-			},	{
+			},
+			{
 				displayName: 'Events Order',
 				name: 'eventsOrder',
 				type: 'options',
@@ -73,7 +107,7 @@ export class MauticTrigger implements INodeType {
 						value: 'DESC',
 					},
 				],
-				description: 'Order direction for queued events in one webhook. Can be “DESC” or “ASC”',
+				description: 'Order direction for queued events in one webhook. Can be “DESC” or “ASC”.',
 			},
 		],
 	};
@@ -96,7 +130,7 @@ export class MauticTrigger implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 	// @ts-ignore
 	webhookMethods = {
@@ -109,7 +143,7 @@ export class MauticTrigger implements INodeType {
 				const endpoint = `/hooks/${webhookData.webhookId}`;
 				try {
 					await mauticApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -136,7 +170,7 @@ export class MauticTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
 					await mauticApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}/delete`);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
@@ -149,7 +183,7 @@ export class MauticTrigger implements INodeType {
 		const req = this.getRequestObject();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}
