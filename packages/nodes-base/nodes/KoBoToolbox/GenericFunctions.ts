@@ -30,7 +30,6 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 		url: '',
 		headers: {
 			'Accept': 'application/json',
-			'Authorization': `Token ${credentials.token}`,
 		},
 		json: true,
 	};
@@ -44,7 +43,7 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	let results = null;
 	let keepLooking = true;
 	while (keepLooking) {
-		const response = await this.helpers.httpRequest(options);
+		const response = await this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', options);
 		// Append or set results
 		results = response.results ? _.concat(results || [], response.results) : response;
 		if (returnAll && response.next) {
@@ -106,7 +105,7 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 				return _.first(points) === _.last(points)
 					? {
 						type: 'Polygon',
-						coordinates: [coordinates]
+						coordinates: [coordinates],
 					}
 					: {
 						type: 'LineString',
@@ -183,12 +182,12 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 
 			let relatedQuestion = null;
 			if('question' === options.binaryNamingScheme) {
-				for(let question of Object.keys(submission)) {
+				for(const question of Object.keys(submission)) {
 					// The logic to map attachments to question is sometimes ambiguous:
 					// - If the attachment is linked to a question, the question's value is the same as the attachment's filename (with spaces replaced by underscores)
 					// - BUT sometimes the attachment's filename has an extra suffix, e.g. "My_Picture_0OdlaKJ.jpg", would map to the question "picture": "My Picture.jpg"
 					const sanitizedQuestionValue = _.toString(submission[question]).replace(/\s/g, '_');  // replace spaces with underscores
-					if (sanitizedFileName == sanitizedQuestionValue) {
+					if (sanitizedFileName === sanitizedQuestionValue) {
 						relatedQuestion = question;
 						// Just use the first match...
 						break;
