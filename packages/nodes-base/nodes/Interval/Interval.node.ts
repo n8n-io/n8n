@@ -91,7 +91,7 @@ export class Interval implements INodeType {
 
 		// Reference: https://nodejs.org/api/timers.html#timers_setinterval_callback_delay_args
 		if (intervalValue > 2147483647) {
-			throw new Error('The interval value is too large.');
+			throw new NodeOperationError(this.getNode(), 'The interval value is too large.');
 		}
 
 		const intervalObj = setInterval(executeTrigger, intervalValue);

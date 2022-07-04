@@ -168,6 +168,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Component Names or IDs',
 				name: 'componentIds',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectComponents',
 					loadOptionsDependsOn: [
@@ -218,6 +219,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
@@ -384,6 +386,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},

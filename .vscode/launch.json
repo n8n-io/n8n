@@ -1,0 +1,44 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Attach to running n8n",
+			"processId": "${command:PickProcess}",
+			"request": "attach",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"type": "node"
+		},
+		{
+			"name": "Launch n8n with debug",
+			"program": "${workspaceFolder}/packages/cli/bin/n8n",
+			"request": "launch",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"type": "node",
+			"env": {
+				// "N8N_PORT": "5679",
+			}
+		}
+	]
+
+	/**
+		How this works:
+
+		This file gives VS Code the ability to start and debug n8n.
+		The editor is not debuggable from here.
+
+		The "Run and Debug" tab of your editor should display the "Launch n8n with debug" option.
+		This should start n8n and open a debug console. You can add breakpoints to
+		Parts of the code residing inside `cli`, `core`, `workflow` and `nodes-base` packages
+
+		You can also choose to "Attach to running n8n". This is useful if you
+		have n8n running in another terminal window and want to debug it.
+		Once you click to Debug, VS Code will prompt you to select a process to attach to.
+	*/
+}
