@@ -213,7 +213,6 @@ export const documentFields: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
-		hint: 'By default, you cannot page through more than 10,000 hits. To page through more hits, add "Sort" from options.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -221,6 +220,25 @@ export const documentFields: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'By default, you cannot page through more than 10,000 hits. To page through more hits, add "Sort" from options.',
+		name: 'paginateNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					true,
 				],
 			},
 		},
