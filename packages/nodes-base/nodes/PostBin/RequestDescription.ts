@@ -38,6 +38,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get a request',
 			},
 			{
 				name: 'Remove First',
@@ -55,6 +56,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Remove First a request',
 			},
 			{
 				name: 'Send',
@@ -81,6 +83,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Send a request',
 			},
 		],
 		default: 'get',

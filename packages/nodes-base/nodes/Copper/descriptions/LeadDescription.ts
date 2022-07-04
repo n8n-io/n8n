@@ -25,22 +25,27 @@ export const leadOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a lead',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a lead',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all leads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a lead',
 			},
 		],
 		default: 'create',

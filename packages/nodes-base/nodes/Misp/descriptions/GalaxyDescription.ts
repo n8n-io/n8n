@@ -19,14 +19,17 @@ export const galaxyOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a galaxy',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a galaxy',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all galaxies',
 			},
 		],
 		default: 'get',

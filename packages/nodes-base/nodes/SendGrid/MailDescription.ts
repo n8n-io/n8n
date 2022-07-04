@@ -20,6 +20,7 @@ export const mailOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Send an email',
+				action: 'Send an email',
 			},
 		],
 		default: 'send',

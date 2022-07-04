@@ -20,11 +20,13 @@ export const recordOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new record',
+				action: 'Create a record',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all records',
+				action: 'Get all records',
 			},
 		],
 		default: 'create',

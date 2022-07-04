@@ -24,11 +24,13 @@ export const spaceOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a space',
+				action: 'Get a space',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all spaces the caller is a member of',
+				action: 'Get all spaces',
 			},
 		],
 		default: 'get',

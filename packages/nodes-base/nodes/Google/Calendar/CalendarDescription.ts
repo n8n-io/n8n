@@ -20,6 +20,7 @@ export const calendarOperations: INodeProperties[] = [
 				name: 'Availability',
 				value: 'availability',
 				description: 'If a time-slot is available in a calendar',
+				action: 'Get availability in a calendar',
 			},
 		],
 		default: 'availability',

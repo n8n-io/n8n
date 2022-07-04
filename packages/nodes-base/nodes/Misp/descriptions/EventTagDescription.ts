@@ -19,10 +19,12 @@ export const eventTagOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a tag to an event',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a tag from an event',
 			},
 		],
 		default: 'add',

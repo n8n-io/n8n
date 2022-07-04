@@ -13,18 +13,22 @@ export const coorganizerOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a coorganizer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a coorganizer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all coorganizers',
 			},
 			{
 				name: 'Reinvite',
 				value: 'reinvite',
+				action: 'Reinvite a coorganizer',
 			},
 		],
 		displayOptions: {

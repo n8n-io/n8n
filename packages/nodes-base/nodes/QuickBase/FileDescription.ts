@@ -20,11 +20,13 @@ export const fileOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a file',
+				action: 'Delete a file',
 			},
 			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download a file',
+				action: 'Download a file',
 			},
 		],
 		default: 'download',

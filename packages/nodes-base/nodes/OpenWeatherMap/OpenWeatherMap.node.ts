@@ -43,11 +43,13 @@ export class OpenWeatherMap implements INodeType {
 						name: 'Current Weather',
 						value: 'currentWeather',
 						description: 'Returns the current weather data',
+						action: 'Return current weather data',
 					},
 					{
 						name: '5 Day Forecast',
 						value: '5DayForecast',
 						description: 'Returns the weather data for the next 5 days',
+						action: 'Return weather data for the next 5 days',
 					},
 				],
 				default: 'currentWeather',

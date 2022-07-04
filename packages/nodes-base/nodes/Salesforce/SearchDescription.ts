@@ -20,6 +20,7 @@ export const searchOperations: INodeProperties[] = [
 				name: 'Query',
 				value: 'query',
 				description: 'Execute a SOQL query that returns all the results in a single response',
+				action: 'Perform a query',
 			},
 		],
 		default: 'query',

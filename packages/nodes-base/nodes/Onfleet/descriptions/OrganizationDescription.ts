@@ -20,11 +20,13 @@ export const organizationOperations: INodeProperties[] = [
 				name: 'Get My Organization',
 				value: 'get',
 				description: 'Retrieve your own organization\'s details',
+				action: 'Get my organization',
 			},
 			{
 				name: 'Get Delegatee Details',
 				value: 'getDelegatee',
 				description: 'Retrieve the details of an organization with which you are connected',
+				action: 'Get a delegatee\'s details',
 			},
 
 		],

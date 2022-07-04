@@ -14,6 +14,7 @@ export const spaceOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve data on all the spaces in the logged-in user\'s organization',
+				action: 'Get all spaces',
 			},
 		],
 		displayOptions: {

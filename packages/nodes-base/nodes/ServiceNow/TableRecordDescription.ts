@@ -19,22 +19,27 @@ export const tableRecordOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a table record',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a table record',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a table record',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all table records',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a table record',
 			},
 		],
 		default: 'get',

@@ -64,6 +64,7 @@ export class Msg91 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',

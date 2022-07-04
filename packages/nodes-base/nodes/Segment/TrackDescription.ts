@@ -20,11 +20,13 @@ export const trackOperations: INodeProperties[] = [
 				name: 'Event',
 				value: 'event',
 				description: 'Record the actions your users perform. Every action triggers an event, which can also have associated properties.',
+				action: 'Track an event',
 			},
 			{
 				name: 'Page',
 				value: 'page',
 				description: 'Record page views on your website, along with optional extra information about the page being viewed',
+				action: 'Track a page',
 			},
 		],
 		default: 'event',

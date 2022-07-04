@@ -19,22 +19,27 @@ export const linkedResourceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a linked resource',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a linked resource',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a linked resource',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all linked resources',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a linked resource',
 			},
 		],
 		default: 'get',

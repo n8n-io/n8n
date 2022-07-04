@@ -20,11 +20,13 @@ export const conversationMessageOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a message to a conversation',
+				action: 'Add a message to a conversation',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a message in a conversation',
+				action: 'Update a message in a conversation',
 			},
 		],
 		default: 'add',

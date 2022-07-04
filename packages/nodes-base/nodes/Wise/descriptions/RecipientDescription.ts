@@ -13,6 +13,7 @@ export const recipientOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all recipients',
 			},
 		],
 		displayOptions: {

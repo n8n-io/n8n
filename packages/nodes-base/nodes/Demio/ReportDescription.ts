@@ -18,6 +18,7 @@ export const reportOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get an event report',
+				action: 'Get a report',
 			},
 		],
 		default: 'get',

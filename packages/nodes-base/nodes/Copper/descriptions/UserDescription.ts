@@ -19,6 +19,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all users',
 			},
 		],
 		default: 'getAll',

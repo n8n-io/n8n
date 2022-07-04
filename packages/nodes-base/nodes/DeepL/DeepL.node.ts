@@ -70,6 +70,7 @@ export class DeepL implements INodeType {
 						name: 'Translate',
 						value: 'translate',
 						description: 'Translate data',
+						action: 'Translate a language',
 					},
 				],
 				default: 'translate',

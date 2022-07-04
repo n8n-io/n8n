@@ -20,11 +20,13 @@ export const caseTagOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a tag to a case',
+				action: 'Add a tag to a case',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a tag from a case',
+				action: 'Remove a tag from a case',
 			},
 		],
 		default: 'add',

@@ -13,18 +13,22 @@ export const registrantOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a registrant',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a registrant',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a registrant',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all registrants',
 			},
 		],
 		displayOptions: {

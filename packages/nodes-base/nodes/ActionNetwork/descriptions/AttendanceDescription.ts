@@ -23,14 +23,17 @@ export const attendanceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an attendance',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an attendance',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all attendances',
 			},
 		],
 		default: 'create',

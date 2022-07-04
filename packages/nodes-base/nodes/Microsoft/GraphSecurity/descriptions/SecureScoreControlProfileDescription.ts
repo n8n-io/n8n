@@ -19,14 +19,17 @@ export const secureScoreControlProfileOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a secure score control profile',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all secure score control profiles',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a secure score control profile',
 			},
 		],
 		default: 'get',

@@ -14,21 +14,25 @@ export const postCommentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a top-level comment in a post',
+				action: 'Create a comment in a post',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all comments in a post',
+				action: 'Get all comments in a post',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Remove a comment from a post',
+				action: 'Delete a comment from a post',
 			},
 			{
 				name: 'Reply',
 				value: 'reply',
 				description: 'Write a reply to a comment in a post',
+				action: 'Reply to a comment in a post',
 			},
 		],
 		displayOptions: {

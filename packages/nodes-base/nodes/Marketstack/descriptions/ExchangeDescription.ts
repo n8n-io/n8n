@@ -12,6 +12,7 @@ export const exchangeOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an exchange',
 			},
 		],
 		default: 'get',

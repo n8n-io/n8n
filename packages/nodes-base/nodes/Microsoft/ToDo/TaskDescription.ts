@@ -19,22 +19,27 @@ export const taskOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a task',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a task',
 			},
 		],
 		default: 'get',

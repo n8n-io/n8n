@@ -68,6 +68,7 @@ export class Pushover implements INodeType {
 					{
 						name: 'Push',
 						value: 'push',
+						action: 'Push a message',
 					},
 				],
 				default: 'push',

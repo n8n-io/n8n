@@ -20,27 +20,32 @@ export const maintenanceWindowOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a maintenance window',
+				action: 'Create a maintenance window',
 
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a maintenance window',
+				action: 'Delete a maintenance window',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a maintenance window',
+				action: 'Get a maintenance window',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all a maintenance windows',
+				action: 'Get all maintenance windows',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a maintenance window',
+				action: 'Update a maintenance window',
 			},
 		],
 		default: 'getAll',

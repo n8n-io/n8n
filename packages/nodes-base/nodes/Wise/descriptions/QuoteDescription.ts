@@ -13,10 +13,12 @@ export const quoteOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a quote',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a quote',
 			},
 		],
 		displayOptions: {

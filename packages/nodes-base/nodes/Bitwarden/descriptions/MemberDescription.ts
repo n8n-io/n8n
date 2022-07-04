@@ -13,30 +13,37 @@ export const memberOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a member',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a member',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a member',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all members',
 			},
 			{
 				name: 'Get Groups',
 				value: 'getGroups',
+				action: 'Get groups for a member',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a member',
 			},
 			{
 				name: 'Update Groups',
 				value: 'updateGroups',
+				action: 'Update groups for a member',
 			},
 		],
 		displayOptions: {

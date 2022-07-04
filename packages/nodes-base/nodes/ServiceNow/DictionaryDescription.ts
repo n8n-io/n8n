@@ -19,6 +19,7 @@ export const dictionaryOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all dictionaries',
 			},
 		],
 		default: 'getAll',

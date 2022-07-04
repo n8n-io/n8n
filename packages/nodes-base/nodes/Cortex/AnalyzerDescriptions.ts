@@ -27,6 +27,7 @@ export const analyzersOperations: INodeProperties[] = [
 				name: 'Execute',
 				value: 'execute',
 				description: 'Execute Analyzer',
+				action: 'Execute an analyzer',
 			},
 		],
 	},

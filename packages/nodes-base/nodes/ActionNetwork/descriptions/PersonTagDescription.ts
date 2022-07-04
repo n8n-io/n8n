@@ -19,10 +19,12 @@ export const personTagOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a person tag',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a person tag',
 			},
 		],
 		default: 'add',

@@ -19,26 +19,32 @@ export const feedOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a feed',
 			},
 			{
 				name: 'Disable',
 				value: 'disable',
+				action: 'Disable a feed',
 			},
 			{
 				name: 'Enable',
 				value: 'enable',
+				action: 'Enable a feed',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a feed',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all feeds',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a feed',
 			},
 		],
 		default: 'create',

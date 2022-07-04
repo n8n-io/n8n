@@ -20,6 +20,7 @@ export const fieldOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all fields',
+				action: 'Get all fields',
 			},
 		],
 		default: 'getAll',

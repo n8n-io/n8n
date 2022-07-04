@@ -21,6 +21,7 @@ export const inviteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an invite for a company/user',
+				action: 'Create an invite',
 			},
 		],
 		default: 'create',

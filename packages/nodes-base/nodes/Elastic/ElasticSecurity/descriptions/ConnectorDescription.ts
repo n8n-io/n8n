@@ -20,6 +20,7 @@ export const connectorOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a connector',
+				action: 'Create a connector',
 			},
 		],
 		default: 'create',

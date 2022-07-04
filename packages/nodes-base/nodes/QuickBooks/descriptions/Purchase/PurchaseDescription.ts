@@ -13,10 +13,12 @@ export const purchaseOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a purchase',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all purchases',
 			},
 		],
 		displayOptions: {

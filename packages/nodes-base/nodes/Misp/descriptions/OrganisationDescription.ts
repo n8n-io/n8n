@@ -19,22 +19,27 @@ export const organisationOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an organization',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an organization',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an organization',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all organizations',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an organization',
 			},
 		],
 		default: 'create',

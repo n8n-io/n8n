@@ -20,6 +20,7 @@ export const metricOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve financial metric broken down by day for either the current month or the last',
+				action: 'Get a metric',
 			},
 		],
 		default: 'get',

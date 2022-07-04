@@ -20,6 +20,7 @@ export const campaignOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a campaign',
+				action: 'Create a campaign',
 			},
 		],
 		default: 'create',

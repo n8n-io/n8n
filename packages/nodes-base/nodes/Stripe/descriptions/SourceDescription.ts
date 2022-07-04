@@ -14,16 +14,19 @@ export const sourceOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a source',
+				action: 'Create a source',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a source',
+				action: 'Delete a source',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a source',
+				action: 'Get a source',
 			},
 		],
 		displayOptions: {

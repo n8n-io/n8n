@@ -22,11 +22,13 @@ export const jobOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get job details',
+				action: 'Get a job',
 			},
 			{
 				name: 'Report',
 				value: 'report',
 				description: 'Get job report',
+				action: 'Report a job',
 			},
 		],
 		default: 'get',

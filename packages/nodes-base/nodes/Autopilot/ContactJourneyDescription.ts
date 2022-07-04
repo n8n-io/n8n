@@ -20,6 +20,7 @@ export const contactJourneyOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to list',
+				action: 'Add a contact journey',
 			},
 		],
 		default: 'add',

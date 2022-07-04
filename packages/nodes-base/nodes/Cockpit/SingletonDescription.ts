@@ -18,6 +18,7 @@ export const singletonOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a singleton',
+				action: 'Get a singleton',
 			},
 		],
 		default: 'get',

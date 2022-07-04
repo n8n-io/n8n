@@ -20,6 +20,7 @@ export const cameraProxyOperations: INodeProperties[] = [
 				name: 'Get Screenshot',
 				value: 'getScreenshot',
 				description: 'Get the camera screenshot',
+				action: 'Get a screenshot',
 			},
 		],
 		default: 'getScreenshot',

@@ -20,16 +20,19 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create Meeting Registrants',
+				action: 'Create a meeting registrant',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update Meeting Registrant Status',
+				action: 'Update a meeting registrant',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all Meeting Registrants',
+				action: 'Get all meeting registrants',
 			},
 
 		],
@@ -394,14 +397,17 @@ export const meetingRegistrantFields: INodeProperties[] = [
 			{
 				name: 'Cancel',
 				value: 'cancel',
+				action: 'Cancel a meeting registrant',
 			},
 			{
 				name: 'Approved',
 				value: 'approve',
+				action: 'Approved a meeting registrant',
 			},
 			{
 				name: 'Deny',
 				value: 'deny',
+				action: 'Deny a meeting registrant',
 			},
 		],
 		default: '',

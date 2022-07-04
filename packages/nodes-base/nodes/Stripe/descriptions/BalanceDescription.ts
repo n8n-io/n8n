@@ -14,6 +14,7 @@ export const balanceOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a balance',
+				action: 'Get a balance',
 			},
 		],
 		displayOptions: {

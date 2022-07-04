@@ -13,10 +13,12 @@ export const tagOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all tags',
 			},
 		],
 		displayOptions: {

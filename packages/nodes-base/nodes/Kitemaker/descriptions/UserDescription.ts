@@ -14,6 +14,7 @@ export const userOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve data on all the users in the logged-in user\'s organization',
+				action: 'Get all users',
 			},
 		],
 		displayOptions: {

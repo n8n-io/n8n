@@ -13,6 +13,7 @@ export const activityOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all activities',
 			},
 		],
 		displayOptions: {

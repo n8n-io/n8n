@@ -13,14 +13,17 @@ export const unsubscribeOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add an unsubscribe',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an unsubscribe',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all unsubscribes',
 			},
 		],
 		displayOptions: {

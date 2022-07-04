@@ -14,6 +14,7 @@ export const tokenOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a token',
+				action: 'Create a token',
 			},
 		],
 		displayOptions: {

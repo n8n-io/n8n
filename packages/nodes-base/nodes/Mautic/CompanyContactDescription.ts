@@ -20,11 +20,13 @@ export const companyContactOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to a company',
+				action: 'Add a company contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a contact from a company',
+				action: 'Remove a company contact',
 			},
 		],
 		default: 'create',

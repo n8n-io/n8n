@@ -21,11 +21,13 @@ export const userProfileOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get your user\'s profile',
+				action: 'Get a user profile',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update user\'s profile',
+				action: 'Update a user profile',
 			},
 		],
 		default: 'get',

@@ -20,6 +20,7 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an event',
+				action: 'Create an event',
 			},
 		],
 		default: 'create',

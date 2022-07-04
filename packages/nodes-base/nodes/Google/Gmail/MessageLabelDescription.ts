@@ -20,11 +20,13 @@ export const messageLabelOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a label to a message',
+				action: 'Add a message label',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a label from a message',
+				action: 'Remove a message label',
 			},
 		],
 		default: 'add',

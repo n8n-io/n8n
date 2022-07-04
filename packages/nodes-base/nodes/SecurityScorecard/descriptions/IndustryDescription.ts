@@ -20,14 +20,17 @@ export const industryOperations: INodeProperties[] = [
 			{
 				name: 'Get Factor Scores',
 				value: 'getFactor',
+				action: 'Get factor scores for an industry',
 			},
 			{
 				name: 'Get Historical Factor Scores',
 				value: 'getFactorHistorical',
+				action: 'Get historical factor scores for an industry',
 			},
 			{
 				name: 'Get Score',
 				value: 'getScore',
+				action: 'Get the score for an industry',
 			},
 		],
 		default: 'getFactor',

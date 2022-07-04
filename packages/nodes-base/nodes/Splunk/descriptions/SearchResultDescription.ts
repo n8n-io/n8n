@@ -20,6 +20,7 @@ export const searchResultOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all search results for a search job',
+				action: 'Get all search results',
 			},
 		],
 		default: 'getAll',

@@ -19,22 +19,27 @@ export const opportunityOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an opportunity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an opportunity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an opportunity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all opportunities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an opportunity',
 			},
 		],
 		default: 'create',

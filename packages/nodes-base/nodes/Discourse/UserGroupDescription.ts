@@ -22,11 +22,13 @@ export const userGroupOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Create a user to group',
+				action: 'Add a user to a group',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove user from group',
+				action: 'Remove a user from a group',
 			},
 		],
 		default: 'add',

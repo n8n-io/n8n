@@ -77,6 +77,7 @@ export class Mocean implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS/Voice message',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',

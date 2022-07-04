@@ -19,14 +19,17 @@ export const documentOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a document',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a document',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a document',
 			},
 		],
 		default: 'create',

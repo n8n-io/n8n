@@ -57,6 +57,7 @@ export class AwsSqs implements INodeType {
 						name: 'Send Message',
 						value: 'sendMessage',
 						description: 'Send a message to a queue',
+						action: 'Send a message to a queue',
 					},
 				],
 				default: 'sendMessage',

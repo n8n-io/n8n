@@ -20,6 +20,7 @@ export const mediaOperations: INodeProperties[] = [
 				name: 'Download',
 				value: 'download',
 				description: 'Download media',
+				action: 'Download media',
 			},
 		],
 		default: 'download',

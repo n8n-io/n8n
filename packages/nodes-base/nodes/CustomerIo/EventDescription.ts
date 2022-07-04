@@ -18,11 +18,13 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Track',
 				value: 'track',
 				description: 'Track a customer event',
+				action: 'Track a customer event',
 			},
 			{
 				name: 'Track Anonymous',
 				value: 'trackAnonymous',
 				description: 'Track an anonymous event',
+				action: 'Track an anonymous event',
 			},
 		],
 		default: 'track',

@@ -20,6 +20,7 @@ export const invoiceOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an invoice',
+				action: 'Create an invoice',
 			},
 		],
 		default: 'create',

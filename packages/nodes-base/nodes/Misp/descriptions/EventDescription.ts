@@ -19,30 +19,37 @@ export const eventOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an event',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an event',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an event',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all events',
 			},
 			{
 				name: 'Publish',
 				value: 'publish',
+				action: 'Publish an event',
 			},
 			{
 				name: 'Unpublish',
 				value: 'unpublish',
+				action: 'Unpublish an event',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an event',
 			},
 		],
 		default: 'create',

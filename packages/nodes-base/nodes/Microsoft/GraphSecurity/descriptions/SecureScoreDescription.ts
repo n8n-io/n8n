@@ -19,10 +19,12 @@ export const secureScoreOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a secure score',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all secure scores',
 			},
 		],
 		default: 'get',

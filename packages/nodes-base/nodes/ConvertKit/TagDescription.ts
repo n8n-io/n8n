@@ -20,11 +20,13 @@ export const tagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a tag',
+				action: 'Create a tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all tags',
+				action: 'Get all tags',
 			},
 		],
 		default: 'create',

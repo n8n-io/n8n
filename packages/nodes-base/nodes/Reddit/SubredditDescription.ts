@@ -14,11 +14,13 @@ export const subredditOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve background information about a subreddit',
+				action: 'Get a subreddit',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve information about subreddits from all of Reddit',
+				action: 'Get all subreddits',
 			},
 		],
 		displayOptions: {

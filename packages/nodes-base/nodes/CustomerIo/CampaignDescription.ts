@@ -17,14 +17,17 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a campaign',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all campaigns',
 			},
 			{
 				name: 'Get Metrics',
 				value: 'getMetrics',
+				action: 'Get metrics for a campaign',
 			},
 		],
 		default: 'get',

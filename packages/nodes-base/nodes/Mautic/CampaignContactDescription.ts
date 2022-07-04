@@ -20,11 +20,13 @@ export const campaignContactOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to a campaign',
+				action: 'Add a campaign contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove contact from a campaign',
+				action: 'Remove a campaign contact',
 			},
 		],
 		default: 'add',

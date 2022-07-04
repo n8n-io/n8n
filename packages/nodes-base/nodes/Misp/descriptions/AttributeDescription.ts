@@ -19,22 +19,27 @@ export const attributeOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an attribute',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an attribute',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an attribute',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all attributes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an attribute',
 			},
 		],
 		default: 'create',

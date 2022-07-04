@@ -43,6 +43,7 @@ export class AwsSns implements INodeType {
 						name: 'Publish',
 						value: 'publish',
 						description: 'Publish a message to a topic',
+						action: 'Publish a message to a topic',
 					},
 				],
 				default: 'publish',

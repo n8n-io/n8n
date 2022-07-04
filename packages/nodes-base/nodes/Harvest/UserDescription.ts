@@ -22,32 +22,38 @@ export const userOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a user',
+				action: 'Get data of a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all users',
+				action: 'Get data of all users',
 			},
 
 			{
 				name: 'Me',
 				value: 'me',
 				description: 'Get data of authenticated user',
+				action: 'Get data of authenticated user',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
+				action: 'Update a user',
 			},
 		],
 		default: 'me',

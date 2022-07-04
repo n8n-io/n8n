@@ -20,6 +20,7 @@ export const identifyOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an identity',
+				action: 'Create an identity',
 			},
 		],
 		default: 'create',

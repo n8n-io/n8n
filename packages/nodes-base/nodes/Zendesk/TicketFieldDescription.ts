@@ -20,11 +20,13 @@ export const ticketFieldOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a ticket field',
+				action: 'Get a ticket field',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all system and custom ticket fields',
+				action: 'Get all ticket fields',
 			},
 		],
 		default: 'get',

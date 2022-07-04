@@ -18,6 +18,7 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a post',
+				action: 'Create a post',
 			},
 			// {
 			// 	name: 'Delete',
@@ -28,16 +29,19 @@ export const postOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a post',
+				action: 'Get a post',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all posts',
+				action: 'Get all posts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a post',
+				action: 'Update a post',
 			},
 		],
 		default: 'create',
