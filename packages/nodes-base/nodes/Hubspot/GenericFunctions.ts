@@ -85,7 +85,7 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 		query.offset = responseData.offset;
 		query.vidOffset = responseData['vid-offset'];
 		//Used by Search endpoints
-		if (responseData["paging"]) {
+		if (responseData['paging']) {
 			body.after = responseData['paging']['next']['after'];
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
@@ -94,7 +94,7 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 			return returnData;
 		}
 	} while (
-		responseData['hasMore'] || responseData['has-more'] || responseData["paging"]
+		responseData['hasMore'] || responseData['has-more'] || responseData['paging']
 	);
 	return returnData;
 }
