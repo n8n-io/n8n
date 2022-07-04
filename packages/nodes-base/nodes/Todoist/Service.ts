@@ -15,8 +15,8 @@ import { IDataObject } from 'n8n-workflow';
 
 export class TodoistService implements Service {
 
-	async execute(ctx: Context, operation: OperationType): Promise<TodoistResponse> {
-		return this.handlers[operation].handleOperation(ctx, 0);
+	async execute(ctx: Context, operation: OperationType, itemIndex: number): Promise<TodoistResponse> {
+		return this.handlers[operation].handleOperation(ctx, itemIndex);
 	}
 
 	private handlers = {
@@ -51,7 +51,7 @@ export interface Section {
 }
 
 export interface Service {
-	execute(ctx: Context, operation: OperationType): Promise<TodoistResponse>;
+	execute(ctx: Context, operation: OperationType, itemIndex: number): Promise<TodoistResponse>;
 }
 
 export interface TodoistResponse {
