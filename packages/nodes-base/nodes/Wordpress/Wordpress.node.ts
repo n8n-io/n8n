@@ -32,8 +32,7 @@ export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wordpress',
 		name: 'wordpress',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:wordpress.png',
+		icon: 'file:wordpress.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -170,6 +169,9 @@ export class Wordpress implements INodeType {
 						if (additionalFields.sticky) {
 							body.sticky = additionalFields.sticky as boolean;
 						}
+						if (additionalFields.postTemplate) {
+							body.template = this.getNodeParameter('additionalFields.postTemplate.values.template', i, '') as string;
+						}
 						if (additionalFields.categories) {
 							body.categories = additionalFields.categories as number[];
 						}
@@ -214,6 +216,9 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.sticky) {
 							body.sticky = updateFields.sticky as boolean;
+						}
+						if (updateFields.postTemplate) {
+							body.template = this.getNodeParameter('updateFields.postTemplate.values.template', i, '') as string;
 						}
 						if (updateFields.categories) {
 							body.categories = updateFields.categories as number[];
