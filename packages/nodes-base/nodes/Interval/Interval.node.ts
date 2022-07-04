@@ -26,6 +26,12 @@ export class Interval implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName: 'This workflow will run on the schedule you define here once you <a data-key="activate">activate</a> it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking ‘execute workflow’',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Interval',
 				name: 'interval',
 				type: 'number',
@@ -85,7 +91,7 @@ export class Interval implements INodeType {
 
 		// Reference: https://nodejs.org/api/timers.html#timers_setinterval_callback_delay_args
 		if (intervalValue > 2147483647) {
-			throw new Error('The interval value is too large.');
+			throw new NodeOperationError(this.getNode(), 'The interval value is too large.');
 		}
 
 		const intervalObj = setInterval(executeTrigger, intervalValue);
