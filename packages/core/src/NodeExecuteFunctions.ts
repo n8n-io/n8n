@@ -482,7 +482,6 @@ async function parseRequestObject(requestObject: IDataObject) {
 	 * resolveWithFullResponse (implemented elsewhere)
 	 * simple (???)
 	 */
-
 	return axiosConfig;
 }
 
@@ -725,8 +724,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
 			if (axiosRequest.data instanceof FormData) {
-				axiosRequest.headers = axiosRequest.headers || {};
-				axiosRequest.headers['Content-Type'] = 'multipart/form-data';
+				axiosRequest.headers = {
+					...(axiosRequest.headers || {}),
+					...axiosRequest.data.getHeaders(),
+				};
 			} else if (axiosRequest.data instanceof URLSearchParams) {
 				axiosRequest.headers = axiosRequest.headers || {};
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
