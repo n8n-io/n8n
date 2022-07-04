@@ -46,6 +46,7 @@ export class Telegram implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					// {
 					// 	name: 'Bot',
@@ -69,7 +70,6 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -106,6 +106,7 @@ export class Telegram implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -117,37 +118,42 @@ export class Telegram implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get up to date information about a chat.',
+						description: 'Get up to date information about a chat',
+					},
+					{
+						name: 'Get Administrators',
+						value: 'administrators',
+						description: 'Get the Administrators of a chat',
+					},
+					{
+						name: 'Get Member',
+						value: 'member',
+						description: 'Get the member of a chat',
 					},
 					{
 						name: 'Leave',
 						value: 'leave',
-						description: 'Leave a group, supergroup or channel.',
-					},
-					{
-						name: 'Member',
-						value: 'member',
-						description: 'Get the member of a chat.',
+						description: 'Leave a group, supergroup or channel',
 					},
 					{
 						name: 'Set Description',
 						value: 'setDescription',
-						description: 'Set the description of a chat.',
+						description: 'Set the description of a chat',
 					},
 					{
 						name: 'Set Title',
 						value: 'setTitle',
-						description: 'Set the title of a chat.',
+						description: 'Set the title of a chat',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -159,21 +165,21 @@ export class Telegram implements INodeType {
 					{
 						name: 'Answer Query',
 						value: 'answerQuery',
-						description: 'Send answer to callback query sent from inline keyboard.',
+						description: 'Send answer to callback query sent from inline keyboard',
 					},
 					{
 						name: 'Answer Inline Query',
 						value: 'answerInlineQuery',
-						description: 'Send answer to callback query sent from inline bot.',
+						description: 'Send answer to callback query sent from inline bot',
 					},
 				],
 				default: 'answerQuery',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -185,17 +191,17 @@ export class Telegram implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get a file.',
+						description: 'Get a file',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -276,7 +282,6 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'sendMessage',
-				description: 'The operation to perform.',
 			},
 
 
@@ -292,6 +297,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'administrators',
 							'deleteMessage',
 							'get',
 							'leave',
@@ -318,7 +324,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier for the target chat or username of the target channel (in the format @channelusername).',
+				description: 'Unique identifier for the target chat or username of the target channel (in the format @channelusername)',
 			},
 
 			// ----------------------------------
@@ -340,7 +346,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier of the message to delete.',
+				description: 'Unique identifier of the message to delete',
 			},
 
 			// ----------------------------------
@@ -363,7 +369,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier of the message to pin or unpin.',
+				description: 'Unique identifier of the message to pin or unpin',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -387,7 +393,7 @@ export class Telegram implements INodeType {
 						name: 'disable_notification',
 						type: 'boolean',
 						default: false,
-						description: 'Do not send a notification to all chat members about the new pinned message.',
+						description: 'Whether to send a notification to all chat members about the new pinned message',
 					},
 				],
 			},
@@ -415,7 +421,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier of the target user.',
+				description: 'Unique identifier of the target user',
 			},
 
 
@@ -438,7 +444,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'New chat description, 0-255 characters.',
+				description: 'New chat description, 0-255 characters',
 			},
 
 
@@ -461,7 +467,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'New chat title, 1-255 characters.',
+				description: 'New chat title, 1-255 characters',
 			},
 
 
@@ -488,7 +494,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier for the query to be answered.',
+				description: 'Unique identifier for the query to be answered',
 			},
 
 			{
@@ -516,14 +522,14 @@ export class Telegram implements INodeType {
 							minValue: 0,
 						},
 						default: 0,
-						description: 'The maximum amount of time in seconds that the result of the callback query may be cached client-side.',
+						description: 'The maximum amount of time in seconds that the result of the callback query may be cached client-side',
 					},
 					{
 						displayName: 'Show Alert',
 						name: 'show_alert',
 						type: 'boolean',
 						default: false,
-						description: 'If true, an alert will be shown by the client instead of a notification at the top of the chat screen.',
+						description: 'Whether an alert will be shown by the client instead of a notification at the top of the chat screen',
 					},
 					{
 						displayName: 'Text',
@@ -540,7 +546,7 @@ export class Telegram implements INodeType {
 						name: 'url',
 						type: 'string',
 						default: '',
-						description: 'URL that will be opened by the user\'s client.',
+						description: 'URL that will be opened by the user\'s client',
 					},
 				],
 			},
@@ -564,7 +570,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier for the answered query.',
+				description: 'Unique identifier for the answered query',
 			},
 			{
 				displayName: 'Results',
@@ -582,7 +588,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'A JSON-serialized array of results for the inline query.',
+				description: 'A JSON-serialized array of results for the inline query',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -609,14 +615,14 @@ export class Telegram implements INodeType {
 							minValue: 0,
 						},
 						default: 0,
-						description: 'The maximum amount of time in seconds that the result of the callback query may be cached client-side.',
+						description: 'The maximum amount of time in seconds that the result of the callback query may be cached client-side',
 					},
 					{
 						displayName: 'Show Alert',
 						name: 'show_alert',
 						type: 'boolean',
 						default: false,
-						description: 'If true, an alert will be shown by the client instead of a notification at the top of the chat screen.',
+						description: 'Whether an alert will be shown by the client instead of a notification at the top of the chat screen',
 					},
 					{
 						displayName: 'Text',
@@ -633,7 +639,7 @@ export class Telegram implements INodeType {
 						name: 'url',
 						type: 'string',
 						default: '',
-						description: 'URL that will be opened by the user\'s client.',
+						description: 'URL that will be opened by the user\'s client',
 					},
 				],
 			},
@@ -663,7 +669,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The ID of the file.',
+				description: 'The ID of the file',
 			},
 			{
 				displayName: 'Download',
@@ -680,7 +686,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Download the file.',
+				description: 'Whether to download the file',
 			},
 
 			// ----------------------------------
@@ -716,7 +722,7 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The type of the message to edit.',
+				description: 'The type of the message to edit',
 			},
 
 			{
@@ -738,7 +744,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat id ask @get_id_bot.',
+				description: 'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
 			},
 			// ----------------------------------
 			//         message:sendAnimation/sendAudio/sendDocument/sendPhoto/sendSticker/sendVideo
@@ -765,7 +771,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field.',
+				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
 				displayName: 'Binary Property',
@@ -814,7 +820,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier of the message to edit.',
+				description: 'Unique identifier of the message to edit',
 			},
 			{
 				displayName: 'Inline Message ID',
@@ -835,7 +841,7 @@ export class Telegram implements INodeType {
 					},
 				},
 				required: true,
-				description: 'Unique identifier of the inline message to edit.',
+				description: 'Unique identifier of the inline message to edit',
 			},
 			{
 				displayName: 'Reply Markup',
@@ -862,7 +868,7 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'Additional interface options.',
+				description: 'Additional interface options',
 			},
 
 
@@ -1075,7 +1081,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'The media to add.',
+				description: 'The media to add',
 				placeholder: 'Add Media',
 				typeOptions: {
 					multipleValues: true,
@@ -1101,7 +1107,7 @@ export class Telegram implements INodeType {
 									},
 								],
 								default: 'photo',
-								description: 'The type of the media to add.',
+								description: 'The type of the media to add',
 							},
 							{
 								displayName: 'Media File',
@@ -1125,7 +1131,7 @@ export class Telegram implements INodeType {
 											alwaysOpenEditWindow: true,
 										},
 										default: '',
-										description: 'Caption text to set, 0-1024 characters.',
+										description: 'Caption text to set, 0-1024 characters',
 									},
 									{
 										displayName: 'Parse Mode',
@@ -1142,7 +1148,7 @@ export class Telegram implements INodeType {
 											},
 										],
 										default: 'HTML',
-										description: 'How to parse the text.',
+										description: 'How to parse the text',
 									},
 								],
 							},
@@ -1175,7 +1181,7 @@ export class Telegram implements INodeType {
 						],
 					},
 				},
-				description: 'Text of the message to be sent.',
+				description: 'Text of the message to be sent',
 			},
 
 
@@ -1280,16 +1286,16 @@ export class Telegram implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'None',
-						value: 'none',
-					},
-					{
 						name: 'Force Reply',
 						value: 'forceReply',
 					},
 					{
 						name: 'Inline Keyboard',
 						value: 'inlineKeyboard',
+					},
+					{
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'Reply Keyboard',
@@ -1301,7 +1307,7 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'Additional interface options.',
+				description: 'Additional interface options',
 			},
 
 			{
@@ -1326,14 +1332,14 @@ export class Telegram implements INodeType {
 						name: 'force_reply',
 						type: 'boolean',
 						default: false,
-						description: 'Shows reply interface to the user, as if they manually selected the bot‘s message and tapped ’Reply.',
+						description: 'Whether to show reply interface to the user, as if they manually selected the bot‘s message and tapped ’Reply',
 					},
 					{
 						displayName: 'Selective',
 						name: 'selective',
 						type: 'boolean',
 						default: false,
-						description: ' Use this parameter if you want to force reply from specific users only.',
+						description: 'Whether to force reply from specific users only',
 					},
 				],
 			},
@@ -1343,7 +1349,7 @@ export class Telegram implements INodeType {
 				displayName: 'Inline Keyboard',
 				name: 'inlineKeyboard',
 				placeholder: 'Add Keyboard Row',
-				description: 'Adds an inline keyboard that appears right next to the message it belongs to.',
+				description: 'Adds an inline keyboard that appears right next to the message it belongs to',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -1368,7 +1374,7 @@ export class Telegram implements INodeType {
 								displayName: 'Row',
 								name: 'row',
 								type: 'fixedCollection',
-								description: 'The value to set.',
+								description: 'The value to set',
 								placeholder: 'Add Button',
 								typeOptions: {
 									multipleValues: true,
@@ -1384,7 +1390,7 @@ export class Telegram implements INodeType {
 												name: 'text',
 												type: 'string',
 												default: '',
-												description: 'Label text on the button.',
+												description: 'Label text on the button',
 											},
 											{
 												displayName: 'Additional Fields',
@@ -1398,21 +1404,21 @@ export class Telegram implements INodeType {
 														name: 'callback_data',
 														type: 'string',
 														default: '',
-														description: 'Data to be sent in a callback query to the bot when button is pressed, 1-64 bytes.',
+														description: 'Data to be sent in a callback query to the bot when button is pressed, 1-64 bytes',
 													},
 													{
 														displayName: 'Pay',
 														name: 'pay',
 														type: 'boolean',
 														default: false,
-														description: 'Specify True, to send a Pay button.',
+														description: 'Whether to send a Pay button',
 													},
 													{
 														displayName: 'Switch Inline Query Current Chat',
 														name: 'switch_inline_query_current_chat',
 														type: 'string',
 														default: '',
-														description: 'If set, pressing the button will insert the bot‘s username and the specified inline query in the current chat\'s input field.Can be empty, in which case only the bot’s username will be inserted.',
+														description: 'If set, pressing the button will insert the bot‘s username and the specified inline query in the current chat\'s input field.Can be empty, in which case only the bot’s username will be inserted',
 													},
 													{
 														displayName: 'Switch Inline Query',
@@ -1426,7 +1432,7 @@ export class Telegram implements INodeType {
 														name: 'url',
 														type: 'string',
 														default: '',
-														description: 'HTTP or tg:// url to be opened when button is pressed.',
+														description: 'HTTP or tg:// URL to be opened when button is pressed',
 													},
 												],
 											},
@@ -1443,7 +1449,7 @@ export class Telegram implements INodeType {
 				displayName: 'Reply Keyboard',
 				name: 'replyKeyboard',
 				placeholder: 'Add Reply Keyboard Row',
-				description: 'Adds a custom keyboard with reply options.',
+				description: 'Adds a custom keyboard with reply options',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -1465,7 +1471,7 @@ export class Telegram implements INodeType {
 								displayName: 'Row',
 								name: 'row',
 								type: 'fixedCollection',
-								description: 'The value to set.',
+								description: 'The value to set',
 								placeholder: 'Add Button',
 								typeOptions: {
 									multipleValues: true,
@@ -1495,14 +1501,14 @@ export class Telegram implements INodeType {
 														name: 'request_contact',
 														type: 'boolean',
 														default: false,
-														description: 'If True, the user\'s phone number will be sent as a contact when the button is pressed.Available in private chats only.',
+														description: 'Whether the user\'s phone number will be sent as a contact when the button is pressed.Available in private chats only',
 													},
 													{
 														displayName: 'Request Location',
 														name: 'request_location',
 														type: 'boolean',
 														default: false,
-														description: 'If True, the user\'s request_location.',
+														description: 'Whether the user\'s request_location',
 													},
 												],
 											},
@@ -1534,21 +1540,21 @@ export class Telegram implements INodeType {
 						name: 'resize_keyboard',
 						type: 'boolean',
 						default: false,
-						description: 'Requests clients to resize the keyboard vertically for optimal fit.',
+						description: 'Whether to request clients to resize the keyboard vertically for optimal fit',
 					},
 					{
 						displayName: 'One Time Keyboard',
 						name: 'one_time_keyboard',
 						type: 'boolean',
 						default: false,
-						description: 'Requests clients to hide the keyboard as soon as it\'s been used.',
+						description: 'Whether to request clients to hide the keyboard as soon as it\'s been used',
 					},
 					{
 						displayName: 'Selective',
 						name: 'selective',
 						type: 'boolean',
 						default: false,
-						description: 'Use this parameter if you want to show the keyboard to specific users only.',
+						description: 'Whether to show the keyboard to specific users only',
 					},
 				],
 			},
@@ -1572,14 +1578,14 @@ export class Telegram implements INodeType {
 						name: 'remove_keyboard',
 						type: 'boolean',
 						default: false,
-						description: 'Requests clients to remove the custom keyboard.',
+						description: 'Whether to request clients to remove the custom keyboard',
 					},
 					{
 						displayName: 'Selective',
 						name: 'selective',
 						type: 'boolean',
 						default: false,
-						description: ' Use this parameter if you want to force reply from specific users only.',
+						description: 'Whether to force reply from specific users only',
 					},
 				],
 			},
@@ -1629,7 +1635,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Caption text to set, 0-1024 characters.',
+						description: 'Caption text to set, 0-1024 characters',
 					},
 					{
 						displayName: 'Disable Notification',
@@ -1643,7 +1649,7 @@ export class Telegram implements INodeType {
 								],
 							},
 						},
-						description: 'Sends the message silently. Users will receive a notification with no sound.',
+						description: 'Whether to send the message silently. Users will receive a notification with no sound.',
 					},
 					{
 						displayName: 'Disable WebPage Preview',
@@ -1658,7 +1664,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Disables link previews for links in this message.',
+						description: 'Whether to disable link previews for links in this message',
 					},
 					{
 						displayName: 'Duration',
@@ -1677,7 +1683,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: 0,
-						description: 'Duration of clip in seconds.',
+						description: 'Duration of clip in seconds',
 					},
 					{
 						displayName: 'Height',
@@ -1695,7 +1701,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: 0,
-						description: 'Height of the video.',
+						description: 'Height of the video',
 					},
 					{
 						displayName: 'Parse Mode',
@@ -1724,7 +1730,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: 'HTML',
-						description: 'How to parse the text.',
+						description: 'How to parse the text',
 					},
 					{
 						displayName: 'Performer',
@@ -1738,7 +1744,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Name of the performer.',
+						description: 'Name of the performer',
 					},
 					{
 						displayName: 'Reply To Message ID',
@@ -1752,7 +1758,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: 0,
-						description: 'If the message is a reply, ID of the original message.',
+						description: 'If the message is a reply, ID of the original message',
 					},
 					{
 						displayName: 'Title',
@@ -1769,7 +1775,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Title of the track.',
+						description: 'Title of the track',
 					},
 					{
 						displayName: 'Thumbnail',
@@ -1804,7 +1810,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: 0,
-						description: 'Width of the video.',
+						description: 'Width of the video',
 					},
 				],
 			},
@@ -1873,6 +1879,15 @@ export class Telegram implements INodeType {
 						// ----------------------------------
 
 						endpoint = 'getChat';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+
+					} else if (operation === 'administrators') {
+						// ----------------------------------
+						//         chat:administrators
+						// ----------------------------------
+
+						endpoint = 'getChatAdministrators';
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 
@@ -2174,6 +2189,9 @@ export class Telegram implements INodeType {
 						});
 						continue;
 					}
+				} else if (resource === 'chat' && operation === 'administrators') {
+					returnData.push(...this.helpers.returnJsonArray(responseData.result));
+					continue;
 				}
 
 				// if (resource === 'bot' && operation === 'info') {

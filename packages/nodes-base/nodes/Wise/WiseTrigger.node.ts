@@ -53,9 +53,10 @@ export class WiseTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Profile',
+				displayName: 'Profile Name or ID',
 				name: 'profileId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getProfiles',
@@ -72,17 +73,17 @@ export class WiseTrigger implements INodeType {
 					{
 						name: 'Balance Credit',
 						value: 'balanceCredit',
-						description: 'Triggered every time a balance account is credited.',
+						description: 'Triggered every time a balance account is credited',
 					},
 					{
 						name: 'Transfer Active Case',
 						value: 'transferActiveCases',
-						description: `Triggered every time a transfer's list of active cases is updated.`,
+						description: 'Triggered every time a transfer\'s list of active cases is updated',
 					},
 					{
 						name: 'Transfer State Changed',
 						value: 'tranferStateChange',
-						description: `Triggered every time a transfer's status is updated.`,
+						description: 'Triggered every time a transfer\'s status is updated',
 					},
 				],
 			},

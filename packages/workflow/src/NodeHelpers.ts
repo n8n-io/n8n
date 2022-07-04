@@ -720,6 +720,18 @@ export function getNodeParameters(
 				}
 			}
 
+			if (
+				!returnDefaults &&
+				nodeProperties.typeOptions?.multipleValues === false &&
+				propertyValues &&
+				Object.keys(propertyValues).length === 0
+			) {
+				// For fixedCollections, which only allow one value, it is important to still return
+				// the empty object which indicates that a value got added, even if it does not have
+				// anything set. If that is not done, the value would get lost.
+				return nodeValues;
+			}
+
 			// Iterate over all collections
 			for (const itemName of Object.keys(propertyValues || {})) {
 				if (
@@ -793,6 +805,25 @@ export function getNodeParameters(
 						collectionValues[itemName] = tempNodeParameters;
 					}
 				}
+			}
+
+			if (
+				!returnDefaults &&
+				nodeProperties.typeOptions?.multipleValues === false &&
+				collectionValues &&
+				Object.keys(collectionValues).length === 0 &&
+				propertyValues &&
+				propertyValues?.constructor.name === 'Object' &&
+				Object.keys(propertyValues).length !== 0
+			) {
+				// For fixedCollections, which only allow one value, it is important to still return
+				// the object with an empty collection property which indicates that a value got added
+				// which contains all default values. If that is not done, the value would get lost.
+				const returnValue = {} as INodeParameters;
+				Object.keys(propertyValues || {}).forEach((value) => {
+					returnValue[value] = {};
+				});
+				nodeParameters[nodeProperties.name] = returnValue;
 			}
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
@@ -908,6 +939,7 @@ export function getNodeWebhooks(
 			'internal',
 			additionalData.timezone,
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
@@ -916,6 +948,7 @@ export function getNodeWebhooks(
 			'internal',
 			additionalData.timezone,
 			{},
+			undefined,
 			false,
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
@@ -926,6 +959,7 @@ export function getNodeWebhooks(
 			mode,
 			additionalData.timezone,
 			{},
+			undefined,
 			'GET',
 		);
 
@@ -1104,7 +1138,8 @@ export function addToIssuesIfMissing(
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && value === undefined)
+		(nodeProperties.type === 'dateTime' && value === undefined) ||
+		(nodeProperties.type === 'options' && (value === '' || value === undefined))
 	) {
 		// Parameter is requried but empty
 		if (foundIssues.parameters === undefined) {

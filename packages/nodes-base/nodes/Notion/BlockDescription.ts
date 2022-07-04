@@ -6,11 +6,12 @@ import {
 	blocks,
 } from './Blocks';
 
-export const blockOperations = [
+export const blockOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,6 +26,7 @@ export const blockOperations = [
 				description: 'Append a block',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
 				name: 'Get Child Blocks',
 				value: 'getAll',
 				description: 'Get all children blocks',
@@ -32,7 +34,7 @@ export const blockOperations = [
 		],
 		default: 'append',
 	},
-] as INodeProperties[];
+];
 
 export const blockFields = [
 
@@ -94,7 +96,7 @@ export const blockFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -118,6 +120,6 @@ export const blockFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 ] as INodeProperties[];

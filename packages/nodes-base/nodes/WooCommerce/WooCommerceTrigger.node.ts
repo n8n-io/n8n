@@ -59,51 +59,51 @@ export class WooCommerceTrigger implements INodeType {
 						value: 'coupon.created',
 					},
 					{
-						name: 'coupon.updated',
-						value: 'coupon.updated',
-					},
-					{
 						name: 'coupon.deleted',
 						value: 'coupon.deleted',
+					},
+					{
+						name: 'coupon.updated',
+						value: 'coupon.updated',
 					},
 					{
 						name: 'customer.created',
 						value: 'customer.created',
 					},
 					{
-						name: 'customer.updated',
-						value: 'customer.updated',
-					},
-					{
 						name: 'customer.deleted',
 						value: 'customer.deleted',
+					},
+					{
+						name: 'customer.updated',
+						value: 'customer.updated',
 					},
 					{
 						name: 'order.created',
 						value: 'order.created',
 					},
 					{
-						name: 'order.updated',
-						value: 'order.updated',
-					},
-					{
 						name: 'order.deleted',
 						value: 'order.deleted',
+					},
+					{
+						name: 'order.updated',
+						value: 'order.updated',
 					},
 					{
 						name: 'product.created',
 						value: 'product.created',
 					},
 					{
-						name: 'product.updated',
-						value: 'product.updated',
-					},
-					{
 						name: 'product.deleted',
 						value: 'product.deleted',
 					},
+					{
+						name: 'product.updated',
+						value: 'product.updated',
+					},
 				],
-				description: 'Determines which resource events the webhook is triggered for.',
+				description: 'Determines which resource events the webhook is triggered for',
 			},
 		],
 

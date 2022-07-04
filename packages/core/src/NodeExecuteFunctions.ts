@@ -47,7 +47,6 @@ import {
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowMetadata,
-	LoggerProxy as Logger,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -56,6 +55,10 @@ import {
 	WorkflowActivateMode,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
+	LoggerProxy as Logger,
+	IExecuteData,
+	OAuth2GrantType,
+	IOAuth2Credentials,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -541,7 +544,10 @@ async function proxyRequestToAxios(
 		return requestPromiseWithDefaults.call(null, uriOrObject, options);
 	}
 
-	let axiosConfig: AxiosRequestConfig = {};
+	let axiosConfig: AxiosRequestConfig = {
+		maxBodyLength: Infinity,
+		maxContentLength: Infinity,
+	};
 	let axiosPromise: AxiosPromise;
 	type ConfigObject = {
 		auth?: { sendImmediately: boolean };
@@ -708,7 +714,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		};
 	}
 
-	if (n8nRequest.body) {
+	// if there is a body and it's empty (does not have properties),
+	// make sure not to send anything in it as some services fail when
+	// sending GET request with empty body.
+	if (n8nRequest.body && Object.keys(n8nRequest.body).length) {
 		axiosRequest.data = n8nRequest.body;
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');
@@ -800,6 +809,7 @@ export async function prepareBinaryData(
 	filePath?: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
+	let fileExtension: string | undefined;
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
@@ -816,6 +826,7 @@ export async function prepareBinaryData(
 			const fileTypeData = await fromBuffer(binaryData);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
+				fileExtension = fileTypeData.ext;
 			}
 		}
 
@@ -827,6 +838,7 @@ export async function prepareBinaryData(
 
 	const returnData: IBinaryData = {
 		mimeType,
+		fileExtension,
 		data: '',
 	};
 
@@ -874,19 +886,46 @@ export async function requestOAuth2(
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
 ) {
-	const credentials = await this.getCredentials(credentialsType);
+	const credentials = (await this.getCredentials(credentialsType)) as unknown as IOAuth2Credentials;
 
-	if (credentials.oauthTokenData === undefined) {
+	// Only the OAuth2 with authorization code grant needs connection
+	if (
+		credentials.grantType === OAuth2GrantType.authorizationCode &&
+		credentials.oauthTokenData === undefined
+	) {
 		throw new Error('OAuth credentials not connected!');
 	}
 
 	const oAuthClient = new clientOAuth2({
-		clientId: credentials.clientId as string,
-		clientSecret: credentials.clientSecret as string,
-		accessTokenUri: credentials.accessTokenUrl as string,
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret,
+		accessTokenUri: credentials.accessTokenUrl,
+		scopes: credentials.scope.split(' '),
 	});
 
-	const oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+	// if it's the first time using the credentials, get the access token and save it into the DB.
+	if (credentials.grantType === OAuth2GrantType.clientCredentials && oauthTokenData === undefined) {
+		const { data } = await oAuthClient.credentials.getToken();
+
+		// Find the credentials
+		if (!node.credentials || !node.credentials[credentialsType]) {
+			throw new Error(
+				`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+			);
+		}
+
+		const nodeCredentials = node.credentials[credentialsType];
+
+		// Save the refreshed token
+		await additionalData.credentialsHelper.updateCredentials(
+			nodeCredentials,
+			credentialsType,
+			credentials as unknown as ICredentialDataDecryptedObject,
+		);
+
+		oauthTokenData = data;
+	}
 
 	const token = oAuthClient.createToken(
 		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
@@ -919,8 +958,8 @@ export async function requestOAuth2(
 
 			if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 				const body: IDataObject = {
-					client_id: credentials.clientId as string,
-					client_secret: credentials.clientSecret as string,
+					client_id: credentials.clientId,
+					client_secret: credentials.clientSecret,
 				};
 				tokenRefreshOptions.body = body;
 				// Override authorization property so the credentails are not included in it
@@ -933,7 +972,15 @@ export async function requestOAuth2(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 			);
 
-			const newToken = await token.refresh(tokenRefreshOptions);
+			let newToken;
+
+			// if it's OAuth2 with client credentials grant type, get a new token
+			// instead of refreshing it.
+			if (OAuth2GrantType.clientCredentials === credentials.grantType) {
+				newToken = await token.client.credentials.getToken();
+			} else {
+				newToken = await token.refresh(tokenRefreshOptions);
+			}
 
 			Logger.debug(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
@@ -953,7 +1000,7 @@ export async function requestOAuth2(
 			await additionalData.credentialsHelper.updateCredentials(
 				nodeCredentials,
 				credentialsType,
-				credentials,
+				credentials as unknown as ICredentialDataDecryptedObject,
 			);
 
 			Logger.debug(
@@ -1064,9 +1111,7 @@ export async function requestRenovateToken(
 		| IHttpRequestOptions,
 	isN8nRequest = false,
 ) {
-	const credentials = (await this.getCredentials(
-		credentialsType,
-	)) as ICredentialDataDecryptedObject;
+	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
 		throw new Error('No credentials were returned!');
@@ -1462,6 +1507,36 @@ export function getNode(node: INode): INode {
 }
 
 /**
+ * Clean up parameter data to make sure that only valid data gets returned
+ * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
+ */
+function cleanupParameterData(
+	inputData: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	if (inputData === null || inputData === undefined) {
+		return inputData;
+	}
+
+	if (Array.isArray(inputData)) {
+		inputData.forEach((value) => cleanupParameterData(value));
+		return inputData;
+	}
+
+	if (inputData.constructor.name === 'DateTime') {
+		// Is a special luxon date so convert to string
+		return inputData.toString();
+	}
+
+	if (typeof inputData === 'object') {
+		Object.keys(inputData).forEach((key) => {
+			inputData[key] = cleanupParameterData(inputData[key]);
+		});
+	}
+
+	return inputData;
+}
+
+/**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
  * @export
@@ -1486,6 +1561,7 @@ export function getNodeParameter(
 	mode: WorkflowExecuteMode,
 	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
+	executeData?: IExecuteData,
 	fallbackValue?: any,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -1511,9 +1587,13 @@ export function getNodeParameter(
 			mode,
 			timezone,
 			additionalKeys,
+			executeData,
 		);
+
+		returnData = cleanupParameterData(returnData);
 	} catch (e) {
-		e.message += ` [Error in parameter: "${parameterName}"]`;
+		if (e.context) e.context.parameter = parameterName;
+		e.cause = value;
 		throw e;
 	}
 
@@ -1580,6 +1660,7 @@ export function getNodeWebhookUrl(
 		mode,
 		timezone,
 		additionalKeys,
+		undefined,
 		false,
 	) as boolean;
 	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
@@ -1710,6 +1791,7 @@ export function getExecutePollFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},
@@ -1864,6 +1946,7 @@ export function getExecuteTriggerFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},
@@ -1977,6 +2060,7 @@ export function getExecuteFunctions(
 	inputData: ITaskDataConnections,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
@@ -1996,6 +2080,7 @@ export function getExecuteFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					executeData,
 				);
 			},
 			async executeWorkflow(
@@ -2072,6 +2157,7 @@ export function getExecuteFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					executeData,
 					fallbackValue,
 				);
 			},
@@ -2086,6 +2172,9 @@ export function getExecuteFunctions(
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
+			},
+			getExecuteData: (): IExecuteData => {
+				return executeData;
 			},
 			getWorkflow: () => {
 				return getWorkflowMetadata(workflow);
@@ -2102,6 +2191,7 @@ export function getExecuteFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
@@ -2236,6 +2326,7 @@ export function getExecuteSingleFunctions(
 	node: INode,
 	itemIndex: number,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
 ): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
@@ -2256,6 +2347,7 @@ export function getExecuteSingleFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					executeData,
 				);
 			},
 			getContext(type: string): IContextObject {
@@ -2301,6 +2393,9 @@ export function getExecuteSingleFunctions(
 
 				return allItems[itemIndex];
 			},
+			getItemIndex() {
+				return itemIndex;
+			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
 			},
@@ -2312,6 +2407,9 @@ export function getExecuteSingleFunctions(
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
+			},
+			getExecuteData: (): IExecuteData => {
+				return executeData;
 			},
 			getNodeParameter: (
 				parameterName: string,
@@ -2333,6 +2431,7 @@ export function getExecuteSingleFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					executeData,
 					fallbackValue,
 				);
 			},
@@ -2351,6 +2450,7 @@ export function getExecuteSingleFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
@@ -2358,6 +2458,9 @@ export function getExecuteSingleFunctions(
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				async getBinaryDataBuffer(propertyName: string, inputIndex = 0): Promise<Buffer> {
+					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
+				},
 				httpRequest,
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
@@ -2508,6 +2611,7 @@ export function getLoadOptionsFunctions(
 					'internal' as WorkflowExecuteMode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},
@@ -2638,6 +2742,7 @@ export function getExecuteHookFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},
@@ -2800,6 +2905,7 @@ export function getExecuteWebhookFunctions(
 					mode,
 					additionalData.timezone,
 					getAdditionalKeys(additionalData),
+					undefined,
 					fallbackValue,
 				);
 			},

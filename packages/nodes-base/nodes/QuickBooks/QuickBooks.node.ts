@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -86,6 +87,7 @@ export class QuickBooks implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Bill',
@@ -129,7 +131,6 @@ export class QuickBooks implements INodeType {
 					},
 				],
 				default: 'customer',
-				description: 'Resource to consume',
 			},
 			...billOperations,
 			...billFields,
@@ -178,6 +179,10 @@ export class QuickBooks implements INodeType {
 
 			async getPurchases(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'purchase');
+			},
+
+			async getTaxCodeRefs(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'TaxCode');
 			},
 
 			async getTerms(this: ILoadOptionsFunctions) {
@@ -503,7 +508,6 @@ export class QuickBooks implements INodeType {
 						} as IDataObject;
 
 						body.Line = processLines.call(this, body, lines, resource);
-
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						body = populateFields.call(this, body, additionalFields, resource);

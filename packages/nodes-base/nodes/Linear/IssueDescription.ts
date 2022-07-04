@@ -7,6 +7,7 @@ export const issueOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -51,9 +52,10 @@ export const issueFields: INodeProperties[] = [
 	/*                                 issue:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name/ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {
@@ -105,9 +107,10 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name/ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigneeId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -126,6 +129,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name/ID',
 				name: 'priorityId',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Urgent',
@@ -151,9 +155,10 @@ export const issueFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'State Name/ID',
+				displayName: 'State Name or ID',
 				name: 'stateId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStates',
 				},
@@ -264,9 +269,10 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name/ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigneeId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -285,6 +291,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name/ID',
 				name: 'priorityId',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Urgent',
@@ -310,18 +317,20 @@ export const issueFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'State Name/ID',
+				displayName: 'State Name or ID',
 				name: 'stateId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStates',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Team Name/ID',
+				displayName: 'Team Name or ID',
 				name: 'teamId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},

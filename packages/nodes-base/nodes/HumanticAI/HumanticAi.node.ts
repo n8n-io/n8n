@@ -25,6 +25,7 @@ export class HumanticAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Humantic AI',
 		name: 'humanticAi',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:humanticai.png',
 		group: ['output'],
 		version: 1,
@@ -46,6 +47,7 @@ export class HumanticAi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Profile',
@@ -53,7 +55,6 @@ export class HumanticAi implements INodeType {
 					},
 				],
 				default: 'profile',
-				description: 'Resource to consume.',
 			},
 			// PROFILE
 			...profileOperations,

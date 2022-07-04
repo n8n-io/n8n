@@ -179,6 +179,12 @@ export const schema = {
 			default: 'My workflow',
 			env: 'WORKFLOWS_DEFAULT_NAME',
 		},
+		onboardingFlowDisabled: {
+			doc: 'Show onboarding flow in new workflow',
+			format: 'Boolean',
+			default: false,
+			env: 'N8N_ONBOARDING_FLOW_DISABLED',
+		},
 	},
 
 	executions: {
@@ -576,6 +582,21 @@ export const schema = {
 		},
 	},
 
+	publicApi: {
+		disabled: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_PUBLIC_API_DISABLED',
+			doc: 'Whether to disable the Public API',
+		},
+		path: {
+			format: String,
+			default: 'api',
+			env: 'N8N_PUBLIC_API_ENDPOINT',
+			doc: 'Path for the public api endpoints',
+		},
+	},
+
 	workflowTagsDisabled: {
 		format: Boolean,
 		default: false,
@@ -766,7 +787,7 @@ export const schema = {
 		endpoint: {
 			doc: 'Endpoint to retrieve version information from.',
 			format: String,
-			default: 'https://api.n8n.io/versions/',
+			default: 'https://api.n8n.io/api/versions/',
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
 		},
 		infoUrl: {
@@ -787,7 +808,7 @@ export const schema = {
 		host: {
 			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
 			format: String,
-			default: 'https://api.n8n.io/',
+			default: 'https://api.n8n.io/api/',
 			env: 'N8N_TEMPLATES_HOST',
 		},
 	},

@@ -7,6 +7,7 @@ export const sequenceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,15 +33,16 @@ export const sequenceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'addSubscriber',
-		description: 'The operations to perform.',
+		description: 'The operations to perform',
 	},
 ];
 
 export const sequenceFields: INodeProperties[] = [
 	{
-		displayName: 'Sequence ID',
+		displayName: 'Sequence Name or ID',
 		name: 'id',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getSequences',
 		},
@@ -62,6 +64,7 @@ export const sequenceFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -74,7 +77,7 @@ export const sequenceFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The subscriber's email address.`,
+		description: 'The subscriber\'s email address',
 	},
 	{
 		displayName: 'Return All',
@@ -92,7 +95,7 @@ export const sequenceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -117,7 +120,7 @@ export const sequenceFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -140,7 +143,7 @@ export const sequenceFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fieldsUi',
 				placeholder: 'Add Custom Field',
-				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here).',
+				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -157,7 +160,7 @@ export const sequenceFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: `The field's key.`,
+								description: 'The field\'s key',
 							},
 							{
 								displayName: 'Field Value',
@@ -165,7 +168,7 @@ export const sequenceFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'Doe',
-								description: 'Value of the field.',
+								description: 'Value of the field',
 							},
 						],
 					},
@@ -176,17 +179,17 @@ export const sequenceFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `The subscriber's first name.`,
+				description: 'The subscriber\'s first name',
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'Tags',
+				description: 'Tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -224,6 +227,6 @@ export const sequenceFields: INodeProperties[] = [
 				default: 'active',
 			},
 		],
-		description: 'Receive only active subscribers or cancelled subscribers.',
+		description: 'Receive only active subscribers or cancelled subscribers',
 	},
 ];

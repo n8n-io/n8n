@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -42,6 +43,7 @@ export class QuickBase implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Quick Base',
 		name: 'quickbase',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:quickbase.png',
 		group: ['input'],
 		version: 1,
@@ -63,6 +65,7 @@ export class QuickBase implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Field',
@@ -82,7 +85,6 @@ export class QuickBase implements INodeType {
 					},
 				],
 				default: 'record',
-				description: 'The resource to operate on.',
 			},
 			...fieldOperations,
 			...fieldFields,
