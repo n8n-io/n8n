@@ -29,10 +29,10 @@ export async function deepLApiRequest(
 
 	const options: OptionsWithUri = {
 		headers: {
-			'Content-Type': 'application/json',
+			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
-		body,
+		form: body,
 		qs,
 		uri: uri || `${credentials.apiPlan === 'pro' ? proApiEndpoint : freeApiEndpoint}${resource}`,
 		json: true,
