@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const userOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -132,20 +132,29 @@ export const userFields: INodeProperties[] = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions',
+								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
 								options: [
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
 									{
 										name: '=',
 										value: 'equal',
@@ -155,16 +164,8 @@ export const userFields: INodeProperties[] = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',

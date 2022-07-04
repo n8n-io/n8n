@@ -5,6 +5,7 @@ export const singletonOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,13 +21,12 @@ export const singletonOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const singletonFields: INodeProperties[] = [
 	{
-		displayName: 'Singleton',
+		displayName: 'Singleton Name or ID',
 		name: 'singleton',
 		type: 'options',
 		default: '',
@@ -41,6 +41,6 @@ export const singletonFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Name of the singleton to operate on',
+		description: 'Name of the singleton to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 ];

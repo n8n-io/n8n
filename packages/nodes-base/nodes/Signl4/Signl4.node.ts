@@ -17,6 +17,7 @@ export class Signl4 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SIGNL4',
 		name: 'signl4',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:signl4.png',
 		group: ['transform'],
 		version: 1,
@@ -38,6 +39,7 @@ export class Signl4 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Alert',
@@ -45,12 +47,12 @@ export class Signl4 implements INodeType {
 					},
 				],
 				default: 'alert',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -71,7 +73,6 @@ export class Signl4 implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Message',
@@ -123,7 +124,7 @@ export class Signl4 implements INodeType {
 							{
 								name: 'Multi ACK',
 								value: 'multi_ack',
-								description: 'in case this alert must be confirmed by the number of people who are on duty at the time this Singl is raised',
+								description: 'In case this alert must be confirmed by the number of people who are on duty at the time this Singl is raised',
 							},
 						],
 						default: 'single_ack',
@@ -166,7 +167,7 @@ export class Signl4 implements INodeType {
 						name: 'filtering',
 						type: 'boolean',
 						default: false,
-						description: 'Specify a boolean value of true or false to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)',
+						description: 'Whether to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)',
 					},
 					{
 						displayName: 'Location',

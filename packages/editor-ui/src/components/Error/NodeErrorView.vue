@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + error.message }}</div>
+			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + getErrorMessage() }}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 		</div>
 		<details>
@@ -9,6 +9,13 @@
 				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $locale.baseText('nodeErrorView.details') }}
 			</summary>
 			<div class="error-details__content">
+				<div v-if="error.context && error.context.causeDetailed">
+					<el-card class="box-card" shadow="never">
+						<div>
+							{{error.context.causeDetailed}}
+						</div>
+					</el-card>
+				</div>
 				<div v-if="error.timestamp">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
@@ -19,6 +26,18 @@
 						</div>
 					</el-card>
 				</div>
+			<div v-if="error.context && error.context.itemIndex !== undefined" class="el-card box-card is-never-shadow el-card__body">
+				<span class="error-details__summary">{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span>
+				{{error.context.itemIndex}}
+				<span v-if="error.context.runIndex">
+					| <span class="error-details__summary">{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span>
+					{{error.context.runIndex}}
+				</span>
+				<span v-if="error.context.parameter">
+					| <span class="error-details__summary">{{ $locale.baseText('nodeErrorView.inParameter') }}:</span>
+					{{ parameterDisplayName(error.context.parameter) }}
+				</span>
+			</div>
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
@@ -79,6 +98,16 @@ import mixins from 'vue-typed-mixins';
 import {
 	MAX_DISPLAY_DATA_SIZE,
 } from '@/constants';
+import {
+	INodeUi,
+} from '@/Interface';
+
+import {
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export default mixins(
 	copyPaste,
@@ -95,8 +124,72 @@ export default mixins(
 		displayCause(): boolean {
 			return JSON.stringify(this.error.cause).length < MAX_DISPLAY_DATA_SIZE;
 		},
+		parameters (): INodeProperties[] {
+			const node = this.$store.getters.activeNode;
+			if (!node) {
+				return [];
+			}
+			const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+
+			if (nodeType === null) {
+				return [];
+			}
+
+			return nodeType.properties;
+		},
 	},
 	methods: {
+		getErrorMessage (): string {
+			if (!this.error.context || !this.error.context.messageTemplate) {
+				return this.error.message;
+			}
+
+			const parameterName = this.parameterDisplayName(this.error.context.parameter);
+			return this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
+		},
+		parameterDisplayName(path: string) {
+			try {
+				const parameters = this.parameterName(this.parameters, path.split('.'));
+				if (!parameters.length) {
+					throw new Error();
+				}
+				return parameters.map(parameter => parameter.displayName).join(' > ');
+			} catch (error) {
+				return `Could not find parameter "${path}"`;
+			}
+		},
+		parameterName(parameters: Array<(INodePropertyOptions | INodeProperties | INodePropertyCollection)>, pathParts: string[]): Array<(INodeProperties | INodePropertyCollection)> {
+			let currentParameterName = pathParts.shift();
+
+			if (currentParameterName === undefined) {
+				return [];
+			}
+
+			const arrayMatch = currentParameterName.match(/(.*)\[([\d])\]$/);
+			if (arrayMatch !== null && arrayMatch.length > 0) {
+				currentParameterName = arrayMatch[1];
+			}
+			const currentParameter = parameters.find(parameter => parameter.name === currentParameterName) as unknown as INodeProperties | INodePropertyCollection;
+
+			if (currentParameter === undefined) {
+				throw new Error(`Could not find parameter "${currentParameterName}"`);
+			}
+
+			if (pathParts.length === 0) {
+				return [currentParameter];
+			}
+
+			if (currentParameter.hasOwnProperty('options')) {
+				return [currentParameter, ...this.parameterName((currentParameter as INodeProperties).options!, pathParts)];
+			}
+
+			if (currentParameter.hasOwnProperty('values')) {
+				return [currentParameter, ...this.parameterName((currentParameter as INodePropertyCollection).values, pathParts)];
+			}
+
+			// We can not resolve any deeper so lets stop here and at least return hopefully something useful
+			return [currentParameter];
+		},
 		copyCause() {
 			this.copyToClipboard(JSON.stringify(this.error.cause));
 			this.copySuccess();

@@ -7,8 +7,8 @@ export const subredditOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
@@ -145,7 +145,7 @@ export const subredditFields: INodeProperties[] = [
 				name: 'trending',
 				type: 'boolean',
 				default: false,
-				description: 'Currently trending subreddits in all of Reddit',
+				description: 'Whether to fetch currently trending subreddits in all of Reddit',
 			},
 		],
 		displayOptions: {

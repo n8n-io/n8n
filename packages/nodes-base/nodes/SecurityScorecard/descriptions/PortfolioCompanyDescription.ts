@@ -7,6 +7,7 @@ export const portfolioCompanyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {

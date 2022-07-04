@@ -31,6 +31,7 @@ export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'G Suite Admin',
 		name: 'gSuiteAdmin',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:gSuiteAdmin.png',
 		group: ['input'],
 		version: 1,
@@ -52,6 +53,7 @@ export class GSuiteAdmin implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Group',
@@ -63,7 +65,6 @@ export class GSuiteAdmin implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.',
 			},
 			...groupOperations,
 			...groupFields,

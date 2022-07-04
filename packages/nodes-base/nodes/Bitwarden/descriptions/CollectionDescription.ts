@@ -7,8 +7,8 @@ export const collectionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Delete',
@@ -87,6 +87,9 @@ export const collectionFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 10,
 		description: 'Max number of results to return',
 		displayOptions: {
@@ -116,10 +119,10 @@ export const collectionFields: INodeProperties[] = [
 		required: true,
 		options: [
 			{
-				displayName: 'Group',
+				displayName: 'Group Names or IDs',
 				name: 'groups',
 				type: 'multiOptions',
-				description: 'The group to assign this collection to',
+				description: 'The group to assign this collection to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',

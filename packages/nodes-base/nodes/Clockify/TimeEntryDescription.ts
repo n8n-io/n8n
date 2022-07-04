@@ -7,6 +7,7 @@ export const timeEntryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const timeEntryOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -102,7 +102,7 @@ export const timeEntryFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
@@ -112,7 +112,7 @@ export const timeEntryFields: INodeProperties[] = [
 									loadOptionsMethod: 'loadCustomFieldsForWorkspace',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -141,9 +141,10 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -153,9 +154,11 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -235,14 +238,14 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'consider-duration-format',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, returned timeentry\'s duration will be rounded to minutes or seconds based on duration format (hh:mm or hh:mm:ss) from workspace settings',
+				description: 'Whether to return the time entry\'s duration rounded to minutes or seconds based on duration format (hh:mm or hh:mm:ss) from workspace settings',
 			},
 			{
 				displayName: 'Hydrated',
 				name: 'hydrated',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, returned timeentry\'s project,task and tags will be returned in full and not just their IDs',
+				description: 'Whether to return the time entry\'s project, task and tags in full and not just their IDs',
 			},
 		],
 	},
@@ -305,7 +308,7 @@ export const timeEntryFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
@@ -315,7 +318,7 @@ export const timeEntryFields: INodeProperties[] = [
 									loadOptionsMethod: 'loadCustomFieldsForWorkspace',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -344,9 +347,10 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -362,9 +366,11 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',

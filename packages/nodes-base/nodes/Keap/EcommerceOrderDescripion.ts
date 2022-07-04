@@ -7,6 +7,7 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -199,9 +199,10 @@ export const ecommerceOrderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountries',
 						},

@@ -181,6 +181,7 @@ export class Salesforce implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -244,7 +245,6 @@ export class Salesforce implements INodeType {
 					},
 				],
 				default: 'lead',
-				description: 'Resource to consume.',
 			},
 			...leadOperations,
 			...leadFields,
@@ -285,10 +285,9 @@ export class Salesforce implements INodeType {
 				const statuses = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 				for (const status of statuses) {
 					const statusName = status.MasterLabel;
-					const statusId = status.Id;
 					returnData.push({
 						name: statusName,
-						value: statusId,
+						value: statusName,
 					});
 				}
 				sortOptions(returnData);

@@ -20,6 +20,12 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

@@ -7,6 +7,7 @@ export const noteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const noteOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -42,9 +42,10 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -100,9 +101,10 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -198,9 +200,10 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},

@@ -5,6 +5,7 @@ export const controlOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const controlOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -35,7 +35,7 @@ export const controlFields: INodeProperties[] = [
 /*                                   control:get                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -53,7 +53,7 @@ export const controlFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Control ID',
@@ -77,7 +77,7 @@ export const controlFields: INodeProperties[] = [
 /*                                   control:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -95,7 +95,7 @@ export const controlFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

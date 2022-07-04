@@ -156,22 +156,22 @@ export class Redis implements INodeType {
 					{
 						name: 'Hash',
 						value: 'hash',
-						description: 'Data in key is of type "hash"',
+						description: 'Data in key is of type \'hash\'',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Data in key is of type "lists"',
+						description: 'Data in key is of type \'lists\'',
 					},
 					{
 						name: 'Sets',
 						value: 'sets',
-						description: 'Data in key is of type "sets"',
+						description: 'Data in key is of type \'sets\'',
 					},
 					{
 						name: 'String',
 						value: 'string',
-						description: 'Data in key is of type "string"',
+						description: 'Data in key is of type \'string\'',
 					},
 				],
 				default: 'automatic',
@@ -197,6 +197,7 @@ export class Redis implements INodeType {
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: '<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>.',
 					},
 				],
@@ -233,7 +234,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether to set a timeout on key?',
+				description: 'Whether to set a timeout on key',
 			},
 			{
 				displayName: 'TTL',
@@ -340,22 +341,22 @@ export class Redis implements INodeType {
 					{
 						name: 'Hash',
 						value: 'hash',
-						description: 'Data in key is of type "hash"',
+						description: 'Data in key is of type \'hash\'',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Data in key is of type "lists"',
+						description: 'Data in key is of type \'lists\'',
 					},
 					{
 						name: 'Sets',
 						value: 'sets',
-						description: 'Data in key is of type "sets"',
+						description: 'Data in key is of type \'sets\'',
 					},
 					{
 						name: 'String',
 						value: 'string',
-						description: 'Data in key is of type "string"',
+						description: 'Data in key is of type \'string\'',
 					},
 				],
 				default: 'automatic',
@@ -374,7 +375,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether to set a timeout on key?',
+				description: 'Whether to set a timeout on key',
 			},
 
 			{
@@ -519,6 +520,7 @@ export class Redis implements INodeType {
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: '<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>.',
 					},
 				],

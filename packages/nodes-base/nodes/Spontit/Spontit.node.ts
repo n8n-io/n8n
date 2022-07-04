@@ -23,6 +23,7 @@ export class Spontit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Spontit',
 		name: 'spontit',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:spontit.png',
 		group: ['output'],
 		version: 1,
@@ -44,6 +45,7 @@ export class Spontit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Push',
@@ -51,7 +53,6 @@ export class Spontit implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
 			},
 			...pushOperations,
 			...pushFields,
