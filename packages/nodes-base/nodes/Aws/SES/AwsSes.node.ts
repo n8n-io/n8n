@@ -429,7 +429,7 @@ export class AwsSes implements INodeType {
 					{
 						name: 'Send Template',
 						value: 'sendTemplate',
-						action: 'Send Template an email',
+						action: 'Send an email based on a template',
 					},
 				],
 				default: 'send',
