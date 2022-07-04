@@ -4,6 +4,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -122,7 +124,7 @@ export class Discord implements INodeType {
 
 		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 
-		if (!webhookUri) throw Error('Webhook uri is required.');
+		if (!webhookUri) throw new NodeOperationError(this.getNode(), 'Webhook uri is required.');
 
 		const items = this.getInputData();
 		const length = items.length as number;
@@ -134,17 +136,17 @@ export class Discord implements INodeType {
 			const options = this.getNodeParameter('options', i) as IDataObject;
 
 			if (!body.content && !options.embeds) {
-				throw new Error('Either content or embeds must be set.');
+				throw new NodeOperationError(this.getNode(), 'Either content or embeds must be set.');
 			}
 			if (options.embeds) {
 				try {
 					//@ts-expect-error
 					body.embeds = JSON.parse(options.embeds);
 					if (!Array.isArray(body.embeds)) {
-						throw new Error('Embeds must be an array of embeds.');
+						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.');
 					}
 				} catch (e) {
-					throw new Error('Embeds must be valid JSON.');
+					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.');
 				}
 			}
 			if (options.username) {
@@ -156,7 +158,7 @@ export class Discord implements INodeType {
 					//@ts-expect-error
 					body.components = JSON.parse(options.components);
 				} catch (e) {
-					throw new Error('Components must be valid JSON.');
+					throw new NodeOperationError(this.getNode(), 'Components must be valid JSON.');
 				}
 			}
 
@@ -259,8 +261,9 @@ export class Discord implements INodeType {
 			} while (--maxTries);
 
 			if (maxTries <= 0) {
-				throw new Error(
-					'Could not send Webhook message. Max amount of rate-limit retries reached.',
+				throw new NodeApiError(
+					this.getNode(),
+					{ error: 'Could not send Webhook message. Max amount of rate-limit retries reached.' },
 				);
 			}
 
