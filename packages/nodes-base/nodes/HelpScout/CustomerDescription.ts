@@ -63,6 +63,7 @@ export const customerFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -191,14 +192,12 @@ export const customerFields: INodeProperties[] = [
 						name: 'line1',
 						type: 'string',
 						default: '',
-						description: 'line1',
 					},
 					{
 						displayName: 'Line 2',
 						name: 'line2',
 						type: 'string',
 						default: '',
-						description: 'line2',
 					},
 					{
 						displayName: 'City',
@@ -213,9 +212,10 @@ export const customerFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country',
+						displayName: 'Country Name or ID',
 						name: 'country',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountriesCodes',
 						},
@@ -517,7 +517,7 @@ export const customerFields: INodeProperties[] = [
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Social Profile handle (url for example)',
+						description: 'Social Profile handle (URL for example)',
 					},
 				],
 			},

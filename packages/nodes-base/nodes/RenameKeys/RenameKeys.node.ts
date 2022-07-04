@@ -61,7 +61,7 @@ export class RenameKeys implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'newKey',
-								description: 'the name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
+								description: 'The name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
 							},
 						],
 					},
@@ -88,6 +88,9 @@ export class RenameKeys implements INodeType {
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
 				json: JSON.parse(JSON.stringify(item.json)),
+				pairedItem: {
+					item: itemIndex,
+				},
 			};
 
 			if (item.binary !== undefined) {

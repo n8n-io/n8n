@@ -181,7 +181,7 @@ export class FacebookGraphApi implements INodeType {
 				},
 				default: false,
 				required: true,
-				description: 'If binary data should be send as body',
+				description: 'Whether binary data should be sent as body',
 			},
 			{
 				displayName: 'Binary Property',

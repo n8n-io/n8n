@@ -78,7 +78,7 @@ export const customerAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Bill With Parent',
 		name: 'BillWithParent',
-		description: 'Bill this customer together with its parent',
+		description: 'Whether to bill this customer together with its parent',
 		type: 'boolean',
 		default: false,
 	},

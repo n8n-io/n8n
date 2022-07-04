@@ -76,6 +76,9 @@ export class WriteBinaryFile implements INodeType {
 
 				const newItem: INodeExecutionData = {
 					json: {},
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 				Object.assign(newItem.json, item.json);
 
@@ -100,7 +103,14 @@ export class WriteBinaryFile implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

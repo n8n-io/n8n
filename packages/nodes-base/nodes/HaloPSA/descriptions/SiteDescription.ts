@@ -88,9 +88,10 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Client Name',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {
@@ -223,7 +224,7 @@ export const siteFields: INodeProperties[] = [
 				default: 'all',
 				options: [
 					{
-						name: 'Active only',
+						name: 'Active Only',
 						value: 'active',
 						description: 'Whether to include active sites in the response',
 					},
@@ -233,7 +234,7 @@ export const siteFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive sites in the response',
 					},
 					{
-						name: 'Inactive only',
+						name: 'Inactive Only',
 						value: 'inactive',
 						description: 'Whether to include inactive sites in the response',
 					},

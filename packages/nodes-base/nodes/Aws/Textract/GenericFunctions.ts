@@ -128,7 +128,7 @@ export interface IExpenseDocument {
 		}];
 }
 
-export async function validateCrendetials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject, service: string): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject, service: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = decryptedCredentials;
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
