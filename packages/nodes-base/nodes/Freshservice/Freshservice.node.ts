@@ -311,6 +311,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/agents', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -320,6 +329,15 @@ export class Freshservice implements INodeType {
 						const agentId = this.getNodeParameter('agentId', i);
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', `/agents/${agentId}`);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -328,6 +346,15 @@ export class Freshservice implements INodeType {
 
 						const agentId = this.getNodeParameter('agentId', i);
 						responseData = await freshserviceApiRequest.call(this, 'GET', `/agents/${agentId}`);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'getAll') {
 
@@ -343,6 +370,15 @@ export class Freshservice implements INodeType {
 						}
 
 						responseData = await handleListing.call(this, 'GET', '/agents', {}, qs);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -360,6 +396,14 @@ export class Freshservice implements INodeType {
 						const agentId = this.getNodeParameter('agentId', i);
 						responseData = await freshserviceApiRequest.call(this, 'PUT', `/agents/${agentId}`, body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 					}
 
 				} else if (resource === 'agentGroup') {
@@ -386,6 +430,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/groups', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -395,6 +448,15 @@ export class Freshservice implements INodeType {
 						const agentGroupId = this.getNodeParameter('agentGroupId', i);
 						const endpoint = `/groups/${agentGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'get') {
 
@@ -406,6 +468,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/groups/${agentGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -413,6 +484,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/groups');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -431,6 +511,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/groups/${agentGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					}
 
 				} else if (resource === 'agentRole') {
@@ -448,6 +537,15 @@ export class Freshservice implements INodeType {
 						const agentRoleId = this.getNodeParameter('agentRoleId', i);
 						responseData = await freshserviceApiRequest.call(this, 'GET', `/roles/${agentRoleId}`);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -455,6 +553,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/roles');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -496,6 +603,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/announcements', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -505,6 +621,15 @@ export class Freshservice implements INodeType {
 						const announcementId = this.getNodeParameter('announcementId', i);
 						const endpoint = `/announcements/${announcementId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'get') {
 
@@ -517,6 +642,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/announcements/${announcementId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -524,6 +658,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/announcements');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -551,6 +694,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/announcements/${announcementId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					}
 
 				} else if (resource === 'asset') {
@@ -575,6 +727,15 @@ export class Freshservice implements INodeType {
 						Object.assign(body, { type_fields: assetFields.reduce((obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }), {}) });
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/assets', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -584,6 +745,15 @@ export class Freshservice implements INodeType {
 						const assetDisplayId = this.getNodeParameter('assetDisplayId', i);
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', `/assets/${assetDisplayId}`);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -592,6 +762,15 @@ export class Freshservice implements INodeType {
 
 						const assetDisplayId = this.getNodeParameter('assetDisplayId', i);
 						responseData = await freshserviceApiRequest.call(this, 'GET', `/assets/${assetDisplayId}`);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'getAll') {
 
@@ -608,6 +787,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/assets', {}, qs);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'update') {
 
 						// ----------------------------------------
@@ -623,6 +811,15 @@ export class Freshservice implements INodeType {
 
 						const assetDisplayId = this.getNodeParameter('assetDisplayId', i);
 						responseData = await freshserviceApiRequest.call(this, 'PUT', `/assets/${assetDisplayId}`, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -650,6 +847,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/asset_types', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -661,6 +867,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/asset_types/${assetTypeId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -671,6 +886,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/asset_types/${assetTypeId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -678,6 +902,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/asset_types');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -695,6 +928,15 @@ export class Freshservice implements INodeType {
 						const assetTypeId = this.getNodeParameter('assetTypeId', i);
 						const endpoint = `/asset_types/${assetTypeId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -730,6 +972,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/changes', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -739,6 +990,15 @@ export class Freshservice implements INodeType {
 						const changeId = this.getNodeParameter('changeId', i);
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', `/changes/${changeId}`);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -747,6 +1007,15 @@ export class Freshservice implements INodeType {
 
 						const changeId = this.getNodeParameter('changeId', i);
 						responseData = await freshserviceApiRequest.call(this, 'GET', `/changes/${changeId}`);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'getAll') {
 
@@ -763,6 +1032,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/changes', {}, qs);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'update') {
 
 						// ----------------------------------------
@@ -778,6 +1056,15 @@ export class Freshservice implements INodeType {
 
 						const changeId = this.getNodeParameter('changeId', i);
 						responseData = await freshserviceApiRequest.call(this, 'PUT', `/changes/${changeId}`, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -811,6 +1098,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/departments', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -821,6 +1117,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/departments/${departmentId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -830,6 +1135,15 @@ export class Freshservice implements INodeType {
 						const departmentId = this.getNodeParameter('departmentId', i);
 						const endpoint = `/departments/${departmentId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'getAll') {
 
@@ -845,6 +1159,15 @@ export class Freshservice implements INodeType {
 						}
 
 						responseData = await handleListing.call(this, 'GET', '/departments', {}, qs);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -868,6 +1191,15 @@ export class Freshservice implements INodeType {
 						const departmentId = this.getNodeParameter('departmentId', i);
 						const endpoint = `/departments/${departmentId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -895,6 +1227,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/locations', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -904,6 +1245,15 @@ export class Freshservice implements INodeType {
 						const locationId = this.getNodeParameter('locationId', i);
 						const endpoint = `/locations/${locationId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'get') {
 
@@ -915,6 +1265,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/locations/${locationId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -922,6 +1281,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/locations');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -939,6 +1307,15 @@ export class Freshservice implements INodeType {
 						const locationId = this.getNodeParameter('locationId', i);
 						const endpoint = `/locations/${locationId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -971,6 +1348,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/problems', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -980,6 +1366,15 @@ export class Freshservice implements INodeType {
 						const problemId = this.getNodeParameter('problemId', i);
 						const endpoint = `/problems/${problemId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'get') {
 
@@ -991,6 +1386,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/problems/${problemId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -998,6 +1402,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/problems');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -1015,6 +1428,15 @@ export class Freshservice implements INodeType {
 						const problemId = this.getNodeParameter('problemId', i);
 						const endpoint = `/problems/${problemId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -1043,6 +1465,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/products', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -1054,6 +1485,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/products/${productId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -1064,6 +1504,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/products/${productId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -1071,6 +1520,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/products');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -1086,6 +1544,15 @@ export class Freshservice implements INodeType {
 						const productId = this.getNodeParameter('productId', i);
 						const endpoint = `/products/${productId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -1118,6 +1585,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/releases', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -1127,6 +1603,15 @@ export class Freshservice implements INodeType {
 						const releaseId = this.getNodeParameter('releaseId', i);
 						const endpoint = `/releases/${releaseId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'get') {
 
@@ -1138,6 +1623,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/releases/${releaseId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -1145,6 +1639,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/releases');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -1160,6 +1663,15 @@ export class Freshservice implements INodeType {
 						const releaseId = this.getNodeParameter('releaseId', i);
 						const endpoint = `/releases/${releaseId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -1195,6 +1707,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/requesters', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -1205,6 +1726,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/requesters/${requesterId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -1214,6 +1744,15 @@ export class Freshservice implements INodeType {
 						const requesterId = this.getNodeParameter('requesterId', i);
 						const endpoint = `/requesters/${requesterId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'getAll') {
 
@@ -1229,6 +1768,15 @@ export class Freshservice implements INodeType {
 						}
 
 						responseData = await handleListing.call(this, 'GET', '/requesters', {}, qs);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -1253,6 +1801,15 @@ export class Freshservice implements INodeType {
 						const requesterId = this.getNodeParameter('requesterId', i);
 						const endpoint = `/requesters/${requesterId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -1280,6 +1837,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/requester_groups', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -1289,6 +1855,15 @@ export class Freshservice implements INodeType {
 						const requesterGroupId = this.getNodeParameter('requesterGroupId', i);
 						const endpoint = `/requester_groups/${requesterGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'get') {
 
@@ -1300,6 +1875,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/requester_groups/${requesterGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -1307,6 +1891,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/requester_groups');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -1324,6 +1917,15 @@ export class Freshservice implements INodeType {
 						const requesterGroupId = this.getNodeParameter('requesterGroupId', i);
 						const endpoint = `/requester_groups/${requesterGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -1354,6 +1956,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/applications', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -1363,6 +1974,15 @@ export class Freshservice implements INodeType {
 						const softwareId = this.getNodeParameter('softwareId', i);
 						const endpoint = `/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'get') {
 
@@ -1374,6 +1994,15 @@ export class Freshservice implements INodeType {
 						const endpoint = `/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------------
@@ -1381,6 +2010,15 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						responseData = await handleListing.call(this, 'GET', '/applications');
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'update') {
 
@@ -1398,6 +2036,15 @@ export class Freshservice implements INodeType {
 						const softwareId = this.getNodeParameter('softwareId', i);
 						const endpoint = `/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 
@@ -1436,6 +2083,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/tickets', body);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'delete') {
 
 						// ----------------------------------------
@@ -1445,6 +2101,15 @@ export class Freshservice implements INodeType {
 						const ticketId = this.getNodeParameter('ticketId', i);
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'get') {
 
 						// ----------------------------------------
@@ -1453,6 +2118,15 @@ export class Freshservice implements INodeType {
 
 						const ticketId = this.getNodeParameter('ticketId', i);
 						responseData = await freshserviceApiRequest.call(this, 'GET', `/tickets/${ticketId}`);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					} else if (operation === 'getAll') {
 
@@ -1473,6 +2147,15 @@ export class Freshservice implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', endpoint, {}, qs);
 
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
+
 					} else if (operation === 'update') {
 
 						// ----------------------------------------
@@ -1488,6 +2171,15 @@ export class Freshservice implements INodeType {
 
 						const ticketId = this.getNodeParameter('ticketId', i);
 						responseData = await freshserviceApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, body);
+
+						returnData.push({
+							json: {
+								...items[i].json
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 
 					}
 				}
@@ -1507,15 +2199,22 @@ export class Freshservice implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			// Array.isArray(responseData)
+			// 	? returnData.push(...responseData)
+			// 	: returnData.push(responseData);
 
 		}
 
