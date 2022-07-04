@@ -151,7 +151,7 @@ export class Elasticsearch implements INodeType {
 						const body = {} as IDataObject;
 						const qs = {} as IDataObject;
 						const options = this.getNodeParameter('options', i) as DocumentGetAllOptions;
-						const paginate = this.getNodeParameter('paginate', i) as boolean;
+						// const paginate = this.getNodeParameter('paginate', i) as boolean;
 
 						if (Object.keys(options).length) {
 							const { query, ...rest } = options;
@@ -160,17 +160,19 @@ export class Elasticsearch implements INodeType {
 							qs._source = true;
 						}
 
-						if (paginate) {
-							const sortField = this.getNodeParameter('sortField', i) as string;
-							responseData = await elasticsearchApiRequestAllItems.call(this, indexId as string, body, qs, sortField);
-						} else {
-							const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (returnAll) {
 							//Defines the number of hits to return. Defaults to 10. By default, you cannot page through more than 10,000 hits
 							qs.size = 10000;
-
-							if (!returnAll) {
-								qs.size = this.getNodeParameter('limit', 0);
+							if (qs.sort) {
+								responseData = await elasticsearchApiRequestAllItems.call(this, indexId as string, body, qs);
+							} else {
+								responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
+								responseData = responseData.hits.hits;
 							}
+						} else {
+							qs.size = this.getNodeParameter('limit', 0);
 
 							responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
 							responseData = responseData.hits.hits;

@@ -48,7 +48,6 @@ export async function elasticsearchApiRequestAllItems(
 	indexId: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	sortField: string,
 ): Promise<any> { //tslint:disable-line:no-any
 	//https://www.elastic.co/guide/en/elasticsearch/reference/7.16/paginate-search-results.html#search-after
 	try {
@@ -68,12 +67,6 @@ export async function elasticsearchApiRequestAllItems(
 				id: pit,
 				keep_alive: '1m',
 			},
-			//Sorts hits for the search with an implicit tiebreak on _shard_doc ascending
-			sort: [
-				{
-					[sortField]: {order: 'asc', format: 'strict_date_optional_time_nanos', numeric_type : 'date_nanos' },
-				},
-			],
 			track_total_hits: false, //Disable the tracking of total hits to speed up pagination
 		};
 

@@ -213,6 +213,7 @@ export const documentFields: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
+		hint: 'By default, you cannot page through more than 10,000 hits. To page through more hits, add "Sort" from options.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -220,9 +221,6 @@ export const documentFields: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
-				],
-				paginate: [
-					false,
 				],
 			},
 		},
@@ -263,51 +261,6 @@ export const documentFields: INodeProperties[] = [
 				],
 				operation: [
 					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'By default, you cannot page through more than 10,000 hits. To page through more hits, use "Paginate Request".',
-		name: 'paginateNotice',
-		type: 'notice',
-		default: '',
-	},
-	{
-		displayName: 'Paginate Request',
-		name: 'paginate',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to search for more than 10,000 hits',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Sort Field',
-		name: 'sortField',
-		required: true,
-		description: 'Timestamp or date field in a target data stream',
-		placeholder: 'e.g. order_date',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
-				paginate: [
-					true,
 				],
 			},
 		},
