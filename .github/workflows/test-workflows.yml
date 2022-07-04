@@ -45,7 +45,7 @@ jobs:
         name: npm install and build
         run: |
           cd n8n
-          npm ci
+          npm install
           npm run bootstrap
           npm run build --if-present
         env:
