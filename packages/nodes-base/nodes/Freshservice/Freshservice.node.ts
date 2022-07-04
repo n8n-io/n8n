@@ -266,7 +266,7 @@ export class Freshservice implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -2084,9 +2084,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(this, 'POST', '/tickets', body);
 
 						returnData.push({
-							json: {
-								...items[i].json
-							},
+							json: responseData,
 							pairedItem: {
 								item: i,
 							},
@@ -2102,9 +2100,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`);
 
 						returnData.push({
-							json: {
-								...items[i].json
-							},
+							json: responseData,
 							pairedItem: {
 								item: i,
 							},
@@ -2120,9 +2116,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(this, 'GET', `/tickets/${ticketId}`);
 
 						returnData.push({
-							json: {
-								...items[i].json
-							},
+							json: responseData,
 							pairedItem: {
 								item: i,
 							},
@@ -2147,14 +2141,16 @@ export class Freshservice implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', endpoint, {}, qs);
 
-						returnData.push({
-							json: {
-								...items[i].json
-							},
-							pairedItem: {
-								item: i,
-							},
-						});
+						returnData.push(
+							...responseData.map(json => {
+								return {
+									json,
+									pairedItem: {
+										item: i,
+									},
+								}
+							})
+						);
 
 					} else if (operation === 'update') {
 
@@ -2173,9 +2169,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, body);
 
 						returnData.push({
-							json: {
-								...items[i].json
-							},
+							json: responseData,
 							pairedItem: {
 								item: i,
 							},
@@ -2218,6 +2212,6 @@ export class Freshservice implements INodeType {
 
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }
