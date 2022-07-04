@@ -59,6 +59,12 @@ export class NotionTrigger implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'In Notion, make sure you share your database with your integration. Otherwise it won\'t be accessible, or listed here.',
+				name: 'notionNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Database Name or ID',
 				name: 'databaseId',
 				type: 'options',
