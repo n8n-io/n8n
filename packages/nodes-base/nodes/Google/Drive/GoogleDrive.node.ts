@@ -55,8 +55,8 @@ export class GoogleDrive implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'API Version',
-				name: 'apiVersion',
+				displayName: 'Execute List Operation',
+				name: 'listFiles',
 				type: 'options',
 				isNodeSetting: true,
 				displayOptions: {
@@ -68,19 +68,19 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
-						name: 'Version 1',
-						value: 'version1',
+						name: 'Once',
+						value: 'once',
 					},
 					{
-						name: 'Version 2',
-						value: 'version2',
+						name: 'For Each Incoming Item',
+						value: 'forEachItem',
 					},
 				],
-				default: 'version1',
+				default: 'once',
 			},
 			{
-				displayName: 'API Version',
-				name: 'apiVersion',
+				displayName: 'Execute List Operation',
+				name: 'listFiles',
 				type: 'options',
 				isNodeSetting: true,
 				displayOptions: {
@@ -92,15 +92,15 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
-						name: 'Version 1',
-						value: 'version1',
+						name: 'Once',
+						value: 'once',
 					},
 					{
-						name: 'Version 2',
-						value: 'version2',
+						name: 'For Each Incoming Item',
+						value: 'forEachItem',
 					},
 				],
-				default: 'version2',
+				default: 'forEachItem',
 			},
 			{
 				displayName: 'Authentication',
@@ -2414,9 +2414,9 @@ export class GoogleDrive implements INodeType {
 
 						const files = response!.files;
 
-						const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+						const listFiles = this.getNodeParameter('listFiles', 0) as string;
 
-						if (apiVersion === 'version1') {
+						if (listFiles === 'once') {
 							return [this.helpers.returnJsonArray(files as IDataObject[])];
 						} else {
 							returnData.push(...files);
