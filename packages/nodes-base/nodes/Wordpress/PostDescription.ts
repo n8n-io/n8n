@@ -257,6 +257,72 @@ export const postFields: INodeProperties[] = [
 				default: [],
 				description: 'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
+			{
+				displayName: 'Template',
+				name: 'postTemplate',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Elementor Template',
+								name: 'elementor',
+								type: 'boolean',
+								default: true,
+								description: 'Whether site uses elementor page builder',
+							},
+							{
+								displayName: 'Template',
+								name: 'template',
+								type: 'string',
+								default: '',
+								description: 'The theme file to use',
+								displayOptions: {
+									show: {
+										elementor: [ false ],
+									},
+								},
+							},
+							{
+								displayName: 'Template',
+								name: 'template',
+								type: 'options',
+								options: [
+									{
+										name: 'Standard',
+										value: '',
+									},
+									{
+										name: 'Elementor Canvas',
+										value: 'elementor_canvas',
+									},
+									{
+										name: 'Elementor Header Footer',
+										value: 'elementor_header_footer',
+									},
+									{
+										name: 'Elementor Theme',
+										value: 'elementor_theme',
+									},
+								],
+								default: '',
+								description: 'The Elementor template to use',
+								displayOptions: {
+									show: {
+										elementor: [ true ],
+									},
+								},
+							},
+						],
+					},
+				],
+			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
@@ -476,6 +542,72 @@ export const postFields: INodeProperties[] = [
 				},
 				default: [],
 				description: 'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			},
+			{
+				displayName: 'Template',
+				name: 'postTemplate',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Elementor Template',
+								name: 'elementor',
+								type: 'boolean',
+								default: true,
+								description: 'Whether site uses elementor page builder',
+							},
+							{
+								displayName: 'Template',
+								name: 'template',
+								type: 'string',
+								default: '',
+								description: 'The theme file to use',
+								displayOptions: {
+									show: {
+										elementor: [ false ],
+									},
+								},
+							},
+							{
+								displayName: 'Template',
+								name: 'template',
+								type: 'options',
+								options: [
+									{
+										name: 'Standard',
+										value: '',
+									},
+									{
+										name: 'Elementor Canvas',
+										value: 'elementor_canvas',
+									},
+									{
+										name: 'Elementor Header Footer',
+										value: 'elementor_header_footer',
+									},
+									{
+										name: 'Elementor Theme',
+										value: 'elementor_theme',
+									},
+								],
+								default: '',
+								description: 'The Elementor template to use',
+								displayOptions: {
+									show: {
+										elementor: [ true ],
+									},
+								},
+							},
+						],
+					},
+				],
 			},
 		],
 	},
