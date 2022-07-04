@@ -481,8 +481,8 @@ export class DateTime implements INodeType {
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
 
 					const newDate = fromFormat
-						? parseDateByFormat(dateValue, fromFormat)
-						: parseDateByDefault(dateValue);
+						? parseDateByFormat.call(this, dateValue, fromFormat)
+						: parseDateByDefault.call(this, dateValue);
 
 					operation === 'add'
 						? newDate.add(duration, timeUnit).utc().format()
@@ -536,24 +536,24 @@ export class DateTime implements INodeType {
 	}
 }
 
-function parseDateByFormat(value: string, fromFormat: string) {
+function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
 	const date = moment(value, fromFormat, true);
 	if (moment(date).isValid()) return date;
 
-	throw new Error('Date input cannot be parsed. Please recheck the value and the "From Format" field.');
+	throw new NodeOperationError(this.getNode(), 'Date input cannot be parsed. Please recheck the value and the "From Format" field.');
 }
 
-function parseDateByDefault(value: string) {
-	const isoValue = getIsoValue(value);
+function parseDateByDefault(this: IExecuteFunctions, value: string) {
+	const isoValue = getIsoValue.call(this, value);
 	if (moment(isoValue).isValid()) return moment(isoValue);
 
-	throw new Error('Unrecognized date input. Please specify a format in the "From Format" field.');
+	throw new NodeOperationError(this.getNode(), 'Unrecognized date input. Please specify a format in the "From Format" field.');
 }
 
-function getIsoValue(value: string) {
+function getIsoValue(this: IExecuteFunctions, value: string) {
 	try {
 		return new Date(value).toISOString(); // may throw due to unpredictable input
 	} catch (error) {
-		throw new Error('Unrecognized date input. Please specify a format in the "From Format" field.');
+		throw new NodeOperationError(this.getNode(), 'Unrecognized date input. Please specify a format in the "From Format" field.');
 	}
 }

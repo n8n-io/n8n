@@ -438,6 +438,7 @@ export const channelFields: INodeProperties[] = [
 									{
 										displayName: 'Profile Color',
 										name: 'profileColor',
+										// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 										type: 'string',
 										default: '',
 										description: 'A prominent color that complements the channel\'s content',
