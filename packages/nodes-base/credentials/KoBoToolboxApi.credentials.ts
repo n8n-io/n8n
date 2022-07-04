@@ -1,5 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	NodePropertyTypes,
@@ -26,12 +26,13 @@ export class KoBoToolboxApi implements ICredentialType {
 		},
 	];
 	authenticate = {
-		type: 'headerAuth',
+		type: 'generic',
 		properties: {
-			name: 'Authorization',
-			value: '=Token {{$credentials.token}}',
+			headers: {
+				Authorization: '=Token {{$credentials.token}}',
+			},
 		},
-	} as IAuthenticateHeaderAuth;
+	} as IAuthenticateGeneric;
 
 	test: ICredentialTestRequest = {
 		request: {
