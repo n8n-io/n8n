@@ -283,6 +283,7 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'Client Names or IDs',
 				name: 'clients',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
