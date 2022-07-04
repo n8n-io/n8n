@@ -15,6 +15,11 @@ export const messageFields: INodeProperties[] = [
 				property: 'messaging_product',
 			},
 		},
+		displayOptions: {
+			show: {
+				resource: ['messages'],
+			},
+		},
 	},
 	{
 		displayName: 'Phone Number ID',
@@ -31,6 +36,11 @@ export const messageFields: INodeProperties[] = [
 				url: '={{$value}}/messages',
 			},
 		},
+		displayOptions: {
+			show: {
+				resource: ['messages'],
+			},
+		},
 	},
 	{
 		displayName: "Recipient's Phone Number",
@@ -43,6 +53,11 @@ export const messageFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'to',
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['messages'],
 			},
 		},
 	},
@@ -83,6 +98,11 @@ export const messageFields: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'type',
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['messages'],
 			},
 		},
 	},
@@ -243,6 +263,7 @@ export const messageTypeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				type: ['template'],
+				resource: ['messages'],
 			},
 		},
 		required: true,
@@ -263,6 +284,7 @@ export const messageTypeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				type: ['template'],
+				resource: ['messages'],
 			},
 		},
 		description:
@@ -283,7 +305,10 @@ export const messageTypeFields: INodeProperties[] = [
 			multipleValues: true,
 		},
 		displayOptions: {
-			show: { type: ['template'] },
+			show: {
+				type: ['template'],
+				resource: ['messages'],
+			},
 		},
 		default: {},
 		routing: {

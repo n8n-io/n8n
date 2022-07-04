@@ -1,7 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { apiRequest } from './GenericFunctions';
-
 import {
 	IBinaryData,
 	IDataObject,
@@ -13,6 +11,7 @@ import {
 
 import { mediaTypes, messageFields, messageTypeFields } from './MessagesDescription';
 import { OptionsWithUri } from 'request';
+import { mediaFields, mediaTypeFields } from './MediaDescription';
 
 export class WhatsApp implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +20,8 @@ export class WhatsApp implements INodeType {
 		icon: 'file:whatsapp.svg',
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{ $parameter["resource"] + ": " + $parameter["type"] }}',
+		subtitle:
+			'={{ $parameter["resource"] + ": " + ($parameter["resource"] == "media" ? $parameter["operation"] : $parameter["type"]) }}',
 		description: 'Access WhatsApp API',
 		defaults: {
 			name: 'WhatsApp',
@@ -57,6 +57,8 @@ export class WhatsApp implements INodeType {
 			},
 			...messageFields,
 			...messageTypeFields,
+			...mediaFields,
+			...mediaTypeFields,
 		],
 	};
 }
