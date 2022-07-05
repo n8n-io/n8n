@@ -168,9 +168,7 @@ export default mixins(restApi).extend({
 			const isCommunityNode = isCommunityPackageName(activeNode.type);
 
 			if (!type || !type.documentationUrl) {
-				return isCommunityNode ?
-					`${NPM_PACKAGE_DOCS_BASE_URL}${activeNode.type.split('.')[0]}` :
-					'';
+				return '';
 			}
 
 			if (type.documentationUrl.startsWith('https://') || type.documentationUrl.startsWith('http://')) {
@@ -178,7 +176,7 @@ export default mixins(restApi).extend({
 			}
 
 			return  isCommunityNode ?
-				`${NPM_PACKAGE_DOCS_BASE_URL}${activeNode.type.split('.')[0]}` :
+				'' : // Don't show documentation link for community nodes if the URL is not an absolute path
 				`https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
 		},
 		isGoogleOAuthType(): boolean {
