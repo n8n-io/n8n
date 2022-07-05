@@ -227,14 +227,14 @@ export const userDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'loadUserCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -258,6 +258,7 @@ export const userDescription: INodeProperties[] = [
 				displayName: 'Email Address',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -277,10 +278,10 @@ export const userDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Organization Name/ID',
+				displayName: 'Organization Name or ID',
 				name: 'organization',
 				type: 'options',
-				description: 'Name of the organization to assign to the user. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Name of the organization to assign to the user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'loadOrganizations',
@@ -404,14 +405,14 @@ export const userDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'loadUserCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -469,10 +470,10 @@ export const userDescription: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Organization Name/ID',
+				displayName: 'Organization Name or ID',
 				name: 'organization',
 				type: 'options',
-				description: 'Name of the organization to assign to the user. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Name of the organization to assign to the user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'loadOrganizationNames',
@@ -629,9 +630,10 @@ export const userDescription: INodeProperties[] = [
 						name: 'sortDetails',
 						values: [
 							{
-								displayName: 'Sort Key',
+								displayName: 'Sort Key Name or ID',
 								name: 'sort_by',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadUserFields',
 								},

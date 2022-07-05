@@ -36,9 +36,10 @@ export const boardColumnFields: INodeProperties[] = [
 /*                                 boardColumn:create                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -79,12 +80,12 @@ export const boardColumnFields: INodeProperties[] = [
 		default: '',
 		options: [
 			{
-				name: 'Country',
-				value: 'country',
-			},
-			{
 				name: 'Checkbox',
 				value: 'checkbox',
+			},
+			{
+				name: 'Country',
+				value: 'country',
 			},
 			{
 				name: 'Date',
@@ -208,9 +209,10 @@ export const boardColumnFields: INodeProperties[] = [
 /*                                 boardColumn:getAll                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',

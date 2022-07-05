@@ -141,9 +141,10 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:leave                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -165,9 +166,10 @@ export const roomFields: INodeProperties[] = [
 	/*                                 room:invite                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -210,9 +212,10 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:kick                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},

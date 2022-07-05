@@ -159,11 +159,11 @@ export const announcementFields: INodeProperties[] = [
 				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Department Names/IDs',
+				displayName: 'Department Names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -326,11 +326,11 @@ export const announcementFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Department Names/IDs',
+				displayName: 'Department Names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},

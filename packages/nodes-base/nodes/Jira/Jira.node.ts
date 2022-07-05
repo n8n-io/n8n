@@ -1,6 +1,7 @@
+
 import {
-	OptionsWithUri,
-} from 'request';
+	mergeWith,
+} from 'lodash';
 
 import {
 	IExecuteFunctions,
@@ -9,16 +10,12 @@ import {
 import {
 	IBinaryData,
 	IBinaryKeyData,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -615,6 +612,17 @@ export class Jira implements INodeType {
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
 
 					if (simplifyOutput) {
+						// Use rendered fields if requested and available
+						qs.expand = qs.expand || '';
+						if (
+							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
+							responseData.renderedFields && Object.keys(responseData.renderedFields).length
+						) {
+							responseData.fields = mergeWith(
+								responseData.fields,
+								responseData.renderedFields,
+								(a,b) => b === null ? a : b);
+						}
 						returnData.push(simplifyIssueOutput(responseData));
 					} else {
 						returnData.push(responseData);

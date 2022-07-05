@@ -1,8 +1,7 @@
 import {
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -15,6 +14,7 @@ export class JiraSoftwareServerApi implements ICredentialType {
 			displayName: 'Email',
 			name: 'email',
 			type: 'string',
+			placeholder: 'name@email.com',
 			default: '',
 		},
 		{
@@ -34,17 +34,15 @@ export class JiraSoftwareServerApi implements ICredentialType {
 			placeholder: 'https://example.com',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		const data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
-		if(requestOptions.headers) {
-		requestOptions.headers!['Authorization'] = `Basic ${data}`;
-		} else {
-			requestOptions.headers = {
-				Authorization: `Basic ${data}`,
-			};
-		}
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth:{
+				username: '={{$credentials.email}}',
+				password: '={{$credentials.password}}',
+			},
+		},
+	};
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.domain}}',

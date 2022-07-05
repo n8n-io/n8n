@@ -18,7 +18,9 @@ import moment from 'moment';
 export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = await this.getCredentials('cortexApi');
+
 	let options: OptionsWithUri = {
+		headers: {},
 		method,
 		qs: query,
 		uri: uri || `${credentials.host}/api${resource}`,
@@ -37,7 +39,7 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'cortexApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

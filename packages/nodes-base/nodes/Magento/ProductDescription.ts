@@ -93,9 +93,10 @@ export const productFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Attribute Set Name/ID',
+		displayName: 'Attribute Set Name or ID',
 		name: 'attributeSetId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [

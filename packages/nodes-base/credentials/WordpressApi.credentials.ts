@@ -1,7 +1,6 @@
 import { IHttpRequestOptions } from 'n8n-workflow';
 import {
-	IAuthenticateBasicAuth,
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -35,19 +34,21 @@ export class WordpressApi implements ICredentialType {
 			placeholder: 'https://example.com',
 		},
 	];
+ authenticate: IAuthenticateGeneric = {
+	type: 'generic',
+	properties: {
+		auth: {
+			username: '={{$credentials.username}}',
+			password: '={{$credentials.password}}',
+		},
+	},
+};
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials?.url}}',
-			url: '/v2/users',
+			baseURL: '={{$credentials?.url}}/wp-json/wp/v2',
+			url: '/users',
+			method: 'GET',
 		},
 	};
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.auth = {
-			// @ts-ignore
-			user: credentials.username as string,
-			password: credentials.password as string,
-		};
-		return requestOptions;
-	}
 }
 

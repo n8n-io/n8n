@@ -32,7 +32,8 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 		delete options.body;
 	}
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'wordpressApi', options);
+		const credentialType = 'wordpressApi';
+		return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -263,7 +263,7 @@ export class JiraTrigger implements INodeType {
 						name: 'excludeBody',
 						type: 'boolean',
 						default: false,
-						description: 'Request with empty body will be sent to the URL. Leave unchecked if you want to receive JSON.',
+						description: 'Whether a request with empty body will be sent to the URL. Leave unchecked if you want to receive JSON.',
 					},
 					{
 						displayName: 'Filter',

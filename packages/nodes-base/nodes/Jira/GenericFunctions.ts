@@ -19,19 +19,19 @@ import {
 } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	let domain;
 
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
-	let jiraCredentials: ICredentialDataDecryptedObject;
-	if (jiraVersion === 'server') {
-		jiraCredentials = await this.getCredentials('jiraSoftwareServerApi');
-	} else {
-		jiraCredentials = await this.getCredentials('jiraSoftwareCloudApi');
-	}
+	let domain = '';
+	let credentialType: string;
 
-	domain = jiraCredentials!.domain;
-	const methodPlaceholder = method as IHttpRequestMethods;
+	if (jiraVersion === 'server') {
+		domain = (await this.getCredentials('jiraSoftwareServerApi')).domain as string;
+		credentialType = 'jiraSoftwareServerApi';
+	} else {
+		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
+		credentialType = 'jiraSoftwareCloudApi';
+	}
 
 	const options: IHttpRequestOptions = {
 		headers: {
@@ -39,7 +39,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 			'Content-Type': 'application/json',
 			'X-Atlassian-Token': 'no-check',
 		},
-		method: methodPlaceholder,
+		method: method as IHttpRequestMethods,
 		qs: query,
 		url: `${domain}/rest${endpoint}`,
 		body,
@@ -59,11 +59,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 
 	try {
-		if (jiraVersion === 'server') {
-			return await this.helpers.httpRequestWithAuthentication.call(this, 'jiraSoftwareServerApi', options);
-		} else {
-			return await this.helpers.httpRequestWithAuthentication.call(this, 'jiraSoftwareCloudApi', options);
-		}
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

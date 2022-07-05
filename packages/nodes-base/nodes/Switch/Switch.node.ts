@@ -124,7 +124,8 @@ export class Switch implements INodeType {
 					},
 				},
 				default: false,
-				description: 'The value to compare with the second one',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'The value to compare with the first one',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -173,6 +174,7 @@ export class Switch implements INodeType {
 								name: 'value2',
 								type: 'boolean',
 								default: false,
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 								description: 'The value to compare with the first one',
 							},
 							{
@@ -242,11 +244,11 @@ export class Switch implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'Occurred after',
+										name: 'Occurred After',
 										value: 'after',
 									},
 									{
-										name: 'Occurred before',
+										name: 'Occurred Before',
 										value: 'before',
 									},
 								],
@@ -325,6 +327,7 @@ export class Switch implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Smaller',
@@ -426,6 +429,7 @@ export class Switch implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Contains',
@@ -531,6 +535,7 @@ export class Switch implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'None',
