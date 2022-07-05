@@ -59,7 +59,10 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return JSON.parse(await this.helpers.request!(options));
 	} catch (error) {
-		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
+		const errorMessage =
+		 	(error.response && error.response.body && error.response.body.message) ||
+		  (error.response && error.response.body && error.response.body.Message) ||
+			error.message;
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
 				throw new Error('The AWS credentials are not valid!');
