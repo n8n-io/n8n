@@ -445,6 +445,20 @@ export const documentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Source Excludes',
+				name: '_source_excludes',
+				description: 'Comma-separated list of source fields to exclude from the response',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Source Includes',
+				name: '_source_includes',
+				description: 'Comma-separated list of source fields to include in the response',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Stats',
 				name: 'stats',
 				description: 'Tag of the request for logging and statistical purposes',
