@@ -10,6 +10,15 @@ import {
 
 const hasKeys = (obj: object) => !!Object.keys(obj).length;
 
+export async function filtersPreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	const filters = this.getNodeParameter('filters') as any;
+	if ('modifiedBefore' in filters != 'modifiedAfter' in filters) {
+		const message = "'Modified Before' and 'Modified After' must both be specified."
+		throw new NodeApiError(this.getNode(), {}, { message, description: message });
+	}
+	return requestOptions;
+}
+
 export async function profileFiltersPreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
 	const filters = this.getNodeParameter('filters') as any;
 	if (hasKeys(filters)) {
@@ -25,7 +34,6 @@ export async function profileFiltersPreSendAction(this: IExecuteSingleFunctions,
 	return requestOptions;
 }
 
-
 export async function squarespaceApiPagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<INodeExecutionData[]> {
 
 	const responseData: INodeExecutionData[] = [];
@@ -36,6 +44,7 @@ export async function squarespaceApiPagination(this: IExecutePaginationFunctions
 		'product': 'products',
 		'inventory': 'inventory',
 		'profile': 'profiles',
+		'transaction': 'documents',
 	}
 	const rootProperty = resourceMapping[resource]
 

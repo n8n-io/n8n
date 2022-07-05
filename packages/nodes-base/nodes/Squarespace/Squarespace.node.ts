@@ -8,6 +8,7 @@ import { squarespaceApiPagination } from './GenericFunctions';
 import { inventoryFields, inventoryOperations } from './description/InventoryDescription';
 import { productFields, productOperations } from './description/ProductDescription';
 import { profileFields, profileOperations } from './description/ProfileDescription';
+import { transactionFields, transactionOperations } from './description/TransactionDescription';
 
 const resource: INodeProperties = {
 	displayName: 'Resource',
@@ -26,6 +27,10 @@ const resource: INodeProperties = {
 		{
 			name: 'Profile',
 			value: 'profile',
+		},
+		{
+			name: 'Transaction',
+			value: 'transaction',
 		},
 	],
 	default: '',
@@ -73,6 +78,8 @@ export class Squarespace implements INodeType {
 			...productFields,
 			...profileOperations,
 			...profileFields,
+			...transactionOperations,
+			...transactionFields,
 		],
 	};
 }
