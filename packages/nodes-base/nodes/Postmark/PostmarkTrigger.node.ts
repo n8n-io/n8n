@@ -19,6 +19,7 @@ export class PostmarkTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Postmark Trigger',
 		name: 'postmarkTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:postmark.png',
 		group: ['trigger'],
 		version: 1,
@@ -86,6 +87,7 @@ export class PostmarkTrigger implements INodeType {
 			{
 				displayName: 'First Open',
 				name: 'firstOpen',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Only fires on first open for event "Open"',
 				type: 'boolean',
 				default: false,
@@ -100,7 +102,7 @@ export class PostmarkTrigger implements INodeType {
 			{
 				displayName: 'Include Content',
 				name: 'includeContent',
-				description: 'Includes message content for events "Bounce" and "Spam Complaint"',
+				description: 'Whether to include message content for events "Bounce" and "Spam Complaint"',
 				type: 'boolean',
 				default: false,
 				displayOptions: {

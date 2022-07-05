@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -26,6 +27,7 @@ export class UProc implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'uProc',
 		name: 'uproc',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:uproc.png',
 		group: ['output'],
 		version: 1,
