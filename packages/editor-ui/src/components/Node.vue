@@ -35,7 +35,13 @@
 						<div slot="content" v-text="getTriggerNodeTooltip"></div>
 						<span />
 					</n8n-tooltip>
-					<n8n-tooltip v-if="isTriggerNode" placement="top" :manual="true" :value="showPinDataDiscoveryTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+					<n8n-tooltip
+						v-if="isTriggerNode"
+						placement="top"
+						:manual="true"
+						:value="showPinDataDiscoveryTooltip"
+						popper-class="node-trigger-tooltip__wrapper--item"
+					>
 						<template #content>
 							{{ $locale.baseText('node.pinData') }}
 						</template>
@@ -335,17 +341,8 @@ export default mixins(
 		nodeRunData(newValue) {
 			this.$emit('run', {name: this.data.name, data: newValue, waiting: !!this.waiting});
 		},
-		workflowDataItems(newValue) {
-			const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG);
-
-			if (newValue > 0 && !hasSeenPinDataTooltip) {
-				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
-
-				this.showPinDataDiscoveryTooltip = true;
-				setTimeout(() => {
-					this.showPinDataDiscoveryTooltip = false;
-				}, 5000);
-			}
+		workflowDataItems(dataItemsCount: number) {
+			this.checkPinDataDiscoveryFlow(dataItemsCount);
 		},
 	},
 	mounted() {
@@ -364,6 +361,22 @@ export default mixins(
 		};
 	},
 	methods: {
+		checkPinDataDiscoveryFlow(dataItemsCount: number): void {
+			if (!this.isTriggerNode) {
+				return;
+			}
+
+			const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG);
+
+			if (dataItemsCount > 0 && !hasSeenPinDataTooltip) {
+				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
+
+				this.showPinDataDiscoveryTooltip = true;
+				setTimeout(() => {
+					this.showPinDataDiscoveryTooltip = false;
+				}, 5000);
+			}
+		},
 		setSubtitle() {
 			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
 

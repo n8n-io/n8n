@@ -59,14 +59,9 @@
 					v-if="canPinData && (jsonData && jsonData.length > 0)"
 					v-show="!editMode.enabled"
 					:value="showPinDataDiscoveryTooltip"
-					:manual="showPinDataDiscoveryTooltip"
+					:manual="isControlledPinDataTooltip"
 				>
-					<template #content v-if="showPinDataDiscoveryTooltip">
-						<div :class="$style['tooltip-container']">
-							{{ $locale.baseText('node.pinData') }}
-						</div>
-					</template>
-					<template #content v-else>
+					<template #content v-if="!isControlledPinDataTooltip">
 						<div :class="$style['tooltip-container']">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
@@ -75,6 +70,11 @@
 							<n8n-link :to="dataPinningDocsUrl" size="small">
 								{{ $locale.baseText('ndv.pinData.pin.link') }}
 							</n8n-link>
+						</div>
+					</template>
+					<template #content v-else>
+						<div :class="$style['tooltip-container']">
+							{{ $locale.baseText('node.pinData') }}
 						</div>
 					</template>
 					<n8n-icon-button
@@ -478,6 +478,7 @@ export default mixins(
 				eventBus: dataPinningEventBus,
 
 				showPinDataDiscoveryTooltip: false,
+				isControlledPinDataTooltip: false,
 			};
 		},
 		mounted() {
@@ -512,6 +513,9 @@ export default mixins(
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
 				return null;
+			},
+			isTriggerNode (): boolean {
+				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 			},
 			isPinDataNodeType(): boolean {
 				return !!this.node && !PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type);
@@ -686,17 +690,26 @@ export default mixins(
 				});
 			},
 			checkPinDataDiscoveryFlow(value: IDataObject[]) {
+				if (!this.isTriggerNode) {
+					return;
+				}
+
 				const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG);
 				if (value && value.length > 0 && !hasSeenPinDataTooltip) {
 					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG, 'true');
 					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
 
+					this.isControlledPinDataTooltip = true;
 					setTimeout(() => {
 						this.showPinDataDiscoveryTooltip = true;
-					}, 500);
+					}, 500); // Wait for ndv to load before showing tooltip
 
 					setTimeout(() => {
 						this.showPinDataDiscoveryTooltip = false;
+
+						setTimeout(() => {
+							this.isControlledPinDataTooltip = false;
+						}, 500); // Wait for tooltip to disappear
 					}, 4500);
 				}
 			},
