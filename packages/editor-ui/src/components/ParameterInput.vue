@@ -817,6 +817,8 @@ export default mixins(
 			optionSelected (command: string) {
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
+				} else if (command === 'openExpression') {
+					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
 						this.valueChanged(`={{${this.value}}}`);

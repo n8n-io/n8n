@@ -92,8 +92,8 @@ export default Vue.extend({
 	},
 	methods: {
 		onViewSelected(selected: string) {
-			if (selected === 'expression' && !this.isValueExpression) {
-				this.$emit('optionSelected', 'addExpression');
+			if (selected === 'expression' ) {
+				this.$emit('optionSelected', this.isValueExpression? 'openExpression': 'addExpression');
 			}
 
 			if (selected === 'fixed' && this.isValueExpression) {
