@@ -453,7 +453,7 @@ export default mixins(
 
 			if (this.outputPanelEditMode.enabled) {
 				const shouldPinDataBeforeClosing = await this.confirmMessage(
-					this.$locale.baseText('ndv.pinData.beforeClosing.description'),
+					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
 					null,
 					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
