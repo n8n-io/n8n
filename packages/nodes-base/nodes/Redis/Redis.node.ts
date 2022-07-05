@@ -497,7 +497,7 @@ export class Redis implements INodeType {
 						],
 					},
 				},
-				default: 'data',
+				default: 'propertyName',
 				description: 'Optional name of the property to write received data to. Supports dot-notation. Example: "data.person[0].name".',
 			},
 			{
@@ -762,11 +762,11 @@ export class Redis implements INodeType {
 							} else if (operation === 'pop'){
 								const redisList = this.getNodeParameter('list', itemIndex) as string;
 								const tail = this.getNodeParameter('tail', itemIndex, false) as boolean;
-								const propertyName = this.getNodeParameter('propertyName', itemIndex, 'data') as string;
+								const propertyName = this.getNodeParameter('propertyName', itemIndex, 'propertyName') as string;
 
 								const action = tail ? client.rpop : client.lpop;
-								const clientPush = util.promisify(action).bind(client);
-								const value = await clientPush(redisList);
+								const clientPop = util.promisify(action).bind(client);
+								const value = await clientPop(redisList);
 
 								let outputValue;
 								try {
