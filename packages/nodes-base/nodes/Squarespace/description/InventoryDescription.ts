@@ -17,46 +17,6 @@ export const inventoryOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/commerce/inventory',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'inventory',
-								},
-							},
-						],
-					},
-				},
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				routing: {
-					request: {
-						method: 'DELETE',
-						url: '=/commerce/inventory/{{$parameter.inventoryId}}',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'set',
-								properties: {
-									value: '={{ { "success": true } }}',
-								},
-							},
-						],
-					},
-				},
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				routing: {
@@ -89,31 +49,30 @@ export const inventoryOperations: INodeProperties[] = [
 					},
 				}
 			},
-			{
-				name: 'Update',
-				value: 'update',
-				routing: {
-					request: {
-						method: 'PUT',
-						url: '=/commerce/inventory/{{$parameter.inventoryId}}',
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'inventory',
-								},
-							},
-						],
-					},
-				},
-			},
 		],
 		default: 'create',
 	},
 ];
 
+const getOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Inventory ID',
+		name: 'inventoryId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'inventory',
+				],
+				operation: [
+					'get',
+				]
+			},
+		},
+		default: '',
+	},
+];
 
 const getAllOperations: Array<INodeProperties> = [
 	{
@@ -150,5 +109,6 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 export const inventoryFields: INodeProperties[] = [
+	...getOperations,
 	...getAllOperations,
 ];
