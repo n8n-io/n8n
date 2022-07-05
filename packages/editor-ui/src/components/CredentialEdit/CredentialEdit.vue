@@ -661,10 +661,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				if (this.isOAuthType) {
 					trackProperties.is_valid = !!this.isOAuthConnected;
-				} else {
-					if (this.credentialType && this.credentialType.test) {
-						trackProperties.is_valid = !!this.testedSuccessfully;
-					}
+				} else if (this.isCredentialTestable) {
+					trackProperties.is_valid = !!this.testedSuccessfully;
 				}
 
 				if (this.$store.getters.activeNode) {
