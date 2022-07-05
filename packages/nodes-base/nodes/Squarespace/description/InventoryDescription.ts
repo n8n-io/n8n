@@ -2,7 +2,7 @@ import {
 	INodeProperties
 } from 'n8n-workflow';
 
-export const productOperations: INodeProperties[] = [
+export const inventoryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -11,7 +11,7 @@ export const productOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'product',
+					'inventory',
 				],
 			},
 		},
@@ -22,14 +22,14 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '/products',
+						url: '/inventory',
 					},
 					output: {
 						postReceive: [
 							{
 								type: 'rootProperty',
 								properties: {
-									property: 'product',
+									property: 'inventory',
 								},
 							},
 						],
@@ -42,7 +42,7 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/products/{{$parameter.productId}}',
+						url: '=/inventory/{{$parameter.inventoryId}}',
 					},
 					output: {
 						postReceive: [
@@ -62,14 +62,14 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/products/{{$parameter.productId}}',
+						url: '=/inventory/{{$parameter.inventoryId}}',
 					},
 					output: {
 						postReceive: [
 							{
 								type: 'rootProperty',
 								properties: {
-									property: 'product',
+									property: 'inventory',
 								},
 							},
 						],
@@ -82,7 +82,7 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '/products',
+						url: '/inventory',
 					},
 					send: {
 						paginate: true,
@@ -95,14 +95,14 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/products/{{$parameter.productId}}',
+						url: '=/inventory/{{$parameter.inventoryId}}',
 					},
 					output: {
 						postReceive: [
 							{
 								type: 'rootProperty',
 								properties: {
-									property: 'product',
+									property: 'inventory',
 								},
 							},
 						],
@@ -123,7 +123,7 @@ const getAllOperations: Array<INodeProperties> = [
 		displayOptions: {
 			show: {
 				resource: [
-					'product',
+					'inventory',
 				],
 				operation: [
 					'getAll',
@@ -140,7 +140,7 @@ const getAllOperations: Array<INodeProperties> = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			resource: [
-	// 				'product',
+	// 				'inventory',
 	// 			],
 	// 			operation: [
 	// 				'getAll',
@@ -175,7 +175,7 @@ const getAllOperations: Array<INodeProperties> = [
 		displayOptions: {
 			show: {
 				resource: [
-					'product',
+					'inventory',
 				],
 				operation: [
 					'getAll',
@@ -213,6 +213,6 @@ const getAllOperations: Array<INodeProperties> = [
 	},
 ];
 
-export const productFields: INodeProperties[] = [
+export const inventoryFields: INodeProperties[] = [
 	...getAllOperations,
 ];

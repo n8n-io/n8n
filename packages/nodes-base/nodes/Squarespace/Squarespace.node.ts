@@ -3,8 +3,10 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { productFields, productOperations } from './description/ProductDescription';
 
+import { squarespaceApiPagination } from './GenericFunctions';
+import { inventoryFields, inventoryOperations } from './description/InventoryDescription';
+import { productFields, productOperations } from './description/ProductDescription';
 
 const resource: INodeProperties = {
 	displayName: 'Resource',
@@ -12,6 +14,10 @@ const resource: INodeProperties = {
 	type: 'options',
 	noDataExpression: true,
 	options: [
+		{
+			name: 'Inventory',
+			value: 'inventory',
+		},
 		{
 			name: 'Product',
 			value: 'product',
@@ -50,10 +56,15 @@ export class Squarespace implements INodeType {
 			// 	"Content-Type": "application/json"
 			// },
 		},
+		requestOperations: {
+			pagination: squarespaceApiPagination
+		},
 		properties: [
 			resource,
 			...productOperations,
 			...productFields,
+			...inventoryOperations,
+			...inventoryFields,
 		],
 	};
 }
