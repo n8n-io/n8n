@@ -470,7 +470,6 @@ export class Redis implements INodeType {
 				default: '',
 				required: true,
 				description: 'Data to push',
-				hint: 'Value or a string of comma separated values',
 			},
 			{
 				displayName: 'Tail',
