@@ -146,7 +146,6 @@ export default mixins(
 					}
 
 				} else {
-					trackProperties.node_type_source = this.$store.getters.activeNode.type.split('.')[1];
 					trackProperties.is_immediate_input = true;
 
 					if(splitVar[0].startsWith('$parameter')) {
