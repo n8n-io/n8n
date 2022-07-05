@@ -122,7 +122,7 @@ export function generateNodesGraph(
 		notes: {},
 	};
 	const nodeNameAndIndex: INodeNameIndex = {};
-	let webhookNodeName = null;
+	const webhookNodeNames: string[] = [];
 
 	try {
 		const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
@@ -177,7 +177,7 @@ export function generateNodesGraph(
 				nodeItem.domain_path = getDomainPath(url);
 				nodeItem.method = node.parameters.requestMethod as string;
 			} else if (node.type === 'n8n-nodes-base.webhook') {
-				webhookNodeName = node.name;
+				webhookNodeNames.push(node.name);
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -212,8 +212,8 @@ export function generateNodesGraph(
 			});
 		});
 	} catch (_) {
-		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeName };
+		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 	}
 
-	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeName };
+	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 }
