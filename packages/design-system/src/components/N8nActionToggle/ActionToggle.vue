@@ -1,6 +1,6 @@
 <template>
 	<span :class="$style.container">
-		<el-dropdown :placement="placement" trigger="click" @command="onCommand">
+		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand">
 			<span :class="$style.button">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
@@ -11,6 +11,7 @@
 					v-for="action in actions"
 					:key="action.value"
 					:command="action.value"
+					:disabled="action.disabled"
 				>
 					{{action.label}}
 				</el-dropdown-item>
@@ -42,7 +43,13 @@ export default {
 			type: String,
 			default: 'bottom',
 			validator: (value: string): boolean =>
-				['top', 'bottom'].includes(value),
+				['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'].includes(value),
+		},
+		size: {
+			type: String,
+			default: 'medium',
+			validator: (value: string): boolean =>
+				['mini', 'small', 'medium'].includes(value),
 		},
 	},
 	methods: {
