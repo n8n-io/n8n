@@ -8,6 +8,8 @@ import {
 	NodeApiError
 } from "n8n-workflow";
 
+import { v4 as uuid } from 'uuid';
+
 const hasKeys = (obj: object) => !!Object.keys(obj).length;
 
 export async function filtersPreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
@@ -31,6 +33,24 @@ export async function profileFiltersPreSendAction(this: IExecuteSingleFunctions,
 		requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
 		Object.assign(requestOptions.qs, { filter });
 	}
+	return requestOptions;
+}
+
+export async function inventoryAdjustmentPreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	const variantId = this.getNodeParameter('inventoryId') as string;
+	const unlimited = this.getNodeParameter('unlimited') as string;
+	const quantity = this.getNodeParameter('quantity', 0) as number;
+	if (unlimited) {
+		requestOptions.body = { setUnlimitedOperations: [variantId] }
+	} else {
+		requestOptions.body = { setFiniteOperations: [{ variantId, quantity }] }
+	}
+	return requestOptions;
+}
+
+export async function idempotencyHeaderPreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	requestOptions.headers = requestOptions.headers || {};
+	Object.assign(requestOptions.headers, { 'Idempotency-Key': uuid() });
 	return requestOptions;
 }
 
