@@ -147,51 +147,6 @@ const getAllOperations: Array<INodeProperties> = [
 		default: 50,
 		description: 'Max number of results to return',
 	},
-	{
-		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		placeholder: 'Add Filter',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'inventory',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Modified After',
-				name: 'modifiedAfter',
-				type: 'dateTime',
-				default: '',
-				description: 'Required when modifiedBefore is used',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'modifiedAfter',
-					}
-				}
-			},
-			{
-				displayName: 'Modified Before',
-				name: 'modifiedBefore',
-				type: 'dateTime',
-				default: '',
-				description: 'Required when modifiedAfter is used',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'modifiedBefore',
-					}
-				}
-			},
-		],
-	},
 ];
 
 export const inventoryFields: INodeProperties[] = [
