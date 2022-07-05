@@ -125,10 +125,10 @@ export default mixins(
 			if (eventData.variable) {
 				let splitVar = eventData.variable.split('.');
 
-				if(eventData.variable.startsWith('Object.keys')) {
+				if (eventData.variable.startsWith('Object.keys')) {
 					splitVar = eventData.variable.split('(')[1].split(')')[0].split('.');
 					trackProperties.variable_type = 'Keys';
-				} else if(eventData.variable.startsWith('Object.values')) {
+				} else if (eventData.variable.startsWith('Object.values')) {
 					splitVar = eventData.variable.split('(')[1].split(')')[0].split('.');
 					trackProperties.variable_type = 'Values';
 				} else {

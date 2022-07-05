@@ -86,7 +86,13 @@ export const workflowRun = mixins(
 						const trackErrorNodeTypes: string[] = [];
 						for (const nodeName of Object.keys(workflowIssues)) {
 							nodeIssues = NodeHelpers.nodeIssuesToString(workflowIssues[nodeName]);
-							const issueNodeType = this.$store.getters.getNodeByName(nodeName).type.split('.')[1];
+							let issueNodeType = 'UNKNOWN';
+							const issueNode = this.$store.getters.getNodeByName(nodeName);
+
+							if (issueNode) {
+								issueNodeType = issueNode.type.split('.')[1];
+							}
+
 							trackErrorNodeTypes.push(issueNodeType);
 							const trackNodeIssue = {
 								node_type: issueNodeType,

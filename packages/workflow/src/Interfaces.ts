@@ -1478,11 +1478,7 @@ export type PropertiesOf<M extends { resource: string; operation: string }> = Ar
 
 export interface ITelemetryTrackProperties {
 	user_id?: string;
-	[key: string]: string | number | boolean | object | undefined | null;
-}
-
-export interface ITelemetryTraits {
-	[key: string]: string | number | boolean | object | undefined | null;
+	[key: string]: GenericValue;
 }
 
 export interface INodesGraph {
