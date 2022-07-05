@@ -113,8 +113,7 @@
 		>
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
 				<el-dropdown
-					trigger="hover"
-					:disabled="!state.value"
+					trigger="click"
 					@command="handleCopyClick"
 					@visible-change="copyDropdownOpen = $event"
 				>
@@ -124,7 +123,6 @@
 							icon="copy"
 							type="tertiary"
 							:circle="false"
-							@click="handleCopyClick({ command: 'value' })"
 						/>
 					</span>
 					<el-dropdown-menu slot="dropdown">
@@ -253,7 +251,7 @@
 				<vue-json-pretty
 					:data="jsonData"
 					:deep="10"
-					v-model="state.path"
+					v-model="selectedOutput.path"
 					:showLine="true"
 					:showLength="true"
 					selectableType="single"
@@ -452,7 +450,7 @@ export default mixins(
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				state: {
+				selectedOutput: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
 				},
@@ -1010,7 +1008,7 @@ export default mixins(
 				this.updateNodesExecutionIssues();
 			},
 			dataItemClicked (path: string, data: object | number | string) {
-				this.state.value = data;
+				this.selectedOutput.value = data;
 			},
 			isDownloadable (index: number, key: string): boolean {
 				const binaryDataItem: IBinaryData = this.binaryData[index][key];
@@ -1091,14 +1089,17 @@ export default mixins(
 				return '["' + allParts.join('"]["') + '"]';
 			},
 			handleCopyClick (commandData: { command: string }) {
-				const newPath = this.convertPath(this.state.path);
+				const isNotSelected = this.selectedOutput.path === deselectedPlaceholder;
+				const selectedPath = isNotSelected ? '[""]' : this.selectedOutput.path;
+				const selectedValue = isNotSelected ? this.jsonData : this.selectedOutput.value;
+				const newPath = this.convertPath(selectedPath);
 
 				let value: string;
 				if (commandData.command === 'value') {
-					if (typeof this.state.value === 'object') {
-						value = JSON.stringify(this.state.value, null, 2);
+					if (typeof selectedValue === 'object') {
+						value = JSON.stringify(selectedValue, null, 2);
 					} else {
-						value = this.state.value.toString();
+						value = selectedValue.toString();
 					}
 
 					this.$showToast({
