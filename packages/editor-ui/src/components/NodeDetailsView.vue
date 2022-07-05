@@ -477,12 +477,10 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 					this.$store.commit('pinData', { node: this.activeNode, data: JSON.parse(value) });
-					return;
-				} else {
-					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 				}
+
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 			}
 
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
