@@ -1,6 +1,7 @@
 import {
 	INodeProperties
 } from 'n8n-workflow';
+import { filtersPreSendAction } from '../GenericFunctions';
 
 export const productOperations: INodeProperties[] = [
 	{
@@ -191,6 +192,13 @@ const getAllOperations: Array<INodeProperties> = [
 				}
 			},
 		],
+		routing: {
+			send: {
+				preSend: [
+					filtersPreSendAction
+				]
+			}
+		}
 	},
 ];
 
