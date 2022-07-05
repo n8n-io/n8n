@@ -309,7 +309,7 @@
 				</div>
 			</div>
 		</div>
-		<div :class="$style.pagination" v-if="hasNodeRun && !hasRunError && dataCount > pageSize">
+		<div :class="$style.pagination" v-if="hasNodeRun && !hasRunError && dataCount > pageSize" v-show="!editMode.enabled">
 			<el-pagination
 				background
 				:hide-on-single-page="true"
