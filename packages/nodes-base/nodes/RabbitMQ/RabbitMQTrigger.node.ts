@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	createDeferredPromise,
 	IDataObject,
@@ -9,6 +10,7 @@ import {
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy as Logger,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -26,6 +28,7 @@ export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ Trigger',
 		name: 'rabbitmqTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:rabbitmq.png',
 		group: ['trigger'],
 		version: 1,
@@ -59,24 +62,24 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'Content is Binary',
+						displayName: 'Content Is Binary',
 						name: 'contentIsBinary',
 						type: 'boolean',
 						default: false,
-						description: 'Saves the content as binary',
+						description: 'Whether to save the content as binary',
 					},
 					{
-						displayName: 'Delete from queue when',
+						displayName: 'Delete From Queue When',
 						name: 'acknowledge',
 						type: 'options',
 						options: [
 							{
-								name: 'Execution finishes',
+								name: 'Execution Finishes',
 								value: 'executionFinishes',
 								description: 'After the workflow execution finished. No matter if the execution was successful or not.',
 							},
 							{
-								name: 'Execution finishes successfully',
+								name: 'Execution Finishes Successfully',
 								value: 'executionFinishesSuccessfully',
 								description: 'After the workflow execution finished successfully',
 							},
@@ -101,7 +104,7 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Parse the body to an object',
+						description: 'Whether to parse the body to an object',
 					},
 					{
 						displayName: 'Only Content',
@@ -115,11 +118,11 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Returns only the content property',
+						description: 'Whether to return only the content property',
 					},
 					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 					{
-						displayName: 'Parallel message processing limit',
+						displayName: 'Parallel Message Processing Limit',
 						name: 'parallelMessages',
 						type: 'number',
 						default: -1,
@@ -154,7 +157,7 @@ export class RabbitMQTrigger implements INodeType {
 		let parallelMessages = (options.parallelMessages !== undefined && options.parallelMessages !== -1) ? parseInt(options.parallelMessages as string, 10) : -1;
 
 		if (parallelMessages === 0 || parallelMessages < -1) {
-			throw new Error('Parallel message processing limit must be greater than zero (or -1 for no limit)');
+			throw new NodeOperationError(this.getNode(), 'Parallel message processing limit must be greater than zero (or -1 for no limit)');
 		}
 
 		if (this.getMode() === 'manual') {

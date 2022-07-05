@@ -35,9 +35,10 @@ export const workbookFields: INodeProperties[] = [
 /*                                 workbook:addWorksheet                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',

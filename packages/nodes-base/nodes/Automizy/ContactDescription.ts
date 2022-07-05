@@ -56,6 +56,7 @@ export const contactFields: INodeProperties[] = [
 		name: 'email',
 		required: true,
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
@@ -70,10 +71,11 @@ export const contactFields: INodeProperties[] = [
 		description: 'The email address of the contact',
 	},
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
 		},
@@ -122,13 +124,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Key',
+								displayName: 'Key Name or ID',
 								name: 'key',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -173,14 +175,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'The status of the contact. You can only send email to contacts with ACTIVE status.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to set to the contact',
+				description: 'The tags you want to set to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -233,10 +235,11 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
 		},
@@ -351,6 +354,7 @@ export const contactFields: INodeProperties[] = [
 		name: 'email',
 		required: true,
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
@@ -381,14 +385,14 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Add Tags',
+				displayName: 'Add Tag Names or IDs',
 				name: 'addTags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to add to the contact',
+				description: 'The tags you want to add to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -406,13 +410,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Key',
+								displayName: 'Key Name or ID',
 								name: 'key',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -427,6 +431,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Remove Tags',
 				name: 'removeTags',
 				type: 'multiOptions',
@@ -434,7 +439,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to add to the contact',
+				description: 'The tags you want to add to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Status',
@@ -466,14 +471,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'The status of the contact. You can only send email to contacts with ACTIVE status.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to set to the contact. Will replace all existing ones.',
+				description: 'The tags you want to set to the contact. Will replace all existing ones. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

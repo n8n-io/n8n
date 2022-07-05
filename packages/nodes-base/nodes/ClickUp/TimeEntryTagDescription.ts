@@ -42,9 +42,10 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -107,9 +108,10 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:add                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -194,9 +196,10 @@ export const timeEntryTagFields: INodeProperties[] = [
 	/*                                timeEntryTag:remove                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -231,9 +234,10 @@ export const timeEntryTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Tag Names',
+		displayName: 'Tag Names or IDs',
 		name: 'tagNames',
 		type: 'multiOptions',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTimeEntryTags',
 			loadOptionsDependsOn: [

@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -281,7 +282,7 @@ export class Ssh implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const returnData: IDataObject[] = [];
+		const returnItems: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -333,7 +334,12 @@ export class Ssh implements INodeType {
 
 							const command = this.getNodeParameter('command', i) as string;
 							const cwd = this.getNodeParameter('cwd', i) as string;
-							returnData.push(await ssh.execCommand(command, { cwd, }));
+							returnItems.push({
+								json: await ssh.execCommand(command, { cwd, }),
+								pairedItem: {
+									item: i,
+								},
+							});
 						}
 					}
 
@@ -352,6 +358,9 @@ export class Ssh implements INodeType {
 							const newItem: INodeExecutionData = {
 								json: items[i].json,
 								binary: {},
+								pairedItem: {
+									item: i,
+								},
 							};
 
 							if (items[i].binary !== undefined) {
@@ -376,7 +385,7 @@ export class Ssh implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -384,7 +393,7 @@ export class Ssh implements INodeType {
 							const binaryData = item.binary[propertyNameUpload] as IBinaryData;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
@@ -395,7 +404,14 @@ export class Ssh implements INodeType {
 
 							await ssh.putFile(path, `${parameterPath}${(parameterPath.charAt(parameterPath.length - 1) === '/') ? '' : '/'}${fileName || binaryData.fileName}`);
 
-							returnData.push({ success: true });
+							returnItems.push({
+								json: {
+									success: true,
+								},
+								pairedItem: {
+									item: i,
+								},
+							});
 						}
 					}
 				} catch (error) {
@@ -407,7 +423,14 @@ export class Ssh implements INodeType {
 								},
 							};
 						} else {
-							returnData.push({ error: error.message });
+							returnItems.push({
+								json: {
+									error: error.message,
+								},
+								pairedItem: {
+									item: i,
+								},
+							});
 						}
 						continue;
 					}
@@ -428,7 +451,7 @@ export class Ssh implements INodeType {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnItems);
 		}
 	}
 }

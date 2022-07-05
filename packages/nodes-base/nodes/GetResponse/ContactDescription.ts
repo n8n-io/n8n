@@ -54,6 +54,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [
@@ -67,7 +68,7 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -84,7 +85,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -118,13 +119,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -175,9 +176,10 @@ export const contactFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -389,7 +391,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'exactMatch',
 				type: 'boolean',
 				default: false,
-				description: 'When set to true it will search for contacts with the exact value of the email and name provided in the query string. Without this flag, matching is done via a standard \'like\' comparison, which may sometimes be slow.',
+				description: 'Whether to search for contacts with the exact value of the email and name provided in the query string. Without this flag, matching is done via a standard \'like\' comparison, which may sometimes be slow.',
 			},
 			{
 				displayName: 'Fields',
@@ -427,7 +429,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'forward',
 					},
 					{
-						name: 'import',
+						name: 'Import',
 						value: 'import',
 					},
 					{
@@ -548,9 +550,10 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Campaign ID',
+				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
@@ -571,13 +574,13 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 								default: '',
 							},
 							{
@@ -602,6 +605,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -634,9 +638,10 @@ export const contactFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},

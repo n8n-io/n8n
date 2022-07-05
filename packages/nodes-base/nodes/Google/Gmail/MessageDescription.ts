@@ -17,11 +17,6 @@ export const messageOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Send',
-				value: 'send',
-				description: 'Send an email',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a message',
@@ -40,6 +35,11 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Reply',
 				value: 'reply',
 				description: 'Reply to an email',
+			},
+			{
+				name: 'Send',
+				value: 'send',
+				description: 'Send an email',
 			},
 		],
 		default: 'send',
@@ -141,7 +141,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Switch ON if the message should also be included as HTML',
+		description: 'Whether the message should also be included as HTML',
 	},
 	{
 		displayName: 'HTML Message',
@@ -480,17 +480,17 @@ export const messageFields: INodeProperties[] = [
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages from SPAM and TRASH in the results',
+				description: 'Whether to include messages from SPAM and TRASH in the results',
 			},
 			{
-				displayName: 'Label IDs',
+				displayName: 'Label Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Only return messages with labels that match all of the specified label IDs',
+				description: 'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Query',

@@ -82,14 +82,14 @@ export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 				name: 'Field',
 				values: [
 					{
-						displayName: 'Field Definition ID',
+						displayName: 'Field Definition Name or ID',
 						name: 'DefinitionId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getCustomFields',
 						},
 						default: '',
-						description: 'ID of the field to set',
+						description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',

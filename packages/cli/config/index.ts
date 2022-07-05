@@ -14,7 +14,9 @@ config.getEnv = config.get;
 // optional configuration files
 if (process.env.N8N_CONFIG_FILES !== undefined) {
 	const configFiles = process.env.N8N_CONFIG_FILES.split(',');
-	console.log(`\nLoading configuration overwrites from:\n - ${configFiles.join('\n - ')}\n`);
+	if (process.env.NODE_ENV !== 'test') {
+		console.log(`\nLoading configuration overwrites from:\n - ${configFiles.join('\n - ')}\n`);
+	}
 
 	config.loadFile(configFiles);
 }
