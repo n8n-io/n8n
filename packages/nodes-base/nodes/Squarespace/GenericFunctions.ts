@@ -30,7 +30,8 @@ export async function squarespaceApiPagination(this: IExecutePaginationFunctions
 
 	const responseData: INodeExecutionData[] = [];
 	const resource = this.getNodeParameter('resource') as string;
-	// const returnAll = this.getNodeParameter('returnAll', false) as boolean;
+	const returnAll = this.getNodeParameter('returnAll') as boolean;
+	const limit = this.getNodeParameter('limit', 0) as number;
 	const resourceMapping: { [key: string]: string } = {
 		'product': 'products',
 		'inventory': 'inventory',
@@ -54,7 +55,12 @@ export async function squarespaceApiPagination(this: IExecutePaginationFunctions
 
 		// console.log({ hasNextPage, cursor })
 
-	} while (hasNextPage)
+	} while (returnAll && hasNextPage)
+
+	// fake limit because squarspace's api does not support it
+	if (!returnAll && responseData.length > limit) {
+		responseData.splice(limit, responseData.length - limit);
+	}
 
 	return responseData;
 };
