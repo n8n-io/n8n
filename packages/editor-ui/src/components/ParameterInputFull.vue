@@ -3,6 +3,7 @@
 		:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
+		:showSide="menuExpanded"
 		:bold="false"
 		size="small"
 	>
@@ -13,6 +14,7 @@
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
 				@optionSelected="optionSelected"
+				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
 		<template>
@@ -54,6 +56,7 @@ export default Vue
 		data() {
 			return {
 				focused: false,
+				menuExpanded: false,
 			};
 		},
 		props: [
@@ -64,6 +67,9 @@ export default Vue
 			'value',
 		],
 		methods: {
+			onMenuExpanded(expanded: boolean) {
+				this.menuExpanded = expanded;
+			},
 			optionSelected (command: string) {
 				if (this.$refs.param) {
 					(this.$refs.param as Vue).$emit('optionSelected', command);

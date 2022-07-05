@@ -6,6 +6,7 @@
 			color="foreground-xdark"
 			:actions="actions"
 			@action="(action) => $emit('optionSelected', action)"
+			@visible-change="onMenuToggle"
 		/>
 		<n8n-radio-buttons
 			v-if="parameter.noDataExpression !== true"
@@ -92,6 +93,9 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		onMenuToggle(visible: boolean) {
+			this.$emit('menu-expanded', visible);
+		},
 		onViewSelected(selected: string) {
 			if (selected === 'expression' ) {
 				this.$emit('optionSelected', this.isValueExpression? 'openExpression': 'addExpression');

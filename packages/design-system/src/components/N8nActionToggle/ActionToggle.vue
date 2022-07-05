@@ -1,6 +1,6 @@
 <template>
 	<span :class="$style.container">
-		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand">
+		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand" @visible-change="onVisibleChange">
 			<span :class="$style.button">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
@@ -56,6 +56,9 @@ export default {
 		onCommand(value: string) {
 			this.$emit('action', value)	;
 		},
+		onVisibleChange(value: boolean) {
+			this.$emit('visible-change', value)	;
+		},
 	},
 };
 </script>
@@ -72,6 +75,7 @@ export default {
 
 	&:hover {
 		color: var(--color-primary);
+		cursor: pointer;
 	}
 
 	&:focus {

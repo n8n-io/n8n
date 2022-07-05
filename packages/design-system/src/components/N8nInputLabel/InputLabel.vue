@@ -11,7 +11,7 @@
 					<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
 				</component>
 			</span>
-			<div :class="$style.side">
+			<div :class="{[$style.side]: true, [$style.showIcon]: props.showSide}">
 				<slot name="side"></slot>
 			</div>
 		</div>
@@ -63,6 +63,9 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		showSide: {
+			type: Boolean,
+		},
 	},
 	methods: {
 		addTargetBlank,
@@ -112,7 +115,7 @@ export default {
 }
 
 .showIcon {
-	display: inline-block;
+	display: inline-block !important;
 }
 
 .hiddenIcon {
