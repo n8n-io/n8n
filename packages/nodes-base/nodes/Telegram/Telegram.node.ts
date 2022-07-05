@@ -1686,7 +1686,6 @@ export class Telegram implements INodeType {
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						hint: 'Optional file name, only required if your input file name is empty',
 						displayOptions: {
 							show: {
 								'/operation': [
@@ -2173,11 +2172,9 @@ export class Telegram implements INodeType {
 					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
-					const fileNameUI = body.fileName;
-					if (body.fileName) delete body.fileName;
+					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
 
-					// const fileNameUI = this.getNodeParameter('fileName',0) as string;
-					const filename = fileNameUI || binaryData.fileName?.toString();
+					const filename = fileName || binaryData.fileName?.toString();
 
 					body.disable_notification = body.disable_notification?.toString() || 'false';
 
