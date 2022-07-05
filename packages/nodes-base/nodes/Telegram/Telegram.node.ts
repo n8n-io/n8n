@@ -1,5 +1,3 @@
-import FormData from 'form-data';
-
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -797,31 +795,6 @@ export class Telegram implements INodeType {
 				},
 				placeholder: '',
 				description: 'Name of the binary property that contains the data to upload',
-			},
-			{
-				displayName: 'File Name',
-				name: 'fileName',
-				type: 'string',
-				default: '',
-				hint: 'Optional file name, only required if your input file name is empty',
-				displayOptions: {
-					show: {
-						operation: [
-							'sendAnimation',
-							'sendAudio',
-							'sendDocument',
-							'sendPhoto',
-							'sendVideo',
-							'sendSticker',
-						],
-						resource: [
-							'message',
-						],
-						binaryData: [
-							true,
-						],
-					},
-				},
 			},
 			{
 				displayName: 'Message ID',
@@ -1709,6 +1682,31 @@ export class Telegram implements INodeType {
 						description: 'Duration of clip in seconds',
 					},
 					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						hint: 'Optional file name, only required if your input file name is empty',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'sendAnimation',
+									'sendAudio',
+									'sendDocument',
+									'sendPhoto',
+									'sendVideo',
+									'sendSticker',
+								],
+								'/resource': [
+									'message',
+								],
+								'/binaryData': [
+									true,
+								],
+							},
+						},
+					},
+					{
 						displayName: 'Height',
 						name: 'height',
 						type: 'number',
@@ -2175,8 +2173,10 @@ export class Telegram implements INodeType {
 					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
+					const fileNameUI = body.fileName;
+					if (body.fileName) delete body.fileName;
 
-					const fileNameUI = this.getNodeParameter('fileName',0) as string;
+					// const fileNameUI = this.getNodeParameter('fileName',0) as string;
 					const filename = fileNameUI || binaryData.fileName?.toString();
 
 					body.disable_notification = body.disable_notification?.toString() || 'false';
@@ -2192,11 +2192,7 @@ export class Telegram implements INodeType {
 						},
 					};
 
-					const formDataOptions = new FormData(formData);
-
-					const options = {headers: formDataOptions.getHeaders(), formData};
-
-					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, options);
+					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
