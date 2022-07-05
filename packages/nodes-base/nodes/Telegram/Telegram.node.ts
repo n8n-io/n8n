@@ -2180,7 +2180,7 @@ export class Telegram implements INodeType {
 					if (!fileName && !binaryData.fileName) {
 						throw new NodeOperationError(this.getNode(),
 						`File name is needed to ${operation}. Make sure the property that holds the binary data
-						has a the file name property set or set it manually in the node using the File Name parameter under
+						has the file name property set or set it manually in the node using the File Name parameter under
 						Additional Fields.`)
 					}
 
