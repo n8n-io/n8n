@@ -1,11 +1,11 @@
 <template>
 	<span :class="$style.container">
 		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand">
-			<span :class="$style.button">
+			<n8n-text :color="color" :class="$style.button">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
 				/>
-			</span>
+			</n8n-text>
 			<el-dropdown-menu slot="dropdown">
 				<el-dropdown-item
 					v-for="action in actions"
@@ -50,6 +50,10 @@ export default {
 			default: 'medium',
 			validator: (value: string): boolean =>
 				['mini', 'small', 'medium'].includes(value),
+		},
+		color: {
+			type: String,
+			default: 'text-dark',
 		},
 	},
 	methods: {

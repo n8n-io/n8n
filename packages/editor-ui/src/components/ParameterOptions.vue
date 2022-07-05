@@ -3,6 +3,7 @@
 		<n8n-action-toggle
 			placement="bottom-end"
 			size="small"
+			color="foreground-xdark"
 			:actions="actions"
 			@action="(action) => onUserAction(user, action)"
 		/>
