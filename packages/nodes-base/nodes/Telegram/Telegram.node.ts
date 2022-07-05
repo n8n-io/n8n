@@ -1704,6 +1704,7 @@ export class Telegram implements INodeType {
 								],
 							},
 						},
+						placeholder: 'image.jpeg'
 					},
 					{
 						displayName: 'Height',
