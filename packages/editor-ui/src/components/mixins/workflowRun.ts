@@ -97,6 +97,7 @@ export const workflowRun = mixins(
 							const trackNodeIssue = {
 								node_type: issueNodeType,
 								error: '',
+								caused_by_credential: !!workflowIssues[nodeName].credentials,
 							};
 
 							for (const nodeIssue of nodeIssues) {
