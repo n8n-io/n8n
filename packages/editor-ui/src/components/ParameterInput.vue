@@ -947,10 +947,10 @@ export default mixins(
 		border: 1px dashed $--custom-expression-text;
 	}
 
-	--input-border-color: #{$--custom-expression-text};
-	--input-border-style: dashed;
-	--input-background-color: #{$--custom-expression-background};
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-2);
 	--disabled-border: #{$--custom-expression-text};
+	--input-font-color: var(--color-secondary);
 }
 
 .has-issues {
