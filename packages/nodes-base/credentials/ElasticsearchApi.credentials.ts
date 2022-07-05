@@ -1,4 +1,6 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -32,4 +34,21 @@ export class ElasticsearchApi implements ICredentialType {
 			description: 'Referred to as Elasticsearch \'endpoint\' in the Elastic deployment dashboard',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/_xpack?human=false',
+		},
+	};
 }
