@@ -283,6 +283,7 @@ export const contactDescription: INodeProperties[] = [
 				displayName: 'Fields to Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
