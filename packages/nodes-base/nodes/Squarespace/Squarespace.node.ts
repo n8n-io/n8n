@@ -7,6 +7,7 @@ import {
 import { squarespaceApiPagination } from './GenericFunctions';
 import { inventoryFields, inventoryOperations } from './description/InventoryDescription';
 import { productFields, productOperations } from './description/ProductDescription';
+import { profileFields, profileOperations } from './description/ProfileDescription';
 
 const resource: INodeProperties = {
 	displayName: 'Resource',
@@ -21,6 +22,10 @@ const resource: INodeProperties = {
 		{
 			name: 'Product',
 			value: 'product',
+		},
+		{
+			name: 'Profile',
+			value: 'profile',
 		},
 	],
 	default: '',
@@ -49,7 +54,8 @@ export class Squarespace implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: 'https://api.squarespace.com/1.0/commerce',
+			baseURL: 'https://api.squarespace.com/1.0',
+			// baseURL: 'https://webhook.site/15f27177-6959-417b-a22e-da6a924a6b72',
 			// headers currently not working with credentials
 			// headers: {
 			// 	"User-Agent": "n8n",
@@ -61,10 +67,12 @@ export class Squarespace implements INodeType {
 		},
 		properties: [
 			resource,
-			...productOperations,
-			...productFields,
 			...inventoryOperations,
 			...inventoryFields,
+			...productOperations,
+			...productFields,
+			...profileOperations,
+			...profileFields,
 		],
 	};
 }

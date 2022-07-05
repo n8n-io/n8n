@@ -22,7 +22,7 @@ export const inventoryOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '/inventory',
+						url: '/commerce/inventory',
 					},
 					output: {
 						postReceive: [
@@ -42,7 +42,7 @@ export const inventoryOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/inventory/{{$parameter.inventoryId}}',
+						url: '=/commerce/inventory/{{$parameter.inventoryId}}',
 					},
 					output: {
 						postReceive: [
@@ -62,7 +62,7 @@ export const inventoryOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/inventory/{{$parameter.inventoryId}}',
+						url: '=/commerce/inventory/{{$parameter.inventoryId}}',
 					},
 					output: {
 						postReceive: [
@@ -82,7 +82,7 @@ export const inventoryOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '/inventory',
+						url: '/commerce/inventory',
 					},
 					send: {
 						paginate: true,
@@ -95,7 +95,7 @@ export const inventoryOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/inventory/{{$parameter.inventoryId}}',
+						url: '=/commerce/inventory/{{$parameter.inventoryId}}',
 					},
 					output: {
 						postReceive: [

@@ -22,7 +22,7 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '/products',
+						url: '/commerce/products',
 					},
 					output: {
 						postReceive: [
@@ -42,7 +42,7 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/products/{{$parameter.productId}}',
+						url: '=/commerce/products/{{$parameter.productId}}',
 					},
 					output: {
 						postReceive: [
@@ -62,7 +62,7 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/products/{{$parameter.productId}}',
+						url: '=/commerce/products/{{$parameter.productId}}',
 					},
 					output: {
 						postReceive: [
@@ -82,7 +82,7 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '/products',
+						url: '/commerce/products',
 					},
 					send: {
 						paginate: true,
@@ -95,7 +95,7 @@ export const productOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/products/{{$parameter.productId}}',
+						url: '=/commerce/products/{{$parameter.productId}}',
 					},
 					output: {
 						postReceive: [

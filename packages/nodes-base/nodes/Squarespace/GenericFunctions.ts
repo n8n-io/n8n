@@ -1,9 +1,29 @@
 import {
 	IDataObject,
 	IExecutePaginationFunctions,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
 	INodeExecutionData,
-	IRequestOptionsFromParameters
+	IRequestOptionsFromParameters,
+	NodeApiError
 } from "n8n-workflow";
+
+const hasKeys = (obj: object) => !!Object.keys(obj).length;
+
+export async function profileFiltersPreSendAction(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	const filters = this.getNodeParameter('filters') as any;
+	if (hasKeys(filters)) {
+		const isFilterFalse = (key: string) => key in filters && !filters[key];
+		if (isFilterFalse('hasAccount') || isFilterFalse('isCustomer')) {
+			const message = "Filters 'Is Customer' and 'Has Account' cannot be set to false";
+			throw new NodeApiError(this.getNode(), {}, { message, description: message });
+		}
+		const filter = Object.entries(filters).map(([k, v]) => `${k},${v}`).join(';');
+		requestOptions.qs = (requestOptions.qs || {}) as IDataObject;
+		Object.assign(requestOptions.qs, { filter });
+	}
+	return requestOptions;
+}
 
 
 export async function squarespaceApiPagination(this: IExecutePaginationFunctions, requestData: IRequestOptionsFromParameters): Promise<INodeExecutionData[]> {
@@ -13,7 +33,8 @@ export async function squarespaceApiPagination(this: IExecutePaginationFunctions
 	// const returnAll = this.getNodeParameter('returnAll', false) as boolean;
 	const resourceMapping: { [key: string]: string } = {
 		'product': 'products',
-		'inventory': 'inventory'
+		'inventory': 'inventory',
+		'profile': 'profiles',
 	}
 	const rootProperty = resourceMapping[resource]
 
