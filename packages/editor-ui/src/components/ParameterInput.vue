@@ -939,7 +939,7 @@ export default mixins(
 }
 
 .expression {
-	textarea[disabled], input[disabled] {
+	textarea, input {
 		cursor: pointer !important;
 	}
 
