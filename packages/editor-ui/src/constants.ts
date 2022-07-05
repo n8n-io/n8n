@@ -81,6 +81,7 @@ export const SET_NODE_TYPE = 'n8n-nodes-base.set';
 export const SERVICENOW_NODE_TYPE = 'n8n-nodes-base.serviceNow';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
+export const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
 export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
@@ -95,6 +96,11 @@ export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 export const MULTIPLE_OUTPUT_NODE_TYPES = [
 	IF_NODE_TYPE,
 	SWITCH_NODE_TYPE,
+];
+
+export const PIN_DATA_NODE_TYPES_DENYLIST = [
+	...MULTIPLE_OUTPUT_NODE_TYPES,
+	SPLIT_IN_BATCHES_NODE_TYPE,
 ];
 
 // Node creator

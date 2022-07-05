@@ -75,7 +75,7 @@ import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8
 import Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import {MULTIPLE_OUTPUT_NODE_TYPES} from "@/constants";
+import { PIN_DATA_NODE_TYPES_DENYLIST } from "@/constants";
 
 type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
@@ -189,7 +189,7 @@ export default Vue.extend({
 			return this.$store.getters['ui/outputPanelEditMode'];
 		},
 		canPinData(): boolean {
-			return !!this.node && !MULTIPLE_OUTPUT_NODE_TYPES.includes(this.node.type);
+			return !!this.node && !PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type);
 		},
 	},
 	methods: {

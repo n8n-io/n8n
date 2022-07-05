@@ -369,7 +369,8 @@ import {
 	DATA_PINNING_DOCS_URL,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
-	MULTIPLE_OUTPUT_NODE_TYPES, TEST_PIN_DATA,
+	PIN_DATA_NODE_TYPES_DENYLIST,
+	TEST_PIN_DATA,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -500,12 +501,12 @@ export default mixins(
 				}
 				return null;
 			},
-			isMultipleOutputsNodeType(): boolean {
-				return !!this.node && MULTIPLE_OUTPUT_NODE_TYPES.includes(this.node.type);
+			isPinDataNodeType(): boolean {
+				return !!this.node && !PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type);
 			},
 			canPinData (): boolean {
 				return this.paneType === 'output' &&
-					!this.isMultipleOutputsNodeType &&
+					this.isPinDataNodeType &&
 					!(this.binaryData && this.binaryData.length > 0);
 			},
 			buttons(): Array<{label: string, value: string}> {
