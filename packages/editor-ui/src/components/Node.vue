@@ -35,6 +35,12 @@
 						<div slot="content" v-text="getTriggerNodeTooltip"></div>
 						<span />
 					</n8n-tooltip>
+					<n8n-tooltip v-if="isTriggerNode" placement="top" :manual="true" :value="showPinDataDiscoveryTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+						<template #content>
+							{{ $locale.baseText('node.pinData') }}
+						</template>
+						<span />
+					</n8n-tooltip>
 				</div>
 
 				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
@@ -79,7 +85,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import { CUSTOM_API_CALL_KEY, WAIT_TIME_UNLIMITED } from '@/constants';
+import {CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, WAIT_TIME_UNLIMITED} from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -99,6 +105,7 @@ import mixins from 'vue-typed-mixins';
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
+import {locale} from "n8n-design-system";
 
 export default mixins(
 	externalHooks,
@@ -295,7 +302,7 @@ export default mixins(
 				!this.isPollingTypeNode &&
 				!this.isNodeDisabled &&
 				this.workflowRunning &&
-				this.workflowDataItems === 0  &&
+				this.workflowDataItems === 0 &&
 				this.isSingleActiveTriggerNode &&
 				!this.isTriggerNodeTooltipEmpty &&
 				!this.hasIssues &&
@@ -328,6 +335,18 @@ export default mixins(
 		nodeRunData(newValue) {
 			this.$emit('run', {name: this.data.name, data: newValue, waiting: !!this.waiting});
 		},
+		workflowDataItems(newValue) {
+			const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG);
+
+			if (newValue > 0 && !hasSeenPinDataTooltip) {
+				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
+
+				this.showPinDataDiscoveryTooltip = true;
+				setTimeout(() => {
+					this.showPinDataDiscoveryTooltip = false;
+				}, 5000);
+			}
+		},
 	},
 	mounted() {
 		this.setSubtitle();
@@ -340,6 +359,7 @@ export default mixins(
 			isTouchActive: false,
 			nodeSubtitle: '',
 			showTriggerNodeTooltip: false,
+			showPinDataDiscoveryTooltip: false,
 			dragging: false,
 		};
 	},

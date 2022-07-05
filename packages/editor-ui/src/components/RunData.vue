@@ -58,8 +58,15 @@
 					placement="bottom-end"
 					v-if="canPinData && (jsonData && jsonData.length > 0)"
 					v-show="!editMode.enabled"
+					:value="showPinDataDiscoveryTooltip"
+					:manual="showPinDataDiscoveryTooltip"
 				>
-					<template #content>
+					<template #content v-if="showPinDataDiscoveryTooltip">
+						<div :class="$style['tooltip-container']">
+							{{ $locale.baseText('node.pinData') }}
+						</div>
+					</template>
+					<template #content v-else>
 						<div :class="$style['tooltip-container']">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
@@ -367,6 +374,7 @@ import {
 
 import {
 	DATA_PINNING_DOCS_URL,
+	LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG, LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	PIN_DATA_NODE_TYPES_DENYLIST,
@@ -468,6 +476,8 @@ export default mixins(
 				pageSizes: [10, 25, 50, 100],
 				copyDropdownOpen: false,
 				eventBus: dataPinningEventBus,
+
+				showPinDataDiscoveryTooltip: false,
 			};
 		},
 		mounted() {
@@ -476,6 +486,8 @@ export default mixins(
 			if (this.paneType === 'output') {
 				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
+
+				this.checkPinDataDiscoveryFlow(this.jsonData);
 			}
 		},
 		destroyed() {
@@ -672,6 +684,21 @@ export default mixins(
 					pane: 'output',
 					type: 'data-pinning-docs',
 				});
+			},
+			checkPinDataDiscoveryFlow(value: IDataObject[]) {
+				const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG);
+				if (value && value.length > 0 && !hasSeenPinDataTooltip) {
+					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG, 'true');
+					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
+
+					setTimeout(() => {
+						this.showPinDataDiscoveryTooltip = true;
+					}, 500);
+
+					setTimeout(() => {
+						this.showPinDataDiscoveryTooltip = false;
+					}, 4500);
+				}
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
 				const data = this.jsonData && this.jsonData.length > 0
@@ -1200,8 +1227,9 @@ export default mixins(
 			node() {
 				this.init();
 			},
-			jsonData () {
+			jsonData (value: IDataObject[]) {
 				this.refreshDataSize();
+				this.checkPinDataDiscoveryFlow(value);
 			},
 			binaryData (newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
 				if (newData.length && !prevData.length && this.displayMode !== 'binary') {
