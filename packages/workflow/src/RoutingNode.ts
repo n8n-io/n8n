@@ -140,11 +140,11 @@ export class RoutingNode {
 					executeData,
 					this.mode,
 				);
-
 				const requestData: IRequestOptionsFromParameters = {
 					options: {
 						qs: {},
 						body: {},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -166,7 +166,7 @@ export class RoutingNode {
 							runIndex,
 							executeData,
 							{ $credentials: credentials },
-							true,
+							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(requestData.options as Record<string, any>)[key] = value;
@@ -396,7 +396,6 @@ export class RoutingNode {
 	): Promise<INodeExecutionData[]> {
 		let responseData: IN8nHttpFullResponse;
 		requestData.options.returnFullResponse = true;
-
 		if (credentialType) {
 			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
 				executeSingleFunctions,
@@ -409,7 +408,6 @@ export class RoutingNode {
 				requestData.options as IHttpRequestOptions,
 			)) as IN8nHttpFullResponse;
 		}
-
 		let returnData: INodeExecutionData[] = [
 			{
 				json: responseData.body as IDataObject,
@@ -611,6 +609,7 @@ export class RoutingNode {
 			options: {
 				qs: {},
 				body: {},
+				headers: {},
 			},
 			preSend: [],
 			postReceive: [],
@@ -639,7 +638,6 @@ export class RoutingNode {
 			if (nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
-
 			if (nodeProperties.routing.request) {
 				for (const key of Object.keys(nodeProperties.routing.request)) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -651,7 +649,7 @@ export class RoutingNode {
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
 						{ ...additionalKeys, $value: parameterValue },
-						true,
+						false,
 					) as string;
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(returnData.options as Record<string, any>)[key] = propertyValue;
@@ -863,7 +861,6 @@ export class RoutingNode {
 				}
 			}
 		}
-
 		return returnData;
 	}
 }
