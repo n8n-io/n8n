@@ -16,15 +16,15 @@
 							<font-awesome-icon icon="clock" />
 						</n8n-tooltip>
 					</div>
+					<span v-else-if="hasPinData" class="node-pin-data-icon">
+						<font-awesome-icon icon="thumbtack" />
+						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+					</span>
 					<span v-else-if="workflowDataItems" class="data-count">
 						<font-awesome-icon icon="check" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
 					</span>
 				</div>
-
-				<span v-if="hasPinData" class="node-pin-data-icon">
-					<font-awesome-icon icon="thumbtack" />
-				</span>
 
 				<div class="node-executing-info" :title="$locale.baseText('node.nodeIsExecuting')">
 					<font-awesome-icon icon="sync-alt" spin />
@@ -507,10 +507,12 @@ export default mixins(
 		}
 
 		.node-pin-data-icon {
-			position: absolute;
-			bottom: 6px;
-			left: 6px;
 			color: var(--color-secondary);
+			margin-right: 2px;
+
+			svg {
+				height: 0.85rem;
+			}
 		}
 
 		.waiting {
