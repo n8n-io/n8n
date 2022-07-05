@@ -1,4 +1,5 @@
 import {
+	IAuthenticateBasicAuth,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
