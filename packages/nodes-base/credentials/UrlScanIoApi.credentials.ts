@@ -1,5 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -19,12 +19,12 @@ export class UrlScanIoApi implements ICredentialType {
 		},
 	];
 	authenticate = {
-		type: 'headerAuth',
+		type: 'generic',
 		properties: {
-			name: 'API-KEY',
-			value: '={{$credentials.apiKey}}',
+			'API-KEY': '={{$credentials.apiKey}}',
 		},
-	} as IAuthenticateHeaderAuth;
+	} as IAuthenticateGeneric;
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://urlscan.io',
