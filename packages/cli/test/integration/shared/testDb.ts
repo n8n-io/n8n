@@ -24,11 +24,10 @@ import { categorize, getPostgresSchemaSection } from './utils';
 import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
 import type { Role } from '../../../src/databases/entities/Role';
-import type { CollectionName, CredentialPayload, InstalledNodePayload, InstalledPackagePayload } from './types';
+import type { CollectionName, CredentialPayload, InstalledNodePayload, InstalledPackagePayload, MappingName } from './types';
 import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
 import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
 import { User } from '../../../src/databases/entities/User';
-import type { CollectionName, CredentialPayload, MappingName } from './types';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { TagEntity } from '../../../src/databases/entities/TagEntity';
