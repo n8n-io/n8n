@@ -25,7 +25,6 @@ export class GoogleTasks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Tasks',
 		name: 'googleTasks',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googleTasks.png',
 		group: ['input'],
 		version: 1,
@@ -47,7 +46,6 @@ export class GoogleTasks implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
@@ -55,6 +53,7 @@ export class GoogleTasks implements INodeType {
 					},
 				],
 				default: 'task',
+				description: 'The resource to operate on.',
 			},
 			...taskOperations,
 			...taskFields,

@@ -6,7 +6,6 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IPairedItemData,
 } from 'n8n-workflow';
 
 
@@ -40,7 +39,7 @@ export class Merge implements INodeType {
 					{
 						name: 'Keep Key Matches',
 						value: 'keepKeyMatches',
-						description: 'Keeps data of input 1 if it does find a match with data of input 2',
+						description: 'Keeps data of input 1 if it does find a match with data of input 2.',
 					},
 					{
 						name: 'Merge By Index',
@@ -58,14 +57,14 @@ export class Merge implements INodeType {
 						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
 					},
 					{
-						name: 'Pass-Through',
+						name: 'Pass-through',
 						value: 'passThrough',
 						description: 'Passes through data of one input. The output will contain only items of the defined input.',
 					},
 					{
 						name: 'Remove Key Matches',
 						value: 'removeKeyMatches',
-						description: 'Keeps data of input 1 if it does NOT find match with data of input 2',
+						description: 'Keeps data of input 1 if it does NOT find match with data of input 2.',
 					},
 					{
 						name: 'Wait',
@@ -74,7 +73,7 @@ export class Merge implements INodeType {
 					},
 				],
 				default: 'append',
-				description: 'How data of branches should be merged',
+				description: 'How data of branches should be merged.',
 			},
 			{
 				displayName: 'Join',
@@ -105,7 +104,7 @@ export class Merge implements INodeType {
 					},
 				],
 				default: 'left',
-				description: 'How many items the output will contain if inputs contain different amount of items',
+				description: 'How many items the output will contain if inputs contain different amount of items.',
 			},
 			{
 				displayName: 'Property Input 1',
@@ -123,7 +122,7 @@ export class Merge implements INodeType {
 						],
 					},
 				},
-				description: 'Name of property which decides which items to merge of input 1',
+				description: 'Name of property which decides which items to merge of input 1.',
 			},
 			{
 				displayName: 'Property Input 2',
@@ -141,7 +140,7 @@ export class Merge implements INodeType {
 						],
 					},
 				},
-				description: 'Name of property which decides which items to merge of input 2',
+				description: 'Name of property which decides which items to merge of input 2.',
 			},
 			{
 				displayName: 'Output Data',
@@ -165,7 +164,7 @@ export class Merge implements INodeType {
 					},
 				],
 				default: 'input1',
-				description: 'Defines of which input the data should be used as output of node',
+				description: 'Defines of which input the data should be used as output of node.',
 			},
 			{
 				displayName: 'Overwrite',
@@ -182,21 +181,21 @@ export class Merge implements INodeType {
 					{
 						name: 'Always',
 						value: 'always',
-						description: 'Always overwrites everything',
+						description: 'Always overwrites everything.',
 					},
 					{
 						name: 'If Blank',
 						value: 'blank',
-						description: 'Overwrites only values of "null", "undefined" or empty string',
+						description: 'Overwrites only values of "null", "undefined" or empty string.',
 					},
 					{
 						name: 'If Missing',
 						value: 'undefined',
-						description: 'Only adds values which do not exist yet',
+						description: 'Only adds values which do not exist yet.',
 					},
 				],
 				default: 'always',
-				description: 'Select when to overwrite the values from Input1 with values from Input 2',
+				description: 'Select when to overwrite the values from Input1 with values from Input 2.',
 			},
 		],
 	};
@@ -262,10 +261,6 @@ export class Merge implements INodeType {
 
 				newItem = {
 					json: {},
-					pairedItem: [
-						dataInput1[i].pairedItem as IPairedItemData,
-						dataInput2[i].pairedItem as IPairedItemData,
-					],
 				};
 
 				if (dataInput1[i].binary !== undefined) {
@@ -310,15 +305,7 @@ export class Merge implements INodeType {
 
 			for (entry1 of dataInput1) {
 				for (entry2 of dataInput2) {
-					returnData.push({
-						json: {
-							...(entry1.json), ...(entry2.json),
-						},
-						pairedItem: [
-							entry1.pairedItem as IPairedItemData,
-							entry2.pairedItem as IPairedItemData,
-						],
-					});
+					returnData.push({json: {...(entry1.json), ...(entry2.json)}});
 				}
 			}
 			return [returnData];

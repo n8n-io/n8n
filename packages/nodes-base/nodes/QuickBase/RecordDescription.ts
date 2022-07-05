@@ -7,7 +7,6 @@ export const recordOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,11 +19,6 @@ export const recordOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a record',
-			},
-			{
-				name: 'Create or Update',
-				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
@@ -41,8 +35,14 @@ export const recordOperations: INodeProperties[] = [
 				value: 'update',
 				description: 'Update a record',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+				description: 'Upsert a record',
+			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -85,10 +85,10 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'Select Fields...',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -102,7 +102,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -122,7 +122,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Field Names or IDs',
+				displayName: 'Return Fields',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -132,14 +132,14 @@ export const recordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
 			},
 			{
 				displayName: 'Use Field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to use Field IDs instead of Field Names in Columns',
+				description: 'Use Field IDs instead of Field Names in Columns.',
 			},
 		],
 	},
@@ -180,7 +180,7 @@ export const recordFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The filter to delete records. To delete all records specify a filter that will include all records, for example {3.GT.0} where 3 is the ID of the Record ID field.',
+		description: `The filter to delete records. To delete all records specify a filter that will include all records, for example {3.GT.0} where 3 is the ID of the Record ID field.`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                record:getAll                               */
@@ -218,7 +218,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Returns a list of your user contacts.',
 	},
 	{
 		displayName: 'Limit',
@@ -242,7 +242,7 @@ export const recordFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -262,7 +262,6 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Select',
 				name: 'select',
 				type: 'multiOptions',
@@ -270,7 +269,7 @@ export const recordFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTableFields',
 				},
 				default: [],
-				description: 'An array of field IDs for the fields that should be returned in the response. If empty, the default columns on the table will be returned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'An array of field ids for the fields that should be returned in the response. If empty, the default columns on the table will be returned.',
 			},
 			{
 				displayName: 'Sort By',
@@ -287,14 +286,14 @@ export const recordFields: INodeProperties[] = [
 						displayName: 'Sort By',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getTableFields',
 								},
 								default: '',
-								description: 'The unique identifier of a field in a table. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The unique identifier of a field in a table.',
 							},
 							{
 								displayName: 'Order',
@@ -315,14 +314,14 @@ export const recordFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any. Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.',
+				description: `By default, queries will be sorted by the given sort fields or the default sort if the query does not provide any. Set to false to avoid sorting when the order of the data returned is not important. Returning data without sorting can improve performance.`,
 			},
 			{
 				displayName: 'Where',
 				name: 'where',
 				type: 'string',
 				default: '',
-				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return',
+				description: 'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return.',
 			},
 		],
 	},
@@ -364,7 +363,7 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
 		displayName: 'Update Key',
@@ -381,10 +380,10 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Update can use the key field on the table, or any other supported unique field',
+		description: 'update can use the key field on the table, or any other supported unique field.',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -398,7 +397,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -418,7 +417,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Fields',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -428,14 +427,14 @@ export const recordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
 			},
 			{
 				displayName: 'Use Field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to use Field IDs instead of Field Names in Columns',
+				description: 'Use Field IDs instead of Field Names in Columns.',
 			},
 			// {
 			// 	displayName: 'Merge Field ID',
@@ -489,7 +488,7 @@ export const recordFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
-		description: 'Comma-separated list of the properties which should used as columns for the new rows',
+		description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 	},
 	{
 		displayName: 'Update Key',
@@ -506,10 +505,10 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Update can use the key field on the table, or any other supported unique field',
+		description: 'update can use the key field on the table, or any other supported unique field.',
 	},
 	{
-		displayName: 'Merge Field Name or ID',
+		displayName: 'Merge Field ID',
 		name: 'mergeFieldId',
 		type: 'options',
 		typeOptions: {
@@ -526,10 +525,10 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: '<p>You\'re updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: `<p>You're updating records in a Quick Base table with data from an external file. In order for a merge like this to work, Quick Base needs a way to match records in the source data with corresponding records in the destination table.</p><p>You make this possible by choosing the field in the app table that holds unique matching values. This is called a merge field.</p>`,
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -543,7 +542,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -563,7 +562,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Fields',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -573,14 +572,14 @@ export const recordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
 			},
 			{
 				displayName: 'Use Field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to use Field IDs instead of Field Names in Columns',
+				description: 'Use Field IDs instead of Field Names in Columns.',
 			},
 		],
 	},

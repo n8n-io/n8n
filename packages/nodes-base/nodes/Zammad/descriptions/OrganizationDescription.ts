@@ -160,14 +160,14 @@ export const organizationDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'loadOrganizationCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the custom field to set',
 							},
 							{
 								displayName: 'Value',
@@ -229,14 +229,14 @@ export const organizationDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'loadOrganizationCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the custom field to set',
 							},
 							{
 								displayName: 'Value',

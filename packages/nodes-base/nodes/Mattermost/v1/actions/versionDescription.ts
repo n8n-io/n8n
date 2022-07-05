@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	INodeProperties,
 	INodeTypeDescription,
@@ -32,7 +31,6 @@ export const versionDescription: INodeTypeDescription = {
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
-			noDataExpression: true,
 			options: [
 				{
 					name: 'Channel',
@@ -52,6 +50,7 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			],
 			default: 'message',
+			description: 'The resource to operate on',
 		},
 		...channel.descriptions,
 		...message.descriptions,

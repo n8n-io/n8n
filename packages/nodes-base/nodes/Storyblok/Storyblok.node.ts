@@ -90,7 +90,6 @@ export class Storyblok implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Story',
@@ -98,6 +97,7 @@ export class Storyblok implements INodeType {
 					},
 				],
 				default: 'story',
+				description: 'Resource to consume.',
 				displayOptions: {
 					show: {
 						source: [
@@ -111,7 +111,6 @@ export class Storyblok implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Story',
@@ -119,6 +118,7 @@ export class Storyblok implements INodeType {
 					},
 				],
 				default: 'story',
+				description: 'Resource to consume.',
 				displayOptions: {
 					show: {
 						source: [

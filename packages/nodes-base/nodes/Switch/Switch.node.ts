@@ -34,16 +34,16 @@ export class Switch implements INodeType {
 					{
 						name: 'Expression',
 						value: 'expression',
-						description: 'Expression decides how to route data',
+						description: 'Expression decides how to route data.',
 					},
 					{
 						name: 'Rules',
 						value: 'rules',
-						description: 'Rules decide how to route data',
+						description: 'Rules decide how to route data.',
 					},
 				],
 				default: 'rules',
-				description: 'How data should be routed',
+				description: 'How data should be routed.',
 			},
 
 
@@ -66,7 +66,7 @@ export class Switch implements INodeType {
 					},
 				},
 				default: 0,
-				description: 'The index of output to which to send data to',
+				description: 'The index of output to which to send data to.',
 			},
 
 
@@ -103,7 +103,7 @@ export class Switch implements INodeType {
 					},
 				],
 				default: 'number',
-				description: 'The type of data to route on',
+				description: 'The type of data to route on.',
 			},
 
 			// ----------------------------------
@@ -124,8 +124,7 @@ export class Switch implements INodeType {
 					},
 				},
 				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'The value to compare with the first one',
+				description: 'The value to compare with the second one.',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -151,7 +150,6 @@ export class Switch implements INodeType {
 						name: 'rules',
 						displayName: 'Boolean',
 						values: [
-							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -167,15 +165,14 @@ export class Switch implements INodeType {
 									},
 								],
 								default: 'equal',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the the data should be mapped to.',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'boolean',
 								default: false,
-								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-								description: 'The value to compare with the first one',
+								description: 'The value to compare with the first one.',
 							},
 							{
 								displayName: 'Output',
@@ -186,7 +183,7 @@ export class Switch implements INodeType {
 									maxValue: 3,
 								},
 								default: 0,
-								description: 'The index of output to which to send data to if rule matches',
+								description: 'The index of output to which to send data to if rule matches.',
 							},
 						],
 					},
@@ -211,7 +208,7 @@ export class Switch implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The value to compare with the second one',
+				description: 'The value to compare with the second one.',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -237,30 +234,29 @@ export class Switch implements INodeType {
 						name: 'rules',
 						displayName: 'Dates',
 						values: [
-							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
 								options: [
 									{
-										name: 'Occurred After',
+										name: 'Occurred after',
 										value: 'after',
 									},
 									{
-										name: 'Occurred Before',
+										name: 'Occurred before',
 										value: 'before',
 									},
 								],
 								default: 'after',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the the data should be mapped to.',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'dateTime',
 								default: 0,
-								description: 'The value to compare with the first one',
+								description: 'The value to compare with the first one.',
 							},
 							{
 								displayName: 'Output',
@@ -271,7 +267,7 @@ export class Switch implements INodeType {
 									maxValue: 3,
 								},
 								default: 0,
-								description: 'The index of output to which to send data to if rule matches',
+								description: 'The index of output to which to send data to if rule matches.',
 							},
 						],
 					},
@@ -296,7 +292,7 @@ export class Switch implements INodeType {
 					},
 				},
 				default: 0,
-				description: 'The value to compare with the second one',
+				description: 'The value to compare with the second one.',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -322,12 +318,10 @@ export class Switch implements INodeType {
 						name: 'rules',
 						displayName: 'Numbers',
 						values: [
-							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Smaller',
@@ -355,14 +349,14 @@ export class Switch implements INodeType {
 									},
 								],
 								default: 'smaller',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the the data should be mapped to.',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'number',
 								default: 0,
-								description: 'The value to compare with the first one',
+								description: 'The value to compare with the first one.',
 							},
 							{
 								displayName: 'Output',
@@ -373,7 +367,7 @@ export class Switch implements INodeType {
 									maxValue: 3,
 								},
 								default: 0,
-								description: 'The index of output to which to send data to if rule matches',
+								description: 'The index of output to which to send data to if rule matches.',
 							},
 						],
 					},
@@ -398,7 +392,7 @@ export class Switch implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The value to compare with the second one',
+				description: 'The value to compare with the second one.',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -424,12 +418,10 @@ export class Switch implements INodeType {
 						name: 'rules',
 						displayName: 'Strings',
 						values: [
-							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Contains',
@@ -473,7 +465,7 @@ export class Switch implements INodeType {
 									},
 								],
 								default: 'equal',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the the data should be mapped to.',
 							},
 							{
 								displayName: 'Value 2',
@@ -488,7 +480,7 @@ export class Switch implements INodeType {
 									},
 								},
 								default: '',
-								description: 'The value to compare with the first one',
+								description: 'The value to compare with the first one.',
 							},
 							{
 								displayName: 'Regex',
@@ -504,7 +496,7 @@ export class Switch implements INodeType {
 								},
 								default: '',
 								placeholder: '/text/i',
-								description: 'The regex which has to match',
+								description: 'The regex which has to match.',
 							},
 							{
 								displayName: 'Output',
@@ -515,7 +507,7 @@ export class Switch implements INodeType {
 									maxValue: 3,
 								},
 								default: 0,
-								description: 'The index of output to which to send data to if rule matches',
+								description: 'The index of output to which to send data to if rule matches.',
 							},
 						],
 					},
@@ -535,7 +527,6 @@ export class Switch implements INodeType {
 						],
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'None',
@@ -559,7 +550,7 @@ export class Switch implements INodeType {
 					},
 				],
 				default: -1,
-				description: 'The output to which to route all items which do not match any of the rules',
+				description: 'The output to which to route all items which do not match any of the rules.',
 			},
 
 		],

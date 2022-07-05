@@ -2,12 +2,11 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const userOperations: INodeProperties[] = [
+export const userOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -29,9 +28,9 @@ export const userOperations: INodeProperties[] = [
 		],
 		default: 'get',
 	},
-];
+] as INodeProperties[];
 
-export const userFields: INodeProperties[] = [
+export const userFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                user:get                                    */
@@ -95,6 +94,6 @@ export const userFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
-];
+] as INodeProperties[];

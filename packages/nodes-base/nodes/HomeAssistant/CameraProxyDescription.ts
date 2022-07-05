@@ -7,7 +7,6 @@ export const cameraProxyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,6 +22,7 @@ export const cameraProxyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getScreenshot',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -31,10 +31,9 @@ export const cameraProxyFields: INodeProperties[] = [
 	/*                       cameraProxy:getScreenshot                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Camera Entity Name or ID',
+		displayName: 'Camera Entity ID',
 		name: 'cameraEntityId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCameraEntities',
 		},
@@ -67,6 +66,6 @@ export const cameraProxyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 ];

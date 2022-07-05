@@ -7,7 +7,6 @@ export const problemOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -68,9 +67,9 @@ export const problemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Requester Name or ID',
+		displayName: 'Requester Name/ID',
 		name: 'requesterId',
-		description: 'ID of the initiator of the problem. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the initiator of the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -123,21 +122,21 @@ export const problemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name or ID',
+				displayName: 'Agent Name/ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom the problem is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the agent to whom the problem is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department initiating the problem. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the department initiating the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -150,11 +149,11 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group Name/ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent group to which the problem is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the agent group to which the problem is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgentGroups',
 				},
@@ -295,7 +294,7 @@ export const problemFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -353,21 +352,21 @@ export const problemFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Agent Name or ID',
+				displayName: 'Agent Name/ID',
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom the problem is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the agent to whom the problem is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department initiating the problem. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the department initiating the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -387,11 +386,11 @@ export const problemFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group Name/ID',
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent group to which the problem is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the agent group to which the problem is assigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgentGroups',
 				},
@@ -441,11 +440,11 @@ export const problemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Requester Name or ID',
+				displayName: 'Requester Name/ID',
 				name: 'requester_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the initiator of the problem. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the initiator of the problem. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getRequesters',
 				},

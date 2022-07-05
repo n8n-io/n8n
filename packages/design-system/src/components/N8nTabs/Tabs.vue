@@ -13,7 +13,7 @@
 					target="_blank"
 					:href="option.href"
 					:class="[$style.link, $style.tab]"
-					@click="() => handleTabClick(option.value)"
+					@click="handleTabClick"
 				>
 					<div>
 						{{ option.label }}
@@ -168,7 +168,7 @@ export default Vue.extend({
 
 .button {
 	position: absolute;
-	background-color: var(--color-background-base);
+	background-color: var(--color-background-light);
 	z-index: 1;
 	height: 24px;
 	width: 10px;

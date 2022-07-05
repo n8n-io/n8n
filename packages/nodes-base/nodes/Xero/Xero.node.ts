@@ -63,7 +63,6 @@ export class Xero implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -75,6 +74,7 @@ export class Xero implements INodeType {
 					},
 				],
 				default: 'invoice',
+				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,

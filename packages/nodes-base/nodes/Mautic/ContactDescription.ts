@@ -7,7 +7,6 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -58,6 +57,7 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -86,7 +86,6 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
-		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [
@@ -101,7 +100,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the contact',
+		description: 'Email address of the contact.',
 	},
 	{
 		displayName: 'First Name',
@@ -142,10 +141,9 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Primary Company Name or ID',
+		displayName: 'Primary Company',
 		name: 'company',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCompanies',
 		},
@@ -319,7 +317,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Fields',
-				description: 'Adds a custom fields to set also values which have not been predefined',
+				description: 'Adds a custom fields to set also values which have not been predefined.',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -331,21 +329,21 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'ID of the field to set.',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set',
+								description: 'Value of the field to set.',
 							},
 						],
 					},
@@ -419,20 +417,18 @@ export const contactFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage',
 				name: 'stage',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStages',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -668,7 +664,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom Fields',
-				description: 'Adds a custom fields to set also values which have not been predefined',
+				description: 'Adds a custom fields to set also values which have not been predefined.',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -680,21 +676,21 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'ID of the field to set.',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'fieldValue',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set',
+								description: 'Value of the field to set.',
 							},
 						],
 					},
@@ -704,7 +700,6 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -713,7 +708,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Email address of the contact',
+				description: 'Email address of the contact.',
 			},
 			{
 				displayName: 'Fax',
@@ -850,10 +845,9 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Primary Company Name or ID',
+				displayName: 'Primary Company',
 				name: 'company',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -903,10 +897,9 @@ export const contactFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Stage Name or ID',
+				displayName: 'Stage',
 				name: 'stage',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -920,10 +913,9 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -1257,7 +1249,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -1281,7 +1273,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 30,
 		},
 		default: 30,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1343,7 +1335,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'String or search command to filter entities by',
+				description: 'String or search command to filter entities by.',
 			},
 			{
 				displayName: 'Order By',
@@ -1387,7 +1379,7 @@ export const contactFields: INodeProperties[] = [
 						value: 'desc',
 					},
 				],
-				description: 'Sort direction: ASC or DESC',
+				description: 'Sort direction: ASC or DESC.',
 			},
 			{
 				displayName: 'Published Only',
@@ -1404,7 +1396,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Whether to return currently published entities',
+				description: 'Only return currently published entities.',
 			},
 			{
 				displayName: 'Minimal',
@@ -1421,14 +1413,13 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Whether to return array of entities without additional lists in it',
+				description: 'Return only array of entities without additional lists in it.',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default only the data of the fields get returned. If this options gets set the RAW response with all data gets returned.',
 			},
 		],
@@ -1437,10 +1428,9 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:sendEmail                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Campaign Email Name or ID',
+		displayName: 'Campaign Email ID',
 		name: 'campaignEmailId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {

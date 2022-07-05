@@ -61,7 +61,6 @@ export class Zulip implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
@@ -77,6 +76,7 @@ export class Zulip implements INodeType {
 					},
 				],
 				default: 'message',
+				description: 'Resource to consume.',
 			},
 			// MESSAGE
 			...messageOperations,

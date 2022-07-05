@@ -17,7 +17,6 @@ export class WorkflowTrigger implements INodeType {
 		version: 1,
 		description: 'Triggers based on various lifecycle events, like when a workflow is activated',
 		eventTriggerDescription: '',
-		mockManualExecution: true,
 		activationMessage: 'Your workflow will now trigger executions on the event you have defined.',
 		defaults: {
 			name: 'Workflow Trigger',
@@ -36,7 +35,8 @@ export class WorkflowTrigger implements INodeType {
 					<ul>
 						<li><b>Active Workflow Updated</b>: Triggers when this workflow is updated</li>
 						<li><b>Workflow Activated</b>: Triggers when this workflow is activated</li>
-					</ul>`,
+					</ul>
+				`,
 				options: [
 					{
 						name: 'Active Workflow Updated',

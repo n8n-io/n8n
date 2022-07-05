@@ -7,7 +7,6 @@ export const messageLabelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,6 +27,7 @@ export const messageLabelOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
+		description: 'The operation to perform',
 	},
 ];
 
@@ -50,10 +50,10 @@ export const messageLabelFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
-		description: 'The message ID of your email',
+		description: 'The message ID of your email.',
 	},
 	{
-		displayName: 'Label Names or IDs',
+		displayName: 'Label IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -72,6 +72,6 @@ export const messageLabelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the label. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the label',
 	},
 ];

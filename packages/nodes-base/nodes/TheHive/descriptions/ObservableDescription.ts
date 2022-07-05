@@ -8,11 +8,9 @@ import {
 
 export const observableOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation Name or ID',
+		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
-		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {
@@ -67,7 +65,7 @@ export const observableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -92,7 +90,7 @@ export const observableFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	// required attributs
 	{
@@ -117,7 +115,7 @@ export const observableFields: INodeProperties[] = [
 		description: 'ID of the observable',
 	},
 	{
-		displayName: 'Data Type Name or ID',
+		displayName: 'Data Type',
 		name: 'dataType',
 		type: 'options',
 		required: true,
@@ -136,7 +134,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Type of the observable',
 	},
 	{
 		displayName: 'Data',
@@ -269,7 +267,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether the observable is an IOC (Indicator of compromise)',
+		description: 'Indicates if the observable is an IOC (Indicator of compromise)',
 	},
 	{
 		displayName: 'Sighted',
@@ -287,7 +285,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether sighted previously',
+		description: 'Sighted previously',
 	},
 	{
 		displayName: 'Status',
@@ -319,10 +317,9 @@ export const observableFields: INodeProperties[] = [
 	},
 	// required for analyzer execution
 	{
-		displayName: 'Analyzer Names or IDs',
+		displayName: 'Analyzer',
 		name: 'analyzers',
 		type: 'multiOptions',
-		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -351,10 +348,9 @@ export const observableFields: INodeProperties[] = [
 
 	// required for responder execution
 	{
-		displayName: 'Responder Name or ID',
+		displayName: 'Responder ID',
 		name: 'responder',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -385,6 +381,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
+		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -401,6 +398,7 @@ export const observableFields: INodeProperties[] = [
 				displayName: 'Observable Tags',
 				name: 'tags',
 				type: 'string',
+				required: false,
 				default: '',
 				placeholder: 'tag1,tag2',
 			},
@@ -411,6 +409,7 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
+		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -468,12 +467,12 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the observable is an IOC (Indicator of compromise)',
+				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
-				description: 'Whether sighted previously',
+				description: 'sighted previously',
 				type: 'boolean',
 				default: false,
 			},
@@ -530,6 +529,7 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
+		required: false,
 		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
@@ -545,35 +545,37 @@ export const observableFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Data Type Names or IDs',
+				displayName: 'Data Type',
 				name: 'dataType',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'loadObservableTypes',
 				},
-				description: 'Type of the observable. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Type of the observable',
 			},
 			{
-				displayName: 'Date Range',
+				displayName: 'Date range',
 				type: 'fixedCollection',
 				name: 'range',
 				default: {},
 				options: [
 					{
-						displayName: 'Add Date Range Inputs',
+						displayName: 'Add date range inputs',
 						name: 'dateRange',
 						values: [
 							{
-								displayName: 'From Date',
+								displayName: 'From date',
 								name: 'fromDate',
 								type: 'dateTime',
+								required: false,
 								default: '',
 							},
 							{
-								displayName: 'To Date',
+								displayName: 'To date',
 								name: 'toDate',
 								type: 'dateTime',
+								required: false,
 								default: '',
 							},
 						],
@@ -592,7 +594,7 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the observable is an IOC (Indicator of compromise)',
+				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Keyword',

@@ -28,7 +28,6 @@ export const contactCreateDescription: ContactProperties = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
-		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [

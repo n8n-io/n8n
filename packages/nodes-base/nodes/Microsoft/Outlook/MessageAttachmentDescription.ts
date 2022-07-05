@@ -7,7 +7,6 @@ export const messageAttachmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +37,7 @@ export const messageAttachmentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -97,7 +97,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -121,7 +121,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 
 
@@ -131,7 +131,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 	{
 		displayName: 'Binary Property',
 		name: 'binaryPropertyName',
-		description: 'Name of the binary property to which to write the data of the read file',
+		description: 'Name of the binary property to which to write the data of the read file.',
 		type: 'string',
 		required: true,
 		default: 'data',
@@ -207,7 +207,7 @@ export const messageAttachmentFields: INodeProperties[] = [
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'Microsoft Graph API OData $filter query',
+				description: 'Microsoft Graph API OData $filter query.',
 			},
 		],
 	},

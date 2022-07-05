@@ -9,7 +9,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -66,7 +65,6 @@ export class Stripe implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Balance',
@@ -98,6 +96,7 @@ export class Stripe implements INodeType {
 					},
 				],
 				default: 'balance',
+				description: 'Resource to consume',
 			},
 			...balanceOperations,
 			...customerCardOperations,
@@ -268,7 +267,7 @@ export class Stripe implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (isEmpty(updateFields)) {
-							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+							throw new Error(`Please enter at least one field to update for the ${resource}.`);
 						}
 
 						Object.assign(body, adjustChargeFields(updateFields));
@@ -387,7 +386,7 @@ export class Stripe implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (isEmpty(updateFields)) {
-							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+							throw new Error(`Please enter at least one field to update for the ${resource}.`);
 						}
 
 						Object.assign(body, adjustCustomerFields(updateFields));
@@ -471,7 +470,7 @@ export class Stripe implements INodeType {
 						const body = {} as IDataObject;
 
 						if (type !== 'cardToken') {
-							throw new NodeOperationError(this.getNode(), 'Only card token creation implemented.');
+							throw new Error('Only card token creation implemented.');
 						}
 
 						body.card = {

@@ -7,7 +7,6 @@ export const searchOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,6 +22,7 @@ export const searchOperations: INodeProperties[] = [
 			},
 		],
 		default: 'query',
+		description: 'The operation to perform.',
 	},
 ];
 

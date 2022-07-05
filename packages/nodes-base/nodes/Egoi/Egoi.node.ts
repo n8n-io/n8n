@@ -28,7 +28,6 @@ export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'E-goi',
 		name: 'egoi',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:egoi.png',
 		group: ['output'],
 		version: 1,
@@ -50,7 +49,6 @@ export class Egoi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -59,12 +57,12 @@ export class Egoi implements INodeType {
 					},
 				],
 				default: 'contact',
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -89,9 +87,10 @@ export class Egoi implements INodeType {
 					},
 				],
 				default: 'create',
+				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -108,13 +107,12 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'ID of list to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of list to operate on.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						operation: [
@@ -123,7 +121,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email address for a subscriber',
+				description: 'Email address for a subscriber.',
 			},
 			{
 				displayName: 'Contact ID',
@@ -140,7 +138,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Contact ID of the subscriber',
+				description: 'Contact ID of the subscriber.',
 			},
 			{
 				displayName: 'Resolve Data',
@@ -155,8 +153,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default the response just includes the contact ID. If this option gets activated, it will resolve the data automatically.',
+				description: 'By default the response just includes the contact id. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -180,14 +177,14 @@ export class Egoi implements INodeType {
 						name: 'birth_date',
 						type: 'dateTime',
 						default: '',
-						description: 'Birth date of a subscriber',
+						description: 'Birth date of a subscriber.',
 					},
 					{
 						displayName: 'Cellphone',
 						name: 'cellphone',
 						type: 'string',
 						default: '',
-						description: 'Cellphone of a subscriber',
+						description: 'Cellphone of a subscriber.',
 					},
 					{
 						displayName: 'Extra Fields',
@@ -207,10 +204,9 @@ export class Egoi implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field Name or ID',
+										displayName: 'Field ID',
 										name: 'field_id',
 										type: 'options',
-										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getExtraFields',
 											loadOptionsDependsOn: [
@@ -234,14 +230,14 @@ export class Egoi implements INodeType {
 						name: 'first_name',
 						type: 'string',
 						default: '',
-						description: 'Name of a subscriber',
+						description: 'Name of a subscriber.',
 					},
 					{
 						displayName: 'Last Name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
-						description: 'Name of a subscriber',
+						description: 'Name of a subscriber.',
 					},
 					{
 						displayName: 'Status',
@@ -266,17 +262,17 @@ export class Egoi implements INodeType {
 							},
 						],
 						default: 'active',
-						description: 'Subscriber\'s current status',
+						description: `Subscriber's current status.`,
 					},
 					{
-						displayName: 'Tag Names or IDs',
+						displayName: 'Tags IDs',
 						name: 'tagIds',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getListTags',
 						},
 						default: [],
-						description: 'List of tag IDs to be added. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'List of tag ids to be added',
 					},
 				],
 			},
@@ -302,22 +298,21 @@ export class Egoi implements INodeType {
 						name: 'birth_date',
 						type: 'dateTime',
 						default: '',
-						description: 'Birth date of subscriber',
+						description: 'Birth date of subscriber.',
 					},
 					{
 						displayName: 'Cellphone',
 						name: 'cellphone',
 						type: 'string',
 						default: '',
-						description: 'Cellphone of subscriber',
+						description: 'Cellphone of subscriber.',
 					},
 					{
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
-						placeholder: 'name@email.com',
 						default: '',
-						description: 'Email address for subscriber',
+						description: 'Email address for subscriber.',
 					},
 					{
 						displayName: 'Extra Fields',
@@ -337,10 +332,9 @@ export class Egoi implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field Name or ID',
+										displayName: 'Field ID',
 										name: 'field_id',
 										type: 'options',
-										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getExtraFields',
 											loadOptionsDependsOn: [
@@ -364,14 +358,14 @@ export class Egoi implements INodeType {
 						name: 'first_name',
 						type: 'string',
 						default: '',
-						description: 'Name of subscriber',
+						description: 'Name of subscriber.',
 					},
 					{
 						displayName: 'Last Name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
-						description: 'Name of subscriber',
+						description: 'Name of subscriber.',
 					},
 					{
 						displayName: 'Status',
@@ -397,17 +391,17 @@ export class Egoi implements INodeType {
 
 						],
 						default: 'active',
-						description: 'Subscriber\'s current status',
+						description: `Subscriber's current status.`,
 					},
 					{
-						displayName: 'Tag Names or IDs',
+						displayName: 'Tags IDs',
 						name: 'tagIds',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getListTags',
 						},
 						default: [],
-						description: 'List of tag IDs to be added. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'List of tag ids to be added',
 					},
 				],
 			},
@@ -456,13 +450,12 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Contact ID of the subscriber',
+				description: 'Contact ID of the subscriber.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -477,7 +470,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email address for subscriber',
+				description: 'Email address for subscriber.',
 			},
 			{
 				displayName: 'Return All',
@@ -494,7 +487,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'If all results should be returned or only up to a given limit.',
 			},
 			{
 				displayName: 'Limit',
@@ -518,10 +511,10 @@ export class Egoi implements INodeType {
 					maxValue: 500,
 				},
 				default: 100,
-				description: 'Max number of results to return',
+				description: 'How many results to return.',
 			},
 			{
-				displayName: 'Simplify',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -536,7 +529,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 		],
 	};

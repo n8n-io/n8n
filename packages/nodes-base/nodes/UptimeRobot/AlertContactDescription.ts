@@ -7,7 +7,6 @@ export const alertContactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -43,6 +42,7 @@ export const alertContactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -66,7 +66,7 @@ export const alertContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The friendly name of the alert contact',
+		description: 'The friendly name of the alert contact.',
 	},
 	{
 		displayName: 'Type',
@@ -80,16 +80,8 @@ export const alertContactFields: INodeProperties[] = [
 				value: 4,
 			},
 			{
-				name: 'E-Mail',
+				name: 'E-mail',
 				value: 2,
-			},
-			{
-				name: 'Pushbullet',
-				value: 6,
-			},
-			{
-				name: 'Pushover',
-				value: 9,
 			},
 			{
 				name: 'SMS',
@@ -98,6 +90,14 @@ export const alertContactFields: INodeProperties[] = [
 			{
 				name: 'Twitter DM',
 				value: 3,
+			},
+			{
+				name: 'Pushbullet',
+				value: 6,
+			},
+			{
+				name: 'Pushover',
+				value: 9,
 			},
 			{
 				name: 'Webhook',
@@ -116,6 +116,7 @@ export const alertContactFields: INodeProperties[] = [
 			// 	name:'Zapier',
 			// 	value:7,
 			// },
+
 		],
 		displayOptions: {
 			show: {
@@ -127,7 +128,7 @@ export const alertContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The type of the alert contact',
+		description: 'The type of the alert contact.',
 	},
 	{
 		displayName: 'Value',
@@ -145,7 +146,7 @@ export const alertContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The correspondent value for the alert contact type',
+		description: 'The correspondent value for the alert contact type.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -168,7 +169,7 @@ export const alertContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the alert contact',
+		description: 'The ID of the alert contact.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -189,7 +190,7 @@ export const alertContactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -213,7 +214,7 @@ export const alertContactFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filters',
@@ -237,7 +238,7 @@ export const alertContactFields: INodeProperties[] = [
 				name: 'alert_contacts',
 				type: 'string',
 				default: '',
-				description: 'Alert contact IDs separated with dash, e.g. 236-1782-4790',
+				description: 'Alert contact ids separated with dash, e.g. 236-1782-4790.',
 			},
 		],
 	},
@@ -261,7 +262,7 @@ export const alertContactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the alert contact',
+		description: 'The ID of the alert contact.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -285,14 +286,14 @@ export const alertContactFields: INodeProperties[] = [
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'The friendly name of the alert contact',
+				description: 'The friendly name of the alert contact.',
 			},
 			{
 				displayName: 'Value',
 				name: 'value',
 				type: 'string',
 				default: '',
-				description: 'The correspondent value for the alert contact type (can only be used if it is a Webhook alert contact)',
+				description: 'The correspondent value for the alert contact type (can only be used if it is a Webhook alert contact).',
 			},
 		],
 	},

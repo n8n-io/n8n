@@ -8,7 +8,6 @@ export const requesterOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -114,11 +113,11 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department Names/IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -143,9 +142,9 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location ID',
 				name: 'location_id',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -259,7 +258,7 @@ export const requesterFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -295,9 +294,9 @@ export const requesterFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Department Name or ID',
+				displayName: 'Department Name/ID',
 				name: 'department_id',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -330,10 +329,10 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location Name/ID',
 				name: 'location_id',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getLocations',
@@ -411,11 +410,11 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Department Names or IDs',
+				displayName: 'Department Names/IDs',
 				name: 'department_ids',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of the departments associated with the requester. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -446,11 +445,11 @@ export const requesterFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Location Name or ID',
+				displayName: 'Location Name/ID',
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLocations',
 				},

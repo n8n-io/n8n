@@ -5,7 +5,6 @@ import {
 
 //https://api.slack.com/authentication/oauth-v2
 const userScopes = [
-	'channels:write',
 	'chat:write',
 	'files:read',
 	'files:write',
@@ -30,12 +29,6 @@ export class SlackOAuth2Api implements ICredentialType {
 	displayName = 'Slack OAuth2 API';
 	documentationUrl = 'slack';
 	properties: INodeProperties[] = [
-		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',

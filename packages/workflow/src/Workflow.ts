@@ -46,20 +46,7 @@ import {
 	WorkflowExecuteMode,
 } from '.';
 
-import {
-	IConnection,
-	IConnectedNode,
-	IDataObject,
-	IExecuteData,
-	INodeConnection,
-	IObservableObject,
-	IRun,
-	IRunNodeResponse,
-} from './Interfaces';
-
-function dedupe<T>(arr: T[]): T[] {
-	return [...new Set(arr)];
-}
+import { IConnection, IDataObject, IObservableObject } from './Interfaces';
 
 export class Workflow {
 	id: string | undefined;
@@ -727,107 +714,33 @@ export class Workflow {
 	}
 
 	/**
-	 * Returns all the nodes before the given one
-	 *
-	 * @param {string} nodeName
-	 * @param {*} [maxDepth=-1]
-	 * @returns {string[]}
-	 * @memberof Workflow
-	 */
-	getParentNodesByDepth(nodeName: string, maxDepth = -1): IConnectedNode[] {
-		return this.searchNodesBFS(this.connectionsByDestinationNode, nodeName, maxDepth);
-	}
-
-	/**
-	 * Gets all the nodes which are connected nodes starting from
-	 * the given one
-	 * Uses BFS traversal
-	 *
-	 * @param {IConnections} connections
-	 * @param {string} sourceNode
-	 * @param {*} [maxDepth=-1]
-	 * @returns {IConnectedNode[]}
-	 * @memberof Workflow
-	 */
-	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
-		const returnConns: IConnectedNode[] = [];
-
-		const type = 'main';
-		let queue: IConnectedNode[] = [];
-		queue.push({
-			name: sourceNode,
-			depth: 0,
-			indicies: [],
-		});
-
-		const visited: { [key: string]: IConnectedNode } = {};
-
-		let depth = 0;
-		while (queue.length > 0) {
-			if (maxDepth !== -1 && depth > maxDepth) {
-				break;
-			}
-			depth++;
-
-			const toAdd = [...queue];
-			queue = [];
-
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			toAdd.forEach((curr) => {
-				if (visited[curr.name]) {
-					visited[curr.name].indicies = dedupe(visited[curr.name].indicies.concat(curr.indicies));
-					return;
-				}
-
-				visited[curr.name] = curr;
-				if (curr.name !== sourceNode) {
-					returnConns.push(curr);
-				}
-
-				if (
-					!connections.hasOwnProperty(curr.name) ||
-					!connections[curr.name].hasOwnProperty(type)
-				) {
-					return;
-				}
-
-				connections[curr.name][type].forEach((connectionsByIndex) => {
-					connectionsByIndex.forEach((connection) => {
-						queue.push({
-							name: connection.node,
-							indicies: [connection.index],
-							depth,
-						});
-					});
-				});
-			});
-		}
-
-		return returnConns;
-	}
-
-	/**
-	 * Returns via which output of the parent-node and index the current node
-	 * they are connected
+	 * Returns via which output of the parent-node the node
+	 * is connected to.
 	 *
 	 * @param {string} nodeName The node to check how it is connected with parent node
 	 * @param {string} parentNodeName The parent node to get the output index of
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
 	 * @param {string[]} [checkedNodes]
-	 * @returns {(INodeConnection | undefined)}
+	 * @returns {(number | undefined)}
 	 * @memberof Workflow
 	 */
-	getNodeConnectionIndexes(
+	getNodeConnectionOutputIndex(
 		nodeName: string,
 		parentNodeName: string,
 		type = 'main',
 		depth = -1,
 		checkedNodes?: string[],
-	): INodeConnection | undefined {
+	): number | undefined {
 		const node = this.getNode(parentNodeName);
 		if (node === null) {
 			return undefined;
+		}
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+		if (nodeType.description.outputs.length === 1) {
+			// If the parent node has only one output, it can only be connected
+			// to that one. So no further checking is required.
+			return 0;
 		}
 
 		depth = depth === -1 ? -1 : depth;
@@ -856,19 +769,11 @@ export class Workflow {
 
 		checkedNodes.push(nodeName);
 
-		let outputIndex: INodeConnection | undefined;
+		let outputIndex: number | undefined;
 		for (const connectionsByIndex of this.connectionsByDestinationNode[nodeName][type]) {
-			for (
-				let destinationIndex = 0;
-				destinationIndex < connectionsByIndex.length;
-				destinationIndex++
-			) {
-				const connection = connectionsByIndex[destinationIndex];
+			for (const connection of connectionsByIndex) {
 				if (parentNodeName === connection.node) {
-					return {
-						sourceIndex: connection.index,
-						destinationIndex,
-					};
+					return connection.index;
 				}
 
 				if (checkedNodes.includes(connection.node)) {
@@ -876,7 +781,7 @@ export class Workflow {
 					continue;
 				}
 
-				outputIndex = this.getNodeConnectionIndexes(
+				outputIndex = this.getNodeConnectionOutputIndex(
 					connection.node,
 					parentNodeName,
 					type,
@@ -1051,7 +956,6 @@ export class Workflow {
 					(
 						data: INodeExecutionData[][],
 						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-						donePromise?: IDeferredPromise<IRun>,
 					) => {
 						additionalData.hooks!.hookFunctions.sendResponse = [
 							async (response: IExecuteResponsePromiseData): Promise<void> => {
@@ -1060,14 +964,6 @@ export class Workflow {
 								}
 							},
 						];
-
-						if (donePromise) {
-							additionalData.hooks!.hookFunctions.workflowExecuteAfter?.unshift(
-								async (runData: IRun): Promise<void> => {
-									return donePromise.resolve(runData);
-								},
-							);
-						}
 
 						resolveEmit(data);
 					}
@@ -1161,7 +1057,8 @@ export class Workflow {
 	/**
 	 * Executes the given node.
 	 *
-	 * @param {IExecuteData} executionData
+	 * @param {INode} node
+	 * @param {ITaskDataConnections} inputData
 	 * @param {IRunExecutionData} runExecutionData
 	 * @param {number} runIndex
 	 * @param {IWorkflowExecuteAdditionalData} additionalData
@@ -1171,27 +1068,25 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	async runNode(
-		executionData: IExecuteData,
+		node: INode,
+		inputData: ITaskDataConnections,
 		runExecutionData: IRunExecutionData,
 		runIndex: number,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
-	): Promise<IRunNodeResponse> {
-		const { node } = executionData;
-		let inputData = executionData.data;
-
+	): Promise<INodeExecutionData[][] | null | undefined> {
 		if (node.disabled === true) {
 			// If node is disabled simply pass the data through
 			// return NodeRunHelpers.
 			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
 				// If the node is disabled simply return the data from the first main input
 				if (inputData.main[0] === null) {
-					return { data: undefined };
+					return undefined;
 				}
-				return { data: [inputData.main[0]] };
+				return [inputData.main[0]];
 			}
-			return { data: undefined };
+			return undefined;
 		}
 
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -1216,7 +1111,7 @@ export class Workflow {
 
 			if (connectionInputData.length === 0) {
 				// No data for node so return
-				return { data: undefined };
+				return undefined;
 			}
 		}
 
@@ -1259,7 +1154,6 @@ export class Workflow {
 					node,
 					itemIndex,
 					additionalData,
-					executionData,
 					mode,
 				);
 
@@ -1267,7 +1161,7 @@ export class Workflow {
 			}
 
 			if (returnPromises.length === 0) {
-				return { data: null };
+				return null;
 			}
 
 			let promiseResults;
@@ -1278,7 +1172,7 @@ export class Workflow {
 			}
 
 			if (promiseResults) {
-				return { data: [promiseResults] };
+				return [promiseResults];
 			}
 		} else if (nodeType.execute) {
 			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(
@@ -1289,10 +1183,9 @@ export class Workflow {
 				inputData,
 				node,
 				additionalData,
-				executionData,
 				mode,
 			);
-			return { data: await nodeType.execute.call(thisArgs) };
+			return nodeType.execute.call(thisArgs);
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
@@ -1303,10 +1196,10 @@ export class Workflow {
 					mode,
 					'manual',
 				);
-				return { data: await nodeType.poll.call(thisArgs) };
+				return nodeType.poll.call(thisArgs);
 			}
 			// In any other mode pass data through as it already contains the result of the poll
-			return { data: inputData.main as INodeExecutionData[][] };
+			return inputData.main as INodeExecutionData[][];
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
@@ -1319,7 +1212,7 @@ export class Workflow {
 				);
 
 				if (triggerResponse === undefined) {
-					return { data: null };
+					return null;
 				}
 
 				if (triggerResponse.manualTriggerFunction !== undefined) {
@@ -1329,27 +1222,22 @@ export class Workflow {
 
 				const response = await triggerResponse.manualTriggerResponse!;
 
-				let closeFunction;
+				// And then close it again after it did execute
 				if (triggerResponse.closeFunction) {
-					// In manual mode we return the trigger closeFunction. That allows it to be called directly
-					// but we do not have to wait for it to finish. That is important for things like queue-nodes.
-					// There the full close will may be delayed till a message gets acknowledged after the execution.
-					// If we would not be able to wait for it to close would it cause problems with "own" mode as the
-					// process would be killed directly after it and so the acknowledge would not have been finished yet.
-					closeFunction = triggerResponse.closeFunction;
+					await triggerResponse.closeFunction();
 				}
 
 				if (response.length === 0) {
-					return { data: null, closeFunction };
+					return null;
 				}
 
-				return { data: response, closeFunction };
+				return response;
 			}
 			// For trigger nodes in any mode except "manual" do we simply pass the data through
-			return { data: inputData.main as INodeExecutionData[][] };
+			return inputData.main as INodeExecutionData[][];
 		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
-			return { data: inputData.main as INodeExecutionData[][] };
+			return inputData.main as INodeExecutionData[][];
 		} else {
 			// For nodes which have routing information on properties
 
@@ -1362,17 +1250,9 @@ export class Workflow {
 				mode,
 			);
 
-			return {
-				data: await routingNode.runNode(
-					inputData,
-					runIndex,
-					nodeType,
-					executionData,
-					nodeExecuteFunctions,
-				),
-			};
+			return routingNode.runNode(inputData, runIndex, nodeType, nodeExecuteFunctions);
 		}
 
-		return { data: null };
+		return null;
 	}
 }

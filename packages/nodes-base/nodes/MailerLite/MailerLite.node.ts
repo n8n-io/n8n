@@ -25,7 +25,6 @@ export class MailerLite implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MailerLite',
 		name: 'mailerLite',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:mailerLite.png',
 		group: ['input'],
 		version: 1,
@@ -47,7 +46,6 @@ export class MailerLite implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Subscriber',
@@ -55,6 +53,7 @@ export class MailerLite implements INodeType {
 					},
 				],
 				default: 'subscriber',
+				description: 'The resource to operate on.',
 			},
 			...subscriberOperations,
 			...subscriberFields,

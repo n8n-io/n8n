@@ -12,12 +12,6 @@ export class SentryIoOAuth2Api implements ICredentialType {
 	documentationUrl = 'sentryIo';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

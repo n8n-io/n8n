@@ -30,7 +30,7 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
-	validateCredentials,
+	validateCrendetials,
 	validateJSON,
 } from '../GenericFunctions';
 
@@ -198,7 +198,7 @@ export class NotionV2 implements INodeType {
 		credentialTest: {
 			async notionApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					return {
 						status: 'Error',

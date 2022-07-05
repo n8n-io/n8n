@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -54,7 +53,6 @@ export class ERPNext implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -62,6 +60,7 @@ export class ERPNext implements INodeType {
 					},
 				],
 				default: 'document',
+				description: 'Resource to consume.',
 			},
 			...documentOperations,
 			...documentFields,

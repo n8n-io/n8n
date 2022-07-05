@@ -46,10 +46,9 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -84,7 +83,7 @@ export const tableRecordFields: INodeProperties[] = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: 'Don\'t send any column data',
+				description: `Don't send any column data`,
 			},
 		],
 		displayOptions: {
@@ -117,6 +116,7 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
@@ -147,10 +147,9 @@ export const tableRecordFields: INodeProperties[] = [
 				name: 'field',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field Name',
 						name: 'column',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [
@@ -174,10 +173,9 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:getAll                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -233,7 +231,7 @@ export const tableRecordFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'The max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -260,7 +258,7 @@ export const tableRecordFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Fields',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -270,7 +268,7 @@ export const tableRecordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'A list of fields to return',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -308,7 +306,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:get/delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
 		typeOptions: {
@@ -327,7 +325,7 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Name of the table in which the record exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Name of the table in which the record exists',
 	},
 	{
 		displayName: 'Table Record ID',
@@ -373,7 +371,7 @@ export const tableRecordFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Fields',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -383,7 +381,7 @@ export const tableRecordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'A list of fields to return',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -414,10 +412,9 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:update                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table Name',
 		name: 'tableName',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -470,7 +467,7 @@ export const tableRecordFields: INodeProperties[] = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: 'Don\'t send any column data',
+				description: `Don't send any column data`,
 			},
 		],
 		displayOptions: {
@@ -503,6 +500,7 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
@@ -533,10 +531,9 @@ export const tableRecordFields: INodeProperties[] = [
 				name: 'field',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field Name',
 						name: 'column',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [

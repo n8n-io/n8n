@@ -7,7 +7,6 @@ export const storyContentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				source: [
@@ -31,6 +30,7 @@ export const storyContentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -58,7 +58,7 @@ export const storyContentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID or slug of the story to get',
+		description: 'The ID or slug of the story to get.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -82,7 +82,7 @@ export const storyContentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Returns a list of your user contacts.',
 	},
 	{
 		displayName: 'Limit',
@@ -109,7 +109,7 @@ export const storyContentFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filters',
@@ -136,7 +136,7 @@ export const storyContentFields: INodeProperties[] = [
 				name: 'starts_with',
 				type: 'string',
 				default: '',
-				description: 'Filter by slug',
+				description: 'Filter by slug.',
 			},
 		],
 	},

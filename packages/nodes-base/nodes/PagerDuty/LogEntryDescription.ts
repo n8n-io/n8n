@@ -7,7 +7,6 @@ export const logEntryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,6 +27,7 @@ export const logEntryOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,7 +51,7 @@ export const logEntryFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the log entry',
+		description: 'Unique identifier for the log entry.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 logEntry:getAll                            */
@@ -71,7 +71,7 @@ export const logEntryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -95,7 +95,7 @@ export const logEntryFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -137,14 +137,14 @@ export const logEntryFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Additional details to include',
+				description: 'Additional details to include.',
 			},
 			{
 				displayName: 'Is Overview',
 				name: 'isOverview',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return a subset of log entries that show only the most important changes to the incident',
+				description: 'If true, will return a subset of log entries that show only the most important changes to the incident.',
 			},
 			{
 				displayName: 'Since',
@@ -154,14 +154,14 @@ export const logEntryFields: INodeProperties[] = [
 				description: 'The start of the date range over which you want to search. (the limit on date ranges is 6 months).',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC.',
 			},
 			{
 				displayName: 'Until',

@@ -74,7 +74,6 @@ export class Reddit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -98,6 +97,7 @@ export class Reddit implements INodeType {
 					},
 				],
 				default: 'post',
+				description: 'Resource to consume',
 			},
 			...postCommentOperations,
 			...postCommentFields,

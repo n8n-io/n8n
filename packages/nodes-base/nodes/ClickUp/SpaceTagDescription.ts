@@ -7,7 +7,6 @@ export const spaceTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +37,7 @@ export const spaceTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -83,10 +83,9 @@ export const spaceTagFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Name or ID',
+		displayName: 'Name',
 		name: 'name',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'space',
@@ -111,7 +110,7 @@ export const spaceTagFields: INodeProperties[] = [
 		displayName: 'New Name',
 		name: 'newName',
 		type: 'string',
-		description: 'New name to set for the tag',
+		description: 'New name to set for the tag.',
 		default: '',
 		displayOptions: {
 			show: {
@@ -176,7 +175,7 @@ export const spaceTagFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -200,6 +199,6 @@ export const spaceTagFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 ];

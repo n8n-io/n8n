@@ -27,7 +27,7 @@ export class LocalFileTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Trigger On',
+				displayName: 'Trigger on',
 				name: 'triggerOn',
 				type: 'options',
 				options: [
@@ -126,7 +126,7 @@ export class LocalFileTrigger implements INodeType {
 						name: 'followSymlinks',
 						type: 'boolean',
 						default: true,
-						description: 'Whether linked files/folders will also be watched (this includes symlinks, aliases on MacOS and shortcuts on Windows). Otherwise only the links themselves will be monitored).',
+						description: 'When activated, linked files/folders will also be watched (this includes symlinks, aliases on MacOS and shortcuts on Windows). Otherwise only the links themselves will be monitored).',
 					},
 					{
 						displayName: 'Ignore',
@@ -143,32 +143,32 @@ export class LocalFileTrigger implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: '1 Levels Down',
-								value: 1,
-							},
-							{
-								name: '2 Levels Down',
-								value: 2,
-							},
-							{
-								name: '3 Levels Down',
-								value: 3,
-							},
-							{
-								name: '4 Levels Down',
-								value: 4,
+								name: 'Unlimited',
+								value: -1,
 							},
 							{
 								name: '5 Levels Down',
 								value: 5,
 							},
 							{
-								name: 'Top Folder Only',
-								value: 0,
+								name: '4 Levels Down',
+								value: 4,
 							},
 							{
-								name: 'Unlimited',
-								value: -1,
+								name: '3 Levels Down',
+								value: 3,
+							},
+							{
+								name: '2 Levels Down',
+								value: 2,
+							},
+							{
+								name: '1 Levels Down',
+								value: 1,
+							},
+							{
+								name: 'Top Folder Only',
+								value: 0,
 							},
 						],
 						default: -1,

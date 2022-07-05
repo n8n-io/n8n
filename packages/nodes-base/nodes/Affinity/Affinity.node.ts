@@ -48,7 +48,6 @@ export class Affinity implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Affinity',
 		name: 'affinity',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:affinity.png',
 		group: ['output'],
 		version: 1,
@@ -70,7 +69,6 @@ export class Affinity implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'List',
@@ -90,6 +88,7 @@ export class Affinity implements INodeType {
 					},
 				],
 				default: 'organization',
+				description: 'Resource to consume.',
 			},
 			...listOperations,
 			...listFields,

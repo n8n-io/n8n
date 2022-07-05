@@ -29,7 +29,7 @@ export class Ghost implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ghost',
 		name: 'ghost',
-		icon: 'file:ghost.svg',
+		icon: 'file:ghost.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -91,8 +91,8 @@ export class Ghost implements INodeType {
 						value: 'post',
 					},
 				],
-				noDataExpression: true,
 				default: 'post',
+				description: 'The resource to operate on.',
 			},
 			...postOperations,
 			...postFields,
@@ -137,7 +137,7 @@ export class Ghost implements INodeType {
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
-						value: tag.name,
+						value: tag.id,
 					});
 				}
 				return returnData;

@@ -65,7 +65,7 @@ export class DateTime implements INodeType {
 				},
 				type: 'string',
 				default: '',
-				description: 'The value that should be converted',
+				description: 'The value that should be converted.',
 				required: true,
 			},
 			{
@@ -81,7 +81,7 @@ export class DateTime implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the property to which to write the converted date',
+				description: 'Name of the property to which to write the converted date.',
 			},
 			{
 				displayName: 'Custom Format',
@@ -95,7 +95,7 @@ export class DateTime implements INodeType {
 				},
 				type: 'boolean',
 				default: false,
-				description: 'Whether a predefined format should be selected or custom format entered',
+				description: 'If a predefined format should be selected or custom format entered.',
 			},
 			{
 				displayName: 'To Format',
@@ -113,7 +113,7 @@ export class DateTime implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'YYYY-MM-DD',
-				description: 'The format to convert the date to',
+				description: 'The format to convert the date to.',
 			},
 			{
 				displayName: 'To Format',
@@ -129,7 +129,6 @@ export class DateTime implements INodeType {
 						],
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'MM/DD/YYYY',
@@ -168,7 +167,7 @@ export class DateTime implements INodeType {
 					},
 				],
 				default: 'MM/DD/YYYY',
-				description: 'The format to convert the date to',
+				description: 'The format to convert the date to.',
 			},
 			{
 				displayName: 'Options',
@@ -189,27 +188,27 @@ export class DateTime implements INodeType {
 						name: 'fromFormat',
 						type: 'string',
 						default: '',
-						description: 'In case the input format is not recognized you can provide the format',
+						description: 'In case the input format is not recognized you can provide the format ',
 					},
 					{
-						displayName: 'From Timezone Name or ID',
+						displayName: 'From Timezone',
 						name: 'fromTimezone',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
-						description: 'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The timezone to convert from.',
 					},
 					{
-						displayName: 'To Timezone Name or ID',
+						displayName: 'To Timezone',
 						name: 'toTimezone',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
-						description: 'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The timezone to convert to.',
 					},
 				],
 			},
@@ -225,7 +224,7 @@ export class DateTime implements INodeType {
 				},
 				type: 'string',
 				default: '',
-				description: 'The date string or timestamp from which you want to add/subtract time',
+				description: 'The date string or timestamp from which you want to add/subtract time.',
 				required: true,
 			},
 			{
@@ -239,7 +238,6 @@ export class DateTime implements INodeType {
 					},
 				},
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Add',
@@ -276,7 +274,7 @@ export class DateTime implements INodeType {
 			{
 				displayName: 'Time Unit',
 				name: 'timeUnit',
-				description: 'Time unit for Duration parameter above',
+				description: 'Time unit for Duration parameter above.',
 				displayOptions: {
 					show: {
 						action: [
@@ -285,7 +283,6 @@ export class DateTime implements INodeType {
 					},
 				},
 				type: 'options',
-				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Quarters',
@@ -340,7 +337,7 @@ export class DateTime implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the output property to which to write the converted date',
+				description: 'Name of the output property to which to write the converted date.',
 			},
 			{
 				displayName: 'Options',
@@ -448,17 +445,11 @@ export class DateTime implements INodeType {
 						// Uses dot notation so copy all data
 						newItem = {
 							json: JSON.parse(JSON.stringify(item.json)),
-							pairedItem: {
-								item: i,
-							},
 						};
 					} else {
 						// Does not use dot notation so shallow copy is enough
 						newItem = {
 							json: { ...item.json },
-							pairedItem: {
-								item: i,
-							},
 						};
 					}
 
@@ -481,8 +472,8 @@ export class DateTime implements INodeType {
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
 
 					const newDate = fromFormat
-						? parseDateByFormat.call(this, dateValue, fromFormat)
-						: parseDateByDefault.call(this, dateValue);
+						? parseDateByFormat(dateValue, fromFormat)
+						: parseDateByDefault(dateValue);
 
 					operation === 'add'
 						? newDate.add(duration, timeUnit).utc().format()
@@ -493,17 +484,11 @@ export class DateTime implements INodeType {
 						// Uses dot notation so copy all data
 						newItem = {
 							json: JSON.parse(JSON.stringify(item.json)),
-							pairedItem: {
-								item: i,
-							},
 						};
 					} else {
 						// Does not use dot notation so shallow copy is enough
 						newItem = {
 							json: { ...item.json },
-							pairedItem: {
-								item: i,
-							},
 						};
 					}
 
@@ -518,14 +503,7 @@ export class DateTime implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({
-						json: {
-							error: error.message,
-						},
-						pairedItem: {
-							item: i,
-						},
-					});
+					returnData.push({json:{ error: error.message }});
 					continue;
 				}
 				throw error;
@@ -536,24 +514,24 @@ export class DateTime implements INodeType {
 	}
 }
 
-function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
+function parseDateByFormat(value: string, fromFormat: string) {
 	const date = moment(value, fromFormat, true);
 	if (moment(date).isValid()) return date;
 
-	throw new NodeOperationError(this.getNode(), 'Date input cannot be parsed. Please recheck the value and the "From Format" field.');
+	throw new Error('Date input cannot be parsed. Please recheck the value and the "From Format" field.');
 }
 
-function parseDateByDefault(this: IExecuteFunctions, value: string) {
-	const isoValue = getIsoValue.call(this, value);
+function parseDateByDefault(value: string) {
+	const isoValue = getIsoValue(value);
 	if (moment(isoValue).isValid()) return moment(isoValue);
 
-	throw new NodeOperationError(this.getNode(), 'Unrecognized date input. Please specify a format in the "From Format" field.');
+	throw new Error('Unrecognized date input. Please specify a format in the "From Format" field.');
 }
 
-function getIsoValue(this: IExecuteFunctions, value: string) {
+function getIsoValue(value: string) {
 	try {
 		return new Date(value).toISOString(); // may throw due to unpredictable input
 	} catch (error) {
-		throw new NodeOperationError(this.getNode(), 'Unrecognized date input. Please specify a format in the "From Format" field.');
+		throw new Error('Unrecognized date input. Please specify a format in the "From Format" field.');
 	}
 }

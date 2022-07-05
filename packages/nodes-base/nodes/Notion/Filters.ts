@@ -2,7 +2,7 @@
 
 // tslint:disable-next-line: no-any
 export const filters = (conditions: any) => [{
-	displayName: 'Property Name or ID',
+	displayName: 'Property Name',
 	name: 'key',
 	type: 'options',
 	typeOptions: {
@@ -12,7 +12,7 @@ export const filters = (conditions: any) => [{
 		],
 	},
 	default: '',
-	description: 'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'The name of the property to filter by',
 },
 {
 	displayName: 'Type',
@@ -80,10 +80,9 @@ export const filters = (conditions: any) => [{
 	description: 'Phone number. No structure is enforced.',
 },
 {
-	displayName: 'Option Name or ID',
+	displayName: 'Option',
 	name: 'multiSelectValue',
 	type: 'options',
-	description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 	typeOptions: {
 		loadOptionsMethod: 'getPropertySelectValues',
 	},
@@ -103,10 +102,9 @@ export const filters = (conditions: any) => [{
 	default: [],
 },
 {
-	displayName: 'Option Name or ID',
+	displayName: 'Option',
 	name: 'selectValue',
 	type: 'options',
-	description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 	typeOptions: {
 		loadOptionsMethod: 'getPropertySelectValues',
 	},
@@ -164,7 +162,7 @@ export const filters = (conditions: any) => [{
 	default: '',
 },
 {
-	displayName: 'User Name or ID',
+	displayName: 'User ID',
 	name: 'peopleValue',
 	type: 'options',
 	typeOptions: {
@@ -184,10 +182,10 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'List of users. Multiples can be defined separated by comma.',
 },
 {
-	displayName: 'User Name or ID',
+	displayName: 'User ID',
 	name: 'createdByValue',
 	type: 'options',
 	typeOptions: {
@@ -207,10 +205,10 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'List of users. Multiples can be defined separated by comma.',
 },
 {
-	displayName: 'User Name or ID',
+	displayName: 'User ID',
 	name: 'lastEditedByValue',
 	type: 'options',
 	typeOptions: {
@@ -230,7 +228,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'List of users. Multiples can be defined separated by comma.',
 },
 {
 	displayName: 'Relation ID',

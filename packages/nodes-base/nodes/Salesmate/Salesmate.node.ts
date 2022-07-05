@@ -42,7 +42,6 @@ export class Salesmate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesmate',
 		name: 'salesmate',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:salesmate.png',
 		group: ['output'],
 		version: 1,
@@ -64,7 +63,6 @@ export class Salesmate implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -80,6 +78,7 @@ export class Salesmate implements INodeType {
 					},
 				],
 				default: 'activity',
+				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...activityOperations,

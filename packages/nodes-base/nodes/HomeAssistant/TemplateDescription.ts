@@ -7,7 +7,6 @@ export const templateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +18,11 @@ export const templateOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a template',
+				description: 'create a template',
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 

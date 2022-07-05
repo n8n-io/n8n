@@ -18,9 +18,7 @@ export class StickyNote implements INodeType {
 			name: 'Note',
 			color: '#FFD233',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [],
 		properties: [
 			{
@@ -31,14 +29,14 @@ export class StickyNote implements INodeType {
 				default: `## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)`,
 			},
 			{
-				displayName: 'Height',
+				displayName: 'height',
 				name: 'height',
 				type: 'number',
 				required: true,
 				default: 160,
 			},
 			{
-				displayName: 'Width',
+				displayName: 'width',
 				name: 'width',
 				type: 'number',
 				required: true,

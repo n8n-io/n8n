@@ -176,7 +176,8 @@ export class Markdown implements INodeType {
 						name: 'keepDataImages',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. &lt;img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/"&gt;',
+						description:
+							'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/">.',
 					},
 					{
 						displayName: 'Line Start Escape Pattern',
@@ -317,32 +318,34 @@ export class Markdown implements INodeType {
 							'Whether to open all links in new windows (by adding the attribute target="_blank" to <a> tags)',
 					},
 					{
-						displayName: 'Automatic Linking to URLs',
+						displayName: 'Automatic Linking To URLs',
 						name: 'simplifiedAutoLink',
 						type: 'boolean',
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
-						description: 'Whether to enable automatic linking to URLs',
+						description: 'Whether to enable automatic linking to urls',
 					},
 					{
 						displayName: 'Backslash Escapes HTML Tags',
 						name: 'backslashEscapesHTMLTags',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to support for HTML Tag escaping ex: &lt;div&gt;foo&lt;/div&gt;',
+						description: 'Whether to support for HTML Tag escaping ex: <div>foo</div',
 					},
 					{
 						displayName: 'Complete HTML Document',
 						name: 'completeHTMLDocument',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to output a complete html document, including &lt;html&gt;, &lt;head&gt; and &lt;body&gt; tags instead of an HTML fragment',
+						description:
+							'Whether to output a complete html document, including <html>, <head> and <body> tags instead of an HTML fragment',
 					},
 					{
 						displayName: 'Customized Header ID',
 						name: 'customizedHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to use text in curly braces as header ID',
+						description: 'Whether to use text in curly braces as header id',
 					},
 					{
 						displayName: 'Emoji Support',
@@ -365,7 +368,8 @@ export class Markdown implements INodeType {
 						name: 'excludeTrailingPunctuationFromURLs',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to exclude trailing punctuation from autolinking URLs. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
+						description:
+							'Whether to exclude trailing punctuation from autolinking urls. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
 					},
 					{
 						displayName: 'GitHub Code Blocks',
@@ -379,7 +383,8 @@ export class Markdown implements INodeType {
 						name: 'ghCompatibleHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to generate header IDs compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
+						description:
+							'Whether to generate header ids compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
 					},
 					{
 						displayName: 'GitHub Mention Link',
@@ -438,7 +443,7 @@ export class Markdown implements INodeType {
 						name: 'noHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to disable the automatic generation of header IDs',
+						description: 'Whether to disable the automatic generation of header ids',
 					},
 					{
 						displayName: 'Parse Image Dimensions',
@@ -453,14 +458,15 @@ export class Markdown implements INodeType {
 						name: 'prefixHeaderId',
 						type: 'string',
 						default: 'section',
-						description: 'Add a prefix to the generated header IDs',
+						description: 'Add a prefix to the generated header ids',
 					},
 					{
 						displayName: 'Raw Header ID',
 						name: 'rawHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to remove only spaces, \' and " from generated header IDs (including prefixes), replacing them with dashes (-)',
+						description:
+							'Whether to remove only spaces, \' and " from generated header ids (including prefixes), replacing them with dashes (-)',
 					},
 					{
 						displayName: 'Raw Prefix Header ID',
@@ -473,8 +479,10 @@ export class Markdown implements INodeType {
 						displayName: 'Simple Line Breaks',
 						name: 'simpleLineBreaks',
 						type: 'boolean',
+						// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 						default: false,
-						description: 'Whether to parse line breaks as &lt;br&gt;, like GitHub does, without needing 2 spaces at the end of the line',
+						description:
+							'Whether to parse line breaks as <br>, like GitHub does, without needing 2 spaces at the end of the line',
 					},
 					{
 						displayName: 'Smart Indentation Fix',

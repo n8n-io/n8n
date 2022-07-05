@@ -7,7 +7,6 @@ export const roomOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -43,6 +42,7 @@ export const roomOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,6 +67,7 @@ export const roomFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'My new room',
+		description: 'The operation to perform.',
 		required: true,
 	},
 	{
@@ -87,6 +88,7 @@ export const roomFields: INodeProperties[] = [
 			{
 				name: 'Private Chat',
 				value: 'private_chat',
+				description: 'Private chat',
 			},
 			{
 				name: 'Public Chat',
@@ -96,6 +98,7 @@ export const roomFields: INodeProperties[] = [
 		],
 		default: 'public_chat',
 		placeholder: 'My new room',
+		description: 'The operation to perform.',
 		required: true,
 	},
 	{
@@ -114,6 +117,7 @@ export const roomFields: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'coolest-room-around',
+		description: 'The operation to perform.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  room:join                                 */
@@ -141,10 +145,9 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:leave                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room ID',
 		name: 'roomId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -166,10 +169,9 @@ export const roomFields: INodeProperties[] = [
 	/*                                 room:invite                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room ID',
 		name: 'roomId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -202,7 +204,7 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The fully qualified user ID of the invitee',
+		description: 'The fully qualified user ID of the invitee.',
 		placeholder: '@cheeky_monkey:matrix.org',
 		required: true,
 	},
@@ -212,10 +214,9 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:kick                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room ID',
 		name: 'roomId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -247,7 +248,7 @@ export const roomFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The fully qualified user ID',
+		description: 'The fully qualified user ID.',
 		placeholder: '@cheeky_monkey:matrix.org',
 		required: true,
 	},

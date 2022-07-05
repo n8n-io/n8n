@@ -38,7 +38,6 @@ export class AwsLambda implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Invoke',
@@ -47,9 +46,10 @@ export class AwsLambda implements INodeType {
 					},
 				],
 				default: 'invoke',
+				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Function Name or ID',
+				displayName: 'Function',
 				name: 'function',
 				type: 'options',
 				typeOptions: {
@@ -65,7 +65,7 @@ export class AwsLambda implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'The function you want to invoke. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The function you want to invoke',
 			},
 			{
 				displayName: 'Qualifier',
@@ -88,12 +88,12 @@ export class AwsLambda implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Wait for Results',
+						name: 'Wait for results',
 						value: 'RequestResponse',
 						description: 'Invoke the function synchronously and wait for the response',
 					},
 					{
-						name: 'Continue Workflow',
+						name: 'Continue workflow',
 						value: 'Event',
 						description: 'Invoke the function and immediately continue the workflow',
 					},

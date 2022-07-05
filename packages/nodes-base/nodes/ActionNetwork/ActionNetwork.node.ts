@@ -72,7 +72,6 @@ export class ActionNetwork implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Attendance',
@@ -104,6 +103,7 @@ export class ActionNetwork implements INodeType {
 					},
 				],
 				default: 'attendance',
+				description: 'Resource to consume',
 			},
 			...attendanceOperations,
 			...attendanceFields,

@@ -48,11 +48,10 @@
 		<CopyInput
 			v-if="isOAuthType && credentialProperties.length"
 			:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
-			:value="oAuthCallbackUrl"
+			:copyContent="oAuthCallbackUrl"
 			:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
-			:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-			:toastTitle="$locale.baseText('credentialEdit.credentialEdit.showMessage.title')"
-			:toastMessage="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+			:subtitle="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
+			:successMessage="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
 		/>
 
 		<CredentialInputs

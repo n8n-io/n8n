@@ -80,6 +80,7 @@ export class Mocean implements INodeType {
 					},
 				],
 				default: 'send',
+				description: 'Operation to perform',
 			},
 			{
 				displayName: 'From',

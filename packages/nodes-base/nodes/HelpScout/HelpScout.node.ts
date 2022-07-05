@@ -81,7 +81,6 @@ export class HelpScout implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Conversation',
@@ -101,6 +100,7 @@ export class HelpScout implements INodeType {
 					},
 				],
 				default: 'conversation',
+				description: 'The resource to operate on.',
 			},
 			...conversationOperations,
 			...conversationFields,

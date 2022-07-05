@@ -59,7 +59,6 @@ export class GoogleAnalytics implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Report',

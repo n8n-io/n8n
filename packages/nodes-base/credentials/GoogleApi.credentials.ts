@@ -14,7 +14,6 @@ export class GoogleApi implements ICredentialType {
 			displayName: 'Service Account Email',
 			name: 'email',
 			type: 'string',
-			placeholder: 'name@email.com',
 			default: '',
 			description: 'The Google Service account similar to user-808@project.iam.gserviceaccount.com',
 			required: true,

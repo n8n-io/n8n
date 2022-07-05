@@ -1,5 +1,5 @@
 import {
-	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
@@ -15,7 +15,6 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			displayName: 'Email',
 			name: 'email',
 			type: 'string',
-			placeholder: 'name@email.com',
 			default: '',
 		},
 		{
@@ -32,15 +31,14 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			placeholder: 'https://example.atlassian.net',
 		},
 	];
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			auth:{
-				username: '={{$credentials.email}}',
-				password: '={{$credentials.apiToken}}',
-			},
-		},
-	};
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		console.log('credentials', credentials.password);
+		const bearer = Buffer.from(`${credentials.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
+		requestOptions.headers!['Authorization'] = `Basic ${bearer}`;
+		console.log('### PASSED #### ');
+		console.log(`Bearer: ${bearer}`);
+		return requestOptions;
+	}
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.domain}}',

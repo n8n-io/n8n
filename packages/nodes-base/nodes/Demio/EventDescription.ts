@@ -7,7 +7,6 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -33,6 +32,7 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -56,7 +56,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -80,7 +80,7 @@ export const eventFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filters',
@@ -164,7 +164,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'active',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return only active dates in series',
+				description: 'Return only active dates in series',
 			},
 			{
 				displayName: 'Session ID',
@@ -180,10 +180,9 @@ export const eventFields: INodeProperties[] = [
 	/*                                   event:register                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event Name or ID',
+		displayName: 'Event ID',
 		name: 'eventId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getEvents',
 		},
@@ -221,7 +220,6 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
-		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		description: 'The registrant\'s email address',
@@ -258,7 +256,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'company',
 				type: 'string',
 				default: '',
-				description: 'The value for the predefined Company field',
+				description: 'The value for the predefined Company field.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -279,14 +277,14 @@ export const eventFields: INodeProperties[] = [
 								name: 'fieldId',
 								type: 'string',
 								default: '',
-								description: 'Each custom field\'s unique identifier can be found within the Event\'s Registration block in the Customize tab',
+								description: 'Each custom field\'s unique identifier can be found within the Event\'s Registration block in the Customize tab.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field',
+								description: 'The value to set on custom field.',
 							},
 						],
 					},
@@ -304,24 +302,24 @@ export const eventFields: INodeProperties[] = [
 				name: 'gdpr',
 				type: 'string',
 				default: '',
-				description: 'The value for the predefined GDPR field',
+				description: 'The value for the predefined GDPR field.',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'The value for the predefined Last Name field',
+				description: 'The value for the predefined Last Name field.',
 			},
 			{
 				displayName: 'Phone Number',
 				name: 'phone_number',
 				type: 'string',
 				default: '',
-				description: 'The value for the predefined Phone Number field',
+				description: 'The value for the predefined Phone Number field.',
 			},
 			{
-				displayName: 'Session Name or ID',
+				displayName: 'Session ID',
 				name: 'date_id',
 				type: 'options',
 				typeOptions: {
@@ -331,14 +329,14 @@ export const eventFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Event Session ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Event Session ID',
 			},
 			{
 				displayName: 'Website',
 				name: 'website',
 				type: 'string',
 				default: '',
-				description: 'The value for the predefined Website field',
+				description: 'The value for the predefined Website field.',
 			},
 		],
 	},

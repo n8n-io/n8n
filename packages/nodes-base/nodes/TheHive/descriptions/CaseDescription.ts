@@ -8,13 +8,10 @@ import {
 
 export const caseOperations: INodeProperties[] = [
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Operation',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
-		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -48,7 +45,7 @@ export const caseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -72,7 +69,7 @@ export const caseFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	// Required fields
 	{
@@ -214,7 +211,6 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'Flag of the case default=false',
 	},
 	{
@@ -272,10 +268,9 @@ export const caseFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder Name or ID',
+		displayName: 'Responder ID',
 		name: 'responder',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {
@@ -333,6 +328,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
+		required: false,
 		default: {},
 		options: [
 			{
@@ -357,10 +353,9 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'field',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -437,6 +432,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
+		required: false,
 		default: {},
 		options: [
 			{
@@ -461,10 +457,9 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'field',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -514,7 +509,6 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Flag of the case default=false',
 			},
 			{
@@ -565,24 +559,24 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						value: 'Duplicated',
-						name: 'Duplicated',
+						value: 'Indeterminate',
+						name: 'Indeterminate',
 					},
 					{
 						value: 'FalsePositive',
 						name: 'False Positive',
 					},
 					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
+						value: 'TruePositive',
+						name: 'True Positive',
 					},
 					{
 						value: 'Other',
 						name: 'Other',
 					},
 					{
-						value: 'TruePositive',
-						name: 'True Positive',
+						value: 'Duplicated',
+						name: 'Duplicated',
 					},
 				],
 				description: 'Resolution status of the case',
@@ -715,6 +709,7 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
+		required: false,
 		default: {},
 		placeholder: 'Add a Filter',
 		displayOptions: {
@@ -744,10 +739,9 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'field',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -783,7 +777,6 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Flag of the case default=false',
 			},
 			{
@@ -819,24 +812,24 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						value: 'Duplicated',
-						name: 'Duplicated',
+						value: 'Indeterminate',
+						name: 'Indeterminate',
 					},
 					{
 						value: 'False Positive',
 						name: 'FalsePositive',
 					},
 					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
+						value: 'True Positive',
+						name: 'TruePositive',
 					},
 					{
 						value: 'Other',
 						name: 'Other',
 					},
 					{
-						value: 'True Positive',
-						name: 'TruePositive',
+						value: 'Duplicated',
+						name: 'Duplicated',
 					},
 				],
 			},
@@ -912,6 +905,7 @@ export const caseFields: INodeProperties[] = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
+				required: false,
 				default: 2,
 				options: [
 					{

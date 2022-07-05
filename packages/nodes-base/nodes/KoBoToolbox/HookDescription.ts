@@ -7,7 +7,6 @@ export const hookOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,7 +51,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -73,7 +72,7 @@ export const hookFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
 	},
 	{
 		displayName: 'Hook ID',
@@ -100,7 +99,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name or ID',
+		displayName: 'Form ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -118,7 +117,7 @@ export const hookFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
 	},
 	{
 		displayName: 'Hook Log ID',
@@ -155,12 +154,13 @@ export const hookFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Whether to return all results',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		required: false,
 		typeOptions: {
 			maxValue: 3000,
 		},
@@ -179,6 +179,6 @@ export const hookFields: INodeProperties[] = [
 			},
 		},
 		default: 1000,
-		description: 'Max number of results to return',
+		description: 'The number of results to return',
 	},
 ];

@@ -7,7 +7,6 @@ export const dealOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -111,84 +110,84 @@ export const dealFields: INodeProperties[] = [
 				description: 'Value of the deal in base currency',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
-				description: 'ID of the campaign that landed this deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the campaign that landed this deal',
 			},
 			{
-				displayName: 'Currency Name or ID',
+				displayName: 'Currency ID',
 				name: 'currency_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
 				},
-				description: 'ID of the currency that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the currency that the deal belongs to',
 			},
 			{
-				displayName: 'Deal Payment Status Name or ID',
+				displayName: 'Deal Payment Status ID',
 				name: 'deal_payment_status_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealPaymentStatuses',
 				},
-				description: 'ID of the mode of payment for the deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the mode of payment for the deal',
 			},
 			{
-				displayName: 'Deal Pipeline Name or ID',
+				displayName: 'Deal Pipeline ID',
 				name: 'deal_pipeline_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealPipelines',
 				},
-				description: 'ID of the deal pipeline that it belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the deal pipeline that it belongs to',
 			},
 			{
-				displayName: 'Deal Product Name or ID',
+				displayName: 'Deal Product ID',
 				name: 'deal_product_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProducts',
 				},
-				description: 'ID of the product that the deal belongs to (in a multi-product company). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the product that the deal belongs to (in a multi-product company)',
 			},
 			{
-				displayName: 'Deal Reason Name or ID',
+				displayName: 'Deal Reason ID',
 				name: 'deal_reason_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealReasons',
 				},
-				description: 'ID of the reason for losing the deal. Can only be set if the deal is in \'Lost\' stage. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the reason for losing the deal. Can only be set if the deal is in \'Lost\' stage.',
 			},
 			{
-				displayName: 'Deal Stage Name or ID',
+				displayName: 'Deal Stage ID',
 				name: 'deal_stage_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealStages',
 				},
-				description: 'ID of the deal stage that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the deal stage that the deal belongs to',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal Type ID',
 				name: 'deal_type_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
-				description: 'ID of the deal type that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the deal type that the deal belongs to',
 			},
 			{
 				displayName: 'Lead Source ID',
@@ -198,14 +197,14 @@ export const dealFields: INodeProperties[] = [
 				description: 'ID of the source where deal came from',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user to whom the deal is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to whom the deal is assigned',
 			},
 			{
 				displayName: 'Probability',
@@ -219,24 +218,24 @@ export const dealFields: INodeProperties[] = [
 				description: 'Probability of winning the deal as a number between 0 and 100',
 			},
 			{
-				displayName: 'Sales Account Name or ID',
+				displayName: 'Sales Account ID',
 				name: 'sales_account_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the account that the deal belongs to',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTerritories',
 				},
-				description: 'ID of the territory that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the territory that the deal belongs to',
 			},
 		],
 	},
@@ -289,10 +288,9 @@ export const dealFields: INodeProperties[] = [
 	//               deal: getAll
 	// ----------------------------------------
 	{
-		displayName: 'View Name or ID',
+		displayName: 'View',
 		name: 'view',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -330,7 +328,7 @@ export const dealFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -408,84 +406,84 @@ export const dealFields: INodeProperties[] = [
 				description: 'Value of the deal in base currency',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
-				description: 'ID of the campaign that landed this deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the campaign that landed this deal',
 			},
 			{
-				displayName: 'Currency Name or ID',
+				displayName: 'Currency ID',
 				name: 'currency_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
 				},
-				description: 'ID of the currency that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the currency that the deal belongs to',
 			},
 			{
-				displayName: 'Deal Payment Status Name or ID',
+				displayName: 'Deal Payment Status ID',
 				name: 'deal_payment_status_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealPaymentStatuses',
 				},
-				description: 'ID of the mode of payment for the deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the mode of payment for the deal',
 			},
 			{
-				displayName: 'Deal Pipeline Name or ID',
+				displayName: 'Deal Pipeline ID',
 				name: 'deal_pipeline_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealPipelines',
 				},
-				description: 'ID of the deal pipeline that it belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the deal pipeline that it belongs to',
 			},
 			{
-				displayName: 'Deal Product Name or ID',
+				displayName: 'Deal Product ID',
 				name: 'deal_product_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProducts',
 				},
-				description: 'ID of the product that the deal belongs to (in a multi-product company). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the product that the deal belongs to (in a multi-product company)',
 			},
 			{
-				displayName: 'Deal Reason Name or ID',
+				displayName: 'Deal Reason ID',
 				name: 'deal_reason_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealReasons',
 				},
-				description: 'ID of the reason for losing the deal. Can only be set if the deal is in \'Lost\' stage. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the reason for losing the deal. Can only be set if the deal is in \'Lost\' stage.',
 			},
 			{
-				displayName: 'Deal Stage Name or ID',
+				displayName: 'Deal Stage ID',
 				name: 'deal_stage_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealStages',
 				},
-				description: 'ID of the deal stage that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the deal stage that the deal belongs to',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal Type ID',
 				name: 'deal_type_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
-				description: 'ID of the deal type that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the deal type that the deal belongs to',
 			},
 			{
 				displayName: 'Lead Source ID',
@@ -502,14 +500,14 @@ export const dealFields: INodeProperties[] = [
 				description: 'Name of the deal',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user to whom the deal is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to whom the deal is assigned',
 			},
 			{
 				displayName: 'Probability',
@@ -523,24 +521,24 @@ export const dealFields: INodeProperties[] = [
 				description: 'Probability of winning the deal as a number between 0 and 100',
 			},
 			{
-				displayName: 'Sales Account Name or ID',
+				displayName: 'Sales Account ID',
 				name: 'sales_account_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the account that the deal belongs to',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTerritories',
 				},
-				description: 'ID of the territory that the deal belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the territory that the deal belongs to',
 			},
 		],
 	},

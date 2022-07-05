@@ -122,7 +122,6 @@ export class Gmail implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Draft',
@@ -142,6 +141,7 @@ export class Gmail implements INodeType {
 					},
 				],
 				default: 'draft',
+				description: 'The resource to operate on.',
 			},
 			//-------------------------------
 			// Draft Operations
@@ -336,10 +336,9 @@ export class Gmail implements INodeType {
 										for (const binaryProperty of (property as string).split(',')) {
 											if (items[i].binary![binaryProperty] !== undefined) {
 												const binaryData = items[i].binary![binaryProperty];
-												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 												attachmentsBinary.push({
 													name: binaryData.fileName || 'unknown',
-													content: binaryDataBuffer,
+													content: binaryData.data,
 													type: binaryData.mimeType,
 												});
 											}
@@ -423,10 +422,9 @@ export class Gmail implements INodeType {
 										for (const binaryProperty of (property as string).split(',')) {
 											if (items[i].binary![binaryProperty] !== undefined) {
 												const binaryData = items[i].binary![binaryProperty];
-												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 												attachmentsBinary.push({
 													name: binaryData.fileName || 'unknown',
-													content: binaryDataBuffer,
+													content: binaryData.data,
 													type: binaryData.mimeType,
 												});
 											}
@@ -646,10 +644,9 @@ export class Gmail implements INodeType {
 											for (const binaryProperty of (property as string).split(',')) {
 												if (items[i].binary![binaryProperty] !== undefined) {
 													const binaryData = items[i].binary![binaryProperty];
-													const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 													attachmentsBinary.push({
 														name: binaryData.fileName || 'unknown',
-														content: binaryDataBuffer,
+														content: binaryData.data,
 														type: binaryData.mimeType,
 													});
 												}

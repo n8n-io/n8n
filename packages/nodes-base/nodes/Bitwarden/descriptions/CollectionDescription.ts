@@ -7,8 +7,8 @@ export const collectionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		default: 'get',
+		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Delete',
@@ -46,7 +46,7 @@ export const collectionFields: INodeProperties[] = [
 		name: 'collectionId',
 		type: 'string',
 		required: true,
-		description: 'The identifier of the collection',
+		description: 'The identifier of the collection.',
 		default: '',
 		placeholder: '5e59c8c7-e05a-4d17-8e85-acc301343926',
 		displayOptions: {
@@ -71,7 +71,7 @@ export const collectionFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Return all available results for the query.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -87,11 +87,8 @@ export const collectionFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
 		default: 10,
-		description: 'Max number of results to return',
+		description: 'Number of results to return for the query.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -119,10 +116,10 @@ export const collectionFields: INodeProperties[] = [
 		required: true,
 		options: [
 			{
-				displayName: 'Group Names or IDs',
+				displayName: 'Group',
 				name: 'groups',
 				type: 'multiOptions',
-				description: 'The group to assign this collection to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The group to assign this collection to.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
@@ -132,7 +129,7 @@ export const collectionFields: INodeProperties[] = [
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
-				description: 'The external identifier to set to this collection',
+				description: 'The external identifier to set to this collection.',
 				default: '',
 			},
 		],

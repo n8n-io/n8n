@@ -7,7 +7,6 @@ export const deployOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,12 +37,13 @@ export const deployOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
+		description: 'The operation to perform.',
 	},
 ];
 
 export const deployFields: INodeProperties[] = [
 	{
-		displayName: 'Site Name or ID',
+		displayName: 'Site ID',
 		name: 'siteId',
 		required: true,
 		type: 'options',
@@ -51,7 +51,7 @@ export const deployFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getSites',
 		},
-		description: 'Enter the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Enter the Site ID',
 		displayOptions:{
 			show: {
 				resource: [
@@ -123,7 +123,7 @@ export const deployFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	// ---- Create Site Deploy ---- //
 	{

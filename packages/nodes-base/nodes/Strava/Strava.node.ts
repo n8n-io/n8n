@@ -46,7 +46,6 @@ export class Strava implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -54,6 +53,7 @@ export class Strava implements INodeType {
 					},
 				],
 				default: 'activity',
+				description: 'The resource to operate on.',
 			},
 			...activityOperations,
 			...activityFields,

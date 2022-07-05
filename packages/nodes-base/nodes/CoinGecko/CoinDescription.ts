@@ -7,7 +7,6 @@ export const coinOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -73,7 +72,7 @@ export const coinFields: INodeProperties[] = [
 				value: 'coinId',
 			},
 			{
-				name: 'Contract Address',
+				name: 'Contract address',
 				value: 'contractAddress',
 			},
 		],
@@ -90,14 +89,13 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: 'coinId',
-		description: 'Search by coin ID or contract address',
+		description: 'Search by coin ID or contract address.',
 	},
 	{
-		displayName: 'Coin Name or ID',
+		displayName: 'Coin ID',
 		name: 'coinId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCoins',
 		},
@@ -115,7 +113,7 @@ export const coinFields: INodeProperties[] = [
 		placeholder: 'bitcoin',
 	},
 	{
-		displayName: 'Base Currency Name or ID',
+		displayName: 'Base Currency',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -134,10 +132,10 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
 	},
 	{
-		displayName: 'Base Currency Name or ID',
+		displayName: 'Base Currency',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -156,14 +154,13 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
 	},
 	{
-		displayName: 'Coin Name or ID',
+		displayName: 'Coin ID',
 		name: 'coinId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCoins',
 		},
@@ -182,7 +179,7 @@ export const coinFields: INodeProperties[] = [
 		placeholder: 'bitcoin',
 	},
 	{
-		displayName: 'Base Currency Names or IDs',
+		displayName: 'Base Currencies',
 		name: 'baseCurrencies',
 		required: true,
 		type: 'multiOptions',
@@ -204,7 +201,7 @@ export const coinFields: INodeProperties[] = [
 		},
 		default: [],
 		placeholder: 'bitcoin',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
 	},
 	{
 		displayName: 'Platform ID',
@@ -233,10 +230,10 @@ export const coinFields: INodeProperties[] = [
 			},
 		],
 		default: 'ethereum',
-		description: 'The ID of the platform issuing tokens',
+		description: 'The id of the platform issuing tokens.',
 	},
 	{
-		displayName: 'Contract Address',
+		displayName: 'Contract address',
 		name: 'contractAddress',
 		required: true,
 		type: 'string',
@@ -255,10 +252,10 @@ export const coinFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Token\'s contract address',
+		description: 'Token\'s contract address.',
 	},
 	{
-		displayName: 'Contract Addresses',
+		displayName: 'Contract addresses',
 		name: 'contractAddresses',
 		required: true,
 		type: 'string',
@@ -276,10 +273,10 @@ export const coinFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The contract address of tokens, comma-separated',
+		description: 'The contract address of tokens, comma-separated.',
 	},
 	{
-		displayName: 'Base Currency Name or ID',
+		displayName: 'Base Currency',
 		name: 'baseCurrency',
 		required: true,
 		type: 'options',
@@ -305,10 +302,10 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
 	},
 	{
-		displayName: 'Quote Currency Name or ID',
+		displayName: 'Quote Currency',
 		name: 'quoteCurrency',
 		required: true,
 		type: 'options',
@@ -327,10 +324,10 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The second currency in the pair. For BTC:ETH this is ETH.',
 	},
 	{
-		displayName: 'Quote Currency Names or IDs',
+		displayName: 'Quote Currencies',
 		name: 'quoteCurrencies',
 		type: 'multiOptions',
 		typeOptions: {
@@ -348,14 +345,13 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: [],
-		description: 'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The second currency in the pair. For BTC:ETH this is ETH.',
 	},
 	{
-		displayName: 'Range (Days)',
+		displayName: 'Range (days)',
 		name: 'days',
 		required: true,
 		type: 'options',
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: '1',
@@ -402,7 +398,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Return data for this many days in the past from now',
+		description: 'Return data for this many days in the past from now.',
 	},
 	{
 		displayName: 'Date',
@@ -420,7 +416,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The date of data snapshot',
+		description: 'The date of data snapshot.',
 	},
 	{
 		displayName: 'Return All',
@@ -439,7 +435,7 @@ export const coinFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -465,7 +461,7 @@ export const coinFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -490,7 +486,7 @@ export const coinFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'bitcoin',
 				default: '',
-				description: 'Filter results by comma-separated list of coin ID',
+				description: 'Filter results by comma-separated list of coin ID.',
 			},
 			{
 				displayName: 'Category',
@@ -503,7 +499,7 @@ export const coinFields: INodeProperties[] = [
 					},
 				],
 				default: 'decentralized_finance_defi',
-				description: 'Filter by coin category',
+				description: 'Filter by coin category.',
 			},
 			{
 				displayName: 'Order',
@@ -511,20 +507,16 @@ export const coinFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Gecko Asc',
-						value: 'gecko_asc',
+						name: 'Market Cap Desc',
+						value: 'market_cap_desc',
 					},
 					{
 						name: 'Gecko Desc',
 						value: 'gecko_desc',
 					},
 					{
-						name: 'ID Asc',
-						value: 'id_asc',
-					},
-					{
-						name: 'ID Desc',
-						value: 'id_desc',
+						name: 'Gecko Asc',
+						value: 'gecko_asc',
 					},
 					{
 						name: 'Market Cap Asc',
@@ -542,22 +534,29 @@ export const coinFields: INodeProperties[] = [
 						name: 'Volume Desc',
 						value: 'volume_desc',
 					},
+					{
+						name: 'Id Asc',
+						value: 'id_asc',
+					},
+					{
+						name: 'Id Desc',
+						value: 'id_desc',
+					},
 				],
 				default: '',
-				description: 'Sort results by field',
+				description: 'Sort results by field.',
 			},
 			{
 				displayName: 'Sparkline',
 				name: 'sparkline',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include sparkline 7 days data',
+				description: 'Include sparkline 7 days data.',
 			},
 			{
 				displayName: 'Price Change Percentage',
 				name: 'price_change_percentage',
 				type: 'multiOptions',
-				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: '1h',
@@ -589,7 +588,7 @@ export const coinFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Include price change percentage for specified times',
+				description: 'Include price change percentage for specified times.',
 			},
 		],
 	},
@@ -654,14 +653,14 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Exchange Names or IDs',
+				displayName: 'Exchange IDs',
 				name: 'exchange_ids',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getExchanges',
 				},
 				default: [],
-				description: 'Filter results by exchange IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Filter results by exchange IDs.',
 			},
 			{
 				displayName: 'Include Exchange Logo',
@@ -688,7 +687,7 @@ export const coinFields: INodeProperties[] = [
 					},
 				],
 				default: 'trust_score_desc',
-				description: 'Sorts results by the selected rule',
+				description: 'Sorts results by the selected rule.',
 			},
 		],
 	},
@@ -714,7 +713,7 @@ export const coinFields: INodeProperties[] = [
 				name: 'localization',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to exclude localized languages in response',
+				description: 'Set to false to exclude localized languages in response.',
 			},
 		],
 	},
@@ -736,46 +735,46 @@ export const coinFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Community Data',
+				displayName: 'Community data',
 				name: 'community_data',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include community data',
+				description: 'Include community data.',
 			},
 			{
-				displayName: 'Developer Data',
+				displayName: 'Developer data',
 				name: 'developer_data',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include developer data',
+				description: 'Include developer data.',
 			},
 			{
 				displayName: 'Localization',
 				name: 'localization',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include all localized languages in response',
+				description: 'Include all localized languages in response.',
 			},
 			{
-				displayName: 'Market Data',
+				displayName: 'Market data',
 				name: 'market_data',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include market data',
+				description: 'Include market data.',
 			},
 			{
 				displayName: 'Sparkline',
 				name: 'sparkline',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include sparkline 7 days data (eg. true, false).',
+				description: 'Include sparkline 7 days data (eg. true, false).',
 			},
 			{
 				displayName: 'Tickers',
 				name: 'tickers',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include tickers data',
+				description: 'Include tickers data.',
 			},
 		],
 	},

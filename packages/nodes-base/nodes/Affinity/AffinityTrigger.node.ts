@@ -21,7 +21,6 @@ export class AffinityTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Affinity Trigger',
 		name: 'affinityTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:affinity.png',
 		group: ['trigger'],
 		version: 1,
@@ -52,36 +51,48 @@ export class AffinityTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'field_value.created',
-						value: 'field_value.created',
-					},
-					{
-						name: 'field_value.deleted',
-						value: 'field_value.deleted',
-					},
-					{
-						name: 'field_value.updated',
-						value: 'field_value.updated',
-					},
-					{
-						name: 'field.created',
-						value: 'field.created',
-					},
-					{
-						name: 'field.deleted',
-						value: 'field.deleted',
-					},
-					{
-						name: 'field.updated',
-						value: 'field.updated',
-					},
-					{
 						name: 'file.created',
 						value: 'file.created',
 					},
 					{
 						name: 'file.deleted',
 						value: 'file.deleted',
+					},
+					{
+						name: 'field_value.created',
+						value: 'field_value.created',
+					},
+					{
+						name: 'field_value.updated',
+						value: 'field_value.updated',
+					},
+					{
+						name: 'field_value.deleted',
+						value: 'field_value.deleted',
+					},
+					{
+						name: 'field.created',
+						value: 'field.created',
+					},
+					{
+						name: 'field.updated',
+						value: 'field.updated',
+					},
+					{
+						name: 'field.deleted',
+						value: 'field.deleted',
+					},
+					{
+						name: 'list.created',
+						value: 'list.created',
+					},
+					{
+						name: 'list.updated',
+						value: 'list.updated',
+					},
+					{
+						name: 'list.deleted',
+						value: 'list.deleted',
 					},
 					{
 						name: 'list_entry.created',
@@ -92,69 +103,57 @@ export class AffinityTrigger implements INodeType {
 						value: 'list_entry.deleted',
 					},
 					{
-						name: 'list.created',
-						value: 'list.created',
-					},
-					{
-						name: 'list.deleted',
-						value: 'list.deleted',
-					},
-					{
-						name: 'list.updated',
-						value: 'list.updated',
-					},
-					{
 						name: 'note.created',
 						value: 'note.created',
-					},
-					{
-						name: 'note.deleted',
-						value: 'note.deleted',
 					},
 					{
 						name: 'note.updated',
 						value: 'note.updated',
 					},
 					{
-						name: 'opportunity.created',
-						value: 'opportunity.created',
-					},
-					{
-						name: 'opportunity.deleted',
-						value: 'opportunity.deleted',
-					},
-					{
-						name: 'opportunity.updated',
-						value: 'opportunity.updated',
+						name: 'note.deleted',
+						value: 'note.deleted',
 					},
 					{
 						name: 'organization.created',
 						value: 'organization.created',
 					},
 					{
+						name: 'organization.updated',
+						value: 'organization.updated',
+					},
+					{
 						name: 'organization.deleted',
 						value: 'organization.deleted',
 					},
 					{
-						name: 'organization.updated',
-						value: 'organization.updated',
+						name: 'opportunity.created',
+						value: 'opportunity.created',
+					},
+					{
+						name: 'opportunity.updated',
+						value: 'opportunity.updated',
+					},
+					{
+						name: 'opportunity.deleted',
+						value: 'opportunity.deleted',
 					},
 					{
 						name: 'person.created',
 						value: 'person.created',
 					},
 					{
-						name: 'person.deleted',
-						value: 'person.deleted',
-					},
-					{
 						name: 'person.updated',
 						value: 'person.updated',
+					},
+					{
+						name: 'person.deleted',
+						value: 'person.deleted',
 					},
 				],
 				default: [],
 				required: true,
-				description: 'Webhook events that will be enabled for that endpoint',
+				description: 'Webhook events that will be enabled for that endpoint.',
 			},
 		],
 

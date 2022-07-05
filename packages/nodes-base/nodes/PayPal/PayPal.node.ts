@@ -60,7 +60,6 @@ export class PayPal implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Payout',
@@ -72,6 +71,7 @@ export class PayPal implements INodeType {
 					},
 				],
 				default: 'payout',
+				description: 'Resource to consume.',
 			},
 
 			// Payout

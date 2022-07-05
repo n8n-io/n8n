@@ -7,7 +7,6 @@ export const trackOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -24,10 +23,11 @@ export const trackOperations: INodeProperties[] = [
 			{
 				name: 'Page',
 				value: 'page',
-				description: 'Record page views on your website, along with optional extra information about the page being viewed',
+				description: 'Record page views on your website, along with optional extra information about the page being viewed.',
 			},
 		],
 		default: 'event',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,6 +51,7 @@ export const trackFields: INodeProperties[] = [
 				],
 			},
 		},
+		required: false,
 	},
 	{
 		displayName: 'Event',
@@ -67,7 +68,7 @@ export const trackFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the action that a user has performed',
+		description: 'Name of the action that a user has performed.',
 		required: true,
 	},
 	{
@@ -106,21 +107,21 @@ export const trackFields: INodeProperties[] = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address',
+						description: 'Current user’s IP address.',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US',
+						description: 'Locale string for the current user, for example en-US.',
 					},
 					{
 						displayName: 'Page',
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
+						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
 					},
 					{
 						displayName: 'Timezone',
@@ -423,21 +424,21 @@ export const trackFields: INodeProperties[] = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address',
+						description: 'Current user’s IP address.',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US',
+						description: 'Locale string for the current user, for example en-US.',
 					},
 					{
 						displayName: 'Page',
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
+						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
 					},
 					{
 						displayName: 'Timezone',

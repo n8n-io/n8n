@@ -12,7 +12,6 @@ export const rowOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -57,10 +56,9 @@ export const rowFields: INodeProperties[] = [
 	/*                                row:create                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table Name',
 		name: 'tableId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -106,7 +104,7 @@ export const rowFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -148,6 +146,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
@@ -181,10 +180,9 @@ export const rowFields: INodeProperties[] = [
 				name: 'fieldValues',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field Name',
 						name: 'fieldId',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: [
 								'tableId',
@@ -252,7 +250,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'conditions',
 				values: [
 					{
-						displayName: 'Name or ID',
+						displayName: 'Name',
 						name: 'keyName',
 						type: 'options',
 						typeOptions: {
@@ -262,7 +260,7 @@ export const rowFields: INodeProperties[] = [
 							loadOptionsMethod: 'getTableColumns',
 						},
 						default: '',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+						description: '',
 					},
 					{
 						displayName: 'Value',
@@ -293,7 +291,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -316,7 +314,7 @@ export const rowFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	...getFilters(['row'], ['getAll'], {}),
 ];

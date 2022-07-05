@@ -94,7 +94,6 @@ describe('WorkflowDataProxy', () => {
 									],
 								],
 							},
-							source: [],
 						},
 					],
 					Rename: [
@@ -123,7 +122,6 @@ describe('WorkflowDataProxy', () => {
 									],
 								],
 							},
-							source: [],
 						},
 					],
 				},

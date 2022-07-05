@@ -26,7 +26,6 @@
 						theme="sticky"
 						:content="content"
 						:withMultiBreaks="true"
-						@markdown-click="onMarkdownClick"
 					/>
 				</div>
 				<div
@@ -164,9 +163,6 @@ export default mixins(Locale).extend({
 		},
 		onInput(value: string) {
 			this.$emit('input', value);
-		},
-		onMarkdownClick(link, event) {
-			this.$emit('markdown-click', link, event);
 		},
 		onResize(values) {
 			this.$emit('resize', values);

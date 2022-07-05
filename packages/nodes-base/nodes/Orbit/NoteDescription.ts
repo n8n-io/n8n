@@ -7,7 +7,6 @@ export const noteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -33,6 +32,7 @@ export const noteOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -42,10 +42,9 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace',
 		name: 'workspaceId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -101,10 +100,9 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace',
 		name: 'workspaceId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -153,7 +151,7 @@ export const noteFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -177,7 +175,7 @@ export const noteFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Resolve Member',
@@ -200,10 +198,9 @@ export const noteFields: INodeProperties[] = [
 	/*                                note:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace Name or ID',
+		displayName: 'Workspace',
 		name: 'workspaceId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},

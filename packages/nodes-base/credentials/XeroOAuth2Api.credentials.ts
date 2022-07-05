@@ -19,12 +19,6 @@ export class XeroOAuth2Api implements ICredentialType {
 	documentationUrl = 'xero';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

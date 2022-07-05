@@ -24,7 +24,6 @@ export class MispApi implements ICredentialType {
 			displayName: 'Allow Unauthorized Certificates',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
-			description: 'Whether to connect even if SSL certificate validation is not possible',
 			default: false,
 		},
 	];

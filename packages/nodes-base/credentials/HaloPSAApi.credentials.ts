@@ -37,7 +37,7 @@ export class HaloPSAApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'The Resource server is available at your "Halo Web Application URL/api"',
+			description: 'The Resource server is available at your "Halo Web Application url/api"',
 		},
 		{
 			displayName: 'Client ID',

@@ -14,12 +14,6 @@ export class FormstackOAuth2Api implements ICredentialType {
 	documentationUrl = 'formstackTrigger';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

@@ -7,7 +7,6 @@ export const listOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,6 +27,7 @@ export const listOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,7 +51,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique ID of the list object to be retrieved',
+		description: 'The unique id of the list object to be retrieved.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:getAll                                */
@@ -71,7 +71,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -95,6 +95,6 @@ export const listFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 ];

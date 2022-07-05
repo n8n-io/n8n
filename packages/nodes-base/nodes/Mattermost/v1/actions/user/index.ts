@@ -22,7 +22,6 @@ export const descriptions: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -39,7 +38,7 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Deactive',
 				value: 'deactive',
-				description: 'Deactivates the user and revokes all its sessions by archiving its user object',
+				description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
 			},
 			{
 				name: 'Get All',
@@ -54,7 +53,7 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Get By ID',
 				value: 'getById',
-				description: 'Get a user by ID',
+				description: 'Get a user by id',
 			},
 			{
 				name: 'Invite',
@@ -63,6 +62,7 @@ export const descriptions: INodeProperties[] = [
 			},
 		],
 		default: '',
+		description: 'The operation to perform.',
 	},
 	...create.description,
 	...deactive.description,

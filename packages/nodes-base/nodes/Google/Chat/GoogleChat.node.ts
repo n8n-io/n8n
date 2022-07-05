@@ -104,6 +104,7 @@ export class GoogleChat implements INodeType {
 					},
 				],
 				default: 'message',
+				description: 'The resource to operate on',
 			},
 			// ...attachmentOperations,
 			// ...attachmentFields,

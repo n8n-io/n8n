@@ -7,7 +7,6 @@ export const organizationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,11 +16,6 @@ export const organizationOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Count',
-				value: 'count',
-				description: 'Count organizations',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an organization',
@@ -30,6 +24,11 @@ export const organizationOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an organization',
+			},
+			{
+				name: 'Count',
+				value: 'count',
+				description: 'Count organizations',
 			},
 			{
 				name: 'Get',
@@ -53,6 +52,7 @@ export const organizationOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -131,10 +131,9 @@ export const organizationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'field',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getOrganizationFields',
 								},
@@ -151,14 +150,14 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'IDs of tags applied to this organization. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'IDs of tags applied to this organization',
 			},
 		],
 	},
@@ -241,10 +240,9 @@ export const organizationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'field',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getOrganizationFields',
 								},
@@ -261,14 +259,14 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'IDs of tags applied to this organization. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'IDs of tags applied to this organization',
 			},
 		],
 	},
@@ -310,7 +308,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -334,7 +332,7 @@ export const organizationFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                organization:delete                         */

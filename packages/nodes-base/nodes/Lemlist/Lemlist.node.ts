@@ -57,7 +57,6 @@ export class Lemlist implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -76,11 +75,12 @@ export class Lemlist implements INodeType {
 						value: 'team',
 					},
 					{
-						name: 'Unsubscribe',
+						name: 'Unsubscribes',
 						value: 'unsubscribe',
 					},
 				],
 				default: 'activity',
+				description: 'Resource to consume',
 			},
 			...activityOperations,
 			...activityFields,

@@ -7,7 +7,6 @@ export const boardColumnOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,6 +27,7 @@ export const boardColumnOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -36,10 +36,9 @@ export const boardColumnFields: INodeProperties[] = [
 /*                                 boardColumn:create                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board ID',
 		name: 'boardId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -80,12 +79,12 @@ export const boardColumnFields: INodeProperties[] = [
 		default: '',
 		options: [
 			{
-				name: 'Checkbox',
-				value: 'checkbox',
-			},
-			{
 				name: 'Country',
 				value: 'country',
+			},
+			{
+				name: 'Checkbox',
+				value: 'checkbox',
 			},
 			{
 				name: 'Date',
@@ -201,7 +200,7 @@ export const boardColumnFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The new column\'s defaults',
+				description: `The new column's defaults.`,
 			},
 		],
 	},
@@ -209,10 +208,9 @@ export const boardColumnFields: INodeProperties[] = [
 /*                                 boardColumn:getAll                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board Name or ID',
+		displayName: 'Board ID',
 		name: 'boardId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',

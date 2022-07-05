@@ -19,7 +19,7 @@ let globalMemberRole: Role;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({
+	app = utils.initTestServer({
 		endpointGroups: ['credentials'],
 		applyAuth: true,
 	});

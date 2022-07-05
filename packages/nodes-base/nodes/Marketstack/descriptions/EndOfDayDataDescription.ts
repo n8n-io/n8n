@@ -7,7 +7,6 @@ export const endOfDayDataOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		options: [
 			{
 				name: 'Get All',
@@ -66,7 +65,7 @@ export const endOfDayDataFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 		},

@@ -51,7 +51,6 @@ export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Agile CRM',
 		name: 'agileCrm',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:agilecrm.png',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		group: ['transform'],
@@ -75,7 +74,6 @@ export class AgileCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -91,6 +89,7 @@ export class AgileCrm implements INodeType {
 					},
 				],
 				default: 'contact',
+				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,

@@ -7,7 +7,6 @@
 				:value="credentialData[parameter.name]"
 				:documentationUrl="documentationUrl"
 				:showValidationWarnings="showValidationWarnings"
-				eventSource="credentials"
 				@change="valueChanged"
 			/>
 		</form>

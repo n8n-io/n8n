@@ -21,7 +21,6 @@ export class ActiveCampaignTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign Trigger',
 		name: 'activeCampaignTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:activeCampaign.png',
 		group: ['trigger'],
 		version: 1,
@@ -47,10 +46,9 @@ export class ActiveCampaignTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Event Names or IDs',
+				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getEvents',
 				},

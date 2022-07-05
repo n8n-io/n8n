@@ -82,7 +82,7 @@ export class FormstackTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form Name/ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -90,14 +90,14 @@ export class FormstackTrigger implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The Formstack form to monitor for new submissions',
 			},
 			{
-				displayName: 'Simplify',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description: 'When set to true a simplify version of the response will be used else the raw data.',
 			},
 		],
 	};

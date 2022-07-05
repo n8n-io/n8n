@@ -70,11 +70,11 @@ export class MoveBinaryData implements INodeType {
 					{
 						name: 'JSON to Binary',
 						value: 'jsonToBinary',
-						description: 'Move data from JSON to Binary',
+						description: 'Move data from JSON to Binary.',
 					},
 				],
 				default: 'binaryToJson',
-				description: 'From and to where data should be moved',
+				description: 'From and to where data should be moved.',
 			},
 
 
@@ -82,7 +82,7 @@ export class MoveBinaryData implements INodeType {
 			//         binaryToJson
 			// ----------------------------------
 			{
-				displayName: 'Set All Data',
+				displayName: 'Set all Data',
 				name: 'setAllData',
 				type: 'boolean',
 				displayOptions: {
@@ -93,7 +93,7 @@ export class MoveBinaryData implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether all JSON data should be replaced with the data retrieved from binary key. Else the data will be written to a single key.',
+				description: 'If all JSON data should be replaced with the data retrieved from binary key. Else the data will be written to a single key.',
 			},
 			{
 				displayName: 'Source Key',
@@ -135,7 +135,7 @@ export class MoveBinaryData implements INodeType {
 			//         jsonToBinary
 			// ----------------------------------
 			{
-				displayName: 'Convert All Data',
+				displayName: 'Convert all Data',
 				name: 'convertAllData',
 				type: 'boolean',
 				displayOptions: {
@@ -146,7 +146,7 @@ export class MoveBinaryData implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether all JSON data should be converted to binary. Else only the data of one key will be converted.',
+				description: 'If all JSON data should be converted to binary. Else only the data of one key will be converted.',
 			},
 			{
 				displayName: 'Source Key',
@@ -211,7 +211,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Whether to keep the binary data as base64 string',
+						description: 'Keeps the binary data as base64 string.',
 					},
 					{
 						displayName: 'Encoding',
@@ -270,7 +270,7 @@ export class MoveBinaryData implements INodeType {
 						},
 						default: '',
 						placeholder: 'example.json',
-						description: 'The file name to set',
+						description: 'The file name to set.',
 					},
 					{
 						displayName: 'JSON Parse',
@@ -292,14 +292,14 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Whether to run JSON parse on the data to get proper object data',
+						description: 'Run JSON parse on the data to get proper object data.',
 					},
 					{
 						displayName: 'Keep Source',
 						name: 'keepSource',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the source key should be kept. By default it will be deleted.',
+						description: 'If the source key should be kept. By default it will be deleted.',
 					},
 					{
 						displayName: 'Keep As Base64',
@@ -321,7 +321,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Whether to keep the binary data as base64 string',
+						description: 'Keeps the binary data as base64 string.',
 					},
 					{
 						displayName: 'Mime Type',
@@ -355,7 +355,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Whether to use data as is and do not JSON.stringify it',
+						description: 'Use data as is and do not JSON.stringify it.',
 					},
 				],
 			},
@@ -380,9 +380,6 @@ export class MoveBinaryData implements INodeType {
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
 				json: {},
-				pairedItem: {
-					item: itemIndex,
-				},
 			};
 
 			if (mode === 'binaryToJson') {

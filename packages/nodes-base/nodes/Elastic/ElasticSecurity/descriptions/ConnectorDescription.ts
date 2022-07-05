@@ -102,7 +102,6 @@ export const connectorFields: INodeProperties[] = [
 		name: 'email',
 		description: 'Jira-registered email',
 		type: 'string',
-		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {

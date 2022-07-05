@@ -15,7 +15,6 @@ export const dealOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,11 +27,6 @@ export const dealOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a deal',
-			},
-			{
-				name: 'Create Note',
-				value: 'createNote',
-				description: 'Create a deal note',
 			},
 			{
 				name: 'Delete',
@@ -55,12 +49,18 @@ export const dealOperations: INodeProperties[] = [
 				description: 'Update a deal',
 			},
 			{
-				name: 'Update Deal Note',
+				name: 'Create Note',
+				value: 'createNote',
+				description: 'Create a deal note',
+			},
+			{
+				name: 'Update deal note',
 				value: 'updateNote',
 				description: 'Update a deal note',
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 
 ];
@@ -88,7 +88,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'The title of the deal',
 	},
 	{
-		displayName: 'Deal\'s Contact ID',
+		displayName: 'Deal\'s contact ID',
 		name: 'contact',
 		type: 'number',
 		default: 0,
@@ -106,7 +106,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'The ID of the deal\'s contact',
 	},
 	{
-		displayName: 'Deal Value',
+		displayName: 'Deal value',
 		name: 'value',
 		type: 'number',
 		default: 0,
@@ -143,7 +143,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'The currency of the deal in 3-character ISO format',
 	},
 	{
-		displayName: 'Deal Pipeline ID',
+		displayName: 'Deal pipeline ID',
 		name: 'group',
 		type: 'string',
 		default: '',
@@ -160,7 +160,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'The pipeline ID of the deal',
 	},
 	{
-		displayName: 'Deal Stage ID',
+		displayName: 'Deal stage ID',
 		name: 'stage',
 		type: 'string',
 		default: '',
@@ -177,7 +177,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'The stage ID of the deal',
 	},
 	{
-		displayName: 'Deal Owner ID',
+		displayName: 'Deal owner ID',
 		name: 'owner',
 		type: 'string',
 		default: '',
@@ -219,14 +219,14 @@ export const dealFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Deal Percentage',
+				displayName: 'Deal percentage',
 				name: 'percent',
 				type: 'number',
 				default: 0,
 				description: 'The percentage of the deal',
 			},
 			{
-				displayName: 'Deal Status',
+				displayName: 'Deal status',
 				name: 'status',
 				type: 'number',
 				default: 0,
@@ -254,13 +254,13 @@ export const dealFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the deal to update',
+		description: 'ID of the deal to update.',
 	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		description: 'The fields to update',
+		description: 'The fields to update.',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
@@ -282,14 +282,14 @@ export const dealFields: INodeProperties[] = [
 				description: 'The title of the deal',
 			},
 			{
-				displayName: 'Deal\'s Contact ID',
+				displayName: 'Deal\'s contact ID',
 				name: 'contact',
 				type: 'number',
 				default: 0,
 				description: 'The ID of the deal\'s contact',
 			},
 			{
-				displayName: 'Deal Value',
+				displayName: 'Deal value',
 				name: 'value',
 				type: 'number',
 				default: 0,
@@ -311,35 +311,35 @@ export const dealFields: INodeProperties[] = [
 				description: 'The description of the deal',
 			},
 			{
-				displayName: 'Deal Pipeline ID',
+				displayName: 'Deal pipeline ID',
 				name: 'group',
 				type: 'string',
 				default: '',
 				description: 'The pipeline ID of the deal',
 			},
 			{
-				displayName: 'Deal Stage ID',
+				displayName: 'Deal stage ID',
 				name: 'stage',
 				type: 'string',
 				default: '',
 				description: 'The stage ID of the deal',
 			},
 			{
-				displayName: 'Deal Owner ID',
+				displayName: 'Deal owner ID',
 				name: 'owner',
 				type: 'string',
 				default: '',
 				description: 'The owner ID of the deal',
 			},
 			{
-				displayName: 'Deal Percentage',
+				displayName: 'Deal percentage',
 				name: 'percent',
 				type: 'number',
 				default: 0,
 				description: 'The percentage of the deal',
 			},
 			{
-				displayName: 'Deal Status',
+				displayName: 'Deal status',
 				name: 'status',
 				type: 'number',
 				default: 0,
@@ -367,7 +367,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the deal to delete',
+		description: 'The ID of the deal to delete.',
 	},
 
 	// ----------------------------------
@@ -389,7 +389,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the deal to get',
+		description: 'The ID of the deal to get.',
 	},
 
 	// ----------------------------------
@@ -459,7 +459,7 @@ export const dealFields: INodeProperties[] = [
 		description: 'The ID of the deal note',
 	},
 	{
-		displayName: 'Deal Note ID',
+		displayName: 'Deal note ID',
 		name: 'dealNoteId',
 		type: 'number',
 		default: '',

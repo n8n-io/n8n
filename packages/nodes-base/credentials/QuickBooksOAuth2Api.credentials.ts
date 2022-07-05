@@ -14,12 +14,6 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 	documentationUrl = 'quickbooks';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

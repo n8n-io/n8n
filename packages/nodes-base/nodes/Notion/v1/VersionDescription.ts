@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	databaseFields,
 	databaseOperations,
@@ -24,7 +23,7 @@ import {
 	databasePageOperations,
 } from '../DatabasePageDescription';
 
-import {
+import { 
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -100,7 +99,6 @@ export const versionDescription: INodeTypeDescription = {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Block',

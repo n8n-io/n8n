@@ -44,7 +44,6 @@ export class S3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'S3',
 		name: 's3',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:s3.png',
 		group: ['output'],
 		version: 1,
@@ -66,7 +65,6 @@ export class S3 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Bucket',
@@ -82,6 +80,7 @@ export class S3 implements INodeType {
 					},
 				],
 				default: 'file',
+				description: 'The operation to perform.',
 			},
 			// BUCKET
 			...bucketOperations,

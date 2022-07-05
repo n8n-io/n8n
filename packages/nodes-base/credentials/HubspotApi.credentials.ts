@@ -5,7 +5,7 @@ import {
 
 export class HubspotApi implements ICredentialType {
 	name = 'hubspotApi';
-	displayName = 'HubSpot API';
+	displayName = 'Hubspot API';
 	documentationUrl = 'hubspot';
 	properties: INodeProperties[] = [
 		{

@@ -7,7 +7,6 @@ export const customFieldOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +37,7 @@ export const customFieldOperations: INodeProperties[] = [
 			},
 		],
 		default: 'update',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -59,7 +59,7 @@ export const customFieldFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of your custom field',
+		description: 'The ID of your custom field.',
 	},
 	{
 		displayName: 'Label',
@@ -78,7 +78,7 @@ export const customFieldFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The label of the custom field',
+		description: 'The label of the custom field.',
 	},
 	{
 		displayName: 'Return All',
@@ -95,7 +95,7 @@ export const customFieldFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -119,6 +119,6 @@ export const customFieldFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 ];

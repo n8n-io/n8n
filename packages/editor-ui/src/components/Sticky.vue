@@ -28,7 +28,6 @@
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
-					@markdown-click="onMarkdownClick"
 				/>
 			</div>
 
@@ -55,7 +54,6 @@ import { INodeUi, XYPosition } from '@/Interface';
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { QUICKSTART_NOTE_NAME } from '@/constants';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
@@ -126,7 +124,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
-	},
+ 	},
 	data () {
 		return {
 			isResizing: false,
@@ -146,15 +144,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 			else if (this.isActive && !edit) {
 				this.$store.commit('setActiveNode', null);
-			}
-		},
-		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {
-			if (link) {
-				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
-				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
-				const type = isOnboardingNote && isWelcomeVideo ? 'welcome_video' : isOnboardingNote && link.getAttribute('href') === '/templates' ? 'templates' : 'other';
-
-				this.$telemetry.track('User clicked note link', { type } );
 			}
 		},
 		onInputChange(content: string) {

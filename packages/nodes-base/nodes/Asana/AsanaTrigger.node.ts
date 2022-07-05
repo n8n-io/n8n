@@ -83,6 +83,7 @@ export class AsanaTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
@@ -93,7 +94,7 @@ export class AsanaTrigger implements INodeType {
 				description: 'The resource ID to subscribe to. The resource can be a task or project.',
 			},
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace',
 				name: 'workspace',
 				type: 'options',
 				typeOptions: {
@@ -101,7 +102,8 @@ export class AsanaTrigger implements INodeType {
 				},
 				options: [],
 				default: '',
-				description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				required: false,
+				description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks.',
 			},
 		],
 	};

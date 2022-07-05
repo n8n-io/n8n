@@ -3,8 +3,12 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -16,6 +20,7 @@ import {
 import {
 	IMessage,
 	mailjetApiRequest,
+	validateCredentials,
 	validateJSON,
 } from './GenericFunctions';
 
@@ -46,6 +51,7 @@ export class Mailjet implements INodeType {
 			{
 				name: 'mailjetEmailApi',
 				required: true,
+				testedBy: 'mailjetEmailApiTest',
 				displayOptions: {
 					show: {
 						resource: [
@@ -71,7 +77,6 @@ export class Mailjet implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Email',
@@ -83,6 +88,7 @@ export class Mailjet implements INodeType {
 					},
 				],
 				default: 'email',
+				description: 'Resource to consume.',
 			},
 			...emailOperations,
 			...emailFields,
@@ -92,6 +98,25 @@ export class Mailjet implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async mailjetEmailApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				try {
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					const err = error as JsonObject;
+					if (err.statusCode === 401) {
+						return {
+							status: 'Error',
+							message: `Invalid credentials`,
+						};
+					}
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the available custom fields to display them to user so that he can
 			// select them easily
@@ -248,7 +273,7 @@ export class Mailjet implements INodeType {
 								body.Variables![variable.name as string] = variable.value;
 							}
 						}
-
+						
 						if (additionalFields.bccEmail) {
 							const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
 							for (const email of bccEmail) {

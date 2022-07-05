@@ -24,7 +24,6 @@ export class WorkableTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workable Trigger',
 		name: 'workableTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:workable.png',
 		group: ['trigger'],
 		version: 1,
@@ -75,24 +74,24 @@ export class WorkableTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Job Name or ID',
+						displayName: 'Job',
 						name: 'job',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getJobs',
 						},
 						default: '',
-						description: 'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: `Get notifications only for one job`,
 					},
 					{
-						displayName: 'Stage Name or ID',
+						displayName: 'Stage',
 						name: 'stage',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getStages',
 						},
 						default: '',
-						description: 'Get notifications for specific stages. e.g. \'hired\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Get notifications for specific stages. e.g. \'hired\'.',
 					},
 				],
 			},

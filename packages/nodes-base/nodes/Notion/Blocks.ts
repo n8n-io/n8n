@@ -172,7 +172,7 @@ const typeMention: INodeProperties[] = [
 		description: 'An inline mention of a user, page, database, or date. In the app these are created by typing @ followed by the name of a user, page, database, or a date.',
 	},
 	{
-		displayName: 'User Name or ID',
+		displayName: 'User ID',
 		name: 'user',
 		type: 'options',
 		typeOptions: {
@@ -186,7 +186,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the user being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the user being mentioned',
 	},
 	{
 		displayName: 'Page ID',
@@ -203,7 +203,7 @@ const typeMention: INodeProperties[] = [
 		description: 'The ID of the page being mentioned',
 	},
 	{
-		displayName: 'Database Name or ID',
+		displayName: 'Database ID',
 		name: 'database',
 		type: 'options',
 		typeOptions: {
@@ -217,7 +217,7 @@ const typeMention: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the database being mentioned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the database being mentioned',
 	},
 	{
 		displayName: 'Range',
@@ -231,7 +231,7 @@ const typeMention: INodeProperties[] = [
 		},
 		type: 'boolean',
 		default: false,
-		description: 'Whether or not you want to define a date range',
+		description: 'Weather or not you want to define a date range',
 	},
 	{
 		displayName: 'Date',
@@ -315,7 +315,7 @@ const typeText: INodeProperties[] = [
 		},
 		type: 'string',
 		default: '',
-		description: 'Text content. This field contains the actual content of your text and is probably the field you\'ll use most often.',
+		description: 'Text content. This field contains the actual content of your text and is probably the field you\'ll use most often',
 	},
 	{
 		displayName: 'Is Link',
@@ -541,10 +541,9 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 			displayName: 'Block',
 			values: [
 				{
-					displayName: 'Type Name or ID',
+					displayName: 'Type',
 					name: 'type',
 					type: 'options',
-					description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getBlockTypes',
 					},

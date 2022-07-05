@@ -100,6 +100,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
+				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Type',
@@ -136,14 +137,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 						description: 'A collector is created',
 					},
 					{
-						name: 'Collector Deleted',
-						value: 'collector_deleted',
-						description: 'A collector is deleted',
-					},
-					{
 						name: 'Collector Updated',
 						value: 'collector_updated',
 						description: 'A collector is updated',
+					},
+					{
+						name: 'Collector Deleted',
+						value: 'collector_deleted',
+						description: 'A collector is deleted',
 					},
 					{
 						name: 'Response Completed',
@@ -163,12 +164,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Disqualified',
 						value: 'response_disqualified',
-						description: 'A survey response is disqualified',
+						description: 'A survey response is disqualified ',
 					},
 					{
 						name: 'Response Overquota',
 						value: 'response_overquota',
-						description: 'A response is over a survey’s quota',
+						description: `A response is over a survey’s quota`,
 					},
 					{
 						name: 'Response Updated',
@@ -207,14 +208,14 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				options: [
 					{
-						name: 'Collector Deleted',
-						value: 'collector_deleted',
-						description: 'A collector is deleted',
-					},
-					{
 						name: 'Collector Updated',
 						value: 'collector_updated',
 						description: 'A collector is updated',
+					},
+					{
+						name: 'Collector Deleted',
+						value: 'collector_deleted',
+						description: 'A collector is deleted',
 					},
 					{
 						name: 'Response Completed',
@@ -234,12 +235,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 					{
 						name: 'Response Disqualified',
 						value: 'response_disqualified',
-						description: 'A survey response is disqualified',
+						description: 'A survey response is disqualified ',
 					},
 					{
 						name: 'Response Overquota',
 						value: 'response_overquota',
-						description: 'A response is over a survey’s quota',
+						description: `A response is over a survey’s quota`,
 					},
 					{
 						name: 'Response Updated',
@@ -251,10 +252,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Survey Names or IDs',
+				displayName: 'Survey IDs',
 				name: 'surveyIds',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						objectType: [
@@ -275,10 +275,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Survey Name or ID',
+				displayName: 'Survey ID',
 				name: 'surveyId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						objectType: [
@@ -293,10 +292,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Collector Names or IDs',
+				displayName: 'Collector IDs',
 				name: 'collectorIds',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						objectType: [
@@ -326,7 +324,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 					},
 				},
 				default: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
@@ -344,7 +341,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				},
 				type: 'boolean',
 				default: true,
-				description: 'Whether to return only the answers of the form and not any of the other data',
+				description: 'Returns only the answers of the form and not any of the other data.',
 			},
 		],
 	};

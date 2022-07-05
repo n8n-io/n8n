@@ -5,7 +5,6 @@ export const threadOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,6 +25,7 @@ export const threadOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -157,14 +157,14 @@ export const threadFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Whether a draft reply is created',
+				description: 'If set to true, a draft reply is created',
 			},
 			{
 				displayName: 'Imported',
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'Whether no outgoing emails or notifications will be generated',
+				description: 'When imported is set to true, no outgoing emails or notifications will be generated.',
 			},
 		],
 	},
@@ -211,7 +211,7 @@ export const threadFields: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						placeholder: 'ZXhhbXBsZSBmaWxl',
-						description: 'Base64-encoded stream of data',
+						description: 'Base64-encoded stream of data.',
 					},
 				],
 			},
@@ -230,7 +230,7 @@ export const threadFields: INodeProperties[] = [
 			},
 		],
 		default: {},
-		description: 'Array of supported attachments to add to the message',
+		description: 'Array of supported attachments to add to the message.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                thread:getAll                               */
@@ -267,7 +267,7 @@ export const threadFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -290,6 +290,6 @@ export const threadFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 ];

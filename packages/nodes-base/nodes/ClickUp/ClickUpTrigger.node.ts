@@ -83,10 +83,9 @@ export class ClickUpTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Team Name or ID',
+				displayName: 'Team',
 				name: 'team',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},
@@ -121,12 +120,12 @@ export class ClickUpTrigger implements INodeType {
 						value: 'goalCreated',
 					},
 					{
-						name: 'goal.deleted',
-						value: 'goalDeleted',
-					},
-					{
 						name: 'goal.updated',
 						value: 'goalUpdated',
+					},
+					{
+						name: 'goal.deleted',
+						value: 'goalDeleted',
 					},
 					{
 						name: 'keyResult.created',

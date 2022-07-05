@@ -20,7 +20,6 @@ export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stackby',
 		name: 'stackby',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:stackby.png',
 		group: ['transform'],
 		version: 1,
@@ -41,7 +40,6 @@ export class Stackby implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Append',
@@ -72,7 +70,7 @@ export class Stackby implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of the stack to access',
+				description: 'The ID of the stack to access.',
 			},
 			{
 				displayName: 'Table',
@@ -101,7 +99,7 @@ export class Stackby implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'ID of the record to return',
+				description: 'ID of the record to return.',
 			},
 
 			// ----------------------------------
@@ -119,7 +117,7 @@ export class Stackby implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'If all results should be returned or only up to a given limit.',
 			},
 			{
 				displayName: 'Limit',
@@ -140,7 +138,7 @@ export class Stackby implements INodeType {
 					maxValue: 1000,
 				},
 				default: 1000,
-				description: 'Max number of results to return',
+				description: 'Number of results to return.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -183,7 +181,7 @@ export class Stackby implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
 			},
 		],
 	};

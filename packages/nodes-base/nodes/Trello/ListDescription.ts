@@ -10,7 +10,6 @@ export const listOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -51,6 +50,7 @@ export const listOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -74,7 +74,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to archive or unarchive',
+		description: 'The ID of the list to archive or unarchive.',
 	},
 	{
 		displayName: 'Archive',
@@ -91,7 +91,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether the list should be archived or unarchived',
+		description: 'If the list should be archived or unarchived.',
 	},
 
 	// ----------------------------------
@@ -156,7 +156,7 @@ export const listFields: INodeProperties[] = [
 				name: 'idListSource',
 				type: 'string',
 				default: '',
-				description: 'ID of the list to copy into the new list',
+				description: 'ID of the list to copy into the new list.',
 			},
 			{
 				displayName: 'Position',
@@ -188,7 +188,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to get cards',
+		description: 'The ID of the list to get cards.',
 	},
 	{
 		displayName: 'Return All',
@@ -205,16 +205,12 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
 			show: {
@@ -275,7 +271,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to get',
+		description: 'The ID of the list to get.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -340,16 +336,12 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
 			show: {
@@ -411,7 +403,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to update',
+		description: 'The ID of the list to update.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -435,14 +427,14 @@ export const listFields: INodeProperties[] = [
 				name: 'idBoard',
 				type: 'string',
 				default: '',
-				description: 'ID of a board the list should be moved to',
+				description: 'ID of a board the list should be moved to.',
 			},
 			{
 				displayName: 'Closed',
 				name: 'closed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the list is closed',
+				description: 'Whether the list is closed.',
 			},
 			{
 				displayName: 'Name',
@@ -464,7 +456,7 @@ export const listFields: INodeProperties[] = [
 				name: 'subscribed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the acting user is subscribed to the list',
+				description: 'Whether the acting user is subscribed to the list.',
 			},
 		],
 	},

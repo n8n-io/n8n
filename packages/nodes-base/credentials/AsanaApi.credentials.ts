@@ -1,5 +1,5 @@
 import {
-	IAuthenticateGeneric,
+	IAuthenticateBearer,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -17,13 +17,9 @@ export class AsanaApi implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				Authorization: '=Bearer {{$credentials.accessToken}}',
-			},
-		},
-	};
+	authenticate = {
+		type: 'bearer',
+		properties: {},
+	} as IAuthenticateBearer;
 
 }

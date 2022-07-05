@@ -19,7 +19,6 @@ export class ZulipApi implements ICredentialType {
 			displayName: 'Email',
 			name: 'email',
 			type: 'string',
-			placeholder: 'name@email.com',
 			default: '',
 		},
 		{

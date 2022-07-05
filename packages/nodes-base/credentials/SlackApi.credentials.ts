@@ -1,5 +1,6 @@
 import {
-	IAuthenticateGeneric,
+	IAuthenticateBearer,
+	IAuthenticateQueryAuth,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -18,16 +19,12 @@ export class SlackApi implements ICredentialType {
 			required: true,
 		},
 	];
-
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
+	authenticate: IAuthenticateBearer = {
+		type: 'bearer',
 		properties: {
-			headers: {
-				Authorization: '=Bearer {{$credentials.accessToken}}',
-			},
+			tokenPropertyName: 'accessToken',
 		},
 	};
-
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://slack.com',

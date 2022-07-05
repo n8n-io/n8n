@@ -6,7 +6,7 @@ import {
 
 export class GitlabApi implements ICredentialType {
 	name = 'gitlabApi';
-	displayName = 'GitLab API';
+	displayName = 'Gitlab API';
 	documentationUrl = 'gitlab';
 	properties: INodeProperties[] = [
 		{

@@ -1,14 +1,24 @@
 <template>
-	<div :id="id" :class="classes" role="alert" @click=onClick>
+	<div :id="id" :class="classes" role="alert">
 		<div class="notice-content">
-			<n8n-text size="small" :compact="true">
+			<n8n-text size="small">
 				<slot>
 					<span
-						:class="showFullContent ? $style['expanded'] : $style['truncated']"
+						:class="expanded ? $style['expanded'] : $style['truncated']"
 						:id="`${id}-content`"
 						role="region"
-						v-html="sanitizeHtml(showFullContent ? fullContent : content)"
+						v-html="sanitizedContent"
 					/>
+					<span v-if="canTruncate">
+						<a
+							role="button"
+							:aria-controls="`${id}-content`"
+							:aria-expanded="canTruncate && !expanded ? 'false' : 'true'"
+							@click="toggleExpanded"
+						>
+							{{ t(expanded ? 'notice.showLess' : 'notice.showMore') }}
+						</a>
+					</span>
 				</slot>
 			</n8n-text>
 		</div>
@@ -20,7 +30,9 @@ import Vue from 'vue';
 import sanitizeHtml from 'sanitize-html';
 import N8nText from "../../components/N8nText";
 import Locale from "../../mixins/locale";
-import { uid } from "../../utils";
+import {uid} from "../../utils";
+
+const DEFAULT_TRUNCATION_MAX_LENGTH = 150;
 
 export default Vue.extend({
 	name: 'n8n-notice',
@@ -37,11 +49,15 @@ export default Vue.extend({
 			type: String,
 			default: 'warning',
 		},
-		content: {
-			required: true,
-			type: String,
+		truncateAt: {
+			type: Number,
+			default: 150,
 		},
-		fullContent: {
+		truncate: {
+			type: Boolean,
+			default: false,
+		},
+		content: {
 			type: String,
 			default: '',
 		},
@@ -51,7 +67,7 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			showFullContent: false,
+			expanded: false,
 		};
 	},
 	computed: {
@@ -63,35 +79,22 @@ export default Vue.extend({
 			];
 		},
 		canTruncate(): boolean {
-			return this.fullContent !== undefined;
+			return this.truncate && this.content.length > this.truncateAt;
+		},
+		truncatedContent(): string {
+			if (!this.canTruncate || this.expanded) {
+				return this.content;
+			}
+
+			return this.content.slice(0, this.truncateAt as number) + '...';
+		},
+		sanitizedContent(): string {
+			return sanitizeHtml(this.truncatedContent);
 		},
 	},
 	methods: {
 		toggleExpanded() {
-			this.showFullContent = !this.showFullContent;
-		},
-		sanitizeHtml(text: string): string {
-			return sanitizeHtml(
-				text, {
-					allowedAttributes: { a: ['data-key', 'href', 'target'] },
-				},
-			);
-		},
-		onClick(e) {
-			if (e.target.localName !== 'a') return;
-
-			if (e.target.dataset && e.target.dataset.key) {
-				e.stopPropagation();
-				e.preventDefault();
-
-				if (e.target.dataset.key === 'show-less') {
-					this.showFullContent = false;
-				} else if (this.canTruncate && e.target.dataset.key === 'toggle-expand') {
-					this.showFullContent = !this.showFullContent;
-				} else {
-					this.$emit('action', e.target.dataset.key);
-				}
-			}
+			this.expanded = !this.expanded;
 		},
 	},
 });
@@ -99,17 +102,15 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .notice {
-	font-size: var(--font-size-2xs);
 	display: flex;
 	color: var(--custom-font-black);
-	margin: var(--spacing-s) 0;
-	padding: var(--spacing-2xs);
+	margin: 0;
+	padding: var(--spacing-xs);
 	background-color: var(--background-color);
 	border-width: 1px 1px 1px 7px;
 	border-style: solid;
 	border-color: var(--border-color);
 	border-radius: var(--border-radius-small);
-	line-height: var(--font-line-height-compact);
 
 	a {
 		font-weight: var(--font-weight-bold);

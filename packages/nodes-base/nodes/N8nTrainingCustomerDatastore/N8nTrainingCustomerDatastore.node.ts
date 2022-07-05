@@ -71,18 +71,20 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Get One Person',
 						value: 'getOnePerson',
+						description: 'Get one person',
 					},
 					{
 						name: 'Get All People',
 						value: 'getAllPeople',
+						description: 'Get all people',
 					},
 				],
 				default: 'getOnePerson',
+				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Return All',
@@ -96,7 +98,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'If all results should be returned or only up to a given limit.',
 			},
 			{
 				displayName: 'Limit',
@@ -117,7 +119,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					maxValue: 10,
 				},
 				default: 5,
-				description: 'Max number of results to return',
+				description: 'How many results to return.',
 			},
 		],
 	};

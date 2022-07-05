@@ -69,7 +69,7 @@ export const userRoleFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'The max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -96,14 +96,14 @@ export const userRoleFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Fields',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getColumns',
 				},
 				default: [],
-				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'A list of fields to return',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{

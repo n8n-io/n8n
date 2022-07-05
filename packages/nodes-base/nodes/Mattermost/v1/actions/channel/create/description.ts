@@ -4,7 +4,7 @@ import {
 
 export const channelCreateDescription: ChannelProperties = [
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team ID',
 		name: 'teamId',
 		type: 'options',
 		typeOptions: {
@@ -23,7 +23,7 @@ export const channelCreateDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The Mattermost Team.',
 	},
 	{
 		displayName: 'Display Name',
@@ -88,6 +88,6 @@ export const channelCreateDescription: ChannelProperties = [
 			},
 		],
 		default: 'public',
-		description: 'The type of channel to create',
+		description: 'The type of channel to create.',
 	},
 ];

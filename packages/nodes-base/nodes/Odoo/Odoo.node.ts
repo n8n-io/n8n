@@ -87,6 +87,7 @@ export class Odoo implements INodeType {
 						value: 'opportunity',
 					},
 				],
+				description: 'The resource to operate on',
 			},
 
 			...customResourceOperations,
@@ -118,16 +119,11 @@ export class Odoo implements INodeType {
 				const userID = await odooGetUserID.call(this, db, username, password, url);
 
 				const responce = await odooGetModelFields.call(this, db, userID, password, resource, url);
+
 				const options = Object.values(responce).map((field) => {
 					const optionField = field as { [key: string]: string };
-					let name = '';
-					try {
-						name = capitalCase(optionField.name);
-					} catch (error) {
-						name = optionField.name;
-					}
 					return {
-						name,
+						name: capitalCase(optionField.name),
 						value: optionField.name,
 						// nodelinter-ignore-next-line
 						description: `name: ${optionField?.name}, type: ${optionField?.type} required: ${optionField?.required}`,

@@ -12,12 +12,6 @@ export class HarvestOAuth2Api implements ICredentialType {
 	displayName = 'Harvest OAuth2 API';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

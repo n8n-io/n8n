@@ -16,7 +16,6 @@ export const descriptions: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,7 +27,7 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Add a reaction to a post',
+				description: 'Add a reaction to a post.',
 			},
 			{
 				name: 'Delete',
@@ -42,6 +41,7 @@ export const descriptions: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform',
 	},
 	...create.description,
 	...del.description,

@@ -75,7 +75,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import { CUSTOM_API_CALL_KEY, WAIT_TIME_UNLIMITED } from '@/constants';
+import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -134,7 +134,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					'node.waitingForYouToCreateAnEventIn',
 					{
 						interpolate: {
-							nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '',
+							nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType.displayName) : '',
 						},
 					},
 				);
@@ -323,7 +323,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	mounted() {
 		this.setSubtitle();
 		setTimeout(() => {
-			this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
+			this.$emit('run', {name: this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
 		}, 0);
 	},
 	data () {
@@ -336,11 +336,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	},
 	methods: {
 		setSubtitle() {
-			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
-
-			this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY)
-				? ''
-				: nodeSubtitle;
+			this.nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
 		},
 		disableNode () {
 			this.disableNodes([this.data]);

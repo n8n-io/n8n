@@ -7,7 +7,6 @@ export const commentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +37,7 @@ export const commentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -137,7 +137,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'notifyAll',
 				type: 'boolean',
 				default: false,
-				description: 'Whether creation notifications will be sent to everyone including the creator of the comment',
+				description: 'If true, creation notifications will be sent to everyone including the creator of the comment.',
 			},
 		],
 	},
@@ -232,7 +232,7 @@ export const commentFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 
 	/* -------------------------------------------------------------------------- */

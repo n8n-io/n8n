@@ -7,7 +7,6 @@ export const personTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,6 +25,7 @@ export const personTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
+		description: 'Operation to perform',
 	},
 ];
 
@@ -34,9 +34,9 @@ export const personTagFields: INodeProperties[] = [
 	//             personTag: add
 	// ----------------------------------------
 	{
-		displayName: 'Tag Name or ID',
+		displayName: 'Tag ID',
 		name: 'tagId',
-		description: 'ID of the tag to add. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the tag to add.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
@@ -57,7 +57,7 @@ export const personTagFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to add the tag to',
+		description: 'ID of the person to add the tag to.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -77,9 +77,9 @@ export const personTagFields: INodeProperties[] = [
 	//             personTag: remove
 	// ----------------------------------------
 	{
-		displayName: 'Tag Name or ID',
+		displayName: 'Tag ID',
 		name: 'tagId',
-		description: 'ID of the tag whose tagging to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the tag whose tagging to delete.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
@@ -98,9 +98,9 @@ export const personTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tagging Name or ID',
+		displayName: 'Tagging ID',
 		name: 'taggingId',
-		description: 'ID of the tagging to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the tagging to remove.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsDependsOn: [

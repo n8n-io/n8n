@@ -7,7 +7,6 @@ export const searchOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -48,10 +47,10 @@ export const searchFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Term to search for',
+		description: 'Term to search for.',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -65,6 +64,6 @@ export const searchFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 ];

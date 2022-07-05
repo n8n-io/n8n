@@ -106,7 +106,6 @@ export class PagerDuty implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Incident',
@@ -126,6 +125,7 @@ export class PagerDuty implements INodeType {
 					},
 				],
 				default: 'incident',
+				description: 'Resource to consume.',
 			},
 			// INCIDENT
 			...incidentOperations,

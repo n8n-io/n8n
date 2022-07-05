@@ -77,7 +77,6 @@ export class Discourse implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Category',
@@ -105,6 +104,7 @@ export class Discourse implements INodeType {
 					},
 				],
 				default: 'post',
+				description: 'The resource to operate on.',
 			},
 			...categoryOperations,
 			...categoryFields,

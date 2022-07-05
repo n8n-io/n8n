@@ -69,7 +69,6 @@ export class WooCommerce implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Customer',
@@ -85,6 +84,7 @@ export class WooCommerce implements INodeType {
 					},
 				],
 				default: 'product',
+				description: 'Resource to consume.',
 			},
 			...customerOperations,
 			...customerFields,

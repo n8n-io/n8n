@@ -109,6 +109,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
+				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Incoming Authentication',
@@ -125,7 +126,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If authentication should be activated for the webhook (makes it more secure)',
+				description: 'If authentication should be activated for the webhook (makes it more secure).',
 			},
 			{
 				displayName: 'Action',
@@ -133,14 +134,14 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Added',
-						value: 'added',
-						description: 'Data got added',
-					},
-					{
 						name: 'All',
 						value: '*',
 						description: 'Any change',
+					},
+					{
+						name: 'Added',
+						value: 'added',
+						description: 'Data got added',
 					},
 					{
 						name: 'Deleted',
@@ -159,7 +160,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: '*',
-				description: 'Type of action to receive notifications about',
+				description: 'Type of action to receive notifications about.',
 			},
 			{
 				displayName: 'Object',
@@ -167,16 +168,16 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'All',
+						value: '*',
+					},
+					{
 						name: 'Activity',
 						value: 'activity',
 					},
 					{
 						name: 'Activity Type',
 						value: 'activityType',
-					},
-					{
-						name: 'All',
-						value: '*',
 					},
 					{
 						name: 'Deal',
@@ -212,7 +213,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: '*',
-				description: 'Type of object to receive notifications about',
+				description: 'Type of object to receive notifications about.',
 			},
 		],
 	};

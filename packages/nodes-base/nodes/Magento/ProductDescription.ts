@@ -12,7 +12,6 @@ export const productOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -48,6 +47,7 @@ export const productOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform',
 	},
 ];
 
@@ -93,10 +93,9 @@ export const productFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Attribute Set Name or ID',
+		displayName: 'Attribute Set Name/ID',
 		name: 'attributeSetId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -210,7 +209,7 @@ export const productFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Whether all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -234,7 +233,7 @@ export const productFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	...getSearchFilters(
 		'product',

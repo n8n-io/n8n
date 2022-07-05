@@ -259,24 +259,10 @@ export default mixins(
 				'isTemplatesEnabled',
 			]),
 			canUserAccessSettings(): boolean {
-				return [
-					VIEWS.PERSONAL_SETTINGS,
-					VIEWS.USERS_SETTINGS,
-					VIEWS.API_SETTINGS,
-				].some((route) => this.canUserAccessRouteByName(route));
+				return this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS) || this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
 			},
 			helpMenuItems (): object[] {
 				return [
-					{
-						id: 'quickstart',
-						type: 'link',
-						properties: {
-							href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
-							title: this.$locale.baseText('mainSidebar.helpMenuItems.quickstart'),
-							icon: 'video',
-							newWindow: true,
-						},
-					},
 					{
 						id: 'docs',
 						type: 'link',
@@ -515,20 +501,9 @@ export default mixins(
 					if (data.id && typeof data.id === 'string') {
 						data.id = parseInt(data.id, 10);
 					}
-
-					const exportData: IWorkflowDataUpdate = {
-						...data,
-						tags: (tags || []).map(tagId => {
-							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
-
-							return tag;
-						}),
-					};
-
-					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+					const blob = new Blob([JSON.stringify(data, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
-
 
 					let workflowName = this.$store.getters.workflowName || 'unsaved_workflow';
 
@@ -616,16 +591,11 @@ export default mixins(
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (key === 'settings') {
-					if (this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS) || this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS)) {
-						if ((this.currentUser as IUser).isDefaultUser) {
-							this.$router.push('/settings/users');
-						}
-						else {
-							this.$router.push('/settings/personal');
-						}
+					if ((this.currentUser as IUser).isDefaultUser) {
+						this.$router.push('/settings/users');
 					}
-					else if (this.canUserAccessRouteByName(VIEWS.API_SETTINGS)) {
-						this.$router.push('/settings/api');
+					else {
+						this.$router.push('/settings/personal');
 					}
 				}
 			},
@@ -734,12 +704,6 @@ export default mixins(
 				left: -10px;
 				top: -2px;
 			}
-		}
-	}
-
-	.help-menu {
-		.el-submenu__title {
-			padding-left: 23px !important;
 		}
 	}
 }

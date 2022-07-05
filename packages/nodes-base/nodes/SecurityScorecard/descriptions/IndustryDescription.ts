@@ -7,7 +7,6 @@ export const industryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -92,7 +91,7 @@ export const industryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -117,10 +116,10 @@ export const industryFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'Number of results to return.',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -135,7 +134,7 @@ export const industryFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -160,6 +159,7 @@ export const industryFields: INodeProperties[] = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
+				required: false,
 			},
 			{
 				displayName: 'Date To',
@@ -167,6 +167,7 @@ export const industryFields: INodeProperties[] = [
 				name: 'to',
 				type: 'dateTime',
 				default: '',
+				required: false,
 			},
 		],
 	},

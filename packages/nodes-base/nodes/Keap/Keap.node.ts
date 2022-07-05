@@ -106,7 +106,6 @@ export class Keap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Keap',
 		name: 'keap',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:keap.png',
 		group: ['input'],
 		version: 1,
@@ -128,7 +127,6 @@ export class Keap implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -164,6 +162,7 @@ export class Keap implements INodeType {
 					},
 				],
 				default: 'company',
+				description: 'The resource to operate on.',
 			},
 			// COMPANY
 			...companyOperations,

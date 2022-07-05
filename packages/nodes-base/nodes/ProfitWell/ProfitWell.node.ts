@@ -30,7 +30,6 @@ export class ProfitWell implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ProfitWell',
 		name: 'profitWell',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:profitwell.png',
 		group: ['output'],
 		version: 1,
@@ -52,7 +51,6 @@ export class ProfitWell implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -64,6 +62,7 @@ export class ProfitWell implements INodeType {
 					},
 				],
 				default: 'metric',
+				description: 'Resource to consume.',
 			},
 			// COMPANY
 			...companyOperations,

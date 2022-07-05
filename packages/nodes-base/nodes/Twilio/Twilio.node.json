@@ -61,8 +61,6 @@
 		]
 	},
 	"alias": [
-		"SMS",
-		"Phone",
-		"Voice"
+		"SMS"
 	]
 }

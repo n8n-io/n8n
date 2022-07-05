@@ -5,7 +5,6 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,6 +40,7 @@ export const activityOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,10 +67,9 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner Name or ID',
+		displayName: 'Owner',
 		name: 'owner',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
@@ -102,7 +101,7 @@ export const activityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'This field displays activity type such as call, meeting etc',
+		description: 'This field displays activity type such as call, meeting etc.',
 		required: true,
 	},
 	{
@@ -120,7 +119,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether the data should include the fields details',
+		description: `If the data should include the fields details`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -147,7 +146,7 @@ export const activityFields: INodeProperties[] = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the activity',
+				description: 'This field contains details related to the activity.',
 			},
 			{
 				displayName: 'Tags',
@@ -161,28 +160,28 @@ export const activityFields: INodeProperties[] = [
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Expiry date of an activity',
+				description: 'Expiry date of an activity.',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
 				type: 'number',
 				default: '',
-				description: 'Time duration of an activity',
+				description: 'Time duration of an activity.',
 			},
 			{
 				displayName: 'Is Calendar Invite',
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to send calendar invite',
+				description: 'This field is used to send calendar invite.',
 			},
 			{
 				displayName: 'Is Completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the activity is completed or not',
+				description: 'This field indicates whether the activity is completed or not.',
 			},
 		],
 	},
@@ -221,7 +220,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether the data should include the fields details',
+		description: `If the data should include the fields details`,
 	},
 	{
 		displayName: 'Update Fields',
@@ -266,7 +265,7 @@ export const activityFields: INodeProperties[] = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the activity',
+				description: 'This field contains details related to the activity.',
 			},
 			{
 				displayName: 'Tags',
@@ -280,28 +279,28 @@ export const activityFields: INodeProperties[] = [
 				name: 'dueDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Expiry date of an activity',
+				description: 'Expiry date of an activity.',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
 				type: 'number',
 				default: '',
-				description: 'Time duration of an activity',
+				description: 'Time duration of an activity.',
 			},
 			{
 				displayName: 'Is Calendar Invite',
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to send calendar invite',
+				description: 'This field is used to send calendar invite.',
 			},
 			{
 				displayName: 'Is Completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the activity is completed or not',
+				description: 'This field indicates whether the activity is completed or not.',
 			},
 		],
 
@@ -341,7 +340,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether the data should include the fields details',
+		description: `If the data should include the fields details`,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 activity:getAll                            */
@@ -361,7 +360,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -385,7 +384,7 @@ export const activityFields: INodeProperties[] = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -425,14 +424,14 @@ export const activityFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of fields to return',
+				description: 'Comma-separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
-				description: 'The field to sort by',
+				description: 'The field to sort by.',
 			},
 			{
 				displayName: 'Sort Order',
@@ -551,7 +550,6 @@ export const activityFields: INodeProperties[] = [
 										displayName: 'Condition',
 										name: 'condition',
 										type: 'options',
-										// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 										options: [
 											{
 												name: 'Equals',
@@ -562,20 +560,20 @@ export const activityFields: INodeProperties[] = [
 												value: 'NOT_EQUALS',
 											},
 											{
-												name: 'CONTAINS',
-												value: 'Contains',
-											},
-											{
-												name: 'Does Not Contains',
-												value: 'DOES_NOT_CONTAINS',
-											},
-											{
 												name: 'Empty',
 												value: 'EMPTY',
 											},
 											{
 												name: 'Not Empty',
 												value: 'NOT_EMPTY',
+											},
+											{
+												name: 'CONTAINS',
+												value: 'Contains',
+											},
+											{
+												name: 'Does Not Contains',
+												value: 'DOES_NOT_CONTAINS',
 											},
 											{
 												name: 'Starts With',
@@ -587,7 +585,7 @@ export const activityFields: INodeProperties[] = [
 											},
 										],
 										default: 'EQUALS',
-										description: 'Value of the property to set',
+										description: 'Value of the property to set.',
 									},
 									{
 										displayName: 'Value',

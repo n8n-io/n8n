@@ -70,7 +70,6 @@ export class GoToWebinar implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Attendee',
@@ -98,6 +97,7 @@ export class GoToWebinar implements INodeType {
 					},
 				],
 				default: 'attendee',
+				description: 'Resource to consume',
 			},
 			...attendeeOperations,
 			...attendeeFields,

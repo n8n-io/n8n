@@ -154,6 +154,7 @@ export class Mautic implements INodeType {
 					},
 				],
 				default: 'contact',
+				description: 'Resource to consume',
 			},
 			...companyOperations,
 			...companyFields,

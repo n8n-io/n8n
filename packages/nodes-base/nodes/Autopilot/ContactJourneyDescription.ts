@@ -7,7 +7,6 @@ export const contactJourneyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,6 +22,7 @@ export const contactJourneyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -32,7 +32,7 @@ export const contactJourneyFields: INodeProperties[] = [
 	/*                                 contactJourney:add                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Trigger Name or ID',
+		displayName: 'Trigger ID',
 		name: 'triggerId',
 		required: true,
 		typeOptions: {
@@ -50,7 +50,7 @@ export const contactJourneyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'List ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'List ID.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -68,6 +68,6 @@ export const contactJourneyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email',
+		description: 'Can be ID or email.',
 	},
 ];

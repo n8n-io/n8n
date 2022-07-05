@@ -7,7 +7,6 @@ export const mediaOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,6 +22,7 @@ export const mediaOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upload',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -32,7 +32,7 @@ export const mediaFields: INodeProperties[] = [
 	/*                               media:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room Name or ID',
+		displayName: 'Room ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -49,7 +49,7 @@ export const mediaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Room ID to post ',
 		required: true,
 	},
 	{
@@ -70,7 +70,7 @@ export const mediaFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Media Type',
+		displayName: 'Media type',
 		name: 'mediaType',
 		type: 'options',
 		default: 'image',

@@ -5,7 +5,6 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,6 +19,7 @@ export const companyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'enrich',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -43,7 +43,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the company (e.g – amazon)',
+		description: 'the name of the company (e.g – amazon)',
 	},
 	{
 		displayName: 'Domain',
@@ -60,6 +60,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The domain name (e.g – amazon.com)',
+		description: 'the domain name (e.g – amazon.com)',
 	},
 ];

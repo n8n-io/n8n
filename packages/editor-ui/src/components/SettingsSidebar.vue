@@ -19,12 +19,6 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
 			</n8n-menu-item>
-			<n8n-menu-item index="/settings/api" v-if="canAccessApiSettings()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="plug" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
-			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
@@ -53,9 +47,6 @@ export default mixins(
 		},
 		canAccessUsersSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
-		},
-		canAccessApiSettings(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
 		onVersionClick() {
 			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);

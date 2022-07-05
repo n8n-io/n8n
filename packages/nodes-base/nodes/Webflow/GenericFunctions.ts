@@ -12,6 +12,7 @@ import {
 import {
 	IDataObject,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function webflowApiRequest(
@@ -23,17 +24,7 @@ export async function webflowApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken');
-	let credentialsType = '';
-
-	if (authenticationMethod === 'accessToken') {
-		credentialsType = 'webflowApi';
-	}
-
-	if (authenticationMethod === 'oAuth2') {
-		credentialsType = 'webflowOAuth2Api';
-	}
-
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -55,7 +46,15 @@ export async function webflowApiRequest(
 		delete options.body;
 	}
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
+		if (authenticationMethod === 'accessToken') {
+			const credentials = await this.getCredentials('webflowApi');
+
+			options.headers!['authorization'] = `Bearer ${credentials.accessToken}`;
+
+			return await this.helpers.request!(options);
+		} else {
+			return await this.helpers.requestOAuth2!.call(this, 'webflowOAuth2Api', options);
+		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -130,6 +130,7 @@ export function sendErrorResponse(res: Response, error: ResponseError) {
 		// @ts-ignore
 		response.stack = error.stack;
 	}
+
 	res.status(httpStatusCode).json(response);
 }
 
@@ -146,13 +147,12 @@ const isUniqueConstraintError = (error: Error) =>
  * @returns
  */
 
-export function send(processFunction: (req: Request, res: Response) => Promise<any>, raw = false) {
-	// eslint-disable-next-line consistent-return
+export function send(processFunction: (req: Request, res: Response) => Promise<any>) {
 	return async (req: Request, res: Response) => {
 		try {
 			const data = await processFunction(req, res);
 
-			sendSuccessResponse(res, data, raw);
+			sendSuccessResponse(res, data);
 		} catch (error) {
 			if (error instanceof Error && isUniqueConstraintError(error)) {
 				error.message = 'There is already an entry with this name';

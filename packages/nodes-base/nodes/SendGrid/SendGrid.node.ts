@@ -60,7 +60,6 @@ export class SendGrid implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -77,6 +76,7 @@ export class SendGrid implements INodeType {
 				],
 				default: 'list',
 				required: true,
+				description: 'Resource to consume',
 			},
 			...listOperations,
 			...listFields,

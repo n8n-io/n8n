@@ -1,7 +1,6 @@
-
 import {
-	mergeWith,
-} from 'lodash';
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,12 +9,16 @@ import {
 import {
 	IBinaryData,
 	IBinaryKeyData,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -113,7 +116,6 @@ export class Jira implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Issue',
@@ -123,20 +125,21 @@ export class Jira implements INodeType {
 					{
 						name: 'Issue Attachment',
 						value: 'issueAttachment',
-						description: 'Add, remove, and get an attachment from an issue',
+						description: 'Add, remove, and get an attachment from an issue.',
 					},
 					{
 						name: 'Issue Comment',
 						value: 'issueComment',
-						description: 'Get, create, update, and delete a comment from an issue',
+						description: 'Get, create, update, and delete a comment from an issue.',
 					},
 					{
 						name: 'User',
 						value: 'user',
-						description: 'Get, create and delete a user',
+						description: 'Get, create and delete a user.',
 					},
 				],
 				default: 'issue',
+				description: 'Resource to consume.',
 			},
 			...issueOperations,
 			...issueFields,
@@ -150,6 +153,40 @@ export class Jira implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async jiraSoftwareApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+				const data = Buffer.from(`${credentials!.email}:${credentials!.password || credentials!.apiToken}`).toString('base64');
+
+				const options: OptionsWithUri = {
+					headers: {
+						Authorization: `Basic ${data}`,
+						Accept: 'application/json',
+						'Content-Type': 'application/json',
+						'X-Atlassian-Token': 'no-check',
+					},
+					method: 'GET',
+					uri: `${credentials!.domain}/rest/api/2/project`,
+					qs: {
+						recent: 0,
+					},
+					json: true,
+					timeout: 5000,
+				};
+				try {
+					await this.helpers.request!(options);
+				} catch (err) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${(err as JsonObject).message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the projects to display them to user so that he can
 			// select them easily
@@ -612,17 +649,6 @@ export class Jira implements INodeType {
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
 
 					if (simplifyOutput) {
-						// Use rendered fields if requested and available
-						qs.expand = qs.expand || '';
-						if (
-							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
-							responseData.renderedFields && Object.keys(responseData.renderedFields).length
-						) {
-							responseData.fields = mergeWith(
-								responseData.fields,
-								responseData.renderedFields,
-								(a,b) => b === null ? a : b);
-						}
 						returnData.push(simplifyIssueOutput(responseData));
 					} else {
 						returnData.push(responseData);

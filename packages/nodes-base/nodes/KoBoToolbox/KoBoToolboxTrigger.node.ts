@@ -16,7 +16,7 @@ import {
 } from './GenericFunctions';
 
 import {
-	options,
+	 options,
 } from './Options';
 
 export class KoBoToolboxTrigger implements INodeType {
@@ -49,7 +49,7 @@ export class KoBoToolboxTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form Name/ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -57,7 +57,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
 			},
 			{
 				displayName: 'Trigger On',
@@ -98,14 +98,13 @@ export class KoBoToolboxTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const workflow = this.getWorkflow();
 				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
 
 				const response = await koBoToolboxApiRequest.call(this, {
 					method: 'POST',
 					url: `/api/v2/assets/${formId}/hooks/`,
 					body: {
-						name: `n8n webhook id ${workflow.id}: ${workflow.name}`,
+						name: `n8n-webhook:${webhookUrl}`,
 						endpoint: webhookUrl,
 						email_notification: true,
 					},

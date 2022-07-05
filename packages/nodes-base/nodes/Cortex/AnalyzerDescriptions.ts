@@ -11,7 +11,6 @@ export const analyzersOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		required: true,
 		description: 'Choose an operation',
 		displayOptions: {
@@ -34,7 +33,7 @@ export const analyzersOperations: INodeProperties[] = [
 
 export const analyzerFields: INodeProperties[] = [
 	{
-		displayName: 'Analyzer Type Name or ID',
+		displayName: 'Analyzer Type',
 		name: 'analyzer',
 		type: 'options',
 		required: true,
@@ -51,11 +50,11 @@ export const analyzerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Choose the analyzer. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Choose the analyzer',
 		default: '',
 	},
 	{
-		displayName: 'Observable Type Name or ID',
+		displayName: 'Observable Type',
 		name: 'observableType',
 		type: 'options',
 		required: true,
@@ -81,7 +80,7 @@ export const analyzerFields: INodeProperties[] = [
 			],
 		},
 		default: '',
-		description: 'Choose the observable type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Choose the observable type',
 	},
 
 	// Observable type != file
@@ -130,12 +129,13 @@ export const analyzerFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		description: 'Name of the binary property to which to write the data of the read file.',
 	},
 	{
 		displayName: 'TLP',
 		name: 'tlp',
 		type: 'options',
+		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -196,10 +196,10 @@ export const analyzerFields: INodeProperties[] = [
 				name: 'force',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to force bypassing the cache',
+				description: 'To force bypassing the cache, set this parameter to true',
 			},
 			{
-				displayName: 'Timeout (Seconds)',
+				displayName: 'Timeout (seconds)',
 				name: 'timeout',
 				type: 'number',
 				default: 3,

@@ -55,7 +55,6 @@ export class CustomerIo implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Customer',
@@ -75,6 +74,7 @@ export class CustomerIo implements INodeType {
 					},
 				],
 				default: 'customer',
+				description: 'Resource to consume.',
 			},
 			// CAMPAIGN
 			...campaignOperations,

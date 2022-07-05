@@ -19,7 +19,7 @@ import {
 	awsApiRequestREST,
 	IExpenseDocument,
 	simplify,
-	validateCredentials,
+	validateCrendetials,
 } from './GenericFunctions';
 
 export class AwsTextract implements INodeType {
@@ -48,7 +48,6 @@ export class AwsTextract implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Analyze Receipt or Invoice',
@@ -73,7 +72,7 @@ export class AwsTextract implements INodeType {
 				description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 			},
 			{
-				displayName: 'Simplify',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -84,7 +83,7 @@ export class AwsTextract implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 		],
 	};
@@ -93,7 +92,7 @@ export class AwsTextract implements INodeType {
 		credentialTest: {
 			async awsTextractApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
+					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
 				} catch (error) {
 					return {
 						status: 'Error',

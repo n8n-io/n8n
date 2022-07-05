@@ -91,6 +91,7 @@ export class Kafka implements ICredentialType {
 				},
 			],
 			default: 'plain',
+			description: 'The SASL mechanism',
 		},
 	];
 }

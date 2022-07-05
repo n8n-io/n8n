@@ -54,7 +54,7 @@ export const eventFields: INodeProperties[] = [
 	//              event: create
 	// ----------------------------------------
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization Name/ID',
 		name: 'org_id',
 		type: 'options',
 		default: '',
@@ -138,37 +138,37 @@ export const eventFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'All Communities',
-						value: 3,
-					},
-					{
-						name: 'Connected Communities',
-						value: 2,
-					},
-					{
-						name: 'Inherit Event',
-						value: 5,
-					},
-					{
-						name: 'Sharing Group',
-						value: 4,
+						name: 'Your Organization Only',
+						value: 0,
 					},
 					{
 						name: 'This Community Only',
 						value: 1,
 					},
 					{
-						name: 'Your Organization Only',
-						value: 0,
+						name: 'Connected Communities',
+						value: 2,
+					},
+					{
+						name: 'All Communities',
+						value: 3,
+					},
+					{
+						name: 'Sharing Group',
+						value: 4,
+					},
+					{
+						name: 'Inherit Event',
+						value: 5,
 					},
 				],
 			},
 			{
-				displayName: 'Sharing Group Name or ID',
+				displayName: 'Sharing Group Name/ID',
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
-				description: 'Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},
@@ -395,28 +395,28 @@ export const eventFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'All Communities',
-						value: 3,
-					},
-					{
-						name: 'Connected Communities',
-						value: 2,
-					},
-					{
-						name: 'Inherit Event',
-						value: 5,
-					},
-					{
-						name: 'Sharing Group',
-						value: 4,
+						name: 'Your Organization Only',
+						value: 0,
 					},
 					{
 						name: 'This Community Only',
 						value: 1,
 					},
 					{
-						name: 'Your Organization Only',
-						value: 0,
+						name: 'Connected Communities',
+						value: 2,
+					},
+					{
+						name: 'All Communities',
+						value: 3,
+					},
+					{
+						name: 'Sharing Group',
+						value: 4,
+					},
+					{
+						name: 'Inherit Event',
+						value: 5,
 					},
 				],
 			},
@@ -428,12 +428,11 @@ export const eventFields: INodeProperties[] = [
 				description: 'Information on the event - max 65535 characters',
 			},
 			{
-				displayName: 'Sharing Group Name or ID',
+				displayName: 'Sharing Group Name/ID',
 				name: 'sharing_group_id',
 				type: 'options',
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Use only for when <code>Sharing Group</code> is selected in <code>Distribution</code>',
 				typeOptions: {
 					loadOptionsMethod: 'getSharingGroups',
 				},

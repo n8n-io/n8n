@@ -7,7 +7,6 @@ export const profileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,6 +21,7 @@ export const profileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+		description: 'Operation to perform',
 	},
 ];
 
@@ -33,8 +33,13 @@ export const profileFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		default: 'identity',
-		description: 'Details of my account to retrieve',
+		description: 'Details of my account to retrieve.',
 		options: [
+			{
+				name: 'Identity',
+				value: 'identity',
+				description: 'Return the identity of the logged-in user',
+			},
 			{
 				name: 'Blocked Users',
 				value: 'blockedUsers',
@@ -44,11 +49,6 @@ export const profileFields: INodeProperties[] = [
 				name: 'Friends',
 				value: 'friends',
 				description: 'Return the friends of the logged-in user',
-			},
-			{
-				name: 'Identity',
-				value: 'identity',
-				description: 'Return the identity of the logged-in user',
 			},
 			{
 				name: 'Karma',
@@ -87,7 +87,7 @@ export const profileFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -107,7 +107,7 @@ export const profileFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

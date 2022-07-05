@@ -7,7 +7,6 @@ export const organizationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -43,6 +42,7 @@ export const organizationOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +67,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the organization',
+		description: 'The name of the organization.',
 	},
 	{
 		displayName: 'Domain',
@@ -85,7 +85,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The domain name of the organization',
+		description: 'The domain name of the organization.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -105,14 +105,14 @@ export const organizationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Person Names or IDs',
+				displayName: 'Persons',
 				name: 'persons',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getPersons',
 				},
 				default: [],
-				description: 'Persons that the new organization will be associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Persons that the new organization will be associated with.',
 			},
 		],
 	},
@@ -135,7 +135,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the organization',
+		description: 'Unique identifier for the organization.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -159,24 +159,24 @@ export const organizationFields: INodeProperties[] = [
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the organization',
+				description: 'The domain name of the organization.',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the organization',
+				description: 'The name of the organization.',
 			},
 			{
-				displayName: 'Person Names or IDs',
+				displayName: 'Persons',
 				name: 'persons',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getPersons',
 				},
 				default: [],
-				description: 'Persons that the new organization will be associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Persons that the new organization will be associated with.',
 			},
 		],
 	},
@@ -199,7 +199,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the organization',
+		description: 'Unique identifier for the organization.',
 	},
 	{
 		displayName: 'Options',
@@ -223,7 +223,7 @@ export const organizationFields: INodeProperties[] = [
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,
-				description: 'Whether interaction dates will be present on the returned resources',
+				description: 'When true, interaction dates will be present on the returned resources.',
 			},
 		],
 	},
@@ -245,7 +245,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -269,7 +269,7 @@ export const organizationFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -300,7 +300,7 @@ export const organizationFields: INodeProperties[] = [
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,
-				description: 'Whether interaction dates will be present on the returned resources',
+				description: 'When true, interaction dates will be present on the returned resources.',
 			},
 		],
 	},
@@ -323,6 +323,6 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the organization',
+		description: 'Unique identifier for the organization.',
 	},
 ];

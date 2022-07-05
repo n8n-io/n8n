@@ -7,7 +7,6 @@ export const calendarOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,6 +22,7 @@ export const calendarOperations: INodeProperties[] = [
 			},
 		],
 		default: 'availability',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -31,10 +31,9 @@ export const calendarFields: INodeProperties[] = [
 	/*                                 calendar:availability                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar Name or ID',
+		displayName: 'Calendar ID',
 		name: 'calendar',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCalendars',
 		},
@@ -109,31 +108,31 @@ export const calendarFields: INodeProperties[] = [
 					{
 						name: 'Availability',
 						value: 'availability',
-						description: 'Returns if there are any events in the given time or not',
+						description: 'Returns if there are any events in the given time or not.',
 					},
 					{
 						name: 'Booked Slots',
 						value: 'bookedSlots',
-						description: 'Returns the booked slots',
+						description: 'Returns the booked slots.',
 					},
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the RAW data from the API',
+						description: 'Returns the RAW data from the API.',
 					},
 				],
 				default: 'availability',
-				description: 'The format to return the data in',
+				description: 'The format to return the data in.',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Time zone used in the response. By default n8n timezone is used.',
 			},
 		],
 	},

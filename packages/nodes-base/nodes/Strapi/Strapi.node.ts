@@ -63,6 +63,7 @@ export class Strapi implements INodeType {
 					},
 				],
 				default: 'entry',
+				description: 'The resource to operate on',
 			},
 			...entryOperations,
 			...entryFields,

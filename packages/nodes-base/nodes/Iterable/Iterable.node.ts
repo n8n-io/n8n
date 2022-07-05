@@ -38,7 +38,6 @@ export class Iterable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Iterable',
 		name: 'iterable',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:iterable.png',
 		group: ['input'],
 		version: 1,
@@ -60,7 +59,6 @@ export class Iterable implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Event',
@@ -76,6 +74,7 @@ export class Iterable implements INodeType {
 					},
 				],
 				default: 'user',
+				description: 'The resource to operate on.',
 			},
 			...eventOperations,
 			...eventFields,

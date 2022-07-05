@@ -19,12 +19,6 @@ export class SpotifyOAuth2Api implements ICredentialType {
 			default: 'https://api.spotify.com/',
 		},
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

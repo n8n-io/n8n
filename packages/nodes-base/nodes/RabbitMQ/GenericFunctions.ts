@@ -4,15 +4,9 @@ import {
 	ITriggerFunctions,
 } from 'n8n-workflow';
 
-import * as amqplib from 'amqplib';
+const amqplib = require('amqplib');
 
-declare module 'amqplib' {
-	interface Channel {
-		connection: amqplib.Connection;
-	}
-}
-
-export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, options: IDataObject): Promise<amqplib.Channel> {
+export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('rabbitmq');
 
 	const credentialKeys = [
@@ -50,7 +44,7 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 				reject(error);
 			});
 
-			const channel = await connection.createChannel().catch(console.warn) as amqplib.Channel;
+			const channel = await connection.createChannel().catch(console.warn);
 
 			if (options.arguments && ((options.arguments as IDataObject).argument! as IDataObject[]).length) {
 				const additionalArguments: IDataObject = {};
@@ -60,6 +54,7 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 				options.arguments = additionalArguments;
 			}
 
+
 			resolve(channel);
 		} catch (error) {
 			reject(error);
@@ -67,7 +62,7 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 	});
 }
 
-export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<amqplib.Channel> {
+export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const channel = await rabbitmqConnect.call(this, options);
 
 	return new Promise(async (resolve, reject) => {
@@ -80,7 +75,7 @@ export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFun
 	});
 }
 
-export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITriggerFunctions, exchange: string, type: string, options: IDataObject): Promise<amqplib.Channel> {
+export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITriggerFunctions, exchange: string, type: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const channel = await rabbitmqConnect.call(this, options);
 
 	return new Promise(async (resolve, reject) => {
@@ -91,54 +86,4 @@ export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITrigger
 			reject(error);
 		}
 	});
-}
-
-export class MessageTracker {
-	messages: number[] = [];
-	isClosing = false;
-
-	received(message: amqplib.ConsumeMessage) {
-		this.messages.push(message.fields.deliveryTag);
-	}
-
-	answered(message: amqplib.ConsumeMessage) {
-		if (this.messages.length === 0) {
-			return;
-		}
-
-		const index = this.messages.findIndex(value => value !== message.fields.deliveryTag);
-		this.messages.splice(index);
-	}
-
-	unansweredMessages() {
-		return this.messages.length;
-	}
-
-	async closeChannel(channel: amqplib.Channel, consumerTag: string) {
-		if (this.isClosing) {
-			return;
-		}
-		this.isClosing = true;
-
-		// Do not accept any new messages
-		await channel.cancel(consumerTag);
-
-		let count = 0;
-		let unansweredMessages = this.unansweredMessages();
-
-		// Give currently executing messages max. 5 minutes to finish before
-		// the channel gets closed. If we would not do that, it would not be possible
-		// to acknowledge messages anymore for which the executions were already running
-		// when for example a new version of the workflow got saved. That would lead to
-		// them getting delivered and processed again.
-		while (unansweredMessages !== 0 && count++ <= 300) {
-			await new Promise((resolve) => {
-				setTimeout(resolve, 1000);
-			});
-			unansweredMessages = this.unansweredMessages();
-		}
-
-		await channel.close();
-		await channel.connection.close();
-	}
 }

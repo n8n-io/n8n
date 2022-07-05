@@ -25,7 +25,6 @@ export class Flow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow',
 		name: 'flow',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:flow.png',
 		group: ['output'],
 		version: 1,
@@ -47,7 +46,6 @@ export class Flow implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
@@ -56,6 +54,7 @@ export class Flow implements INodeType {
 					},
 				],
 				default: 'task',
+				description: 'Resource to consume.',
 			},
 			...taskOpeations,
 			...taskFields,

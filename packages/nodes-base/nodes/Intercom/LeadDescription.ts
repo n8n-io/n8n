@@ -5,7 +5,6 @@ export const leadOpeations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,6 +40,7 @@ export const leadOpeations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +67,7 @@ export const leadFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined ID representing the Lead',
+				description: 'The Intercom defined id representing the Lead',
 			},
 			{
 				name: 'User ID',
@@ -122,7 +122,7 @@ export const leadFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined ID representing the Lead',
+				description: 'The Intercom defined id representing the Lead',
 			},
 			{
 				name: 'User ID',
@@ -136,7 +136,7 @@ export const leadFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'The property to select the lead by',
+		description: 'The property to select the lead by.',
 	},
 	{
 		displayName: 'Value',
@@ -175,7 +175,7 @@ export const leadFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -199,7 +199,7 @@ export const leadFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filters',
@@ -222,7 +222,6 @@ export const leadFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address of the lead',
 			},
@@ -262,11 +261,11 @@ export const leadFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined ID representing the Lead',
+				description: 'The Intercom defined id representing the Lead',
 			},
 		],
 		default: 'id',
-		description: 'The property via which to query the lead',
+		description: 'The property via which to query the lead.',
 	},
 	{
 		displayName: 'Value',
@@ -294,7 +293,6 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
-		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -307,7 +305,7 @@ export const leadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email of the user',
+		description: 'The email of the user.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -349,23 +347,22 @@ export const leadFields: INodeProperties[] = [
 				name: 'avatar',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image URL needs to be https.',
+				description: 'An avatar image URL. note: the image url needs to be https.',
 			},
 			{
-				displayName: 'Company Names or IDs',
+				displayName: 'Companies',
 				name: 'companies',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Identifies the companies this user belongs to.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
 				default: '',
 				displayOptions: {
 					show: {
@@ -377,7 +374,7 @@ export const leadFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'The email of the user',
+				description: 'The email of the user.',
 			},
 			{
 				displayName: 'Name',
@@ -405,7 +402,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'updateLastRequestAt',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC. default value if not sent is false.',
+				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC. default value if not sent is false.',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -433,7 +430,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'utmSource',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image URL needs to be https.',
+				description: 'An avatar image URL. note: the image url needs to be https.',
 			},
 			{
 				displayName: 'UTM Term',
@@ -448,6 +445,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesJson',
 		type: 'json',
+		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -466,7 +464,7 @@ export const leadFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -477,6 +475,7 @@ export const leadFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
+		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -511,6 +510,6 @@ export const leadFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
 ];

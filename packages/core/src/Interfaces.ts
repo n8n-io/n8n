@@ -73,7 +73,6 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 
 export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 	helpers: {
-		getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
 		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
 		prepareBinaryData(
 			binaryData: Buffer,

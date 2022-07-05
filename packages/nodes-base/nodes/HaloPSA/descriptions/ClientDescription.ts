@@ -5,7 +5,6 @@ export const clientOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['client'],
@@ -172,11 +171,11 @@ export const clientFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		description: 'Whether output should be simplified',
 		displayOptions: {
 			show: {
 				resource: ['client'],
@@ -238,7 +237,7 @@ export const clientFields: INodeProperties[] = [
 				default: 'active',
 				options: [
 					{
-						name: 'Active Only',
+						name: 'Active only',
 						value: 'active',
 						description: 'Whether to include active customers in the response',
 					},
@@ -248,7 +247,7 @@ export const clientFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive customers in the response',
 					},
 					{
-						name: 'Inactive Only',
+						name: 'Inactive only',
 						value: 'inactive',
 						description: 'Whether to include inactive Customers in the response',
 					},

@@ -7,7 +7,6 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,6 +27,7 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,7 +51,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -75,7 +75,7 @@ export const eventFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -97,7 +97,7 @@ export const eventFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The Entity ID for which an event will be created',
+		description: 'The Entity ID for which an event will be created.',
 	},
 	{
 		displayName: 'Event Attributes',
@@ -128,14 +128,14 @@ export const eventFields: INodeProperties[] = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the attribute',
+						description: 'Name of the attribute.',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the attribute',
+						description: 'Value of the attribute.',
 					},
 				],
 			},

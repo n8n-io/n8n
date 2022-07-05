@@ -51,10 +51,9 @@ export class AwsSnsTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Topic Name or ID',
+				displayName: 'Topic',
 				name: 'topic',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getTopics',

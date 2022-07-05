@@ -64,7 +64,6 @@ export class Segment implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Group',
@@ -83,6 +82,7 @@ export class Segment implements INodeType {
 					},
 				],
 				default: 'identify',
+				description: 'Resource to consume.',
 			},
 			...groupOperations,
 			...groupFields,

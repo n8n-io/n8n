@@ -110,12 +110,12 @@ export class Zoom implements INodeType {
 					},
 				],
 				default: 'accessToken',
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Meeting',
@@ -131,6 +131,7 @@ export class Zoom implements INodeType {
 					// }
 				],
 				default: 'meeting',
+				description: 'The resource to operate on.',
 			},
 			//MEETINGS
 			...meetingOperations,

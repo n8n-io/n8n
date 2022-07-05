@@ -7,7 +7,6 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,6 +27,7 @@ export const eventOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+		description: 'The operation to perform',
 	},
 ];
 
@@ -36,7 +36,7 @@ export const eventFields: INodeProperties[] = [
 	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization Slug',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -54,10 +54,10 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the events belong to.',
 	},
 	{
-		displayName: 'Project Slug Name or ID',
+		displayName: 'Project Slug',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -78,7 +78,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the project the events belong to.',
 	},
 	{
 		displayName: 'Full',
@@ -95,7 +95,7 @@ export const eventFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Whether the event payload will include the full event body, including the stack trace',
+		description: 'If this is set to true, then the event payload will include the full event body, including the stack trace.',
 	},
 	{
 		displayName: 'Return All',
@@ -112,7 +112,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -136,14 +136,14 @@ export const eventFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                event:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug Name or ID',
+		displayName: 'Organization Slug',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -161,10 +161,10 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the events belong to.',
 	},
 	{
-		displayName: 'Project Slug Name or ID',
+		displayName: 'Project Slug',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -182,7 +182,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the project the events belong to.',
 	},
 	{
 		displayName: 'Event ID',
@@ -200,6 +200,6 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the event to retrieve (either the numeric primary-key or the hexadecimal ID as reported by the raven client)',
+		description: 'The ID of the event to retrieve (either the numeric primary-key or the hexadecimal ID as reported by the raven client).',
 	},
 ];

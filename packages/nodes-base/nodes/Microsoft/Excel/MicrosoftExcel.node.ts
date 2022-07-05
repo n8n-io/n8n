@@ -59,17 +59,16 @@ export class MicrosoftExcel implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Table',
 						value: 'table',
-						description: 'Represents an Excel table',
+						description: 'Represents an Excel table.',
 					},
 					{
 						name: 'Workbook',
 						value: 'workbook',
-						description: 'Workbook is the top level object which contains related workbook objects such as worksheets, tables, ranges, etc',
+						description: 'Workbook is the top level object which contains related workbook objects such as worksheets, tables, ranges, etc.',
 					},
 					{
 						name: 'Worksheet',
@@ -78,6 +77,7 @@ export class MicrosoftExcel implements INodeType {
 					},
 				],
 				default: 'workbook',
+				description: 'The resource to operate on.',
 			},
 			...workbookOperations,
 			...workbookFields,

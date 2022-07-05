@@ -176,7 +176,7 @@ export const store = new Vuex.Store({
 		setWorkflowInactive (state, workflowId: string) {
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
-				state.activeWorkflows.splice(index, 1);
+				state.selectedNodes.splice(index, 1);
 			}
 		},
 		// Set state condition dirty or not
@@ -437,7 +437,6 @@ export const store = new Vuex.Store({
 				state.stateIsDirty = true;
 			}
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
-			state.nodeMetadata = {};
 		},
 		updateNodeProperties (state, updateInformation: INodeUpdatePropertiesInformation) {
 			// Find the node that should be updated
@@ -611,10 +610,6 @@ export const store = new Vuex.Store({
 			Vue.set(state.workflow, 'tags', tags);
 		},
 
-		addWorkflowTagIds (state, tags: string[]) {
-			Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
-		},
-
 		removeWorkflowTagId (state, tagId: string) {
 			const tags = state.workflow.tags as string[];
 			const updated = tags.filter((id: string) => id !== tagId);
@@ -662,9 +657,6 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
-		executedNode: (state): string | undefined => {
-			return state.workflowExecutionData? state.workflowExecutionData.executedNode: undefined;
-		},
 		activeCredentialType: (state): string | null => {
 			return state.activeCredentialType;
 		},
@@ -858,13 +850,13 @@ export const store = new Vuex.Store({
 			}, []);
 		},
 
-		nodeType: (state, getters) => (nodeType: string, version?: number): INodeTypeDescription | null => {
+		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
 				const typeVersion = Array.isArray(typeData.version)
 					? typeData.version
 					: [typeData.version];
 
-				return typeData.name === nodeType && typeVersion.includes(version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
+				return typeData.name === nodeType && typeVersion.some(versions => [typeVersion, typeData.defaultVersion, DEFAULT_NODETYPE_VERSION].includes(versions));
 			});
 
 			if (foundType === undefined) {

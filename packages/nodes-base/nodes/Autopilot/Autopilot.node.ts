@@ -61,7 +61,6 @@ export class Autopilot implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -81,6 +80,7 @@ export class Autopilot implements INodeType {
 					},
 				],
 				default: 'contact',
+				description: 'The resource to operate on.',
 			},
 
 			...contactOperations,

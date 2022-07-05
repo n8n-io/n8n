@@ -7,7 +7,6 @@ export const workerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['worker'],
@@ -139,32 +138,31 @@ const vehicleLicensePlateField = {
 const vehicleColorField = {
 	displayName: 'Color',
 	name: 'color',
-	// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 	type: 'string',
 	default: '',
 	description: 'The vehicle\'s color',
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Team Names or IDs',
+	displayName: 'Teams Names/IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'One or more teams of which the worker is a member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'One or more teams of which the worker is a member',
 } as INodeProperties;
 
 const teamsFilterField = {
-	displayName: 'Team Names or IDs',
+	displayName: 'Teams ID/Name',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'A list of the teams that workers must be part of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A list of the teams that workers must be part of',
 } as INodeProperties;
 
 const statesFilterField = {
@@ -334,14 +332,14 @@ const scheduleDateField = {
 } as INodeProperties;
 
 const scheduleTimezoneField = {
-	displayName: 'Timezone Name or ID',
+	displayName: 'Timezone',
 	name: 'timezone',
 	type: 'options',
 	typeOptions: {
 		loadOptionsMethod: 'getTimezones',
 	},
 	default: '',
-	description: 'A valid timezone. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A valid timezone',
 } as INodeProperties;
 
 const scheduleStartField = {
@@ -488,7 +486,7 @@ export const workerFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -512,7 +510,7 @@ export const workerFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -679,6 +677,7 @@ export const workerFields: INodeProperties[] = [
 				name: 'analytics',
 				type: 'boolean',
 				default: true,
+				required: false,
 				description: 'Whether a more detailed response is needed, includes basic worker duty event, traveled distance (meters) and time analytics',
 			},
 			{

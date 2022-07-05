@@ -7,7 +7,6 @@ export const engagementOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +37,7 @@ export const engagementOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform',
 	},
 ];
 
@@ -129,24 +129,24 @@ export const engagementFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Completed',
-						value: 'COMPLETED',
-					},
-					{
-						name: 'Deferred',
-						value: 'DEFERRED',
+						name: 'Not Started',
+						value: 'NOT_STARTED',
 					},
 					{
 						name: 'In Progress',
 						value: 'IN_PROGRESS',
 					},
 					{
-						name: 'Not Started',
-						value: 'NOT_STARTED',
-					},
-					{
 						name: 'Waiting',
 						value: 'WAITING',
+					},
+					{
+						name: 'Completed',
+						value: 'COMPLETED',
+					},
+					{
+						name: 'Deferred',
+						value: 'DEFERRED',
 					},
 				],
 				default: '',
@@ -343,12 +343,16 @@ export const engagementFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Busy',
-						value: 'BUSY',
+						name: 'Queued',
+						value: 'QUEUED',
 					},
 					{
-						name: 'Calling CRM User',
-						value: 'CALLING_CRM_USER',
+						name: 'Ringing',
+						value: 'RINGING',
+					},
+					{
+						name: 'In Progress',
+						value: 'IN_PROGRESS',
 					},
 					{
 						name: 'Canceled',
@@ -359,28 +363,24 @@ export const engagementFields: INodeProperties[] = [
 						value: 'COMPLETED',
 					},
 					{
-						name: 'Connecting',
-						value: 'CONNECTING',
+						name: 'Busy',
+						value: 'BUSY',
 					},
 					{
 						name: 'Failed',
 						value: 'FAILED',
 					},
 					{
-						name: 'In Progress',
-						value: 'IN_PROGRESS',
-					},
-					{
 						name: 'No Answer',
 						value: 'NO_ANSWER',
 					},
 					{
-						name: 'Queued',
-						value: 'QUEUED',
+						name: 'Connecting',
+						value: 'CONNECTING',
 					},
 					{
-						name: 'Ringing',
-						value: 'RINGING',
+						name: 'Calling CRM User',
+						value: 'CALLING_CRM_USER',
 					},
 				],
 				default: 'QUEUED',
@@ -492,7 +492,7 @@ export const engagementFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -516,6 +516,6 @@ export const engagementFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 ];

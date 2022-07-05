@@ -55,7 +55,6 @@ export class BitbucketTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -68,9 +67,10 @@ export class BitbucketTrigger implements INodeType {
 					},
 				],
 				default: 'workspace',
+				description: 'The resource to operate on.',
 			},
 			{
-				displayName: 'Workspace Name or ID',
+				displayName: 'Workspace',
 				name: 'workspace',
 				type: 'options',
 				displayOptions: {
@@ -86,10 +86,10 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The repository of which to listen to the events.',
 			},
 			{
-				displayName: 'Event Names or IDs',
+				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
 				displayOptions: {
@@ -105,10 +105,10 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The events to listen to.',
 			},
 			{
-				displayName: 'Repository Name or ID',
+				displayName: 'Repository',
 				name: 'repository',
 				type: 'options',
 				displayOptions: {
@@ -126,10 +126,10 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The repository of which to listen to the events.',
 			},
 			{
-				displayName: 'Event Names or IDs',
+				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
 				displayOptions: {
@@ -145,7 +145,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The events to listen to.',
 			},
 		],
 

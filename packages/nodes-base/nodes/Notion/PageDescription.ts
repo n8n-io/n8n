@@ -6,12 +6,11 @@ import {
 	blocks,
 } from './Blocks';
 
-export const pageOperations: INodeProperties[] = [
+export const pageOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -45,7 +44,6 @@ export const pageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -75,7 +73,7 @@ export const pageOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
 export const pageFields = [
 
@@ -101,10 +99,10 @@ export const pageFields = [
 				],
 			},
 		},
-		description: 'The Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description: `The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -142,7 +140,7 @@ export const pageFields = [
 				],
 			},
 		},
-		description: 'The URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description: `The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
 		displayName: 'Title',
@@ -163,7 +161,7 @@ export const pageFields = [
 		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -202,10 +200,10 @@ export const pageFields = [
 				],
 			},
 		},
-		description: 'The Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description: `The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -283,10 +281,10 @@ export const pageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -409,7 +407,7 @@ export const pageFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: 'The name of the timestamp to sort against',
+								description: `The name of the timestamp to sort against`,
 							},
 						],
 					},

@@ -18,7 +18,6 @@ export class BoxTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box Trigger',
 		name: 'boxTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['trigger'],
 		version: 1,
@@ -71,7 +70,7 @@ export class BoxTrigger implements INodeType {
 					{
 						name: 'Collaboration Updated',
 						value: 'COLLABORATION.UPDATED',
-						description: 'A collaboration has been updated',
+						description: 'A collaboration has been updated.',
 					},
 					{
 						name: 'Comment Created',
@@ -121,7 +120,7 @@ export class BoxTrigger implements INodeType {
 					{
 						name: 'File Renamed',
 						value: 'FILE.RENAMED',
-						description: 'A file was renamed',
+						description: 'A file was renamed.',
 					},
 					{
 						name: 'File Restored',
@@ -171,7 +170,7 @@ export class BoxTrigger implements INodeType {
 					{
 						name: 'Folder Renamed',
 						value: 'FOLDER.RENAMED',
-						description: 'A folder was renamed',
+						description: 'A folder was renamed.',
 					},
 					{
 						name: 'Folder Restored',
@@ -231,7 +230,7 @@ export class BoxTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: 'The events to listen to',
+				description: 'The events to listen to.',
 			},
 			{
 				displayName: 'Target Type',
@@ -254,6 +253,7 @@ export class BoxTrigger implements INodeType {
 				displayName: 'Target ID',
 				name: 'targetId',
 				type: 'string',
+				required: false,
 				default: '',
 				description: 'The ID of the item to trigger a webhook',
 			},

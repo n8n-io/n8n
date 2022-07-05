@@ -23,7 +23,6 @@ import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { validateEntity } from '../GenericHelpers';
-import { createCredentiasFromCredentialsEntity } from '../CredentialsHelper';
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
 import { externalHooks } from '../Server';
@@ -99,12 +98,10 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.NewName): Promise<{ name: string }> => {
 		const { name: newName } = req.query;
 
-		return {
-			name: await GenericHelpers.generateUniqueName(
-				newName ?? config.getEnv('credentials.defaultName'),
-				'credentials',
-			),
-		};
+		return GenericHelpers.generateUniqueName(
+			newName ?? config.getEnv('credentials.defaultName'),
+			'credentials',
+		);
 	}),
 );
 
@@ -166,7 +163,11 @@ credentialsController.post(
 		}
 
 		// Encrypt the data
-		const coreCredential = createCredentiasFromCredentialsEntity(newCredential, true);
+		const coreCredential = new Credentials(
+			{ id: null, name: newCredential.name },
+			newCredential.type,
+			newCredential.nodesAccess,
+		);
 
 		// @ts-ignore
 		coreCredential.setData(newCredential.data, encryptionKey);
@@ -298,7 +299,12 @@ credentialsController.patch(
 			);
 		}
 
-		const coreCredential = createCredentiasFromCredentialsEntity(credential);
+		const coreCredential = new Credentials(
+			{ id: credential.id.toString(), name: credential.name },
+			credential.type,
+			credential.nodesAccess,
+			credential.data,
+		);
 
 		const decryptedData = coreCredential.getData(encryptionKey);
 
@@ -402,7 +408,12 @@ credentialsController.get(
 			);
 		}
 
-		const coreCredential = createCredentiasFromCredentialsEntity(credential);
+		const coreCredential = new Credentials(
+			{ id: credential.id.toString(), name: credential.name },
+			credential.type,
+			credential.nodesAccess,
+			credential.data,
+		);
 
 		return {
 			id: id.toString(),

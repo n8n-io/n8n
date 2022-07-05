@@ -46,7 +46,7 @@ item.myNewField = 1;
 console.log('Done!');
 
 return item;`,
-				description: 'The JavaScript code to execute for each item',
+				description: 'The JavaScript code to execute for each item.',
 				noDataExpression: true,
 			},
 		],
@@ -163,9 +163,6 @@ return item;`,
 
 				const returnItem: INodeExecutionData = {
 					json: cleanupData(jsonData),
-					pairedItem: {
-						item: itemIndex,
-					},
 				};
 
 				if (item.binary) {
@@ -175,14 +172,7 @@ return item;`,
 				returnData.push(returnItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({
-						json: {
-							error: error.message,
-						},
-						pairedItem: {
-							item: itemIndex,
-						},
-					});
+					returnData.push({json:{ error: error.message }});
 					continue;
 				}
 				throw error;

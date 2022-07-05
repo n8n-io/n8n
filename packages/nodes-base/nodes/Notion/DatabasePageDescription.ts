@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import {
+import { 
 	getConditions,
 	getSearchFilters,
 } from './GenericFunctions';
@@ -16,12 +16,11 @@ import {
 	filters,
 } from './Filters';
 
-export const databasePageOperations: INodeProperties[] = [
+export const databasePageOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -60,7 +59,6 @@ export const databasePageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -90,7 +88,7 @@ export const databasePageOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-];
+] as INodeProperties[];
 
 export const databasePageFields = [
 
@@ -116,7 +114,7 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
 		displayName: 'Title',
@@ -139,7 +137,7 @@ export const databasePageFields = [
 		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -180,10 +178,9 @@ export const databasePageFields = [
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key Name or ID',
+						displayName: 'Key',
 						name: 'key',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseProperties',
 							loadOptionsDependsOn: [
@@ -265,7 +262,7 @@ export const databasePageFields = [
 						description: 'Phone number. No structure is enforced.',
 					},
 					{
-						displayName: 'Option Names or IDs',
+						displayName: 'Options',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -279,10 +276,10 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'Name of the options you want to set. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Name of the options you want to set. Multiples can be defined separated by comma',
 					},
 					{
-						displayName: 'Option Name or ID',
+						displayName: 'Option',
 						name: 'selectValue',
 						type: 'options',
 						typeOptions: {
@@ -296,7 +293,7 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
-						description: 'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: `Name of the option you want to set`,
 					},
 					{
 						displayName: 'Email',
@@ -327,7 +324,7 @@ export const databasePageFields = [
 						description: 'Web address',
 					},
 					{
-						displayName: 'User Names or IDs',
+						displayName: 'User IDs',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -341,7 +338,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'List of users. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -400,7 +397,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not you want to define a date range',
+						description: 'Weather or not you want to define a date range',
 					},
 					{
 						displayName: 'Include Time',
@@ -414,7 +411,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: true,
-						description: 'Whether or not to include the time in the date',
+						description: 'Weather or not to include the time in the date',
 					},
 					{
 						displayName: 'Date',
@@ -465,10 +462,10 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
+						description: ' An ISO 8601 formatted date, with optional time. Represents the end of a date range',
 					},
 					{
-						displayName: 'Timezone Name or ID',
+						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'options',
 						displayOptions: {
@@ -482,7 +479,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 					{
 						displayName: 'File URLs',
@@ -550,10 +547,10 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -594,10 +591,9 @@ export const databasePageFields = [
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key Name or ID',
+						displayName: 'Key',
 						name: 'key',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseIdFromPage',
 							loadOptionsDependsOn: [
@@ -679,10 +675,9 @@ export const databasePageFields = [
 						description: 'Phone number. No structure is enforced.',
 					},
 					{
-						displayName: 'Option Names or IDs',
+						displayName: 'Options',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
-						description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
@@ -696,10 +691,9 @@ export const databasePageFields = [
 						default: [],
 					},
 					{
-						displayName: 'Option Name or ID',
+						displayName: 'Option',
 						name: 'selectValue',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
@@ -740,7 +734,7 @@ export const databasePageFields = [
 						description: 'Web address',
 					},
 					{
-						displayName: 'User Names or IDs',
+						displayName: 'User IDs',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -754,7 +748,7 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'List of users. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -813,7 +807,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not you want to define a date range',
+						description: 'Weather or not you want to define a date range',
 					},
 					{
 						displayName: 'Include Time',
@@ -827,7 +821,7 @@ export const databasePageFields = [
 						},
 						type: 'boolean',
 						default: true,
-						description: 'Whether or not to include the time in the date',
+						description: 'Weather or not to include the time in the date',
 					},
 					{
 						displayName: 'Date',
@@ -878,10 +872,10 @@ export const databasePageFields = [
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
+						description: ' An ISO 8601 formatted date, with optional time. Represents the end of a date range',
 					},
 					{
-						displayName: 'Timezone Name or ID',
+						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'options',
 						displayOptions: {
@@ -895,7 +889,7 @@ export const databasePageFields = [
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Time zone to use. By default n8n timezone is used.',
 					},
 					{
 						displayName: 'File URLs',
@@ -965,10 +959,10 @@ export const databasePageFields = [
 				],
 			},
 		},
-		description: 'The Database Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description: `The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -994,7 +988,6 @@ export const databasePageFields = [
 		displayName: 'Database Name or ID',
 		name: 'databaseId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDatabases',
 		},
@@ -1050,10 +1043,10 @@ export const databasePageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -1105,7 +1098,7 @@ export const databasePageFields = [
 					},
 				},
 				default: false,
-				description: 'Whether to download a file if a database\'s field contains it',
+				description: 'If a database field contains a file, whether to download it',
 			},
 			{
 				displayName: 'Filters',
@@ -1184,10 +1177,10 @@ export const databasePageFields = [
 								name: 'timestamp',
 								type: 'boolean',
 								default: false,
-								description: 'Whether or not to use the record\'s timestamp to sort the response',
+								description: `Whether or not to use the record's timestamp to sort the response`,
 							},
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property Name',
 								name: 'key',
 								type: 'options',
 								displayOptions: {
@@ -1204,7 +1197,7 @@ export const databasePageFields = [
 									],
 								},
 								default: '',
-								description: 'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The name of the property to filter by',
 							},
 							{
 								displayName: 'Property Name',

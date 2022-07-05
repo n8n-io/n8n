@@ -46,7 +46,6 @@ export class Bubble implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Object',
@@ -54,6 +53,7 @@ export class Bubble implements INodeType {
 					},
 				],
 				default: 'object',
+				description: 'Resource to consume',
 			},
 			...objectOperations,
 			...objectFields,

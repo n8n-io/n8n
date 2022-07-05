@@ -5,7 +5,6 @@ export const formulaOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,6 +25,7 @@ export const formulaOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -35,7 +35,7 @@ export const formulaFields: INodeProperties[] = [
 /*                                   formula:get                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc Name or ID',
+		displayName: 'Doc',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -53,7 +53,7 @@ export const formulaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc.',
 	},
 	{
 		displayName: 'Formula ID',
@@ -71,13 +71,13 @@ export const formulaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The formula to get the row from',
+		description: 'The formula to get the row from.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   formula:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc Name or ID',
+		displayName: 'Doc',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -95,7 +95,7 @@ export const formulaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc.',
 	},
 	{
 		displayName: 'Return All',
@@ -112,7 +112,7 @@ export const formulaFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -136,6 +136,6 @@ export const formulaFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 ];

@@ -18,7 +18,6 @@ export class Gotify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gotify',
 		name: 'gotify',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:gotify.png',
 		group: ['input'],
 		version: 1,
@@ -40,7 +39,6 @@ export class Gotify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
@@ -48,12 +46,12 @@ export class Gotify implements INodeType {
 					},
 				],
 				default: 'message',
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -76,6 +74,7 @@ export class Gotify implements INodeType {
 					},
 				],
 				default: 'create',
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Message',
@@ -93,7 +92,7 @@ export class Gotify implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The message. Markdown (excluding html) is allowed.',
+				description: `The message. Markdown (excluding html) is allowed.`,
 			},
 			{
 				displayName: 'Additional Fields',
@@ -117,14 +116,14 @@ export class Gotify implements INodeType {
 						name: 'priority',
 						type: 'number',
 						default: 1,
-						description: 'The priority of the message',
+						description: 'The priority of the message.',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'The title of the message',
+						description: `The title of the message.`,
 					},
 				],
 			},
@@ -160,16 +159,12 @@ export class Gotify implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'If all results should be returned or only up to a given limit.',
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
 					show: {

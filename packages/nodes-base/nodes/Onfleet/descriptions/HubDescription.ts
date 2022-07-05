@@ -11,7 +11,6 @@ export const hubOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -49,14 +48,14 @@ const nameField = {
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Team Names or IDs',
+	displayName: 'Teams Names/IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'These are the teams that this Hub will be assigned to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'These are the teams that this Hub will be assigned to',
 } as INodeProperties;
 
 export const hubFields: INodeProperties[] = [
@@ -93,7 +92,7 @@ export const hubFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -117,7 +116,7 @@ export const hubFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		...nameField,

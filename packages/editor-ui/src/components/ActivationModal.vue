@@ -39,7 +39,6 @@ import Vue from 'vue';
 import Modal from '@/components/Modal.vue';
 import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers';
-import { INodeTypeDescription } from 'n8n-workflow';
 
 export default Vue.extend({
 	name: 'ActivationModal',
@@ -80,12 +79,12 @@ export default Vue.extend({
 
 			const trigger = foundTriggers[0];
 
-			const triggerNodeType = this.$store.getters.nodeType(trigger.type, trigger.typeVersion) as INodeTypeDescription;
+			const triggerNodeType = this.$store.getters.nodeType(trigger.type, trigger.typeVersion);
 			if (triggerNodeType.activationMessage) {
 				return triggerNodeType.activationMessage;
 			}
 
-			const serviceName = getTriggerNodeServiceName(triggerNodeType);
+			const serviceName = getTriggerNodeServiceName(triggerNodeType.displayName);
 			if (trigger.webhookId) {
 				return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
 					interpolate: {

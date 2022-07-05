@@ -61,7 +61,6 @@ const customerAddressOptions: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
-		placeholder: 'name@email.com',
 		default: '',
 	},
 	{

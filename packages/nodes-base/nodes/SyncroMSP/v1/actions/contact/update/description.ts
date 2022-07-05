@@ -51,7 +51,6 @@ export const contactUpdateDescription: ContactProperties = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
 				default: '',
 			},
 			{

@@ -36,12 +36,6 @@ export class Cron implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'This workflow will run on the schedule you define here once you <a data-key="activate">activate</a> it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking ‘execute workflow’',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			},
-			{
 				displayName: 'Trigger Times',
 				name: 'triggerTimes',
 				type: 'fixedCollection',
@@ -61,7 +55,6 @@ export class Cron implements INodeType {
 								displayName: 'Mode',
 								name: 'mode',
 								type: 'options',
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Every Minute',
@@ -93,7 +86,7 @@ export class Cron implements INodeType {
 									},
 								],
 								default: 'everyDay',
-								description: 'How often to trigger',
+								description: 'How often to trigger.',
 							},
 							{
 								displayName: 'Hour',
@@ -114,7 +107,7 @@ export class Cron implements INodeType {
 									},
 								},
 								default: 14,
-								description: 'The hour of the day to trigger (24h format)',
+								description: 'The hour of the day to trigger (24h format).',
 							},
 							{
 								displayName: 'Minute',
@@ -134,7 +127,7 @@ export class Cron implements INodeType {
 									},
 								},
 								default: 0,
-								description: 'The minute of the day to trigger',
+								description: 'The minute of the day to trigger.',
 							},
 							{
 								displayName: 'Day of Month',
@@ -152,7 +145,7 @@ export class Cron implements INodeType {
 									maxValue: 31,
 								},
 								default: 1,
-								description: 'The day of the month to trigger',
+								description: 'The day of the month to trigger.',
 							},
 							{
 								displayName: 'Weekday',
@@ -165,7 +158,6 @@ export class Cron implements INodeType {
 										],
 									},
 								},
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Monday',
@@ -197,7 +189,7 @@ export class Cron implements INodeType {
 									},
 								],
 								default: '1',
-								description: 'The weekday to trigger',
+								description: 'The weekday to trigger.',
 							},
 							{
 								displayName: 'Cron Expression',
@@ -229,7 +221,7 @@ export class Cron implements INodeType {
 									},
 								},
 								default: 2,
-								description: 'All how many X minutes/hours it should trigger',
+								description: 'All how many X minutes/hours it should trigger.',
 							},
 							{
 								displayName: 'Unit',
@@ -253,7 +245,7 @@ export class Cron implements INodeType {
 									},
 								],
 								default: 'hours',
-								description: 'If it should trigger all X minutes or hours',
+								description: 'If it should trigger all X minutes or hours.',
 							},
 						],
 					},

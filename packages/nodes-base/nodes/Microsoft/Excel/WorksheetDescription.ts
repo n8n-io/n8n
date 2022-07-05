@@ -5,7 +5,6 @@ export const worksheetOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,6 +25,7 @@ export const worksheetOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -35,10 +35,9 @@ export const worksheetFields: INodeProperties[] = [
 /*                                 worksheet:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
@@ -69,7 +68,7 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -93,7 +92,7 @@ export const worksheetFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filters',
@@ -117,7 +116,7 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: `Fields the response will containt. Multiple can be added separated by ,.`,
 			},
 		],
 	},
@@ -125,10 +124,9 @@ export const worksheetFields: INodeProperties[] = [
 /*                                 worksheet:getContent                       */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
+		displayName: 'Workbook',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
@@ -146,10 +144,9 @@ export const worksheetFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet Name or ID',
+		displayName: 'Worksheet',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -202,7 +199,7 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
+		description: 'If the data should be returned RAW instead of parsed into keys according to their header.',
 	},
 	{
 		displayName: 'Data Property',
@@ -222,7 +219,7 @@ export const worksheetFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the property into which to write the RAW data',
+		description: 'The name of the property into which to write the RAW data.',
 	},
 	{
 		displayName: 'Data Start Row',
@@ -299,7 +296,7 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: `Fields the response will containt. Multiple can be added separated by ,.`,
 			},
 		],
 	},

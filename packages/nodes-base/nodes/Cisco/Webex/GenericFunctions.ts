@@ -157,7 +157,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'Label for button or link that represents this action',
+			description: 'Label for button or link that represents this action.',
 		},
 		{
 			displayName: 'Icon URL',
@@ -185,7 +185,7 @@ export function getActionInheritedProperties(): INodeProperties[] {
 				},
 			],
 			default: 'default',
-			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc',
+			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc.',
 		},
 	];
 }
@@ -220,32 +220,32 @@ export function getTextBlockProperties(): INodeProperties[] {
 			},
 			options: [
 				{
-					name: 'Accent',
-					value: 'accent',
-				},
-				{
-					name: 'Attention',
-					value: 'attention',
+					name: 'Default',
+					value: 'default',
 				},
 				{
 					name: 'Dark',
 					value: 'dark',
 				},
 				{
-					name: 'Default',
-					value: 'default',
+					name: 'Light',
+					value: 'light',
+				},
+				{
+					name: 'Accent',
+					value: 'accent',
 				},
 				{
 					name: 'Good',
 					value: 'good',
 				},
 				{
-					name: 'Light',
-					value: 'light',
-				},
-				{
 					name: 'Warning',
 					value: 'warning',
+				},
+				{
+					name: 'Attention',
+					value: 'attention',
 				},
 			],
 			default: 'default',
@@ -315,7 +315,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: false,
-			description: 'Whether to display text slightly toned down to appear less prominent',
+			description: 'Displays text slightly toned down to appear less prominent',
 		},
 		{
 			displayName: 'Max Lines',
@@ -348,20 +348,20 @@ export function getTextBlockProperties(): INodeProperties[] {
 					value: 'default',
 				},
 				{
-					name: 'Extra Large',
-					value: 'extraLarge',
-				},
-				{
-					name: 'Large',
-					value: 'large',
+					name: 'Small',
+					value: 'small',
 				},
 				{
 					name: 'Medium',
 					value: 'medium',
 				},
 				{
-					name: 'Small',
-					value: 'small',
+					name: 'Large',
+					value: 'large',
+				},
+				{
+					name: 'Extra Large',
+					value: 'extraLarge',
 				},
 			],
 			default: 'default',
@@ -407,7 +407,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: true,
-			description: 'Whether to allow text to wrap. Otherwise, text is clipped.',
+			description: 'If true, allow text to wrap. Otherwise, text is clipped.',
 		},
 		{
 			displayName: 'Height',
@@ -445,7 +445,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 					],
 				},
 			},
-			description: 'Whether to draw a separating line at the top of the element',
+			description: 'When true, draw a separating line at the top of the element.',
 		},
 		{
 			displayName: 'Spacing',
@@ -464,28 +464,28 @@ export function getTextBlockProperties(): INodeProperties[] {
 					value: 'default',
 				},
 				{
-					name: 'Extra Large',
-					value: 'extraLarge',
+					name: 'None',
+					value: 'none',
 				},
 				{
-					name: 'Large',
-					value: 'large',
+					name: 'Small',
+					value: 'small',
 				},
 				{
 					name: 'Medium',
 					value: 'medium',
 				},
 				{
-					name: 'None',
-					value: 'none',
+					name: 'Large',
+					value: 'large',
+				},
+				{
+					name: 'Extra Large',
+					value: 'extraLarge',
 				},
 				{
 					name: 'Padding',
 					value: 'padding',
-				},
-				{
-					name: 'Small',
-					value: 'small',
 				},
 			],
 			default: 'default',
@@ -517,7 +517,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: true,
-			description: 'Whether this item will be removed from the visual trees',
+			description: 'If false, this item will be removed from the visual trees',
 		},
 	];
 }
@@ -551,7 +551,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				},
 			},
 			default: false,
-			description: 'Whether to allow multiple lines of input',
+			description: 'If true, allow multiple lines of input',
 		},
 		{
 			displayName: 'Max Length',

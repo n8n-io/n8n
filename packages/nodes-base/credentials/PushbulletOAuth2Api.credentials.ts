@@ -12,12 +12,6 @@ export class PushbulletOAuth2Api implements ICredentialType {
 	documentationUrl = 'pushbullet';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

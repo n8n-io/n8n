@@ -10,10 +10,10 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	JsonObject,
-	NodeApiError,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
+
+import jwt from 'jsonwebtoken';
 
 export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
@@ -21,18 +21,26 @@ export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 	let credentials;
 	let version;
-	let credentialType;
+	let token;
 
 	if (source === 'contentApi') {
 		//https://ghost.org/faq/api-versioning/
 		version = 'v3';
-		credentialType = 'ghostContentApi';
+		credentials = await this.getCredentials('ghostContentApi');
+		query.key = credentials.apiKey as string;
 	} else {
 		version = 'v2';
-		credentialType = 'ghostAdminApi';
-	}
+		credentials = await this.getCredentials('ghostAdminApi');
+		// Create the token (including decoding secret)
+		const [id, secret] = (credentials.apiKey as string).split(':');
 
-	credentials = await this.getCredentials(credentialType);
+		token = jwt.sign({}, Buffer.from(secret, 'hex'), {
+			keyid: id,
+			algorithm: 'HS256',
+			expiresIn: '5m',
+			audience: `/${version}/admin/`,
+		});
+	}
 
 	const options: OptionsWithUri = {
 		method,
@@ -42,10 +50,17 @@ export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions |
 		json: true,
 	};
 
+	if (token) {
+		options.headers = {
+			Authorization: `Ghost ${token}`,
+		};
+	}
+
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch(error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		return await this.helpers.request!(options);
+
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

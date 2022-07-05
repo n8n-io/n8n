@@ -12,12 +12,6 @@ export class PhilipsHueOAuth2Api implements ICredentialType {
 	documentationUrl = 'philipsHue';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'APP ID',
 			name: 'appId',
 			type: 'string',

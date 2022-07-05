@@ -57,7 +57,6 @@ export class Tapfiliate implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Affiliate',
@@ -74,6 +73,7 @@ export class Tapfiliate implements INodeType {
 				],
 				default: 'affiliate',
 				required: true,
+				description: 'Resource to consume',
 			},
 			...affiliateOperations,
 			...affiliateFields,

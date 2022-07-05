@@ -7,7 +7,6 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,6 +25,7 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 			},
 		],
 		default: 'download',
+		description: 'Operation to perform',
 	},
 ];
 
@@ -92,12 +92,10 @@ export const meetingTranscriptFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'txt',
 						value: 'txt',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'vtt',
 						value: 'vtt',
 					},
@@ -134,7 +132,7 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -151,7 +149,7 @@ export const meetingTranscriptFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'The number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

@@ -7,7 +7,6 @@ export const invoiceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +37,7 @@ export const invoiceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -47,10 +47,9 @@ export const invoiceFields: INodeProperties[] = [
 /*                                invoice:create                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization ID',
 		name: 'organizationId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -80,7 +79,7 @@ export const invoiceFields: INodeProperties[] = [
 			{
 				name: 'Sales Invoice',
 				value: 'ACCREC',
-				description: 'Accounts Receivable or customer invoice',
+				description: ' Accounts Receivable or customer invoice',
 			},
 		],
 		default: '',
@@ -164,10 +163,9 @@ export const invoiceFields: INodeProperties[] = [
 						description: 'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
 					},
 					{
-						displayName: 'Item Code Name or ID',
+						displayName: 'Item Code',
 						name: 'itemCode',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getItemCodes',
 							loadOptionsDependsOn: [
@@ -177,10 +175,9 @@ export const invoiceFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Account Code Name or ID',
+						displayName: 'Account Code',
 						name: 'accountCode',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getAccountCodes',
 							loadOptionsDependsOn: [
@@ -207,7 +204,7 @@ export const invoiceFields: INodeProperties[] = [
 								value: 'OUTPUT',
 							},
 							{
-								name: 'Sales Tax on Imports',
+								name: 'Sales Tax on Imports	',
 								value: 'GSTONIMPORTS',
 							},
 						],
@@ -219,7 +216,7 @@ export const invoiceFields: INodeProperties[] = [
 						name: 'taxAmount',
 						type: 'string',
 						default: '',
-						description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
+						description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate.',
 					},
 					{
 						displayName: 'Line Amount',
@@ -302,10 +299,9 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Branding Theme Name or ID',
+				displayName: 'Branding Theme ID',
 				name: 'brandingThemeId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getBrandingThemes',
 					loadOptionsDependsOn: [
@@ -315,10 +311,9 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency Name or ID',
+				displayName: 'Currency',
 				name: 'currency',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
 					loadOptionsDependsOn: [
@@ -385,7 +380,7 @@ export const invoiceFields: INodeProperties[] = [
 				default: 'Exclusive',
 			},
 			{
-				displayName: 'Planned Payment Date',
+				displayName: 'Planned Payment Date ',
 				name: 'plannedPaymentDate',
 				type: 'dateTime',
 				default: '',
@@ -438,10 +433,9 @@ export const invoiceFields: INodeProperties[] = [
 /*                                invoice:update                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization ID',
 		name: 'organizationId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -493,10 +487,9 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Branding Theme Name or ID',
+				displayName: 'Branding Theme ID',
 				name: 'brandingThemeId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getBrandingThemes',
 					loadOptionsDependsOn: [
@@ -512,10 +505,9 @@ export const invoiceFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Currency Name or ID',
+				displayName: 'Currency',
 				name: 'currency',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCurrencies',
 					loadOptionsDependsOn: [
@@ -628,10 +620,9 @@ export const invoiceFields: INodeProperties[] = [
 								description: 'Lineitem unit amount. By default, unit amount will be rounded to two decimal places.',
 							},
 							{
-								displayName: 'Item Code Name or ID',
+								displayName: 'Item Code',
 								name: 'itemCode',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getItemCodes',
 									loadOptionsDependsOn: [
@@ -641,10 +632,9 @@ export const invoiceFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Account Code Name or ID',
+								displayName: 'Account Code',
 								name: 'accountCode',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getAccountCodes',
 									loadOptionsDependsOn: [
@@ -671,7 +661,7 @@ export const invoiceFields: INodeProperties[] = [
 										value: 'OUTPUT',
 									},
 									{
-										name: 'Sales Tax on Imports',
+										name: 'Sales Tax on Imports	',
 										value: 'GSTONIMPORTS',
 									},
 								],
@@ -683,7 +673,7 @@ export const invoiceFields: INodeProperties[] = [
 								name: 'taxAmount',
 								type: 'string',
 								default: '',
-								description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate',
+								description: 'The tax amount is auto calculated as a percentage of the line amount based on the tax rate.',
 							},
 							{
 								displayName: 'Line Amount',
@@ -749,7 +739,7 @@ export const invoiceFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Planned Payment Date',
+				displayName: 'Planned Payment Date ',
 				name: 'plannedPaymentDate',
 				type: 'dateTime',
 				default: '',
@@ -802,10 +792,9 @@ export const invoiceFields: INodeProperties[] = [
 /*                                 invoice:get                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization ID',
 		name: 'organizationId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -843,10 +832,9 @@ export const invoiceFields: INodeProperties[] = [
 /*                                   invoice:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Name or ID',
+		displayName: 'Organization ID',
 		name: 'organizationId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -878,7 +866,7 @@ export const invoiceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -902,7 +890,7 @@ export const invoiceFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -926,7 +914,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'createdByMyApp',
 				type: 'boolean',
 				default: false,
-				description: 'Whether you\'ll only retrieve Invoices created by your app',
+				description: `When set to true you'll only retrieve Invoices created by your app`,
 			},
 			{
 				displayName: 'Order By',

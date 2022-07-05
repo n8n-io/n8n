@@ -51,7 +51,6 @@ export class Netlify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Deploy',
@@ -63,6 +62,7 @@ export class Netlify implements INodeType {
 					},
 				],
 				default: 'deploy',
+				description: 'Resource to consume',
 				required: true,
 			},
 			...deployOperations,

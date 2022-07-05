@@ -13,12 +13,6 @@ export class GoogleOAuth2Api implements ICredentialType {
 	icon = 'file:Google.svg';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

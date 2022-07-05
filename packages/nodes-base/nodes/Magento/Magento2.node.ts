@@ -89,7 +89,6 @@ export class Magento2 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Customer',
@@ -109,6 +108,7 @@ export class Magento2 implements INodeType {
 					},
 				],
 				default: 'customer',
+				description: 'The resource to operate on',
 			},
 			...customerOperations,
 			...customerFields,

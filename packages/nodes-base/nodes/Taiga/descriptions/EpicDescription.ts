@@ -7,7 +7,6 @@ export const epicOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -43,6 +42,7 @@ export const epicOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'Operation to perform',
 	},
 ];
 
@@ -51,9 +51,9 @@ export const epicFields: INodeProperties[] = [
 	//               epic: create
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to which the epic belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the project to which the epic belongs',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -106,7 +106,7 @@ export const epicFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To Name or ID',
+				displayName: 'Assigned To',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -116,7 +116,7 @@ export const epicFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user to assign the epic to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to assign the epic to',
 			},
 			{
 				displayName: 'Blocked Note',
@@ -146,10 +146,9 @@ export const epicFields: INodeProperties[] = [
 				description: 'Whether the issue is blocked',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'projectId',
@@ -209,9 +208,9 @@ export const epicFields: INodeProperties[] = [
 	//               epic: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to which the epic belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the project to which the epic belongs',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -251,7 +250,7 @@ export const epicFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -287,7 +286,7 @@ export const epicFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Asignee Name or ID',
+				displayName: 'Assigned To',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -297,7 +296,7 @@ export const epicFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user whom the epic is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user whom the epic is assigned to',
 			},
 			{
 				displayName: 'Is Closed',
@@ -313,14 +312,14 @@ export const epicFields: INodeProperties[] = [
 	//               epic: update
 	// ----------------------------------------
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project ID',
 		name: 'projectId',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
 		},
 		default: '',
-		description: 'ID of the project to set the epic to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the project to set the epic to',
 		displayOptions: {
 			show: {
 				resource: [
@@ -368,7 +367,7 @@ export const epicFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned To Name or ID',
+				displayName: 'Assigned To',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -378,7 +377,7 @@ export const epicFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user to whom the epic is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to whom the epic is assigned',
 			},
 			{
 				displayName: 'Blocked Note',
@@ -414,10 +413,9 @@ export const epicFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tag Names or IDs',
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'projectId',

@@ -7,7 +7,6 @@ export const teamOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,36 +64,36 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Worker Names or IDs',
+	displayName: 'Workers Names/IDs',
 	name: 'workers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getWorkers',
 	},
 	default: [],
-	description: 'A list of workers. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A list of workers',
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrator Names or IDs',
+	displayName: 'Administrators Names/IDs',
 	name: 'managers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getAdmins',
 	},
 	default: [],
-	description: 'A list of managing administrators. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A list of managing administrators',
 } as INodeProperties;
 
 const hubField = {
-	displayName: 'Hub Name or ID',
+	displayName: 'Hub Name/ID',
 	name: 'hub',
 	type: 'options',
 	typeOptions: {
 		loadOptionsMethod: 'getHubs',
 	},
 	default: '',
-	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'The team\'s hub',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {
@@ -355,7 +354,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -379,7 +378,7 @@ export const teamFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Update Fields',

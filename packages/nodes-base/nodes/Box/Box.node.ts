@@ -36,7 +36,6 @@ export class Box implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box',
 		name: 'box',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['input'],
 		version: 1,
@@ -58,7 +57,6 @@ export class Box implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -70,6 +68,7 @@ export class Box implements INodeType {
 					},
 				],
 				default: 'file',
+				description: 'The resource to operate on.',
 			},
 			...fileOperations,
 			...fileFields,

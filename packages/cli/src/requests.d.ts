@@ -11,10 +11,8 @@ import {
 } from 'n8n-workflow';
 
 import { User } from './databases/entities/User';
-import { Role } from './databases/entities/Role';
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
 import type { PublicUser } from './UserManagement/Interfaces';
-import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -28,11 +26,7 @@ export type AuthenticatedRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	user: User;
-	mailer?: UserManagementMailer.UserManagementMailer;
-	globalMemberRole?: Role;
-};
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & { user: User };
 
 // ----------------------------------
 //           /workflows
@@ -57,7 +51,7 @@ export declare namespace WorkflowRequest {
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
 
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
+	type NewName = express.Request<{}, {}, {}, { name?: string }>;
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
@@ -82,7 +76,7 @@ export declare namespace WorkflowRequest {
 // ----------------------------------
 
 export declare namespace CredentialRequest {
-	type CredentialProperties = Partial<{
+	type RequestBody = Partial<{
 		id: string; // delete if sent
 		name: string;
 		type: string;
@@ -90,7 +84,7 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
+	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
@@ -98,7 +92,7 @@ export declare namespace CredentialRequest {
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
 
 	type NewName = WorkflowRequest.NewName;
 
@@ -202,19 +196,7 @@ export declare namespace UserRequest {
 		{ inviterId?: string; inviteeId?: string }
 	>;
 
-	export type Delete = AuthenticatedRequest<
-		{ id: string; email: string; identifier: string },
-		{},
-		{},
-		{ transferId?: string; includeRole: boolean }
-	>;
-
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string; identifier: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
-	>;
+	export type Delete = AuthenticatedRequest<{ id: string }, {}, {}, { transferId?: string }>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
@@ -262,7 +244,9 @@ export declare namespace OAuthRequest {
 
 	namespace OAuth2Credential {
 		type Auth = OAuth1Credential.Auth;
-		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }> & {
+			user?: User;
+		};
 	}
 }
 

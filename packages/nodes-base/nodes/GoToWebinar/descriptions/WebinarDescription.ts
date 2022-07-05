@@ -7,8 +7,8 @@ export const webinarOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		default: 'get',
+		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -164,10 +164,9 @@ export const webinarFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
@@ -185,17 +184,17 @@ export const webinarFields: INodeProperties[] = [
 					{
 						name: 'Single Session',
 						value: 'single_session',
-						description: 'Webinar with one single meeting',
+						description: 'Webinar with one single meeting.',
 					},
 					{
 						name: 'Series',
 						value: 'series',
-						description: 'Webinar with multiple meetings times where attendees choose only one to attend',
+						description: 'Webinar with multiple meetings times where attendees choose only one to attend.',
 					},
 					{
 						name: 'Sequence',
 						value: 'sequence',
-						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions',
+						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions.',
 					},
 				],
 			},
@@ -211,7 +210,7 @@ export const webinarFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Key of the webinar to delete',
+		description: 'Key of the webinar to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -241,7 +240,7 @@ export const webinarFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Send Cancellation E-Mails',
+				displayName: 'Send Cancellation E-mails',
 				name: 'sendCancellationEmails',
 				type: 'boolean',
 				default: false,
@@ -258,7 +257,7 @@ export const webinarFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Key of the webinar to retrieve',
+		description: 'Key of the webinar to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -279,7 +278,7 @@ export const webinarFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -296,7 +295,7 @@ export const webinarFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'Max number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -348,14 +347,14 @@ export const webinarFields: INodeProperties[] = [
 								displayName: 'Start Time',
 								name: 'fromTime',
 								type: 'dateTime',
-								description: 'Start of the datetime range for the webinar',
+								description: 'Start of the datetime range for the webinar.',
 								default: '',
 							},
 							{
 								displayName: 'End Time',
 								name: 'toTime',
 								type: 'dateTime',
-								description: 'End of the datetime range for the webinar',
+								description: 'End of the datetime range for the webinar.',
 								default: '',
 							},
 						],
@@ -374,7 +373,7 @@ export const webinarFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Key of the webinar to update',
+		description: 'Key of the webinar to update.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -454,14 +453,14 @@ export const webinarFields: INodeProperties[] = [
 				name: 'isOnDemand',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the webinar may be watched anytime',
+				description: 'Whether the webinar may be watched anytime.',
 			},
 			{
 				displayName: 'Is Password Protected',
 				name: 'isPasswordProtected',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the webinar requires a password for attendees to join',
+				description: 'Whether the webinar requires a password for attendees to join.',
 			},
 			{
 				displayName: 'Times',
@@ -499,18 +498,19 @@ export const webinarFields: INodeProperties[] = [
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'Name or topic of the webinar',
+				description: 'Name or topic of the webinar.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'options',
+				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
-				description: 'Timezone where the webinar is to take place. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Timezone where the webinar is to take place.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					loadOptionsMethod: 'getTimezones',
@@ -525,17 +525,17 @@ export const webinarFields: INodeProperties[] = [
 					{
 						name: 'Single Session',
 						value: 'single_session',
-						description: 'Webinar with one single meeting',
+						description: 'Webinar with one single meeting.',
 					},
 					{
 						name: 'Series',
 						value: 'series',
-						description: 'Webinar with multiple meetings times where attendees choose only one to attend',
+						description: 'Webinar with multiple meetings times where attendees choose only one to attend.',
 					},
 					{
 						name: 'Sequence',
 						value: 'sequence',
-						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions',
+						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions.',
 					},
 				],
 			},

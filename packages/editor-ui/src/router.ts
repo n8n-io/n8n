@@ -8,7 +8,6 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
-import SettingsApiView from './views/SettingsApiView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -57,6 +56,12 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect(store: Store<IRootState>) {
+					const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
+					const isTemplatesEndpointReachable: boolean = store.getters['settings/isTemplatesEndpointReachable'];
+					if (isTemplatesEnabled && isTemplatesEndpointReachable) {
+						return { name: VIEWS.TEMPLATES };
+					}
+
 					return { name: VIEWS.NEW_WORKFLOW };
 				},
 				permissions: {
@@ -351,26 +356,6 @@ const router = new Router({
 					},
 					deny: {
 						role: [ROLE.Default],
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/api',
-			name: VIEWS.API_SETTINGS,
-			components: {
-				default: SettingsApiView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-					deny: {
-						api: false,
 					},
 				},
 			},

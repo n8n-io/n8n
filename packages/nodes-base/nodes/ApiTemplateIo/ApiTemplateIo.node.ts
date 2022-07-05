@@ -44,7 +44,6 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -60,14 +59,15 @@ export class ApiTemplateIo implements INodeType {
 					},
 				],
 				default: 'image',
+				description: 'Resource to consume',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				default: 'create',
 				required: true,
+				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Create',
@@ -87,9 +87,9 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				default: 'get',
 				required: true,
+				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Get',
@@ -105,12 +105,12 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template Name or ID',
+				displayName: 'Template ID',
 				name: 'imageTemplateId',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the image template to use.',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
@@ -126,12 +126,12 @@ export class ApiTemplateIo implements INodeType {
 				},
 			},
 			{
-				displayName: 'Template Name or ID',
+				displayName: 'Template ID',
 				name: 'pdfTemplateId',
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the PDF template to use.',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},
@@ -179,8 +179,7 @@ export class ApiTemplateIo implements INodeType {
 						],
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'Name of the binary property to which to write the data of the read file',
+				description: 'Name of the binary property to which to write the data of the read file.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -188,7 +187,7 @@ export class ApiTemplateIo implements INodeType {
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to',
+				description: 'Name of the binary property to which to write to.',
 				displayOptions: {
 					show: {
 						resource: [
@@ -297,7 +296,7 @@ export class ApiTemplateIo implements INodeType {
 												name: 'value',
 												type: 'string',
 												default: '',
-												description: 'Value to the property',
+												description: 'Value to the property.',
 											},
 										],
 									},
@@ -346,7 +345,7 @@ export class ApiTemplateIo implements INodeType {
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to the property',
+								description: 'Value to the property.',
 							},
 						],
 					},

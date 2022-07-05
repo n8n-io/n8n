@@ -33,7 +33,6 @@ export class UnleashedSoftware implements INodeType {
 		name: 'unleashedSoftware',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:unleashedSoftware.png',
 		version: 1,
 		description: 'Consume Unleashed Software API',
@@ -53,7 +52,6 @@ export class UnleashedSoftware implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Sales Order',
@@ -65,6 +63,7 @@ export class UnleashedSoftware implements INodeType {
 					},
 				],
 				default: 'salesOrder',
+				description: 'The resource to operate on.',
 			},
 			...salesOrderOperations,
 			...salesOrderFields,

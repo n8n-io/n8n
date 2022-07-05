@@ -24,7 +24,6 @@ export class GoogleTranslate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Translate',
 		name: 'googleTranslate',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googletranslate.png',
 		group: ['input', 'output'],
 		version: 1,
@@ -80,7 +79,6 @@ export class GoogleTranslate implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Language',
@@ -88,12 +86,12 @@ export class GoogleTranslate implements INodeType {
 					},
 				],
 				default: 'language',
+				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -109,6 +107,7 @@ export class GoogleTranslate implements INodeType {
 					},
 				],
 				default: 'translate',
+				description: 'The operation to perform',
 			},
 			// ----------------------------------
 			//         All
@@ -129,7 +128,6 @@ export class GoogleTranslate implements INodeType {
 				},
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Translate To',
 				name: 'translateTo',
 				type: 'options',
@@ -137,7 +135,7 @@ export class GoogleTranslate implements INodeType {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>',
 				required: true,
 				displayOptions: {
 					show: {

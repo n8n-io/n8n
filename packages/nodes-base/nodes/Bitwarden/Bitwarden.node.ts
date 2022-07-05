@@ -73,7 +73,6 @@ export class Bitwarden implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Collection',
@@ -93,6 +92,7 @@ export class Bitwarden implements INodeType {
 					},
 				],
 				default: 'collection',
+				description: 'Resource to consume',
 			},
 			...collectionOperations,
 			...collectionFields,

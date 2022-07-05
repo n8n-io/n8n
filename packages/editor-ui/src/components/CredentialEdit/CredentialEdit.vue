@@ -299,17 +299,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		isOAuthType(): boolean {
 			return !!this.credentialTypeName && (
-				(
-					(
-						this.credentialTypeName === 'oAuth2Api' ||
-						this.parentTypes.includes('oAuth2Api')
-					) && this.credentialData.grantType === 'authorizationCode'
-				)
-				||
-				(
-					this.credentialTypeName === 'oAuth1Api' ||
-					this.parentTypes.includes('oAuth1Api')
-				)
+				['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeName) ||
+				this.parentTypes.includes('oAuth1Api') ||
+				this.parentTypes.includes('oAuth2Api')
 			);
 		},
 		isOAuthConnected(): boolean {

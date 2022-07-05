@@ -7,7 +7,6 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +37,7 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -155,7 +155,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 				name: 'promoCodes',
 				type: 'string',
 				default: '',
-				description: 'Uses multiple strings separated by comma as promo codes. The corresponding discount will be applied to the order.',
+				description: `Uses multiple strings separated by comma as promo codes. The corresponding discount will be applied to the order.`,
 			},
 			{
 				displayName: 'Sales Affiliate ID',
@@ -199,10 +199,9 @@ export const ecommerceOrderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code Name or ID',
+						displayName: 'Country Code',
 						name: 'countryCode',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountries',
 						},
@@ -310,7 +309,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 							minValue: 0,
 						},
 						default: 0,
-						description: 'Overridable price of the product, if not specified, the default will be used',
+						description: `Overridable price of the product, if not specified, the default will be used.`,
 					},
 					{
 						displayName: 'Product ID',
@@ -392,7 +391,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -416,7 +415,7 @@ export const ecommerceOrderFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',

@@ -7,7 +7,6 @@ export const dealOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -58,6 +57,7 @@ export const dealOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +67,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                deal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Deal Stage Name or ID',
+		displayName: 'Deal Stage',
 		name: 'stage',
 		type: 'options',
 		required: true,
@@ -86,7 +86,7 @@ export const dealFields: INodeProperties[] = [
 		},
 		default: '',
 		options: [],
-		description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -112,20 +112,18 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Associated Company Names or IDs',
+				displayName: 'Associated Company',
 				name: 'associatedCompany',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
 			},
 			{
-				displayName: 'Associated Vid Names or IDs',
+				displayName: 'Associated Vids',
 				name: 'associatedVids',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
 				},
@@ -152,14 +150,14 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDealCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the property.',
 							},
 							{
 								displayName: 'Value',
@@ -185,10 +183,9 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal Type',
 				name: 'dealType',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
@@ -268,14 +265,14 @@ export const dealFields: INodeProperties[] = [
 						displayName: 'Custom Property',
 						values: [
 							{
-								displayName: 'Property Name or ID',
+								displayName: 'Property',
 								name: 'property',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDealCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the property.',
 							},
 							{
 								displayName: 'Value',
@@ -301,20 +298,20 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Deal Stage Name or ID',
+				displayName: 'Deal Stage',
 				name: 'stage',
 				type: 'options',
+				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getDealStages',
 				},
 				default: '',
-				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
 			},
 			{
-				displayName: 'Deal Type Name or ID',
+				displayName: 'Deal Type',
 				name: 'dealType',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
@@ -368,12 +365,11 @@ export const dealFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Property Versions',
+				displayName: 'Include Property Versions	',
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
+				description: `By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.`,
 			},
 		],
 	},
@@ -396,7 +392,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -420,7 +416,7 @@ export const dealFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filters',
@@ -444,28 +440,27 @@ export const dealFields: INodeProperties[] = [
 				name: 'includeAssociations',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
+				description: 'Include the IDs of the associated contacts and companies in the results. This will also automatically include the num_associated_contacts property.',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				displayName: 'Properties',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: `<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Properties with History',
+				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: 'Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property\'s value. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: `Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
 
 		],
@@ -512,7 +507,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -537,7 +532,7 @@ export const dealFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filters',
@@ -562,15 +557,14 @@ export const dealFields: INodeProperties[] = [
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return deals created after timestamp x',
+				description: `Only return deals created after timestamp x`,
 			},
 			{
 				displayName: 'Include Property Versions',
 				name: 'includePropertyVersions',
 				type: 'boolean',
 				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
+				description: `By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.`,
 			},
 		],
 	},
@@ -593,7 +587,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -617,7 +611,7 @@ export const dealFields: INodeProperties[] = [
 			maxValue: 250,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Filter Groups',
@@ -628,6 +622,7 @@ export const dealFields: INodeProperties[] = [
 		typeOptions: {
 			multipleValues: true,
 		},
+		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -652,16 +647,16 @@ export const dealFields: INodeProperties[] = [
 						typeOptions: {
 							multipleValues: true,
 						},
+						required: false,
 						options: [
 							{
 								name: 'filterValues',
 								displayName: 'Filter',
 								values: [
 									{
-										displayName: 'Property Name or ID',
+										displayName: 'Property Name',
 										name: 'propertyName',
 										type: 'options',
-										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getDealProperties',
 										},
@@ -673,12 +668,20 @@ export const dealFields: INodeProperties[] = [
 										type: 'options',
 										options: [
 											{
-												name: 'Contains Exactly',
-												value: 'CONSTAIN_TOKEN',
-											},
-											{
 												name: 'Equal',
 												value: 'EQ',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
+											},
+											{
+												name: 'Less Than',
+												value: 'LT',
+											},
+											{
+												name: 'Less Than Or Equal',
+												value: 'LTE',
 											},
 											{
 												name: 'Greater Than',
@@ -697,16 +700,12 @@ export const dealFields: INodeProperties[] = [
 												value: 'NOT_HAS_PROPERTY',
 											},
 											{
-												name: 'Less Than',
-												value: 'LT',
+												name: 'Contains Exactly',
+												value: 'CONSTAIN_TOKEN',
 											},
 											{
-												name: 'Less Than Or Equal',
-												value: 'LTE',
-											},
-											{
-												name: 'Not Equal',
-												value: 'NEQ',
+												name: `Doesn't Contain Exactly`,
+												value: 'NOT_CONSTAIN_TOKEN',
 											},
 										],
 										default: 'EQ',
@@ -733,7 +732,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+		description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -770,14 +769,14 @@ export const dealFields: INodeProperties[] = [
 				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
-				displayName: 'Field Names or IDs',
+				displayName: 'Fields',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: `<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>`,
 			},
 			{
 				displayName: 'Query',
@@ -787,11 +786,9 @@ export const dealFields: INodeProperties[] = [
 				description: 'Perform a text search against all property values for an object type',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealProperties',
 				},

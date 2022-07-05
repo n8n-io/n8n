@@ -7,7 +7,6 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -129,14 +128,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Address of the contact',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
-				description: 'ID of the campaign that led your contact to your webapp. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the campaign that led your contact to your webapp',
 			},
 			{
 				displayName: 'City',
@@ -146,14 +145,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'City that the contact belongs to',
 			},
 			{
-				displayName: 'Contact Status Name or ID',
+				displayName: 'Contact Status ID',
 				name: 'contact_status_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getContactStatuses',
 				},
-				description: 'ID of the contact status that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the contact status that the contact belongs to',
 			},
 			{
 				displayName: 'Country',
@@ -198,14 +197,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'ID of the source where contact came from',
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle Stage ID',
 				name: 'lifecycle_stage_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getLifecycleStages',
 				},
-				description: 'ID of the lifecycle stage that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the lifecycle stage that the contact belongs to',
 			},
 			{
 				displayName: 'LinkedIn',
@@ -229,24 +228,24 @@ export const contactFields: INodeProperties[] = [
 				description: 'Mobile phone number of the contact',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to whom the contact is assigned',
 			},
 			{
-				displayName: 'Sales Account Names or IDs',
+				displayName: 'Sales Accounts',
 				name: 'sales_accounts',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'Accounts which contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Accounts which contact belongs to',
 			},
 			{
 				displayName: 'State',
@@ -270,14 +269,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Type of subscription that the contact is in',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTerritories',
 				},
-				description: 'ID of the territory that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the territory that the contact belongs to',
 			},
 			{
 				displayName: 'Time Zone',
@@ -358,10 +357,9 @@ export const contactFields: INodeProperties[] = [
 	//             contact: getAll
 	// ----------------------------------------
 	{
-		displayName: 'View Name or ID',
+		displayName: 'View',
 		name: 'view',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -399,7 +397,7 @@ export const contactFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -464,14 +462,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'Address of the contact',
 			},
 			{
-				displayName: 'Campaign Name or ID',
+				displayName: 'Campaign ID',
 				name: 'campaign_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
-				description: 'ID of the campaign that led your contact to your webapp. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the campaign that led your contact to your webapp',
 			},
 			{
 				displayName: 'City',
@@ -481,14 +479,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'City that the contact belongs to',
 			},
 			{
-				displayName: 'Contact Status Name or ID',
+				displayName: 'Contact Status ID',
 				name: 'contact_status_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getContactStatuses',
 				},
-				description: 'ID of the contact status that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the contact status that the contact belongs to',
 			},
 			{
 				displayName: 'Country',
@@ -540,24 +538,24 @@ export const contactFields: INodeProperties[] = [
 				description: 'Last name of the contact',
 			},
 			{
-				displayName: 'Lead Source Name or ID',
+				displayName: 'Lead Source ID',
 				name: 'lead_source_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getLeadSources',
 				},
-				description: 'ID of the source where contact came from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the source where contact came from',
 			},
 			{
-				displayName: 'Lifecycle Stage Name or ID',
+				displayName: 'Lifecycle Stage ID',
 				name: 'lifecycle_stage_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getLifecycleStages',
 				},
-				description: 'ID of the lifecycle stage that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the lifecycle stage that the contact belongs to',
 			},
 			{
 				displayName: 'LinkedIn',
@@ -581,24 +579,24 @@ export const contactFields: INodeProperties[] = [
 				description: 'Mobile phone number of the contact',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to whom the contact is assigned',
 			},
 			{
-				displayName: 'Sales Account Names or IDs',
+				displayName: 'Sales Accounts',
 				name: 'sales_accounts',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'Accounts which contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Accounts which contact belongs to',
 			},
 			{
 				displayName: 'State',
@@ -608,34 +606,34 @@ export const contactFields: INodeProperties[] = [
 				description: 'State that the contact belongs to',
 			},
 			{
-				displayName: 'Subscription Status Name or ID',
+				displayName: 'Subscription Status',
 				name: 'subscription_status',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getSubscriptionStatuses',
 				},
-				description: 'Status of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Status of subscription that the contact is in',
 			},
 			{
-				displayName: 'Subscription Types Name or ID',
+				displayName: 'Subscription Types',
 				name: 'subscription_types',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getSubscriptionTypes',
 				},
-				description: 'Type of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Type of subscription that the contact is in',
 			},
 			{
-				displayName: 'Territory Name or ID',
+				displayName: 'Territory ID',
 				name: 'territory_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getTerritories',
 				},
-				description: 'ID of the territory that the contact belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the territory that the contact belongs to',
 			},
 			{
 				displayName: 'Time Zone',

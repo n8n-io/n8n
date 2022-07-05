@@ -21,8 +21,8 @@ export const transactionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		default: 'getReport',
+		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get Report',
@@ -44,7 +44,7 @@ export const transactionFields: INodeProperties[] = [
 	//       transaction: getReport
 	// ----------------------------------
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -58,7 +58,7 @@ export const transactionFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		description: 'Return a simplified version of the response instead of the raw data.',
 	},
 	{
 		displayName: 'Filters',
@@ -107,11 +107,11 @@ export const transactionFields: INodeProperties[] = [
 				options: TRANSACTION_REPORT_COLUMNS,
 			},
 			{
-				displayName: 'Customer Names or IDs',
+				displayName: 'Customer',
 				name: 'customer',
 				type: 'multiOptions',
 				default: [],
-				description: 'Customer to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Customer to filter results by',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomers',
 				},
@@ -265,21 +265,21 @@ export const transactionFields: INodeProperties[] = [
 				options: PREDEFINED_DATE_RANGES.map(toOptions),
 			},
 			{
-				displayName: 'Department Names or IDs',
-				name: 'department',
-				type: 'multiOptions',
-				default: [],
-				description: 'Department to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-				typeOptions: {
-					loadOptionsMethod: 'getDepartments',
-				},
-			},
-			{
 				displayName: 'Document Number',
 				name: 'docnum',
 				type: 'string',
 				default: '',
 				description: 'Transaction document number to filter results by',
+			},
+			{
+				displayName: 'Department',
+				name: 'department',
+				type: 'multiOptions',
+				default: [],
+				description: 'Department to filter results by',
+				typeOptions: {
+					loadOptionsMethod: 'getDepartments',
+				},
 			},
 			{
 				displayName: 'Group By',
@@ -290,11 +290,11 @@ export const transactionFields: INodeProperties[] = [
 				options: GROUP_BY_OPTIONS.map(toOptions),
 			},
 			{
-				displayName: 'Memo Names or IDs',
+				displayName: 'Memo',
 				name: 'memo',
 				type: 'multiOptions',
 				default: [],
-				description: 'Memo to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Memo to filter results by',
 				typeOptions: {
 					loadOptionsMethod: 'getMemos',
 				},
@@ -347,19 +347,11 @@ export const transactionFields: INodeProperties[] = [
 				options: ['Ascend', 'Descend'].map(toOptions),
 			},
 			{
-				displayName: 'Source Account Type',
-				name: 'source_account_type',
-				default: 'Bank',
-				type: 'options',
-				description: 'Account type to filter results by',
-				options: SOURCE_ACCOUNT_TYPES.map(toOptions).map(toDisplayName),
-			},
-			{
-				displayName: 'Term Names or IDs',
+				displayName: 'Term',
 				name: 'term',
 				type: 'multiOptions',
 				default: [],
-				description: 'Term to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Term to filter results by',
 				typeOptions: {
 					loadOptionsMethod: 'getTerms',
 				},
@@ -382,12 +374,21 @@ export const transactionFields: INodeProperties[] = [
 				description: 'Transaction type to filter results by',
 				options: TRANSACTION_TYPES.map(toOptions).map(toDisplayName),
 			},
+
 			{
-				displayName: 'Vendor Names or IDs',
+				displayName: 'Source Account Type',
+				name: 'source_account_type',
+				default: 'Bank',
+				type: 'options',
+				description: 'Account type to filter results by',
+				options: SOURCE_ACCOUNT_TYPES.map(toOptions).map(toDisplayName),
+			},
+			{
+				displayName: 'Vendor',
 				name: 'vendor',
 				type: 'multiOptions',
 				default: [],
-				description: 'Vendor to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Vendor to filter results by',
 				typeOptions: {
 					loadOptionsMethod: 'getVendors',
 				},

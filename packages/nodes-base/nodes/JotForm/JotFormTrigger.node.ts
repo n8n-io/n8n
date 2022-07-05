@@ -28,7 +28,6 @@ export class JotFormTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'JotForm Trigger',
 		name: 'jotFormTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:jotform.png',
 		group: ['trigger'],
 		version: 1,
@@ -54,7 +53,7 @@ export class JotFormTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form Name or ID',
+				displayName: 'Form',
 				name: 'form',
 				type: 'options',
 				required: true,
@@ -62,14 +61,13 @@ export class JotFormTrigger implements INodeType {
 					loadOptionsMethod: 'getForms',
 				},
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: '',
 			},
 			{
 				displayName: 'Resolve Data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
 			},
 			{
@@ -77,7 +75,7 @@ export class JotFormTrigger implements INodeType {
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to return only the answers of the form and not any of the other data',
+				description: 'Returns only the answers of the form and not any of the other data.',
 			},
 		],
 

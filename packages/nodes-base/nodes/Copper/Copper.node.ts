@@ -62,7 +62,6 @@ export class Copper implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -98,6 +97,7 @@ export class Copper implements INodeType {
 					},
 				],
 				default: 'company',
+				description: 'Resource to consume',
 			},
 			...companyOperations,
 			...companyFields,

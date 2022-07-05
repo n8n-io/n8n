@@ -7,7 +7,6 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,9 +16,9 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or Update',
+				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Create a new contact, or update the current one if it already exists (upsert)',
+				description: 'Create/Update a contact',
 			},
 			{
 				name: 'Delete',
@@ -38,6 +37,7 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upsert',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,7 +51,6 @@ export const contactFields: INodeProperties[] = [
 		name: 'email',
 		required: true,
 		type: 'string',
-		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
@@ -63,7 +62,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email address of the contact',
+		description: 'Email address of the contact.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -104,20 +103,20 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Key Name or ID',
+								displayName: 'Key',
 								name: 'key',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'User-specified key of user-defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'User-specified key of user-defined data.',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'User-specified value of user-defined data',
+								description: 'User-specified value of user-defined data.',
 								default: '',
 							},
 						],
@@ -161,14 +160,14 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'List Name or ID',
+				displayName: 'List ID',
 				name: 'autopilotList',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
 				},
 				default: '',
-				description: 'List to which this contact will be added on creation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'List to which this contact will be added on creation.',
 			},
 			{
 				displayName: 'Mailing Country',
@@ -211,15 +210,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'newEmail',
 				type: 'string',
 				default: '',
-				description: 'If provided, will change the email address of the contact identified by the Email field',
+				description: 'If provided, will change the email address of the contact identified by the Email field.',
 			},
 			{
 				displayName: 'Notify',
 				name: 'notify',
 				type: 'boolean',
 				default: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.',
+				description: `By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.`,
 			},
 			{
 				displayName: 'Number of Employees',
@@ -250,7 +248,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'autopilotSessionId',
 				type: 'string',
 				default: '',
-				description: 'Used to associate a contact with a session',
+				description: 'Used to associate a contact with a session.',
 			},
 			{
 				displayName: 'Status',
@@ -269,7 +267,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'unsubscribed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to subscribe or un-subscribe a contact',
+				description: 'Whether to subscribe or un-subscribe a contact.',
 			},
 			{
 				displayName: 'Website URL',
@@ -299,7 +297,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email',
+		description: 'Can be ID or email.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -321,7 +319,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email',
+		description: 'Can be ID or email.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -342,7 +340,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -366,6 +364,6 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 ];

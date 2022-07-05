@@ -49,7 +49,6 @@ export class Oura implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Profile',
@@ -61,6 +60,7 @@ export class Oura implements INodeType {
 					},
 				],
 				default: 'summary',
+				description: 'Resource to consume.',
 			},
 			...profileOperations,
 			...summaryOperations,

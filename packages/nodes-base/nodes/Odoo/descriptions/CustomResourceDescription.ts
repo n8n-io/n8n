@@ -4,10 +4,9 @@ import {
 
 export const customResourceOperations: INodeProperties[] = [
 	{
-		displayName: 'Custom Resource Name or ID',
+		displayName: 'Custom Resource',
 		name: 'customResource',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getModels',
@@ -93,10 +92,9 @@ export const customResourceDescription: INodeProperties[] = [
 				name: 'fields',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field Name',
 						name: 'fieldName',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
@@ -198,11 +196,9 @@ export const customResourceDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Fields to Include',
+				displayName: 'Fields To Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
@@ -240,10 +236,9 @@ export const customResourceDescription: INodeProperties[] = [
 				displayName: 'Filter',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field',
 						name: 'fieldName',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsDependsOn: [
@@ -268,12 +263,12 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'lesserThen',
 							},
 							{
-								name: '<=',
-								value: 'lesserOrEqual',
-							},
-							{
 								name: '=',
 								value: 'equal',
+							},
+							{
+								name: '<=',
+								value: 'lesserOrEqual',
 							},
 							{
 								name: '>',
@@ -284,7 +279,7 @@ export const customResourceDescription: INodeProperties[] = [
 								value: 'greaterOrEqual',
 							},
 							{
-								name: 'Child Of',
+								name: ' Child of',
 								value: 'childOf',
 							},
 							{
@@ -359,10 +354,9 @@ export const customResourceDescription: INodeProperties[] = [
 				name: 'fields',
 				values: [
 					{
-						displayName: 'Field Name or ID',
+						displayName: 'Field Name',
 						name: 'fieldName',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',

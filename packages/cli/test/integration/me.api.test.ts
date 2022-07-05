@@ -7,13 +7,7 @@ import * as utils from './shared/utils';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { Db } from '../../src';
 import type { Role } from '../../src/databases/entities/Role';
-import {
-	randomApiKey,
-	randomEmail,
-	randomName,
-	randomString,
-	randomValidPassword,
-} from './shared/random';
+import { randomValidPassword, randomEmail, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 
 jest.mock('../../src/telemetry');
@@ -24,7 +18,7 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
+	app = utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -61,7 +55,6 @@ describe('Owner shell', () => {
 			password,
 			resetPasswordToken,
 			isPending,
-			apiKey,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -74,7 +67,6 @@ describe('Owner shell', () => {
 		expect(isPending).toBe(true);
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
-		expect(apiKey).toBeUndefined();
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
@@ -96,7 +88,6 @@ describe('Owner shell', () => {
 				password,
 				resetPasswordToken,
 				isPending,
-				apiKey,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -109,7 +100,6 @@ describe('Owner shell', () => {
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
-			expect(apiKey).toBeUndefined();
 
 			const storedOwnerShell = await Db.collections.User.findOneOrFail(id);
 
@@ -185,50 +175,6 @@ describe('Owner shell', () => {
 			expect(storedShellOwner.personalizationAnswers).toEqual(validPayload);
 		}
 	});
-
-	test('POST /me/api-key should create an api key', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-
-		const response = await authOwnerShellAgent.post('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toBeDefined();
-		expect(response.body.data.apiKey).not.toBeNull();
-
-		const storedShellOwner = await Db.collections.User.findOneOrFail({
-			where: { email: IsNull() },
-		});
-
-		expect(storedShellOwner.apiKey).toEqual(response.body.data.apiKey);
-	});
-
-	test('GET /me/api-key should fetch the api key', async () => {
-		let ownerShell = await testDb.createUserShell(globalOwnerRole);
-		ownerShell = await testDb.addApiKey(ownerShell);
-		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-
-		const response = await authOwnerShellAgent.get('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toEqual(ownerShell.apiKey);
-	});
-
-	test('DELETE /me/api-key should fetch the api key', async () => {
-		let ownerShell = await testDb.createUserShell(globalOwnerRole);
-		ownerShell = await testDb.addApiKey(ownerShell);
-		const authOwnerShellAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-
-		const response = await authOwnerShellAgent.delete('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-
-		const storedShellOwner = await Db.collections.User.findOneOrFail({
-			where: { email: IsNull() },
-		});
-
-		expect(storedShellOwner.apiKey).toBeNull();
-	});
 });
 
 describe('Member', () => {
@@ -263,7 +209,6 @@ describe('Member', () => {
 			password,
 			resetPasswordToken,
 			isPending,
-			apiKey,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -276,7 +221,6 @@ describe('Member', () => {
 		expect(isPending).toBe(false);
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');
-		expect(apiKey).toBeUndefined();
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
@@ -298,7 +242,6 @@ describe('Member', () => {
 				password,
 				resetPasswordToken,
 				isPending,
-				apiKey,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -311,7 +254,6 @@ describe('Member', () => {
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('member');
 			expect(globalRole.scope).toBe('global');
-			expect(apiKey).toBeUndefined();
 
 			const storedMember = await Db.collections.User.findOneOrFail(id);
 
@@ -393,53 +335,6 @@ describe('Member', () => {
 			expect(storedAnswers).toEqual(validPayload);
 		}
 	});
-
-	test('POST /me/api-key should create an api key', async () => {
-		const member = await testDb.createUser({
-			globalRole: globalMemberRole,
-			apiKey: randomApiKey(),
-		});
-		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-
-		const response = await authMemberAgent.post('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toBeDefined();
-		expect(response.body.data.apiKey).not.toBeNull();
-
-		const storedMember = await Db.collections.User.findOneOrFail(member.id);
-
-		expect(storedMember.apiKey).toEqual(response.body.data.apiKey);
-	});
-
-	test('GET /me/api-key should fetch the api key', async () => {
-		const member = await testDb.createUser({
-			globalRole: globalMemberRole,
-			apiKey: randomApiKey(),
-		});
-		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-
-		const response = await authMemberAgent.get('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toEqual(member.apiKey);
-	});
-
-	test('DELETE /me/api-key should fetch the api key', async () => {
-		const member = await testDb.createUser({
-			globalRole: globalMemberRole,
-			apiKey: randomApiKey(),
-		});
-		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-
-		const response = await authMemberAgent.delete('/me/api-key');
-
-		expect(response.statusCode).toBe(200);
-
-		const storedMember = await Db.collections.User.findOneOrFail(member.id);
-
-		expect(storedMember.apiKey).toBeNull();
-	});
 });
 
 describe('Owner', () => {
@@ -469,7 +364,6 @@ describe('Owner', () => {
 			password,
 			resetPasswordToken,
 			isPending,
-			apiKey,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -482,7 +376,6 @@ describe('Owner', () => {
 		expect(isPending).toBe(false);
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
-		expect(apiKey).toBeUndefined();
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
@@ -504,7 +397,6 @@ describe('Owner', () => {
 				password,
 				resetPasswordToken,
 				isPending,
-				apiKey,
 			} = response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -517,7 +409,6 @@ describe('Owner', () => {
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
-			expect(apiKey).toBeUndefined();
 
 			const storedOwner = await Db.collections.User.findOneOrFail(id);
 

@@ -7,7 +7,6 @@ export const linkedResourceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -38,6 +37,7 @@ export const linkedResourceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,10 +46,9 @@ export const linkedResourceFields: INodeProperties[] = [
 	/*                       linkedResource:ALL                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task List Name or ID',
+		displayName: 'Task List ID',
 		name: 'taskListId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTaskLists',
 		},
@@ -110,7 +109,7 @@ export const linkedResourceFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Field indicating title of the linked entity',
+		description: 'Field indicating title of the linked entity.',
 	},
 	{
 		displayName: 'Application Name',
@@ -128,7 +127,7 @@ export const linkedResourceFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'App name of the source that is sending the linked entity',
+		description: 'App name of the source that is sending the linked entity.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -152,14 +151,14 @@ export const linkedResourceFields: INodeProperties[] = [
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				description: 'ID of the object that is associated with this task on the third-party/partner system',
+				description: 'ID of the object that is associated with this task on the third-party/partner system.',
 			},
 			{
 				displayName: 'Web URL',
 				name: 'webUrl',
 				type: 'string',
 				default: '',
-				description: 'Deeplink to the linked entity',
+				description: 'Deeplink to the linked entity.',
 			},
 		],
 	},
@@ -205,7 +204,7 @@ export const linkedResourceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -227,7 +226,7 @@ export const linkedResourceFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -255,28 +254,28 @@ export const linkedResourceFields: INodeProperties[] = [
 				name: 'applicationName',
 				type: 'string',
 				default: '',
-				description: 'App name of the source that is sending the linked entity',
+				description: 'App name of the source that is sending the linked entity.',
 			},
 			{
 				displayName: 'Name',
 				name: 'displayName',
 				type: 'string',
 				default: '',
-				description: 'Field indicating title of the linked entity',
+				description: 'Field indicating title of the linked entity.',
 			},
 			{
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				description: 'ID of the object that is associated with this task on the third-party/partner system',
+				description: 'ID of the object that is associated with this task on the third-party/partner system.',
 			},
 			{
 				displayName: 'Web URL',
 				name: 'webUrl',
 				type: 'string',
 				default: '',
-				description: 'Deeplink to the linked entity',
+				description: 'Deeplink to the linked entity.',
 			},
 		],
 	},

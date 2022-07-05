@@ -12,12 +12,6 @@ export class ZohoOAuth2Api implements ICredentialType {
 	documentationUrl = 'zoho';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'options',

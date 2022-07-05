@@ -7,7 +7,6 @@ export const conditionFields: INodeProperties[] = [
 		displayName: 'Resource',
 		name: 'resource',
 		type: 'options',
-		noDataExpression: true,
 		options: [
 			{
 				name: 'Ticket',
@@ -29,18 +28,6 @@ export const conditionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Assignee',
-				value: 'assignee',
-			},
-			{
-				name: 'Group',
-				value: 'group',
-			},
-			{
-				name: 'Priority',
-				value: 'priority',
-			},
-			{
 				name: 'Status',
 				value: 'status',
 			},
@@ -48,31 +35,26 @@ export const conditionFields: INodeProperties[] = [
 				name: 'Type',
 				value: 'type',
 			},
+			{
+				name: 'Priority',
+				value: 'priority',
+			},
+			{
+				name: 'Group',
+				value: 'group',
+			},
+			{
+				name: 'Assignee',
+				value: 'assignee',
+			},
 		],
 		default: 'status',
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		options: [
-			{
-				name: 'Changed',
-				value: 'changed',
-			},
-			{
-				name: 'Changed From',
-				value: 'value_previous',
-			},
-			{
-				name: 'Changed To',
-				value: 'value',
-			},
-			{
-				name: 'Greater Than',
-				value: 'greater_than',
-			},
 			{
 				name: 'Is',
 				value: 'is',
@@ -86,16 +68,32 @@ export const conditionFields: INodeProperties[] = [
 				value: 'less_than',
 			},
 			{
+				name: 'Greater Than',
+				value: 'greater_than',
+			},
+			{
+				name: 'Changed',
+				value: 'changed',
+			},
+			{
+				name: 'Changed To',
+				value: 'value',
+			},
+			{
+				name: 'Changed From',
+				value: 'value_previous',
+			},
+			{
 				name: 'Not Changed',
 				value: 'not_changed',
 			},
 			{
-				name: 'Not Changed From',
-				value: 'not_value_previous',
-			},
-			{
 				name: 'Not Changed To',
 				value: 'not_value',
+			},
+					{
+				name: 'Not Changed From',
+				value: 'not_value_previous',
 			},
 		],
 		displayOptions: {
@@ -107,24 +105,11 @@ export const conditionFields: INodeProperties[] = [
 		},
 		default: 'is',
 	},
-	// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		options: [
-			{
-				name: 'Changed',
-				value: 'changed',
-			},
-			{
-				name: 'Changed From',
-				value: 'value_previous',
-			},
-			{
-				name: 'Changed To',
-				value: 'value',
-			},
 			{
 				name: 'Is',
 				value: 'is',
@@ -134,16 +119,28 @@ export const conditionFields: INodeProperties[] = [
 				value: 'is_not',
 			},
 			{
+				name: 'Changed',
+				value: 'changed',
+			},
+			{
+				name: 'Changed To',
+				value: 'value',
+			},
+			{
+				name: 'Changed From',
+				value: 'value_previous',
+			},
+			{
 				name: 'Not Changed',
 				value: 'not_changed',
 			},
 			{
-				name: 'Not Changed From',
-				value: 'not_value_previous',
-			},
-			{
 				name: 'Not Changed To',
 				value: 'not_value',
+			},
+					{
+				name: 'Not Changed From',
+				value: 'not_value_previous',
 			},
 		],
 		displayOptions: {
@@ -180,16 +177,12 @@ export const conditionFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Closed',
-				value: 'closed',
+				name: 'Open',
+				value: 'open',
 			},
 			{
 				name: 'New',
 				value: 'new',
-			},
-			{
-				name: 'Open',
-				value: 'open',
 			},
 			{
 				name: 'Pending',
@@ -198,6 +191,10 @@ export const conditionFields: INodeProperties[] = [
 			{
 				name: 'Solved',
 				value: 'solved',
+			},
+			{
+				name: 'Closed',
+				value: 'closed',
 			},
 		],
 		default: 'open',
@@ -289,11 +286,9 @@ export const conditionFields: INodeProperties[] = [
 		default: 'low',
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Value',
 		name: 'value',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 		},
@@ -315,11 +310,9 @@ export const conditionFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Value',
 		name: 'value',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},

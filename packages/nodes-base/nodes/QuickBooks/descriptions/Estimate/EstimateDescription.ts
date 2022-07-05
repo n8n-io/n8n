@@ -11,8 +11,8 @@ export const estimateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		default: 'get',
+		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -54,11 +54,11 @@ export const estimateFields: INodeProperties[] = [
 	//         estimate: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer Name or ID',
+		displayName: 'For Customer',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the customer who the estimate is for.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -79,7 +79,7 @@ export const estimateFields: INodeProperties[] = [
 		name: 'Line',
 		type: 'collection',
 		placeholder: 'Add Line Item Property',
-		description: 'Individual line item of a transaction',
+		description: 'Individual line item of a transaction.',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -96,23 +96,6 @@ export const estimateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Amount',
-				name: 'Amount',
-				description: 'Monetary amount of the line item',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Description',
-				name: 'Description',
-				description: 'Textual description of the line item',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-			},
-			{
 				displayName: 'Detail Type',
 				name: 'DetailType',
 				type: 'options',
@@ -125,31 +108,37 @@ export const estimateFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Item Name or ID',
+				displayName: 'Item',
 				name: 'itemId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
 				},
 			},
 			{
-				displayName: 'Position',
-				name: 'LineNum',
-				description: 'Position of the line item relative to others',
+				displayName: 'Amount',
+				name: 'Amount',
+				description: 'Monetary amount of the line item.',
 				type: 'number',
-				default: 1,
+				default: 0,
 			},
 			{
-				displayName: 'Tax Code Ref Name or ID',
-				name: 'TaxCodeRef',
-				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
-				default: [],
+				displayName: 'Description',
+				name: 'Description',
+				description: 'Textual description of the line item.',
+				type: 'string',
+				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getTaxCodeRefs',
+					alwaysOpenEditWindow: true,
 				},
+			},
+			{
+				displayName: 'Position',
+				name: 'LineNum',
+				description: 'Position of the line item relative to others.',
+				type: 'number',
+				default: 1,
 			},
 		],
 	},
@@ -181,7 +170,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the estimate to delete',
+		description: 'The ID of the estimate to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -203,7 +192,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the estimate to retrieve',
+		description: 'The ID of the estimate to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -221,7 +210,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Whether to download the estimate as a PDF file',
+		description: 'Download the estimate as a PDF file.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -239,7 +228,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to',
+		description: 'Name of the binary property to which to write to.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -261,7 +250,7 @@ export const estimateFields: INodeProperties[] = [
 		required: true,
 		default: '',
 		placeholder: 'data.pdf',
-		description: 'Name of the file that will be downloaded',
+		description: 'Name of the file that will be downloaded.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -285,7 +274,7 @@ export const estimateFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -301,8 +290,8 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 50,
-		description: 'Max number of results to return',
+		default: 5,
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -361,7 +350,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the estimate to send',
+		description: 'The ID of the estimate to send.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -377,10 +366,9 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
-		placeholder: 'name@email.com',
 		required: true,
 		default: '',
-		description: 'The email of the recipient of the estimate',
+		description: 'The email of the recipient of the estimate.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -402,7 +390,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the estimate to update',
+		description: 'The ID of the estimate to update.',
 		displayOptions: {
 			show: {
 				resource: [

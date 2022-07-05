@@ -29,9 +29,7 @@ import {
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	NodeApiError,
 	NodeHelpers,
-	NodeOperationError,
 	NodeParameterValue,
 	Workflow,
 	WorkflowExecuteMode,
@@ -39,7 +37,6 @@ import {
 
 import {
 	IDataObject,
-	IExecuteData,
 	IExecuteSingleFunctions,
 	IN8nRequestOperations,
 	INodeProperties,
@@ -80,7 +77,6 @@ export class RoutingNode {
 		inputData: ITaskDataConnections,
 		runIndex: number,
 		nodeType: INodeType,
-		executeData: IExecuteData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		credentialsDecrypted?: ICredentialsDecrypted,
 	): Promise<INodeExecutionData[][] | null | undefined> {
@@ -101,7 +97,6 @@ export class RoutingNode {
 			inputData,
 			this.node,
 			this.additionalData,
-			executeData,
 			this.mode,
 		);
 
@@ -124,7 +119,6 @@ export class RoutingNode {
 					this.node,
 					i,
 					this.additionalData,
-					executeData,
 					this.mode,
 				);
 
@@ -151,7 +145,6 @@ export class RoutingNode {
 							value,
 							i,
 							runIndex,
-							executeData,
 							{ $credentials: credentials },
 							true,
 						) as string;
@@ -167,7 +160,6 @@ export class RoutingNode {
 						value,
 						i,
 						runIndex,
-						executeData,
 						{ $credentials: credentials },
 						true,
 					) as string | NodeParameterValue;
@@ -206,7 +198,7 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
+				throw error;
 			}
 		}
 
@@ -262,10 +254,9 @@ export class RoutingNode {
 					});
 				});
 			} catch (e) {
-				throw new NodeOperationError(
-					this.node,
+				throw new Error(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					`The rootProperty "${action.properties.property}" could not be found on item.`,
-					{ runIndex, itemIndex },
 				);
 			}
 		}
@@ -278,7 +269,6 @@ export class RoutingNode {
 						value,
 						itemIndex,
 						runIndex,
-						executeSingleFunctions.getExecuteData(),
 						{ $response: responseData, $value: parameterValue },
 						false,
 					) as IDataObject,
@@ -325,7 +315,6 @@ export class RoutingNode {
 						propertyValue,
 						itemIndex,
 						runIndex,
-						executeSingleFunctions.getExecuteData(),
 						{
 							$response: responseData,
 							$responseItem: item.json,
@@ -349,7 +338,6 @@ export class RoutingNode {
 				destinationProperty,
 				itemIndex,
 				runIndex,
-				executeSingleFunctions.getExecuteData(),
 				{ $response: responseData, $value: parameterValue },
 				false,
 			) as string;
@@ -524,10 +512,8 @@ export class RoutingNode {
 								| IDataObject[]
 								| undefined;
 							if (tempResponseValue === undefined) {
-								throw new NodeOperationError(
-									this.node,
+								throw new Error(
 									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
-									{ runIndex, itemIndex },
 								);
 							}
 
@@ -560,14 +546,10 @@ export class RoutingNode {
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		itemIndex: number,
 		runIndex: number,
-		executeData: IExecuteData,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
-		if (
-			typeof parameterValue === 'object' ||
-			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
-		) {
+		if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
 			return this.workflow.expression.getParameterValue(
 				parameterValue,
 				this.runExecutionData ?? null,
@@ -578,7 +560,6 @@ export class RoutingNode {
 				this.mode,
 				this.additionalData.timezone,
 				additionalKeys ?? {},
-				executeData,
 				returnObjectAsString,
 			);
 		}
@@ -636,7 +617,6 @@ export class RoutingNode {
 						propertyValue,
 						itemIndex,
 						runIndex,
-						executeSingleFunctions.getExecuteData(),
 						{ ...additionalKeys, $value: parameterValue },
 						true,
 					) as string;
@@ -653,7 +633,6 @@ export class RoutingNode {
 						propertyName,
 						itemIndex,
 						runIndex,
-						executeSingleFunctions.getExecuteData(),
 						additionalKeys,
 						true,
 					) as string;
@@ -668,7 +647,6 @@ export class RoutingNode {
 							valueString,
 							itemIndex,
 							runIndex,
-							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: value },
 							true,
 						) as string;
@@ -702,7 +680,6 @@ export class RoutingNode {
 							paginateValue,
 							itemIndex,
 							runIndex,
-							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: parameterValue },
 							true,
 						) as string;
@@ -724,7 +701,6 @@ export class RoutingNode {
 							maxResultsValue,
 							itemIndex,
 							runIndex,
-							executeSingleFunctions.getExecuteData(),
 							{ ...additionalKeys, $value: parameterValue },
 							true,
 						) as string;
@@ -823,18 +799,8 @@ export class RoutingNode {
 					value = [value];
 				}
 
-				// Resolve expressions
-				value = this.getParameterValue(
-					value as INodeParameters[],
-					itemIndex,
-					runIndex,
-					executeSingleFunctions.getExecuteData(),
-					{ ...additionalKeys },
-					false,
-				) as INodeParameters[];
-
 				const loopBasePath = `${basePath}${propertyOptions.name}`;
-				for (let i = 0; i < value.length; i++) {
+				for (let i = 0; i < (value as INodeParameters[]).length; i++) {
 					for (const option of propertyOptions.values) {
 						const tempOptions = this.getRequestOptionsFromParameters(
 							executeSingleFunctions,

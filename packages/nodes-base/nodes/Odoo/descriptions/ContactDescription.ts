@@ -105,20 +105,18 @@ export const contactDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country Name or ID',
+								displayName: 'Country',
 								name: 'country_id',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								default: '',
 								typeOptions: {
 									loadOptionsMethod: 'getCountries',
 								},
 							},
 							{
-								displayName: 'State Name or ID',
+								displayName: 'State',
 								name: 'state_id',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								default: '',
 								typeOptions: {
 									loadOptionsMethod: 'getStates',
@@ -150,7 +148,6 @@ export const contactDescription: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -279,11 +276,9 @@ export const contactDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Fields to Include',
+				displayName: 'Fields To Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
@@ -350,20 +345,18 @@ export const contactDescription: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Country Name or ID',
+								displayName: 'Country',
 								name: 'country_id',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								default: '',
 								typeOptions: {
 									loadOptionsMethod: 'getCountries',
 								},
 							},
 							{
-								displayName: 'State Name or ID',
+								displayName: 'State',
 								name: 'state_id',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								default: '',
 								typeOptions: {
 									loadOptionsMethod: 'getStates',
@@ -395,7 +388,6 @@ export const contactDescription: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				placeholder: 'name@email.com',
 				default: '',
 			},
 			{

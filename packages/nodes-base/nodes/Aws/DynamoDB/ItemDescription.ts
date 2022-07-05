@@ -7,7 +7,6 @@ export const itemOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,7 +18,7 @@ export const itemOperations: INodeProperties[] = [
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				description: 'Create a new record, or update the current one if it already exists (upsert/put)',
 			},
 			{
 				name: 'Delete',
@@ -46,9 +45,9 @@ export const itemFields: INodeProperties[] = [
 	//              all
 	// ----------------------------------
 	{
-		displayName: 'Table Name or ID',
+		displayName: 'Table Name',
 		name: 'tableName',
-		description: 'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Table to operate on',
 		type: 'options',
 		required: true,
 		displayOptions: {
@@ -73,7 +72,7 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Map Input Data to Columns',
+				name: 'Auto-map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -108,6 +107,7 @@ export const itemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
@@ -353,7 +353,7 @@ export const itemFields: INodeProperties[] = [
 		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simple',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -514,7 +514,7 @@ export const itemFields: INodeProperties[] = [
 		default: 'ALL_ATTRIBUTES',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simple',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -616,7 +616,6 @@ export const itemFields: INodeProperties[] = [
 				displayName: 'Attributes to Select',
 				name: 'projectionExpression',
 				type: 'string',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id, name',
 				default: '',
 			},
@@ -657,11 +656,11 @@ export const itemFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Strongly Consistent Read',
+						name: 'Strongly consistent read',
 						value: 'stronglyConsistentRead',
 					},
 					{
-						name: 'Eventually Consistent Read',
+						name: 'Eventually consistent read',
 						value: 'eventuallyConsistentRead',
 					},
 				],
@@ -710,7 +709,6 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Key Condition Expression',
 		name: 'keyConditionExpression',
 		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
-		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id = :id',
 		default: '',
 		type: 'string',
@@ -824,7 +822,7 @@ export const itemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Select',
@@ -862,7 +860,7 @@ export const itemFields: INodeProperties[] = [
 		default: 'ALL_ATTRIBUTES',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simple',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

@@ -7,7 +7,6 @@ export const identifyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,6 +22,7 @@ export const identifyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,6 +46,7 @@ export const identifyFields: INodeProperties[] = [
 				],
 			},
 		},
+		required: false,
 	},
 	{
 		displayName: 'Traits',
@@ -123,21 +124,21 @@ export const identifyFields: INodeProperties[] = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address',
+						description: 'Current user’s IP address.',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US',
+						description: 'Locale string for the current user, for example en-US.',
 					},
 					{
 						displayName: 'Page',
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
+						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
 					},
 					{
 						displayName: 'Timezone',

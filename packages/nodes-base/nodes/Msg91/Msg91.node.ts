@@ -16,7 +16,6 @@ export class Msg91 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MSG91',
 		name: 'msg91',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:msg91.png',
 		group: ['transform'],
 		version: 1,
@@ -38,7 +37,6 @@ export class Msg91 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -46,12 +44,12 @@ export class Msg91 implements INodeType {
 					},
 				],
 				default: 'sms',
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -67,6 +65,7 @@ export class Msg91 implements INodeType {
 					},
 				],
 				default: 'send',
+				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Sender ID',
@@ -85,7 +84,7 @@ export class Msg91 implements INodeType {
 						],
 					},
 				},
-				description: 'The number from which to send the message',
+				description: 'The number from which to send the message.',
 			},
 			{
 				displayName: 'To',
@@ -104,7 +103,7 @@ export class Msg91 implements INodeType {
 						],
 					},
 				},
-				description: 'The number, with coutry code, to which to send the message',
+				description: 'The number, with coutry code, to which to send the message.',
 			},
 			{
 				displayName: 'Message',

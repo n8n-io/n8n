@@ -7,7 +7,6 @@ export const customerSourceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,6 +21,7 @@ export const customerSourceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
+		description: 'Operation to perform',
 	},
 ];
 
@@ -34,7 +34,7 @@ export const customerSourceFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -51,7 +51,7 @@ export const customerSourceFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'Max number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

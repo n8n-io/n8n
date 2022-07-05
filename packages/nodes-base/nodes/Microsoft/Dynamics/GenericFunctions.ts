@@ -16,7 +16,7 @@ import {
 } from 'n8n-workflow';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('microsoftDynamicsOAuth2Api') as { subdomain: string, region: string };
+	const credenitals = await this.getCredentials('microsoftDynamicsOAuth2Api') as { subdomain: string };
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -27,7 +27,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		method,
 		body,
 		qs,
-		uri: uri || `https://${credentials.subdomain}.${credentials.region}/api/data/v9.2${resource}`,
+		uri: uri || `https://${credenitals.subdomain}.crm.dynamics.com/api/data/v9.2${resource}`,
 		json: true,
 	};
 
@@ -96,20 +96,19 @@ export function adjustAddresses(addresses: [{ [key: string]: string }]) {
 export function getAccountFields(): INodeProperties[] {
 	return [
 		{
-			displayName: 'Account Category Name or ID',
+			displayName: 'Account Category',
 			name: 'accountcategorycode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getAccountCategories',
 			},
 			default: '',
-			description: 'Category to indicate whether the customer account is standard or preferred. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			description: 'Category to indicate whether the customer account is standard or preferred',
 		},
 		{
-			displayName: 'Account Rating Name or ID',
+			displayName: 'Account Rating',
 			name: 'accountratingcode',
 			type: 'options',
-			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getAccountRatingCodes',
 			},
@@ -130,10 +129,9 @@ export function getAccountFields(): INodeProperties[] {
 					name: 'address',
 					values: [
 						{
-							displayName: 'Address Type Name or ID',
+							displayName: 'Address Type',
 							name: 'addresstypecode',
 							type: 'options',
-							description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 							typeOptions: {
 								loadOptionsMethod: 'getAddressTypes',
 							},
@@ -216,30 +214,28 @@ export function getAccountFields(): INodeProperties[] {
 			],
 		},
 		{
-			displayName: 'Business Type Name or ID',
+			displayName: 'Business Type',
 			name: 'businesstypecode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getBusinessTypes',
 			},
 			default: '',
-			description: 'The legal designation or other business type of the account for contracts or reporting purposes. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			description: 'The legal designation or other business type of the account for contracts or reporting purposes',
 		},
 		{
-			displayName: 'Customer Size Name or ID',
+			displayName: 'Customer Size',
 			name: 'customersizecode',
 			type: 'options',
-			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getCustomerSizeCodes',
 			},
 			default: '',
 		},
 		{
-			displayName: 'Customer Type Name or ID',
+			displayName: 'Customer Type',
 			name: 'customertypecode',
 			type: 'options',
-			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getCustomerTypeCodes',
 			},
@@ -287,14 +283,14 @@ export function getAccountFields(): INodeProperties[] {
 			description: 'URL for the account’s FTP site to enable users to access data and share documents',
 		},
 		{
-			displayName: 'Industry Name or ID',
+			displayName: 'Industry',
 			name: 'industrycode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getIndustryCodes',
 			},
 			default: '',
-			description: 'The account’s primary industry for use in marketing segmentation and demographic analysis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			description: 'The account’s primary industry for use in marketing segmentation and demographic analysis',
 		},
 		{
 			displayName: 'Name',
@@ -328,44 +324,44 @@ export function getAccountFields(): INodeProperties[] {
 			description: 'Number of employees that work at the account for use in marketing segmentation and demographic analysis',
 		},
 		{
-			displayName: 'Payment Terms Name or ID',
+			displayName: 'Payment Terms',
 			name: 'paymenttermscode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getPaymentTermsCodes',
 			},
 			default: '',
-			description: 'The payment terms to indicate when the customer needs to pay the total amount. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			description: 'The payment terms to indicate when the customer needs to pay the total amount',
 		},
 		{
-			displayName: 'Preferred Appointment Day Name or ID',
+			displayName: 'Preferred Appointment Day',
 			name: 'preferredappointmentdaycode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getPreferredAppointmentDayCodes',
 			},
 			default: '',
-			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+			description: '',
 		},
 		{
-			displayName: 'Preferred Appointment Time Name or ID',
+			displayName: 'Preferred Appointment Time',
 			name: 'preferredappointmenttimecode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getPreferredAppointmentTimeCodes',
 			},
 			default: '',
-			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+			description: '',
 		},
 		{
-			displayName: 'Preferred Contact Method Name or ID',
+			displayName: 'Preferred Contact Method',
 			name: 'preferredcontactmethodcode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getPreferredContactMethodCodes',
 			},
 			default: '',
-			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+			description: '',
 		},
 		{
 			displayName: 'Primary Satori ID',
@@ -394,14 +390,14 @@ export function getAccountFields(): INodeProperties[] {
 			description: 'The number of shares available to the public for the account. This number is used as an indicator in financial performance analysis.',
 		},
 		{
-			displayName: 'Shipping Method Name or ID',
+			displayName: 'Shipping Method',
 			name: 'shippingmethodcode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getShippingMethodCodes',
 			},
 			default: '',
-			description: 'Shipping method for deliveries sent to the account’s address to designate the preferred carrier or other delivery option. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			description: 'Shipping method for deliveries sent to the account’s address to designate the preferred carrier or other delivery option',
 		},
 		{
 			displayName: 'SIC',
@@ -445,14 +441,14 @@ export function getAccountFields(): INodeProperties[] {
 			description: 'The third phone number for this account',
 		},
 		{
-			displayName: 'Territory Name or ID',
+			displayName: 'Territory',
 			name: 'territorycode',
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getTerritoryCodes',
 			},
 			default: '',
-			description: 'Region or territory for the account for use in segmentation and analysis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			description: 'Region or territory for the account for use in segmentation and analysis',
 		},
 		{
 			displayName: 'Ticker Symbol',

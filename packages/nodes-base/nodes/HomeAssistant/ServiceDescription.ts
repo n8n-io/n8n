@@ -7,7 +7,6 @@ export const serviceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,6 +27,7 @@ export const serviceOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -50,7 +50,7 @@ export const serviceFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -74,17 +74,16 @@ export const serviceFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                service:Call                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Domain Name or ID',
+		displayName: 'Domain',
 		name: 'domain',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDomains',
 		},
@@ -102,10 +101,9 @@ export const serviceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Service Name or ID',
+		displayName: 'Service',
 		name: 'service',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'domain',
@@ -154,14 +152,14 @@ export const serviceFields: INodeProperties[] = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the field',
+						description: 'Name of the field.',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the field',
+						description: 'Value of the field.',
 					},
 				],
 			},

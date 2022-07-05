@@ -2,12 +2,11 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const databaseOperations: INodeProperties[] = [
+export const databaseOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -32,7 +31,7 @@ export const databaseOperations: INodeProperties[] = [
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search databases using text search',
+				description: 'search databases using text search',
 			},
 		],
 		default: 'get',
@@ -41,7 +40,6 @@ export const databaseOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -66,9 +64,9 @@ export const databaseOperations: INodeProperties[] = [
 		],
 		default: 'get',
 	},
-];
+] as INodeProperties[];
 
-export const databaseFields: INodeProperties[] = [
+export const databaseFields = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
@@ -89,7 +87,7 @@ export const databaseFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The Database URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description: `The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
@@ -109,7 +107,7 @@ export const databaseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -133,10 +131,10 @@ export const databaseFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -215,10 +213,10 @@ export const databaseFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'How many results to return',
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -293,7 +291,7 @@ export const databaseFields: INodeProperties[] = [
 									},
 								],
 								default: 'last_edited_time',
-								description: 'The name of the timestamp to sort against',
+								description: `The name of the timestamp to sort against`,
 							},
 						],
 					},
@@ -301,4 +299,4 @@ export const databaseFields: INodeProperties[] = [
 			},
 		],
 	},
-];
+] as INodeProperties[];

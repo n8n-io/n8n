@@ -49,7 +49,7 @@ export class SeaTableTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Table Name or ID',
+				displayName: 'Table',
 				name: 'tableName',
 				type: 'options',
 				required: true,
@@ -57,7 +57,7 @@ export class SeaTableTrigger implements INodeType {
 					loadOptionsMethod: 'getTableNames',
 				},
 				default: '',
-				description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The name of SeaTable table to access',
 			},
 			{
 				displayName: 'Event',
@@ -78,11 +78,11 @@ export class SeaTableTrigger implements INodeType {
 				default: 'rowCreated',
 			},
 			{
-				displayName: 'Simplify',
+				displayName: 'Simplify Response',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description: 'Return a simplified version of the response instead of the raw data',
 			},
 		],
 	};

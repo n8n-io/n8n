@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -48,7 +47,6 @@ export class NocoDB implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -56,12 +54,12 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'row',
+				description: 'The Resource to operate on',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -81,14 +79,14 @@ export class NocoDB implements INodeType {
 						description: 'Delete a row',
 					},
 					{
-						name: 'Get',
-						value: 'get',
-						description: 'Retrieve a row',
-					},
-					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Retrieve all rows',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Retrieve a row',
 					},
 					{
 						name: 'Update',
@@ -97,6 +95,7 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'get',
+				description: 'The operation to perform',
 			},
 			...operationFields,
 		],

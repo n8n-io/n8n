@@ -82,7 +82,6 @@
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">
 			<n8n-button
 				v-if="parameter.options.length === 1"
-				type="tertiary"
 				fullWidth
 				@click="optionSelected(parameter.options[0].name)"
 				:label="getPlaceholderText"

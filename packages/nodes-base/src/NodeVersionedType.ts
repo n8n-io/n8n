@@ -5,10 +5,7 @@ export class NodeVersionedType implements INodeVersionedType {
 	nodeVersions: INodeVersionedType['nodeVersions'];
 	description: INodeTypeBaseDescription;
 
-	constructor(
-		nodeVersions: INodeVersionedType['nodeVersions'],
-		description: INodeTypeBaseDescription,
-	) {
+	constructor(nodeVersions: INodeVersionedType['nodeVersions'], description: INodeTypeBaseDescription) {
 		this.nodeVersions = nodeVersions;
 		this.currentVersion = description.defaultVersion ?? this.getLatestVersion();
 		this.description = description;

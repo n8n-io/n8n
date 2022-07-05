@@ -24,7 +24,6 @@ export class Line implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Line',
 		name: 'line',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:line.png',
 		group: ['input'],
 		version: 1,
@@ -53,7 +52,6 @@ export class Line implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Notification',
@@ -61,6 +59,7 @@ export class Line implements INodeType {
 					},
 				],
 				default: 'notification',
+				description: 'The resource to operate on.',
 			},
 			...notificationOperations,
 			...notificationFields,

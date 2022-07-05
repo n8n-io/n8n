@@ -5,7 +5,6 @@ export const dealOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -41,6 +40,7 @@ export const dealOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,10 +67,9 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner Name or ID',
+		displayName: 'Owner',
 		name: 'owner',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
@@ -88,7 +87,7 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Primary Contact Name or ID',
+		displayName: 'Primary Contact',
 		name: 'primaryContact',
 		type: 'options',
 		default: '',
@@ -105,7 +104,7 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Primary contact for the deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Primary contact for the deal.',
 		required: true,
 	},
 	{
@@ -167,7 +166,6 @@ export const dealFields: INodeProperties[] = [
 		name: 'stage',
 		type: 'options',
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'New (Untouched)',
@@ -182,12 +180,12 @@ export const dealFields: INodeProperties[] = [
 				value: 'Qualified',
 			},
 			{
-				name: 'In Negotiation',
-				value: 'In Negotiation',
-			},
-			{
 				name: 'Proposal Presented',
 				value: 'Proposal Presented',
+			},
+			{
+				name: 'In Negotiation',
+				value: 'In Negotiation',
 			},
 		],
 		displayOptions: {
@@ -234,7 +232,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether the data should include the fields details',
+		description: `If the data should include the fields details`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -261,7 +259,7 @@ export const dealFields: INodeProperties[] = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the deal',
+				description: 'This field contains details related to the deal.',
 			},
 			{
 				displayName: 'Tags',
@@ -271,10 +269,9 @@ export const dealFields: INodeProperties[] = [
 				description: 'This field contains tags associated with an deal',
 			},
 			{
-				displayName: 'Primary Company Name or ID',
+				displayName: 'Primary Company',
 				name: 'primaryCompany',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -298,7 +295,7 @@ export const dealFields: INodeProperties[] = [
 						value: 'Website',
 					},
 					{
-						name: 'Word of Mouth',
+						name: 'Word of mouth',
 						value: 'Word of mouth',
 					},
 				],
@@ -376,7 +373,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether the data should include the fields details',
+		description: `If the data should include the fields details`,
 	},
 	{
 		displayName: 'Update Fields',
@@ -402,20 +399,18 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Owner Name or ID',
+				displayName: 'Owner',
 				name: 'owner',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 			},
 			{
-				displayName: 'Primary Contact Name or ID',
+				displayName: 'Primary Contact',
 				name: 'primaryContact',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -460,24 +455,24 @@ export const dealFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
+						name: 'New (Untouched)',
+						value: 'New (Untouched)',
+					},
+					{
 						name: 'Contacted',
 						value: 'Contacted',
 					},
 					{
-						name: 'In Negotiation',
-						value: 'In Negotiation',
-					},
-					{
-						name: 'New (Untouched)',
-						value: 'New (Untouched)',
+						name: 'Qualified',
+						value: 'Qualified',
 					},
 					{
 						name: 'Proposal Presented',
 						value: 'Proposal Presented',
 					},
 					{
-						name: 'Qualified',
-						value: 'Qualified',
+						name: 'In Negotiation',
+						value: 'In Negotiation',
 					},
 				],
 			},
@@ -495,7 +490,7 @@ export const dealFields: INodeProperties[] = [
 				},
 				type: 'string',
 				default: '',
-				description: 'This field contains details related to the deal',
+				description: 'This field contains details related to the deal.',
 			},
 			{
 				displayName: 'Tags',
@@ -505,10 +500,9 @@ export const dealFields: INodeProperties[] = [
 				description: 'This field contains tags associated with an deal',
 			},
 			{
-				displayName: 'Primary Company Name or ID',
+				displayName: 'Primary Company',
 				name: 'primaryCompany',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -532,7 +526,7 @@ export const dealFields: INodeProperties[] = [
 						value: 'Website',
 					},
 					{
-						name: 'Word of Mouth',
+						name: 'Word of mouth',
 						value: 'Word of mouth',
 					},
 				],
@@ -610,7 +604,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether the data should include the fields details',
+		description: `If the data should include the fields details`,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:getAll                                */
@@ -630,7 +624,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -654,7 +648,7 @@ export const dealFields: INodeProperties[] = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'Max number of results to return',
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -694,14 +688,14 @@ export const dealFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of fields to return',
+				description: 'Comma-separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
-				description: 'The field to sort by',
+				description: 'The field to sort by.',
 			},
 			{
 				displayName: 'Sort Order',
@@ -824,7 +818,6 @@ export const dealFields: INodeProperties[] = [
 										displayName: 'Condition',
 										name: 'condition',
 										type: 'options',
-										// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 										options: [
 											{
 												name: 'Equals',
@@ -835,20 +828,20 @@ export const dealFields: INodeProperties[] = [
 												value: 'NOT_EQUALS',
 											},
 											{
-												name: 'CONTAINS',
-												value: 'Contains',
-											},
-											{
-												name: 'Does Not Contains',
-												value: 'DOES_NOT_CONTAINS',
-											},
-											{
 												name: 'Empty',
 												value: 'EMPTY',
 											},
 											{
 												name: 'Not Empty',
 												value: 'NOT_EMPTY',
+											},
+											{
+												name: 'CONTAINS',
+												value: 'Contains',
+											},
+											{
+												name: 'Does Not Contains',
+												value: 'DOES_NOT_CONTAINS',
 											},
 											{
 												name: 'Starts With',
@@ -860,7 +853,7 @@ export const dealFields: INodeProperties[] = [
 											},
 										],
 										default: 'EQUALS',
-										description: 'Value of the property to set',
+										description: 'Value of the property to set.',
 									},
 									{
 										displayName: 'Value',

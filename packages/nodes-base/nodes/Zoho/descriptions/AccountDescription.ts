@@ -15,7 +15,6 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -56,6 +55,7 @@ export const accountOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+		description: 'Operation to perform',
 	},
 ];
 
@@ -135,13 +135,12 @@ export const accountFields: INodeProperties[] = [
 				name: 'Account_Site',
 				type: 'string',
 				default: '',
-				description: 'Name of the account’s location, e.g. Headquarters or London',
+				description: 'Name of the account’s location, e.g. Headquarters or London.',
 			},
 			{
-				displayName: 'Account Type Name or ID',
+				displayName: 'Account Type',
 				name: 'Account_Type',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getAccountType',
 					},
@@ -165,7 +164,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated',
+				description: 'Symbol of the currency in which revenue is generated.',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('account'),
@@ -180,14 +179,14 @@ export const accountFields: INodeProperties[] = [
 				name: 'Employees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees in the account’s company',
+				description: 'Number of employees in the account’s company.',
 			},
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: '',
-				description: 'Exchange rate of the default currency to the home currency',
+				description: 'Exchange rate of the default currency to the home currency.',
 			},
 			{
 				displayName: 'Fax',
@@ -327,13 +326,12 @@ export const accountFields: INodeProperties[] = [
 				name: 'Account_Site',
 				type: 'string',
 				default: '',
-				description: 'Name of the account’s location, e.g. Headquarters or London',
+				description: 'Name of the account’s location, e.g. Headquarters or London.',
 			},
 			{
-				displayName: 'Account Type Name or ID',
+				displayName: 'Account Type',
 				name: 'Account_Type',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getAccountType',
 					},
@@ -357,7 +355,7 @@ export const accountFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated',
+				description: 'Symbol of the currency in which revenue is generated.',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('account'),
@@ -372,14 +370,14 @@ export const accountFields: INodeProperties[] = [
 				name: 'Employees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees in the account’s company',
+				description: 'Number of employees in the account’s company.',
 			},
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
 				type: 'number',
 				default: '',
-				description: 'Exchange rate of the default currency to the home currency',
+				description: 'Exchange rate of the default currency to the home currency.',
 			},
 			{
 				displayName: 'Fax',

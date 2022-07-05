@@ -13,12 +13,6 @@ export class NextCloudOAuth2Api implements ICredentialType {
 	documentationUrl = 'nextCloud';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Web DAV URL',
 			name: 'webDavUrl',
 			type: 'string',

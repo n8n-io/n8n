@@ -10,7 +10,6 @@ export const labelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +21,7 @@ export const labelOperations: INodeProperties[] = [
 			{
 				name: 'Add to Card',
 				value: 'addLabel',
-				description: 'Add a label to a card',
+				description: 'Add a label to a card.',
 			},
 			{
 				name: 'Create',
@@ -47,16 +46,17 @@ export const labelOperations: INodeProperties[] = [
 			{
 				name: 'Remove From Card',
 				value: 'removeLabel',
-				description: 'Remove a label from a card',
+				description: 'Remove a label from a card.',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a label',
+				description: 'Update a label.',
 			},
 
 		],
 		default: 'getAll',
+		description: 'The operation to perform.',
 	},
 
 ];
@@ -81,7 +81,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to create the label on',
+		description: 'The ID of the board to create the label on.',
 	},
 	{
 		displayName: 'Name',
@@ -99,7 +99,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name for the label',
+		description: 'Name for the label.',
 	},
 	{
 		displayName: 'Color',
@@ -118,52 +118,52 @@ export const labelFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Black',
+				name: 'black',
 				value: 'black',
 			},
 			{
-				name: 'Blue',
+				name: 'blue',
 				value: 'blue',
 			},
 			{
-				name: 'Green',
+				name: 'green',
 				value: 'green',
 			},
 			{
-				name: 'Lime',
-				value: 'lime',
-			},
-			{
-				name: 'Null',
-				value: 'null',
-			},
-			{
-				name: 'Orange',
+				name: 'orange',
 				value: 'orange',
 			},
 			{
-				name: 'Pink',
+				name: 'lime',
+				value: 'lime',
+			},
+			{
+				name: 'null',
+				value: 'null',
+			},
+			{
+				name: 'pink',
 				value: 'pink',
 			},
 			{
-				name: 'Purple',
+				name: 'purple',
 				value: 'purple',
 			},
 			{
-				name: 'Red',
+				name: 'red',
 				value: 'red',
 			},
 			{
-				name: 'Sky',
+				name: 'sky',
 				value: 'sky',
 			},
 			{
-				name: 'Yellow',
+				name: 'yellow',
 				value: 'yellow',
 			},
 		],
 		default: 'null',
-		description: 'The color for the label',
+		description: 'The color for the label.',
 	},
 
 
@@ -186,7 +186,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the label to delete',
+		description: 'The ID of the label to delete.',
 	},
 
 	// ----------------------------------
@@ -208,7 +208,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to get label',
+		description: 'The ID of the board to get label.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -256,7 +256,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Get information about a label by ID',
+		description: 'Get information about a label by ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -304,7 +304,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to get label',
+		description: 'The ID of the card to get label.',
 	},
 	{
 		displayName: 'Label ID',
@@ -322,7 +322,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the label to add',
+		description: 'The ID of the label to add.',
 	},
 
 	// ----------------------------------
@@ -344,7 +344,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to remove label from',
+		description: 'The ID of the card to remove label from.',
 	},
 	{
 		displayName: 'Label ID',
@@ -362,7 +362,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the label to remove',
+		description: 'The ID of the label to remove.',
 	},
 
 	// ----------------------------------
@@ -384,7 +384,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the label to update',
+		description: 'The ID of the label to update.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -408,7 +408,7 @@ export const labelFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the label',
+				description: 'Name of the label.',
 			},
 			{
 				displayName: 'Color',
@@ -416,52 +416,52 @@ export const labelFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Black',
+						name: 'black',
 						value: 'black',
 					},
 					{
-						name: 'Blue',
+						name: 'blue',
 						value: 'blue',
 					},
 					{
-						name: 'Green',
+						name: 'green',
 						value: 'green',
 					},
 					{
-						name: 'Lime',
-						value: 'lime',
-					},
-					{
-						name: 'Null',
-						value: 'null',
-					},
-					{
-						name: 'Orange',
+						name: 'orange',
 						value: 'orange',
 					},
 					{
-						name: 'Pink',
+						name: 'lime',
+						value: 'lime',
+					},
+					{
+						name: 'null',
+						value: 'null',
+					},
+					{
+						name: 'pink',
 						value: 'pink',
 					},
 					{
-						name: 'Purple',
+						name: 'purple',
 						value: 'purple',
 					},
 					{
-						name: 'Red',
+						name: 'red',
 						value: 'red',
 					},
 					{
-						name: 'Sky',
+						name: 'sky',
 						value: 'sky',
 					},
 					{
-						name: 'Yellow',
+						name: 'yellow',
 						value: 'yellow',
 					},
 				],
 				default: 'null',
-				description: 'The color for the label',
+				description: 'The color for the label.',
 			},
 		],
 	},

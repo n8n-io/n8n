@@ -10,12 +10,6 @@ export class ZoomOAuth2Api implements ICredentialType {
 	documentationUrl = 'zoom';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
-			type: 'hidden',
-			default: 'authorizationCode',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

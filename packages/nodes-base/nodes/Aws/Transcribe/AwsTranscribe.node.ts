@@ -39,7 +39,6 @@ export class AwsTranscribe implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Transcription Job',
@@ -47,12 +46,12 @@ export class AwsTranscribe implements INodeType {
 					},
 				],
 				default: 'transcriptionJob',
+				description: 'Resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				noDataExpression: true,
 				options: [
 					{
 						name: 'Create',
@@ -76,6 +75,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				],
 				default: 'create',
+				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Job Name',
@@ -94,7 +94,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'The name of the job',
+				description: 'The name of the job.',
 			},
 			{
 				displayName: 'Media File URI',
@@ -111,7 +111,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'The S3 object location of the input media file',
+				description: 'The S3 object location of the input media file. ',
 			},
 			{
 				displayName: 'Detect Language',
@@ -128,7 +128,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether to set this field to true to enable automatic language identification',
+				description: 'Set this field to true to enable automatic language identification.',
 			},
 			{
 				displayName: 'Language',
@@ -144,24 +144,24 @@ export class AwsTranscribe implements INodeType {
 						value: 'en-GB',
 					},
 					{
-						name: 'German',
-						value: 'de-DE',
+						name: 'Irish English',
+						value: 'en-IE',
 					},
 					{
 						name: 'Indian English',
 						value: 'en-IN',
 					},
 					{
-						name: 'Irish English',
-						value: 'en-IE',
+						name: 'Spanish',
+						value: 'es-ES',
+					},
+					{
+						name: 'German',
+						value: 'de-DE',
 					},
 					{
 						name: 'Russian',
 						value: 'ru-RU',
-					},
-					{
-						name: 'Spanish',
-						value: 'es-ES',
 					},
 				],
 				displayOptions: {
@@ -178,7 +178,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: 'en-US',
-				description: 'Language used in the input media file',
+				description: 'Language used in the input media file.',
 			},
 			// ----------------------------------
 			//     Transcription Job Settings
@@ -202,8 +202,7 @@ export class AwsTranscribe implements INodeType {
 						name: 'channelIdentification',
 						type: 'boolean',
 						default: false,
-						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'Instructs Amazon Transcribe to process each audiochannel separately and then merge the transcription output of each channel into a single transcription. You can\'t set both Max Speaker Labels and Channel Identification in the same request. If you set both, your request returns a BadRequestException.',
+						description: `Instructs Amazon Transcribe to process each audiochannel separately and then merge the transcription output of each channel into a single transcription. You can't set both Max Speaker Labels and Channel Identification in the same request. If you set both, your request returns a BadRequestException.`,
 					},
 					{
 						displayName: 'Max Alternatives',
@@ -214,7 +213,7 @@ export class AwsTranscribe implements INodeType {
 							minValue: 2,
 							maxValue: 10,
 						},
-						description: 'The number of alternative transcriptions that the service should return',
+						description: 'The number of alternative transcriptions that the service should return.',
 					},
 					{
 						displayName: 'Max Speaker Labels',
@@ -225,21 +224,21 @@ export class AwsTranscribe implements INodeType {
 							minValue: 2,
 							maxValue: 10,
 						},
-						description: 'The maximum number of speakers to identify in the input audio. If there are more speakers in the audio than this number, multiple speakers are identified as a single speaker.',
+						description: `The maximum number of speakers to identify in the input audio. If there are more speakers in the audio than this number, multiple speakers are identified as a single speaker.`,
 					},
 					{
 						displayName: 'Vocabulary Name',
 						name: 'vocabularyName',
 						type: 'string',
 						default: '',
-						description: 'Name of vocabulary to use when processing the transcription job',
+						description: 'Name of vocabulary to use when processing the transcription job.',
 					},
 					{
 						displayName: 'Vocabulary Filter Name',
 						name: 'vocabularyFilterName',
 						type: 'string',
 						default: '',
-						description: 'The name of the vocabulary filter to use when transcribing the audio. The filter that you specify must have the same language code as the transcription job.',
+						description: `The name of the vocabulary filter to use when transcribing the audio. The filter that you specify must have the same language code as the transcription job.`,
 					},
 					{
 						displayName: 'Vocabulary Filter Method',
@@ -261,7 +260,7 @@ export class AwsTranscribe implements INodeType {
 
 						],
 						default: 'remove',
-						description: '<p>Set to mask to remove filtered text from the transcript and replace it with three asterisks ("***") as placeholder text.</p><p>Set to remove to remove filtered text from the transcript without using placeholder text. Set to tag to mark the word in the transcription output that matches the vocabulary filter. When you set the filter method to tag, the words matching your vocabulary filter are not masked or removed.</p>',
+						description: `<p>Set to mask to remove filtered text from the transcript and replace it with three asterisks ("***") as placeholder text.</p><p>Set to remove to remove filtered text from the transcript without using placeholder text. Set to tag to mark the word in the transcription output that matches the vocabulary filter. When you set the filter method to tag, the words matching your vocabulary filter are not masked or removed.</p>`,
 					},
 				],
 			},
@@ -280,11 +279,10 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead.',
 			},
 			{
-				displayName: 'Simplify',
+				displayName: 'Simple',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -301,7 +299,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 			{
 				displayName: 'Return All',
@@ -318,7 +316,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'If all results should be returned or only up to a given limit.',
 			},
 			{
 				displayName: 'Limit',
@@ -341,7 +339,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'Max number of results to return',
+				description: 'The maximum number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -364,7 +362,7 @@ export class AwsTranscribe implements INodeType {
 						displayName: 'Job Name Contains',
 						name: 'jobNameContains',
 						type: 'string',
-						description: 'Return only transcription jobs whose name contains the specified string',
+						description: 'Return only transcription jobs whose name contains the specified string.',
 						default: '',
 					},
 					{
@@ -389,7 +387,7 @@ export class AwsTranscribe implements INodeType {
 								value: 'QUEUED',
 							},
 						],
-						description: 'Return only transcription jobs with the specified status',
+						description: 'Return only transcription jobs with the specified status.',
 						default: 'COMPLETED',
 					},
 				],

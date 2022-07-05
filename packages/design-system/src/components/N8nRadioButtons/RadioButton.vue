@@ -47,7 +47,7 @@ export default {
 
 .button {
 	border-radius: 0;
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing-s);
 	display: flex;
 	align-items: center;
 	height: 26px;
