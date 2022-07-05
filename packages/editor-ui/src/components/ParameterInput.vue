@@ -123,15 +123,6 @@
 				<parameter-issues
 					:issues="getIssues"
 				/>
-				<parameter-options
-				 	v-if="displayOptionsComputed"
-					:displayOptionsComputed="displayOptionsComputed"
-					:parameter="parameter"
-					:isValueExpression="isValueExpression"
-					:isDefault="isDefault"
-					:hasRemoteMethod="hasRemoteMethod"
-					@optionSelected="optionSelected"
-				/>
 			</template>
 		</credentials-select>
 
@@ -205,16 +196,6 @@
 		:issues="getIssues"
 	/>
 
-	<parameter-options
-		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect'"
-		:displayOptionsComputed="displayOptionsComputed"
-		:parameter="parameter"
-		:isValueExpression="isValueExpression"
-		:isDefault="isDefault"
-		:hasRemoteMethod="hasRemoteMethod"
-		@optionSelected="optionSelected"
-	/>
-
 	</div>
 </template>
 
@@ -274,7 +255,6 @@ export default mixins(
 			TextEdit,
 		},
 		props: [
-			'displayOptions', // boolean
 			'inputSize',
 			'isReadOnly',
 			'documentationUrl',
@@ -462,20 +442,6 @@ export default mixins(
 
 				return value;
 			},
-			displayOptionsComputed (): boolean {
-				if (this.isReadOnly === true) {
-					return false;
-				}
-				if (this.parameter.type === 'collection') {
-					return false;
-				}
-
-				if (this.displayOptions === true) {
-					return true;
-				}
-
-				return false;
-			},
 			expressionValueComputed (): NodeParameterValue | string[] | null {
 				if (this.areExpressionsDisabled) {
 					return this.value;
@@ -581,9 +547,6 @@ export default mixins(
 
 				return [];
 			},
-			isDefault (): boolean {
-				return this.parameter.default === this.value;
-			},
 			isEditor (): boolean {
 				return ['code', 'json'].includes(this.editorType);
 			},
@@ -632,9 +595,6 @@ export default mixins(
 				};
 				if (this.parameter.type === 'credentialsSelect') {
 					return styles;
-				}
-				if (this.displayOptionsComputed === true) {
-					deductWidth += 25;
 				}
 				if (this.getIssues.length) {
 					deductWidth += 20;
@@ -882,6 +842,8 @@ export default mixins(
 			},
 		},
 		mounted () {
+			this.$on('optionSelected', this.optionSelected);
+
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {
 				this.nodeName = this.node.name;

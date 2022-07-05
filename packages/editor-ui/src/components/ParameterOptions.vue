@@ -1,6 +1,7 @@
 <template>
-	<div :class="$style['parameter-options']">
+	<div>
 		<el-dropdown
+			v-if="displayOptionsComputed"
 			trigger="click"
 			@command="(opt) => $emit('optionSelected', opt)"
 			size="mini"
@@ -14,18 +15,6 @@
 			</span>
 			<el-dropdown-menu slot="dropdown">
 				<el-dropdown-item
-					v-if="parameter.noDataExpression !== true && !isValueExpression"
-					command="addExpression"
-				>
-					{{ $locale.baseText('parameterInput.addExpression') }}
-				</el-dropdown-item>
-				<el-dropdown-item
-					v-if="parameter.noDataExpression !== true && isValueExpression"
-					command="removeExpression"
-				>
-					{{ $locale.baseText('parameterInput.removeExpression') }}
-				</el-dropdown-item>
-				<el-dropdown-item
 					v-if="hasRemoteMethod"
 					command="refreshOptions"
 				>
@@ -34,12 +23,21 @@
 				<el-dropdown-item
 					command="resetValue"
 					:disabled="isDefault"
-					divided
 				>
 					{{ $locale.baseText('parameterInput.resetValue') }}
 				</el-dropdown-item>
 			</el-dropdown-menu>
 		</el-dropdown>
+		<n8n-radio-buttons
+			v-if="parameter.noDataExpression !== true"
+			size="small"
+			:value="selectedView"
+			@input="onViewSelected"
+			:options="[
+				{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed'},
+				{ label: $locale.baseText('parameterInput.expression'), value: 'expression'},
+			]"
+		/>
 	</div>
 </template>
 
@@ -49,20 +47,71 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'ParameterOptions',
 	props: [
-		'displayOptionsComputed',
-		'optionSelected',
 		'parameter',
-		'isValueExpression',
-		'isDefault',
-		'hasRemoteMethod',
+		'isReadOnly',
+		'value',
+		"showOptions",
 	],
+	computed: {
+		isDefault (): boolean {
+			return this.parameter.default === this.value;
+		},
+		displayOptionsComputed (): boolean {
+			if (this.isReadOnly === true) {
+				return false;
+			}
+
+			if (this.parameter.type === 'collection' || this.parameter.type === 'credentialsSelect') {
+				return false;
+			}
+
+			if (this.showOptions === true) {
+				return true;
+			}
+
+			return false;
+		},
+		selectedView() {
+			if (this.isValueExpression) {
+				return 'expression';
+			}
+
+			return 'fixed';
+		},
+		isValueExpression () {
+			if (this.parameter.noDataExpression === true) {
+				return false;
+			}
+			if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
+				return true;
+			}
+			return false;
+		},
+		hasRemoteMethod (): boolean {
+			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
+		},
+	},
+	methods: {
+		onViewSelected(selected: string) {
+			if (selected === 'expression' && !this.isValueExpression) {
+				this.$emit('optionSelected', 'addExpression');
+			}
+
+			if (selected === 'fixed' && this.isValueExpression) {
+				this.$emit('optionSelected', 'removeExpression');
+			}
+		},
+		getArgument (argumentName: string): string | number | boolean | undefined {
+			if (this.parameter.typeOptions === undefined) {
+				return undefined;
+			}
+
+			if (this.parameter.typeOptions[argumentName] === undefined) {
+				return undefined;
+			}
+
+			return this.parameter.typeOptions[argumentName];
+		},
+	},
 });
 </script>
-
-<style module lang="scss">
-.parameter-options {
-	width: 25px;
-	text-align: right;
-	float: right;
-}
-</style>

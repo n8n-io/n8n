@@ -5,6 +5,7 @@
 			:key="option.value"
 			v-bind="option"
 			:active="value === option.value"
+			:size="size"
 			@click="(e) => onClick(option.value, e)"
 		/>
 	</div>
@@ -20,6 +21,9 @@ export default {
 			type: String,
 		},
 		options: {
+		},
+		size: {
+			type: String,
 		},
 	},
 	components: {

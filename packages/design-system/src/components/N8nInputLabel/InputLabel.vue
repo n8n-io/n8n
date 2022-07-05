@@ -11,6 +11,9 @@
 					<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
 				</component>
 			</span>
+			<div :class="$style.side">
+				<slot name="side"></slot>
+			</div>
 		</div>
 		<slot></slot>
 	</div>
@@ -91,6 +94,10 @@ export default {
 	> div > .infoIcon {
 		display: inline-block;
 	}
+
+	> div > .side {
+		display: inline-block;
+	}
 }
 
 .inputLabel:hover {
@@ -101,6 +108,7 @@ export default {
 
 .infoIcon {
 	color: var(--color-text-light);
+	margin-left: var(--spacing-5xs);
 }
 
 .showIcon {
@@ -111,19 +119,11 @@ export default {
 	display: none;
 }
 
-.label {
-	* {
-		margin-right: var(--spacing-5xs);
-	}
-}
-
 .label-small {
-	composes: label;
 	margin-bottom: var(--spacing-4xs);
 }
 
 .label-medium {
-	composes: label;
 	margin-bottom: var(--spacing-2xs);
 }
 
@@ -147,5 +147,10 @@ export default {
 	li {
 		margin-left: var(--spacing-s);
 	}
+}
+
+.side {
+	display: none;
+	float: right;
 }
 </style>

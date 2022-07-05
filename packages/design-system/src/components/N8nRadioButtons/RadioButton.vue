@@ -1,7 +1,7 @@
 <template>
 	<label role="radio" tabindex="-1" :class="$style.container" aria-checked="true">
 		<input type="radio" tabindex="-1" autocomplete="off" :class="$style.input" :value="value">
-		<div :class="{[$style.button]: true, [$style.active]: active}" @click="$emit('click')">{{ label }}</div>
+		<div :class="{[$style.button]: true, [$style.active]: active, [$style[size]]: true}" @click="$emit('click')">{{ label }}</div>
 	</label>
 </template>
 
@@ -20,6 +20,12 @@ export default {
 		active: {
 			type: Boolean,
 			default: false,
+		},
+		size: {
+			type: String,
+			default: 'large',
+			validator: (value: string): boolean =>
+				['small', 'large'].includes(value),
 		},
 	},
 };
@@ -50,13 +56,21 @@ export default {
 	padding: 0 var(--spacing-xs);
 	display: flex;
 	align-items: center;
-	height: 26px;
-	font-size: var(--font-size-2xs);
 	border-radius: var(--border-radius-base);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-base);
 	cursor: pointer;
 	transition: background-color 0.2s ease;
+}
+
+.large {
+	height: 26px;
+	font-size: var(--font-size-2xs);
+}
+
+.small {
+	font-size: 11px; // todo
+	height: 15px;
 }
 
 .active {
