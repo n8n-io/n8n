@@ -5,7 +5,7 @@
 			size="small"
 			color="foreground-xdark"
 			:actions="actions"
-			@action="(action) => onUserAction(user, action)"
+			@action="(action) => $emit('optionSelected', action)"
 		/>
 		<n8n-radio-buttons
 			v-if="parameter.noDataExpression !== true"

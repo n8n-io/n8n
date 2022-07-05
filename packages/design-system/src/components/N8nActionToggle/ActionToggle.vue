@@ -1,11 +1,11 @@
 <template>
 	<span :class="$style.container">
 		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand">
-			<n8n-text :color="color" :class="$style.button">
+			<span :class="$style.button">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
 				/>
-			</n8n-text>
+			</span>
 			<el-dropdown-menu slot="dropdown">
 				<el-dropdown-item
 					v-for="action in actions"
@@ -51,10 +51,6 @@ export default {
 			validator: (value: string): boolean =>
 				['mini', 'small', 'medium'].includes(value),
 		},
-		color: {
-			type: String,
-			default: 'text-dark',
-		},
 	},
 	methods: {
 		onCommand(value: string) {
@@ -73,9 +69,13 @@ export default {
 	cursor: pointer;
 	padding: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
-	color: var(--color-text-dark);
+
+	&:hover {
+		color: var(--color-primary);
+	}
 
 	&:focus {
+		color: var(--color-primary);
 		background-color: var(--color-background-xlight);
 	}
 }
