@@ -79,6 +79,20 @@
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
 					/>
 				</n8n-tooltip>
+
+				<div :class="$style['edit-mode-actions']" v-show="editMode.enabled">
+					<n8n-button
+						type="tertiary"
+						:label="$locale.baseText('runData.editor.cancel')"
+						@click="onClickCancelEdit"
+					/>
+					<n8n-button
+						class="ml-2xs"
+						type="primary"
+						:label="$locale.baseText('runData.editor.save')"
+						@click="onClickSaveEdit"
+					/>
+				</div>
 			</div>
 		</div>
 
@@ -160,19 +174,6 @@
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-info-tip>
-					<div :class="$style['edit-mode-footer-buttons']">
-						<n8n-button
-							type="tertiary"
-							:label="$locale.baseText('runData.editor.cancel')"
-							@click="onClickCancelEdit"
-						/>
-						<n8n-button
-							class="ml-2xs"
-							type="primary"
-							:label="$locale.baseText('runData.editor.save')"
-							@click="onClickSaveEdit"
-						/>
-					</div>
 				</div>
 			</div>
 
@@ -696,6 +697,8 @@ export default mixins(
 			},
 			onClickSaveEdit() {
 				const { value } = this.editMode;
+
+				this.clearAllStickyNotifications();
 
 				if (!this.isValidPinDataSize(value)) {
 					this.onDataPinningError({ errorType: 'data-too-large', source: 'save-edit' });
@@ -1506,7 +1509,7 @@ export default mixins(
 	width: 100%;
 }
 
-.edit-mode-footer-buttons {
+.edit-mode-actions {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
