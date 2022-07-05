@@ -26,7 +26,7 @@ export const listOperations: INodeProperties[] = [
 				name: 'Custom Fields',
 				value: 'customFields',
 				description: 'Retrieve list\'s custom fields',
-				action: 'Custom Fields a list',
+				action: 'Get custom fields from a list',
 			},
 			{
 				name: 'Delete',
@@ -50,7 +50,7 @@ export const listOperations: INodeProperties[] = [
 				name: 'Member',
 				value: 'member',
 				description: 'Get list members',
-				action: 'Member a list',
+				action: 'Get list members',
 			},
 			{
 				name: 'Update',
