@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
