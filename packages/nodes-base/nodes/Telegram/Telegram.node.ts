@@ -2177,6 +2177,13 @@ export class Telegram implements INodeType {
 
 					const filename = fileName || binaryData.fileName?.toString();
 
+					if (!fileName && !binaryData.fileName) {
+						throw new NodeOperationError(this.getNode(),
+						`File name is needed to ${operation}. Make sure the property that holds the binary data
+						has a the file name property set or set it manually in the node using the File Name parameter under
+						Additional Fields.`)
+					}
+
 					body.disable_notification = body.disable_notification?.toString() || 'false';
 
 					const formData = {
