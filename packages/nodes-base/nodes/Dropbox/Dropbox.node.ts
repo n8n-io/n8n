@@ -207,7 +207,7 @@ export class Dropbox implements INodeType {
 					{
 						name: 'Query',
 						value: 'query',
-						action: 'Query a search',
+						action: 'Query',
 					},
 				],
 				default: 'query',
