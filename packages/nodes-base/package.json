@@ -271,6 +271,7 @@
       "dist/credentials/SpontitApi.credentials.js",
       "dist/credentials/SpotifyOAuth2Api.credentials.js",
       "dist/credentials/SquarespaceApi.credentials.js",
+      "dist/credentials/SquarespaceOAuth2Api.credentials.js",
       "dist/credentials/SshPassword.credentials.js",
       "dist/credentials/SshPrivateKey.credentials.js",
       "dist/credentials/StackbyApi.credentials.js",
