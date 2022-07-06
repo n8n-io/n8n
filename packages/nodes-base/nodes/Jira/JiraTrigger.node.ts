@@ -505,7 +505,7 @@ export class JiraTrigger implements INodeType {
 
 			if (httpQueryAuth === undefined || !httpQueryAuth.name || !httpQueryAuth.value) {
 
-				response.status(403).json({ message: 'Auth settings are not valid, some data are missing' })
+				response.status(403).json({ message: 'Auth settings are not valid, some data are missing' });
 
 				return {
 					noWebhookResponse: true,
@@ -517,7 +517,7 @@ export class JiraTrigger implements INodeType {
 
 			if (!queryData.hasOwnProperty(paramName) || queryData[paramName] !== paramValue) {
 
-				response.status(403).json({ message: 'Provided authentication data is not valid' })
+				response.status(403).json({ message: 'Provided authentication data is not valid' });
 
 				return {
 					noWebhookResponse: true,
