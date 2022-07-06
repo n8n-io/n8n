@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
+		:label="hideLabel? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
+		:tooltipText="hideLabel? '': $locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
 		:showSide="menuExpanded"
 		:bold="false"
@@ -65,6 +65,7 @@ export default Vue
 			'parameter',
 			'path',
 			'value',
+			'hideLabel',
 		],
 		methods: {
 			onMenuExpanded(expanded: boolean) {

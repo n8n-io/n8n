@@ -67,19 +67,11 @@ export default {
 	},
 	computed: {
 		labelClass(): string {
-			if (!this.label) {
-				return '';
-			}
-
-			const classes = [];
-			if (this.underline) {
-				classes.push(this.$style[`label-${this.size}-underline`]);
-			}
-			else {
-				classes.push(this.$style[`label-${this.size}`]);
-			}
-
-			return classes;
+			return {
+				[this.$style.label]: !!this.label,
+				[this.$style.underline]: this.underline,
+				[this.$style[this.size]]: true,
+			};
 		},
 	},
 	methods: {
@@ -89,6 +81,11 @@ export default {
 </script>
 
 <style lang="scss" module>
+.container {
+	display: flex;
+	flex-direction: column;
+}
+
 .container:hover {
 	.infoIcon {
 		visibility: visible;
@@ -130,28 +127,16 @@ export default {
 	overflow: hidden;
 }
 
-.label-small {
-	composes: label;
+.small {
 	margin-bottom: var(--spacing-4xs);
 }
 
-.label-medium {
-	composes: label;
+.medium {
 	margin-bottom: var(--spacing-2xs);
 }
 
 .underline {
 	border-bottom: var(--border-base);
-}
-
-.label-small-underline {
-	composes: label-small;
-	composes: underline;
-}
-
-.label-medium-underline {
-	composes: label-medium;
-	composes: underline;
 }
 
 .tooltipPopper {

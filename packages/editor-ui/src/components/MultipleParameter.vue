@@ -19,7 +19,7 @@
 				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
 			</div>
 			<div v-else>
-				<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
+				<parameter-input-full class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :hideLabel="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
 			</div>
 		</div>
 
@@ -38,7 +38,7 @@ import {
 } from '@/Interface';
 
 import CollectionParameter from '@/components/CollectionParameter.vue';
-import ParameterInput from '@/components/ParameterInput.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
 import { get } from 'lodash';
 
@@ -51,7 +51,7 @@ export default mixins(genericHelpers)
 		name: 'MultipleParameter',
 		components: {
 			CollectionParameter,
-			ParameterInput,
+			ParameterInputFull,
 		},
 		props: [
 			'nodeValues', // NodeParameters
