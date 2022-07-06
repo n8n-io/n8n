@@ -1,5 +1,5 @@
 <template>
-	<div :class="{[$style.inputLabelContainer]: !labelHoverableOnly}">
+	<div :class="$style.container">
 		<div :class="labelClass">
 			<div :class="$style.info">
 				<n8n-text v-if="label" :bold="bold" :size="size" :compact="!underline">
@@ -61,10 +61,6 @@ export default {
 		showTooltip: {
 			type: Boolean,
 		},
-		labelHoverableOnly: {
-			type: Boolean,
-			default: false,
-		},
 		showSide: {
 			type: Boolean,
 		},
@@ -83,10 +79,6 @@ export default {
 				classes.push(this.$style[`label-${this.size}`]);
 			}
 
-			if (this.labelHoverableOnly) {
-				classes.push(this.$style.inputLabel);
-			}
-
 			return classes;
 		},
 	},
@@ -97,12 +89,18 @@ export default {
 </script>
 
 <style lang="scss" module>
-.inputLabelContainer:hover {
+.container:hover {
 	.infoIcon {
 		visibility: visible;
 	}
 
 	> div > .side {
+		visibility: visible;
+	}
+}
+
+.inputLabel:hover {
+	> .infoIcon {
 		visibility: visible;
 	}
 }
