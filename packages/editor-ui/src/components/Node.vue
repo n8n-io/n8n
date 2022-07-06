@@ -111,7 +111,6 @@ import mixins from 'vue-typed-mixins';
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
-import {locale} from "n8n-design-system";
 
 export default mixins(
 	externalHooks,
