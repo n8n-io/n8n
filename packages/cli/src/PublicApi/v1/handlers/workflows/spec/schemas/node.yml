@@ -1,0 +1,39 @@
+type: object
+additionalProperties: false
+properties:
+  name:
+    type: string
+    example: Jira
+  webhookId:
+    type: string
+  disabled:
+    type: boolean
+  notesInFlow:
+    type: boolean
+  notes:
+    type: string
+  type:
+    type: string
+    example: n8n-nodes-base.Jira
+  typeVersion:
+    type: number
+    example: 1
+  position:
+    type: array
+    items:
+      type: number
+    example: [-100, 80]
+  parameters:
+    type: object
+    example: { additionalProperties: {} }
+  credentials:
+    type: object
+    example: { jiraSoftwareCloudApi: { id: "35", name: "jiraApi"} }
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true

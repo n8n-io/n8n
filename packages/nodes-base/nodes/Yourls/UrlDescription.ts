@@ -7,6 +7,7 @@ export const urlOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const urlOperations: INodeProperties[] = [
 			},
 		],
 		default: 'shorten',
-		description: 'The operation to perform.',
 	},
 ];
 

@@ -16,6 +16,7 @@ export class Disqus implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Disqus',
 		name: 'disqus',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:disqus.png',
 		group: ['input'],
 		version: 1,
@@ -37,6 +38,7 @@ export class Disqus implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Forum',
@@ -44,7 +46,6 @@ export class Disqus implements INodeType {
 					},
 				],
 				default: 'forum',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -54,6 +55,7 @@ export class Disqus implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -84,14 +86,13 @@ export class Disqus implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
 			//         forum:get
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -131,7 +132,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'counters',
+								name: 'Counters',
 								value: 'counters',
 							},
 							{
@@ -168,7 +169,6 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: [],
-						description: 'The resource to operate on.',
 					},
 					{
 						displayName: 'Related',
@@ -190,7 +190,7 @@ export class Disqus implements INodeType {
 			//         forum:getPosts
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -291,16 +291,12 @@ export class Disqus implements INodeType {
 								value: 'Is_Anonymous',
 							},
 							{
-								name: 'Is_Flagged',
-								value: 'Is_Flagged',
-							},
-							{
-								name: 'No_Issue',
-								value: 'No_Issue',
-							},
-							{
 								name: 'Is_At_Flag_Limit',
 								value: 'Is_At_Flag_Limit',
+							},
+							{
+								name: 'Is_Flagged',
+								value: 'Is_Flagged',
 							},
 							{
 								name: 'Is_Toxic',
@@ -309,6 +305,10 @@ export class Disqus implements INodeType {
 							{
 								name: 'Modified_By_Rule',
 								value: 'Modified_By_Rule',
+							},
+							{
+								name: 'No_Issue',
+								value: 'No_Issue',
 							},
 							{
 								name: 'Shadow_Banned',
@@ -324,7 +324,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'approved',
+								name: 'Approved',
 								value: 'approved',
 							},
 						],
@@ -361,7 +361,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'thread',
+								name: 'Thread',
 								value: 'thread',
 							},
 						],
@@ -382,7 +382,7 @@ export class Disqus implements INodeType {
 			//         forum:getCategories
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -481,7 +481,7 @@ export class Disqus implements INodeType {
 			//         forum:getThreads
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -566,7 +566,7 @@ export class Disqus implements INodeType {
 								value: 'author',
 							},
 							{
-								name: 'forum',
+								name: 'Forum',
 								value: 'forum',
 							},
 						],
@@ -579,15 +579,15 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'closed',
+								name: 'Closed',
 								value: 'closed',
 							},
 							{
-								name: 'open',
+								name: 'Open',
 								value: 'open',
 							},
 							{
-								name: 'killed',
+								name: 'Killed',
 								value: 'killed',
 							},
 						],

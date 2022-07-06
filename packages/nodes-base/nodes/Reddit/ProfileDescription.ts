@@ -7,6 +7,7 @@ export const profileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -21,7 +22,6 @@ export const profileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -36,11 +36,6 @@ export const profileFields: INodeProperties[] = [
 		description: 'Details of my account to retrieve',
 		options: [
 			{
-				name: 'Identity',
-				value: 'identity',
-				description: 'Return the identity of the logged-in user',
-			},
-			{
 				name: 'Blocked Users',
 				value: 'blockedUsers',
 				description: 'Return the blocked users of the logged-in user',
@@ -49,6 +44,11 @@ export const profileFields: INodeProperties[] = [
 				name: 'Friends',
 				value: 'friends',
 				description: 'Return the friends of the logged-in user',
+			},
+			{
+				name: 'Identity',
+				value: 'identity',
+				description: 'Return the identity of the logged-in user',
 			},
 			{
 				name: 'Karma',

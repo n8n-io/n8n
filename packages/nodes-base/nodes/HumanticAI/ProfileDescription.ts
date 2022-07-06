@@ -7,6 +7,7 @@ export const profileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const profileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -73,7 +73,7 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Send a resume for a resume based analysis',
+		description: 'Whether to send a resume for a resume based analysis',
 	},
 	{
 		displayName: 'Binary Property',
@@ -192,7 +192,7 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Send a resume for a resume of the user',
+		description: 'Whether to send a resume for a resume of the user',
 	},
 	{
 		displayName: 'Text',

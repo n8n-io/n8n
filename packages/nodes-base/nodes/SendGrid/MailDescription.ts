@@ -7,6 +7,7 @@ export const mailOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,7 +23,6 @@ export const mailOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -123,7 +123,7 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'MIME type',
+		displayName: 'MIME Type',
 		name: 'contentType',
 		type: 'options',
 		default: 'text/plain',
@@ -177,9 +177,10 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getTemplateIds',

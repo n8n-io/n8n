@@ -43,6 +43,7 @@ export class Intercom implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Intercom',
 		name: 'intercom',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:intercom.png',
 		group: ['output'],
 		version: 1,
@@ -64,6 +65,7 @@ export class Intercom implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -82,7 +84,6 @@ export class Intercom implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume.',
 			},
 			...leadOpeations,
 			...userOpeations,

@@ -5,6 +5,7 @@ export const orderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const orderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -114,7 +114,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Define if the order is paid. It will set the status to processing and reduce stock items.',
+				description: 'Whether the order is paid. It will set the status to processing and reduce stock items.',
 			},
 			{
 				displayName: 'Status',
@@ -122,15 +122,15 @@ export const orderFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					},
 					{
-						name: 'failed',
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
@@ -138,19 +138,19 @@ export const orderFields: INodeProperties[] = [
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],
@@ -244,6 +244,7 @@ export const orderFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -358,14 +359,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Fee name',
 					},
 					{
-						displayName: 'Tax Class	',
+						displayName: 'Tax Class',
 						name: 'taxClass',
 						type: 'string',
 						description: 'Tax class of fee',
 						default: '',
 					},
 					{
-						displayName: 'Tax Status	',
+						displayName: 'Tax Status',
 						name: 'taxStatus',
 						type: 'options',
 						options: [
@@ -382,7 +383,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'Tax class of fee',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
@@ -689,14 +690,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Shipping method name',
 					},
 					{
-						displayName: 'Method ID	',
+						displayName: 'Method ID',
 						name: 'method ID',
 						type: 'string',
 						description: 'Shipping method ID',
 						default: '',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
@@ -824,15 +825,15 @@ export const orderFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					},
 					{
-						name: 'failed',
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
@@ -840,19 +841,19 @@ export const orderFields: INodeProperties[] = [
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],
@@ -946,6 +947,7 @@ export const orderFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -1060,14 +1062,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Fee name',
 					},
 					{
-						displayName: 'Tax Class	',
+						displayName: 'Tax Class',
 						name: 'taxClass',
 						type: 'string',
 						description: 'Tax class of fee',
 						default: '',
 					},
 					{
-						displayName: 'Tax Status	',
+						displayName: 'Tax Status',
 						name: 'taxStatus',
 						type: 'options',
 						options: [
@@ -1084,7 +1086,7 @@ export const orderFields: INodeProperties[] = [
 						description: 'Tax class of fee',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
@@ -1391,14 +1393,14 @@ export const orderFields: INodeProperties[] = [
 						description: 'Shipping method name',
 					},
 					{
-						displayName: 'Method ID	',
+						displayName: 'Method ID',
 						name: 'method ID',
 						type: 'string',
 						description: 'Shipping method ID',
 						default: '',
 					},
 					{
-						displayName: 'Total	',
+						displayName: 'Total',
 						name: 'total',
 						type: 'string',
 						default: '',
@@ -1623,35 +1625,35 @@ export const orderFields: INodeProperties[] = [
 						value: 'any',
 					},
 					{
-						name: 'completed',
-						value: 'completed',
-					},
-					{
-						name: 'cancelled',
+						name: 'Cancelled',
 						value: 'cancelled',
 					},
 					{
-						name: 'failed',
+						name: 'Completed',
+						value: 'completed',
+					},
+					{
+						name: 'Failed',
 						value: 'failed',
 					},
 					{
-						name: 'on-hold',
+						name: 'On-Hold',
 						value: 'on-hold',
 					},
 					{
-						name: 'pending',
+						name: 'Pending',
 						value: 'pending',
 					},
 					{
-						name: 'processing',
+						name: 'Processing',
 						value: 'processing',
 					},
 					{
-						name: 'refunded',
+						name: 'Refunded',
 						value: 'refunded',
 					},
 					{
-						name: 'trash',
+						name: 'Trash',
 						value: 'trash',
 					},
 				],

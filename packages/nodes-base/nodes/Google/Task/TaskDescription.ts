@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const taskOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,9 +51,10 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -116,7 +117,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'deleted',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether the task has been deleted',
+				description: 'Whether the task has been deleted',
 			},
 			{
 				displayName: 'Due Date',
@@ -170,9 +171,10 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -210,9 +212,10 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -250,9 +253,10 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -361,21 +365,21 @@ export const taskFields: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-unencoded-angle-brackets
-				description: 'Flag indicating whether completed tasks are returned in the result. <strong>Show Hidden</strong> must also be True to show tasks completed in first party clients such as the web UI or Google\'s mobile apps.',
+				description: 'Whether completed tasks are returned in the result. <strong>Show Hidden</strong> must also be True to show tasks completed in first party clients such as the web UI or Google\'s mobile apps.',
 			},
 			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether deleted tasks are returned in the result',
+				description: 'Whether deleted tasks are returned in the result',
 			},
 			{
 				displayName: 'Show Hidden',
 				name: 'showHidden',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether hidden tasks are returned in the result',
+				description: 'Whether hidden tasks are returned in the result',
 			},
 			{
 				displayName: 'Updated Min',
@@ -390,9 +394,10 @@ export const taskFields: INodeProperties[] = [
 	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'TaskList',
+		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -456,7 +461,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'deleted',
 				type: 'boolean',
 				default: false,
-				description: 'Flag indicating whether the task has been deleted',
+				description: 'Whether the task has been deleted',
 			},
 			{
 				displayName: 'Due Date',

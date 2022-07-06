@@ -51,7 +51,6 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'Operation',
@@ -72,7 +71,6 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'User Key',
@@ -125,6 +123,7 @@ export class Pushover implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Lowest Priority',
@@ -257,14 +256,14 @@ export class Pushover implements INodeType {
 						description: 'Whether to enable messages formatting with HTML tags',
 					},
 					{
-						displayName: 'Sound',
+						displayName: 'Sound Name or ID',
 						name: 'sound',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getSounds',
 						},
 						default: '',
-						description: 'The name of one of the sounds supported by device clients to override the user\'s default sound choice',
+						description: 'The name of one of the sounds supported by device clients to override the user\'s default sound choice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Timestamp',

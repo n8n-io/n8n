@@ -7,6 +7,7 @@ export const stockOnHandOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,7 +28,6 @@ export const stockOnHandOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -125,7 +125,7 @@ export const stockOnHandFields: INodeProperties[] = [
 				name: 'IsAssembled',
 				type: 'boolean',
 				default: false,
-				description: 'If set to True, the AvailableQty will also include the quantity that can be assembled',
+				description: 'Whether the AvailableQty will also include the quantity that can be assembled',
 			},
 			{
 				displayName: 'Modified Since',

@@ -11,6 +11,7 @@ export const ecomCustomerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -46,7 +47,6 @@ export const ecomCustomerOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -94,6 +94,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 		displayName: 'Customer Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -130,7 +131,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'acceptsMarketing',
 				type: 'boolean',
 				default: false,
-				description: 'Indication of whether customer has opt-ed in to marketing communications',
+				description: 'Whether customer has opt-ed in to marketing communications',
 			},
 		],
 	},
@@ -192,6 +193,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				displayName: 'Customer Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address of the customer',
 			},
@@ -200,7 +202,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'acceptsMarketing',
 				type: 'boolean',
 				default: false,
-				description: 'Indication of whether customer has opt-ed in to marketing communications',
+				description: 'Whether customer has opt-ed in to marketing communications',
 			},
 		],
 	},

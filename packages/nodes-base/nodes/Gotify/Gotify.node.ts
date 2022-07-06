@@ -18,6 +18,7 @@ export class Gotify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gotify',
 		name: 'gotify',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:gotify.png',
 		group: ['input'],
 		version: 1,
@@ -39,6 +40,7 @@ export class Gotify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
@@ -46,12 +48,12 @@ export class Gotify implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -74,7 +76,6 @@ export class Gotify implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Message',
@@ -165,6 +166,9 @@ export class Gotify implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
 				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {

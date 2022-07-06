@@ -25,6 +25,7 @@ export class PhilipsHue implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Philips Hue',
 		name: 'philipsHue',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:philipshue.png',
 		group: ['input'],
 		version: 1,
@@ -46,6 +47,7 @@ export class PhilipsHue implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Light',
@@ -53,7 +55,6 @@ export class PhilipsHue implements INodeType {
 					},
 				],
 				default: 'light',
-				description: 'The resource to operate on.',
 			},
 			...lightOperations,
 			...lightFields,
