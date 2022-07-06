@@ -1,7 +1,7 @@
 <template>
 	<label role="radio" tabindex="-1" :class="$style.container" aria-checked="true">
 		<input type="radio" tabindex="-1" autocomplete="off" :class="$style.input" :value="value">
-		<div :class="{[$style.button]: true, [$style.active]: active, [$style[size]]: true}" @click="$emit('click')">{{ label }}</div>
+		<div :class="{[$style.button]: true, [$style.active]: active, [$style[size]]: true, [$style.disabled]: disabled}" @click="$emit('click')">{{ label }}</div>
 	</label>
 </template>
 
@@ -26,6 +26,9 @@ export default {
 			default: 'large',
 			validator: (value: string): boolean =>
 				['small', 'large'].includes(value),
+		},
+		disabled: {
+			type: Boolean,
 		},
 	},
 };
@@ -59,8 +62,11 @@ export default {
 	border-radius: var(--border-radius-base);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-base);
-	cursor: pointer;
 	transition: background-color 0.2s ease;
+}
+
+.disabled {
+	cursor: not-allowed;
 }
 
 .large {

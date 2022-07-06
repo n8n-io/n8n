@@ -13,6 +13,7 @@
 			v-if="parameter.noDataExpression !== true"
 			size="small"
 			:value="selectedView"
+			:disabled="isReadOnly"
 			@input="onViewSelected"
 			:options="[
 				{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed'},
