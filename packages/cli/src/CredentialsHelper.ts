@@ -150,11 +150,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		const credentialType = this.credentialTypes.getByName(typeName);
 
-		const experiableProperty = credentialType.properties.find(
+		const expirableProperty = credentialType.properties.find(
 			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
 		);
 
-		if (experiableProperty === undefined || experiableProperty.name === undefined) {
+		if (expirableProperty === undefined || expirableProperty.name === undefined) {
 			return undefined;
 		}
 
@@ -162,13 +162,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 			if (typeof credentialType.preAuthentication === 'function') {
 				// if the expirable property is empty in the credentials
 				// or are expired, call pre authentication method
-				if (credentials[experiableProperty?.name] === '' || credentialsExpired) {
+				if (credentials[expirableProperty?.name] === '' || credentialsExpired) {
 					const output = await credentialType.preAuthentication.call(helpers, credentials);
 
 					// if there is data in the output, make sure the returned
 					// property is the expirable property
 					// else the database will not get updated
-					if (output[experiableProperty.name] === undefined) {
+					if (output[expirableProperty.name] === undefined) {
 						return undefined;
 					}
 
