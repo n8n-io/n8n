@@ -1092,7 +1092,7 @@ export async function httpRequestWithAuthentication(
 			);
 		}
 
-		const { updatedCredentials, data } = await additionalData.credentialsHelper.preAuthentication(
+		const data = await additionalData.credentialsHelper.preAuthentication(
 			{ helpers: { httpRequest: this.helpers.httpRequest } },
 			credentialsDecrypted,
 			credentialsType,
@@ -1100,7 +1100,7 @@ export async function httpRequestWithAuthentication(
 			false,
 		);
 
-		if (updatedCredentials) {
+		if (data) {
 			// make the updated property in the credentials
 			// available to the authenticate method
 			Object.assign(credentialsDecrypted, data);
@@ -1126,16 +1126,15 @@ export async function httpRequestWithAuthentication(
 			try {
 				if (credentialsDecrypted !== undefined) {
 					// try to refresh the credentials
-					const { updatedCredentials, data } =
-						await additionalData.credentialsHelper.preAuthentication(
-							{ helpers: { httpRequest: this.helpers.httpRequest } },
-							credentialsDecrypted,
-							credentialsType,
-							node,
-							true,
-						);
+					const data = await additionalData.credentialsHelper.preAuthentication(
+						{ helpers: { httpRequest: this.helpers.httpRequest } },
+						credentialsDecrypted,
+						credentialsType,
+						node,
+						true,
+					);
 
-					if (updatedCredentials) {
+					if (data) {
 						// make the updated property in the credentials
 						// available to the authenticate method
 						Object.assign(credentialsDecrypted, data);
@@ -1270,7 +1269,7 @@ export async function requestWithAuthentication(
 			);
 		}
 
-		const { updatedCredentials, data } = await additionalData.credentialsHelper.preAuthentication(
+		const data = await additionalData.credentialsHelper.preAuthentication(
 			{ helpers: { httpRequest: this.helpers.httpRequest } },
 			credentialsDecrypted,
 			credentialsType,
@@ -1278,7 +1277,7 @@ export async function requestWithAuthentication(
 			false,
 		);
 
-		if (updatedCredentials) {
+		if (data) {
 			// make the updated property in the credentials
 			// available to the authenticate method
 			Object.assign(credentialsDecrypted, data);
@@ -1298,16 +1297,15 @@ export async function requestWithAuthentication(
 		try {
 			if (credentialsDecrypted !== undefined) {
 				// try to refresh the credentials
-				const { updatedCredentials, data } =
-					await additionalData.credentialsHelper.preAuthentication(
-						{ helpers: { httpRequest: this.helpers.httpRequest } },
-						credentialsDecrypted,
-						credentialsType,
-						node,
-						true,
-					);
+				const data = await additionalData.credentialsHelper.preAuthentication(
+					{ helpers: { httpRequest: this.helpers.httpRequest } },
+					credentialsDecrypted,
+					credentialsType,
+					node,
+					true,
+				);
 
-				if (updatedCredentials) {
+				if (data) {
 					// make the updated property in the credentials
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);

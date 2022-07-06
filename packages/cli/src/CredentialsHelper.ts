@@ -177,7 +177,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		typeName: string,
 		node: INode,
 		credentialsExpired: boolean,
-	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
+	): Promise<ICredentialDataDecryptedObject | undefined> {
 		const credentialType = this.credentialTypes.getByName(typeName);
 
 		const experiableProperty = credentialType.properties.find(
@@ -185,7 +185,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		);
 
 		if (experiableProperty === undefined || experiableProperty.name === undefined) {
-			return { updatedCredentials: false, data: {} };
+			return undefined;
 		}
 
 		if (credentialType.preAuthentication) {
@@ -199,7 +199,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					// property is the expirable property
 					// else the database will not get updated
 					if (output[experiableProperty.name] === undefined) {
-						return { updatedCredentials: false, data: {} };
+						return undefined;
 					}
 
 					if (node.credentials) {
@@ -208,12 +208,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 							credentialType.name,
 							Object.assign(credentials, output),
 						);
-						return { updatedCredentials: true, data: Object.assign(credentials, output) };
+						return Object.assign(credentials, output);
 					}
 				}
 			}
 		}
-		return { updatedCredentials: false, data: {} };
+		return undefined;
 	}
 
 	/**

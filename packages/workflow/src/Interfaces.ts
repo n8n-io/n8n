@@ -172,7 +172,7 @@ export abstract class ICredentialsHelper {
 		typeName: string,
 		node: INode,
 		credentialsExpired: boolean,
-	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }>;
+	): Promise<ICredentialDataDecryptedObject | undefined>;
 
 	abstract getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
