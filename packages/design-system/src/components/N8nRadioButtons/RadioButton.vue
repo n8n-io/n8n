@@ -63,6 +63,7 @@ export default {
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-base);
 	transition: background-color 0.2s ease;
+	cursor: pointer;
 }
 
 .disabled {

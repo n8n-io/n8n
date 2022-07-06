@@ -1,16 +1,18 @@
 <template functional>
 	<div :class="{[$style.inputLabelContainer]: !props.labelHoverableOnly}">
 		<div :class="$options.methods.getLabelClass(props, $style)">
-			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline">
-				{{ props.label }}
-				<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
-			</component>
-			<span :class="[$style.infoIcon, props.showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="props.tooltipText">
-				<component :is="$options.components.N8nTooltip" placement="top" :popper-class="$style.tooltipPopper">
-					<component :is="$options.components.N8nIcon" icon="question-circle" size="small" />
-					<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
+			<div :class="$style.info">
+				<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline">
+					{{ props.label }}
+					<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
 				</component>
-			</span>
+				<span :class="[$style.infoIcon, props.showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="props.tooltipText">
+					<component :is="$options.components.N8nTooltip" placement="top" :popper-class="$style.tooltipPopper">
+						<component :is="$options.components.N8nIcon" icon="question-circle" size="small" />
+						<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
+					</component>
+				</span>
+			</div>
 			<div :class="{[$style.side]: true, [$style.showIcon]: props.showSide}">
 				<slot name="side"></slot>
 			</div>
@@ -94,39 +96,47 @@ export default {
 
 <style lang="scss" module>
 .inputLabelContainer:hover {
-	> div > .infoIcon {
-		display: inline-block;
+	.infoIcon {
+		visibility: visible;
 	}
 
 	> div > .side {
-		display: inline-block;
-	}
-}
-
-.inputLabel:hover {
-	> .infoIcon {
-		display: inline-block;
+		visibility: visible;
 	}
 }
 
 .infoIcon {
+	display: inline-block;
 	color: var(--color-text-light);
 	margin-left: var(--spacing-5xs);
 }
 
 .showIcon {
-	display: inline-block !important;
+	visibility: visible !important;
 }
 
 .hiddenIcon {
-	display: none;
+	visibility: hidden;
+}
+
+.info {
+	display: flex;
+	flex-grow: 1;
+	align-items: center;
+}
+
+.label {
+	display: flex;
+	overflow: hidden;
 }
 
 .label-small {
+	composes: label;
 	margin-bottom: var(--spacing-4xs);
 }
 
 .label-medium {
+	composes: label;
 	margin-bottom: var(--spacing-2xs);
 }
 
@@ -153,7 +163,7 @@ export default {
 }
 
 .side {
-	display: none;
+	visibility: hidden;
 	float: right;
 }
 </style>
