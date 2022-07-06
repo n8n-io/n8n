@@ -1,5 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -56,16 +56,17 @@ export class MetabaseApi implements ICredentialType {
 						body: {
 								username: credentials.username,
 								password: credentials.password,
-						}
-				}) as { id: string }
-				console.log(`SESSION TOKEN: ${id}`)
+						},
+				}) as { id: string };
+				console.log(`SESSION TOKEN: ${id}`);
 				return { sessionToken: id };
 	}
-	authenticate: IAuthenticateHeaderAuth = {
-		type: 'headerAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: 'X-Metabase-Session',
-			value: '={{$credentials.sessionToken}}',
+			headers: {
+				'X-Metabase-Session': '={{$credentials.sessionToken}}',
+			},
 		},
 	};
 	test: ICredentialTestRequest = {
@@ -73,4 +74,5 @@ export class MetabaseApi implements ICredentialType {
 			baseURL: '={{$credentials?.url}}',
 			url: '/api/activity/',
 		},
-	}}
+	};
+}
