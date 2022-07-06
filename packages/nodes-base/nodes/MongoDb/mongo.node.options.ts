@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -159,7 +159,6 @@ export const nodeDescription: INodeTypeDescription = {
 					},
 					default: '{}',
 					placeholder: '{ "field": -1 }',
-					required: true,
 					description: 'A JSON that defines the sort order of the result set',
 				},
 			],

@@ -84,13 +84,17 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 		responseData = await hubspotApiRequest.call(this, method, endpoint, body, query);
 		query.offset = responseData.offset;
 		query.vidOffset = responseData['vid-offset'];
+		//Used by Search endpoints
+		if (responseData['paging']) {
+			body.after = responseData['paging']['next']['after'];
+		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 		//ticket:getAll endpoint does not support setting a limit, so return once the limit is reached
 		if (query.limit && query.limit <= returnData.length && endpoint.includes('/tickets/paged')) {
 			return returnData;
 		}
 	} while (
-		responseData['hasMore'] || responseData['has-more']
+		responseData['hasMore'] || responseData['has-more'] || responseData['paging']
 	);
 	return returnData;
 }

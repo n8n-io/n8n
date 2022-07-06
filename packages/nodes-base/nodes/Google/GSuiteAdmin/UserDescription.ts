@@ -453,7 +453,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schemas Name or ID',
+				displayName: 'Custom Schema Names or IDs',
 				name: 'customFieldMask',
 				type: 'multiOptions',
 				displayOptions: {
@@ -587,7 +587,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schemas Name or ID',
+				displayName: 'Custom Schema Names or IDs',
 				name: 'customFieldMask',
 				type: 'multiOptions',
 				displayOptions: {

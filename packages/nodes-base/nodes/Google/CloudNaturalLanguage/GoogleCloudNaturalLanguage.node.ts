@@ -167,7 +167,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 						],
 						default: 'PLAIN_TEXT',
 						description: 'The type of input document',
-						required: true,
 					},
 					{
 						displayName: 'Encoding Type',

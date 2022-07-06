@@ -9,7 +9,9 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function deepLApiRequest(
@@ -29,10 +31,10 @@ export async function deepLApiRequest(
 
 	const options: OptionsWithUri = {
 		headers: {
-			'Content-Type': 'application/json',
+			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
-		body,
+		form: body,
 		qs,
 		uri: uri || `${credentials.apiPlan === 'pro' ? proApiEndpoint : freeApiEndpoint}${resource}`,
 		json: true,
@@ -47,13 +49,9 @@ export async function deepLApiRequest(
 			delete options.body;
 		}
 
-		const credentials = await this.getCredentials('deepLApi');
-
-		options.qs.auth_key = credentials.apiKey;
-
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'deepLApi', options);
 
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

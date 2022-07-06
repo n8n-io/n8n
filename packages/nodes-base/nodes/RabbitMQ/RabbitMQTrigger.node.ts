@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	createDeferredPromise,
 	IDataObject,
@@ -10,6 +10,7 @@ import {
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy as Logger,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -156,7 +157,7 @@ export class RabbitMQTrigger implements INodeType {
 		let parallelMessages = (options.parallelMessages !== undefined && options.parallelMessages !== -1) ? parseInt(options.parallelMessages as string, 10) : -1;
 
 		if (parallelMessages === 0 || parallelMessages < -1) {
-			throw new Error('Parallel message processing limit must be greater than zero (or -1 for no limit)');
+			throw new NodeOperationError(this.getNode(), 'Parallel message processing limit must be greater than zero (or -1 for no limit)');
 		}
 
 		if (this.getMode() === 'manual') {
