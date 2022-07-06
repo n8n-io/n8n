@@ -28,7 +28,13 @@
 				<n8n-text :bold="true" size="large" color="text-light">
 					v{{ communityPackage.installedVersion }}
 				</n8n-text>
-				<n8n-tooltip v-if="communityPackage.updateAvailable" placement="top">
+				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
+					<div slot="content">
+						{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+					</div>
+					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
+				</n8n-tooltip>
+				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
 					<div slot="content">
 						{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 					</div>
