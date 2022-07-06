@@ -134,13 +134,6 @@ credentialsController.post(
 			);
 		}
 
-		// data in the client does not include the expirable property from the first test run
-		// so get the latest data from the database
-
-		// the other options would be retrieve the credentials after every test run,
-		// so in case they were updated by the preAuthentication hook, the client can
-		// have the source of truth.
-
 		const mode: WorkflowExecuteMode = 'internal';
 		const timezone = config.getEnv('generic.timezone');
 		const credentialsHelper = new CredentialsHelper(encryptionKey);
