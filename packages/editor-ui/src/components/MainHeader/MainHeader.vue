@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
-			<div v-show="!activeNode" class="top-menu">
+			<div v-show="!hideMenuBar" class="top-menu">
 				<ExecutionDetails v-if="isExecutionPage" />
 				<WorkflowDetails v-else />
 			</div>
@@ -17,7 +17,7 @@ import { pushConnection } from '@/components/mixins/pushConnection';
 
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
-import { VIEWS } from '@/constants';
+import { STICKY_NODE_TYPE, VIEWS } from '@/constants';
 import { INodeUi } from '@/Interface';
 
 export default mixins(
@@ -38,6 +38,9 @@ export default mixins(
 			},
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
+			},
+			hideMenuBar(): boolean {
+				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
 			},
 		},
 		async mounted() {

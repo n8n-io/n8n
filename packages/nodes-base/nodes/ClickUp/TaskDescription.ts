@@ -243,6 +243,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Assignee Names or IDs',
 				name: 'assignees',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
 					loadOptionsDependsOn: [
@@ -731,6 +732,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Assignee Names or IDs',
 				name: 'assignees',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
 					loadOptionsDependsOn: [
@@ -903,6 +905,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Status Names or IDs',
 				name: 'statuses',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 					loadOptionsDependsOn: [
