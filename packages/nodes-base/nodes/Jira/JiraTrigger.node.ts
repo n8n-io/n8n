@@ -492,6 +492,7 @@ export class JiraTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		const queryData = this.getQueryData() as IDataObject;
+		const response = this.getResponseObject();
 
 		const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
 
@@ -503,8 +504,11 @@ export class JiraTrigger implements INodeType {
 			} catch (error) {	}
 
 			if (httpQueryAuth === undefined || !httpQueryAuth.name || !httpQueryAuth.value) {
+
+				response.status(403).json({ message: 'Auth settings are not valid, some data are missing' })
+
 				return {
-					webhookResponse: 'Auth settings are not valid, some data are missing',
+					noWebhookResponse: true,
 				};
 			}
 
@@ -512,8 +516,11 @@ export class JiraTrigger implements INodeType {
 			const paramValue = Buffer.from(httpQueryAuth.value as string).toString('base64');
 
 			if (!queryData.hasOwnProperty(paramName) || queryData[paramName] !== paramValue) {
+
+				response.status(403).json({ message: 'Provided authentication data is not valid' })
+
 				return {
-					webhookResponse: 'Provided authentication data is not valid',
+					noWebhookResponse: true,
 				};
 			}
 
