@@ -105,7 +105,7 @@ export default {
 .infoIcon {
 	display: flex;
 	color: var(--color-text-light);
-	margin-left: var(--spacing-5xs);
+	margin-left: var(--spacing-4xs);
 }
 
 .showIcon {
