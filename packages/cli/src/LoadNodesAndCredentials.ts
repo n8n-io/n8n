@@ -406,16 +406,20 @@ class LoadNodesAndCredentialsClass {
 		let fullNodeName: string;
 		let nodeVersion = 1;
 
-		// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
-		const tempModule = require(filePath);
-
 		try {
+			// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
+			const tempModule = require(filePath);
 			tempNode = new tempModule[nodeName]();
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
-			// eslint-disable-next-line no-console
-			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
-			throw error;
+			// eslint-disable-next-line no-console, @typescript-eslint/restrict-template-expressions
+			console.error(`Error loading node "${nodeName}" from: "${filePath}" - ${error.message}`);
+			if (packageName === 'n8n-nodes-base') {
+				// This is our core node package - throw the error
+				// For community packages, we simply warn.
+				throw error;
+			}
+			return;
 		}
 
 		// eslint-disable-next-line prefer-const
