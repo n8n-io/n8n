@@ -109,7 +109,7 @@ export class GoogleSlides implements INodeType {
 						name: 'Get Slides',
 						value: 'getSlides',
 						description: 'Get presentation slides',
-						action: 'Get slides for a presentation',
+						action: 'Get slides from a presentation',
 					},
 					{
 						name: 'Replace Text',
@@ -143,7 +143,7 @@ export class GoogleSlides implements INodeType {
 						name: 'Get Thumbnail',
 						value: 'getThumbnail',
 						description: 'Get a thumbnail',
-						action: 'Get Thumbnail a page',
+						action: 'Get the thumbnail for a page',
 					},
 				],
 				displayOptions: {

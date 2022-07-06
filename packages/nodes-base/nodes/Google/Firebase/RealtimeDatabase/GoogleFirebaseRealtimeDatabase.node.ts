@@ -84,7 +84,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 						name: 'Update',
 						value: 'update',
 						description: 'Update item on a database',
-						action: 'Update item on a database',
+						action: 'Update item in a database',
 					},
 				],
 				default: 'create',

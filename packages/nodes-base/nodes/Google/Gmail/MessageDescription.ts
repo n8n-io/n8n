@@ -38,7 +38,7 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Reply',
 				value: 'reply',
 				description: 'Reply to an email',
-				action: 'Reply a message',
+				action: 'Reply to a message',
 			},
 			{
 				name: 'Send',

@@ -120,7 +120,7 @@ export class Ftp implements INodeType {
 						name: 'Rename',
 						value: 'rename',
 						description: 'Rename/move oldPath to newPath',
-						action: 'Rename/move old path to new path',
+						action: 'Rename / move a file or folder',
 					},
 					{
 						name: 'Upload',

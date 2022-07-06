@@ -1533,7 +1533,7 @@ export class GoogleDrive implements INodeType {
 						name: 'List',
 						value: 'list',
 						description: 'List all drives',
-						action: 'List a drive',
+						action: 'List all drives',
 					},
 					{
 						name: 'Update',

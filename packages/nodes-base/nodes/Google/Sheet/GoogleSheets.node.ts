@@ -123,7 +123,7 @@ export class GoogleSheets implements INodeType {
 						name: 'Append',
 						value: 'append',
 						description: 'Append data to a sheet',
-						action: 'Append a sheet',
+						action: 'Append data to a sheet',
 					},
 					{
 						name: 'Clear',
@@ -153,7 +153,7 @@ export class GoogleSheets implements INodeType {
 						name: 'Lookup',
 						value: 'lookup',
 						description: 'Look up a specific column value and return the matching row',
-						action: 'Look up a sheet',
+						action: 'Look up a column value in a sheet',
 					},
 					{
 						name: 'Read',

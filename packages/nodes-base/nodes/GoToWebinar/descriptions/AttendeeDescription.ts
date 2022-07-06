@@ -23,7 +23,7 @@ export const attendeeOperations: INodeProperties[] = [
 			{
 				name: 'Get Details',
 				value: 'getDetails',
-				action: 'Get details on an attendee',
+				action: 'Get details of an attendee',
 			},
 		],
 		displayOptions: {
