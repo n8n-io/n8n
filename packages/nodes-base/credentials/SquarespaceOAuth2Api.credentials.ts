@@ -44,10 +44,16 @@ export class SquarespaceOAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'string',
+			default: 'access_type=offline',
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden',
-			default: 'website.orders,website.orders.read,website.transactions.read,website.inventory,website.inventory.read,website.products,website.products.read',
+			type: 'string',
+			default: 'website.orders,website.transactions.read,website.inventory,website.products',
 		},
 	];
 }
