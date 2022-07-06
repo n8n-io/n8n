@@ -7,7 +7,7 @@
 			v-if="isValueExpression && showExpressionAsTextInput"
 			:size="inputSize"
 			:value="expressionDisplayValue"
-			:disabled="isReadOnly"
+			:disabled="isReadOnly && !isValueExpression"
 			:title="displayTitle"
 			@keydown.stop
 		/>
@@ -28,7 +28,7 @@
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
 				:value="displayValue"
-				:disabled="isReadOnly"
+				:disabled="isReadOnly && !isValueExpression"
 				@input="onTextInputChange"
 				@change="valueChanged"
 				@keydown.stop
@@ -827,8 +827,10 @@ export default mixins(
 						this.valueChanged(`=${this.value}`);
 					}
 
-					this.expressionEditDialogVisible = true;
-					this.trackExpressionEditOpen();
+					setTimeout(() => {
+						this.expressionEditDialogVisible = true;
+						this.trackExpressionEditOpen();
+					}, 150);
 				} else if (command === 'removeExpression') {
 					let value = this.expressionValueComputed;
 
@@ -943,13 +945,8 @@ export default mixins(
 		cursor: pointer !important;
 	}
 
-	.el-switch__core {
-		border: 1px dashed $--custom-expression-text;
-	}
-
 	--input-border-color: var(--color-secondary-tint-1);
 	--input-background-color: var(--color-secondary-tint-2);
-	--disabled-border: #{$--custom-expression-text};
 	--input-font-color: var(--color-secondary);
 }
 

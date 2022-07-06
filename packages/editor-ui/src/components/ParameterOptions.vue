@@ -1,6 +1,7 @@
 <template>
 	<div>
 		<n8n-action-toggle
+			v-if="displayOptionsComputed"
 			placement="bottom-end"
 			size="small"
 			color="foreground-xdark"
