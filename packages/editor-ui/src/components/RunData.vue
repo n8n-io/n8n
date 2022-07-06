@@ -691,8 +691,7 @@ export default mixins(
 					return;
 				}
 
-				const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG);
-				if (value && value.length > 0 && !hasSeenPinDataTooltip) {
+				if (value && value.length > 0) {
 					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG, 'true');
 					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
 
@@ -707,7 +706,7 @@ export default mixins(
 						setTimeout(() => {
 							this.isControlledPinDataTooltip = false;
 						}, 500); // Wait for tooltip to disappear
-					}, 4500);
+					}, 10000);
 				}
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
@@ -1241,7 +1240,11 @@ export default mixins(
 			},
 			jsonData (value: IDataObject[]) {
 				this.refreshDataSize();
-				this.checkPinDataDiscoveryFlow(value);
+
+				const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG);
+				if (!hasSeenPinDataTooltip) {
+					this.checkPinDataDiscoveryFlow(value);
+				}
 			},
 			binaryData (newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
 				if (newData.length && !prevData.length && this.displayMode !== 'binary') {

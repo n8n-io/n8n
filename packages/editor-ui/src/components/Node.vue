@@ -340,9 +340,14 @@ export default mixins(
 		nodeRunData(newValue) {
 			this.$emit('run', {name: this.data.name, data: newValue, waiting: !!this.waiting});
 		},
-		workflowDataItems(dataItemsCount: number) {
-			this.checkPinDataDiscoveryFlow(dataItemsCount);
-		},
+	},
+	created() {
+		const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG);
+		if (!hasSeenPinDataTooltip) {
+			this.unwatchShowPinDataDiscoveryTooltip = this.$watch('workflowDataItems', (dataItemsCount: number) => {
+				this.checkPinDataDiscoveryFlow(dataItemsCount);
+			});
+		}
 	},
 	mounted() {
 		this.setSubtitle();
@@ -355,6 +360,7 @@ export default mixins(
 			isTouchActive: false,
 			nodeSubtitle: '',
 			showTriggerNodeTooltip: false,
+			unwatchShowPinDataDiscoveryTooltip: () => {},
 			showPinDataDiscoveryTooltip: false,
 			dragging: false,
 		};
@@ -365,15 +371,15 @@ export default mixins(
 				return;
 			}
 
-			const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG);
-
-			if (dataItemsCount > 0 && !hasSeenPinDataTooltip) {
+			if (dataItemsCount > 0) {
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
 
 				this.showPinDataDiscoveryTooltip = true;
 				setTimeout(() => {
 					this.showPinDataDiscoveryTooltip = false;
-				}, 5000);
+				}, 10000);
+
+				this.unwatchShowPinDataDiscoveryTooltip();
 			}
 		},
 		setSubtitle() {

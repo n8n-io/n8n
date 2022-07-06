@@ -41,7 +41,7 @@
 			<n8n-text v-if="!workflowRunning">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
 				<span @click="insertTestData" v-if="isPinDataNodeType">
-					<br/>
+					<br>
 					{{ $locale.baseText('generic.or') }}
 					<n8n-text
 						tag="a"
