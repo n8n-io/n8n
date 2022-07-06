@@ -1,5 +1,4 @@
-// eslint-disable-next-line import/no-cycle
-import { IPersonalizationSurveyAnswers } from '../../Interfaces';
+import { ValueTransformer } from 'typeorm';
 
 export const idStringifier = {
 	from: (value: number): string | number => (typeof value === 'number' ? value.toString() : value),
@@ -12,14 +11,10 @@ export const lowerCaser = {
 };
 
 /**
- * Ensure a consistent return type for personalization answers in `User`.
- * Answers currently stored as `TEXT` on Postgres.
+ * Unmarshal JSON as JS object.
  */
-export const answersFormatter = {
-	to: (answers: IPersonalizationSurveyAnswers): IPersonalizationSurveyAnswers => answers,
-	from: (answers: IPersonalizationSurveyAnswers | string): IPersonalizationSurveyAnswers => {
-		return typeof answers === 'string'
-			? (JSON.parse(answers) as IPersonalizationSurveyAnswers)
-			: answers;
-	},
+export const objectRetriever: ValueTransformer = {
+	to: (value: object): object => value,
+	from: (value: string | object): object =>
+		typeof value === 'string' ? (JSON.parse(value) as object) : value,
 };

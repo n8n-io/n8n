@@ -134,7 +134,7 @@ export const formFields: INodeProperties[] = [
 								name: 'descending',
 								type: 'boolean',
 								default: true,
-								description: 'Sort by descending order',
+								description: 'Whether to sort by descending order',
 							},
 							{
 								displayName: 'Order By',

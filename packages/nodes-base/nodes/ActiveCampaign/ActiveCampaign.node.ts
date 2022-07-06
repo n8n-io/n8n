@@ -109,6 +109,7 @@ export class ActiveCampaign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign',
 		name: 'activeCampaign',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:activeCampaign.png',
 		group: ['transform'],
 		version: 1,
@@ -144,6 +145,10 @@ export class ActiveCampaign implements INodeType {
 						value: 'accountContact',
 					},
 					{
+						name: 'Connection',
+						value: 'connection',
+					},
+					{
 						name: 'Contact',
 						value: 'contact',
 					},
@@ -156,23 +161,19 @@ export class ActiveCampaign implements INodeType {
 						value: 'contactTag',
 					},
 					{
-						name: 'Connection',
-						value: 'connection',
-					},
-					{
 						name: 'Deal',
 						value: 'deal',
-					},
-					{
-						name: 'E-commerce Order',
-						value: 'ecommerceOrder',
 					},
 					{
 						name: 'E-Commerce Customer',
 						value: 'ecommerceCustomer',
 					},
 					{
-						name: 'E-commerce Order Product',
+						name: 'E-Commerce Order',
+						value: 'ecommerceOrder',
+					},
+					{
+						name: 'E-Commerce Order Product',
 						value: 'ecommerceOrderProducts',
 					},
 					{

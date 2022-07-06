@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
@@ -16,6 +17,7 @@ export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GraphQL',
 		name: 'graphql',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:graphql.png',
 		group: ['input'],
 		version: 1,
@@ -112,8 +114,8 @@ export class GraphQL implements INodeType {
 						value: 'headerAuth',
 					},
 					{
-						name: 'Query Auth',
-						value: 'queryAuth',
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'OAuth1',
@@ -124,8 +126,8 @@ export class GraphQL implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'None',
-						value: 'none',
+						name: 'Query Auth',
+						value: 'queryAuth',
 					},
 				],
 				default: 'none',
@@ -172,7 +174,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'GraphQL (raw)',
+						name: 'GraphQL (Raw)',
 						value: 'graphql',
 					},
 					{

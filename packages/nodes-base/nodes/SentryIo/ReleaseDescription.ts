@@ -51,7 +51,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -69,7 +69,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the releases belong to',
+		description: 'The slug of the organization the releases belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -143,7 +143,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:get/delete                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -162,7 +162,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -188,7 +188,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -206,7 +206,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -245,7 +245,7 @@ export const releaseFields: INodeProperties[] = [
 		description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
 	},
 	{
-		displayName: 'Projects',
+		displayName: 'Project Names or IDs',
 		name: 'projects',
 		type: 'multiOptions',
 		typeOptions: {
@@ -263,7 +263,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'A list of project slugs that are involved in this release',
+		description: 'A list of project slugs that are involved in this release. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -283,7 +283,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Date released',
+				displayName: 'Date Released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
@@ -445,7 +445,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -463,7 +463,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -609,11 +609,11 @@ export const releaseFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Date released',
+				displayName: 'Date Released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
-				description: 'an optional date that indicates when the release went live. If not provided the current time is assumed.',
+				description: 'An optional date that indicates when the release went live. If not provided the current time is assumed.',
 			},
 			{
 				displayName: 'Ref',

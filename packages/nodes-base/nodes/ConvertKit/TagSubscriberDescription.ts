@@ -38,9 +38,10 @@ export const tagSubscriberOperations: INodeProperties[] = [
 
 export const tagSubscriberFields: INodeProperties[] = [
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
@@ -63,6 +64,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {

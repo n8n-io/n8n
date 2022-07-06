@@ -1,4 +1,9 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class DeepLApi implements ICredentialType {
 	name = 'deepLApi';
@@ -28,4 +33,20 @@ export class DeepLApi implements ICredentialType {
 			default: 'pro',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			qs: {
+				auth_key: '={{$credentials.apiKey}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.apiPlan === "pro" ? "https://api.deepl.com/v2" : "https://api-free.deepl.com/v2" }}',
+			url: '/usage',
+		},
+	};
 }
