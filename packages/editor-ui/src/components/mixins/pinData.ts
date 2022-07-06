@@ -32,6 +32,10 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend(
 				const positionMatch = error.message.match(/at position (\d+)/);
 
 				error.message = message.charAt(0).toUpperCase() + message.slice(1);
+				error.message = error.message.replace(
+					'Unexpected token \' in JSON',
+					'Unexpected single quote. Please use double quotes (") instead',
+				);
 
 				if (positionMatch) {
 					const position = parseInt(positionMatch[1], 10);
