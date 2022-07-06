@@ -20,7 +20,7 @@ export const issueAttachmentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add attachment to issue',
-				action: 'Add an attachment to an issue ',
+				action: 'Add an attachment to an issue',
 			},
 			{
 				name: 'Get',

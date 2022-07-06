@@ -44,13 +44,13 @@ export const dealOperations: INodeProperties[] = [
 				name: 'Get Recently Created',
 				value: 'getRecentlyCreated',
 				description: 'Get recently created deals',
-				action: 'Get a recently created deal',
+				action: 'Get recently created deals',
 			},
 			{
 				name: 'Get Recently Modified',
 				value: 'getRecentlyModified',
 				description: 'Get recently modified deals',
-				action: 'Get a recently modified deal',
+				action: 'Get recently modified deals',
 			},
 			{
 				name: 'Search',

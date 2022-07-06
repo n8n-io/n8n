@@ -13,17 +13,17 @@ export const unsubscribeOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
-				action: 'Add an unsubscribe',
+				action: 'Add an email to an unsubscribe list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				action: 'Delete an unsubscribe',
+				action: 'Delete an email from an unsubscribe list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				action: 'Get all unsubscribes',
+				action: 'Get all unsubscribed emails',
 			},
 		],
 		displayOptions: {

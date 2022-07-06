@@ -91,7 +91,7 @@ export class MessageBird implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get the balance',
-						action: 'Get a balance',
+						action: 'Get the current balance',
 					},
 				],
 				default: 'get',

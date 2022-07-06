@@ -267,7 +267,7 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI interplanetary shock data',
-						action: 'Get a donki interplanetary shock',
+						action: 'Get a DONKI interplanetary shock',
 					},
 				],
 				default: 'get',

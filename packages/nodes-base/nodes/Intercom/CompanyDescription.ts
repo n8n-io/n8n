@@ -42,7 +42,7 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Users',
 				value: 'users',
 				description: 'List company\'s users',
-				action: 'Users a company',
+				action: 'List users of a company',
 			},
 		],
 		default: 'create',

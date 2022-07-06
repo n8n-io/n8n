@@ -20,7 +20,7 @@ export const emailOperations: INodeProperties[] = [
 				name: 'Create Record',
 				value: 'createRecord',
 				description: 'Create a record of an email sent to a contact',
-				action: 'Create a record',
+				action: 'Create a record of an email sent',
 			},
 			{
 				name: 'Get All',

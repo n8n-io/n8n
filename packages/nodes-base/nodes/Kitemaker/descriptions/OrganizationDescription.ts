@@ -14,7 +14,7 @@ export const organizationOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve data on the logged-in user\'s organization',
-				action: 'Get an organization',
+				action: 'Get the logged-in user\'s organization',
 			},
 		],
 		displayOptions: {

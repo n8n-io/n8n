@@ -18,7 +18,7 @@ export const caseOperations: INodeProperties[] = [
 				name: 'Add Comment',
 				value: 'addComment',
 				description: 'Add a comment to a case',
-				action: 'Add Comment a case',
+				action: 'Add a comment to a case',
 			},
 			{
 				name: 'Create',

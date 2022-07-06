@@ -50,13 +50,13 @@ export const channelOperations: INodeProperties[] = [
 				name: 'History',
 				value: 'history',
 				description: 'Get a conversation\'s history of messages and events',
-				action: 'History a channel',
+				action: 'Get the history of a channel',
 			},
 			{
 				name: 'Invite',
 				value: 'invite',
 				description: 'Invite a user to a channel',
-				action: 'Invite a channel',
+				action: 'Invite a user to a channel',
 			},
 			{
 				name: 'Join',
@@ -68,7 +68,7 @@ export const channelOperations: INodeProperties[] = [
 				name: 'Kick',
 				value: 'kick',
 				description: 'Removes a user from a channel',
-				action: 'Kick a channel',
+				action: 'Kick a user from a channel',
 			},
 			{
 				name: 'Leave',
@@ -80,7 +80,7 @@ export const channelOperations: INodeProperties[] = [
 				name: 'Member',
 				value: 'member',
 				description: 'List members of a conversation',
-				action: 'Member a channel',
+				action: 'Get members of a channel',
 			},
 			{
 				name: 'Open',
@@ -98,19 +98,19 @@ export const channelOperations: INodeProperties[] = [
 				name: 'Replies',
 				value: 'replies',
 				description: 'Get a thread of messages posted to a channel',
-				action: 'Replies a channel',
+				action: 'Get a thread of messages posted to a channel',
 			},
 			{
 				name: 'Set Purpose',
 				value: 'setPurpose',
 				description: 'Sets the purpose for a conversation',
-				action: 'Set Purpose a channel',
+				action: 'Set the purpose of a channel',
 			},
 			{
 				name: 'Set Topic',
 				value: 'setTopic',
 				description: 'Sets the topic for a conversation',
-				action: 'Set Topic a channel',
+				action: 'Set the topic of a channel',
 			},
 			{
 				name: 'Unarchive',

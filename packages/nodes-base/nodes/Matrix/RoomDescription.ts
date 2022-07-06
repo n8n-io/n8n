@@ -38,7 +38,7 @@ export const roomOperations: INodeProperties[] = [
 				name: 'Kick',
 				value: 'kick',
 				description: 'Kick a user from a room',
-				action: 'Kick a room',
+				action: 'Kick a user from a room',
 			},
 			{
 				name: 'Leave',

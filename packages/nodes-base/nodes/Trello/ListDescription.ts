@@ -23,7 +23,7 @@ export const listOperations: INodeProperties[] = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archive/Unarchive a list',
-				action: 'Archive a list',
+				action: 'Archive/unarchive a list',
 			},
 			{
 				name: 'Create',

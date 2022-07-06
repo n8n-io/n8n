@@ -50,7 +50,7 @@ export const issueOperations: INodeProperties[] = [
 				name: 'Notify',
 				value: 'notify',
 				description: 'Create an email notification for an issue and add it to the mail queue',
-				action: 'Notify an issue',
+				action: 'Create an email notification for an issue',
 			},
 			{
 				name: 'Status',
