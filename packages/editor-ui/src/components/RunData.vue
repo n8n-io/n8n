@@ -74,7 +74,7 @@
 					</template>
 					<template #content v-else>
 						<div :class="$style['tooltip-container']">
-							{{ $locale.baseText('node.pinData') }}
+							{{ $locale.baseText('node.discovery.pinData') }}
 						</div>
 					</template>
 					<n8n-icon-button

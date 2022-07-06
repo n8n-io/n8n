@@ -43,7 +43,7 @@
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
 						<template #content>
-							{{ $locale.baseText('node.pinData') }}
+							{{ $locale.baseText('node.discovery.pinData') }}
 						</template>
 						<span />
 					</n8n-tooltip>
