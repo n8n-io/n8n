@@ -1,19 +1,19 @@
-<template functional>
-	<div :class="{[$style.inputLabelContainer]: !props.labelHoverableOnly}">
-		<div :class="$options.methods.getLabelClass(props, $style)">
+<template>
+	<div :class="{[$style.inputLabelContainer]: !labelHoverableOnly}">
+		<div :class="labelClass">
 			<div :class="$style.info">
-				<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline">
-					{{ props.label }}
-					<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
-				</component>
-				<span :class="[$style.infoIcon, props.showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="props.tooltipText">
-					<component :is="$options.components.N8nTooltip" placement="top" :popper-class="$style.tooltipPopper">
-						<component :is="$options.components.N8nIcon" icon="question-circle" size="small" />
-						<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
-					</component>
+				<n8n-text v-if="label" :bold="bold" :size="size" :compact="!underline">
+					{{ label }}
+					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
+				</n8n-text>
+				<span :class="[$style.infoIcon, showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="tooltipText">
+					<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+						<n8n-icon icon="question-circle" size="small" />
+						<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
+					</n8n-tooltip>
 				</span>
 			</div>
-			<div :class="{[$style.side]: true, [$style.showIcon]: props.showSide}">
+			<div :class="{[$style.side]: true, [$style.showIcon]: showSide}">
 				<slot name="side"></slot>
 			</div>
 		</div>
@@ -69,27 +69,29 @@ export default {
 			type: Boolean,
 		},
 	},
-	methods: {
-		addTargetBlank,
-		getLabelClass(props: {label: string, size: string, underline: boolean}, $style: any) {
-			if (!props.label) {
+	computed: {
+		labelClass(): string {
+			if (!this.label) {
 				return '';
 			}
 
 			const classes = [];
-			if (props.underline) {
-				classes.push($style[`label-${props.size}-underline`]);
+			if (this.underline) {
+				classes.push(this.$style[`label-${this.size}-underline`]);
 			}
 			else {
-				classes.push($style[`label-${props.size}`]);
+				classes.push(this.$style[`label-${this.size}`]);
 			}
 
-			if (props.labelHoverableOnly) {
-				classes.push($style.inputLabel);
+			if (this.labelHoverableOnly) {
+				classes.push(this.$style.inputLabel);
 			}
 
 			return classes;
 		},
+	},
+	methods: {
+		addTargetBlank,
 	},
 };
 </script>
