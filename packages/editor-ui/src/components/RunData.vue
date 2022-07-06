@@ -517,9 +517,6 @@ export default mixins(
 			isTriggerNode (): boolean {
 				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 			},
-			isPinDataNodeType(): boolean {
-				return !!this.node && !PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type);
-			},
 			canPinData (): boolean {
 				return this.paneType === 'output' &&
 					this.isPinDataNodeType &&

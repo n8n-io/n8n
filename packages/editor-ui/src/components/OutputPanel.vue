@@ -40,7 +40,7 @@
 			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
 			<n8n-text v-if="!workflowRunning">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
-				<span @click="insertTestData" v-if="canPinData">
+				<span @click="insertTestData" v-if="isPinDataNodeType">
 					<br/>
 					{{ $locale.baseText('generic.or') }}
 					<n8n-text
@@ -75,11 +75,14 @@ import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8
 import Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { PIN_DATA_NODE_TYPES_DENYLIST } from "@/constants";
+import { pinData } from "@/components/mixins/pinData";
+import mixins from 'vue-typed-mixins';
 
 type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
-export default Vue.extend({
+export default mixins(
+	pinData,
+).extend({
 	name: 'OutputPanel',
 	components: { RunData, RunInfo },
 	props: {
@@ -187,9 +190,6 @@ export default Vue.extend({
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
 			return this.$store.getters['ui/outputPanelEditMode'];
-		},
-		canPinData(): boolean {
-			return !!this.node && !PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type);
 		},
 	},
 	methods: {

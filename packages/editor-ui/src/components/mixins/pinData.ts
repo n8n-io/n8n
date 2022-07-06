@@ -2,7 +2,7 @@ import Vue from 'vue';
 import { INodeUi } from "@/Interface";
 import { IDataObject } from "n8n-workflow";
 import {stringSizeInBytes} from "@/components/helpers";
-import {MAX_WORKFLOW_PINNED_DATA_SIZE} from "@/constants";
+import {MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST} from "@/constants";
 
 interface PinDataContext {
 	node: INodeUi;
@@ -16,6 +16,9 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend(
 		},
 		hasPinData (): boolean {
 			return !!this.node && typeof this.pinData !== 'undefined';
+		},
+		isPinDataNodeType(): boolean {
+			return !!this.node && !PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type);
 		},
 	},
 	methods: {
