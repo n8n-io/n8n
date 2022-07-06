@@ -116,6 +116,17 @@ export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswersV
 	return getPersonalizationV1(answers as IPersonalizationSurveyAnswersV1);
 }
 
+export function getAccountAge(currentUser: IUser): number {
+	// TODO: This needs to be updated when we have actual account creation date available from BE
+	if(currentUser.globalRole) {
+		const accountCreatedAt = new Date(currentUser.globalRole.createdAt);
+		const today = new Date();
+
+		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000* 3600 * 24));
+	}
+	return -1;
+}
+
 function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 	let nodeTypes: string[] = [];
 

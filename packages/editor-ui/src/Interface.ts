@@ -515,6 +515,7 @@ export interface IUserResponse {
 	globalRole?: {
 		name: IRole;
 		id: string;
+		createdAt: Date;
 	};
 	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
 	isPending: boolean;
@@ -947,6 +948,15 @@ export interface IInviteResponse {
 		email: string;
 	};
 	error?: string;
+}
+
+export interface IOnboardingCallPromptResponse {
+	nextPrompt?: IOnboardingCallPrompt;
+}
+
+export interface IOnboardingCallPrompt {
+	title: string;
+	body: string;
 }
 
 export interface ITab {

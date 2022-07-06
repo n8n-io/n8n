@@ -217,6 +217,8 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+import { getAccountAge } from '@/modules/userHelpers';
+import { fetchNextOnboardingPrompt } from '@/api/workflow-webhooks';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -307,6 +309,9 @@ export default mixins(
 			}
 		},
 		computed: {
+			...mapGetters('users', [
+				'currentUser',
+			]),
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
 			]),
@@ -2965,6 +2970,26 @@ export default mixins(
 			});
 
 			this.$externalHooks().run('nodeView.mount');
+
+			// TODO: Move this to top
+			const ONBOARDING_PROMPT_TIMEBOX = 14;
+			const ONBOARDING_PROMPT_TIMEOUT = 10000;
+
+			if (getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
+				setTimeout(async () => {
+					const onboardingResponse = await fetchNextOnboardingPrompt();
+
+					if (onboardingResponse.nextPrompt) {
+						this.$showToast({
+							title: onboardingResponse.nextPrompt.title,
+							message: onboardingResponse.nextPrompt.body,
+							duration: 0,
+							customClass: 'clickable',
+							onClick: () => {},
+						});
+					}
+				}, ONBOARDING_PROMPT_TIMEOUT);
+			}
 		},
 
 		destroyed () {
