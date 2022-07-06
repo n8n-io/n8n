@@ -31,14 +31,14 @@
 				</div>
 
 				<div class="node-trigger-tooltip__wrapper">
-					<n8n-tooltip placement="top" :manual="true" :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+					<n8n-tooltip placement="top" manual :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
 						<div slot="content" v-text="getTriggerNodeTooltip"></div>
 						<span />
 					</n8n-tooltip>
 					<n8n-tooltip
 						v-if="isTriggerNode"
 						placement="top"
-						:manual="true"
+						manual
 						:value="showPinDataDiscoveryTooltip"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>

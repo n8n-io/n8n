@@ -12,7 +12,7 @@
 			placement="bottom-start"
 			:value="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
-			:manual="true"
+			manual
 		>
 			<div slot="content" :class="$style.triggerWarning">
 				{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
