@@ -9,7 +9,7 @@
 
 <script lang="ts">
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
 import { INodeUi, ITab } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
@@ -49,7 +49,7 @@ export default mixins(
 				return 'https://docs.n8n.io/nodes/' + (nodeType.documentationUrl || nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + nodeType.name;
 			}
 
-			return '';
+			return this.isCommunityNode ? `${NPM_PACKAGE_DOCS_BASE_URL}${nodeType.name.split('.')[0]}` : '';
 		},
 		isCommunityNode(): boolean {
 			const nodeType = this.nodeType as INodeTypeDescription | null;
