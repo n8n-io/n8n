@@ -225,6 +225,9 @@ interface AddNodeOptions {
 	dragAndDrop?: boolean;
 }
 
+const ONBOARDING_PROMPT_TIMEBOX = 14;
+const ONBOARDING_PROMPT_TIMEOUT = 30000;
+
 export default mixins(
 	copyPaste,
 	externalHooks,
@@ -314,6 +317,9 @@ export default mixins(
 			]),
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
+			]),
+			...mapGetters('settings', [
+				'isOnboardingCallPromptFeatureEnabled',
 			]),
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
@@ -2971,11 +2977,7 @@ export default mixins(
 
 			this.$externalHooks().run('nodeView.mount');
 
-			// TODO: Move this to top
-			const ONBOARDING_PROMPT_TIMEBOX = 14;
-			const ONBOARDING_PROMPT_TIMEOUT = 10000;
-
-			if (getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
+			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
 				setTimeout(async () => {
 					const onboardingResponse = await fetchNextOnboardingPrompt();
 
@@ -2985,7 +2987,9 @@ export default mixins(
 							message: onboardingResponse.nextPrompt.body,
 							duration: 0,
 							customClass: 'clickable',
-							onClick: () => {},
+							onClick: () => {
+								// TODO: Open signup modal
+							},
 						});
 					}
 				}, ONBOARDING_PROMPT_TIMEOUT);

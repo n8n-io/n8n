@@ -493,6 +493,7 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	onboardingCallPromptEnabled: boolean;
 }
 
 export interface IPersonalizationSurveyAnswers {

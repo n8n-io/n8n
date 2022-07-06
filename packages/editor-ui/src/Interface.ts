@@ -667,6 +667,7 @@ export interface IN8nUISettings {
 		latestVersion: number;
 		path: string;
 	};
+	onboardingCallPromptEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -887,6 +888,7 @@ export interface ISettingsState {
 		latestVersion: number;
 		path: string;
 	};
+	onboardingCallPromptEnabled: boolean;
 }
 
 export interface ITemplateState {

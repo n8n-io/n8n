@@ -901,4 +901,13 @@ export const schema = {
 		default: 'en',
 		env: 'N8N_DEFAULT_LOCALE',
 	},
+
+	onboardingCallPrompt: {
+		enabled: {
+			doc: 'Whether onboarding call propmpt feature is available',
+			format: Boolean,
+			default: true,
+			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
+		},
+	},
 };
