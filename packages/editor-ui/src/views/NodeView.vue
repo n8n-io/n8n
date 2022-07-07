@@ -1526,7 +1526,7 @@ export default mixins(
 					};
 
 					if (lastSelectedNode) {
-						trackProperties.input_node_type = lastSelectedNode.type.split('.')[1];
+						trackProperties.input_node_type = lastSelectedNode.type;
 					}
 
 					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);

@@ -90,7 +90,7 @@ export const workflowRun = mixins(
 							const issueNode = this.$store.getters.getNodeByName(nodeName);
 
 							if (issueNode) {
-								issueNodeType = issueNode.type.split('.')[1];
+								issueNodeType = issueNode.type;
 							}
 
 							trackErrorNodeTypes.push(issueNodeType);

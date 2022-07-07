@@ -115,7 +115,7 @@ export default mixins(
 				node_name: string;
 			} = {
 				event_version: '2',
-				node_type_dest: this.$store.getters.activeNode.type.split('.')[1],
+				node_type_dest: this.$store.getters.activeNode.type,
 				parameter_name_dest: this.parameter.displayName,
 				is_immediate_input: false,
 				variable_expression: eventData.variable,
@@ -137,7 +137,7 @@ export default mixins(
 
 				if (splitVar[0].startsWith('$node')) {
 					const sourceNodeName = splitVar[0].split('"')[1];
-					trackProperties.node_type_source = this.$store.getters.getNodeByName(sourceNodeName).type.split('.')[1];
+					trackProperties.node_type_source = this.$store.getters.getNodeByName(sourceNodeName).type;
 					const nodeConnections: Array<Array<{ node: string }>> = this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName).main;
 					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.$store.getters.activeNode.name)) ? true : false;
 
