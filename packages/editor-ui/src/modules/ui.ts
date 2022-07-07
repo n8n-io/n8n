@@ -17,6 +17,7 @@ import {
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -55,6 +56,9 @@ const module: Module<IUiState, IRootState> = {
 				activeId: null,
 			},
 			[DUPLICATE_MODAL_KEY]: {
+				open: false,
+			},
+			[ONBOARDING_CALL_SIGNUP_MODAL_KEY]: {
 				open: false,
 			},
 			[PERSONALIZATION_MODAL_KEY]: {

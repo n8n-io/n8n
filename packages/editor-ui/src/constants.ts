@@ -38,6 +38,7 @@ export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
 export const EXECUTIONS_MODAL_KEY = 'executions';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
+export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
