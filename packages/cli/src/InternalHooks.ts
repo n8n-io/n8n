@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-import { get as pslGet } from 'psl';
 import { BinaryDataManager } from 'n8n-core';
 import {
 	INodesGraphResult,
@@ -188,7 +187,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 					error_node_type: properties.error_node_type,
 					node_graph_string: properties.node_graph_string as string,
 					error_node_id: properties.error_node_id as string,
-					webhook_domain: null,
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
@@ -208,12 +206,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 						}),
 					);
 				} else {
-					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
-						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
-							?.json as { headers: { host: string } };
-						manualExecEventProperties.webhook_domain = pslGet(execJson.headers.host);
-					});
-
 					promises.push(
 						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
 					);
