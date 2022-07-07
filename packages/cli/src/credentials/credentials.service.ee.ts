@@ -10,12 +10,14 @@ export class EECreditentialsService extends CredentialsService {
 	static async isOwned(
 		user: User,
 		credentialId: string,
-	): Promise<[boolean, CredentialsEntity | null]> {
+	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
 		const sharedCredentials = await this.getSharedCredentials(user.id, credentialId, [
 			'credentials',
 		]);
 
-		return sharedCredentials ? [true, sharedCredentials.credentials] : [false, null];
+		return sharedCredentials
+			? { ownsCredential: true, credential: sharedCredentials.credentials }
+			: { ownsCredential: false };
 	}
 
 	static async share(credentials: CredentialsEntity, sharee: User): Promise<SharedCredentials> {
