@@ -953,12 +953,13 @@ export interface IInviteResponse {
 }
 
 export interface IOnboardingCallPromptResponse {
-	nextPrompt?: IOnboardingCallPrompt;
+	nextPrompt: IOnboardingCallPrompt;
 }
 
 export interface IOnboardingCallPrompt {
 	title: string;
 	body: string;
+	index: number;
 }
 
 export interface ITab {

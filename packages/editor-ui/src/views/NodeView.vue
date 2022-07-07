@@ -2989,12 +2989,16 @@ export default mixins(
 							customClass: 'clickable',
 							closeOnClick: true,
 							onClick: () => {
-								// TODO: Open signup modal
+								this.$telemetry.track('user_clicked_onboarding_session_toast_link', {
+									toast_sequence_num: onboardingResponse.nextPrompt.index + 1,
+									title: onboardingResponse.nextPrompt.title,
+									text: onboardingResponse.nextPrompt.body,
+								});
 								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
 							},
 						});
 					}
-				}, ONBOARDING_PROMPT_TIMEOUT);
+				}, 10000); // TODO: After testing set this back to ONBOARDING_PROMPT_TIMEOUT
 			}
 		},
 
