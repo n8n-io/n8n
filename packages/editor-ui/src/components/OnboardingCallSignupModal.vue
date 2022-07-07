@@ -4,6 +4,8 @@
 		:title="$locale.baseText('onboardingCallSignupModal.title')"
 		:eventBus="modalBus"
 		:center="true"
+		:showClose="false"
+		:beforeClose="onModalClose"
 		width="460px"
 	>
 		<template slot="content">
@@ -22,13 +24,21 @@
 			</div>
 		</template>
 		<template slot="footer">
-			<n8n-button
-				:disabled="email === ''"
-				:label="$locale.baseText('onboardingCallSignupModal.signupButton.label')"
-				size="large"
-				float="right"
-				@click="signup"
-			/>
+			<div :class="$style.buttonsContainer">
+				<n8n-button
+					:disabled="email === ''"
+					:label="$locale.baseText('onboardingCallSignupModal.signupButton.label')"
+					size="large"
+					float="right"
+					@click="signup"
+				/>
+				<n8n-button
+					:label="$locale.baseText('onboardingCallSignupModal.cancelButton.label')"
+					size="large"
+					float="right"
+					@click="onCancel"
+				/>
+			</div>
 		</template>
 	</Modal>
 </template>
@@ -59,6 +69,7 @@ export default mixins(
 			modalBus: new Vue(),
 			ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 			showError: false,
+			exitConfirmed: false,
 		};
 	},
 	computed: {
@@ -67,7 +78,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		signup() {
+		onSignup() {
 			if(this.isEmailValid) {
 				this.showError = false;
 				// TODO: Submit email here
@@ -80,6 +91,22 @@ export default mixins(
 				this.showError = true;
 			}
 		},
+		async onCancel() {
+			const deleteConfirmed = await this.confirmMessage(
+				'',
+				this.$locale.baseText('onboardingCallSignupModal.confirmExit.title'),
+				null,
+				this.$locale.baseText('generic.yes'),
+				this.$locale.baseText('generic.no'),
+			);
+			this.exitConfirmed = deleteConfirmed;
+			if (deleteConfirmed) {
+				this.modalBus.$emit('close');
+			}
+		},
+		onModalClose() {
+			return this.exitConfirmed;
+		},
 	},
 });
 </script>
@@ -87,5 +114,11 @@ export default mixins(
 <style lang="scss" module>
 .error {
 	color: var(--color-danger);
+}
+
+.buttonsContainer {
+	display: flex;
+	justify-content: end;
+	column-gap: var(--spacing-xs);
 }
 </style>

@@ -2983,6 +2983,7 @@ export default mixins(
 
 					if (onboardingResponse.nextPrompt) {
 						this.$showToast({
+							type: 'info',
 							title: onboardingResponse.nextPrompt.title,
 							message: onboardingResponse.nextPrompt.body,
 							duration: 0,
