@@ -6,13 +6,13 @@
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
-				<span :class="[$style.infoIcon, showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="tooltipText">
+			</div>
+			<span :class="[$style.infoIcon, showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="tooltipText">
 					<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 						<n8n-icon icon="question-circle" size="small" />
 						<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
 					</n8n-tooltip>
 				</span>
-			</div>
 			<div :class="{[$style.options]: true, [$style.showIcon]: showOptions}">
 				<slot name="options"></slot>
 			</div>
@@ -104,8 +104,10 @@ export default {
 
 .infoIcon {
 	display: flex;
+	align-items: center;
 	color: var(--color-text-light);
-	margin-left: var(--spacing-4xs);
+	padding-left: var(--spacing-4xs);
+	background-color: var(--color-background-xlight)
 }
 
 .showIcon {
@@ -118,8 +120,12 @@ export default {
 
 .info {
 	display: flex;
-	flex-grow: 1;
 	align-items: center;
+	min-width: 0;
+
+	> * {
+		white-space: nowrap;
+	}
 }
 
 .label {
@@ -150,6 +156,12 @@ export default {
 .options {
 	opacity: 0;
 	transition: opacity 150ms cubic-bezier(0.87, 0, 0.13, 1);
+	flex-grow: 1;
+	background-color: var(--color-background-xlight);
+
+	> * {
+		float: right;
+	}
 }
 
 </style>
