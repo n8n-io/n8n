@@ -222,7 +222,6 @@ export async function truncate(collections: Array<CollectionName>, testDbName: s
 		}
 
 		return await truncateMappingTables(dbType, collections, testDb);
-		// return Promise.resolve([])
 	}
 
 	/**
