@@ -92,15 +92,22 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, additionalFields: IDataObject, jsonParameters = false): Promise<IDataObject | undefined> {
 	// Check if the additionalFields object contains customFields
 	if (jsonParameters === true) {
-		const customFieldsJson = additionalFields.customFieldsJson;
+		let customFieldsJson = additionalFields.customFieldsJson;
 		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
 		// which would remove the extra fields
 		delete additionalFields.customFieldsJson;
 
 		if (typeof customFieldsJson === 'string') {
-			return JSON.parse(customFieldsJson);
-		} else if (typeof customFieldsJson === 'object') {
-			return customFieldsJson as IDataObject;
+			customFieldsJson =  JSON.parse(customFieldsJson);
+		}
+
+		if (typeof customFieldsJson === 'object') {
+			const customFields = Object.keys(customFieldsJson as IDataObject).reduce((acc, curr) => {
+					acc[`customFields.${curr}`] = (customFieldsJson as IDataObject)[curr];
+					return acc;
+				}, {} as IDataObject);
+
+			return customFields;
 		} else if (customFieldsJson) {
 			throw Error('customFieldsJson value is invalid');
 		}
@@ -129,9 +136,8 @@ export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctio
 
 			// Might be able to do some type conversions here if needed, TODO
 
-			acc[fieldName] = {
-				[referenceTypeMapping[fieldName]]: curr.value,
-			};
+			const updatedField = `customFields.${fieldName}.${[referenceTypeMapping[fieldName]]}`;
+			acc[updatedField] = curr.value;
 			return acc;
 		}, {} as IDataObject);
 
@@ -142,17 +148,20 @@ export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctio
 }
 
 export function buildCustomFieldSearch(customFields: IDataObject): IDataObject[] {
-	const customFieldTypes = ['boolean', 'date', 'float', 'integer', 'number', 'string'];
+	// const customFieldTypes = ['boolean', 'date', 'float', 'integer', 'number', 'string'];
 	const searchQueries: IDataObject[] = [];
+	// Object.keys(customFields).forEach(customFieldName => {
+	// 	const customField = customFields[customFieldName] as IDataObject;
+
+	// 	// Figure out the field type from the object's keys
+	// 	const fieldType = Object.keys(customField)
+	// 		.filter(key => customFieldTypes.indexOf(key) > -1)[0];
+	// 	const fieldValue = customField[fieldType];
+
+	// 	searchQueries.push(Eq(`customFields.${customFieldName}.${fieldType}`, fieldValue));
+	// });
 	Object.keys(customFields).forEach(customFieldName => {
-		const customField = customFields[customFieldName] as IDataObject;
-
-		// Figure out the field type from the object's keys
-		const fieldType = Object.keys(customField)
-			.filter(key => customFieldTypes.indexOf(key) > -1)[0];
-		const fieldValue = customField[fieldType];
-
-		searchQueries.push(Eq(`customFields.${customFieldName}.${fieldType}`, fieldValue));
+		searchQueries.push(Eq(customFieldName, customFields[customFieldName]));
 	});
 	return searchQueries;
 }

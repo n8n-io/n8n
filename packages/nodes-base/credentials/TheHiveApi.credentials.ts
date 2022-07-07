@@ -1,5 +1,6 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticate,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -51,13 +52,14 @@ export class TheHiveApi implements ICredentialType {
 			default: false,
 		},
 	];
-	authenticate = {
-		type: 'headerAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: 'Authorization',
-			value: '=Bearer {{$credentials.ApiKey}}',
+			headers: {
+				Authorization: '=Bearer {{$credentials?.ApiKey}}',
+			},
 		},
-	} as IAuthenticateHeaderAuth;
+	};
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: `={{$credentials?.url}}`,

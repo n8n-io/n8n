@@ -398,7 +398,7 @@ export class TheHive implements INodeType {
 							source: this.getNodeParameter('source', i),
 							sourceRef: this.getNodeParameter('sourceRef', i),
 							follow: this.getNodeParameter('follow', i, true),
-							customFields,
+							...customFields,
 							...prepareOptional(additionalFields),
 						};
 
@@ -688,7 +688,7 @@ export class TheHive implements INodeType {
 						delete updateFields.artifactUi;
 
 						const body: IDataObject = {
-							customFields,
+							...customFields,
 						};
 
 						Object.assign(body, updateFields);
@@ -1327,7 +1327,7 @@ export class TheHive implements INodeType {
 							flag: this.getNodeParameter('flag', i),
 							tlp: this.getNodeParameter('tlp', i),
 							tags: splitTags(this.getNodeParameter('tags', i) as string),
-							customFields,
+							...customFields,
 							...prepareOptional(options),
 						};
 
@@ -1492,7 +1492,7 @@ export class TheHive implements INodeType {
 						const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
 
 						const body: IDataObject = {
-							customFields,
+							...customFields,
 							...prepareOptional(updateFields),
 						};
 
