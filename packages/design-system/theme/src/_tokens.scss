@@ -10,30 +10,24 @@
 				  var(--color-primary-l)
   );
 
-  --color-primary-tint-1-h: 11;
-  --color-primary-tint-1-s: 100%;
   --color-primary-tint-1-l: 88%;
   --color-primary-tint-1: hsl(
-				  var(--color-primary-tint-2-h),
-				  var(--color-primary-tint-2-s),
+				  var(--color-primary-h),
+				  var(--color-primary-s),
 				  var(--color-primary-tint-1-l)
   );
 
-  --color-primary-tint-2-h: 11;
-  --color-primary-tint-2-s: 100%;
-  --color-primary-tint-2-l: 95%;
+  --color-primary-tint-2-l: 94.5%;
   --color-primary-tint-2: hsl(
-				  var(--color-primary-tint-2-h),
-				  var(--color-primary-tint-2-s),
+				  var(--color-primary-h),
+				  var(--color-primary-s),
 				  var(--color-primary-tint-2-l)
   );
 
-  --color-primary-tint-3-h: 4;
-  --color-primary-tint-3-s: 100%;
-  --color-primary-tint-3-l: 97%;
+  --color-primary-tint-3-l: 96.9%;
   --color-primary-tint-3: hsl(
-				  var(--color-primary-tint-3-h),
-				  var(--color-primary-tint-3-s),
+				  var(--color-primary-h),
+				  var(--color-primary-s),
 				  var(--color-primary-tint-3-l)
   );
 

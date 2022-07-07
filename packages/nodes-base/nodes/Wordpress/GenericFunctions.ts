@@ -21,10 +21,6 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 			'Content-Type': 'application/json',
 			'User-Agent': 'n8n',
 		},
-		auth: {
-			user: credentials!.username as string,
-			password: credentials!.password as string,
-		},
 		method,
 		qs,
 		body,
@@ -36,7 +32,8 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request!(options);
+		const credentialType = 'wordpressApi';
+		return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
