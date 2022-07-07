@@ -13,8 +13,8 @@
 					</n8n-tooltip>
 				</span>
 			</div>
-			<div :class="{[$style.side]: true, [$style.showIcon]: showSide}">
-				<slot name="side"></slot>
+			<div :class="{[$style.options]: true, [$style.showIcon]: showOptions}">
+				<slot name="options"></slot>
 			</div>
 		</div>
 		<slot></slot>
@@ -61,7 +61,7 @@ export default {
 		showTooltip: {
 			type: Boolean,
 		},
-		showSide: {
+		showOptions: {
 			type: Boolean,
 		},
 	},
@@ -91,7 +91,7 @@ export default {
 		opacity: 1;
 	}
 
-	> div > .side {
+	> div > .options {
 		opacity: 1;
 	}
 }
@@ -147,7 +147,7 @@ export default {
 	}
 }
 
-.side {
+.options {
 	opacity: 0;
 	transition: opacity 150ms cubic-bezier(0.87, 0, 0.13, 1);
 }

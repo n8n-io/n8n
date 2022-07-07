@@ -3,11 +3,11 @@
 		:label="hideLabel? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltipText="hideLabel? '': $locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
-		:showSide="menuExpanded"
+		:showOptions="menuExpanded"
 		:bold="false"
 		size="small"
 	>
-		<template #side>
+		<template #options>
 			<parameter-options
 				:parameter="parameter"
 				:value="value"

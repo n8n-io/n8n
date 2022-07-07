@@ -4,9 +4,9 @@
 		:tooltipText="$locale.credText().inputLabelDescription(parameter)"
 		:required="parameter.required"
 		:showTooltip="focused"
-		:showSide="menuExpanded"
+		:showOptions="menuExpanded"
 	>
-		<template #side>
+		<template #options>
 			<parameter-options
 				:parameter="parameter"
 				:value="value"
