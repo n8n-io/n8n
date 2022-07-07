@@ -55,6 +55,7 @@ export class Paddle implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Paddle',
 		name: 'paddle',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:paddle.png',
 		group: ['output'],
 		version: 1,
@@ -76,6 +77,7 @@ export class Paddle implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Coupon',
@@ -103,7 +105,6 @@ export class Paddle implements INodeType {
 					},
 				],
 				default: 'coupon',
-				description: 'Resource to consume.',
 			},
 			// COUPON
 			...couponOperations,

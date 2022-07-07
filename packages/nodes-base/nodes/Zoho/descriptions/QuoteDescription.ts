@@ -16,6 +16,7 @@ export const quoteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -56,7 +57,6 @@ export const quoteOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -202,14 +202,14 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Quote Stage',
+				displayName: 'Quote Stage Name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote',
+				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			shippingAddress,
 			{
@@ -396,14 +396,14 @@ export const quoteFields: INodeProperties[] = [
 				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
-				displayName: 'Quote Stage',
+				displayName: 'Quote Stage Name or ID',
 				name: 'Quote_Stage',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote',
+				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			shippingAddress,
 			{

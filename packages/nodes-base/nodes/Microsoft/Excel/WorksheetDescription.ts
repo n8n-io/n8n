@@ -5,6 +5,7 @@ export const worksheetOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const worksheetOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -35,9 +35,10 @@ export const worksheetFields: INodeProperties[] = [
 /*                                 worksheet:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
@@ -124,9 +125,10 @@ export const worksheetFields: INodeProperties[] = [
 /*                                 worksheet:getContent                       */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
@@ -144,9 +146,10 @@ export const worksheetFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Worksheet',
+		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -199,7 +202,7 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should be returned RAW instead of parsed into keys according to their header',
+		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',

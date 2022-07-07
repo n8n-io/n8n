@@ -44,6 +44,7 @@ export class DeepL implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Language',
@@ -56,6 +57,7 @@ export class DeepL implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -71,7 +73,6 @@ export class DeepL implements INodeType {
 					},
 				],
 				default: 'translate',
-				description: 'The operation to perform',
 			},
 			...textOperations,
 		],
@@ -115,18 +116,18 @@ export class DeepL implements INodeType {
 				if (resource === 'language') {
 
 					if (operation === 'translate') {
-
+						let body: IDataObject = {};
 						const text = this.getNodeParameter('text', i) as string;
 						const translateTo = this.getNodeParameter('translateTo', i) as string;
-						const qs = { target_lang: translateTo, text } as IDataObject;
+						body = { target_lang: translateTo, 'text': text } as IDataObject;
 
 						if (additionalFields.sourceLang !== undefined) {
-							qs.source_lang = ['EN-GB', 'EN-US'].includes(additionalFields.sourceLang as string)
+							body.source_lang = ['EN-GB', 'EN-US'].includes(additionalFields.sourceLang as string)
 								? 'EN'
 								: additionalFields.sourceLang;
 						}
 
-						const response = await deepLApiRequest.call(this, 'GET', '/translate', {}, qs);
+						const response = await deepLApiRequest.call(this, 'GET', '/translate', body);
 						responseData.push(response.translations[0]);
 					}
 				}

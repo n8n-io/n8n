@@ -31,7 +31,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 	{
 		displayName: 'Operation',
@@ -76,7 +75,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -206,9 +204,10 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Authors IDs',
+				displayName: 'Author Names or IDs',
 				name: 'authors',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
@@ -305,9 +304,10 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -442,6 +442,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -489,6 +490,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -606,6 +608,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -671,6 +674,7 @@ export const postFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-url
 				description: 'Limit the fields returned in the response object. E.g. for posts fields=title,url.',
 			},
 			{
@@ -768,9 +772,10 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Authors IDs',
+				displayName: 'Author Names or IDs',
 				name: 'authors',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
@@ -894,9 +899,10 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},

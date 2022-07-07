@@ -10,6 +10,7 @@ export const boardMemberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const boardMemberOperations: INodeProperties[] = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -87,6 +87,9 @@ export const boardMemberFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
@@ -200,7 +203,7 @@ export const boardMemberFields: INodeProperties[] = [
 				name: 'allowBillableGuest',
 				type: 'boolean',
 				default: false,
-				description: 'Allows organization admins to add multi-board guests onto a board',
+				description: 'Whether to allow organization admins to add multi-board guests onto a board',
 			},
 		],
 	},
@@ -230,6 +233,7 @@ export const boardMemberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {

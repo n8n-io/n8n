@@ -7,6 +7,7 @@ export const fileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -57,7 +58,6 @@ export const fileOperations: INodeProperties[] = [
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -449,7 +449,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field',
+		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',

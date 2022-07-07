@@ -7,6 +7,7 @@ export const lightOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,7 +38,6 @@ export const lightOperations: INodeProperties[] = [
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -134,9 +134,10 @@ export const lightFields: INodeProperties[] = [
 	/*                                 light:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Light ID',
+		displayName: 'Light Name or ID',
 		name: 'lightId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getLights',
 		},
@@ -169,6 +170,7 @@ export const lightFields: INodeProperties[] = [
 			},
 		},
 		default: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'On/Off state of the light',
 	},
 	{

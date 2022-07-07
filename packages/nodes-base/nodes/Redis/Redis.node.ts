@@ -37,6 +37,7 @@ export class Redis implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Delete',
@@ -49,14 +50,14 @@ export class Redis implements INodeType {
 						description: 'Get the value of a key from Redis',
 					},
 					{
-						name: 'Info',
-						value: 'info',
-						description: 'Returns generic information about the Redis instance',
-					},
-					{
 						name: 'Increment',
 						value: 'incr',
 						description: 'Atomically increments a key by 1. Creates the key if it does not exist.',
+					},
+					{
+						name: 'Info',
+						value: 'info',
+						description: 'Returns generic information about the Redis instance',
 					},
 					{
 						name: 'Keys',
@@ -64,18 +65,17 @@ export class Redis implements INodeType {
 						description: 'Returns all the keys matching a pattern',
 					},
 					{
-						name: 'Set',
-						value: 'set',
-						description: 'Set the value of a key in redis',
-					},
-					{
 						name: 'Publish',
 						value: 'publish',
 						description: 'Publish message to redis channel',
 					},
+					{
+						name: 'Set',
+						value: 'set',
+						description: 'Set the value of a key in redis',
+					},
 				],
 				default: 'info',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -146,22 +146,22 @@ export class Redis implements INodeType {
 					{
 						name: 'Hash',
 						value: 'hash',
-						description: 'Data in key is of type "hash"',
-					},
-					{
-						name: 'String',
-						value: 'string',
-						description: 'Data in key is of type "string"',
+						description: 'Data in key is of type \'hash\'',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Data in key is of type "lists"',
+						description: 'Data in key is of type \'lists\'',
 					},
 					{
 						name: 'Sets',
 						value: 'sets',
-						description: 'Data in key is of type "sets"',
+						description: 'Data in key is of type \'sets\'',
+					},
+					{
+						name: 'String',
+						value: 'string',
+						description: 'Data in key is of type \'string\'',
 					},
 				],
 				default: 'automatic',
@@ -187,6 +187,7 @@ export class Redis implements INodeType {
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: '<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>.',
 					},
 				],
@@ -223,7 +224,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Set a timeout on key?',
+				description: 'Whether to set a timeout on key',
 			},
 			{
 				displayName: 'TTL',
@@ -317,22 +318,22 @@ export class Redis implements INodeType {
 					{
 						name: 'Hash',
 						value: 'hash',
-						description: 'Data in key is of type "hash"',
-					},
-					{
-						name: 'String',
-						value: 'string',
-						description: 'Data in key is of type "string"',
+						description: 'Data in key is of type \'hash\'',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Data in key is of type "lists"',
+						description: 'Data in key is of type \'lists\'',
 					},
 					{
 						name: 'Sets',
 						value: 'sets',
-						description: 'Data in key is of type "sets"',
+						description: 'Data in key is of type \'sets\'',
+					},
+					{
+						name: 'String',
+						value: 'string',
+						description: 'Data in key is of type \'string\'',
 					},
 				],
 				default: 'automatic',
@@ -351,7 +352,7 @@ export class Redis implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Set a timeout on key ?',
+				description: 'Whether to set a timeout on key',
 			},
 
 			{

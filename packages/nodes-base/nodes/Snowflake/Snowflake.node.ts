@@ -42,6 +42,7 @@ export class Snowflake implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Execute Query',
@@ -60,7 +61,6 @@ export class Snowflake implements INodeType {
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------

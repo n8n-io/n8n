@@ -7,6 +7,7 @@ export const assetTypeOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -90,9 +91,9 @@ export const assetTypeFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Parent Asset Type Name/ID',
+				displayName: 'Parent Asset Type Name or ID',
 				name: 'parent_asset_type_id',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				type: 'options',
 				default: '',
 				typeOptions: {

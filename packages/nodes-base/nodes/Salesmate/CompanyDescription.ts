@@ -5,6 +5,7 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const companyOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,9 +67,10 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
@@ -101,7 +102,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -259,7 +260,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -279,15 +280,16 @@ export const companyFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'name',
+				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -433,7 +435,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 company:getAll                             */
@@ -647,6 +649,7 @@ export const companyFields: INodeProperties[] = [
 										displayName: 'Condition',
 										name: 'condition',
 										type: 'options',
+										// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 										options: [
 											{
 												name: 'Equals',
@@ -657,20 +660,20 @@ export const companyFields: INodeProperties[] = [
 												value: 'NOT_EQUALS',
 											},
 											{
-												name: 'Empty',
-												value: 'EMPTY',
-											},
-											{
-												name: 'Not Empty',
-												value: 'NOT_EMPTY',
-											},
-											{
 												name: 'CONTAINS',
 												value: 'Contains',
 											},
 											{
 												name: 'Does Not Contains',
 												value: 'DOES_NOT_CONTAINS',
+											},
+											{
+												name: 'Empty',
+												value: 'EMPTY',
+											},
+											{
+												name: 'Not Empty',
+												value: 'NOT_EMPTY',
 											},
 											{
 												name: 'Starts With',

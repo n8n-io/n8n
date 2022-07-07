@@ -68,24 +68,24 @@ export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties 
 		],
 	},
 	{
-		displayName: 'Auto Delete',
+		displayName: 'Auto Delete Queue',
 		name: 'autoDelete',
 		type: 'boolean',
 		default: false,
-		description: 'The queue will be deleted when the number of consumers drops to zero',
+		description: 'Whether the queue will be deleted when the number of consumers drops to zero',
 	},
 	{
 		displayName: 'Durable',
 		name: 'durable',
 		type: 'boolean',
 		default: true,
-		description: 'The queue will survive broker restarts',
+		description: 'Whether the queue will survive broker restarts',
 	},
 	{
 		displayName: 'Exclusive',
 		name: 'exclusive',
 		type: 'boolean',
 		default: false,
-		description: 'Scopes the queue to the connection',
+		description: 'Whether to scope the queue to the connection',
 	},
 ];

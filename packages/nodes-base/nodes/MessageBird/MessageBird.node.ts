@@ -39,6 +39,7 @@ export class MessageBird implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -50,12 +51,12 @@ export class MessageBird implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -71,12 +72,12 @@ export class MessageBird implements INodeType {
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -92,7 +93,6 @@ export class MessageBird implements INodeType {
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -172,7 +172,7 @@ export class MessageBird implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Created Date-time',
+						displayName: 'Created Date-Time',
 						name: 'createdDatetime',
 						type: 'dateTime',
 						default: '',
@@ -247,7 +247,7 @@ export class MessageBird implements INodeType {
 						description: 'The status report URL to be used on a per-message basis. Reference is required for a status report webhook to be sent.',
 					},
 					{
-						displayName: 'Scheduled Date-time',
+						displayName: 'Scheduled Date-Time',
 						name: 'scheduledDatetime',
 						type: 'dateTime',
 						default: '',

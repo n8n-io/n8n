@@ -5,6 +5,7 @@ export const threadOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,7 +26,6 @@ export const threadOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -157,14 +157,14 @@ export const threadFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'If set to true, a draft reply is created',
+				description: 'Whether a draft reply is created',
 			},
 			{
 				displayName: 'Imported',
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'When imported is set to true, no outgoing emails or notifications will be generated',
+				description: 'Whether no outgoing emails or notifications will be generated',
 			},
 		],
 	},

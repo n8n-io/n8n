@@ -7,6 +7,7 @@ export const folderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -42,7 +43,6 @@ export const folderOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -158,7 +158,7 @@ export const folderFields: INodeProperties[] = [
 	{
 		displayName: 'Include Nested Folders',
 		name: 'includeNestedFolders',
-		description: 'Include child folders in the search',
+		description: 'Whether to include child folders in the search',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -290,7 +290,7 @@ export const folderFields: INodeProperties[] = [
 			{
 				displayName: 'Include Nested Folders',
 				name: 'includeNestedFolders',
-				description: 'Include child folders in the search. Only for search folders.',
+				description: 'Whether to include child folders in the search. Only for search folders.',
 				type: 'boolean',
 				default: false,
 			},

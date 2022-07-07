@@ -720,7 +720,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				description: 'Ignore aspect ratio and resize exactly to specified values',
 			},
 			{
-				name: 'Maximum area',
+				name: 'Maximum Area',
 				value: 'maximumArea',
 				description: 'Specified values are maximum area',
 			},
@@ -730,12 +730,12 @@ const nodeOperationOptions: INodeProperties[] = [
 				description: 'Specified values are minimum area',
 			},
 			{
-				name: 'Only if larger',
+				name: 'Only if Larger',
 				value: 'onlyIfLarger',
 				description: 'Resize only if image is larger than width or height',
 			},
 			{
-				name: 'Only if smaller',
+				name: 'Only if Smaller',
 				value: 'onlyIfSmaller',
 				description: 'Resize only if image is smaller than width or height',
 			},
@@ -868,6 +868,7 @@ export class EditImage implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get Information',
@@ -886,7 +887,6 @@ export class EditImage implements INodeType {
 					return 0;
 				}) as INodePropertyOptions[],
 				default: 'border',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Property Name',
@@ -927,13 +927,13 @@ export class EditImage implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: nodeOperations,
 								default: '',
-								description: 'The operation to perform.',
 							},
 							...nodeOperationOptions,
 							{
-								displayName: 'Font',
+								displayName: 'Font Name or ID',
 								name: 'font',
 								type: 'options',
 								displayOptions: {
@@ -947,7 +947,7 @@ export class EditImage implements INodeType {
 									loadOptionsMethod: 'getFonts',
 								},
 								default: 'default',
-								description: 'The font to use',
+								description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 						],
 					},
@@ -977,7 +977,7 @@ export class EditImage implements INodeType {
 						description: 'File name to set in binary data',
 					},
 					{
-						displayName: 'Font',
+						displayName: 'Font Name or ID',
 						name: 'font',
 						type: 'options',
 						displayOptions: {
@@ -991,7 +991,7 @@ export class EditImage implements INodeType {
 							loadOptionsMethod: 'getFonts',
 						},
 						default: 'default',
-						description: 'The font to use',
+						description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 					},
 					{
 						displayName: 'Format',
@@ -1211,6 +1211,9 @@ export class EditImage implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: item.json,
 					binary: {},
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 
 				if (operation === 'information') {
@@ -1394,7 +1397,14 @@ export class EditImage implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

@@ -11,6 +11,7 @@ export const clientOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -45,7 +46,6 @@ export const clientOperations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -113,7 +113,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active clients and false to return inactive clients',
+				description: 'Whether to only return active clients and false to return inactive clients',
 			},
 			{
 				displayName: 'Updated Since',
@@ -129,7 +129,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -149,7 +149,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -227,7 +227,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',

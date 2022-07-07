@@ -7,8 +7,8 @@ export const memberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
@@ -135,6 +135,9 @@ export const memberFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 10,
 		description: 'Max number of results to return',
 		displayOptions: {
@@ -158,6 +161,7 @@ export const memberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'The email of the member to update',
 		displayOptions: {
@@ -195,10 +199,10 @@ export const memberFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this member',
+				description: 'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -258,10 +262,10 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this member',
+				description: 'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',

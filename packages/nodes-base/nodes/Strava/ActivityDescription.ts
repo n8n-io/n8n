@@ -8,6 +8,7 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -63,7 +64,6 @@ export const activityOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -169,7 +169,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'commute',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as commute',
+				description: 'Whether to mark as commute',
 			},
 			{
 				displayName: 'Description',
@@ -193,7 +193,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'trainer',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as a trainer activity',
+				description: 'Whether to mark as a trainer activity',
 			},
 		],
 	},
@@ -241,7 +241,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'commute',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as commute',
+				description: 'Whether to mark as commute',
 			},
 			{
 				displayName: 'Description',
@@ -276,7 +276,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'trainer',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as a trainer activity',
+				description: 'Whether to mark as a trainer activity',
 			},
 		],
 	},

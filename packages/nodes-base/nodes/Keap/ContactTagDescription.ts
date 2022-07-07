@@ -7,6 +7,7 @@ export const contactTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -32,7 +33,6 @@ export const contactTagOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -59,9 +59,10 @@ export const contactTagFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Tag IDs',
+		displayName: 'Tag Names or IDs',
 		name: 'tagIds',
 		type: 'multiOptions',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},

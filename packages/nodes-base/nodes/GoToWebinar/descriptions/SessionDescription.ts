@@ -7,8 +7,8 @@ export const sessionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
@@ -126,14 +126,14 @@ export const sessionFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Webinar Key',
+				displayName: 'Webinar Key Name or ID',
 				name: 'webinarKey',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getWebinars',
 				},
 				default: {},
-				description: 'Webinar by which to filter the sessions to retrieve',
+				description: 'Webinar by which to filter the sessions to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -142,7 +142,7 @@ export const sessionFields: INodeProperties[] = [
 	//      session: shared fields
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -150,7 +150,7 @@ export const sessionFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to which the session belongs',
+		description: 'Key of the webinar to which the session belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
