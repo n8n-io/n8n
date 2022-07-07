@@ -1218,7 +1218,7 @@ export class HttpRequest implements INodeType {
 					},
 					shopifyOAuth2Api: {
 						tokenType: 'Bearer',
-						includeAccessTokenInHeader: 'X-Shopify-Access-Token',
+						keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
 					},
 				};
 

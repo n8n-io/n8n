@@ -946,10 +946,10 @@ export async function requestOAuth2(
 			newRequestOptions?.headers?.Authorization.split(' ')[1];
 	}
 
-	if (oAuth2Options?.includeAccessTokenInHeader) {
+	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 		Object.assign(newRequestOptions, {
 			headers: {
-				[oAuth2Options.includeAccessTokenInHeader]: token.accessToken,
+				[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 			},
 		});
 	}
@@ -1022,10 +1022,10 @@ export async function requestOAuth2(
 				return this.helpers.httpRequest(newRequestOptions);
 			}
 
-			if (oAuth2Options?.includeAccessTokenInHeader) {
+			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 				Object.assign(newRequestOptions, {
 					headers: {
-						[oAuth2Options.includeAccessTokenInHeader]: token.accessToken,
+						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 					},
 				});
 			}

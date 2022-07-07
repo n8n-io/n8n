@@ -47,7 +47,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	const oAuth2Options: IOAuth2Options = {
 		tokenType: 'Bearer',
-		includeAccessTokenInHeader: 'X-Shopify-Access-Token',
+		keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
 	};
 
 	if (authenticationMethod === 'apiKey') {
