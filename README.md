@@ -12,7 +12,7 @@ n8n is an extendable workflow automation tool. With a [fair-code](http://faircod
 
 ## Available integrations
 
-n8n has 200+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
+n8n has 200+ different nodes to automate workflows. The list can be found on: [https://n8n.io/integrations](https://n8n.io/integrations)
 
 ## Documentation
 

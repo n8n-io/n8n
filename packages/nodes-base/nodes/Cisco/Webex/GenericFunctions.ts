@@ -315,7 +315,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: false,
-			description: 'Displays text slightly toned down to appear less prominent',
+			description: 'Whether to display text slightly toned down to appear less prominent',
 		},
 		{
 			displayName: 'Max Lines',
@@ -407,7 +407,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: true,
-			description: 'If true, allow text to wrap. Otherwise, text is clipped.',
+			description: 'Whether to allow text to wrap. Otherwise, text is clipped.',
 		},
 		{
 			displayName: 'Height',
@@ -445,7 +445,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 					],
 				},
 			},
-			description: 'When true, draw a separating line at the top of the element',
+			description: 'Whether to draw a separating line at the top of the element',
 		},
 		{
 			displayName: 'Spacing',
@@ -517,7 +517,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 				},
 			},
 			default: true,
-			description: 'If false, this item will be removed from the visual trees',
+			description: 'Whether this item will be removed from the visual trees',
 		},
 	];
 }
@@ -551,7 +551,7 @@ export function getInputTextProperties(): INodeProperties[] {
 				},
 			},
 			default: false,
-			description: 'If true, allow multiple lines of input',
+			description: 'Whether to allow multiple lines of input',
 		},
 		{
 			displayName: 'Max Length',

@@ -132,24 +132,24 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company IDs',
+				displayName: 'Company Names or IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Companies associated with the ticket',
+				description: 'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Contact IDs',
+				displayName: 'Contact Names or IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
 				},
 				default: [],
-				description: 'Contacts associated with the ticket',
+				description: 'Contacts associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Category Name or ID',
@@ -266,24 +266,24 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Company IDs',
+				displayName: 'Company Names or IDs',
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Companies associated with the ticket',
+				description: 'Companies associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Contact IDs',
+				displayName: 'Contact Names or IDs',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
 				},
 				default: [],
-				description: 'Contact associated with the ticket',
+				description: 'Contact associated with the ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Category Name or ID',
@@ -437,14 +437,14 @@ export const ticketFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your tickets.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description: '<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your tickets.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
@@ -518,14 +518,14 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTicketProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description: '<p>Used to include specific ticket properties in the results. By default, the results will only include ticket ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',

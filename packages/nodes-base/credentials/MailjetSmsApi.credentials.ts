@@ -1,5 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -17,13 +17,16 @@ export class MailjetSmsApi implements ICredentialType {
 			default: '',
 		},
 	];
-	authenticate: IAuthenticateHeaderAuth = {
-		type: 'headerAuth',
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: 'Authorization',
-			value: '=Bearer {{$credentials.token}}',
+			headers: {
+				Authorization: '=Bearer {{$credentials.token}}',
+			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: `https://api.mailjet.com`,

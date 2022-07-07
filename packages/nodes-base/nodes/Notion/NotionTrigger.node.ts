@@ -20,6 +20,7 @@ import moment from 'moment';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
 		displayName: 'Notion Trigger (Beta)',
 		name: 'notionTrigger',
 		icon: 'file:notion.svg',
@@ -56,6 +57,12 @@ export class NotionTrigger implements INodeType {
 					},
 				],
 				required: true,
+				default: '',
+			},
+			{
+				displayName: 'In Notion, make sure you share your database with your integration. Otherwise it won\'t be accessible, or listed here.',
+				name: 'notionNotice',
+				type: 'notice',
 				default: '',
 			},
 			{

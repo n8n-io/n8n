@@ -55,6 +55,7 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
@@ -145,6 +146,7 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
@@ -176,6 +178,7 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -252,6 +255,7 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
@@ -283,6 +287,7 @@ export const agentFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -429,7 +434,7 @@ export const agentFields: INodeProperties[] = [
 				name: 'manualLaunch',
 				type: 'boolean',
 				default: false,
-				description: 'If set, the agent will be considered as "launched manually"',
+				description: 'Whether the agent will be considered as "launched manually"',
 			},
 			{
 				displayName: 'Max Instance Count',
