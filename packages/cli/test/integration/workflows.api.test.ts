@@ -4,8 +4,6 @@ import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import type { Role } from '../../src/databases/entities/Role';
-import { INode } from 'n8n-workflow';
-import { Db } from '../../src';
 
 jest.mock('../../src/telemetry');
 
