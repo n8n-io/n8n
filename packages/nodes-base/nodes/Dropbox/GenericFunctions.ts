@@ -41,12 +41,7 @@ export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-
-			const credentials = await this.getCredentials('dropboxApi') as IDataObject;
-
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-
-			return await this.helpers.request(options);
+			return await this.helpers.requestWithAuthentication.call(this,'dropboxApi',options);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'dropboxOAuth2Api', options);
 		}
