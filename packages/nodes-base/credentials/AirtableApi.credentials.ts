@@ -20,7 +20,7 @@ export class AirtableApi implements ICredentialType {
 		},
 	];
 	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+		requestOptions.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
 		return requestOptions;
 	}
 }
