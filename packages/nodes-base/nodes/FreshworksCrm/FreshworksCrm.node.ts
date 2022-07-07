@@ -869,29 +869,52 @@ export class FreshworksCrm implements INodeType {
 					//                             search
 					// **********************************************************************
 
-					// https://developers.freshworks.com/crm/api/#search
-
-					const query = this.getNodeParameter('query', i) as string;
-					const field = this.getNodeParameter('options.field', i, '') as string;
-					let entities = this.getNodeParameter('entities', i);
-					if (Array.isArray(entities)) {
-						entities = entities.join(',');
-					}
-
 					if (operation === 'query') {
-						if (field) {
-							// https://developers.freshworks.com/crm/api/#lookup_search
-							const endpoint = `/lookup?q=${query}&f=${field}&entities=${entities}`;
+						// https://developers.freshworks.com/crm/api/#search
+						const query = this.getNodeParameter('query', i) as string;
+						let entities = this.getNodeParameter('entities', i);
+						const returnAll = this.getNodeParameter('returnAll', 0, false);
 
-							responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
-						} else {
-							// https://developers.freshworks.com/crm/api/#search
-							const endpoint = `/search?q=${query}&include=${entities}`;
+						if (Array.isArray(entities)) {
+							entities = entities.join(',');
+						}
 
-							responseData = await freshworksCrmApiRequest.call(this, 'GET', endpoint);
+						const qs: IDataObject = {
+							q: query,
+							include: entities,
+							per_page: 100,
+						};
+
+						responseData = await freshworksCrmApiRequest.call(this, 'GET', '/search', {}, qs);
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', 0);
+							responseData = responseData.slice(0, limit);
 						}
 					}
 
+					if (operation === 'lookup') {
+						// https://developers.freshworks.com/crm/api/#lookup_search
+						let searchField = this.getNodeParameter('searchField', i) as string;
+						let fieldValue =  this.getNodeParameter('fieldValue', i, '') as string;
+						let entities =  this.getNodeParameter('options.entities', i) as string;
+						if (Array.isArray(entities)) {
+							entities = entities.join(',');
+						}
+
+						if (searchField === 'customField') {
+							searchField = this.getNodeParameter('customFieldName', i) as string;
+							fieldValue = this.getNodeParameter('customFieldValue', i) as string;
+						}
+
+						const qs: IDataObject = {
+							q: fieldValue,
+							f: searchField,
+							entities,
+						};
+
+						responseData = await freshworksCrmApiRequest.call(this, 'GET', '/lookup', {}, qs);
+					}
 				} else if (resource === 'task') {
 
 					// **********************************************************************

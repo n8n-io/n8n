@@ -19,7 +19,12 @@ export const searchOperations: INodeProperties[] = [
 			{
 				name: 'Query',
 				value: 'query',
-				description: 'Search for records by entering query and entities',
+				description: 'Search for records by entering search queries of your choice',
+			},
+			{
+				name: 'Lookup',
+				value: 'lookup',
+				description: 'Search for the name or email address of records',
 			},
 		],
 		default: 'query',
@@ -28,7 +33,7 @@ export const searchOperations: INodeProperties[] = [
 
 export const searchFields: INodeProperties[] = [
 	// ----------------------------------------
-	//          Search: lookup
+	//          Search: query
 	// ----------------------------------------
 	{
 		displayName: 'Search Term',
@@ -36,7 +41,6 @@ export const searchFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Enter a term that will be used for searching entities',
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,24 +51,13 @@ export const searchFields: INodeProperties[] = [
 				],
 			},
 		},
+		description: 'Enter a term that will be used for searching entities',
 	},
 	{
-		displayName: 'Entities',
+		displayName: 'Search on Entities',
 		name: 'entities',
-		description: 'Select entities to query against. You can include multiple entities at once. Each result\'s response would contain a "type" key specifying the type of entity for identification.',
 		type: 'multiOptions',
-		required: true,
-		default: [],
-		hint: 'You can set array of string or string of comma separated values in an expression',
 		options: [
-			{
-				name: 'Account',
-				value: 'sales_account',
-			},
-			{
-				name: 'Appointment',
-				value: 'appointment',
-			},
 			{
 				name: 'Contact',
 				value: 'contact',
@@ -74,30 +67,16 @@ export const searchFields: INodeProperties[] = [
 				value: 'deal',
 			},
 			{
-				name: 'Document',
-				value: 'document',
-			},
-			{
-				name: 'Note',
-				value: 'note',
-			},
-			{
-				name: 'Product',
-				value: 'product',
-			},
-			{
-				name: 'Sales Activity',
-				value: 'sales_activity',
-			},
-			{
-				name: 'Task',
-				value: 'task',
+				name: 'Sales Account',
+				value: 'sales_account',
 			},
 			{
 				name: 'User',
 				value: 'user',
 			},
 		],
+		required: true,
+		default: [],
 		displayOptions: {
 			show: {
 				resource: [
@@ -105,6 +84,141 @@ export const searchFields: INodeProperties[] = [
 				],
 				operation: [
 					'query',
+				],
+			},
+		},
+		description: 'Enter a term that will be used for searching entities',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'search',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 25,
+		displayOptions: {
+			show: {
+				resource: [
+					'search',
+				],
+				operation: [
+					'query',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		description: 'Max number of results to return',
+	},
+	// ----------------------------------------
+	//          Search: lookup
+	// ----------------------------------------
+	{
+		displayName: 'Search Field',
+		name: 'searchField',
+		type: 'options',
+		options: [
+			{
+				name: 'Email',
+				value: 'email',
+			},
+			{
+				name: 'Name',
+				value: 'name',
+			},
+			{
+				name: 'Custom Field',
+				value: 'customField',
+				description: 'Only allowed custom fields of type "Text field", "Number", "Dropdown" or "Radio button"',
+			},
+		],
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'search',
+				],
+				operation: [
+					'lookup',
+				],
+			},
+		},
+		description: 'Field against which the entities have to be searched',
+	},
+	{
+		displayName: 'Custom Field Name',
+		name: 'customFieldName',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'search',
+				],
+				operation: [
+					'lookup',
+				],
+				searchField: [
+					'customField',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Custom Field Value',
+		name: 'customFieldValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'search',
+				],
+				operation: [
+					'lookup',
+				],
+				searchField: [
+					'customField',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Field Value',
+		name: 'fieldValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'search',
+				],
+				operation: [
+					'lookup',
+				],
+				searchField: [
+					'email',
+					'name',
 				],
 			},
 		},
@@ -121,18 +235,32 @@ export const searchFields: INodeProperties[] = [
 					'search',
 				],
 				operation: [
-					'query',
+					'lookup',
 				],
 			},
 		},
 		options: [
 			{
-				displayName: 'Field',
-				name: 'field',
-				description: 'Provide the field against which the entities have to be searched. The request can be searched only on one field.',
-				type: 'string',
-				default: '',
-				hint: 'Searching in multiple entities make sure that this field is available in all entities or else you\'d receive an error response',
+				displayName: 'Entities',
+				name: 'entities',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{
+						name: 'Contact',
+						value: 'contact',
+					},
+					{
+						name: 'Deal',
+						value: 'deal',
+					},
+					{
+						name: 'Sales Account',
+						value: 'sales_account',
+					},
+				],
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-unneeded-backticks
+		description: `Use 'entities' to query against related entities. You can include multiple entities at once, provided the field is available in both entities or else you'd receive an error response.`,
 			},
 		],
 	},
