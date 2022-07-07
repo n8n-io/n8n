@@ -1372,6 +1372,7 @@ export interface IWorkflowBase {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	staticData?: IDataObject;
+	pinData?: PinData;
 }
 
 export interface IWorkflowCredentials {
@@ -1487,6 +1488,7 @@ export interface INodesGraph {
 	node_connections: IDataObject[];
 	nodes: INodesGraphNode;
 	notes: INotesGraphNode;
+	is_pinned: boolean;
 }
 
 export interface INodesGraphNode {
