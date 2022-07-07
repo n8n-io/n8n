@@ -47,11 +47,7 @@ export async function webflowApiRequest(
 	}
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('webflowApi');
-
-			options.headers!['authorization'] = `Bearer ${credentials.accessToken}`;
-
-			return await this.helpers.request!(options);
+			return await this.helpers.requestWithAuthentication.call(this,'webflowApi',options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'webflowOAuth2Api', options);
 		}
