@@ -1,5 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -26,11 +26,12 @@ export class FreshworksCrmApi implements ICredentialType {
 			description: 'Domain in the Freshworks CRM org URL. For example, in <code>https://n8n-org.myfreshworks.com</code>, the domain is <code>n8n-org</code>.',
 		},
 	];
-	authenticate: IAuthenticateHeaderAuth = {
-		type: 'headerAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: 'Authorization',
-			value: '=Token token={{$credentials?.apiKey}}',
+			headers: {
+				'Authorization': '=Token token={{$credentials?.apiKey}}',
+			},
 		},
 	};
 	test: ICredentialTestRequest = {
