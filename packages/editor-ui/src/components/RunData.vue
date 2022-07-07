@@ -58,7 +58,7 @@
 					placement="bottom-end"
 					v-if="canPinData && (jsonData && jsonData.length > 0)"
 					v-show="!editMode.enabled"
-					:value="showPinDataDiscoveryTooltip"
+					:value="pinDataDiscoveryTooltipVisible"
 					:manual="isControlledPinDataTooltip"
 				>
 					<template #content v-if="!isControlledPinDataTooltip">
@@ -374,7 +374,7 @@ import {
 
 import {
 	DATA_PINNING_DOCS_URL,
-	LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG, LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG,
+	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	PIN_DATA_NODE_TYPES_DENYLIST,
@@ -477,7 +477,7 @@ export default mixins(
 				copyDropdownOpen: false,
 				eventBus: dataPinningEventBus,
 
-				showPinDataDiscoveryTooltip: false,
+				pinDataDiscoveryTooltipVisible: false,
 				isControlledPinDataTooltip: false,
 			};
 		},
@@ -488,7 +488,7 @@ export default mixins(
 				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
 
-				this.checkPinDataDiscoveryFlow(this.jsonData);
+				this.showPinDataDiscoveryTooltip(this.jsonData);
 			}
 		},
 		destroyed() {
@@ -686,22 +686,22 @@ export default mixins(
 					type: 'data-pinning-docs',
 				});
 			},
-			checkPinDataDiscoveryFlow(value: IDataObject[]) {
+			showPinDataDiscoveryTooltip(value: IDataObject[]) {
 				if (!this.isTriggerNode) {
 					return;
 				}
 
 				if (value && value.length > 0) {
-					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG, 'true');
-					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
+					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, 'true');
+					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 
 					this.isControlledPinDataTooltip = true;
 					setTimeout(() => {
-						this.showPinDataDiscoveryTooltip = true;
+						this.pinDataDiscoveryTooltipVisible = true;
 					}, 500); // Wait for ndv to load before showing tooltip
 
 					setTimeout(() => {
-						this.showPinDataDiscoveryTooltip = false;
+						this.pinDataDiscoveryTooltipVisible = false;
 
 						setTimeout(() => {
 							this.isControlledPinDataTooltip = false;
@@ -1241,9 +1241,9 @@ export default mixins(
 			jsonData (value: IDataObject[]) {
 				this.refreshDataSize();
 
-				const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_NDV_FLAG);
+				const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG);
 				if (!hasSeenPinDataTooltip) {
-					this.checkPinDataDiscoveryFlow(value);
+					this.showPinDataDiscoveryTooltip(value);
 				}
 			},
 			binaryData (newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {

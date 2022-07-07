@@ -39,7 +39,7 @@
 						v-if="isTriggerNode"
 						placement="top"
 						manual
-						:value="showPinDataDiscoveryTooltip"
+						:value="pinDataDiscoveryTooltipVisible"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
 						<template #content>
@@ -91,7 +91,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import {CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, WAIT_TIME_UNLIMITED} from '@/constants';
+import {CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED} from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -342,10 +342,10 @@ export default mixins(
 		},
 	},
 	created() {
-		const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG);
+		const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG);
 		if (!hasSeenPinDataTooltip) {
-			this.unwatchShowPinDataDiscoveryTooltip = this.$watch('workflowDataItems', (dataItemsCount: number) => {
-				this.checkPinDataDiscoveryFlow(dataItemsCount);
+			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
+				this.showPinDataDiscoveryTooltip(dataItemsCount);
 			});
 		}
 	},
@@ -360,26 +360,24 @@ export default mixins(
 			isTouchActive: false,
 			nodeSubtitle: '',
 			showTriggerNodeTooltip: false,
-			unwatchShowPinDataDiscoveryTooltip: () => {},
-			showPinDataDiscoveryTooltip: false,
+			pinDataDiscoveryTooltipVisible: false,
 			dragging: false,
+			unwatchWorkflowDataItems: () => {},
 		};
 	},
 	methods: {
-		checkPinDataDiscoveryFlow(dataItemsCount: number): void {
-			if (!this.isTriggerNode) {
-				return;
-			}
+		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
+			if (!this.isTriggerNode) { return; }
 
 			if (dataItemsCount > 0) {
-				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_INITIAL_DISCOVERY_WORKFLOW_FLAG, 'true');
+				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 
-				this.showPinDataDiscoveryTooltip = true;
+				this.pinDataDiscoveryTooltipVisible = true;
 				setTimeout(() => {
-					this.showPinDataDiscoveryTooltip = false;
+					this.pinDataDiscoveryTooltipVisible = false;
 				}, 10000);
 
-				this.unwatchShowPinDataDiscoveryTooltip();
+				this.unwatchWorkflowDataItems();
 			}
 		},
 		setSubtitle() {
