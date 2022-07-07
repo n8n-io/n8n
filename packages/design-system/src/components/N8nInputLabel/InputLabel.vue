@@ -88,17 +88,17 @@ export default {
 
 .container:hover {
 	.infoIcon {
-		visibility: visible;
+		opacity: 1;
 	}
 
 	> div > .side {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 
 .inputLabel:hover {
 	> .infoIcon {
-		visibility: visible;
+		opacity: 1;
 	}
 }
 
@@ -109,11 +109,11 @@ export default {
 }
 
 .showIcon {
-	visibility: visible !important;
+	opacity: 1 !important;
 }
 
 .hiddenIcon {
-	visibility: hidden;
+	opacity: 0;
 }
 
 .info {
@@ -148,7 +148,8 @@ export default {
 }
 
 .side {
-	visibility: hidden;
-	float: right;
+	opacity: 0;
+	transition: opacity 150ms cubic-bezier(0.87, 0, 0.13, 1);
 }
+
 </style>
