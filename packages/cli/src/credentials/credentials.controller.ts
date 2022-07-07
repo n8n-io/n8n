@@ -256,21 +256,12 @@ credentialsController.patch(
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
 		const { id: credentialId } = req.params;
 
-		const updateData = new CredentialsEntity();
-		Object.assign(updateData, req.body);
-
-		await validateEntity(updateData);
-
-		const shared = await Db.collections.SharedCredentials.findOne({
-			relations: ['credentials'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'credentials',
-				entityId: credentialId,
-			}),
-		});
+		const shared = await CredentialsService.getSharedCredentials(req.user, credentialId, [
+			'credentials',
+		]);
 
 		if (!shared) {
+			console.error('cannae update');
 			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -284,58 +275,23 @@ credentialsController.patch(
 
 		const { credentials: credential } = shared;
 
-		// Add the date for newly added node access permissions
-		for (const nodeAccess of updateData.nodesAccess) {
-			if (!nodeAccess.date) {
-				nodeAccess.date = new Date();
-			}
-		}
-
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
-		}
-
-		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-
-		const decryptedData = coreCredential.getData(encryptionKey);
-
-		// Do not overwrite the oauth data else data like the access or refresh token would get lost
-		// everytime anybody changes anything on the credentials even if it is just the name.
-		if (decryptedData.oauthTokenData) {
-			// @ts-ignore
-			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
-		}
-
-		// Encrypt the data
-		const credentials = new Credentials(
-			{ id: credentialId, name: updateData.name },
-			updateData.type,
-			updateData.nodesAccess,
+		const encryptionKey = await CredentialsService.getEncryptionKey();
+		const decryptedData = await CredentialsService.decryptCredential(encryptionKey, credential);
+		const preparedCredentialData = await CredentialsService.prepareCredentialsUpdateData(
+			req.body,
+			decryptedData,
 		);
-
-		// @ts-ignore
-		credentials.setData(updateData.data, encryptionKey);
-
-		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
-
-		// Add special database related data
-		newCredentialData.updatedAt = new Date();
-
+		const newCredentialData = CredentialsService.createEncryptedCredentials(
+			encryptionKey,
+			credentialId,
+			preparedCredentialData,
+		);
 		await externalHooks.run('credentials.update', [newCredentialData]);
 
-		// Update the credentials in DB
-		await Db.collections.Credentials.update(credentialId, newCredentialData);
-
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the updated entry.
-		const responseData = await Db.collections.Credentials.findOne(credentialId);
+		const responseData = await CredentialsService.updateCredentials(
+			credentialId,
+			newCredentialData,
+		);
 
 		if (responseData === undefined) {
 			throw new ResponseHelper.ResponseError(
@@ -374,7 +330,7 @@ credentialsController.get(
 		// 	}),
 		// });
 
-		const shared = await CredentialsService.getSharedCredentials(req.user.id, credentialId, [
+		const shared = await CredentialsService.getSharedCredentials(req.user, credentialId, [
 			'credentials',
 		]);
 
