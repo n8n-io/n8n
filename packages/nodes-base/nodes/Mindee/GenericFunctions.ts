@@ -53,7 +53,7 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export function cleanDataDepriciatedVersion(predictions: IDataObject[]) {
+export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 
 	const newData: IDataObject = {};
 

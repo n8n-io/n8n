@@ -15,7 +15,7 @@ import {
 
 import {
 	cleanData,
-	cleanDataDepriciatedVersion,
+	cleanDataPreviousApiVersions,
 	mindeeApiRequest,
 } from './GenericFunctions';
 
@@ -237,7 +237,7 @@ export class Mindee implements INodeType {
 					 }
 						if (rawData === false) {
 							if(version === 'version1') {
-								responseData = cleanDataDepriciatedVersion(responseData.predictions);
+								responseData = cleanDataPreviousApiVersions(responseData.predictions);
 							}else if(version === 'version3') {
 								responseData = cleanData(responseData.document);
 							}
@@ -307,7 +307,7 @@ export class Mindee implements INodeType {
 						}
 						if (rawData === false) {
 							if(version === 'version1') {
-								responseData = cleanDataDepriciatedVersion(responseData.predictions);
+								responseData = cleanDataPreviousApiVersions(responseData.predictions);
 							}else if(version === 'version3') {
 								responseData = cleanData(responseData.document);
 							}
