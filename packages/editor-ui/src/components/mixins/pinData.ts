@@ -32,22 +32,35 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend(
 
 				const toRemove = new RegExp(/JSON\.parse:|of the JSON data/, 'g');
 				const message = error.message.replace(toRemove, '').trim();
-				const positionMatch = error.message.match(/at position (\d+)/);
+				const positionMatchRegEx = /at position (\d+)/;
+				const positionMatch = error.message.match(positionMatchRegEx);
 
 				error.message = message.charAt(0).toUpperCase() + message.slice(1);
 				error.message = error.message.replace(
 					'Unexpected token \' in JSON',
-					'Unexpected single quote. Please use double quotes (") instead',
+					this.$locale.baseText('runData.editOutputInvalid.singleQuote'),
 				);
 
 				if (positionMatch) {
 					const position = parseInt(positionMatch[1], 10);
 					const lineBreaksUpToPosition = (data.slice(0, position).match(/\n/g) || []).length;
 
-					error.message = `On line ${lineBreaksUpToPosition + 1}: ${error.message}`;
-				}
+					error.message = error.message.replace(positionMatchRegEx,
+						this.$locale.baseText('runData.editOutputInvalid.atPosition', {
+							interpolate: {
+								position: `${position}`,
+							},
+						}),
+					);
 
-				error.message += '.';
+					error.message = `${
+						this.$locale.baseText('runData.editOutputInvalid.onLine', {
+							interpolate: {
+								line: `${lineBreaksUpToPosition + 1}`,
+							},
+						})
+					} ${error.message}`;
+				}
 
 				this.$showError(error, title);
 
