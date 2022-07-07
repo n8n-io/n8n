@@ -64,7 +64,7 @@ test('POST /workflows should set pin data to null if no pin data', async () => {
 	expect(pinData).toBeNull();
 });
 
-test('GET /workflows/:id should return pin data', async () => {
+test.skip('GET /workflows/:id should return pin data', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
