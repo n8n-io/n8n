@@ -5,6 +5,7 @@ import * as testDb from './shared/testDb';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import type { Role } from '../../src/databases/entities/Role';
 import { INode } from 'n8n-workflow';
+import { Db } from '../../src';
 
 jest.mock('../../src/telemetry');
 
@@ -70,13 +71,15 @@ test('GET /workflows/:id should return pin data', async () => {
 
 	const workflow = makeWorkflow({ withPinData: true });
 
-	await authOwnerAgent.post('/workflows').send(workflow);
+	const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
 
-	const response = await authOwnerAgent.get('/workflows/1');
+	const { id } = workflowCreationResponse.body.data as { id: string };
 
-	expect(response.statusCode).toBe(200);
+	const workflowRetrievalResponse = await authOwnerAgent.get(`/workflows/${id}`);
 
-	const { pinData } = response.body.data as { pinData: object };
+	expect(workflowRetrievalResponse.statusCode).toBe(200);
+
+	const { pinData } = workflowRetrievalResponse.body.data as { pinData: object };
 
 	expect(pinData).toMatchObject({ Spotify: { myKey: 'myValue' } });
 });
