@@ -698,10 +698,12 @@ export default mixins(
 					this.isControlledPinDataTooltip = true;
 					setTimeout(() => {
 						this.pinDataDiscoveryTooltipVisible = true;
+						this.eventBus.$emit('data-pinning-discovery', { isTooltipVisible: true });
 					}, 500); // Wait for ndv to load before showing tooltip
 
 					setTimeout(() => {
 						this.pinDataDiscoveryTooltipVisible = false;
+						this.eventBus.$emit('data-pinning-discovery', { isTooltipVisible: false });
 
 						setTimeout(() => {
 							this.isControlledPinDataTooltip = false;
