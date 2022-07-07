@@ -1,8 +1,7 @@
 import {
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -24,8 +23,12 @@ export class NotionApi implements ICredentialType {
 			url: '/users',
 		},
 	};
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'Authorization': '=Bearer {{$credentials.apiKey}}',
+			},
+		},
+	};
 }
