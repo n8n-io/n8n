@@ -13,8 +13,8 @@
 					<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
 				</n8n-tooltip>
 			</span>
-			<div :class="{[$style.overlay]: true, [$style.showIcon]: showOptions}"><div></div></div>
-			<div :class="{[$style.options]: true, [$style.showIcon]: showOptions}">
+			<div v-if="$slots.options" :class="{[$style.overlay]: true, [$style.showIcon]: showOptions}"><div></div></div>
+			<div v-if="$slots.options" :class="{[$style.options]: true, [$style.showIcon]: showOptions}">
 				<slot name="options"></slot>
 			</div>
 		</div>
