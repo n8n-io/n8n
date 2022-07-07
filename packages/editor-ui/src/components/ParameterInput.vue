@@ -4,10 +4,11 @@
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
 
 		<n8n-input
-			v-if="isValueExpression && showExpressionAsTextInput"
+			v-if="isValueExpression"
 			:size="inputSize"
+			:type="getStringInputType"
+			:rows="parameter.type === 'code' || parameter.type === 'json' ? 15: (getArgument('rows') || 1)"
 			:value="expressionDisplayValue"
-			:disabled="isReadOnly && !isValueExpression"
 			:title="displayTitle"
 			@keydown.stop
 		/>
@@ -332,11 +333,6 @@ export default mixins(
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
 			},
-			showExpressionAsTextInput(): boolean {
-				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
-
-				return types.includes(this.parameter.type);
-			},
 			dependentParametersValues (): string | null {
 				const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn') as string[] | undefined;
 
@@ -476,6 +472,10 @@ export default mixins(
 
 				const rows = this.getArgument('rows');
 				if (rows !== undefined && rows > 1) {
+					return 'textarea';
+				}
+
+				if (this.parameter.type === 'code') {
 					return 'textarea';
 				}
 
