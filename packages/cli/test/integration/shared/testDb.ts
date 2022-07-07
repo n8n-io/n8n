@@ -199,7 +199,6 @@ export async function truncate(collections: Array<CollectionName>, testDbName: s
 
 		const truncationPromises = collections.map((collection) => {
 			const tableName = toTableName(collection);
-			Db.collections[collection].clear();
 			return testDb.query(
 				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
 			);
