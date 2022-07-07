@@ -1,8 +1,6 @@
 import {
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
+	IAuthenticateGeneric,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -19,8 +17,12 @@ export class AirtableApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '={{$credentials.apiKey}}',
+			},
+		},
+	};
 }
