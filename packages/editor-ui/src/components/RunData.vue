@@ -812,6 +812,8 @@ export default mixins(
 					});
 				}
 
+				this.updateNodeParameterIssues(this.node);
+
 				if (this.hasPinData) {
 					this.onDataUnpinning({ source });
 					this.$store.commit('unpinData', { node: this.node });

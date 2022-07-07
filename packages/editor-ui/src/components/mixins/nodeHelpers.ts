@@ -73,11 +73,13 @@ export const nodeHelpers = mixins(
 
 			// Returns all the issues of the node
 			getNodeIssues (nodeType: INodeTypeDescription | null, node: INodeUi, ignoreIssues?: string[]): INodeIssues | null {
+				const pinDataNodeNames = Object.keys(this.$store.getters.pinData || {});
+
 				let nodeIssues: INodeIssues | null = null;
 				ignoreIssues = ignoreIssues || [];
 
-				if (node.disabled === true) {
-					// Ignore issues on disabled nodes
+				if (node.disabled === true || pinDataNodeNames.includes(node.name)) {
+					// Ignore issues on disabled and pindata nodes
 					return null;
 				}
 
