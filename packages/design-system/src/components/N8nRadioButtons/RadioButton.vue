@@ -56,7 +56,6 @@ export default {
 
 .button {
 	border-radius: 0;
-	padding: 0 var(--spacing-xs);
 	display: flex;
 	align-items: center;
 	border-radius: var(--border-radius-base);
@@ -73,11 +72,13 @@ export default {
 .large {
 	height: 26px;
 	font-size: var(--font-size-2xs);
+	padding: 0 var(--spacing-xs);
 }
 
 .small {
 	font-size: 11px; // todo
 	height: 15px;
+	padding: 0 var(--spacing-4xs);
 }
 
 .active {
