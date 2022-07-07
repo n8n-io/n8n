@@ -93,6 +93,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'If provided, you\'ll get a filtered list of users that contain the provided string in their email address',
 			},
