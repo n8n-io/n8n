@@ -21,7 +21,7 @@
 				<span :class="$style.title">
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
-				<RunInfo v-if="runsCount === 1" :taskData="runTaskData" />
+				<RunInfo v-if="runsCount === 1" v-show="!outputPanelEditMode.enabled" :taskData="runTaskData" />
 
 				<n8n-info-tip
 					theme="warning"
@@ -40,7 +40,8 @@
 			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
 			<n8n-text v-if="!workflowRunning">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
-				<span @click="insertTestData" v-if="canPinData">
+				<span @click="insertTestData" v-if="isPinDataNodeType">
+					<br>
 					{{ $locale.baseText('generic.or') }}
 					<n8n-text
 						tag="a"
@@ -74,11 +75,14 @@ import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8
 import Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import {MULTIPLE_OUTPUT_NODE_TYPES, TEST_PIN_DATA} from "@/constants";
+import { pinData } from "@/components/mixins/pinData";
+import mixins from 'vue-typed-mixins';
 
 type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
-export default Vue.extend({
+export default mixins(
+	pinData,
+).extend({
 	name: 'OutputPanel',
 	components: { RunData, RunInfo },
 	props: {
@@ -187,15 +191,11 @@ export default Vue.extend({
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
 			return this.$store.getters['ui/outputPanelEditMode'];
 		},
-		canPinData(): boolean {
-			return !!this.node && !MULTIPLE_OUTPUT_NODE_TYPES.includes(this.node.type);
-		},
 	},
 	methods: {
 		insertTestData() {
 			if (this.$refs.runData) {
 				(this.$refs.runData as RunData).enterEditMode({
-					data: TEST_PIN_DATA,
 					origin: 'insertTestDataLink',
 				});
 

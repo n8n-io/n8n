@@ -12,7 +12,7 @@
 			placement="bottom-start"
 			:value="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
-			:manual="true"
+			manual
 		>
 			<div slot="content" :class="$style.triggerWarning">
 				{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
@@ -453,7 +453,7 @@ export default mixins(
 
 			if (this.outputPanelEditMode.enabled) {
 				const shouldPinDataBeforeClosing = await this.confirmMessage(
-					this.$locale.baseText('ndv.pinData.beforeClosing.description'),
+					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
 					null,
 					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
@@ -477,12 +477,10 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 					this.$store.commit('pinData', { node: this.activeNode, data: JSON.parse(value) });
-					return;
-				} else {
-					this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 				}
+
+				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 			}
 
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');

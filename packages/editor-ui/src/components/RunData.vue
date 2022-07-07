@@ -46,24 +46,22 @@
 				/>
 				<n8n-icon-button
 					v-if="canPinData"
+					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
-					class="ml-xs"
+					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
-					:disabled="editMode.enabled"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
-				<n8n-tooltip placement="bottom-end" v-if="canPinData && (jsonData && jsonData.length > 0 || hasPinData)">
-					<template #content v-if="hasPinData">
-						<div :class="$style['tooltip-container']">
-							<strong>
-								{{ $locale.baseText('ndv.pinData.unpin.title') }}
-							</strong>
-							{{ $locale.baseText('ndv.pinData.unpin.description') }}
-						</div>
-					</template>
-					<template #content v-else>
+				<n8n-tooltip
+					placement="bottom-end"
+					v-if="canPinData && (jsonData && jsonData.length > 0)"
+					v-show="!editMode.enabled"
+					:value="pinDataDiscoveryTooltipVisible"
+					:manual="isControlledPinDataTooltip"
+				>
+					<template #content v-if="!isControlledPinDataTooltip">
 						<div :class="$style['tooltip-container']">
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
@@ -71,12 +69,16 @@
 							</n8n-text>
 							<n8n-link :to="dataPinningDocsUrl" size="small">
 								{{ $locale.baseText('ndv.pinData.pin.link') }}
-								<n8n-icon icon="external-link-alt" size="small" />
 							</n8n-link>
 						</div>
 					</template>
+					<template #content v-else>
+						<div :class="$style['tooltip-container']">
+							{{ $locale.baseText('node.discovery.pinData') }}
+						</div>
+					</template>
 					<n8n-icon-button
-						:class="`ml-xs ${$style['pin-data-button']} ${hasPinData ? $style['pin-data-button-active'] : ''}`"
+						:class="`ml-2xs ${$style['pin-data-button']} ${hasPinData ? $style['pin-data-button-active'] : ''}`"
 						type="tertiary"
 						active
 						icon="thumbtack"
@@ -84,6 +86,20 @@
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
 					/>
 				</n8n-tooltip>
+
+				<div :class="$style['edit-mode-actions']" v-show="editMode.enabled">
+					<n8n-button
+						type="tertiary"
+						:label="$locale.baseText('runData.editor.cancel')"
+						@click="onClickCancelEdit"
+					/>
+					<n8n-button
+						class="ml-2xs"
+						type="primary"
+						:label="$locale.baseText('runData.editor.save')"
+						@click="onClickSaveEdit"
+					/>
+				</div>
 			</div>
 		</div>
 
@@ -117,39 +133,31 @@
 			ref="dataContainer"
 		>
 			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
-				<n8n-tooltip placement="bottom-end" :disabled="!!state.value">
-					<template #content>
-						<div :class="$style['tooltip-container']">
-							{{ $locale.baseText('runData.copyDisabled') }}
-						</div>
-					</template>
-					<el-dropdown
-						trigger="click"
-						:disabled="!state.value"
-						@command="handleCopyClick"
-						@visible-change="copyDropdownOpen = $event"
-					>
-						<span class="el-dropdown-link">
-							<n8n-icon-button
-								:title="$locale.baseText('runData.copyToClipboard')"
-								icon="copy"
-								type="tertiary"
-								:circle="false"
-							/>
-						</span>
-						<el-dropdown-menu slot="dropdown">
-							<el-dropdown-item :command="{command: 'value'}">
-								{{ $locale.baseText('runData.copyValue') }}
-							</el-dropdown-item>
-							<el-dropdown-item :command="{command: 'itemPath'}" divided>
-								{{ $locale.baseText('runData.copyItemPath') }}
-							</el-dropdown-item>
-							<el-dropdown-item :command="{command: 'parameterPath'}">
-								{{ $locale.baseText('runData.copyParameterPath') }}
-							</el-dropdown-item>
-						</el-dropdown-menu>
-					</el-dropdown>
-				</n8n-tooltip>
+				<el-dropdown
+					trigger="click"
+					@command="handleCopyClick"
+					@visible-change="copyDropdownOpen = $event"
+				>
+					<span class="el-dropdown-link">
+						<n8n-icon-button
+							:title="$locale.baseText('runData.copyToClipboard')"
+							icon="copy"
+							type="tertiary"
+							:circle="false"
+						/>
+					</span>
+					<el-dropdown-menu slot="dropdown">
+						<el-dropdown-item :command="{command: 'value'}">
+							{{ $locale.baseText('runData.copyValue') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}" divided>
+							{{ $locale.baseText('runData.copyItemPath') }}
+						</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">
+							{{ $locale.baseText('runData.copyParameterPath') }}
+						</el-dropdown-item>
+					</el-dropdown-menu>
+				</el-dropdown>
 			</div>
 
 			<div v-if="isExecuting" :class="$style.center">
@@ -173,19 +181,6 @@
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-info-tip>
-					<div :class="$style['edit-mode-footer-buttons']">
-						<n8n-button
-							type="tertiary"
-							:label="$locale.baseText('runData.editor.cancel')"
-							@click="onClickCancelEdit"
-						/>
-						<n8n-button
-							class="ml-2xs"
-							type="primary"
-							:label="$locale.baseText('runData.editor.save')"
-							@click="onClickSaveEdit"
-						/>
-					</div>
 				</div>
 			</div>
 
@@ -264,7 +259,7 @@
 				<vue-json-pretty
 					:data="jsonData"
 					:deep="10"
-					v-model="state.path"
+					v-model="selectedOutput.path"
 					:showLine="true"
 					:showLength="true"
 					selectableType="single"
@@ -321,7 +316,7 @@
 				</div>
 			</div>
 		</div>
-		<div :class="$style.pagination" v-if="hasNodeRun && !hasRunError && dataCount > pageSize">
+		<div :class="$style.pagination" v-if="hasNodeRun && !hasRunError && dataCount > pageSize" v-show="!editMode.enabled">
 			<el-pagination
 				background
 				:hide-on-single-page="true"
@@ -379,9 +374,11 @@ import {
 
 import {
 	DATA_PINNING_DOCS_URL,
+	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
-	MULTIPLE_OUTPUT_NODE_TYPES,
+	PIN_DATA_NODE_TYPES_DENYLIST,
+	TEST_PIN_DATA,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -405,7 +402,6 @@ import { stringSizeInBytes } from './helpers';
 const deselectedPlaceholder = '_!^&*';
 
 export type EnterEditModeArgs = {
-	data?: Array<Record<string, string | number>>,
 	origin: 'editIconButton' | 'insertTestDataLink',
 };
 
@@ -464,7 +460,7 @@ export default mixins(
 				binaryDataPreviewActive: false,
 				dataSize: 0,
 				deselectedPlaceholder,
-				state: {
+				selectedOutput: {
 					value: '' as object | number | string,
 					path: deselectedPlaceholder,
 				},
@@ -480,6 +476,9 @@ export default mixins(
 				pageSizes: [10, 25, 50, 100],
 				copyDropdownOpen: false,
 				eventBus: dataPinningEventBus,
+
+				pinDataDiscoveryTooltipVisible: false,
+				isControlledPinDataTooltip: false,
 			};
 		},
 		mounted() {
@@ -488,6 +487,8 @@ export default mixins(
 			if (this.paneType === 'output') {
 				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
+
+				this.showPinDataDiscoveryTooltip(this.jsonData);
 			}
 		},
 		destroyed() {
@@ -513,12 +514,12 @@ export default mixins(
 				}
 				return null;
 			},
-			isMultipleOutputsNodeType(): boolean {
-				return !!this.node && MULTIPLE_OUTPUT_NODE_TYPES.includes(this.node.type);
+			isTriggerNode (): boolean {
+				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
 			},
 			canPinData (): boolean {
 				return this.paneType === 'output' &&
-					!this.isMultipleOutputsNodeType &&
+					this.isPinDataNodeType &&
 					!(this.binaryData && this.binaryData.length > 0);
 			},
 			buttons(): Array<{label: string, value: string}> {
@@ -685,9 +686,36 @@ export default mixins(
 					type: 'data-pinning-docs',
 				});
 			},
-			enterEditMode({ data, origin }: EnterEditModeArgs) {
+			showPinDataDiscoveryTooltip(value: IDataObject[]) {
+				if (!this.isTriggerNode) {
+					return;
+				}
+
+				if (value && value.length > 0) {
+					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, 'true');
+					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+
+					this.isControlledPinDataTooltip = true;
+					setTimeout(() => {
+						this.pinDataDiscoveryTooltipVisible = true;
+					}, 500); // Wait for ndv to load before showing tooltip
+
+					setTimeout(() => {
+						this.pinDataDiscoveryTooltipVisible = false;
+
+						setTimeout(() => {
+							this.isControlledPinDataTooltip = false;
+						}, 500); // Wait for tooltip to disappear
+					}, 10000);
+				}
+			},
+			enterEditMode({ origin }: EnterEditModeArgs) {
+				const data = this.jsonData && this.jsonData.length > 0
+					? this.jsonData
+					: TEST_PIN_DATA;
+
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
-				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data || this.jsonData, null, 2));
+				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data, null, 2));
 
 				this.$telemetry.track('User opened ndv edit state', {
 					node_type: this.activeNode.type,
@@ -706,6 +734,8 @@ export default mixins(
 			},
 			onClickSaveEdit() {
 				const { value } = this.editMode;
+
+				this.clearAllStickyNotifications();
 
 				if (!this.isValidPinDataSize(value)) {
 					this.onDataPinningError({ errorType: 'data-too-large', source: 'save-edit' });
@@ -1018,7 +1048,7 @@ export default mixins(
 				this.updateNodesExecutionIssues();
 			},
 			dataItemClicked (path: string, data: object | number | string) {
-				this.state.value = data;
+				this.selectedOutput.value = data;
 			},
 			isDownloadable (index: number, key: string): boolean {
 				const binaryDataItem: IBinaryData = this.binaryData[index][key];
@@ -1099,14 +1129,19 @@ export default mixins(
 				return '["' + allParts.join('"]["') + '"]';
 			},
 			handleCopyClick (commandData: { command: string }) {
-				const newPath = this.convertPath(this.state.path);
+				const isNotSelected = this.selectedOutput.path === deselectedPlaceholder;
+				const selectedPath = isNotSelected ? '[""]' : this.selectedOutput.path;
+				const selectedValue = isNotSelected
+					? this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex))
+					: this.selectedOutput.value;
+				const newPath = this.convertPath(selectedPath);
 
 				let value: string;
 				if (commandData.command === 'value') {
-					if (typeof this.state.value === 'object') {
-						value = JSON.stringify(this.state.value, null, 2);
+					if (typeof selectedValue === 'object') {
+						value = JSON.stringify(selectedValue, null, 2);
 					} else {
-						value = this.state.value.toString();
+						value = selectedValue.toString();
 					}
 
 					this.$showToast({
@@ -1203,8 +1238,13 @@ export default mixins(
 			node() {
 				this.init();
 			},
-			jsonData () {
+			jsonData (value: IDataObject[]) {
 				this.refreshDataSize();
+
+				const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG);
+				if (!hasSeenPinDataTooltip) {
+					this.showPinDataDiscoveryTooltip(value);
+				}
 			},
 			binaryData (newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
 				if (newData.length && !prevData.length && this.displayMode !== 'binary') {
@@ -1250,6 +1290,9 @@ export default mixins(
 .pinned-data-callout {
 	border-radius: inherit;
 	border-bottom-right-radius: 0;
+	border-top: 0;
+	border-left: 0;
+	border-right: 0;
 }
 
 .header {
@@ -1258,7 +1301,6 @@ export default mixins(
 	margin-bottom: var(--spacing-s);
 	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 	position: relative;
-	height: 30px;
 
 	> *:first-child {
 		flex-grow: 1;
@@ -1466,10 +1508,6 @@ export default mixins(
 		color: var(--color-primary);
 		background: var(--color-primary-tint-2);
 	}
-
-	svg {
-		transform: rotate(45deg);
-	}
 }
 
 .spinner {
@@ -1515,7 +1553,7 @@ export default mixins(
 	width: 100%;
 }
 
-.edit-mode-footer-buttons {
+.edit-mode-actions {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;

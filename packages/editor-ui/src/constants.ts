@@ -81,6 +81,7 @@ export const SET_NODE_TYPE = 'n8n-nodes-base.set';
 export const SERVICENOW_NODE_TYPE = 'n8n-nodes-base.serviceNow';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
+export const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
 export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
@@ -95,6 +96,11 @@ export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 export const MULTIPLE_OUTPUT_NODE_TYPES = [
 	IF_NODE_TYPE,
 	SWITCH_NODE_TYPE,
+];
+
+export const PIN_DATA_NODE_TYPES_DENYLIST = [
+	...MULTIPLE_OUTPUT_NODE_TYPES,
+	SPLIT_IN_BATCHES_NODE_TYPE,
 ];
 
 // Node creator
@@ -201,6 +207,8 @@ export const MODAL_CONFIRMED = 'confirmed';
 
 export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
+export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
+export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
