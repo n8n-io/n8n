@@ -8,11 +8,12 @@
 				</n8n-text>
 			</div>
 			<span :class="[$style.infoIcon, showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="tooltipText">
-					<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-						<n8n-icon icon="question-circle" size="small" />
-						<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
-					</n8n-tooltip>
-				</span>
+				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+					<n8n-icon icon="question-circle" size="small" />
+					<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
+				</n8n-tooltip>
+			</span>
+			<div :class="{[$style.overlay]: true, [$style.showIcon]: showOptions}"><div></div></div>
 			<div :class="{[$style.options]: true, [$style.showIcon]: showOptions}">
 				<slot name="options"></slot>
 			</div>
@@ -86,7 +87,7 @@ export default {
 	flex-direction: column;
 }
 
-.container:hover {
+.container:hover,.inputLabel:hover {
 	.infoIcon {
 		opacity: 1;
 	}
@@ -94,10 +95,8 @@ export default {
 	> div > .options {
 		opacity: 1;
 	}
-}
 
-.inputLabel:hover {
-	> .infoIcon {
+	.overlay {
 		opacity: 1;
 	}
 }
@@ -107,7 +106,8 @@ export default {
 	align-items: center;
 	color: var(--color-text-light);
 	padding-left: var(--spacing-4xs);
-	background-color: var(--color-background-xlight)
+	background-color: var(--color-background-xlight);
+	z-index: 1;
 }
 
 .showIcon {
@@ -156,11 +156,27 @@ export default {
 .options {
 	opacity: 0;
 	transition: opacity 150ms cubic-bezier(0.87, 0, 0.13, 1);
-	flex-grow: 1;
 	background-color: var(--color-background-xlight);
 
 	> * {
 		float: right;
+	}
+}
+
+.overlay {
+	position: relative;
+	flex-grow: 1;
+	opacity: 0;
+
+	> div {
+		position: absolute;
+		width: 60px;
+		height: 19px;
+		top: 0;
+		right: 0;
+		z-index: 0;
+
+		background: linear-gradient(270deg, #FFFFFF 72.19%, rgba(255, 255, 255, 0) 107.45%);
 	}
 }
 
