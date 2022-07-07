@@ -526,57 +526,6 @@ test('GET /credentials/:id should return 404 if cred not found', async () => {
 	expect(response.statusCode).toBe(404);
 });
 
-test.only('GET /credentials/:id should hit different Routers', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
-
-	config.set('deployment.paid', false);
-
-	const firstResponse = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
-
-	expect(firstResponse.statusCode).toBe(200);
-
-	expect(typeof firstResponse.body.data.name).toBe('string');
-	expect(typeof firstResponse.body.data.type).toBe('string');
-	expect(typeof firstResponse.body.data.nodesAccess[0].nodeType).toBe('string');
-	expect(firstResponse.body.data.data).toBeUndefined();
-
-	const secondResponse = await authOwnerAgent
-		.get(`/credentials/${savedCredential.id}`)
-		.query({ includeData: true });
-
-	expect(secondResponse.statusCode).toBe(200);
-	expect(typeof secondResponse.body.data.name).toBe('string');
-	expect(typeof secondResponse.body.data.type).toBe('string');
-	expect(typeof secondResponse.body.data.nodesAccess[0].nodeType).toBe('string');
-	expect(secondResponse.body.data.data).toBeDefined();
-
-	config.set('deployment.paid', true);
-
-	const third = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
-
-	expect(third.statusCode).toBe(200);
-
-	expect(third.body).toEqual({ enterprise: true });
-
-	const fourth = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
-
-	expect(fourth.statusCode).toBe(200);
-	expect(fourth.body).toEqual({ enterprise: true });
-
-	config.set('deployment.paid', false);
-
-	const fifth = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
-
-	expect(fifth.statusCode).toBe(200);
-
-	expect(typeof fifth.body.data.name).toBe('string');
-	expect(typeof fifth.body.data.type).toBe('string');
-	expect(typeof fifth.body.data.nodesAccess[0].nodeType).toBe('string');
-	expect(fifth.body.data.data).toBeUndefined();
-});
-
 const credentialPayload = () => ({
 	name: randomName(),
 	type: randomName(),
