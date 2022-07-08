@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<n8n-action-toggle
-			v-if="displayOptionsComputed"
+			v-if="shouldShowOptions"
 			placement="bottom-end"
 			size="small"
 			color="foreground-xdark"
@@ -39,7 +39,7 @@ export default Vue.extend({
 		isDefault (): boolean {
 			return this.parameter.default === this.value;
 		},
-		displayOptionsComputed (): boolean {
+		shouldShowOptions (): boolean {
 			if (this.isReadOnly === true) {
 				return false;
 			}
