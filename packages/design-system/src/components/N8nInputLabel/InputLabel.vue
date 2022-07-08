@@ -5,7 +5,7 @@
 				[this.$style.underline]: this.underline,
 				[this.$style[this.size]]: true,
 			}">
-			<div :class="$style.header">
+			<div :class="$style.title">
 				<n8n-text v-if="label" :bold="bold" :size="size" :compact="!underline">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
@@ -87,12 +87,22 @@ export default {
 		opacity: 1;
 	}
 
-	> div > .options {
+	.options {
 		opacity: 1;
 	}
 
 	.overlay {
 		opacity: 1;
+	}
+}
+
+.title {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+
+	> * {
+		white-space: nowrap;
 	}
 }
 
@@ -103,49 +113,6 @@ export default {
 	padding-left: var(--spacing-4xs);
 	background-color: var(--color-background-xlight);
 	z-index: 1;
-}
-
-.visible {
-	opacity: 1 !important;
-}
-
-.hidden {
-	opacity: 0;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	min-width: 0;
-
-	> * {
-		white-space: nowrap;
-	}
-}
-
-.label {
-	display: flex;
-	overflow: hidden;
-}
-
-.small {
-	margin-bottom: var(--spacing-4xs);
-}
-
-.medium {
-	margin-bottom: var(--spacing-2xs);
-}
-
-.underline {
-	border-bottom: var(--border-base);
-}
-
-.tooltipPopper {
-	max-width: 400px;
-
-	li {
-		margin-left: var(--spacing-s);
-	}
 }
 
 .options {
@@ -172,6 +139,39 @@ export default {
 		z-index: 0;
 
 		background: linear-gradient(270deg, #FFFFFF 72.19%, rgba(255, 255, 255, 0) 107.45%);
+	}
+}
+
+.hidden {
+	opacity: 0;
+}
+
+.visible {
+	opacity: 1;
+}
+
+.label {
+	display: flex;
+	overflow: hidden;
+}
+
+.small {
+	margin-bottom: var(--spacing-4xs);
+}
+
+.medium {
+	margin-bottom: var(--spacing-2xs);
+}
+
+.underline {
+	border-bottom: var(--border-base);
+}
+
+.tooltipPopper {
+	max-width: 400px;
+
+	li {
+		margin-left: var(--spacing-s);
 	}
 }
 

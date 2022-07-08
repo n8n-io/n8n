@@ -23,9 +23,9 @@ export default {
 		},
 		size: {
 			type: String,
-			default: 'large',
+			default: 'medium',
 			validator: (value: string): boolean =>
-				['small', 'large'].includes(value),
+				['small', 'medium'].includes(value),
 		},
 		disabled: {
 			type: Boolean,
@@ -69,14 +69,14 @@ export default {
 	cursor: not-allowed;
 }
 
-.large {
+.medium {
 	height: 26px;
 	font-size: var(--font-size-2xs);
 	padding: 0 var(--spacing-xs);
 }
 
 .small {
-	font-size: 11px; // todo
+	font-size: var(--font-size-3xs);
 	height: 15px;
 	padding: 0 var(--spacing-4xs);
 }
