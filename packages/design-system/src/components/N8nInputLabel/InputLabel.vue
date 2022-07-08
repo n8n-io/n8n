@@ -1,20 +1,24 @@
 <template>
 	<div :class="$style.container">
-		<div :class="labelClass">
-			<div :class="$style.info">
+		<div :class="{
+				[this.$style.label]: !!this.label,
+				[this.$style.underline]: this.underline,
+				[this.$style[this.size]]: true,
+			}">
+			<div :class="$style.header">
 				<n8n-text v-if="label" :bold="bold" :size="size" :compact="!underline">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
 			</div>
-			<span :class="[$style.infoIcon, showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="tooltipText">
+			<span :class="[$style.infoIcon, showTooltip ? $style.visible: $style.hidden]" v-if="tooltipText">
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
 					<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
 				</n8n-tooltip>
 			</span>
-			<div v-if="$slots.options" :class="{[$style.overlay]: true, [$style.showIcon]: showOptions}"><div></div></div>
-			<div v-if="$slots.options" :class="{[$style.options]: true, [$style.showIcon]: showOptions}">
+			<div v-if="$slots.options" :class="{[$style.overlay]: true, [$style.visible]: showOptions}"><div></div></div>
+			<div v-if="$slots.options" :class="{[$style.options]: true, [$style.visible]: showOptions}">
 				<slot name="options"></slot>
 			</div>
 		</div>
@@ -110,15 +114,15 @@ export default {
 	z-index: 1;
 }
 
-.showIcon {
+.visible {
 	opacity: 1 !important;
 }
 
-.hiddenIcon {
+.hidden {
 	opacity: 0;
 }
 
-.info {
+.header {
 	display: flex;
 	align-items: center;
 	min-width: 0;
