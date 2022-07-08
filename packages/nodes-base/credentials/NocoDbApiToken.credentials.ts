@@ -1,5 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -26,11 +26,12 @@ export class NocoDbApiToken implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateHeaderAuth = {
-		type: 'headerAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: 'xc-token',
-			value: '={{$credentials.apiToken}}',
+			headers: {
+				'xc-token': '={{$credentials.apiToken}}',
+			},
 		},
 	};
 
