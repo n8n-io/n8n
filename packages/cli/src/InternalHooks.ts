@@ -211,7 +211,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
 						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
 							?.json as { headers?: { origin?: string } };
-						if (execJson && execJson.headers?.origin && execJson.headers.origin !== '') {
+						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
 							manualExecEventProperties.webhook_domain = pslGet(
 								execJson.headers.origin.replace(/^https?:\/\//, ''),
 							);
