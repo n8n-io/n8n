@@ -2979,7 +2979,7 @@ export default mixins(
 
 			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
 				setTimeout(async () => {
-					const onboardingResponse = await fetchNextOnboardingPrompt();
+					const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
 
 					if (onboardingResponse.nextPrompt) {
 						this.$showToast({

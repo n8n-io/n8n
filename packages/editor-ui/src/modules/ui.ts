@@ -1,3 +1,4 @@
+import { fetchNextOnboardingPrompt } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -202,6 +203,11 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id: type });
 			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' });
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
+		},
+		getNextOnboardingPrompt: async (context: ActionContext<IUiState, IRootState>) => {
+			const instanceId = context.rootGetters.instanceId;
+			const currentUer = context.rootGetters['users/currentUser'];
+			return await fetchNextOnboardingPrompt(instanceId, currentUer);
 		},
 	},
 };
