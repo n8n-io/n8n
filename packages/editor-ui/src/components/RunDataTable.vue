@@ -12,19 +12,36 @@
 		</table>
 		<table :class="$style.table" v-else>
 			<tr>
-				<th v-for="column in (tableData.columns || [])" :key="column">
-					<div :class="$style.header">
-						<span>{{column}}</span>
+				<th v-for="(column, i) in tableData.columns || []" :key="column">
+					<div :class="{[$style.header]: true, [$style.activeHeader]: i === activeColumn}">
+						<span>{{ column }}</span>
 						<div :class="$style.dragButton">
-							<div><div></div><div></div></div>
-							<div><div></div><div></div></div>
-							<div><div></div><div></div></div>
+							<div>
+								<div></div>
+								<div></div>
+							</div>
+							<div>
+								<div></div>
+								<div></div>
+							</div>
+							<div>
+								<div></div>
+								<div></div>
+							</div>
 						</div>
 					</div>
 				</th>
 			</tr>
 			<tr v-for="(row, index1) in tableData.data" :key="index1">
-				<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
+				<td
+					v-for="(data, index2) in row"
+					:key="index2"
+					:data-col="index2"
+					@mouseenter="onMouseEnterCell"
+					@mouseleave="onMouseLeaveCell"
+				>
+					{{ [null, undefined].includes(data) ? '&nbsp;' : data }}
+				</td>
 			</tr>
 		</table>
 	</div>
@@ -41,11 +58,29 @@ export default Vue.extend({
 			type: Object as () => ITableData,
 		},
 	},
+	data() {
+		return {
+			activeColumn: -1,
+		};
+	},
+	methods: {
+		onMouseEnterCell(e: MouseEvent) {
+			const target = e.target;
+			if (target) {
+				const col = (target as HTMLElement).dataset.col;
+				if (col && !isNaN(parseInt(col))) {
+					this.activeColumn = parseInt(col);
+				}
+			}
+		},
+		onMouseLeaveCell() {
+			this.activeColumn = -1;
+		},
+	},
 });
 </script>
 
 <style lang="scss" module>
-
 .table {
 	border-collapse: separate;
 	text-align: left;
@@ -54,7 +89,6 @@ export default Vue.extend({
 	font-size: var(--font-size-s);
 
 	th {
-		padding: var(--spacing-2xs);
 		background-color: var(--color-background-base);
 		border-top: var(--border-base);
 		border-bottom: var(--border-base);
@@ -72,7 +106,8 @@ export default Vue.extend({
 		white-space: pre-wrap;
 	}
 
-	th:last-child, td:last-child {
+	th:last-child,
+	td:last-child {
 		border-right: var(--border-base);
 	}
 }
@@ -84,15 +119,27 @@ export default Vue.extend({
 .header {
 	display: flex;
 	align-items: center;
+	padding: var(--spacing-2xs);
 
 	span {
 		flex-grow: 1;
 	}
 
 	&:hover {
+		cursor: grab;
+		background-color: var(--color-foreground-base);
+
 		.dragButton {
 			opacity: 1;
 		}
+	}
+}
+
+.activeHeader {
+	background-color: var(--color-foreground-base);
+
+	.dragButton {
+		opacity: 1;
 	}
 }
 
@@ -119,5 +166,4 @@ export default Vue.extend({
 		}
 	}
 }
-
 </style>
