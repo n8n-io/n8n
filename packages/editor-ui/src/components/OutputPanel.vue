@@ -21,7 +21,11 @@
 				<span :class="$style.title">
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
-				<RunInfo v-if="runsCount === 1" v-show="!outputPanelEditMode.enabled" :taskData="runTaskData" />
+				<RunInfo
+					v-if="!hasPinData && runsCount === 1"
+					v-show="!outputPanelEditMode.enabled"
+					:taskData="runTaskData"
+				/>
 
 				<n8n-info-tip
 					theme="warning"
@@ -63,7 +67,7 @@
 			</n8n-text>
 		</template>
 
-		<template #run-info v-if="runsCount > 1">
+		<template #run-info v-if="!hasPinData && runsCount > 1">
 			<RunInfo :taskData="runTaskData" />
 		</template>
 	</RunData>
