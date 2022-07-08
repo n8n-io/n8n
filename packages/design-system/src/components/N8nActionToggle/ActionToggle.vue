@@ -59,7 +59,7 @@ export default {
 			type: String,
 			default: 'default',
 			validator: (value: string): boolean =>
-				['dark'].includes(value),
+				['default', 'dark'].includes(value),
 		},
 	},
 	methods: {
