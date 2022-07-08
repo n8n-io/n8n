@@ -1,3 +1,4 @@
+/* tslint:disable:variable-name */
 import N8nCheckbox from "./Checkbox.vue";
 import { StoryFn } from '@storybook/vue';
 import { action } from '@storybook/addon-actions';
@@ -10,7 +11,7 @@ export default {
 			control: null,
 		},
 	},
-}
+};
 
 const methods = {
 	onInput: action('input'),
@@ -33,4 +34,4 @@ Default.args = {
 	tooltipText: 'Checkbox tooltip',
 	checked: true,
 	disabled: false,
-}
+};

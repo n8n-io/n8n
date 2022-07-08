@@ -68,6 +68,14 @@ FormInputs.args = {
 				],
 			},
 		},
+		{
+			name: 'agree',
+			properties: {
+			  type: 'checkbox',
+			  label: 'Signup for newsletter',
+			  tooltipText: 'Check this if you agree to be contacted by our marketing team'
+			}
+		  }
 	],
 };
 
