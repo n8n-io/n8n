@@ -1713,7 +1713,7 @@ export class Github implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -1722,6 +1722,7 @@ export class Github implements INodeType {
 								throw new NodeOperationError(
 									this.getNode(),
 									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									{ itemIndex: i }
 								);
 							}
 
@@ -2075,7 +2076,7 @@ export class Github implements INodeType {
 						}
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
 				if (returnAll === true) {
@@ -2095,7 +2096,7 @@ export class Github implements INodeType {
 
 					if (asBinaryProperty === true) {
 						if (Array.isArray(responseData)) {
-							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.');
+							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', { itemIndex: i });
 						}
 						// Add the returned data to the item as binary property
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;

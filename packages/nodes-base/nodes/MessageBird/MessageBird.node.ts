@@ -380,7 +380,7 @@ export class MessageBird implements INodeType {
 						});
 					}
 					else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'balance') {
@@ -388,7 +388,7 @@ export class MessageBird implements INodeType {
 					requestPath = '/balance';
 				}
 				else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
 				const responseData = await messageBirdApiRequest.call(

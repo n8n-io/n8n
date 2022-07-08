@@ -170,7 +170,7 @@ export class Strapi implements INodeType {
 								if (query !== undefined) {
 									qs.filters = query;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON', { itemIndex: i });
 								}
 							}
 							// Publication Option
@@ -196,7 +196,7 @@ export class Strapi implements INodeType {
 								if (query !== undefined) {
 									qs._where = query;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON', { itemIndex: i });
 								}
 							}
 							// Publication Option

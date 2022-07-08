@@ -167,7 +167,7 @@ export class CiscoWebex implements INodeType {
 							if (isBinaryData) {
 
 								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 
 								const binaryPropertyName = file.binaryPropertyName as string;

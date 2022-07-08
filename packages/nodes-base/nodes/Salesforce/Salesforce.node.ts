@@ -1132,7 +1132,7 @@ export class Salesforce implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: ILead = {};
 						if (!Object.keys(updateFields).length) {
-							throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
+							throw new NodeOperationError(this.getNode(), 'You must add at least one update field', { itemIndex: i });
 						}
 						if (updateFields.lastname !== undefined) {
 							body.LastName = updateFields.lastname as string;
@@ -1419,7 +1419,7 @@ export class Salesforce implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: IContact = {};
 						if (!Object.keys(updateFields).length) {
-							throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
+							throw new NodeOperationError(this.getNode(), 'You must add at least one update field', { itemIndex: i });
 						}
 						if (updateFields.lastName !== undefined) {
 							body.LastName = updateFields.lastName as string;
@@ -1722,7 +1722,7 @@ export class Salesforce implements INodeType {
 							};
 
 						} else {
-							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
+							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`, { itemIndex: i });
 						}
 						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/ContentVersion', {}, {}, undefined, { formData: data });
 					}
@@ -2587,7 +2587,7 @@ export class Salesforce implements INodeType {
 							body.Body = items[i].binary![binaryPropertyName].data;
 							body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 						} else {
-							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
+							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`, { itemIndex: i });
 						}
 						if (additionalFields.description !== undefined) {
 							body.Description = additionalFields.description as string;
@@ -2611,7 +2611,7 @@ export class Salesforce implements INodeType {
 								body.Body = items[i].binary![binaryPropertyName].data;
 								body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 							} else {
-								throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
+								throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`, { itemIndex: i });
 							}
 						}
 						if (updateFields.name !== undefined) {

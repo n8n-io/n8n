@@ -178,7 +178,7 @@ export class MicrosoftToDo implements INodeType {
 
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`, { itemIndex: i });
 					}
 				} else if (resource === 'task') {
 
@@ -264,7 +264,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(this, 'PATCH', `/todo/lists/${taskListId}/tasks/${taskId}`, body, qs);
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'list') {
@@ -314,7 +314,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(this, 'PATCH', `/todo/lists/${listId}`, body, qs);
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`, { itemIndex: i });
 					}
 				}
 			} catch (error) {

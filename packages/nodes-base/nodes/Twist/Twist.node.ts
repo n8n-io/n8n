@@ -274,7 +274,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -378,7 +378,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -452,7 +452,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -549,7 +549,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -623,7 +623,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -726,7 +726,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);

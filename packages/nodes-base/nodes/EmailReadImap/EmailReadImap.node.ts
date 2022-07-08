@@ -287,7 +287,7 @@ export class EmailReadImap implements INodeType {
 					const part = _.find(message.parts, { which: '' });
 
 					if (part === undefined) {
-						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
+						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.',);
 					}
 					const parsedEmail = await parseRawEmail.call(this, part.body, dataPropertyAttachmentsPrefixName);
 

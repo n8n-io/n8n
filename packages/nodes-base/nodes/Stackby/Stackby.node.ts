@@ -249,7 +249,7 @@ export class Stackby implements INodeType {
 					const record: { [key: string]: any } = {};
 					for (const column of columnList) {
 						if (items[i].json[column] === undefined) {
-							throw new NodeOperationError(this.getNode(), `Column ${column} does not exist on input`);
+							throw new NodeOperationError(this.getNode(), `Column ${column} does not exist on input`, { itemIndex: i });
 						} else {
 							record[column] = items[i].json[column];
 						}

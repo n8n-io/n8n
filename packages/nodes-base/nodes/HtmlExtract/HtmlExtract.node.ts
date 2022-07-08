@@ -229,15 +229,15 @@ export class HtmlExtract implements INodeType {
 				let htmlArray: string[] | string = [];
 				if (sourceData === 'json') {
 					if (item.json[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
+						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`, { itemIndex });
 					}
 					htmlArray = item.json[dataPropertyName] as string;
 				} else {
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`);
+						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`, { itemIndex });
 					}
 					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
+						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`, { itemIndex });
 					}
 
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);

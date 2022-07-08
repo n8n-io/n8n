@@ -140,7 +140,7 @@ export class Shopify implements INodeType {
 						const shipping = additionalFields.shippingAddressUi as IDataObject;
 						const lineItem = (this.getNodeParameter('limeItemsUi', i) as IDataObject).lineItemValues as IDataObject[];
 						if (lineItem === undefined) {
-							throw new NodeOperationError(this.getNode(), 'At least one line item has to be added');
+							throw new NodeOperationError(this.getNode(), 'At least one line item has to be added', { itemIndex: i });
 						}
 						const body: IOrder = {
 							test: true,

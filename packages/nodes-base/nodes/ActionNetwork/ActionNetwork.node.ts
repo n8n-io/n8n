@@ -295,6 +295,7 @@ export class ActionNetwork implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Please enter at least one field to update for the ${resource}.`,
+								{ itemIndex: i },
 							);
 						}
 
@@ -364,6 +365,7 @@ export class ActionNetwork implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Please enter at least one field to update for the ${resource}.`,
+								{ itemIndex: i },
 							);
 						}
 
@@ -439,6 +441,7 @@ export class ActionNetwork implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Please enter at least one field to update for the ${resource}.`,
+								{ itemIndex: i },
 							);
 						}
 

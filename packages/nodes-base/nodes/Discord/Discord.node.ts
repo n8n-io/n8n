@@ -136,17 +136,17 @@ export class Discord implements INodeType {
 			const options = this.getNodeParameter('options', i) as IDataObject;
 
 			if (!body.content && !options.embeds) {
-				throw new NodeOperationError(this.getNode(), 'Either content or embeds must be set.');
+				throw new NodeOperationError(this.getNode(), 'Either content or embeds must be set.', { itemIndex: i });
 			}
 			if (options.embeds) {
 				try {
 					//@ts-expect-error
 					body.embeds = JSON.parse(options.embeds);
 					if (!Array.isArray(body.embeds)) {
-						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.');
+						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', { itemIndex: i });
 					}
 				} catch (e) {
-					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.');
+					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.', { itemIndex: i });
 				}
 			}
 			if (options.username) {
@@ -158,7 +158,7 @@ export class Discord implements INodeType {
 					//@ts-expect-error
 					body.components = JSON.parse(options.components);
 				} catch (e) {
-					throw new NodeOperationError(this.getNode(), 'Components must be valid JSON.');
+					throw new NodeOperationError(this.getNode(), 'Components must be valid JSON.', { itemIndex: i });
 				}
 			}
 

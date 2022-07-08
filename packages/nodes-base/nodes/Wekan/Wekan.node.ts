@@ -307,7 +307,7 @@ export class Wekan implements INodeType {
 						endpoint = `users/${userId}/boards`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'card') {
@@ -397,7 +397,7 @@ export class Wekan implements INodeType {
 						Object.assign(body, updateFields);
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'cardComment') {
@@ -456,7 +456,7 @@ export class Wekan implements INodeType {
 						endpoint = `boards/${boardId}/cards/${cardId}/comments`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'list') {
@@ -511,7 +511,7 @@ export class Wekan implements INodeType {
 						endpoint = `boards/${boardId}/lists`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'checklist') {
@@ -620,7 +620,7 @@ export class Wekan implements INodeType {
 
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else if (resource === 'checklistItem') {
 

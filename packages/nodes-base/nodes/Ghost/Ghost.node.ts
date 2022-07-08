@@ -226,7 +226,7 @@ export class Ghost implements INodeType {
 							} else {
 								const mobileDoc = validateJSON(content);
 								if (mobileDoc === undefined) {
-									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', { itemIndex: i });
 								}
 								post.mobiledoc = content;
 							}
@@ -240,7 +240,7 @@ export class Ghost implements INodeType {
 							}
 
 							if (post.status === 'scheduled' && post.published_at === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled');
+								throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled', { itemIndex: i });
 							}
 
 							responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
@@ -320,7 +320,7 @@ export class Ghost implements INodeType {
 							} else {
 								const mobileDoc = validateJSON(updateFields.contentJson as string || undefined);
 								if (mobileDoc === undefined) {
-									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON', { itemIndex: i });
 								}
 								post.mobiledoc = updateFields.contentJson;
 								delete updateFields.contentJson;
@@ -335,7 +335,7 @@ export class Ghost implements INodeType {
 							}
 
 							if (post.status === 'scheduled' && post.published_at === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled');
+								throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled', { itemIndex: i });
 							}
 
 							post.updated_at = posts[0].updated_at;

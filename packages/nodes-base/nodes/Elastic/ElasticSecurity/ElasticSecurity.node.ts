@@ -214,6 +214,7 @@ export class ElasticSecurity implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Connector Type does not match the type of the connector in Connector Name',
+								{ itemIndex: i },
 							);
 						}
 
@@ -386,6 +387,7 @@ export class ElasticSecurity implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Cannot add tag "${tagToAdd}" to case ID ${caseId} because this case already has this tag.`,
+								{ itemIndex: i },
 							);
 						}
 
@@ -425,7 +427,7 @@ export class ElasticSecurity implements INodeType {
 						} = await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`) as IDataObject & { tags: string[] };
 
 						if (!tags.includes(tagToRemove)) {
-							throw new NodeOperationError(this.getNode(), `Cannot remove tag "${tagToRemove}" from case ID ${caseId} because this case does not have this tag.`);
+							throw new NodeOperationError(this.getNode(), `Cannot remove tag "${tagToRemove}" from case ID ${caseId} because this case does not have this tag.`, { itemIndex: i });
 						}
 
 						const body = {};

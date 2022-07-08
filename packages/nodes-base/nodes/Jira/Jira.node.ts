@@ -487,7 +487,7 @@ export class Jira implements INodeType {
 					}
 					if (!additionalFields.parentIssueKey
 						&& subtaskIssues.includes(issueTypeId)) {
-						throw new NodeOperationError(this.getNode(), 'You must define a Parent Issue Key when Issue type is sub-task');
+						throw new NodeOperationError(this.getNode(), 'You must define a Parent Issue Key when Issue type is sub-task', { itemIndex: i });
 
 					} else if (additionalFields.parentIssueKey
 						&& subtaskIssues.includes(issueTypeId)) {
@@ -567,7 +567,7 @@ export class Jira implements INodeType {
 					}
 					if (!updateFields.parentIssueKey
 						&& subtaskIssues.includes(updateFields.issueType)) {
-						throw new NodeOperationError(this.getNode(), 'You must define a Parent Issue Key when Issue type is sub-task');
+						throw new NodeOperationError(this.getNode(), 'You must define a Parent Issue Key when Issue type is sub-task', { itemIndex: i });
 
 					} else if (updateFields.parentIssueKey
 						&& subtaskIssues.includes(updateFields.issueType)) {
@@ -799,7 +799,7 @@ export class Jira implements INodeType {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 
 					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 					}
 
 					const item = items[i].binary as IBinaryKeyData;
@@ -808,7 +808,7 @@ export class Jira implements INodeType {
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 					if (binaryData === undefined) {
-						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 					}
 
 					responseData = await jiraSoftwareCloudApiRequest.call(
@@ -929,7 +929,7 @@ export class Jira implements INodeType {
 						const commentJson = this.getNodeParameter('commentJson', i) as string;
 						const json = validateJSON(commentJson);
 						if (json === '') {
-							throw new NodeOperationError(this.getNode(), 'Document Format must be a valid JSON');
+							throw new NodeOperationError(this.getNode(), 'Document Format must be a valid JSON', { itemIndex: i });
 						}
 
 						Object.assign(body, { body: json });
@@ -1018,7 +1018,7 @@ export class Jira implements INodeType {
 						const commentJson = this.getNodeParameter('commentJson', i) as string;
 						const json = validateJSON(commentJson);
 						if (json === '') {
-							throw new NodeOperationError(this.getNode(), 'Document Format must be a valid JSON');
+							throw new NodeOperationError(this.getNode(), 'Document Format must be a valid JSON', { itemIndex: i });
 						}
 
 						Object.assign(body, { body: json });

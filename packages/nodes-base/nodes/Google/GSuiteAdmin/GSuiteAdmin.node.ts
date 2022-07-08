@@ -329,7 +329,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined', { itemIndex: i });
 					}
 
 					responseData = await googleApiRequest.call(
@@ -362,7 +362,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined', { itemIndex: i });
 					}
 
 					if (returnAll) {

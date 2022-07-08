@@ -1196,11 +1196,11 @@ export class EditImage implements INodeType {
 				if (operations[0].operation !== 'create') {
 					// "create" generates a new image so does not require any incoming data.
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'Item does not contain any binary data.');
+						throw new NodeOperationError(this.getNode(), 'Item does not contain any binary data.', { itemIndex });
 					}
 
 					if (item.binary[dataPropertyName as string] === undefined) {
-						throw new NodeOperationError(this.getNode(), `Item does not contain any binary data with the name "${dataPropertyName}".`);
+						throw new NodeOperationError(this.getNode(), `Item does not contain any binary data with the name "${dataPropertyName}".`, { itemIndex });
 					}
 
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
@@ -1245,7 +1245,7 @@ export class EditImage implements INodeType {
 						const geometryString = (positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
 						if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
-							throw new NodeOperationError(this.getNode(), `Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`);
+							throw new NodeOperationError(this.getNode(), `Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`, { itemIndex });
 						}
 
 						const { fd, path, cleanup } = await file();

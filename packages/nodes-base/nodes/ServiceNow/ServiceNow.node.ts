@@ -556,7 +556,7 @@ export class ServiceNow implements INodeType {
 						if (items[i].binary && items[i].binary![inputDataFieldName]) {
 							binaryData = items[i].binary![inputDataFieldName];
 						} else {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${inputDataFieldName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${inputDataFieldName}" does not exists on item!`, { itemIndex: i });
 						}
 
 						const headers: IDataObject = {
@@ -722,7 +722,7 @@ export class ServiceNow implements INodeType {
 						responseData = response.result;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else if (resource === 'tableRecord') {
 
@@ -816,7 +816,7 @@ export class ServiceNow implements INodeType {
 						responseData = response.result;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else if (resource === 'user') {
 
@@ -881,7 +881,7 @@ export class ServiceNow implements INodeType {
 						responseData = response.result;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else if (resource === 'userGroup') {
 					if (operation === 'getAll') {
@@ -902,7 +902,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_group', {}, qs);
 						}
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else if (resource === 'userRole') {
 					if (operation === 'getAll') {
@@ -923,10 +923,10 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_role', {}, qs);
 						}
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

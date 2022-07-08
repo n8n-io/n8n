@@ -1108,7 +1108,7 @@ export class AwsSes implements INodeType {
 						if (toAddresses.length) {
 							setParameter(params, 'Destination.ToAddresses.member', toAddresses);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!');
+							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!', { itemIndex: i });
 						}
 
 						if (additionalFields.configurationSetName) {
@@ -1161,7 +1161,7 @@ export class AwsSes implements INodeType {
 						if (toAddresses.length) {
 							setParameter(params, 'Destination.ToAddresses.member', toAddresses);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!');
+							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!', { itemIndex: i });
 						}
 
 						if (additionalFields.configurationSetName) {

@@ -183,7 +183,7 @@ export class PayPal implements INodeType {
 								});
 								body.items = payoutItems;
 							} else {
-								throw new NodeOperationError(this.getNode(), 'You must have at least one item.');
+								throw new NodeOperationError(this.getNode(), 'You must have at least one item.', { itemIndex: i });
 							}
 						} else {
 							const itemsJson = validateJSON(this.getNodeParameter('itemsJson', i) as string);

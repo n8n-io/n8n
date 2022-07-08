@@ -662,7 +662,7 @@ export class GoToWebinar implements INodeType {
 						Object.assign(body, updateFields);
 
 						if (isEmpty(updateFields)) {
-							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
 						}
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}`;
