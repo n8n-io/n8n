@@ -66,6 +66,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email of the lead to create',
 		displayOptions: {
@@ -108,7 +109,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'deduplicate',
 				type: 'boolean',
 				default: false,
-				description: 'Do not insert if this email is already present in another campaign',
+				description: 'Whether to do not insert if this email is already present in another campaign',
 			},
 			{
 				displayName: 'First Name',
@@ -183,6 +184,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email of the lead to delete',
 		displayOptions: {
@@ -204,6 +206,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email of the lead to retrieve',
 		displayOptions: {
@@ -246,6 +249,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email of the lead to unsubscribe',
 		displayOptions: {

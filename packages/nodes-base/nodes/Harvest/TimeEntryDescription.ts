@@ -144,14 +144,14 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'is_billed',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
+				description: 'Whether to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
 			},
 			{
 				displayName: 'Is Running',
 				name: 'is_running',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return running time entries and false to return non-running time entries',
+				description: 'Whether to only return running time entries and false to return non-running time entries',
 			},
 			{
 				displayName: 'Page',

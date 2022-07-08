@@ -164,7 +164,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'active',
 				type: 'boolean',
 				default: false,
-				description: 'Return only active dates in series',
+				description: 'Whether to return only active dates in series',
 			},
 			{
 				displayName: 'Session ID',
@@ -183,6 +183,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Event Name or ID',
 		name: 'eventId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getEvents',
 		},
@@ -220,6 +221,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		description: 'The registrant\'s email address',
