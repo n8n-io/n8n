@@ -28,18 +28,14 @@ beforeAll(async () => {
 
 	utils.initConfigFile();
 
-	const [
-		fetchedGlobalOwnerRole,
-		fetchedGlobalMemberRole,
-		_,
-		fetchedCredentialOwnerRole,
-	] = await testDb.getAllRoles();
+	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
+		await testDb.getAllRoles();
 
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
 	utils.initTestLogger();
 	utils.initTestTelemetry();
@@ -405,8 +401,3 @@ const INVALID_PAYLOADS = [
 	[],
 	undefined,
 ];
-
-function affixRoleToSaveCredential(role: Role) {
-	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
-		testDb.saveCredential(credentialPayload, { user, role });
-}

@@ -56,7 +56,6 @@ import type {
 } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 
-
 /**
  * Initialize a test server.
  *
@@ -807,6 +806,10 @@ export function createAgent(
 	}
 
 	return agent;
+}
+
+export function createAuthAgent(app: express.Application) {
+	return (user: User) => createAgent(app, { auth: true, user });
 }
 
 /**
