@@ -1524,6 +1524,7 @@ export interface INodeNameIndex {
 export interface INodesGraphResult {
 	nodeGraph: INodesGraph;
 	nameIndices: INodeNameIndex;
+	webhookNodeNames: string[];
 }
 
 export interface ITelemetryClientConfig {
