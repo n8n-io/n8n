@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -10,6 +11,7 @@ import * as rmm from './rmm';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'SyncroMSP',
 	name: 'syncroMsp',
+	// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 	icon: 'file:syncromsp.png',
 	group: ['output'],
 	version: 1,
@@ -33,6 +35,7 @@ export const versionDescription: INodeTypeDescription = {
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
+			noDataExpression: true,
 			options: [
 				{
 					name: 'Contact',

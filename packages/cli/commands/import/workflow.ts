@@ -17,14 +17,33 @@ import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
-import { Db, ICredentialsDb } from '../../src';
+import { Db, ICredentialsDb, IWorkflowToImport } from '../../src';
 import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { Role } from '../../src/databases/entities/Role';
 import { User } from '../../src/databases/entities/User';
+import { setTagsForImport } from '../../src/TagHelpers';
 
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
+
+function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
+	if (!Array.isArray(workflows)) {
+		throw new Error(
+			'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
+		);
+	}
+
+	for (const workflow of workflows) {
+		if (
+			typeof workflow !== 'object' ||
+			!Object.prototype.hasOwnProperty.call(workflow, 'nodes') ||
+			!Object.prototype.hasOwnProperty.call(workflow, 'connections')
+		) {
+			throw new Error('File does not seem to contain valid workflows.');
+		}
+	}
+}
 
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
@@ -82,7 +101,8 @@ export class ImportWorkflowsCommand extends Command {
 
 			// Make sure the settings exist
 			await UserSettings.prepareUserSettings();
-			const credentials = (await Db.collections.Credentials?.find()) ?? [];
+			const credentials = await Db.collections.Credentials.find();
+			const tags = await Db.collections.Tag.find();
 
 			let totalImported = 0;
 
@@ -111,6 +131,10 @@ export class ImportWorkflowsCommand extends Command {
 							});
 						}
 
+						if (Object.prototype.hasOwnProperty.call(workflow, 'tags')) {
+							await setTagsForImport(transactionManager, workflow, tags);
+						}
+
 						await this.storeWorkflow(workflow, user);
 					}
 				});
@@ -121,13 +145,9 @@ export class ImportWorkflowsCommand extends Command {
 
 			const workflows = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
-			totalImported = workflows.length;
+			assertHasWorkflowsToImport(workflows);
 
-			if (!Array.isArray(workflows)) {
-				throw new Error(
-					'File does not seem to contain workflows. Make sure the workflows are contained in an array.',
-				);
-			}
+			totalImported = workflows.length;
 
 			await getConnection().transaction(async (transactionManager) => {
 				this.transactionManager = transactionManager;
@@ -137,6 +157,10 @@ export class ImportWorkflowsCommand extends Command {
 						workflow.nodes.forEach((node: INode) => {
 							this.transformCredentials(node, credentials);
 						});
+					}
+
+					if (Object.prototype.hasOwnProperty.call(workflow, 'tags')) {
+						await setTagsForImport(transactionManager, workflow, tags);
 					}
 
 					await this.storeWorkflow(workflow, user);

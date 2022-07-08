@@ -11,6 +11,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -46,7 +47,6 @@ export const contactOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -58,6 +58,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -70,10 +71,10 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The email of the contact to create.',
+		description: 'The email of the contact to create',
 	},
 	{
-		displayName: 'Update if exists',
+		displayName: 'Update if Exists',
 		name: 'updateIfExists',
 		type: 'boolean',
 		displayOptions: {
@@ -87,7 +88,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Update user if it exists already. If not set and user exists it will error instead.',
+		description: 'Whether to update user if it exists already. If not set and user exists it will error instead.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -110,7 +111,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fieldValues',
 				placeholder: 'Add Custom Fields',
-				description: 'Adds a custom fields to set also values which have not been predefined.',
+				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -122,21 +123,21 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getContactCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 							},
 						],
 					},
@@ -147,21 +148,21 @@ export const contactFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'The first name of the contact to create.',
+				description: 'The first name of the contact to create',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'The last name of the contact to create.',
+				description: 'The last name of the contact to create',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact.',
+				description: 'Phone number of the contact',
 			},
 		],
 	},
@@ -185,13 +186,13 @@ export const contactFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact to update.',
+		description: 'ID of the contact to update',
 	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		description: 'The fields to update.',
+		description: 'The fields to update',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
@@ -209,7 +210,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fieldValues',
 				placeholder: 'Add Custom Fields',
-				description: 'Adds a custom fields to set also values which have not been predefined.',
+				description: 'Adds a custom fields to set also values which have not been predefined',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -221,21 +222,21 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getContactCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set.',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the field to set.',
+								description: 'Value of the field to set',
 							},
 						],
 					},
@@ -245,29 +246,30 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'Email of the contact.',
+				description: 'Email of the contact',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'First name of the contact.',
+				description: 'First name of the contact',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Last name of the contact.',
+				description: 'Last name of the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact.',
+				description: 'Phone number of the contact',
 			},
 		],
 	},
@@ -291,7 +293,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact to delete.',
+		description: 'ID of the contact to delete',
 	},
 
 	// ----------------------------------
@@ -313,7 +315,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact to get.',
+		description: 'ID of the contact to get',
 	},
 
 	// ----------------------------------
@@ -348,6 +350,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Email address of the contact you want to get',
 			},
@@ -406,24 +409,24 @@ export const contactFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'Active',
+						value: 1,
+					},
+					{
 						name: 'Any',
 						value: -1,
+					},
+					{
+						name: 'Bounced',
+						value: 3,
 					},
 					{
 						name: 'Unconfirmed',
 						value: 0,
 					},
 					{
-						name: 'Active',
-						value: 1,
-					},
-					{
 						name: 'Unsubscribed',
 						value: 2,
-					},
-					{
-						name: 'Bounced',
-						value: 3,
 					},
 				],
 				default: '',

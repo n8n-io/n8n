@@ -18,7 +18,7 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -33,7 +33,7 @@ beforeEach(async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
-	await Db.collections.Settings!.update(
+	await Db.collections.Settings.update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(true) },
 	);
@@ -68,6 +68,7 @@ test('POST /login should log user in', async () => {
 		personalizationAnswers,
 		globalRole,
 		resetPasswordToken,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -81,6 +82,7 @@ test('POST /login should log user in', async () => {
 	expect(globalRole).toBeDefined();
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
+	expect(apiKey).toBeUndefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
@@ -102,7 +104,7 @@ test('GET /login should return cookie if UM is disabled', async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
-	await Db.collections.Settings!.update(
+	await Db.collections.Settings.update(
 		{ key: 'userManagement.isInstanceOwnerSetUp' },
 		{ value: JSON.stringify(false) },
 	);
@@ -146,6 +148,7 @@ test('GET /login should return logged-in owner shell', async () => {
 		personalizationAnswers,
 		globalRole,
 		resetPasswordToken,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -159,6 +162,7 @@ test('GET /login should return logged-in owner shell', async () => {
 	expect(globalRole).toBeDefined();
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
+	expect(apiKey).toBeUndefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeUndefined();
@@ -181,6 +185,7 @@ test('GET /login should return logged-in member shell', async () => {
 		personalizationAnswers,
 		globalRole,
 		resetPasswordToken,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -194,6 +199,7 @@ test('GET /login should return logged-in member shell', async () => {
 	expect(globalRole).toBeDefined();
 	expect(globalRole.name).toBe('member');
 	expect(globalRole.scope).toBe('global');
+	expect(apiKey).toBeUndefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeUndefined();
@@ -216,6 +222,7 @@ test('GET /login should return logged-in owner', async () => {
 		personalizationAnswers,
 		globalRole,
 		resetPasswordToken,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -229,6 +236,7 @@ test('GET /login should return logged-in owner', async () => {
 	expect(globalRole).toBeDefined();
 	expect(globalRole.name).toBe('owner');
 	expect(globalRole.scope).toBe('global');
+	expect(apiKey).toBeUndefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeUndefined();
@@ -251,6 +259,7 @@ test('GET /login should return logged-in member', async () => {
 		personalizationAnswers,
 		globalRole,
 		resetPasswordToken,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -264,6 +273,7 @@ test('GET /login should return logged-in member', async () => {
 	expect(globalRole).toBeDefined();
 	expect(globalRole.name).toBe('member');
 	expect(globalRole.scope).toBe('global');
+	expect(apiKey).toBeUndefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeUndefined();

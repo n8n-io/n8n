@@ -70,7 +70,7 @@ export class FacebookGraphApi implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The HTTP Method to be used for the request.',
+				description: 'The HTTP Method to be used for the request',
 				required: true,
 			},
 			{
@@ -81,6 +81,10 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v14.0',
+						value: 'v14.0',
 					},
 					{
 						name: 'v13.0',
@@ -140,7 +144,7 @@ export class FacebookGraphApi implements INodeType {
 					},
 				],
 				default: '',
-				description: 'The version of the Graph API to be used in the request.',
+				description: 'The version of the Graph API to be used in the request',
 				required: true,
 			},
 			{
@@ -159,14 +163,13 @@ export class FacebookGraphApi implements INodeType {
 				default: '',
 				description: 'Edge of the node on which to operate. Edges represent collections of objects which are attached to the node.',
 				placeholder: 'videos',
-				required: false,
 			},
 			{
 				displayName: 'Ignore SSL Issues',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
-				description: 'Still download the response even if SSL certificate validation is not possible. (Not recommended).',
+				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Send Binary Data',
@@ -182,13 +185,12 @@ export class FacebookGraphApi implements INodeType {
 				},
 				default: false,
 				required: true,
-				description: 'If binary data should be send as body.',
+				description: 'Whether binary data should be sent as body',
 			},
 			{
 				displayName: 'Binary Property',
 				name: 'binaryPropertyName',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'file:data',
 				displayOptions: {
@@ -204,7 +206,7 @@ export class FacebookGraphApi implements INodeType {
 						],
 					},
 				},
-				description: `Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>`,
+				description: 'Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 			},
 			{
 				displayName: 'Options',
@@ -228,7 +230,7 @@ export class FacebookGraphApi implements INodeType {
 								],
 							},
 						},
-						description: 'The list of fields to request in the GET request.',
+						description: 'The list of fields to request in the GET request',
 						default: {},
 						options: [
 							{
@@ -240,7 +242,7 @@ export class FacebookGraphApi implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the field.',
+										description: 'Name of the field',
 									},
 								],
 							},
@@ -266,14 +268,14 @@ export class FacebookGraphApi implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the parameter.',
+										description: 'Name of the parameter',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value of the parameter.',
+										description: 'Value of the parameter',
 									},
 								],
 							},
@@ -286,7 +288,6 @@ export class FacebookGraphApi implements INodeType {
 						default: '{}',
 						placeholder: '{\"field_name\": \"field_value\"}',
 						description: 'The query parameters to send, defined as a JSON object',
-						required: false,
 					},
 				],
 			},

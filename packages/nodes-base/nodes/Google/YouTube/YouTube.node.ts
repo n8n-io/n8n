@@ -48,6 +48,7 @@ export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'YouTube',
 		name: 'youTube',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:youTube.png',
 		group: ['input'],
 		version: 1,
@@ -69,6 +70,7 @@ export class YouTube implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -92,7 +94,6 @@ export class YouTube implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,

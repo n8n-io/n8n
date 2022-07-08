@@ -27,7 +27,6 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
-	IWorkflowCredentials,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
@@ -57,7 +56,6 @@ import {
 	Push,
 	ResponseHelper,
 	WebhookHelpers,
-	WorkflowCredentials,
 	WorkflowHelpers,
 } from '.';
 import {
@@ -66,7 +64,7 @@ import {
 	getWorkflowOwner,
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { IWorkflowErrorData } from './Interfaces';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -79,7 +77,7 @@ const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
  * @param {WorkflowExecuteMode} mode The mode in which the workflow got started in
  * @param {string} [executionId] The id the execution got saved as
  */
-function executeErrorWorkflow(
+export function executeErrorWorkflow(
 	workflowData: IWorkflowBase,
 	fullRunData: IRun,
 	mode: WorkflowExecuteMode,
@@ -94,20 +92,37 @@ function executeErrorWorkflow(
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
-		const workflowErrorData = {
-			execution: {
-				id: executionId,
-				url: pastExecutionUrl,
-				error: fullRunData.data.resultData.error,
-				lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
-				mode,
-				retryOf,
-			},
-			workflow: {
-				id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
-				name: workflowData.name,
-			},
-		};
+		let workflowErrorData: IWorkflowErrorData;
+
+		if (executionId) {
+			// The error did happen in an execution
+			workflowErrorData = {
+				execution: {
+					id: executionId,
+					url: pastExecutionUrl,
+					error: fullRunData.data.resultData.error,
+					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
+					mode,
+					retryOf,
+				},
+				workflow: {
+					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					name: workflowData.name,
+				},
+			};
+		} else {
+			// The error did happen in a trigger
+			workflowErrorData = {
+				trigger: {
+					error: fullRunData.data.resultData.error,
+					mode,
+				},
+				workflow: {
+					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					name: workflowData.name,
+				},
+			};
+		}
 
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
@@ -135,15 +150,26 @@ function executeErrorWorkflow(
 				// make sure there are no possible security gaps
 				return;
 			}
-
-			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			getWorkflowOwner(workflowData.id).then((user) => {
-				void WorkflowHelpers.executeErrorWorkflow(
-					workflowData.settings!.errorWorkflow as string,
-					workflowErrorData,
-					user,
-				);
-			});
+			getWorkflowOwner(workflowData.id)
+				.then((user) => {
+					void WorkflowHelpers.executeErrorWorkflow(
+						workflowData.settings!.errorWorkflow as string,
+						workflowErrorData,
+						user,
+					);
+				})
+				.catch((error) => {
+					Logger.error(
+						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
+						{
+							executionId,
+							errorWorkflowId: workflowData.settings!.errorWorkflow!.toString(),
+							workflowId: workflowData.id,
+							error,
+							workflowErrorData,
+						},
+					);
+				});
 		} else if (
 			mode !== 'error' &&
 			workflowData.id !== undefined &&
@@ -397,6 +423,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 								contextData: {},
 								nodeExecutionStack: [],
 								waitingExecution: {},
+								waitingExecutionSource: {},
 							},
 						};
 					}
@@ -584,7 +611,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
-						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
+						// await Db.collections.Execution.save(executionData as IExecutionFlattedDb);
 						await Db.collections.Execution.update(this.retryOf, {
 							retrySuccessId: this.executionId,
 						});
@@ -752,6 +779,7 @@ export async function getRunData(
 		data: {
 			main: [inputData],
 		},
+		source: null,
 	});
 
 	const runExecutionData: IRunExecutionData = {
@@ -763,6 +791,7 @@ export async function getRunData(
 			contextData: {},
 			nodeExecutionStack,
 			waitingExecution: {},
+			waitingExecutionSource: {},
 		},
 	};
 
@@ -1014,7 +1043,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
  * Returns the base additional data without webhooks
  *
  * @export
- * @param {IWorkflowCredentials} credentials
+ * @param {userId} string
  * @param {INodeParameters} currentNodeParameters
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */

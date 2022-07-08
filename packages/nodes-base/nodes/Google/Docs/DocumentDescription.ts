@@ -7,6 +7,7 @@ export const documentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -29,7 +30,6 @@ export const documentOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -38,9 +38,10 @@ export const documentFields: INodeProperties[] = [
 	/*                                 document: create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Drive',
+		displayName: 'Drive Name or ID',
 		name: 'driveId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDrives',
 		},
@@ -58,9 +59,10 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Folder',
+		displayName: 'Folder Name or ID',
 		name: 'folderId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'driveId',
@@ -117,10 +119,10 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID in the document URL (or just paste the whole URL).',
+		description: 'The ID in the document URL (or just paste the whole URL)',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -134,7 +136,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'When set to true the document text content will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -156,10 +158,10 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID in the document URL (or just paste the whole URL).',
+		description: 'The ID in the document URL (or just paste the whole URL)',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -173,12 +175,12 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplified version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Actions',
 		name: 'actionsUi',
-		description: 'Actions applied to update the document.',
+		description: 'Actions applied to update the document',
 		type: 'fixedCollection',
 		placeholder: 'Add Action',
 		typeOptions: {
@@ -257,7 +259,7 @@ export const documentFields: INodeProperties[] = [
 								value: 'text',
 							},
 						],
-						description: 'The update object.',
+						description: 'The update object',
 						default: 'text',
 					},
 					// Action fields (depend on the Object field)
@@ -267,7 +269,7 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Find and replace text',
+								name: 'Find and Replace Text',
 								value: 'replaceAll',
 							},
 							{
@@ -282,7 +284,7 @@ export const documentFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: 'The update action.',
+						description: 'The update action',
 						default: '',
 					},
 					{
@@ -309,7 +311,7 @@ export const documentFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: 'The update action.',
+						description: 'The update action',
 						default: '',
 					},
 					{
@@ -334,7 +336,7 @@ export const documentFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: 'The update action.',
+						description: 'The update action',
 						default: '',
 					},
 					{
@@ -355,7 +357,7 @@ export const documentFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: 'The update action.',
+						description: 'The update action',
 						default: '',
 					},
 					{
@@ -375,7 +377,7 @@ export const documentFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: 'The update action.',
+						description: 'The update action',
 						default: '',
 					},
 					// Shared Segment inputs for Create action (moved up for display purposes)
@@ -397,7 +399,7 @@ export const documentFields: INodeProperties[] = [
 								value: 'footer',
 							},
 						],
-						description: 'The location where to create the object.',
+						description: 'The location where to create the object',
 						default: 'body',
 						displayOptions: {
 							show: {
@@ -445,7 +447,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Index',
 						name: 'index',
 						type: 'number',
-						description: 'The zero-based index, relative to the beginning of the specified segment.',
+						description: 'The zero-based index, relative to the beginning of the specified segment',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -481,7 +483,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Start Index',
 						name: 'startIndex',
 						type: 'number',
-						description: 'The zero-based start index of this range.',
+						description: 'The zero-based start index of this range',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -498,7 +500,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'End Index',
 						name: 'endIndex',
 						type: 'number',
-						description: 'The zero-based end index of this range.',
+						description: 'The zero-based end index of this range',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -520,12 +522,12 @@ export const documentFields: INodeProperties[] = [
 							{
 								name: 'Bullet List',
 								value: 'BULLET_DISC_CIRCLE_SQUARE',
-								description: 'A bulleted list with a <code>DISC</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
+								description: 'A bulleted list with a <code>DISC</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels',
 							},
 							{
 								name: 'Checkbox List',
 								value: 'BULLET_CHECKBOX',
-								description: 'A bulleted list with CHECKBOX bullet glyphs for all list nesting levels.',
+								description: 'A bulleted list with CHECKBOX bullet glyphs for all list nesting levels',
 							},
 							{
 								name: 'Numbered List',
@@ -533,7 +535,7 @@ export const documentFields: INodeProperties[] = [
 								description: 'A numbered list with <code>DECIMAL</code> numeric glyphs separated by periods, where each nesting level uses the previous nesting level\'s glyph as a prefix. For example: 1., 1.1., 2., 2.2 .',
 							},
 						],
-						description: 'The Preset pattern of bullet glyphs for list.',
+						description: 'The Preset pattern of bullet glyphs for list',
 						default: 'BULLET_DISC_CIRCLE_SQUARE',
 						displayOptions: {
 							show: {
@@ -584,7 +586,7 @@ export const documentFields: INodeProperties[] = [
 					},
 					// delete named range
 					{
-						displayName: 'Specify range by',
+						displayName: 'Specify Range By',
 						name: 'namedRangeReference',
 						type: 'options',
 						options: [
@@ -597,7 +599,7 @@ export const documentFields: INodeProperties[] = [
 								value: 'name',
 							},
 						],
-						description: 'The value determines which range or ranges to delete.',
+						description: 'The value determines which range or ranges to delete',
 						default: 'namedRangeId',
 						displayOptions: {
 							show: {
@@ -614,7 +616,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'ID',
 						name: 'value',
 						type: 'string',
-						description: 'The ID of the range.',
+						description: 'The ID of the range',
 						default: '',
 						displayOptions: {
 							show: {
@@ -634,7 +636,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Name',
 						name: 'value',
 						type: 'string',
-						description: 'The name of the range.',
+						description: 'The name of the range',
 						default: '',
 						displayOptions: {
 							show: {
@@ -656,7 +658,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Object ID',
 						name: 'objectId',
 						type: 'string',
-						description: 'The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href="https://developers.google.com/docs/api/reference/rest/v1/PositionedObject">documentation</a>.',
+						description: 'The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href="https://developers.google.com/docs/api/reference/rest/v1/PositionedObject">documentation</a>',
 						default: '',
 						displayOptions: {
 							show: {
@@ -690,7 +692,7 @@ export const documentFields: INodeProperties[] = [
 								value: 'footer',
 							},
 						],
-						description: 'The location where to create the object.',
+						description: 'The location where to create the object',
 						default: 'body',
 						displayOptions: {
 							show: {
@@ -740,16 +742,16 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
-								description: 'Inserts the text at the end of a header, footer, footnote, or document body.',
+								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
-						description: 'The location where the text will be inserted.',
+						description: 'The location where the text will be inserted',
 						default: 'endOfSegmentLocation',
 						displayOptions: {
 							show: {
@@ -766,7 +768,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Index',
 						name: 'index',
 						type: 'number',
-						description: 'The zero-based index, relative to the beginning of the specified segment.',
+						description: 'The zero-based index, relative to the beginning of the specified segment',
 						displayOptions: {
 							show: {
 								locationChoice: [
@@ -792,16 +794,16 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
-								description: 'Inserts the text at the end of a header, footer, footnote, or document body.',
+								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
-						description: 'The location where the text will be inserted.',
+						description: 'The location where the text will be inserted',
 						default: 'endOfSegmentLocation',
 						displayOptions: {
 							show: {
@@ -818,7 +820,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Index',
 						name: 'index',
 						type: 'number',
-						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer to a table).',
+						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer to a table)',
 						displayOptions: {
 							show: {
 								locationChoice: [
@@ -841,7 +843,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Rows',
 						name: 'rows',
 						type: 'number',
-						description: 'The number of rows in the table.',
+						description: 'The number of rows in the table',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -858,7 +860,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Columns',
 						name: 'columns',
 						type: 'number',
-						description: 'The number of columns in the table.',
+						description: 'The number of columns in the table',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -878,16 +880,16 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
-								description: 'Inserts the text at the end of a header, footer, footnote, or document body.',
+								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
-						description: 'The location where the text will be inserted.',
+						description: 'The location where the text will be inserted',
 						default: 'endOfSegmentLocation',
 						displayOptions: {
 							show: {
@@ -907,7 +909,7 @@ export const documentFields: INodeProperties[] = [
 						typeOptions: {
 							minValue: 1,
 						},
-						description: 'The zero-based index, relative to the beginning of the specified segment.',
+						description: 'The zero-based index, relative to the beginning of the specified segment',
 						displayOptions: {
 							show: {
 								locationChoice: [
@@ -927,7 +929,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
-						description: 'The text to insert in the document.',
+						description: 'The text to insert in the document',
 						default: '',
 						displayOptions: {
 							show: {
@@ -945,7 +947,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Old Text',
 						name: 'text',
 						type: 'string',
-						description: 'The text to search for in the document.',
+						description: 'The text to search for in the document',
 						default: '',
 						displayOptions: {
 							show: {
@@ -962,7 +964,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'New Text',
 						name: 'replaceText',
 						type: 'string',
-						description: 'The text that will replace the matched text.',
+						description: 'The text that will replace the matched text',
 						default: '',
 						displayOptions: {
 							show: {
@@ -979,7 +981,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Match Case',
 						name: 'matchCase',
 						type: 'boolean',
-						description: 'Indicates whether the search should respect case sensitivity.',
+						description: 'Whether the search should respect case sensitivity',
 						default: false,
 						displayOptions: {
 							show: {
@@ -1011,7 +1013,7 @@ export const documentFields: INodeProperties[] = [
 								value: 'footer',
 							},
 						],
-						description: 'The location where to create the object.',
+						description: 'The location where to create the object',
 						default: 'body',
 						displayOptions: {
 							show: {
@@ -1055,7 +1057,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Start Index',
 						name: 'startIndex',
 						type: 'number',
-						description: 'The zero-based start index of this range.',
+						description: 'The zero-based start index of this range',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -1069,7 +1071,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'End Index',
 						name: 'endIndex',
 						type: 'number',
-						description: 'The zero-based end index of this range.',
+						description: 'The zero-based end index of this range',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -1086,11 +1088,11 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Before content at index',
+								name: 'Before Content at Index',
 								value: false,
 							},
 							{
-								name: 'After content at index',
+								name: 'After Content at Index',
 								value: true,
 							},
 						],
@@ -1111,7 +1113,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Index',
 						name: 'index',
 						type: 'number',
-						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer to a table).',
+						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer to a table)',
 						default: 1,
 						typeOptions: {
 							minValue: 1,
@@ -1129,7 +1131,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Row Index',
 						name: 'rowIndex',
 						type: 'number',
-						description: 'The zero-based row index.',
+						description: 'The zero-based row index',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -1144,7 +1146,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Column Index',
 						name: 'columnIndex',
 						type: 'number',
-						description: 'The zero-based column index.',
+						description: 'The zero-based column index',
 						default: 0,
 						displayOptions: {
 							show: {
@@ -1181,7 +1183,7 @@ export const documentFields: INodeProperties[] = [
 				name: 'writeControlObject',
 				values: [
 					{
-						displayName: 'Revision mode',
+						displayName: 'Revision Mode',
 						name: 'control',
 						type: 'options',
 						options: [
@@ -1197,7 +1199,7 @@ export const documentFields: INodeProperties[] = [
 							},
 						],
 						default: 'requiredRevisionId',
-						description: 'Determines how the changes are applied to the revision.',
+						description: 'Determines how the changes are applied to the revision',
 					},
 					{
 						displayName: 'Revision ID',

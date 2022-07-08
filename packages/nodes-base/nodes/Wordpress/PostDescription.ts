@@ -5,6 +5,7 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -40,7 +41,6 @@ export const postOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -85,14 +85,14 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
 				default: '',
-				description: 'The ID for the author of the object.',
+				description: 'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -109,14 +109,14 @@ export const postFields: INodeProperties[] = [
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'An alphanumeric identifier for the object unique to its type.',
+				description: 'An alphanumeric identifier for the object unique to its type',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'A password to protect access to the content and excerpt.',
+				description: 'A password to protect access to the content and excerpt',
 			},
 			{
 				displayName: 'Status',
@@ -145,7 +145,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'draft',
-				description: 'A named status for the post.',
+				description: 'A named status for the post',
 			},
 			{
 				displayName: 'Comment Status',
@@ -162,7 +162,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'Whether or not comments are open on the post.',
+				description: 'Whether or not comments are open on the post',
 			},
 			{
 				displayName: 'Ping Status',
@@ -179,7 +179,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'If the a message should be send to announce the post.',
+				description: 'If the a message should be send to announce the post',
 			},
 			{
 				displayName: 'Format',
@@ -187,12 +187,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Standard',
-						value: 'standard',
-					},
-					{
 						name: 'Aside',
 						value: 'aside',
+					},
+					{
+						name: 'Audio',
+						value: 'audio',
 					},
 					{
 						name: 'Chat',
@@ -203,16 +203,20 @@ export const postFields: INodeProperties[] = [
 						value: 'gallery',
 					},
 					{
-						name: 'Link',
-						value: 'link',
-					},
-					{
 						name: 'Image',
 						value: 'image',
 					},
 					{
+						name: 'Link',
+						value: 'link',
+					},
+					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Standard',
+						value: 'standard',
 					},
 					{
 						name: 'Status',
@@ -222,40 +226,102 @@ export const postFields: INodeProperties[] = [
 						name: 'Video',
 						value: 'video',
 					},
-					{
-						name: 'Audio',
-						value: 'audio',
-					},
 				],
 				default: 'standard',
-				description: 'Whether or not comments are open on the post.',
+				description: 'Whether or not comments are open on the post',
 			},
 			{
 				displayName: 'Sticky',
 				name: 'sticky',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not the object should be treated as sticky.',
+				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the category taxonomy.',
+				description: 'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the post_tag taxonomy.',
+				description: 'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			},
+			{
+				displayName: 'Template',
+				name: 'postTemplate',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Elementor Template',
+								name: 'elementor',
+								type: 'boolean',
+								default: true,
+								description: 'Whether site uses elementor page builder',
+							},
+							{
+								displayName: 'Template',
+								name: 'template',
+								type: 'string',
+								default: '',
+								description: 'The theme file to use',
+								displayOptions: {
+									show: {
+										elementor: [ false ],
+									},
+								},
+							},
+							{
+								displayName: 'Template',
+								name: 'template',
+								type: 'options',
+								options: [
+									{
+										name: 'Standard',
+										value: '',
+									},
+									{
+										name: 'Elementor Canvas',
+										value: 'elementor_canvas',
+									},
+									{
+										name: 'Elementor Header Footer',
+										value: 'elementor_header_footer',
+									},
+									{
+										name: 'Elementor Theme',
+										value: 'elementor_theme',
+									},
+								],
+								default: '',
+								description: 'The Elementor template to use',
+								displayOptions: {
+									show: {
+										elementor: [ true ],
+									},
+								},
+							},
+						],
+					},
+				],
 			},
 		],
 	},
@@ -278,7 +344,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the object.',
+		description: 'Unique identifier for the object',
 	},
 	{
 		displayName: 'Update Fields',
@@ -298,14 +364,14 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Author ID',
+				displayName: 'Author Name or ID',
 				name: 'authorId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
 				default: '',
-				description: 'The ID for the author of the object.',
+				description: 'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',
@@ -329,14 +395,14 @@ export const postFields: INodeProperties[] = [
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'An alphanumeric identifier for the object unique to its type.',
+				description: 'An alphanumeric identifier for the object unique to its type',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'A password to protect access to the content and excerpt.',
+				description: 'A password to protect access to the content and excerpt',
 			},
 			{
 				displayName: 'Status',
@@ -344,16 +410,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Publish',
-						value: 'publish',
+						name: 'Draft',
+						value: 'draft',
 					},
 					{
 						name: 'Future',
 						value: 'future',
-					},
-					{
-						name: 'Draft',
-						value: 'draft',
 					},
 					{
 						name: 'Pending',
@@ -363,9 +425,13 @@ export const postFields: INodeProperties[] = [
 						name: 'Private',
 						value: 'private',
 					},
+					{
+						name: 'Publish',
+						value: 'publish',
+					},
 				],
 				default: 'draft',
-				description: 'A named status for the post.',
+				description: 'A named status for the post',
 			},
 			{
 				displayName: 'Comment Status',
@@ -382,7 +448,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'Whether or not comments are open on the post.',
+				description: 'Whether or not comments are open on the post',
 			},
 			{
 				displayName: 'Ping Status',
@@ -399,7 +465,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'Whether or not comments are open on the post.',
+				description: 'Whether or not comments are open on the post',
 			},
 			{
 				displayName: 'Format',
@@ -407,12 +473,12 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Standard',
-						value: 'standard',
-					},
-					{
 						name: 'Aside',
 						value: 'aside',
+					},
+					{
+						name: 'Audio',
+						value: 'audio',
 					},
 					{
 						name: 'Chat',
@@ -423,16 +489,20 @@ export const postFields: INodeProperties[] = [
 						value: 'gallery',
 					},
 					{
-						name: 'Link',
-						value: 'link',
-					},
-					{
 						name: 'Image',
 						value: 'image',
 					},
 					{
+						name: 'Link',
+						value: 'link',
+					},
+					{
 						name: 'Quote',
 						value: 'quote',
+					},
+					{
+						name: 'Standard',
+						value: 'standard',
 					},
 					{
 						name: 'Status',
@@ -442,40 +512,102 @@ export const postFields: INodeProperties[] = [
 						name: 'Video',
 						value: 'video',
 					},
-					{
-						name: 'Audio',
-						value: 'audio',
-					},
 				],
 				default: 'standard',
-				description: 'The format of the post.',
+				description: 'The format of the post',
 			},
 			{
 				displayName: 'Sticky',
 				name: 'sticky',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not the object should be treated as sticky.',
+				description: 'Whether or not the object should be treated as sticky',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the category taxonomy.',
+				description: 'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The terms assigned to the object in the post_tag taxonomy.',
+				description: 'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+			},
+			{
+				displayName: 'Template',
+				name: 'postTemplate',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Elementor Template',
+								name: 'elementor',
+								type: 'boolean',
+								default: true,
+								description: 'Whether site uses elementor page builder',
+							},
+							{
+								displayName: 'Template',
+								name: 'template',
+								type: 'string',
+								default: '',
+								description: 'The theme file to use',
+								displayOptions: {
+									show: {
+										elementor: [ false ],
+									},
+								},
+							},
+							{
+								displayName: 'Template',
+								name: 'template',
+								type: 'options',
+								options: [
+									{
+										name: 'Standard',
+										value: '',
+									},
+									{
+										name: 'Elementor Canvas',
+										value: 'elementor_canvas',
+									},
+									{
+										name: 'Elementor Header Footer',
+										value: 'elementor_header_footer',
+									},
+									{
+										name: 'Elementor Theme',
+										value: 'elementor_theme',
+									},
+								],
+								default: '',
+								description: 'The Elementor template to use',
+								displayOptions: {
+									show: {
+										elementor: [ true ],
+									},
+								},
+							},
+						],
+					},
+				],
 			},
 		],
 	},
@@ -498,7 +630,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the object.',
+		description: 'Unique identifier for the object',
 	},
 	{
 		displayName: 'Options',
@@ -522,7 +654,7 @@ export const postFields: INodeProperties[] = [
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'The password for the post if it is password protected.',
+				description: 'The password for the post if it is password protected',
 			},
 			{
 				displayName: 'Context',
@@ -543,7 +675,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'view',
-				description: 'Scope under which the request is made; determines fields present in response.',
+				description: 'Scope under which the request is made; determines fields present in response',
 			},
 		],
 	},
@@ -565,7 +697,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -589,7 +721,7 @@ export const postFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -613,34 +745,34 @@ export const postFields: INodeProperties[] = [
 				name: 'after',
 				type: 'dateTime',
 				default: '',
-				description: 'Limit response to posts published after a given ISO8601 compliant date.',
+				description: 'Limit response to posts published after a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Author',
+				displayName: 'Author Names or IDs',
 				name: 'author',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
-				description: 'Limit result set to posts assigned to specific authors.',
+				description: 'Limit result set to posts assigned to specific authors. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Before',
 				name: 'before',
 				type: 'dateTime',
 				default: '',
-				description: 'Limit response to posts published before a given ISO8601 compliant date.',
+				description: 'Limit response to posts published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy.',
+				description: 'Limit result set to all items that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Context',
@@ -661,9 +793,10 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'view',
-				description: 'Scope under which the request is made; determines fields present in response.',
+				description: 'Scope under which the request is made; determines fields present in response',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Exclude Categories',
 				name: 'excludedCategories',
 				type: 'multiOptions',
@@ -671,9 +804,10 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy.',
+				description: 'Limit result set to all items except those that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Exclude Tags',
 				name: 'excludedTags',
 				type: 'multiOptions',
@@ -681,7 +815,7 @@ export const postFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy.',
+				description: 'Limit result set to all items except those that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Order',
@@ -698,7 +832,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'desc',
-				description: 'Order sort attribute ascending or descending.',
+				description: 'Order sort attribute ascending or descending',
 			},
 			{
 				displayName: 'Order By',
@@ -722,6 +856,10 @@ export const postFields: INodeProperties[] = [
 						value: 'include',
 					},
 					{
+						name: 'Include Slugs',
+						value: 'include_slugs',
+					},
+					{
 						name: 'Modified',
 						value: 'modified',
 					},
@@ -738,23 +876,19 @@ export const postFields: INodeProperties[] = [
 						value: 'slug',
 					},
 					{
-						name: 'Include Slugs',
-						value: 'include_slugs',
-					},
-					{
 						name: 'Title',
 						value: 'title',
 					},
 				],
 				default: 'id',
-				description: 'Sort collection by object attribute.',
+				description: 'Sort collection by object attribute',
 			},
 			{
 				displayName: 'Search',
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Limit results to those matching a string.',
+				description: 'Limit results to those matching a string',
 			},
 			{
 				displayName: 'Status',
@@ -783,24 +917,24 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'publish',
-				description: 'The status of the post.',
+				description: 'The status of the post',
 			},
 			{
 				displayName: 'Sticky',
 				name: 'sticky',
 				type: 'boolean',
 				default: false,
-				description: 'Limit result set to items that are sticky.',
+				description: 'Whether to limit the result set to items that are sticky',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to all items that have the specified term assigned in the tags taxonomy.',
+				description: 'Limit result set to all items that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -823,7 +957,7 @@ export const postFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the object.',
+		description: 'Unique identifier for the object',
 	},
 	{
 		displayName: 'Options',
@@ -847,7 +981,7 @@ export const postFields: INodeProperties[] = [
 				name: 'force',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to bypass trash and force deletion.',
+				description: 'Whether to bypass trash and force deletion',
 			},
 		],
 	},
