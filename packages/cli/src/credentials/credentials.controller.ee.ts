@@ -1,61 +1,65 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import express from 'express';
 
-import * as config from '../../config';
-import { CredentialRequest } from '../requests';
+import config from '../../config';
+import type { CredentialRequest } from '../requests';
 import { UserService } from '../user/user.service';
-import { EECreditentialsService as EECredentials } from './credentials.service.ee';
+import { EECredentialsService as EECredentials } from './credentials.service.ee';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
 
-// @ts-ignore
 EECredentialsController.use((req, res, next) => {
-	if (config.getEnv('deployment.paid')) {
-		// use ee router
-		next();
+	if (!config.getEnv('deployment.paid')) {
+		// skip ee router and use free one
+		next('router');
 		return;
 	}
-	// skip ee router and use free one
-	next('router');
+	// use ee router
+	next();
 });
 
-// sharing a credential
+/**
+ * share a credential
+ * (EE) POST /credentials/:id/share
+ */
+
 EECredentialsController.post('/:id/share', async (req: CredentialRequest.Share, res) => {
 	const { id } = req.params;
 	const { shareeId } = req.body;
 
-	const isOwned = EECredentials.isOwned(req.user, id);
+	const isOwned = EECredentials.isOwned(req.user.id, id);
 	const getSharee = UserService.get({ id: shareeId });
 
 	// parallelize DB requests and destructure results
 	const [{ ownsCredential, credential }, sharee] = await Promise.all([isOwned, getSharee]);
 
-	if (!ownsCredential) {
-		// TODO: check whether credential actually exists for 404
-		return res.status(403).send('Forbidden');
+	if (!ownsCredential || !credential) {
+		return res.status(403).send();
 	}
 
 	if (!sharee || sharee.isPending) {
 		return res.status(400).send('Bad Request');
 	}
 
-	await EECredentials.share(credential!, sharee);
+	await EECredentials.share(credential, sharee);
 
 	return res.status(200).send();
 });
 
-// unshare a credential
+/**
+ * unshare a credential
+ * (EE) DELETE /credentials/:id/share
+ */
+
 EECredentialsController.delete('/:id/share', async (req: CredentialRequest.Share, res) => {
 	const { id } = req.params;
 	const { shareeId } = req.body;
 
-	const { ownsCredential } = await EECredentials.isOwned(req.user, id);
+	const { ownsCredential } = await EECredentials.isOwned(req.user.id, id);
 
 	if (!ownsCredential) {
-		return res.status(403).send('Forbidden');
+		return res.status(403).send();
 	}
 
 	if (!shareeId || typeof shareeId !== 'string') {

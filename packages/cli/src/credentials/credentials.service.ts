@@ -7,7 +7,7 @@ import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 
 export class CredentialsService {
-	static async getSharedCredentials(
+	static async getSharing(
 		userId: string,
 		credentialId: number | string,
 		relations?: string[],

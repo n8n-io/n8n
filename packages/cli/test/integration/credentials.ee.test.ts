@@ -61,36 +61,36 @@ test('dynamic router switching', async () => {
 	// free router
 	config.set('deployment.paid', false);
 
-	const shareResponse = agent
+	const freeShareResponse = agent
 		.post(`/credentials/${savedCredential.id}/share`)
 		.send({ shareeId: member.id });
 
-	const getResponse = agent.get(`/credentials/${savedCredential.id}`).send();
+	const freeGetResponse = agent.get(`/credentials/${savedCredential.id}`).send();
 
-	const [{ statusCode: shareStatus }, { statusCode: getStatus }] = await Promise.all([
-		shareResponse,
-		getResponse,
+	const [{ statusCode: freeShareStatus }, { statusCode: freeGetStatus }] = await Promise.all([
+		freeShareResponse,
+		freeGetResponse,
 	]);
 
-	expect(shareStatus).toBe(404);
-	expect(getStatus).toBe(200);
+	expect(freeShareStatus).toBe(404);
+	expect(freeGetStatus).toBe(200);
 
 	// EE router
 	config.set('deployment.paid', true);
 
-	const shareResponseEE = agent
+	const paidShareResponse = agent
 		.post(`/credentials/${savedCredential.id}/share`)
 		.send({ shareeId: member.id });
 
-	const getResponseEE = agent.get(`/credentials/${savedCredential.id}`).send();
+	const paidGetResponse = agent.get(`/credentials/${savedCredential.id}`).send();
 
-	const [{ statusCode: shareStatusEE }, { statusCode: getStatusEE }] = await Promise.all([
-		shareResponseEE,
-		getResponseEE,
+	const [{ statusCode: paidShareStatus }, { statusCode: paidGetStatus }] = await Promise.all([
+		paidShareResponse,
+		paidGetResponse,
 	]);
 
-	expect(shareStatusEE).toBe(200);
-	expect(getStatusEE).toBe(200);
+	expect(paidShareStatus).toBe(200);
+	expect(paidGetStatus).toBe(200);
 });
 
 // ----------------------------------------
@@ -119,7 +119,7 @@ test('POST /credentials/:id/share should share the credential', async () => {
 	expect(sharedCredential.role.scope).toBe('credential');
 });
 
-test('POST /credentials/:id/share should fail for non-existing credentials', async () => {
+test('POST /credentials/:id/share should respond 403 for non-existing credentials', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const agent = utils.createAgent(app, { auth: true, user: owner });
@@ -129,7 +129,7 @@ test('POST /credentials/:id/share should fail for non-existing credentials', asy
 	expect(response.statusCode).toBe(403);
 });
 
-test('POST /credentials/:id/share should be forbidden for non-owned credentials', async () => {
+test('POST /credentials/:id/share should respond 403 for non-owned credentials', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const agent = utils.createAgent(app, { auth: true, user: owner });
@@ -142,7 +142,7 @@ test('POST /credentials/:id/share should be forbidden for non-owned credentials'
 	expect(response.statusCode).toBe(403);
 });
 
-test('POST /credentials/:id/share should fail for pending sharee', async () => {
+test('POST /credentials/:id/share should respond 400 for pending sharee', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const memberShell = await testDb.createUserShell(globalMemberRole);
 	const agent = utils.createAgent(app, { auth: true, user: owner });
@@ -155,7 +155,7 @@ test('POST /credentials/:id/share should fail for pending sharee', async () => {
 	expect(response.statusCode).toBe(400);
 });
 
-test('POST /credentials/:id/share should fail for not existing sharee', async () => {
+test('POST /credentials/:id/share should respond 400 for non-existing sharee', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const agent = utils.createAgent(app, { auth: true, user: owner });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
@@ -167,7 +167,7 @@ test('POST /credentials/:id/share should fail for not existing sharee', async ()
 	expect(response.statusCode).toBe(400);
 });
 
-test('POST /credentials/:id/share should fail if no sharee id is provided', async () => {
+test('POST /credentials/:id/share should respond 400 if no sharee ID is provided', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const agent = utils.createAgent(app, { auth: true, user: owner });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
@@ -205,7 +205,7 @@ test('DELETE /credentials/:id/share should unshare the credential', async () => 
 	expect(credential).toEqual(savedCredential);
 });
 
-test('DELETE /credentials/:id/share should fail for non-existing credentials', async () => {
+test('DELETE /credentials/:id/share should respond 403 for non-existing credentials', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const agent = utils.createAgent(app, { auth: true, user: owner });
@@ -215,7 +215,7 @@ test('DELETE /credentials/:id/share should fail for non-existing credentials', a
 	expect(response.statusCode).toBe(403);
 });
 
-test('DELETE /credentials/:id/share should be forbidden for non-owned credentials', async () => {
+test('DELETE /credentials/:id/share should respond 403 for non-owned credentials', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const agent = utils.createAgent(app, { auth: true, user: owner });
@@ -228,26 +228,26 @@ test('DELETE /credentials/:id/share should be forbidden for non-owned credential
 	expect(response.statusCode).toBe(403);
 });
 
-test('DELETE /credentials/:id/share should be indempotent', async () => {
+test('DELETE /credentials/:id/share should be idempotent', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const memberShell = await testDb.createUserShell(globalMemberRole);
 	const agent = utils.createAgent(app, { auth: true, user: owner });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });
 
-	const response = await agent
+	const unshare = await agent
 		.delete(`/credentials/${savedCredential.id}/share`)
 		.send({ shareeId: memberShell.id });
 
-	expect(response.statusCode).toBe(200);
+	expect(unshare.statusCode).toBe(200);
 
-	const response2 = await agent
+	const unshareNonExistent = await agent
 		.delete(`/credentials/${savedCredential.id}/share`)
 		.send({ shareeId: 'abc' });
 
-	expect(response2.statusCode).toBe(200);
+	expect(unshareNonExistent.statusCode).toBe(200);
 });
 
-test('DELETE /credentials/:id/share should fail if no sharee id is provided', async () => {
+test('DELETE /credentials/:id/share should respond 400 if no sharee id is provided', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const agent = utils.createAgent(app, { auth: true, user: owner });
 	const savedCredential = await saveCredential(credentialPayload(), { user: owner });

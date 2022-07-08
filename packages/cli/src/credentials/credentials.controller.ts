@@ -365,18 +365,7 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 
-		// const shared = await Db.collections.SharedCredentials.findOne({
-		// 	relations: ['credentials'],
-		// 	where: whereClause({
-		// 		user: req.user,
-		// 		entityType: 'credentials',
-		// 		entityId: credentialId,
-		// 	}),
-		// });
-
-		const shared = await CredentialsService.getSharedCredentials(req.user.id, credentialId, [
-			'credentials',
-		]);
+		const shared = await CredentialsService.getSharing(req.user.id, credentialId, ['credentials']);
 
 		if (!shared) {
 			throw new ResponseHelper.ResponseError(
