@@ -870,6 +870,7 @@ export interface IUiState {
 		output: {
 			displayMode: IRunDataDisplayMode;
 		};
+		mappableInputFocused: boolean;
 	};
 	mainPanelPosition: number;
 }

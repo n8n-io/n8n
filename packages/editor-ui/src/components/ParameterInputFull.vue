@@ -26,8 +26,8 @@
 				:path="path"
 				:isReadOnly="isReadOnly"
 				@valueChanged="valueChanged"
-				@focus="focused = true"
-				@blur="focused = false"
+				@focus="onFocus"
+				@blur="onBlur"
 				inputSize="small" />
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
@@ -68,6 +68,18 @@ export default Vue
 			'hideLabel',
 		],
 		methods: {
+			onFocus() {
+				this.focused = true;
+				if (!this.parameter.noDataExpression) {
+					this.$store.commit('ui/setMappableNDVInputFocus', true);
+				}
+			},
+			onBlur() {
+				this.focused = false;
+				if (!this.parameter.noDataExpression) {
+					this.$store.commit('ui/setMappableNDVInputFocus', false);
+				}
+			},
 			onMenuExpanded(expanded: boolean) {
 				this.menuExpanded = expanded;
 			},

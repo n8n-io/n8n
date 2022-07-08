@@ -11,6 +11,7 @@
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
 		:mappingEnabled="true"
+		:showMappingHint="showMappingHint"
 		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
@@ -92,6 +93,9 @@ export default mixins(
 		},
 	},
 	computed: {
+		showMappingHint(): boolean {
+			return this.$store.getters['ui/showMappingHint'];
+		},
 		isExecutingPrevious(): boolean {
 			if (!this.workflowRunning) {
 				return false;

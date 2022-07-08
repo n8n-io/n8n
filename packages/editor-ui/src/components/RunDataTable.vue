@@ -15,7 +15,7 @@
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
 					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<div :class="{[$style.header]: true, [$style.draggableHeader]: mappingEnabled, [$style.activeHeader]: i === activeColumn && mappingEnabled}">
+						<div :class="{[$style.header]: true, [$style.draggableHeader]: mappingEnabled, [$style.activeHeader]: (i === activeColumn || showMappingHint) && mappingEnabled}">
 							<span>{{ column }}</span>
 							<div v-if="mappingEnabled" :class="$style.dragButton">
 								<div>
@@ -61,6 +61,9 @@ export default Vue.extend({
 			type: Object as () => ITableData,
 		},
 		mappingEnabled: {
+			type: Boolean,
+		},
+		showMappingHint: {
 			type: Boolean,
 		},
 	},

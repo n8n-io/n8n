@@ -97,6 +97,7 @@ const module: Module<IUiState, IRootState> = {
 			output: {
 				displayMode: 'table',
 			},
+			mappableInputFocused: false,
 		},
 		mainPanelPosition: 0.5,
 	},
@@ -127,6 +128,7 @@ const module: Module<IUiState, IRootState> = {
 		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
+		showMappingHint: (state: IUiState) => state.ndv.mappableInputFocused,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -173,7 +175,9 @@ const module: Module<IUiState, IRootState> = {
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
 		},
-
+		setMappableNDVInputFocus(state: IUiState, focus: boolean) {
+			Vue.set(state.ndv, 'mappableInputFocused', focus);
+		},
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
