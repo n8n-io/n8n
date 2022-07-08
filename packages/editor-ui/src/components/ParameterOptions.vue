@@ -33,7 +33,7 @@ export default Vue.extend({
 		'parameter',
 		'isReadOnly',
 		'value',
-		"showOptions",
+		'showOptions',
 	],
 	computed: {
 		isDefault (): boolean {
