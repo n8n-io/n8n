@@ -14,7 +14,7 @@
 					{{ $locale.baseText('onboardingCallSignupModal.description') }}
 				</n8n-text>
 			</div>
-			<div @keyup.enter="signup">
+			<div @keyup.enter="onSignup">
 				<n8n-input v-model="email" :placeholder="$locale.baseText('onboardingCallSignupModal.emailInput.placeholder')" />
 				<div v-if="showError" :class="[$style.error, 'mt-4xs']">
 					<n8n-text size="small">
@@ -30,7 +30,7 @@
 					:label="$locale.baseText('onboardingCallSignupModal.signupButton.label')"
 					size="large"
 					float="right"
-					@click="signup"
+					@click="onSignup"
 				/>
 				<n8n-button
 					:label="$locale.baseText('onboardingCallSignupModal.cancelButton.label')"
@@ -86,6 +86,7 @@ export default mixins(
 					type: 'success',
 					title: this.$locale.baseText('onboardingCallSignupSucess.title'),
 				});
+				this.exitConfirmed = true;
 				this.modalBus.$emit('close');
 			}else {
 				this.showError = true;
@@ -118,7 +119,7 @@ export default mixins(
 
 .buttonsContainer {
 	display: flex;
-	justify-content: end;
+	justify-content: flex-end;
 	column-gap: var(--spacing-xs);
 }
 </style>

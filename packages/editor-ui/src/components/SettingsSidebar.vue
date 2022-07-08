@@ -25,6 +25,12 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
 			</n8n-menu-item>
+			<n8n-menu-item :index="`/settings/api#${ $locale.baseText(fakeDoor.featureName) }`" v-for="fakeDoor in getFakeDoorFeatures" v-bind:key="fakeDoor.featureName" :class="$style.tab">
+				<i :class="$style.icon">
+					<font-awesome-icon :icon="fakeDoor.icon" />
+				</i>
+				<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
+			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
@@ -46,6 +52,7 @@ export default mixins(
 	name: 'SettingsSidebar',
 	computed: {
 		...mapGetters('settings', ['versionCli']),
+		...mapGetters('ui', ['getFakeDoorFeatures']),
 	},
 	methods: {
 		canAccessPersonalSettings(): boolean {

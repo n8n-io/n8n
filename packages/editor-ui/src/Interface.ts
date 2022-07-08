@@ -22,6 +22,7 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { type } from 'os';
 
 export * from 'n8n-design-system/src/types';
 
@@ -874,9 +875,17 @@ export interface IUiState {
 		};
 	};
 	mainPanelPosition: number;
+	settingsFakeDoor: IFakeDoor[];
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+
+export type IFakeDoor = {
+	featureName: string,
+	featureDescription: string,
+	icon: string,
+	linkURL: string
+};
 
 export interface ISettingsState {
 	settings: IN8nUISettings;

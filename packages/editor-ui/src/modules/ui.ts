@@ -103,6 +103,11 @@ const module: Module<IUiState, IRootState> = {
 			},
 		},
 		mainPanelPosition: 0.5,
+		settingsFakeDoor: [
+			{ featureName: 'fakeDoor.logging.name', featureDescription: 'fakeDoor.logging.description', icon: 'server', linkURL: 'http://www.google.com' },
+			{ featureName: 'fakeDoor.environments.name', featureDescription: 'fakeDoor.environments.description', icon: 'sign-in-alt', linkURL: 'http://www.google.com' },
+			// { featureName: 'Sharing', icon: 'fa-gift', linkURL: 'http://www.google.com' },
+		],
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -131,6 +136,7 @@ const module: Module<IUiState, IRootState> = {
 		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
+		getFakeDoorFeatures: (state: IUiState) => state.settingsFakeDoor,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
