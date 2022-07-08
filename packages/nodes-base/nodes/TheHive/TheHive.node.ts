@@ -61,6 +61,8 @@ import {
 	theHiveApiRequest,
 } from './GenericFunctions';
 
+import { set } from 'lodash';
+
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TheHive',
@@ -398,9 +400,14 @@ export class TheHive implements INodeType {
 							source: this.getNodeParameter('source', i),
 							sourceRef: this.getNodeParameter('sourceRef', i),
 							follow: this.getNodeParameter('follow', i, true),
-							...customFields,
 							...prepareOptional(additionalFields),
 						};
+
+						if (customFields) {
+							Object.keys(customFields).forEach((key) => {
+								set(body, key, customFields[key]);
+							})
+						}
 
 						const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
 
@@ -1327,9 +1334,15 @@ export class TheHive implements INodeType {
 							flag: this.getNodeParameter('flag', i),
 							tlp: this.getNodeParameter('tlp', i),
 							tags: splitTags(this.getNodeParameter('tags', i) as string),
-							...customFields,
 							...prepareOptional(options),
 						};
+
+						if (customFields) {
+							Object.keys(customFields).forEach((key) => {
+								set(body, key, customFields[key]);
+							})
+						}
+
 
 						responseData = await theHiveApiRequest.call(
 							this,
