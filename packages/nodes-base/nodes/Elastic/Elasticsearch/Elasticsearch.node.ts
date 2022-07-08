@@ -34,10 +34,6 @@ import {
 	omit,
 } from 'lodash';
 
-import {
-	OptionsWithUri,
-} from 'request';
-
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Elasticsearch',
@@ -56,7 +52,6 @@ export class Elasticsearch implements INodeType {
 			{
 				name: 'elasticsearchApi',
 				required: true,
-				testedBy: 'elasticApiTest',
 			},
 		],
 		properties: [
@@ -82,46 +77,6 @@ export class Elasticsearch implements INodeType {
 			...indexOperations,
 			...indexFields,
 		],
-	};
-
-	methods = {
-		credentialTest: {
-			async elasticApiTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				const {
-					username,
-					password,
-					baseUrl: uri,
-				} = credential.data as ElasticsearchApiCredentials;
-
-				const token = Buffer.from(`${username}:${password}`).toString('base64');
-
-				const options: OptionsWithUri = {
-					headers: {
-						Authorization: `Basic ${token}`,
-						'Content-Type': 'application/json',
-					},
-					method: 'GET',
-					uri,
-					json: true,
-				};
-
-				try {
-					await this.helpers.request(options);
-					return {
-						status: 'OK',
-						message: 'Authentication successful',
-					};
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: (error as JsonObject).message as string,
-					};
-				}
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -260,14 +215,17 @@ export class Elasticsearch implements INodeType {
 					}
 
 					const qs = {} as IDataObject;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-					if (Object.keys(options).length) {
-						Object.assign(qs, omit(options, ['documentId']));
+					if (Object.keys(additionalFields).length) {
+						Object.assign(qs, omit(additionalFields, ['documentId']));
 					}
 
+					Object.assign(qs, options);
+
 					const indexId = this.getNodeParameter('indexId', i);
-					const { documentId } = options;
+					const { documentId } = additionalFields;
 
 					if (documentId) {
 						const endpoint = `/${indexId}/_doc/${documentId}`;
@@ -309,7 +267,11 @@ export class Elasticsearch implements INodeType {
 
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
-					const qs = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i, {}) as IDataObject;
+
+					const qs = {
+						...options,
+					};
 
 					const endpoint = `/${indexId}/_update/${documentId}`;
 					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body, qs);

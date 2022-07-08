@@ -611,8 +611,8 @@ export const documentFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -634,6 +634,39 @@ export const documentFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
+			{
+				displayName: 'Routing',
+				name: 'routing',
+				description: 'Target this primary shard',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Timeout',
+				name: 'timeout',
+				description: 'Period to wait for active shards. Defaults to <code>1m</code> (one minute). See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
+				type: 'string',
+				default: '1m',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
 			{
 				displayName: 'Ingest Pipeline',
 				name: 'pipeline',
@@ -664,20 +697,6 @@ export const documentFields: INodeProperties[] = [
 						description: 'Do nothing with refreshes',
 					},
 				],
-			},
-			{
-				displayName: 'Routing',
-				name: 'routing',
-				description: 'Target this primary shard',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Timeout',
-				name: 'timeout',
-				description: 'Period to wait for active shards. Defaults to <code>1m</code> (one minute). See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units">Elasticsearch time units reference</a>',
-				type: 'string',
-				default: '1m',
 			},
 		],
 	},

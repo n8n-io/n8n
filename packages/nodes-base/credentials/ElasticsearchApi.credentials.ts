@@ -1,4 +1,5 @@
 import {
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -38,4 +39,13 @@ export class ElasticsearchApi implements ICredentialType {
 			default: false,
 		},
 	];
-}
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			auth: {
+				username: '=${{credentias.username}}',
+				password: '=${{credentials.password}}',
+			},
+			url: '',
+		},
+	};}
