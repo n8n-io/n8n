@@ -12,6 +12,7 @@
 					v-if="!user.isOwner"
 					placement="bottom"
 					:actions="getActions(user)"
+					theme="dark"
 					@action="(action) => onUserAction(user, action)"
 				/>
 			</div>

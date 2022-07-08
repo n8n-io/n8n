@@ -1,7 +1,7 @@
 <template>
 	<span :class="$style.container">
 		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand" @visible-change="onVisibleChange">
-			<span :class="$style.button">
+			<span :class="{[$style.button]: true, [$style[theme]]: !!theme}">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
 					:size="iconSize"
@@ -55,6 +55,12 @@ export default {
 		iconSize: {
 			type: String,
 		},
+		theme: {
+			type: String,
+			default: 'default',
+			validator: (value: string): boolean =>
+				['dark'].includes(value),
+		},
 	},
 	methods: {
 		onCommand(value: string) {
@@ -84,6 +90,13 @@ export default {
 
 	&:focus {
 		color: var(--color-primary);
+	}
+}
+
+.dark {
+	color: var(--color-text-dark);
+
+	&:focus {
 		background-color: var(--color-background-xlight);
 	}
 }
