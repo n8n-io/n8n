@@ -98,6 +98,7 @@ const module: Module<IUiState, IRootState> = {
 				displayMode: 'table',
 			},
 			mappableInputFocused: false,
+			mappingDrag: false,
 		},
 		mainPanelPosition: 0.5,
 	},
@@ -129,6 +130,7 @@ const module: Module<IUiState, IRootState> = {
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		showMappingHint: (state: IUiState) => state.ndv.mappableInputFocused,
+		showMappingTargets: (state: IUiState) => state.ndv.mappingDrag,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -177,6 +179,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setMappableNDVInputFocus(state: IUiState, focus: boolean) {
 			Vue.set(state.ndv, 'mappableInputFocused', focus);
+		},
+		setMappingDragState(state: IUiState, dragging: boolean) {
+			Vue.set(state.ndv, 'mappingDrag', dragging);
 		},
 	},
 	actions: {

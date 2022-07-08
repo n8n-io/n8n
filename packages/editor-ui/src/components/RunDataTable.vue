@@ -15,7 +15,7 @@
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
 					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<Draggable>
+						<Draggable @dragstart="onDragStart" @dragend="onDragEnd">
 							<template #preview>
 								<div :class="$style.dragPill">
 									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: column } }) }}
@@ -91,6 +91,12 @@ export default Vue.extend({
 		};
 	},
 	methods: {
+		onDragStart() {
+			this.$store.commit('ui/setMappingDragState', true);
+		},
+		onDragEnd() {
+			this.$store.commit('ui/setMappingDragState', false);
+		},
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
 			if (target && this.mappingEnabled) {

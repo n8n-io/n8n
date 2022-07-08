@@ -871,6 +871,7 @@ export interface IUiState {
 			displayMode: IRunDataDisplayMode;
 		};
 		mappableInputFocused: boolean;
+		mappingDrag: boolean;
 	};
 	mainPanelPosition: number;
 }

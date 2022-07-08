@@ -4,7 +4,7 @@
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
 
 		<n8n-input
-			v-if="isValueExpression"
+			v-if="isValueExpression || (showMappingTargets && !parameter.noDataExpression)"
 			:size="inputSize"
 			:type="getStringInputType"
 			:rows="getArgument('rows')"
@@ -327,6 +327,9 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
+			showMappingTargets(): boolean {
+				return this.$store.getters['ui/showMappingTargets'];
+			},
 			areExpressionsDisabled(): boolean {
 				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
@@ -580,6 +583,11 @@ export default mixins(
 				if (!isTextarea && !isSwitch) {
 					classes.push('parameter-value-container');
 				}
+
+				if (this.showMappingTargets && !this.parameter.noDataExpression) {
+					classes.push('droppable');
+				}
+
 				if (this.isValueExpression) {
 					classes.push('expression');
 				}
@@ -948,6 +956,14 @@ export default mixins(
 	--input-border-color: var(--color-secondary-tint-1);
 	--input-background-color: var(--color-secondary-tint-2);
 	--input-font-color: var(--color-secondary);
+}
+
+
+.droppable {
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-2);
+	--input-font-color: var(--color-secondary);
+	--input-border-style: dashed;
 }
 
 .has-issues {
