@@ -35,7 +35,7 @@ export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunction
 
 	try {
 		//@ts-ignore
-		return await this.helpers.requestWithAuthentication.call(this, 'sendgrid', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

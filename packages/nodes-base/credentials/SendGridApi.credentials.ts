@@ -19,7 +19,9 @@ export class SendGridApi implements ICredentialType {
 	authenticate = {
 		type: 'generic',
 		properties: {
-			Authorization: '=Bearer {{$credentials.apiKey}}',
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
 		},
 	} as IAuthenticateGeneric;
 }

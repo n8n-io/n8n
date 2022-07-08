@@ -1,4 +1,5 @@
 import {
+	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -77,18 +78,14 @@ export class TwilioApi implements ICredentialType {
 			},
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		if (credentials.authType === 'apiKey') {
-			requestOptions.auth = {
-				username: credentials.apiKeySid as string,
-				password: credentials.apiKeySecret as string,
-			};
-		} else if (credentials.authType === 'authToken') {
-			requestOptions.auth = {
-				username: credentials.accountSid as string,
-				password: credentials.authToken as string,
-			};
-		}
-		return requestOptions;
-	}
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{ $credentials.authType === "apiKey" ? $credentials.apiKeySid : $credentials.accountSid }}',
+				password: '={{ $credentials.authType === "apiKey" ? $credentials.apiKeySecret : $credentials.authToken }}',
+			},
+		},
+	};
 }

@@ -21,7 +21,9 @@ export class UrlScanIoApi implements ICredentialType {
 	authenticate = {
 		type: 'generic',
 		properties: {
-			'API-KEY': '={{$credentials.apiKey}}',
+			headers: {
+				'API-KEY': '={{$credentials.apiKey}}',
+			},
 		},
 	} as IAuthenticateGeneric;
 
