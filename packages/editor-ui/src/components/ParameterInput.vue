@@ -29,17 +29,17 @@
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
 				:value="displayValue"
-				:disabled="isReadOnly && !isValueExpression"
+				:disabled="isReadOnly"
 				@input="onTextInputChange"
 				@change="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
 				:title="displayTitle"
-				:placeholder="isValueExpression ? '' : getPlaceholder()"
+				:placeholder="getPlaceholder()"
 			>
 				<div slot="suffix" class="expand-input-icon-container">
-					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$locale.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
+					<font-awesome-icon v-if="!isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$locale.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
 				</div>
 			</n8n-input>
 		</div>
