@@ -7,7 +7,7 @@
 			v-if="isValueExpression"
 			:size="inputSize"
 			:type="getStringInputType"
-			:rows="parameter.type === 'code' || parameter.type === 'json' ? 15: (getArgument('rows') || 1)"
+			:rows="getArgument('rows')"
 			:value="expressionDisplayValue"
 			:title="displayTitle"
 			@keydown.stop
