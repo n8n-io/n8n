@@ -10,7 +10,7 @@
 		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
-		:mappingEnabled="true"
+		:mappingEnabled="!readOnly"
 		:showMappingHint="showMappingHint"
 		paneType="input"
 		@linkRun="onLinkRun"
@@ -90,6 +90,9 @@ export default mixins(
 		},
 		sessionId: {
 			type: String,
+		},
+		readOnly: {
+			type: Boolean,
 		},
 	},
 	computed: {
