@@ -669,7 +669,7 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Ingest Pipeline',
+				displayName: 'Pipeline ID',
 				name: 'pipeline',
 				description: 'ID of the pipeline to use to preprocess incoming documents',
 				type: 'string',
@@ -678,7 +678,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Refresh',
 				name: 'refresh',
-				description: 'If true, Elasticsearch refreshes the affected shards to make this operation visible to search,<br>if wait_for then wait for a refresh to make this operation visible to search,<br>if false do nothing with refreshes.',
+				description: 'If true, Elasticsearch refreshes the affected shards to make this operation visible to search,if wait_for then wait for a refresh to make this operation visible to search,if false do nothing with refreshes',
 				type: 'options',
 				default: 'false',
 				options: [
@@ -855,7 +855,7 @@ export const documentFields: INodeProperties[] = [
 			{
 				displayName: 'Refresh',
 				name: 'refresh',
-				description: 'If true, Elasticsearch refreshes the affected shards to make this operation visible to search,<br>if wait_for then wait for a refresh to make this operation visible to search,<br>if false do nothing with refreshes.',
+				description: 'If true, Elasticsearch refreshes the affected shards to make this operation visible to search,if wait_for then wait for a refresh to make this operation visible to search,if false do nothing with refreshes',
 				type: 'options',
 				default: 'false',
 				options: [
@@ -878,4 +878,4 @@ export const documentFields: INodeProperties[] = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

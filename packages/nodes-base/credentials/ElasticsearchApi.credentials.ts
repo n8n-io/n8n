@@ -1,6 +1,8 @@
 import {
+	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -39,6 +41,14 @@ export class ElasticsearchApi implements ICredentialType {
 			default: false,
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		requestOptions.auth = {
+			username: credentials.username as string,
+			password: credentials.password as string,
+		};
+		requestOptions.skipSslCertificateValidation = credentials.ignoreSSLIssues as boolean;
+		return requestOptions;
+	}
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}',
