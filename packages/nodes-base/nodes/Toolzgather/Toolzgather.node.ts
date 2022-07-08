@@ -175,7 +175,7 @@ export class Toolzgather implements INodeType {
 					emails: [...emails],
 					role,
 				},
-				uri: `http://api.toolzgather.com/api/add.users.boards`,
+				uri: `https://api.toolzgather.com/api/add.users.boards`,
 				json: true,
 			};
 
@@ -196,7 +196,7 @@ export class Toolzgather implements INodeType {
 					emails: [...emails],
 
 				},
-				uri: `http://api.toolzgather.com/api/delete.members.boards`,
+				uri: `https://api.toolzgather.com/api/delete.members.boards`,
 				json: true,
 			};
 			responseData = await this.helpers.request(options);
@@ -216,7 +216,7 @@ export class Toolzgather implements INodeType {
 					emails: [...emails],
 
 				},
-				uri: `http://api.toolzgather.com/api/delete.members.workspace`,
+				uri: `https://api.toolzgather.com/api/delete.members.workspace`,
 				json: true,
 			};
 
