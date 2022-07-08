@@ -154,10 +154,7 @@ export class Toolzgather implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log(this.getInputData()[0].json)
-		let emails = JSON.stringify(this.getInputData()[0].json).match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi)?.join('/n').split('/n');
 
-		console.log(emails)
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		if (resource === 'autb') {
@@ -170,15 +167,15 @@ export class Toolzgather implements INodeType {
 			const options: OptionsWithUri = {
 				headers: {
 					'Accept': 'application/json',
+					'X-Token': credentials.apiKey
 				},
 				method: 'POST',
 				body: {
-					token: credentials.apiKey,
 					boards: [...boards],
 					emails: [...emails],
 					role,
 				},
-				uri: `http://localhost:3000/api/add.users.boards`,
+				uri: `http://api.toolzgather.com/api/add.users.boards`,
 				json: true,
 			};
 
@@ -191,15 +188,15 @@ export class Toolzgather implements INodeType {
 			const options: OptionsWithUri = {
 				headers: {
 					'Accept': 'application/json',
+					'X-Token': credentials.apiKey
 				},
 				method: 'POST',
 				body: {
-					token: credentials.apiKey,
 					boards: [...boards],
 					emails: [...emails],
 
 				},
-				uri: `http://localhost:3000/api/delete.members.boards`,
+				uri: `http://api.toolzgather.com/api/delete.members.boards`,
 				json: true,
 			};
 			responseData = await this.helpers.request(options);
@@ -210,15 +207,16 @@ export class Toolzgather implements INodeType {
 			const options: OptionsWithUri = {
 				headers: {
 					'Accept': 'application/json',
+					'X-Token': credentials.apiKey
 				},
 				method: 'POST',
 				body: {
-					token: credentials.apiKey,
+
 					workspaceId,
 					emails: [...emails],
 
 				},
-				uri: `http://localhost:3000/api/delete.members.workspace`,
+				uri: `http://api.toolzgather.com/api/delete.members.workspace`,
 				json: true,
 			};
 
