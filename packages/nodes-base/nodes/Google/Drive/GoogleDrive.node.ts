@@ -55,32 +55,6 @@ export class GoogleDrive implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Execute List Operation',
-				name: 'listFiles',
-				type: 'hidden',
-				displayOptions: {
-					show: {
-						'@version': [
-							1,
-						],
-					}
-				},
-				default: 'once',
-			},
-			{
-				displayName: 'Execute List Operation',
-				name: 'listFiles',
-				type: 'hidden',
-				displayOptions: {
-					show: {
-						'@version': [
-							2,
-						],
-					}
-				},
-				default: 'forEachItem',
-			},
-			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
@@ -2392,9 +2366,9 @@ export class GoogleDrive implements INodeType {
 
 						const files = response!.files;
 
-						const listFiles = this.getNodeParameter('listFiles', 0) as string;
+						const version = this.getNode().typeVersion;
 
-						if (listFiles === 'once') {
+						if (version === 1) {
 							return [this.helpers.returnJsonArray(files as IDataObject[])];
 						} else {
 							returnData.push(...files);
