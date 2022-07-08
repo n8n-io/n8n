@@ -17,10 +17,19 @@
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
 						<Draggable>
 							<template #preview>
-								YOOO
+								<div :class="$style.dragPill">
+									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: column } }) }}
+								</div>
 							</template>
-							<template>
-								<div :class="{[$style.header]: true, [$style.draggableHeader]: mappingEnabled, [$style.activeHeader]: (i === activeColumn || showMappingHint) && mappingEnabled}">
+							<template v-slot="{ isDragging }">
+								<div
+									:class="{
+										[$style.header]: true,
+										[$style.draggableHeader]: mappingEnabled,
+										[$style.activeHeader]: (i === activeColumn || showMappingHint) && mappingEnabled,
+										[$style.draggingHeader]: isDragging,
+									}"
+								>
 									<span>{{ column }}</span>
 									<div v-if="mappingEnabled" :class="$style.dragButton">
 										<div>
@@ -155,6 +164,10 @@ export default Vue.extend({
 	}
 }
 
+.draggingHeader {
+	background-color: var(--color-primary-tint-2);
+}
+
 .activeHeader {
 	.dragButton {
 		opacity: 1;
@@ -183,5 +196,15 @@ export default Vue.extend({
 			}
 		}
 	}
+}
+
+.dragPill {
+	background-color: var(--color-primary);
+	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
+	color: var(--color-text-xlight);
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
+	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
+	border-radius: var(--border-radius-base);
 }
 </style>

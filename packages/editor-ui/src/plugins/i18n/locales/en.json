@@ -621,6 +621,7 @@
 	"pushConnectionTracker.connectionLost": "Connection lost",
 	"pushConnection.pollingNode.dataNotFound": "No {service} data found",
 	"pushConnection.pollingNode.dataNotFound.message": "We didn’t find any data in {service} to simulate an event. Please create one in {service} and try again.",
+	"runData.dragColumn": "Map {name} to field",
 	"runData.dragHint": "Drag and drop an Input column onto a field to map data",
 	"runData.emptyItemHint": "This is an item, but it's empty.",
 	"runData.switchToBinary.info": "This item only has",
