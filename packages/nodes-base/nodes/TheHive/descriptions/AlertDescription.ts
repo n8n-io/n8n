@@ -871,6 +871,32 @@ export const alertFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Options',
+		name: 'options',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'alert',
+				],
+			},
+		},
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Include Similar Cases',
+				name: 'includeSimilar',
+				type: 'boolean',
+				description: 'Whether to include similar cases',
+				default: false,
+			},
+		],
+	},
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		placeholder: 'Add Filter',

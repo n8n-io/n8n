@@ -527,12 +527,19 @@ export class TheHive implements INodeType {
 
 					if (operation === 'get') {
 						const alertId = this.getNodeParameter('id', i) as string;
+						const includeSimilar = this.getNodeParameter('options.includeSimilar', i, false) as boolean;
+						const qs: IDataObject = {};
+
+						if (includeSimilar) {
+							qs.similarity = true;
+						}
 
 						responseData = await theHiveApiRequest.call(
 							this,
 							'GET',
 							`/alert/${alertId}`,
 							{},
+							qs,
 						);
 					}
 					if (operation === 'getAll') {
