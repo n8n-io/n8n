@@ -57,8 +57,7 @@ export class GoogleDrive implements INodeType {
 			{
 				displayName: 'Execute List Operation',
 				name: 'listFiles',
-				type: 'options',
-				isNodeSetting: true,
+				type: 'hidden',
 				displayOptions: {
 					show: {
 						'@version': [
@@ -66,23 +65,12 @@ export class GoogleDrive implements INodeType {
 						],
 					}
 				},
-				options: [
-					{
-						name: 'Once',
-						value: 'once',
-					},
-					{
-						name: 'For Each Incoming Item',
-						value: 'forEachItem',
-					},
-				],
 				default: 'once',
 			},
 			{
 				displayName: 'Execute List Operation',
 				name: 'listFiles',
-				type: 'options',
-				isNodeSetting: true,
+				type: 'hidden',
 				displayOptions: {
 					show: {
 						'@version': [
@@ -90,16 +78,6 @@ export class GoogleDrive implements INodeType {
 						],
 					}
 				},
-				options: [
-					{
-						name: 'Once',
-						value: 'once',
-					},
-					{
-						name: 'For Each Incoming Item',
-						value: 'forEachItem',
-					},
-				],
 				default: 'forEachItem',
 			},
 			{
