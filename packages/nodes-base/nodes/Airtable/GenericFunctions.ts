@@ -10,10 +10,9 @@ import {
 import {
 	IBinaryKeyData,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	NodeApiError,
-	NodeOperationError,
-	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 
