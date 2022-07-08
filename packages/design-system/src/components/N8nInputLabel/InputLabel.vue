@@ -70,15 +70,6 @@ export default {
 			type: Boolean,
 		},
 	},
-	computed: {
-		labelClass(): string {
-			return {
-				[this.$style.label]: !!this.label,
-				[this.$style.underline]: this.underline,
-				[this.$style[this.size]]: true,
-			};
-		},
-	},
 	methods: {
 		addTargetBlank,
 	},
