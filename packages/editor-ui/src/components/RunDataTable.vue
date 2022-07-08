@@ -12,7 +12,16 @@
 		</table>
 		<table :class="$style.table" v-else>
 			<tr>
-				<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
+				<th v-for="column in (tableData.columns || [])" :key="column">
+					<div :class="$style.header">
+						<span>{{column}}</span>
+						<div :class="$style.dragButton">
+							<div><div></div><div></div></div>
+							<div><div></div><div></div></div>
+							<div><div></div><div></div></div>
+						</div>
+					</div>
+				</th>
 			</tr>
 			<tr v-for="(row, index1) in tableData.data" :key="index1">
 				<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
@@ -70,6 +79,45 @@ export default Vue.extend({
 
 .emptyCell {
 	height: 32px;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+
+	span {
+		flex-grow: 1;
+	}
+
+	&:hover {
+		.dragButton {
+			opacity: 1;
+		}
+	}
+}
+
+.dragButton {
+	opacity: 0;
+	margin-left: var(--spacing-2xs);
+
+	> div {
+		display: flex;
+		&:not(:last-child) {
+			margin-bottom: 2px;
+		}
+
+		> div {
+			height: 3px;
+			width: 3px;
+			border-radius: 1px;
+			background-color: var(--color-foreground-xdark);
+			margin-right: 1px;
+
+			&:last-child {
+				margin-right: 0;
+			}
+		}
+	}
 }
 
 </style>
