@@ -97,7 +97,7 @@ export class NocoDB implements INodeType {
 					},
 					{
 						name: 'v0.90.0 Onwards',
-						value: 1,
+						value: 2,
 					},
 				],
 				default: 1,
@@ -221,7 +221,7 @@ export class NocoDB implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const version = this.getNode().typeVersion as number;
+		const version = this.getNodeParameter('version', 0) as number;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -230,9 +230,9 @@ export class NocoDB implements INodeType {
 
 		let qs: IDataObject = {};
 
-		let projectId: string = '';
-		let table: string = '';
-		let endPoint: string = '';
+		let projectId = '';
+		let table = '';
+		let endPoint = '';
 
 		if (version === 1) {
 			projectId = this.getNodeParameter('projectId', 0) as string;
@@ -308,7 +308,7 @@ export class NocoDB implements INodeType {
 								};
 								const qs = { project_id: projectId };
 
-								let postUrl: string = '';
+								let postUrl = '';
 								if (version === 1) {
 									postUrl = '/dashboard';
 								} else if (version === 2) {
@@ -458,7 +458,7 @@ export class NocoDB implements INodeType {
 
 			if (operation === 'update') {
 
-				let requestMethod: string = 'PATCH';
+				let requestMethod = 'PATCH';
 
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;
@@ -520,7 +520,7 @@ export class NocoDB implements INodeType {
 									}),
 								};
 								const qs = { project_id: projectId };
-								let postUrl: string = '';
+								let postUrl = '';
 								if (version === 1) {
 									postUrl = '/dashboard';
 								} else if (version === 2) {

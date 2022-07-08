@@ -13,7 +13,7 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				'@version': [
+				version: [
 					1,
 				],
 			},
@@ -22,37 +22,37 @@ export const operationFields: INodeProperties[] = [
 		description: 'The ID of the project',
 	},
 	{
-		displayName: 'Project',
+		displayName: 'Project Name or ID',
 		name: 'project',
 		type: 'options',
 		default: '',
 		displayOptions: {
 			show: {
-				'@version': [
+				version: [
 					2,
 				],
 			},
 		},
 		required: true,
-		description: 'The project to operate on',
+		description: 'The project to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
 		},
 	},
 	{
-		displayName: 'Table',
+		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
 		default: '',
 		displayOptions: {
 			show: {
-				'@version': [
+				version: [
 					2,
 				],
 			},
 		},
 		required: true,
-		description: 'The table to operate on',
+		description: 'The table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'project',
@@ -67,7 +67,7 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				'@version': [
+				version: [
 					1,
 				],
 			},
