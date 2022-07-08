@@ -45,6 +45,8 @@ export function linkRepository<Entity>(entityClass: EntityTarget<Entity>): Repos
 export async function init(
 	testConnectionOptions?: ConnectionOptions,
 ): Promise<IDatabaseCollections> {
+	if (isInitialized) return collections;
+
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
