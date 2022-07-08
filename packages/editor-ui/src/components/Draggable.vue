@@ -94,4 +94,9 @@ export default Vue.extend({
 .draggable {
 	position: fixed;
 }
+
+.draggable-data-transfer {
+	width: 1px;
+	height: 1px;
+}
 </style>
