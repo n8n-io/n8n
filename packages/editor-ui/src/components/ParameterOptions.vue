@@ -5,6 +5,7 @@
 			placement="bottom-end"
 			size="small"
 			color="foreground-xdark"
+			iconSize="small"
 			:actions="actions"
 			@action="(action) => $emit('optionSelected', action)"
 			@visible-change="onMenuToggle"

@@ -4,6 +4,7 @@
 			<span :class="$style.button">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
+					:size="iconSize"
 				/>
 			</span>
 			<el-dropdown-menu slot="dropdown">
@@ -50,6 +51,9 @@ export default {
 			default: 'medium',
 			validator: (value: string): boolean =>
 				['mini', 'small', 'medium'].includes(value),
+		},
+		iconSize: {
+			type: String,
 		},
 	},
 	methods: {
