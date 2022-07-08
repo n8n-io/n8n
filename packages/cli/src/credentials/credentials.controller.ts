@@ -28,7 +28,7 @@ import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
 import { externalHooks } from '../Server';
 import { CredentialsService } from './credentials.service';
-import { EECredentialsController } from './credentials.controller.ee';
+import { EE } from './credentials.controller.ee';
 
 export const credentialsController = express.Router();
 
@@ -44,7 +44,7 @@ credentialsController.use((req, res, next) => {
 	next();
 });
 
-credentialsController.use('/', EECredentialsController);
+credentialsController.use('/', EE.CredentialsController);
 
 /**
  * GET /credentials

@@ -1,12 +1,12 @@
 /* eslint-disable import/no-cycle */
 import { Db } from '..';
-import { CredentialsService } from './credentials.service';
+import { CredentialsService as BaseCredentialsService } from './credentials.service';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { User } from '../databases/entities/User';
 import { RoleService } from '../role/role.service';
 
-export class EECreditentialsService extends CredentialsService {
+export class CredentialsService extends BaseCredentialsService {
 	static async isOwned(
 		user: User,
 		credentialId: string,
@@ -40,3 +40,7 @@ export class EECreditentialsService extends CredentialsService {
 		});
 	}
 }
+
+export const EE = {
+	CredentialsService,
+};

@@ -241,6 +241,17 @@ module.exports = {
 						format: ['camelCase'],
 						leadingUnderscore: 'allowSingleOrDouble',
 					},
+					{
+						selector: ['objectLiteralProperty'],
+						format: ['PascalCase'],
+						custom: {
+							regex: 'Credentials.*',
+						},
+					},
+					{
+						selector: ['objectLiteralProperty'],
+						format: ['camelCase'],
+					},
 				],
 
 				/**
