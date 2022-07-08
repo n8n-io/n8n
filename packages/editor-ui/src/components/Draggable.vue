@@ -4,6 +4,18 @@
 		@mousedown="onDragStart"
 	>
 		<slot :isDragging="isDragging"></slot>
+
+		<div v-if="$slots.preview" :class="$style['draggable-data-transfer']" ref="draggableDataTransfer" />
+			<transition name="preview-transition">
+				<div
+					ref="draggable"
+					:class="$style.draggable"
+					:style="draggableStyle"
+					v-show="isDragging"
+				>
+					<slot name="preview"></slot>
+				</div>
+			</transition>
 	</div>
 </template>
 
@@ -14,10 +26,22 @@ export default Vue.extend({
 	data() {
 		return {
 			isDragging: false,
+			draggablePosition: {
+				x: -100,
+				y: -100,
+			},
 		};
 	},
+	computed: {
+		draggableStyle(): { top: string; left: string; } {
+			return {
+				top: `${this.draggablePosition.y}px`,
+				left: `${this.draggablePosition.x}px`,
+			};
+		},
+	},
 	methods: {
-		onDragStart(e: MouseEvent) {
+		onDragStart(e: DragEvent) {
 			e.preventDefault();
 			e.stopPropagation();
 			this.isDragging = true;
@@ -27,11 +51,21 @@ export default Vue.extend({
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
+
+			if (e.dataTransfer) {
+				e.dataTransfer.effectAllowed = "copy";
+				e.dataTransfer.dropEffect = "copy";
+				// e.dataTransfer.setData('nodeTypeName', this.nodeType.name);
+				e.dataTransfer.setDragImage(this.$refs.draggableDataTransfer as Element, 0, 0);
+			}
+
+			this.draggablePosition = { x: e.pageX, y: e.pageY };
 		},
 		onDrag(e: MouseEvent) {
 			e.preventDefault();
 			e.stopPropagation();
 
+			this.draggablePosition = { x: e.pageX, y: e.pageY };
 			this.$emit('drag', {x: e.pageX, y: e.pageY});
 		},
 		onDragEnd(e: MouseEvent) {
@@ -55,5 +89,9 @@ export default Vue.extend({
 .dragging {
 	visibility: visible;
 	cursor: grabbing;
+}
+
+.draggable {
+	position: fixed;
 }
 </style>

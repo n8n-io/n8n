@@ -15,23 +15,30 @@
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
 					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<div :class="{[$style.header]: true, [$style.draggableHeader]: mappingEnabled, [$style.activeHeader]: (i === activeColumn || showMappingHint) && mappingEnabled}">
-							<span>{{ column }}</span>
-							<div v-if="mappingEnabled" :class="$style.dragButton">
-								<div>
-									<div></div>
-									<div></div>
+						<Draggable>
+							<template #preview>
+								YOOO
+							</template>
+							<template>
+								<div :class="{[$style.header]: true, [$style.draggableHeader]: mappingEnabled, [$style.activeHeader]: (i === activeColumn || showMappingHint) && mappingEnabled}">
+									<span>{{ column }}</span>
+									<div v-if="mappingEnabled" :class="$style.dragButton">
+										<div>
+											<div></div>
+											<div></div>
+										</div>
+										<div>
+											<div></div>
+											<div></div>
+										</div>
+										<div>
+											<div></div>
+											<div></div>
+										</div>
+									</div>
 								</div>
-								<div>
-									<div></div>
-									<div></div>
-								</div>
-								<div>
-									<div></div>
-									<div></div>
-								</div>
-							</div>
-						</div>
+							</template>
+						</Draggable>
 					</n8n-tooltip>
 				</th>
 			</tr>
@@ -53,9 +60,11 @@
 <script lang="ts">
 import { ITableData } from '@/Interface';
 import Vue from 'vue';
+import Draggable from './Draggable.vue';
 
 export default Vue.extend({
 	name: 'RunDataTable',
+	components: { Draggable },
 	props: {
 		tableData: {
 			type: Object as () => ITableData,
