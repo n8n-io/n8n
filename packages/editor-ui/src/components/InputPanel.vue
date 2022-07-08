@@ -10,6 +10,7 @@
 		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
+		:mappingEnabled="true"
 		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"

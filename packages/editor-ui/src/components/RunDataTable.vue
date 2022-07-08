@@ -13,11 +13,11 @@
 		<table :class="$style.table" v-else>
 			<tr>
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
-					<n8n-tooltip placement="bottom-start" :open-delay="1000">
+					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<div :class="{[$style.header]: true, [$style.activeHeader]: i === activeColumn}">
+						<div :class="{[$style.header]: true, [$style.draggableHeader]: mappingEnabled, [$style.activeHeader]: i === activeColumn && mappingEnabled}">
 							<span>{{ column }}</span>
-							<div :class="$style.dragButton">
+							<div v-if="mappingEnabled" :class="$style.dragButton">
 								<div>
 									<div></div>
 									<div></div>
@@ -60,6 +60,9 @@ export default Vue.extend({
 		tableData: {
 			type: Object as () => ITableData,
 		},
+		mappingEnabled: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
@@ -69,7 +72,7 @@ export default Vue.extend({
 	methods: {
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
-			if (target) {
+			if (target && this.mappingEnabled) {
 				const col = (target as HTMLElement).dataset.col;
 				if (col && !isNaN(parseInt(col))) {
 					this.activeColumn = parseInt(col);
@@ -127,7 +130,9 @@ export default Vue.extend({
 	span {
 		flex-grow: 1;
 	}
+}
 
+.draggableHeader {
 	&:hover {
 		cursor: grab;
 		background-color: var(--color-foreground-base);

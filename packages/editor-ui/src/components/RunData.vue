@@ -103,7 +103,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
-				<RunDataTable :tableData="tableData" />
+				<RunDataTable :tableData="tableData" :mappingEnabled="mappingEnabled" />
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
@@ -293,6 +293,9 @@ export default mixins(
 			},
 			overrideOutputs: {
 				type: Array,
+			},
+			mappingEnabled: {
+				type: Boolean,
 			},
 		},
 		data () {
