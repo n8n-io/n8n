@@ -138,7 +138,7 @@ export default {
 		right: 0;
 		z-index: 0;
 
-		background: linear-gradient(270deg, #FFFFFF 72.19%, rgba(255, 255, 255, 0) 107.45%);
+		background: linear-gradient(270deg, var(--color-foreground-xlight) 72.19%, rgba(255, 255, 255, 0) 107.45%);
 	}
 }
 
