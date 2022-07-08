@@ -172,18 +172,20 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return Field Names or IDs',
 				name: 'returnFields',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
 				default: [],
 			},
 			{
-				displayName: 'Expand Fields',
+				displayName: 'Expand Field Names or IDs',
 				name: 'expandFields',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getExpandableAccountFields',
 				},
@@ -260,14 +262,14 @@ export const accountFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return Field Names or IDs',
 				name: 'returnFields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountFields',
 				},
 				default: [],
-				description: 'Fields the response will include',
+				description: 'Fields the response will include. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

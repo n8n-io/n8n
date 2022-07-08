@@ -1,11 +1,9 @@
 import {
-	IAuthenticateBearer,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-
-
 export class TodoistApi implements ICredentialType {
 	name = 'todoistApi';
 	displayName = 'Todoist API';
@@ -17,14 +15,17 @@ export class TodoistApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
+
 	];
 
-	authenticate = {
-		type: 'bearer',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			tokenPropertyName: 'apiKey',
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
 		},
-	} as IAuthenticateBearer;
+	};
 
 	test: ICredentialTestRequest = {
 		request: {

@@ -81,7 +81,6 @@ export class Snowflake implements INodeType {
 					},
 				},
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
 				description: 'The SQL query to execute',
@@ -118,7 +117,6 @@ export class Snowflake implements INodeType {
 					},
 				},
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id,name,description',
 				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},

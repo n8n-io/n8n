@@ -171,9 +171,10 @@ export const draftFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
@@ -249,7 +250,7 @@ export const draftFields: INodeProperties[] = [
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},

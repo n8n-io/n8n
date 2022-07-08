@@ -1013,10 +1013,11 @@ export class WorkflowExecute {
 					if (!this.runExecutionData.resultData.runData.hasOwnProperty(executionNode.name)) {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
+
 					taskData = {
 						startTime,
 						executionTime: new Date().getTime() - startTime,
-						source: executionData.source === null ? [] : executionData.source.main,
+						source: !executionData.source ? [] : executionData.source.main,
 					};
 
 					if (executionError !== undefined) {

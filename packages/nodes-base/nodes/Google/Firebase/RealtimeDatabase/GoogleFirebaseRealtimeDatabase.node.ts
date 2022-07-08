@@ -19,7 +19,7 @@ import {
 	googleApiRequestAllItems,
 } from './GenericFunctions';
 
-export class RealtimeDatabase implements INodeType {
+export class GoogleFirebaseRealtimeDatabase implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Cloud Realtime Database',
 		name: 'googleFirebaseRealtimeDatabase',
