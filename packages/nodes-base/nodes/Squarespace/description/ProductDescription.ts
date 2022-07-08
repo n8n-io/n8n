@@ -115,6 +115,26 @@ export const productOperations: INodeProperties[] = [
 	},
 ];
 
+const deleteOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Product ID',
+		name: 'productId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'product',
+				],
+				operation: [
+					'delete',
+				]
+			},
+		},
+		default: '',
+	},
+];
+
 const getOperations: Array<INodeProperties> = [
 	{
 		displayName: 'Product ID',
@@ -222,6 +242,7 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 export const productFields: INodeProperties[] = [
+	...deleteOperations,
 	...getOperations,
 	...getAllOperations,
 ];
