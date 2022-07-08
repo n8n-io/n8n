@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div>
 		<n8n-action-toggle
 			v-if="displayOptionsComputed"
 			placement="bottom-end"
@@ -122,9 +122,3 @@ export default Vue.extend({
 	},
 });
 </script>
-
-<style lang="scss" module>
-.container {
-	display: flex;
-}
-</style>
