@@ -54,10 +54,10 @@ export default {
 	},
 	methods: {
 		onCommand(value: string) {
-			this.$emit('action', value)	;
+			this.$emit('action', value);
 		},
 		onVisibleChange(value: boolean) {
-			this.$emit('visible-change', value)	;
+			this.$emit('visible-change', value);
 		},
 	},
 };
