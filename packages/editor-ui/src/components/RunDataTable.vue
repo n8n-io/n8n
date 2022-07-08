@@ -1,0 +1,75 @@
+<template>
+	<div>
+		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
+			<tr>
+				<th :class="$style.emptyCell"></th>
+			</tr>
+			<tr v-for="(row, index1) in tableData.data" :key="index1">
+				<td>
+					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
+				</td>
+			</tr>
+		</table>
+		<table :class="$style.table" v-else>
+			<tr>
+				<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
+			</tr>
+			<tr v-for="(row, index1) in tableData.data" :key="index1">
+				<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
+			</tr>
+		</table>
+	</div>
+</template>
+
+<script lang="ts">
+import { ITableData } from '@/Interface';
+import Vue from 'vue';
+
+export default Vue.extend({
+	name: 'RunDataTable',
+	props: {
+		tableData: {
+			type: Object as () => ITableData,
+		},
+	},
+});
+</script>
+
+<style lang="scss" module>
+
+.table {
+	border-collapse: separate;
+	text-align: left;
+	width: calc(100% - var(--spacing-s));
+	margin-right: var(--spacing-s);
+	font-size: var(--font-size-s);
+
+	th {
+		padding: var(--spacing-2xs);
+		background-color: var(--color-background-base);
+		border-top: var(--border-base);
+		border-bottom: var(--border-base);
+		border-left: var(--border-base);
+		position: sticky;
+		top: 0;
+	}
+
+	td {
+		padding: var(--spacing-2xs);
+		border-bottom: var(--border-base);
+		border-left: var(--border-base);
+		overflow-wrap: break-word;
+		max-width: 300px;
+		white-space: pre-wrap;
+	}
+
+	th:last-child, td:last-child {
+		border-right: var(--border-base);
+	}
+}
+
+.emptyCell {
+	height: 32px;
+}
+
+</style>
