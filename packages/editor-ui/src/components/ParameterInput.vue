@@ -962,7 +962,6 @@ export default mixins(
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
 	--input-background-color: var(--color-secondary-tint-2);
-	--input-font-color: var(--color-secondary);
 	--input-border-style: dashed;
 }
 
