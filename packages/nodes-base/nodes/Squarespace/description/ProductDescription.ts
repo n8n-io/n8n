@@ -70,7 +70,7 @@ export const productOperations: INodeProperties[] = [
 							{
 								type: 'rootProperty',
 								properties: {
-									property: 'product',
+									property: 'products',
 								},
 							},
 						],
@@ -115,6 +115,25 @@ export const productOperations: INodeProperties[] = [
 	},
 ];
 
+const getOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Product ID',
+		name: 'productId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'product',
+				],
+				operation: [
+					'get',
+				]
+			},
+		},
+		default: '',
+	},
+];
 
 const getAllOperations: Array<INodeProperties> = [
 	{
@@ -203,5 +222,6 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 export const productFields: INodeProperties[] = [
+	...getOperations,
 	...getAllOperations,
 ];
