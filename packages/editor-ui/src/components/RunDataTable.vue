@@ -13,23 +13,26 @@
 		<table :class="$style.table" v-else>
 			<tr>
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
-					<div :class="{[$style.header]: true, [$style.activeHeader]: i === activeColumn}">
-						<span>{{ column }}</span>
-						<div :class="$style.dragButton">
-							<div>
-								<div></div>
-								<div></div>
-							</div>
-							<div>
-								<div></div>
-								<div></div>
-							</div>
-							<div>
-								<div></div>
-								<div></div>
+					<n8n-tooltip placement="bottom-start" :open-delay="1000">
+						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
+						<div :class="{[$style.header]: true, [$style.activeHeader]: i === activeColumn}">
+							<span>{{ column }}</span>
+							<div :class="$style.dragButton">
+								<div>
+									<div></div>
+									<div></div>
+								</div>
+								<div>
+									<div></div>
+									<div></div>
+								</div>
+								<div>
+									<div></div>
+									<div></div>
+								</div>
 							</div>
 						</div>
-					</div>
+					</n8n-tooltip>
 				</th>
 			</tr>
 			<tr v-for="(row, index1) in tableData.data" :key="index1">
@@ -136,8 +139,6 @@ export default Vue.extend({
 }
 
 .activeHeader {
-	background-color: var(--color-foreground-base);
-
 	.dragButton {
 		opacity: 1;
 	}
