@@ -105,9 +105,22 @@ const module: Module<IUiState, IRootState> = {
 		},
 		mainPanelPosition: 0.5,
 		settingsFakeDoor: [
-			{ featureName: 'fakeDoor.logging.name', featureDescription: 'fakeDoor.logging.description', icon: 'server', linkURL: 'http://www.google.com' },
-			{ featureName: 'fakeDoor.environments.name', featureDescription: 'fakeDoor.environments.description', icon: 'sign-in-alt', linkURL: 'http://www.google.com' },
-			// { featureName: 'Sharing', icon: 'fa-gift', linkURL: 'http://www.google.com' },
+			{
+				featureName: 'fakeDoor.settings.environments.name',
+				icon: 'server',
+				infoText: 'fakeDoor.settings.environments.infoText',
+				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
+				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
+				linkURL: 'http://www.google.com', // TODO: Replace this as soon as TypeForm link is ready
+			},
+			{
+				featureName: 'fakeDoor.settings.logging.name',
+				icon: 'sign-in-alt',
+				infoText: 'fakeDoor.settings.logging.infoText',
+				actionBoxTitle: 'fakeDoor.settings.logging.actionBox.title',
+				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
+				linkURL: 'http://www.google.com', // TODO: Replace this as soon as TypeForm link is ready
+			},
 		],
 	},
 	getters: {

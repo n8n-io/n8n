@@ -242,4 +242,5 @@ export enum VIEWS {
 	PERSONAL_SETTINGS = "PersonalSettings",
 	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",
+	FAKE_DOOR = "ComingSoon",
 }

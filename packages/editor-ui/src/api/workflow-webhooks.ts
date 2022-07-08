@@ -1,7 +1,8 @@
 import { IOnboardingCallPromptResponse, IUser } from "@/Interface";
 import { get } from "./helpers";
 
-const N8N_WF_WEBHOOK_BASE_URL = 'https://internal.users.n8n.cloud/webhook';
+// TODO: Replace this with production when the workflow is ready
+const N8N_WF_WEBHOOK_BASE_URL = 'https://internal.users.n8n.cloud/webhook-test';
 const N8N_ONBOARDING_CALL_PROMPT_WEBHOOK_PATH = '56f4e271-4e9f-4b38-b21e-0fa2d5113238';
 
 export async function fetchNextOnboardingPrompt(instanceId: string, currentUer: IUser): Promise<IOnboardingCallPromptResponse> {

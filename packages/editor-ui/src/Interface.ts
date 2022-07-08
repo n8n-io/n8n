@@ -882,8 +882,10 @@ export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export type IFakeDoor = {
 	featureName: string,
-	featureDescription: string,
 	icon: string,
+	infoText: string,
+	actionBoxTitle: string,
+	actionBoxDescription: string,
 	linkURL: string
 };
 

@@ -9,6 +9,7 @@ import NodeView from '@/views/NodeView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
+import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -371,6 +372,22 @@ const router = new Router({
 					},
 					deny: {
 						api: false,
+					},
+				},
+			},
+		},
+		{
+			path: '/settings/coming-soon',
+			name: VIEWS.FAKE_DOOR,
+			component: SettingsFakeDoorView,
+			props: route => Object.assign({}, route.query),
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
 				},
 			},
