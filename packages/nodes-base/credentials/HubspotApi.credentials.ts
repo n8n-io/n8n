@@ -1,4 +1,5 @@
 import {
+	IAuthenticateGeneric,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -15,4 +16,13 @@ export class HubspotApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			qs: {
+				hapikey: '={{$credentials.apiKey}}',
+			},
+		},
+	};
 }
