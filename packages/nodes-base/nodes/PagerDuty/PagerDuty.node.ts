@@ -23,6 +23,11 @@ import {
 } from './IncidentDescription';
 
 import {
+	incidentAlertFields,
+	incidentAlertOperations,
+} from './IncidentAlertDescription';
+
+import {
 	incidentNoteFields,
 	incidentNoteOperations,
 } from './IncidentNoteDescription';
@@ -40,6 +45,10 @@ import {
 import {
 	IIncident,
 } from './IncidentInterface';
+
+import {
+	IIncidentAlert,
+} from './IncidentAlertInterface';
 
 import {
 	snakeCase,
@@ -113,6 +122,10 @@ export class PagerDuty implements INodeType {
 						value: 'incident',
 					},
 					{
+						name: 'Incident Alert',
+						value: 'incidentAlert',
+					},
+					{
 						name: 'Incident Note',
 						value: 'incidentNote',
 					},
@@ -130,6 +143,9 @@ export class PagerDuty implements INodeType {
 			// INCIDENT
 			...incidentOperations,
 			...incidentFields,
+			// INCIDENT ALERT
+			...incidentAlertOperations,
+			...incidentAlertFields,
 			// INCIDENT NOTE
 			...incidentNoteOperations,
 			...incidentNoteFields,
@@ -348,6 +364,46 @@ export class PagerDuty implements INodeType {
 						}
 						responseData = await pagerDutyApiRequest.call(this, 'PUT', `/incidents/${incidentId}`, { incident: body }, {}, undefined, { from: email });
 						responseData = responseData.incident;
+					}
+				}
+				if (resource === 'incidentAlert') {
+					//https://developer.pagerduty.com/api-reference/592e890ae8c99-get-an-alert
+					if (operation === 'get') {
+						const incidentId = this.getNodeParameter('incidentId', i) as string;
+						const alertId = this.getNodeParameter('alertId', i) as string;
+						responseData = await pagerDutyApiRequest.call(this, 'GET', `/incidents/${incidentId}/alerts/${alertId}`);
+						responseData = responseData.alert;
+					}
+					//https://developer.pagerduty.com/api-reference/4bc42e7ac0c59-list-alerts-for-an-incident
+					if (operation === 'getAll') {
+						const incidentId = this.getNodeParameter('incidentId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						if (returnAll) {
+							responseData = await pagerDutyApiRequestAllItems.call(this, 'alerts', 'GET', `/incidents/${incidentId}/alerts`, {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', 0) as number;
+							responseData = await pagerDutyApiRequest.call(this, 'GET', `/incidents/${incidentId}/alerts`, {}, qs);
+							responseData = responseData.alerts;
+						}
+					}
+					//https://developer.pagerduty.com/api-reference/4e932ba0c1989-update-an-alert
+					if (operation === 'update') {
+						const incidentId = this.getNodeParameter('incidentId', i) as string;
+						const alertId = this.getNodeParameter('alertId', i) as string;
+						const email = this.getNodeParameter('email', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: IIncidentAlert = {};
+						if (updateFields.status) {
+							body.status = updateFields.status as string;
+						}
+						if (updateFields.newIncidentId) {
+							body.incident = {
+								id: updateFields.newIncidentId as string,
+								type: 'incident_reference',
+							};
+						}
+						responseData = await pagerDutyApiRequest.call(this, 'PUT', `/incidents/${incidentId}/alerts/${alertId}`, { alert: body }, {}, undefined, { from: email });
+						responseData = responseData.alert;
 					}
 				}
 				if (resource === 'incidentNote') {
