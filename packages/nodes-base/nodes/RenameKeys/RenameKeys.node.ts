@@ -123,19 +123,19 @@ export class RenameKeys implements INodeType {
 										placeholder: 'Add Regex Option',
 										options: [
 											{
+												displayName: 'Case Insensitive',
+												name: 'caseInsensitive',
+												type: 'boolean',
+												description: 'Whether to use case insensitive match',
+												default: false,
+											},
+											{
 												displayName: 'Max Depth',
 												name: 'depth',
 												type: 'number',
 												default: -1,
 												description: 'Maximum depth to replace keys',
 												hint: 'Specify number for depth level (-1 for unlimited, 0 for top level only)',
-											},
-											{
-												displayName: 'Case Insensitive',
-												name: 'caseInsensitive',
-												type: 'boolean',
-												description: 'Whether to use case insensitive match',
-												default: true,
 											},
 										],
 									},
