@@ -25,17 +25,16 @@ export async function elasticsearchApiRequest(
 ) {
 	const {
 		baseUrl,
+		ignoreSSLIssues,
 	} = await this.getCredentials('elasticsearchApi') as ElasticsearchApiCredentials;
 
 	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
 		method,
 		body,
 		qs,
 		uri: `${baseUrl}${endpoint}`,
 		json: true,
+		rejectUnauthorized: !ignoreSSLIssues,
 	};
 
 	if (!Object.keys(body).length) {

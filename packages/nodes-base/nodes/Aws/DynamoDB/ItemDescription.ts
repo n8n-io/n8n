@@ -350,7 +350,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
+		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.',
 	},
 	{
 		displayName: 'Simplify',
@@ -593,7 +593,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
+		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -695,7 +695,6 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Filter Expression',
 		name: 'filterExpression',
 		type: 'string',
-		required: true,
 		displayOptions: {
 			show: {
 				scan: [
@@ -704,7 +703,7 @@ export const itemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded.',
+		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded. Empty value will return all Scan results.',
 	},
 	{
 		displayName: 'Key Condition Expression',
@@ -912,7 +911,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'projectionExpression',
 				type: 'string',
 				default: '',
-				description: 'Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas',
+				description: 'Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas.',
 			},
 			{
 				displayName: 'Filter Expression',

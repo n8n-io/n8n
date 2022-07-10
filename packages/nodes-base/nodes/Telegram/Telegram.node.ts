@@ -4,10 +4,7 @@ import {
 
 import {
 	IBinaryData,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -19,7 +16,6 @@ import {
 	apiRequest,
 	getPropertyName,
 } from './GenericFunctions';
-
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,7 +35,6 @@ export class Telegram implements INodeType {
 			{
 				name: 'telegramApi',
 				required: true,
-				testedBy: 'telegramBotTest',
 			},
 		],
 		properties: [
@@ -801,7 +796,6 @@ export class Telegram implements INodeType {
 				placeholder: '',
 				description: 'Name of the binary property that contains the data to upload',
 			},
-
 			{
 				displayName: 'Message ID',
 				name: 'messageId',
@@ -1151,6 +1145,7 @@ export class Telegram implements INodeType {
 										default: 'HTML',
 										description: 'How to parse the text',
 									},
+
 								],
 							},
 						],
@@ -1687,6 +1682,31 @@ export class Telegram implements INodeType {
 						description: 'Duration of clip in seconds',
 					},
 					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'sendAnimation',
+									'sendAudio',
+									'sendDocument',
+									'sendPhoto',
+									'sendVideo',
+									'sendSticker',
+								],
+								'/resource': [
+									'message',
+								],
+								'/binaryData': [
+									true,
+								],
+							},
+						},
+						placeholder: 'image.jpeg',
+					},
+					{
 						displayName: 'Height',
 						name: 'height',
 						type: 'number',
@@ -1818,39 +1838,6 @@ export class Telegram implements INodeType {
 
 		],
 	};
-
-	methods = {
-		credentialTest: {
-			async telegramBotTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data;
-				const options = {
-					uri: `https://api.telegram.org/bot${credentials!.accessToken}/getMe`,
-					json: true,
-				};
-				try {
-					const response = await this.helpers.request(options);
-					if (!response.ok) {
-						return {
-							status: 'Error',
-							message: 'Token is not valid.',
-						};
-					}
-				} catch (err) {
-					return {
-						status: 'Error',
-						message: `Token is not valid; ${err.message}`,
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Authentication successful!',
-				};
-
-			},
-		},
-	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -2186,6 +2173,16 @@ export class Telegram implements INodeType {
 					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
+					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
+
+					const filename = fileName || binaryData.fileName?.toString();
+
+					if (!fileName && !binaryData.fileName) {
+						throw new NodeOperationError(this.getNode(),
+						`File name is needed to ${operation}. Make sure the property that holds the binary data
+						has the file name property set or set it manually in the node using the File Name parameter under
+						Additional Fields.`);
+					}
 
 					body.disable_notification = body.disable_notification?.toString() || 'false';
 
@@ -2194,11 +2191,12 @@ export class Telegram implements INodeType {
 						[propertyName]: {
 							value: dataBuffer,
 							options: {
-								filename: binaryData.fileName,
+								filename,
 								contentType: binaryData.mimeType,
 							},
 						},
 					};
+
 					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, { formData });
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -2233,7 +2231,6 @@ export class Telegram implements INodeType {
 				// 		chat: responseData.result[0].message.chat,
 				// 	};
 				// }
-
 				returnData.push({ json: responseData });
 			} catch (error) {
 				if (this.continueOnFail()) {
