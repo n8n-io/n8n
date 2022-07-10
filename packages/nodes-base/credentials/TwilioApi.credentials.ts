@@ -1,5 +1,9 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -74,4 +78,14 @@ export class TwilioApi implements ICredentialType {
 			},
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{ $credentials.authType === "apiKey" ? $credentials.apiKeySid : $credentials.accountSid }}',
+				password: '={{ $credentials.authType === "apiKey" ? $credentials.apiKeySecret : $credentials.authToken }}',
+			},
+		},
+	};
 }
