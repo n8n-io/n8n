@@ -55,10 +55,7 @@ export class ElasticsearchApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}',
-			auth: {
-				username: '=${{credentias.username}}',
-				password: '=${{credentials.password}}',
-			},
-			url: '',
+			url: '/_xpack?human=false',
 		},
-	};}
+	};
+}

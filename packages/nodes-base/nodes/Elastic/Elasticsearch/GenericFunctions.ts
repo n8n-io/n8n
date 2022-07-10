@@ -8,6 +8,7 @@ import {
 
 import {
 	IDataObject,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -47,6 +48,6 @@ export async function elasticsearchApiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'elasticsearchApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
