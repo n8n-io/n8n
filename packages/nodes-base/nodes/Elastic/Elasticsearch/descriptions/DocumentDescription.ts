@@ -651,6 +651,56 @@ export const documentFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Pipeline ID',
+				name: 'pipeline',
+				description: 'ID of the pipeline to use to preprocess incoming documents',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Refresh',
+				name: 'refresh',
+				description: 'If true, Elasticsearch refreshes the affected shards to make this operation visible to search,if wait_for then wait for a refresh to make this operation visible to search,if false do nothing with refreshes',
+				type: 'options',
+				default: 'false',
+				options: [
+					{
+						name: 'True',
+						value: 'true',
+						description: 'Refreshes the affected shards to make this operation visible to search',
+					},
+					{
+						name: 'Wait For',
+						value: 'wait_for',
+						description: 'Wait for a refresh to make this operation visible',
+					},
+					{
+						name: 'False',
+						value: 'false',
+						description: 'Do nothing with refreshes',
+					},
+				],
+			},
+		],
+	},
 
 	// ----------------------------------------
 	//             document: update
@@ -780,6 +830,49 @@ export const documentFields: INodeProperties[] = [
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Refresh',
+				name: 'refresh',
+				description: 'If true, Elasticsearch refreshes the affected shards to make this operation visible to search,if wait_for then wait for a refresh to make this operation visible to search,if false do nothing with refreshes',
+				type: 'options',
+				default: 'false',
+				options: [
+					{
+						name: 'True',
+						value: 'true',
+						description: 'Refreshes the affected shards to make this operation visible to search',
+					},
+					{
+						name: 'Wait For',
+						value: 'wait_for',
+						description: 'Wait for a refresh to make this operation visible',
+					},
+					{
+						name: 'False',
+						value: 'false',
+						description: 'Do nothing with refreshes',
 					},
 				],
 			},
