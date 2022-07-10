@@ -52,13 +52,13 @@
     "typescript": "~4.6.0"
   },
   "dependencies": {
+    "@n8n_io/riot-tmpl": "^1.0.1",
     "jmespath": "^0.16.0",
     "lodash.get": "^4.4.2",
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
     "luxon": "^2.3.0",
-    "@n8n_io/riot-tmpl": "^1.0.1",
     "xml2js": "^0.4.23"
   },
   "jest": {
