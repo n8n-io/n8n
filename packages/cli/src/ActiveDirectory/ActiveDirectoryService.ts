@@ -50,4 +50,8 @@ export class ActiveDirectoryService {
 			await this.client.unbind();
 		}
 	}
+
+	async testConnection(): Promise<void> {
+		await this.bindAdmin();
+	}
 }
