@@ -10,7 +10,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {FormatDueDatetime, todoistApiRequest,} from './GenericFunctions';
+import {todoistApiRequest,} from './GenericFunctions';
 
 import {OperationType, TodoistService} from './Service';
 interface IBodyCreateTask {
@@ -561,6 +561,7 @@ export class Todoist implements INodeType {
 						displayName: 'Label Names or IDs',
 						name: 'labels',
 						type: 'multiOptions',
+						description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getLabels',
 						},
@@ -698,7 +699,7 @@ export class Todoist implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'task') {
-					responseData = (await service.execute(this, OperationType[operation as keyof typeof OperationType]));
+					responseData = (await service.execute(this, OperationType[operation as keyof typeof OperationType], i));
 				}
 				if (Array.isArray(responseData?.data)) {
 					returnData.push.apply(returnData, responseData?.data as IDataObject[]);

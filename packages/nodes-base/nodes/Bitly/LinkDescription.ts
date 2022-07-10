@@ -94,6 +94,7 @@ export const linkFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
@@ -226,6 +227,7 @@ export const linkFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
