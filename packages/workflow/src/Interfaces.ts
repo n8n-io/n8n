@@ -158,6 +158,7 @@ export interface IRequestOptionsSimplifiedAuth {
 	body?: IDataObject;
 	headers?: IDataObject;
 	qs?: IDataObject;
+	skipSslCertificateValidation?: boolean | string;
 }
 
 export abstract class ICredentialsHelper {

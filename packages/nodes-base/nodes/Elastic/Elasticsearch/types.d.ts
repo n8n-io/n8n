@@ -2,6 +2,7 @@ export type ElasticsearchApiCredentials = {
 	username: string;
 	password: string;
 	baseUrl: string;
+	ignoreSSLIssues: boolean;
 };
 
 export type DocumentGetAllOptions = Partial<{
