@@ -143,7 +143,7 @@ export class RenameKeys implements INodeType {
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	};
