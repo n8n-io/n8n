@@ -21,7 +21,7 @@ export class GoogleDrive implements INodeType {
 		name: 'googleDrive',
 		icon: 'file:googleDrive.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on Google Drive',
 		defaults: {
@@ -475,7 +475,7 @@ export class GoogleDrive implements INodeType {
 					minValue: 1,
 					maxValue: 1000,
 				},
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 			},
 			{
@@ -951,7 +951,7 @@ export class GoogleDrive implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All fields',
 							},
@@ -1404,7 +1404,7 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All spaces',
 							},
@@ -2268,6 +2268,7 @@ export class GoogleDrive implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
+							// @ts-ignore
 							Object.assign(newItem.binary, items[i].binary);
 						}
 
@@ -2365,7 +2366,13 @@ export class GoogleDrive implements INodeType {
 
 						const files = response!.files;
 
-						return [this.helpers.returnJsonArray(files as IDataObject[])];
+						const version = this.getNode().typeVersion;
+
+						if (version === 1) {
+							return [this.helpers.returnJsonArray(files as IDataObject[])];
+						} else {
+							returnData.push(...files);
+						}
 
 					} else if (operation === 'upload') {
 						// ----------------------------------
