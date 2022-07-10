@@ -105,6 +105,7 @@ export class UptimeRobot implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get account details',
+						action: 'Get an account',
 					},
 				],
 				default: 'get',

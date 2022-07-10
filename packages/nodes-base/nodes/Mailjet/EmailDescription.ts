@@ -20,11 +20,13 @@ export const emailOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Send a email',
+				action: 'Send an email',
 			},
 			{
 				name: 'Send Template',
 				value: 'sendTemplate',
 				description: 'Send a email template',
+				action: 'Send an email template',
 			},
 		],
 		default: 'send',

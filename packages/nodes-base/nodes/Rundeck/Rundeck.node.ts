@@ -53,11 +53,13 @@ export class Rundeck implements INodeType {
 						name: 'Execute',
 						value: 'execute',
 						description: 'Execute a job',
+						action: 'Execute a job',
 					},
 					{
 						name: 'Get Metadata',
 						value: 'getMetadata',
 						description: 'Get metadata of a job',
+						action: 'Get metadata of a job',
 					},
 				],
 				default: 'execute',
