@@ -103,6 +103,7 @@ export class Twake implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send a message',
+						action: 'Send a message',
 					},
 				],
 				default: 'send',

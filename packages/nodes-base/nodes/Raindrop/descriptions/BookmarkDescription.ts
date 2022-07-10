@@ -13,22 +13,27 @@ export const bookmarkOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a bookmark',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a bookmark',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a bookmark',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all bookmarks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a bookmark',
 			},
 		],
 		displayOptions: {

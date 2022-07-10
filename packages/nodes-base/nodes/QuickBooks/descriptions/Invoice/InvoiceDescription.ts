@@ -17,30 +17,37 @@ export const invoiceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an invoice',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an invoice',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all invoices',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send an invoice',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an invoice',
 			},
 			{
 				name: 'Void',
 				value: 'void',
+				action: 'Void an invoice',
 			},
 		],
 		displayOptions: {
