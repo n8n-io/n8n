@@ -2856,6 +2856,10 @@ class App {
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
+					void InternalHooksManager.getInstance().onFrontendSettingsAPI(
+						req.headers.sessionid as string,
+					);
+
 					return this.getSettingsForFrontend();
 				},
 			),

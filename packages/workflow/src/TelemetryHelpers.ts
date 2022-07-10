@@ -11,8 +11,6 @@ import {
 } from '.';
 import { INodeType } from './Interfaces';
 
-import { getInstance as getLoggerInstance } from './LoggerProxy';
-
 const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
@@ -124,6 +122,7 @@ export function generateNodesGraph(
 		notes: {},
 	};
 	const nodeNameAndIndex: INodeNameIndex = {};
+	const webhookNodeNames: string[] = [];
 
 	try {
 		const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
@@ -177,6 +176,8 @@ export function generateNodesGraph(
 				nodeItem.domain_base = getDomainBase(url);
 				nodeItem.domain_path = getDomainPath(url);
 				nodeItem.method = node.parameters.requestMethod as string;
+			} else if (node.type === 'n8n-nodes-base.webhook') {
+				webhookNodeNames.push(node.name);
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -210,12 +211,9 @@ export function generateNodesGraph(
 				});
 			});
 		});
-	} catch (e) {
-		const logger = getLoggerInstance();
-		logger.warn(`Failed to generate nodes graph for workflowId: ${workflow.id as string | number}`);
-		logger.warn((e as Error).message);
-		logger.warn((e as Error).stack ?? '');
+	} catch (_) {
+		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 	}
 
-	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex };
+	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 }
