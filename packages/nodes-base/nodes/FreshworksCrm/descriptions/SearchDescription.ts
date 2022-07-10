@@ -110,6 +110,9 @@ export const searchFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 25,
 		displayOptions: {
 			show: {
