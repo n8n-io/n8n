@@ -12,6 +12,7 @@ export const tickerOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a ticker',
 			},
 		],
 		default: 'get',

@@ -65,11 +65,13 @@ export class Signl4 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send an alert',
+						action: 'Send an alert',
 					},
 					{
 						name: 'Resolve',
 						value: 'resolve',
 						description: 'Resolve an alert',
+						action: 'Resolve an alert',
 					},
 				],
 				default: 'send',

@@ -43,26 +43,31 @@ export class Redis implements INodeType {
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a key from Redis',
+						action: 'Delete a key from Redis',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get the value of a key from Redis',
+						action: 'Get the value of a key from Redis',
 					},
 					{
 						name: 'Increment',
 						value: 'incr',
 						description: 'Atomically increments a key by 1. Creates the key if it does not exist.',
+						action: 'Atomically increment a key by 1. Creates the key if it does not exist.',
 					},
 					{
 						name: 'Info',
 						value: 'info',
 						description: 'Returns generic information about the Redis instance',
+						action: 'Return generic information about the Redis instance',
 					},
 					{
 						name: 'Keys',
 						value: 'keys',
 						description: 'Returns all the keys matching a pattern',
+						action: 'Return all keys matching a pattern',
 					},
 					{
 						name: 'Pop',
@@ -73,6 +78,7 @@ export class Redis implements INodeType {
 						name: 'Publish',
 						value: 'publish',
 						description: 'Publish message to redis channel',
+						action: 'Publish message to redis channel',
 					},
 					{
 						name: 'Push',
@@ -83,6 +89,7 @@ export class Redis implements INodeType {
 						name: 'Set',
 						value: 'set',
 						description: 'Set the value of a key in redis',
+						action: 'Set the value of a key in redis',
 					},
 				],
 				default: 'info',

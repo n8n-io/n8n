@@ -13,6 +13,7 @@ export const webinarOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a webinar',
 			},
 			// {
 			// 	name: 'Delete',
@@ -21,14 +22,17 @@ export const webinarOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a webinar',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all webinars',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a webinar',
 			},
 		],
 		displayOptions: {

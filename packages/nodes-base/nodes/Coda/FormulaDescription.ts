@@ -18,11 +18,13 @@ export const formulaOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a formula',
+				action: 'Get a formula',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all formulas',
+				action: 'Get all formulas',
 			},
 		],
 		default: 'get',
