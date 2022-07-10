@@ -1476,6 +1476,11 @@ export type PropertiesOf<M extends { resource: string; operation: string }> = Ar
 
 // Telemetry
 
+export interface ITelemetryTrackProperties {
+	user_id?: string;
+	[key: string]: GenericValue;
+}
+
 export interface INodesGraph {
 	node_types: string[];
 	node_connections: IDataObject[];
@@ -1519,6 +1524,7 @@ export interface INodeNameIndex {
 export interface INodesGraphResult {
 	nodeGraph: INodesGraph;
 	nameIndices: INodeNameIndex;
+	webhookNodeNames: string[];
 }
 
 export interface ITelemetryClientConfig {
