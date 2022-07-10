@@ -2,31 +2,33 @@
 	<SettingsView>
 		<div :class="$style.container">
 			<div :class="$style.header">
-				<n8n-heading size="2xlarge">{{ "AD/LDAP" }}</n8n-heading>
+				<n8n-heading size="2xlarge">
+					{{ $locale.baseText('settings.ad') }}
+				</n8n-heading>
 			</div>
-
-			<div :class="$style.enableFeatureContainer" >
+			<!-- <div :class="$style.enableFeatureContainer">
 				<span>Enable Feature</span>
 				<el-switch
 					v-model="adConfig.activeDirectoryLoginEnabled"
 					active-color="#13ce66"
-					:disabled="isReadOnly"
 					@change="valueChanged"
 				/>
-			</div>
+			</div> -->
 			<div>
 				<n8n-form-inputs
 					v-if="formInputs"
 					:inputs="formInputs"
 					:eventBus="formBus"
-					columnView=true
+					:columnView="true"
 					@input="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
 			</div>
+
 			<div>
-				<n8n-button float="right" :label="$locale.baseText('settings.personal.save')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
+				<n8n-button float="right" :label="$locale.baseText('settings.ad.save')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
+				<n8n-button float="left" :label=" loadingTestConnection ? $locale.baseText('settings.ad.testingConnection') : $locale.baseText('settings.ad.testConnection')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="OnTestConnectionClick" />
 			</div>
 		</div>
 	</SettingsView>
@@ -34,7 +36,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/components/mixins/showMessage';
-import { IFormInputs, IUser } from '@/Interface';
+import { IActiveDirectoryConfig, IFormInputs, IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
@@ -49,33 +51,16 @@ export default mixins(
 	},
 	data() {
 		return {
-			adConfig: {} as {
-				activeDirectoryLoginEnabled: boolean;
-				attributeMapping: {
-					email: string;
-					firstName: string;
-					lastName: string;
-					loginId: string;
-					username: string;
-				},
-				binding: {
-					adminDn: string;
-					adminPassword: string;
-					baseDn: string;
-				},
-				connection: {
-					url: string;
-				},
-			},
-			mounted: false,
+			adConfig: {} as IActiveDirectoryConfig,
+			loadingTestConnection: false,
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
 			formBus: new Vue(),
 			readyToSubmit: false,
 		};
 	},
-	mounted() {
-		this.getADConfig();
+	async mounted() {
+		await this.getADConfig();
 	},
 	computed: {
 		currentUser() {
@@ -89,32 +74,100 @@ export default mixins(
 		onReadyToSubmit(ready: boolean) {
 			this.readyToSubmit = ready;
 		},
-		async onSubmit(form: {firstName: string, lastName: string, email: string}) {
+		async onSubmit(form: {
+				loginEnaled: string,
+				serverAddress: string,
+				baseDn: string,
+				bindingType: string,
+				adminDn: string,
+				adminPassword: string,
+				loginId: string,
+				email: string,
+				lastName: string,
+				firstName: string,
+				username: string,
+				}) {
 			if (!this.hasAnyChanges) {
 				return;
 			}
-			try {
-				await this.$store.dispatch('users/updateUser', {
-					id: this.currentUser.id,
+
+			const newConfiguration = {
+				activeDirectoryLoginEnabled: form.loginEnaled === 'true' ? true : false,
+				connection: {
+					url: form.serverAddress,
+				},
+				binding: {
+					baseDn: form.baseDn,
+					adminDn: form.bindingType === 'admin' ? form.adminDn : '',
+					adminPassword: form.bindingType === 'admin' ? form.adminPassword : '',
+				},
+				attributeMapping: {
+					email: form.email,
 					firstName: form.firstName,
 					lastName: form.lastName,
-					email: form.email,
-				});
+					loginId: form.loginId,
+					username: form.username,
+				},
+			};
+
+			try {
+				this.adConfig = await this.$store.dispatch('settings/updateADConfig', newConfiguration);
 				this.$showToast({
-					title: this.$locale.baseText('settings.personal.personalSettingsUpdated'),
+					title: this.$locale.baseText('settings.ad.updateConfiguration'),
 					message: '',
 					type: 'success',
 				});
+			} catch (error) {
+				// do something
+			} finally {
 				this.hasAnyChanges = false;
 			}
-			catch (e) {
-				this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
+		},
+		onSaveClick() {
+			this.formBus.$emit('submit');
+		},
+		async OnTestConnectionClick() {
+			this.loadingTestConnection = true;
+			try {
+				await this.$store.dispatch('settings/testADConnection');
+				this.$showToast({
+					title: this.$locale.baseText('settings.ad.connectionTest'),
+					message: 'Connection succeeded',
+					type: 'success',
+				});
+			} catch (error) {
+				this.$showToast({
+					title: this.$locale.baseText('settings.ad.connectionTestError'),
+					message: error.message,
+					type: 'error',
+				});
+			} finally {
+				this.loadingTestConnection = false;
 			}
 		},
 		async getADConfig() {
 			try {
 				this.adConfig = await this.$store.dispatch('settings/getADConfig');
 				this.formInputs = [
+					{
+						name: 'loginEnaled',
+						initialValue: this.adConfig.activeDirectoryLoginEnabled.toString(),
+						properties: {
+							type: 'select',
+							label: 'Enabled Active Directory Login',
+							required: true,
+							options: [
+								{
+									label: 'True',
+									value: 'true',
+								},
+								{
+									label: 'False',
+									value: 'false',
+								},
+							],
+						},
+					},
 					{
 						name: 'connectionInfo',
 						properties: {
@@ -197,6 +250,17 @@ export default mixins(
 						},
 					},
 					{
+						name: 'username',
+						initialValue: this.adConfig.attributeMapping.username,
+						properties: {
+							label: 'Username',
+							type: 'text',
+							autocomplete: 'email',
+							required: true,
+							capitalize: true,
+						},
+					},
+					{
 						name: 'loginId',
 						initialValue: this.adConfig.attributeMapping.loginId,
 						properties: {
@@ -222,7 +286,7 @@ export default mixins(
 						name: 'firstName',
 						initialValue: this.adConfig.attributeMapping.firstName,
 						properties: {
-							label: 'Fist Name',
+							label: 'First Name',
 							type: 'text',
 							autocomplete: 'email',
 							required: true,
@@ -243,12 +307,7 @@ export default mixins(
 				];
 			} catch (error) {
 				//this.$showError(error, this.$locale.baseText('settings.api.view.error'));
-			} finally {
-				this.mounted = true;
 			}
-		},
-		onSaveClick() {
-			this.formBus.$emit('submit');
 		},
 	},
 });
@@ -272,15 +331,6 @@ export default mixins(
 	}
 }
 
-.user {
-	display: flex;
-	align-items: center;
-
-	@media (max-width: $--breakpoint-2xs) {
-		display: none;
-	}
-}
-
 .enableFeatureContainer {
 	margin-bottom: var(--spacing-1xl),
 }
@@ -295,18 +345,6 @@ export default mixins(
 	> * {
     padding: .5em;
   }
-}
-
-
-.username {
-	margin-right: var(--spacing-s);
-	text-align: right;
-
-	@media (max-width: $--breakpoint-sm) {
-		max-width: 100px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
 }
 
 .sectionHeader {

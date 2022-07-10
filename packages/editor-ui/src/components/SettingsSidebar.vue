@@ -27,9 +27,9 @@
 			</n8n-menu-item>
 			<n8n-menu-item index="/settings/ad" v-if="canAccessActiveDirectorySettings()" :class="$style.tab">
 				<i :class="$style.icon">
-					<font-awesome-icon icon="tree" />
+					<font-awesome-icon icon="network-wired" />
 				</i>
-				<span slot="title">{{ "AD/LDAP" }}</span>
+				<span slot="title">{{ $locale.baseText('settings.ad') }}</span>
 			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">

@@ -963,3 +963,22 @@ export interface ITab {
 	icon?: string;
 	align?: 'right';
 }
+
+export interface IActiveDirectoryConfig {
+		activeDirectoryLoginEnabled: boolean;
+		attributeMapping: {
+			email: string;
+			firstName: string;
+			lastName: string;
+			loginId: string;
+			username: string;
+		};
+		binding: {
+			adminDn: string;
+			adminPassword: string;
+			baseDn: string;
+		};
+		connection: {
+			url: string;
+		};
+}

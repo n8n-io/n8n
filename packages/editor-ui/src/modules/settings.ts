@@ -1,5 +1,6 @@
 import {  ActionContext, Module } from 'vuex';
 import {
+	IActiveDirectoryConfig,
 	ILogLevel,
 	IN8nPrompts,
 	IN8nUISettings,
@@ -13,7 +14,7 @@ import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
 import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
-import { getADConfig } from "@/api/active-directory";
+import { getADConfig, testADConnection, updateADConfig } from "@/api/active-directory";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -183,16 +184,22 @@ const module: Module<ISettingsState, IRootState> = {
 			const { apiKey } = await getApiKey(context.rootGetters['getRestApiContext']);
 			return apiKey;
 		},
-		async getADConfig(context: ActionContext<ISettingsState, IRootState>) {
-			const config = await getADConfig(context.rootGetters['getRestApiContext']);
-			return config;
-		},
 		async createApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			const { apiKey } = await createApiKey(context.rootGetters['getRestApiContext']);
 			return apiKey;
 		},
 		async deleteApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			await deleteApiKey(context.rootGetters['getRestApiContext']);
+		},
+		async getADConfig(context: ActionContext<ISettingsState, IRootState>) {
+			const config = await getADConfig(context.rootGetters['getRestApiContext']);
+			return config;
+		},
+		async testADConnection(context: ActionContext<ISettingsState, IRootState>) {
+			return await testADConnection(context.rootGetters['getRestApiContext']);
+		},
+		async updateADConfig(context: ActionContext<ISettingsState, IRootState>, adConfig: IActiveDirectoryConfig) {
+			return await updateADConfig(context.rootGetters['getRestApiContext'], adConfig);
 		},
 	},
 };

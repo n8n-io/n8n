@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 import express from 'express';
-import { Db, ResponseHelper } from '../..';
+import { Db } from '../..';
 import { ActiveDirectoryManager } from '../ActiveDirectoryManager';
 import { ACTIVE_DIRECTORY_FEATURE_NAME } from '../constants';
 import { getActiveDirectoryConfig } from '../helpers';
@@ -13,7 +13,7 @@ export const activeDirectoryController = express.Router();
  */
 activeDirectoryController.get('/config', async (req: express.Request, res: express.Response) => {
 	const { data } = await getActiveDirectoryConfig();
-	return res.status(200).json(data);
+	return res.status(200).json({ data });
 });
 /**
  * POST /active-directory/test-connection
@@ -44,17 +44,11 @@ activeDirectoryController.put(
 
 		// add json schema to validate the shape of the JSON;
 
-		const updatedConfig = await Db.collections.FeatureConfig.findOne({
-			name: ACTIVE_DIRECTORY_FEATURE_NAME,
-		});
+		const { data } = await getActiveDirectoryConfig();
 
-		if (!updatedConfig) {
-			return res.status(404).json();
-		}
+		ActiveDirectoryManager.getInstance().config = data;
 
-		ActiveDirectoryManager.getInstance().config = updatedConfig.data as ActiveDirectoryConfig;
-
-		return res.status(200).json(updatedConfig.data);
+		return res.status(200).json(data);
 	},
 );
 
