@@ -72,6 +72,7 @@ export class ApiTemplateIo implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
+						action: 'Create an image',
 					},
 				],
 				displayOptions: {
@@ -94,6 +95,7 @@ export class ApiTemplateIo implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
+						action: 'Get an account',
 					},
 				],
 				displayOptions: {

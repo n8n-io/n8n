@@ -20,11 +20,13 @@ export const imageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an image',
+				action: 'Create an image',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an image',
+				action: 'Get an image',
 			},
 		],
 		default: 'create',

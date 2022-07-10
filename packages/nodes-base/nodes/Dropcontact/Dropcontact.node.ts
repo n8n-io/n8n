@@ -65,6 +65,7 @@ export class Dropcontact implements INodeType {
 						name: 'Enrich',
 						value: 'enrich',
 						description: 'Find B2B emails and enrich your contact from his name and his website',
+						action: 'Find B2B emails',
 					},
 					{
 						name: 'Fetch Request',

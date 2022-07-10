@@ -20,11 +20,13 @@ export const contactSegmentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to a segment',
+				action: 'Add a contact to a segment',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove contact from a segment',
+				action: 'Remove a contact from a segment',
 			},
 		],
 		default: 'add',

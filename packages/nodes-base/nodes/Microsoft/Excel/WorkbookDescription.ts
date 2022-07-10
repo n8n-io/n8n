@@ -18,11 +18,13 @@ export const workbookOperations: INodeProperties[] = [
 				name: 'Add Worksheet',
 				value: 'addWorksheet',
 				description: 'Adds a new worksheet to the workbook',
+				action: 'Add a worksheet to a workbook',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all workbooks',
+				action: 'Get all workbooks',
 			},
 		],
 		default: 'create',

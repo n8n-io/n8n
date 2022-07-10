@@ -13,22 +13,27 @@ export const objectOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an object',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an object',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an object',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all objects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an object',
 			},
 		],
 		displayOptions: {

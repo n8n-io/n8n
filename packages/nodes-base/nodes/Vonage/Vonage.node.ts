@@ -57,6 +57,7 @@ export class Vonage implements INodeType {
 					{
 						name: 'Send',
 						value: 'send',
+						action: 'Send an SMS',
 					},
 				],
 				displayOptions: {
