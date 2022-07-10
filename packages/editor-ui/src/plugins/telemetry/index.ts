@@ -1,6 +1,7 @@
 import _Vue from "vue";
 import {
 	ITelemetrySettings,
+	ITelemetryTrackProperties,
 	IDataObject,
 } from 'n8n-workflow';
 import { ILogLevel, INodeCreateElement, IRootState } from "@/Interface";
@@ -72,6 +73,7 @@ class Telemetry {
 			this.loadTelemetryLibrary(options.config.key, options.config.url, { integrations: { All: false }, loadIntegration: false, ...logging});
 			this.identify(instanceId, userId);
 			this.flushPageEvents();
+			this.track('Session started', { session_id: store.getters.sessionId });
 		}
 	}
 
@@ -86,9 +88,14 @@ class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: IDataObject) {
+	track(event: string, properties?: ITelemetryTrackProperties) {
 		if (this.telemetry) {
-			this.telemetry.track(event, properties);
+			const updatedProperties = {
+				...properties,
+				version_cli: this.store && this.store.getters.versionCli,
+			};
+
+			this.telemetry.track(event, updatedProperties);
 		}
 	}
 
@@ -131,21 +138,21 @@ class Telemetry {
 					if (properties.createNodeActive !== false) {
 						this.resetNodesPanelSession();
 						properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
-						this.telemetry.track('User opened nodes panel', properties);
+						this.track('User opened nodes panel', properties);
 					}
 					break;
 				case 'nodeCreateList.selectedTypeChanged':
 					this.userNodesPanelSession.data.filterMode = properties.new_filter as string;
-					this.telemetry.track('User changed nodes panel filter', properties);
+					this.track('User changed nodes panel filter', properties);
 					break;
 				case 'nodeCreateList.destroyed':
 					if(this.userNodesPanelSession.data.nodeFilter.length > 0 && this.userNodesPanelSession.data.nodeFilter !== '') {
-						this.telemetry.track('User entered nodes panel search term', this.generateNodesPanelEvent());
+						this.track('User entered nodes panel search term', this.generateNodesPanelEvent());
 					}
 					break;
 				case 'nodeCreateList.nodeFilterChanged':
 					if((properties.newValue as string).length === 0 && this.userNodesPanelSession.data.nodeFilter.length > 0) {
-						this.telemetry.track('User entered nodes panel search term', this.generateNodesPanelEvent());
+						this.track('User entered nodes panel search term', this.generateNodesPanelEvent());
 					}
 
 					if((properties.newValue as string).length > (properties.oldValue as string || '').length) {
@@ -155,7 +162,7 @@ class Telemetry {
 					break;
 				case 'nodeCreateList.onCategoryExpanded':
 					properties.is_subcategory = false;
-					this.telemetry.track('User viewed node category', properties);
+					this.track('User viewed node category', properties);
 					break;
 				case 'nodeCreateList.onSubcategorySelected':
 					const selectedProperties = (properties.selected as IDataObject).properties as IDataObject;
@@ -164,13 +171,13 @@ class Telemetry {
 					}
 					properties.is_subcategory = true;
 					delete properties.selected;
-					this.telemetry.track('User viewed node category', properties);
+					this.track('User viewed node category', properties);
 					break;
 				case 'nodeView.addNodeButton':
-					this.telemetry.track('User added node to workflow canvas', properties);
+					this.track('User added node to workflow canvas', properties);
 					break;
 				case 'nodeView.addSticky':
-					this.telemetry.track('User inserted workflow note', properties);
+					this.track('User inserted workflow note', properties);
 					break;
 				default:
 					break;
