@@ -47,10 +47,11 @@ export class MetabaseApi implements ICredentialType {
 	// method will only be called if "sessionToken" (the expirable property)
 	// is empty or is expired
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		//make reques to get session token
+		// make reques to get session token
+		const url = credentials.url as string;
 		const { id } = (await this.helpers.httpRequest({
 			method: 'POST',
-			url: `${credentials.url}/api/session`,
+			url: `${url.endsWith('/') ? url.slice(0, -1) : url}/api/session`,
 			body: {
 				username: credentials.username,
 				password: credentials.password,
@@ -69,7 +70,7 @@ export class MetabaseApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}',
-			url: '/api/activity/',
+			url: '/api/user/current',
 		},
 	};
 }
