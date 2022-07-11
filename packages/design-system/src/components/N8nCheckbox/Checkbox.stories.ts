@@ -6,11 +6,6 @@ import { action } from '@storybook/addon-actions';
 export default {
 	title: 'Atoms/Checkbox',
 	component: N8nCheckbox,
-	argTypes: {
-		checked: {
-			control: null,
-		},
-	},
 };
 
 const methods = {
@@ -24,7 +19,10 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nCheckbox,
 	},
-	template: '<n8n-checkbox v-bind="$props" @change="onChange" @focus="onFocus"></n8n-checkbox>',
+	data: () => ({
+		isChecked: false,
+	}),
+	template: '<n8n-checkbox v-model="isChecked" v-bind="$props" @input="onInput"></n8n-checkbox>',
 	methods,
 });
 
@@ -32,6 +30,6 @@ export const Default = DefaultTemplate.bind({});
 Default.args = {
 	label: 'This is a default checkbox',
 	tooltipText: 'Checkbox tooltip',
-	checked: true,
 	disabled: false,
+	indeterminate: false,
 };

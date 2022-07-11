@@ -1,9 +1,10 @@
 <template>
 	<el-checkbox
-		v-model="state"
 		v-bind="$props"
-		v-on="$listeners"
 		:disabled="disabled"
+		:indeterminate="indeterminate"
+		:value="value"
+		@change="onChange"
 	>
 		<n8n-input-label
 			:label="label"
@@ -24,10 +25,6 @@ export default Vue.extend({
 		N8nInputLabel,
 	},
 	props: {
-		checked: {
-			type: Boolean,
-			default: false,
-		},
 		label: {
 			type: String,
 			required: true,
@@ -40,23 +37,22 @@ export default Vue.extend({
 			type: String,
 			required: false,
 		},
+		indeterminate: {
+			type: Boolean,
+			default: false,
+		},
+		value: {
+			type: Boolean,
+			default: false,
+		},
 	},
-	data() {
-		return {
-			state: false,
-		}
-	},
-	mounted() {
-        this.state = this.checked;
-    }
+	methods: {
+		onChange(e) {
+			this.$emit("input", e);
+		},
+	}
 });
 </script>
 
 <style lang="scss" module>
-.infoText {
-	margin-top: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
-	color: var(--color-text-base);
-}
 </style>
