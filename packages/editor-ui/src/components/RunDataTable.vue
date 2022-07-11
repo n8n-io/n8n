@@ -30,7 +30,7 @@
 										[$style.draggingHeader]: isDragging,
 									}"
 								>
-									<span>{{ column }}</span>
+									<span>{{ column || "&nbsp;" }}</span>
 									<div v-if="mappingEnabled" :class="$style.dragButton">
 										<div>
 											<div></div>

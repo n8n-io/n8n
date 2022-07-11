@@ -104,7 +104,7 @@ export default Vue.extend({
 }
 
 .draggable-data-transfer {
-	width: 1px;
-	height: 1px;
+	width: 0px;
+	height: 0px;
 }
 </style>
