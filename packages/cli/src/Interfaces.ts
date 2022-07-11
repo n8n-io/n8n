@@ -36,7 +36,7 @@ import { SharedCredentials } from './databases/entities/SharedCredentials';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { Settings } from './databases/entities/Settings';
 import { FeatureConfig } from './databases/entities/FeatureConfig';
-import { ActiveDirectoryConfig } from './ActiveDirectory/types';
+import type { ActiveDirectoryConfig } from './ActiveDirectory/types';
 
 export interface IActivationError {
 	time: number;

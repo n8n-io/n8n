@@ -21,11 +21,6 @@ export interface ActiveDirectoryConfig {
 	};
 }
 
-export enum SignInType {
-	LDAP = 'ldap',
-	EMAIL = 'email',
-}
-
 export type AuthenticatedRequest<
 	RouteParams = {},
 	ResponseBody = {},

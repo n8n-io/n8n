@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 
 import { ActiveDirectoryService } from './ActiveDirectoryService';
-import { ActiveDirectoryConfig } from './types';
+import type { ActiveDirectoryConfig } from './types';
 
 export class ActiveDirectoryManager {
 	private static activeDirectory: ActiveDirectoryService | undefined;

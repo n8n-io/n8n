@@ -6,8 +6,8 @@ import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { ActiveDirectoryManager } from './ActiveDirectoryManager';
-import { ACTIVE_DIRECTORY_DISABLED, ACTIVE_DIRECTORY_FEATURE_NAME } from './constants';
-import { ActiveDirectoryConfig, SignInType } from './types';
+import { ACTIVE_DIRECTORY_DISABLED, ACTIVE_DIRECTORY_FEATURE_NAME, SignInType } from './constants';
+import type { ActiveDirectoryConfig } from './types';
 
 const isActiveDirectoryDisabled = (): boolean => config.getEnv(ACTIVE_DIRECTORY_DISABLED);
 

@@ -2,7 +2,7 @@
 import { Column, ColumnOptions, Entity, PrimaryColumn } from 'typeorm';
 import * as config from '../../../config';
 import { DatabaseType, IFeatureConfigDb } from '../..';
-import { ActiveDirectoryConfig } from '../../ActiveDirectory/types';
+import type { ActiveDirectoryConfig } from '../../ActiveDirectory/types';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');

@@ -4,7 +4,7 @@ import { Db } from '../..';
 import { ActiveDirectoryManager } from '../ActiveDirectoryManager';
 import { ACTIVE_DIRECTORY_FEATURE_NAME } from '../constants';
 import { getActiveDirectoryConfig } from '../helpers';
-import { ActiveDirectoryConfig } from '../types';
+import type { ActiveDirectoryConfig } from '../types';
 
 export const activeDirectoryController = express.Router();
 

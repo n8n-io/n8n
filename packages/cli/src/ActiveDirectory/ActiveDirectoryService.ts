@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { Client, Entry } from 'ldapts';
 // eslint-disable-next-line import/no-cycle
-import { ActiveDirectoryConfig } from './types';
+import type { ActiveDirectoryConfig } from './types';
 
 export class ActiveDirectoryService {
 	private client: Client | undefined;
