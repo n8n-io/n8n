@@ -539,12 +539,14 @@ export default mixins(
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 				this.$store.commit('setWorkflowExecutionData', data);
+				this.$store.commit('setWorkflowPinData', data.workflowData.pinData);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', false);
 				});
+
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
