@@ -165,7 +165,7 @@ export const postFields: INodeProperties[] = [
 		name: 'resubmit',
 		type: 'boolean',
 		default: false,
-		description: 'If toggled on, the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
+		description: 'Whether the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -329,7 +329,6 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Category',
 				name: 'category',
 				type: 'options',
-				required: true,
 				default: 'top',
 				description: 'Category of the posts to retrieve',
 				options: [

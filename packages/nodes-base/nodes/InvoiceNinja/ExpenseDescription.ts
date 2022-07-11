@@ -76,6 +76,7 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -97,6 +98,7 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getExpenseCategories',
 				},
@@ -302,6 +304,7 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Vendor Name or ID',
 				name: 'vendor',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getVendors',
 				},

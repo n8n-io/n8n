@@ -204,9 +204,10 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Authors IDs',
+				displayName: 'Author Names or IDs',
 				name: 'authors',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
@@ -303,9 +304,10 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -770,9 +772,10 @@ export const postFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Authors IDs',
+				displayName: 'Author Names or IDs',
 				name: 'authors',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAuthors',
 				},
@@ -896,9 +899,10 @@ export const postFields: INodeProperties[] = [
 				default: 'draft',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},

@@ -118,7 +118,7 @@ export const userFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active users and false to return inactive users',
+				description: 'Whether to only return active users and false to return inactive users',
 			},
 			{
 				displayName: 'Updated Since',
@@ -219,6 +219,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
@@ -423,6 +424,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The user email',
 			},

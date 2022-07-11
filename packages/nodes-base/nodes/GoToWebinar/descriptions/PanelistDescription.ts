@@ -63,6 +63,7 @@ export const panelistFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		description: 'Email address of the panelist to create',

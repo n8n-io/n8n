@@ -125,7 +125,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'upcoming_events_only',
 				type: 'boolean',
 				default: true,
-				description: 'Lists only upcoming events',
+				description: 'Whether to list only upcoming events',
 			},
 		],
 	},

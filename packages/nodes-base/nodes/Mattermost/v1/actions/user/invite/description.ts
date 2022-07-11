@@ -7,6 +7,7 @@ export const userInviteDescription: UserProperties = [
 		displayName: 'Team Name or ID',
 		name: 'teamId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},

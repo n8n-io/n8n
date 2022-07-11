@@ -58,7 +58,7 @@ export const formFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If form fields should be set via the value-key pair UI or JSON',
+		description: 'Whether form fields should be set via the value-key pair UI or JSON',
 	},
 	{
 		displayName: 'Form Data',

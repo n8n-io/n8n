@@ -120,6 +120,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -236,14 +237,14 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'List IDs',
 						values: [
 							{
-								displayName: 'List IDs',
+								displayName: 'List Names or IDs',
 								name: 'listIds',
 								type: 'multiOptions',
 								typeOptions: {
 									loadOptionsMethod: 'getListIds',
 								},
 								default: [],
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 						],
 					},
@@ -326,7 +327,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all contacts will be deleted',
+		description: 'Whether all contacts will be deleted',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -385,6 +386,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {

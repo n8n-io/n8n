@@ -70,6 +70,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
@@ -233,7 +234,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -273,6 +274,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Primary Company Name or ID',
 				name: 'primaryCompany',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -374,7 +376,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -403,6 +405,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -412,6 +415,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Primary Contact Name or ID',
 				name: 'primaryContact',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -504,6 +508,7 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Primary Company Name or ID',
 				name: 'primaryCompany',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -605,7 +610,7 @@ export const dealFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:getAll                                */

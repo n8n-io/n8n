@@ -342,7 +342,7 @@ export const checklistFields: INodeProperties[] = [
 				name: 'checked',
 				type: 'boolean',
 				default: false,
-				description: 'Determines whether the check item is already checked when created',
+				description: 'Whether the check item is already checked when created',
 			},
 			{
 				displayName: 'Position',

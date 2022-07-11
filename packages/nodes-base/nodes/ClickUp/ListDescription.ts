@@ -65,6 +65,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -85,6 +86,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -125,6 +127,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -223,6 +226,7 @@ export const listFields: INodeProperties[] = [
 				displayName: 'Status Name or ID',
 				name: 'status',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 					loadOptionsDependsOn: [
@@ -303,6 +307,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -323,6 +328,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -363,6 +369,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -389,6 +396,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -415,6 +423,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'List Name or ID',
 		name: 'list',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -445,6 +454,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -465,6 +475,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -505,6 +516,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -552,6 +564,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -572,6 +585,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -612,6 +626,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -659,6 +674,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -679,6 +695,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -719,6 +736,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -795,6 +813,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -815,6 +834,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -855,6 +875,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Folder Name or ID',
 		name: 'folder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -915,6 +936,7 @@ export const listFields: INodeProperties[] = [
 				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
 					loadOptionsDependsOn: [

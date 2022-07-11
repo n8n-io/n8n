@@ -90,7 +90,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
+		description: 'Whether the attachment fields define in \'Download Fields\' will be downloaded',
 	},
 	{
 		displayName: 'Download Fields',
@@ -222,7 +222,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
+		description: 'Whether the attachment fields define in \'Download Fields\' will be downloaded',
 	},
 	{
 		displayName: 'Download Fields',
@@ -346,7 +346,7 @@ export const operationFields: INodeProperties[] = [
 						name: 'binaryData',
 						type: 'boolean',
 						default: false,
-						description: 'If the field data to set is binary and should be taken from a binary property',
+						description: 'Whether the field data to set is binary and should be taken from a binary property',
 					},
 					{
 						displayName: 'Field Value',

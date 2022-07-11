@@ -116,6 +116,7 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Either email or userId must be passed in to identify the user. If both are passed in, email takes precedence.',
 			},

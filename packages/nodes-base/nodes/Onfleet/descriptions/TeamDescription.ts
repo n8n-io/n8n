@@ -65,25 +65,25 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Workers Names/IDs',
+	displayName: 'Worker Names or IDs',
 	name: 'workers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getWorkers',
 	},
 	default: [],
-	description: 'A list of workers',
+	description: 'A list of workers. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrators Names/IDs',
+	displayName: 'Administrator Names or IDs',
 	name: 'managers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getAdmins',
 	},
 	default: [],
-	description: 'A list of managing administrators',
+	description: 'A list of managing administrators. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 } as INodeProperties;
 
 const hubField = {

@@ -140,6 +140,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address of the user',
 			},
@@ -364,14 +365,14 @@ export const userFields: INodeProperties[] = [
 				description: 'An avatar image URL. note: the image URL needs to be https.',
 			},
 			{
-				displayName: 'Companies',
+				displayName: 'Company Names or IDs',
 				name: 'companies',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Identifies the companies this user belongs to',
+				description: 'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -392,6 +393,7 @@ export const userFields: INodeProperties[] = [
 					},
 				},
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Email of the user',
 			},
@@ -455,7 +457,7 @@ export const userFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC',
+				description: 'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC',
 			},
 			{
 				displayName: 'UTM Campaign',

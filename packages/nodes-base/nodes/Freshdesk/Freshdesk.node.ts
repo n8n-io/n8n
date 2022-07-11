@@ -82,6 +82,7 @@ export class Freshdesk implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Freshdesk',
 		name: 'freshdesk',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:freshdesk.png',
 		group: ['output'],
 		version: 1,
@@ -794,7 +795,6 @@ export class Freshdesk implements INodeType {
 						displayName: 'Source',
 						name: 'source',
 						type: 'options',
-						required: true,
 						options: [
 							{
 								name: 'Chat',

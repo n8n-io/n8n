@@ -22,6 +22,7 @@ export class Twake implements INodeType {
 		name: 'twake',
 		group: ['transform'],
 		version: 1,
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:twake.png',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Twake API',

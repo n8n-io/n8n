@@ -135,7 +135,7 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Send',
 		name: 'send',
-		description: 'Send the reply message directly. If not set, it will be saved as draft.',
+		description: 'Whether to send the reply message directly. If not set, it will be saved as draft.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -296,7 +296,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},
@@ -490,9 +490,10 @@ export const messageFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
@@ -568,7 +569,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},
@@ -589,7 +590,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Save To Sent Items',
 				name: 'saveToSentItems',
-				description: 'Indicates whether to save the message in Sent Items',
+				description: 'Whether to save the message in Sent Items',
 				type: 'boolean',
 				default: true,
 			},

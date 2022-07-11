@@ -25,6 +25,7 @@ export class PhilipsHue implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Philips Hue',
 		name: 'philipsHue',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:philipshue.png',
 		group: ['input'],
 		version: 1,

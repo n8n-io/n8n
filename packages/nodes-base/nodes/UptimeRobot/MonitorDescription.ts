@@ -229,14 +229,14 @@ export const monitorFields: INodeProperties[] = [
 				name: 'logs',
 				type: 'boolean',
 				default: false,
-				description: 'If the logs of each monitor will be returned',
+				description: 'Whether the logs of each monitor will be returned',
 			},
 			{
 				displayName: 'Maintenance Window',
 				name: 'mwindow',
 				type: 'boolean',
 				default: false,
-				description: 'If the maintenance windows for the monitors to be returned',
+				description: 'Whether to return the maintenance windows for the monitors',
 			},
 			{
 				displayName: 'Monitor IDs',
@@ -264,6 +264,7 @@ export const monitorFields: INodeProperties[] = [
 				name: 'statuses',
 				type: 'multiOptions',
 				default: [],
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Paused',

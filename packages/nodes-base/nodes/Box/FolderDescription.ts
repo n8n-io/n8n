@@ -191,7 +191,7 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Delete a folder that is not empty by recursively deleting the folder and all of its content',
+		description: 'Whether to delete a folder that is not empty by recursively deleting the folder and all of its content',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -518,6 +518,7 @@ export const folderFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
@@ -724,14 +725,14 @@ export const folderFields: INodeProperties[] = [
 				name: 'can_non_owners_invite',
 				type: 'boolean',
 				default: false,
-				description: 'Specifies if users who are not the owner of the folder can invite new collaborators to the folder',
+				description: 'Whether users who are not the owner of the folder can invite new collaborators to the folder',
 			},
 			{
 				displayName: 'Can Non-Owners View Colaborators',
 				name: 'can_non_owners_view_collaborators',
 				type: 'boolean',
 				default: false,
-				description: 'Restricts collaborators who are not the owner of this folder from viewing other collaborations on this folder',
+				description: 'Whether to restrict collaborators who are not the owner of this folder from viewing other collaborations on this folder',
 			},
 			{
 				displayName: 'Description',
@@ -752,7 +753,7 @@ export const folderFields: INodeProperties[] = [
 				name: 'is_collaboration_restricted_to_enterprise',
 				type: 'boolean',
 				default: false,
-				description: 'Specifies if new invites to this folder are restricted to users within the enterprise. This does not affect existing collaborations.',
+				description: 'Whether new invites to this folder are restricted to users within the enterprise. This does not affect existing collaborations.',
 			},
 			{
 				displayName: 'Name',
@@ -828,7 +829,7 @@ export const folderFields: INodeProperties[] = [
 								name: 'can_download',
 								type: 'boolean',
 								default: false,
-								description: 'If the shared link allows for downloading of files',
+								description: 'Whether the shared link allows for downloading of files',
 							},
 							{
 								displayName: 'Unshared At',

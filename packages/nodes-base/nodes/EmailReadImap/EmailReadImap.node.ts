@@ -84,7 +84,7 @@ export class EmailReadImap implements INodeType {
 						],
 					},
 				},
-				description: 'If attachments of emails should be downloaded. Only set if needed as it increases processing.',
+				description: 'Whether attachments of emails should be downloaded. Only set if needed as it increases processing.',
 			},
 			{
 				displayName: 'Format',

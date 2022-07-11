@@ -49,6 +49,7 @@ export const tableRecordFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -149,6 +150,7 @@ export const tableRecordFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'column',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [
@@ -175,6 +177,7 @@ export const tableRecordFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -257,7 +260,7 @@ export const tableRecordFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -267,7 +270,7 @@ export const tableRecordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -370,7 +373,7 @@ export const tableRecordFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -380,7 +383,7 @@ export const tableRecordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -414,6 +417,7 @@ export const tableRecordFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -532,6 +536,7 @@ export const tableRecordFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'column',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [

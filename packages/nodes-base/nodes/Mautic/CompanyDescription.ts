@@ -220,6 +220,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getIndustries',
 				},
@@ -243,7 +244,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'overwriteWithBlank',
 				type: 'boolean',
 				default: false,
-				description: 'If true, then empty values are set to fields. Otherwise empty values are skipped.',
+				description: 'Whether empty values are set to fields. Otherwise empty values are skipped.',
 			},
 			{
 				displayName: 'Phone',
@@ -438,6 +439,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Industry Name or ID',
 				name: 'industry',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getIndustries',
 				},
@@ -461,7 +463,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'overwriteWithBlank',
 				type: 'boolean',
 				default: false,
-				description: 'If true, then empty values are set to fields. Otherwise empty values are skipped.',
+				description: 'Whether empty values are set to fields. Otherwise, empty values are skipped.',
 			},
 			{
 				displayName: 'Phone',

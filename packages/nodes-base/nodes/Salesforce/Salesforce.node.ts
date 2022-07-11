@@ -285,10 +285,9 @@ export class Salesforce implements INodeType {
 				const statuses = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 				for (const status of statuses) {
 					const statusName = status.MasterLabel;
-					const statusId = status.Id;
 					returnData.push({
 						name: statusName,
-						value: statusId,
+						value: statusName,
 					});
 				}
 				sortOptions(returnData);

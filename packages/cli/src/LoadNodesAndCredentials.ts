@@ -150,6 +150,19 @@ class LoadNodesAndCredentialsClass {
 
 		let tempCredential: ICredentialType;
 		try {
+			// Add serializer method "toJSON" to the class so that authenticate method (if defined)
+			// gets mapped to the authenticate attribute before it is sent to the client.
+			// The authenticate property is used by the client to decide whether or not to
+			// include the credential type in the predifined credentials (HTTP node)
+			// eslint-disable-next-line func-names
+			tempModule[credentialName].prototype.toJSON = function () {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				return {
+					...this,
+					authenticate: typeof this.authenticate === 'function' ? {} : this.authenticate,
+				};
+			};
+
 			tempCredential = new tempModule[credentialName]() as ICredentialType;
 
 			if (tempCredential.icon && tempCredential.icon.startsWith('file:')) {

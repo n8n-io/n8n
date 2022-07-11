@@ -32,6 +32,7 @@ export const inviteFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -137,6 +138,7 @@ export const inviteFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Is Organisation Point of Contact',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Is the invitee organisation\'s point of contact',
 				name: 'is_organization_point_of_contact',
 				type: 'boolean',
@@ -163,7 +165,7 @@ export const inviteFields: INodeProperties[] = [
 			{
 				displayName: 'Send Me a Copy',
 				name: 'sendme_copy',
-				description: 'Send a copy of the invite to the requesting user',
+				description: 'Whether to send a copy of the invite to the requesting user',
 				type: 'boolean',
 				default: false,
 			},

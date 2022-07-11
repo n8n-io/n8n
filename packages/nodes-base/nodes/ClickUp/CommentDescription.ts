@@ -137,7 +137,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'notifyAll',
 				type: 'boolean',
 				default: false,
-				description: 'If true, creation notifications will be sent to everyone including the creator of the comment',
+				description: 'Whether creation notifications will be sent to everyone including the creator of the comment',
 			},
 		],
 	},

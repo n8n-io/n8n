@@ -2893,6 +2893,8 @@ class App {
 						return;
 					}
 
+					res.header('Access-Control-Allow-Origin', '*');
+
 					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 					return;
 				}

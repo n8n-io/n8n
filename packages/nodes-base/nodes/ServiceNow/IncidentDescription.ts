@@ -110,6 +110,7 @@ export const incidentFields: INodeProperties[] = [
 				displayName: 'Business Service Name or ID',
 				name: 'business_service',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getBusinessServices',
@@ -142,7 +143,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The close notes for the incident',
 			},
 			{
-				displayName: 'Configuration Items',
+				displayName: 'Configuration Item Names or IDs',
 				name: 'cmdb_ci',
 				type: 'multiOptions',
 				typeOptions: {
@@ -150,7 +151,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getConfigurationItems',
 				},
 				default: [],
-				description: 'Configuration Items, \'cmdb_ci\' in metadata',
+				description: 'Configuration Items, \'cmdb_ci\' in metadata. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Contact Type',
@@ -333,7 +334,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -341,7 +342,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColumns',
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -422,7 +423,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -430,7 +431,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getColumns',
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -524,6 +525,7 @@ export const incidentFields: INodeProperties[] = [
 				displayName: 'Business Service Name or ID',
 				name: 'business_service',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getBusinessServices',
@@ -556,7 +558,7 @@ export const incidentFields: INodeProperties[] = [
 				description: 'The close notes for the incident',
 			},
 			{
-				displayName: 'Configuration Items',
+				displayName: 'Configuration Item Names or IDs',
 				name: 'cmdb_ci',
 				type: 'multiOptions',
 				typeOptions: {
@@ -564,7 +566,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getConfigurationItems',
 				},
 				default: [],
-				description: 'Configuration Items, \'cmdb_ci\' in metadata',
+				description: 'Configuration Items, \'cmdb_ci\' in metadata. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Contact Type',

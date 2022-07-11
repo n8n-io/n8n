@@ -91,7 +91,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the list should be archived or unarchived',
+		description: 'Whether the list should be archived or unarchived',
 	},
 
 	// ----------------------------------

@@ -2,7 +2,10 @@ import { exec as callbackExec } from 'child_process';
 import { promisify } from 'util';
 
 import config from '../config';
-import { BOOTSTRAP_MYSQL_CONNECTION_NAME } from './integration/shared/constants';
+import {
+	BOOTSTRAP_MYSQL_CONNECTION_NAME,
+	DB_INITIALIZATION_TIMEOUT,
+} from './integration/shared/constants';
 
 const exec = promisify(callbackExec);
 
@@ -17,7 +20,7 @@ if (dbType === 'mysqldb') {
 
 	(async () => {
 		try {
-			jest.setTimeout(30000); // 30 seconds for DB initialization
+			jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
 			await exec(
 				`echo "CREATE DATABASE IF NOT EXISTS ${BOOTSTRAP_MYSQL_CONNECTION_NAME}" | mysql -h ${host} -u ${username} ${passwordSegment}; USE ${BOOTSTRAP_MYSQL_CONNECTION_NAME};`,
 			);

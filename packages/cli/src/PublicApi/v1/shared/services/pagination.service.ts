@@ -12,7 +12,6 @@ export const decodeCursor = (cursor: string): PaginationOffsetDecoded | Paginati
 };
 
 const encodeOffSetPagination = (pagination: OffsetPagination): string | null => {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	if (pagination.numberOfTotalRecords > pagination.offset + pagination.limit) {
 		return Buffer.from(
 			JSON.stringify({

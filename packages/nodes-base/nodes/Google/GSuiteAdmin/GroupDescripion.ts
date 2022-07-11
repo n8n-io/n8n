@@ -54,6 +54,7 @@ export const groupFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -313,6 +314,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The group\'s email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique.',
 			},

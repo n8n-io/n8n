@@ -226,6 +226,7 @@ export class AwsSes implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -440,7 +441,7 @@ export class AwsSes implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If body is HTML or simple text',
+				description: 'Whether body is HTML or simple text',
 			},
 			{
 				displayName: 'Subject',

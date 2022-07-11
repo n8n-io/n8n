@@ -259,6 +259,7 @@ export const productDetailsOptions: INodeProperties[] = [
 		displayName: 'Product Name or ID',
 		name: 'id',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProducts',
@@ -381,14 +382,14 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					name: 'approved',
 					type: 'boolean',
 					default: true,
-					description: 'Retrieve only approved records. Defaults to true.',
+					description: 'Whether to retrieve only approved records. Defaults to true.',
 				},
 				{
 					displayName: 'Converted',
 					name: 'converted',
 					type: 'boolean',
 					default: false,
-					description: 'Retrieve only converted records. Defaults to false.',
+					description: 'Whether to retrieve only converted records. Defaults to false.',
 				},
 				{
 					displayName: 'Fields',
@@ -405,7 +406,7 @@ export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[]
 					name: 'include_child',
 					type: 'boolean',
 					default: false,
-					description: 'Retrieve only records from child territories',
+					description: 'Whether to retrieve only records from child territories',
 				},
 				{
 					displayName: 'Sort By',

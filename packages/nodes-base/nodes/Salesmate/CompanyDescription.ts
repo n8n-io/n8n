@@ -70,6 +70,7 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
@@ -101,7 +102,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -259,7 +260,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -288,6 +289,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -433,7 +435,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 company:getAll                             */

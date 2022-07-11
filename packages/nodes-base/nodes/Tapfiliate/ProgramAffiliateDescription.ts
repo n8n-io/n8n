@@ -111,6 +111,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'approved',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'An optional approval status',
 			},
 			{
@@ -341,6 +342,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'An email address',
 			},

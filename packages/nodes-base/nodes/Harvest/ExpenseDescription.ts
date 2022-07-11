@@ -126,7 +126,7 @@ export const expenseFields: INodeProperties[] = [
 				name: 'is_billed',
 				type: 'boolean',
 				default: false,
-				description: 'Pass true to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
+				description: 'Whether to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
 			},
 			{
 				displayName: 'Page',
@@ -308,6 +308,7 @@ export const expenseFields: INodeProperties[] = [
 				name: 'user_id',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
 			},
 		],
@@ -401,6 +402,7 @@ export const expenseFields: INodeProperties[] = [
 				name: 'user_id',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
 			},
 		],

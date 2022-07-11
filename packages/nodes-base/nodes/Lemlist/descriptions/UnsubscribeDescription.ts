@@ -41,6 +41,7 @@ export const unsubscribeFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email to add to the unsubscribes',
 		displayOptions: {
@@ -62,6 +63,7 @@ export const unsubscribeFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email to delete from the unsubscribes',
 		displayOptions: {

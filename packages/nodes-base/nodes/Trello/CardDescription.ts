@@ -131,7 +131,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'dueComplete',
 				type: 'boolean',
 				default: false,
-				description: 'If the card is completed',
+				description: 'Whether the card is completed',
 			},
 			{
 				displayName: 'Position',
@@ -384,7 +384,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'dueComplete',
 				type: 'boolean',
 				default: false,
-				description: 'If the card is completed',
+				description: 'Whether the card is completed',
 			},
 			{
 				displayName: 'Label IDs',

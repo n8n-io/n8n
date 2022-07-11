@@ -75,6 +75,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		displayOptions: {
 			show: {
@@ -189,6 +190,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				displayOptions: {
 					show: {
@@ -299,7 +301,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'view_all_tickets',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true if the contact can see all the tickets that are associated with the company to which they belong',
+				description: 'Whether the contact can see all the tickets that are associated with the company to which they belong',
 			},
 		],
 	},
@@ -373,6 +375,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{

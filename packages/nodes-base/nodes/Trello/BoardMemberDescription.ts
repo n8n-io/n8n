@@ -203,7 +203,7 @@ export const boardMemberFields: INodeProperties[] = [
 				name: 'allowBillableGuest',
 				type: 'boolean',
 				default: false,
-				description: 'Allows organization admins to add multi-board guests onto a board',
+				description: 'Whether to allow organization admins to add multi-board guests onto a board',
 			},
 		],
 	},
@@ -233,6 +233,7 @@ export const boardMemberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {

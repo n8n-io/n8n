@@ -1,23 +1,15 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
-import { MigrationHelpers } from '../../MigrationHelpers';
+import { runChunked } from '../../utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
 
-export class UpdateWorkflowCredentials1630419189837 implements MigrationInterface {
-	name = 'UpdateWorkflowCredentials1630419189837';
+export class UpdateWorkflowCredentials1630451444017 implements MigrationInterface {
+	name = 'UpdateWorkflowCredentials1630451444017';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
-		await queryRunner.query(`SET search_path TO ${schema};`);
-
-		const helpers = new MigrationHelpers(queryRunner);
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		const credentialsEntities = await queryRunner.query(`
 			SELECT id, name, type
@@ -28,8 +20,9 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			SELECT id, nodes
 			FROM ${tablePrefix}workflow_entity
 		`;
+
 		// @ts-ignore
-		await helpers.runChunked(workflowsQuery, (workflows) => {
+		await runChunked(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = workflow.nodes;
 				let credentialsUpdated = false;
@@ -67,12 +60,12 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 		});
 
 		const waitingExecutionsQuery = `
-			SELECT id, "workflowData"
+			SELECT id, workflowData
 			FROM ${tablePrefix}execution_entity
-			WHERE "waitTill" IS NOT NULL AND finished = FALSE
+			WHERE waitTill IS NOT NULL AND finished = 0
 		`;
 		// @ts-ignore
-		await helpers.runChunked(waitingExecutionsQuery, (waitingExecutions) => {
+		await runChunked(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
 			waitingExecutions.forEach(async (execution) => {
 				const data = execution.workflowData;
 				let credentialsUpdated = false;
@@ -96,10 +89,10 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 					const [updateQuery, updateParams] =
 						queryRunner.connection.driver.escapeQueryWithParameters(
 							`
-							UPDATE ${tablePrefix}execution_entity
-							SET "workflowData" = :data
-							WHERE id = '${execution.id}'
-						`,
+								UPDATE ${tablePrefix}execution_entity
+								SET workflowData = :data
+								WHERE id = '${execution.id}'
+							`,
 							{ data: JSON.stringify(data) },
 							{},
 						);
@@ -110,13 +103,12 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 		});
 
 		const retryableExecutions = await queryRunner.query(`
-			SELECT id, "workflowData"
+			SELECT id, workflowData
 			FROM ${tablePrefix}execution_entity
-			WHERE "waitTill" IS NULL AND finished = FALSE AND mode != 'retry'
-			ORDER BY "startedAt" DESC
+			WHERE waitTill IS NULL AND finished = 0 AND mode != 'retry'
+			ORDER BY startedAt DESC
 			LIMIT 200
 		`);
-
 		// @ts-ignore
 		retryableExecutions.forEach(async (execution) => {
 			const data = execution.workflowData;
@@ -127,7 +119,6 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 					const allNodeCredentials = Object.entries(node.credentials);
 					for (const [type, name] of allNodeCredentials) {
 						if (typeof name === 'string') {
-							// @ts-ignore
 							const matchingCredentials = credentialsEntities.find(
 								// @ts-ignore
 								(credentials) => credentials.name === name && credentials.type === type,
@@ -141,10 +132,10 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			if (credentialsUpdated) {
 				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
 					`
-				UPDATE ${tablePrefix}execution_entity
-				SET "workflowData" = :data
-				WHERE id = '${execution.id}'
-				`,
+						UPDATE ${tablePrefix}execution_entity
+						SET workflowData = :data
+						WHERE id = '${execution.id}'
+					`,
 					{ data: JSON.stringify(data) },
 					{},
 				);
@@ -155,13 +146,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-		await queryRunner.query(`SET search_path TO ${schema};`);
-		const helpers = new MigrationHelpers(queryRunner);
+		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		const credentialsEntities = await queryRunner.query(`
 			SELECT id, name, type
@@ -173,7 +158,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 			FROM ${tablePrefix}workflow_entity
 		`;
 		// @ts-ignore
-		await helpers.runChunked(workflowsQuery, (workflows) => {
+		await runChunked(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = workflow.nodes;
 				let credentialsUpdated = false;
@@ -183,7 +168,6 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 						const allNodeCredentials = Object.entries(node.credentials);
 						for (const [type, creds] of allNodeCredentials) {
 							if (typeof creds === 'object') {
-								// @ts-ignore
 								const matchingCredentials = credentialsEntities.find(
 									// @ts-ignore
 									(credentials) => credentials.id === creds.id && credentials.type === type,
@@ -217,12 +201,12 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 		});
 
 		const waitingExecutionsQuery = `
-			SELECT id, "workflowData"
+			SELECT id, workflowData
 			FROM ${tablePrefix}execution_entity
-			WHERE "waitTill" IS NOT NULL AND finished = FALSE
+			WHERE waitTill IS NOT NULL AND finished = 0
 		`;
 		// @ts-ignore
-		await helpers.runChunked(waitingExecutionsQuery, (waitingExecutions) => {
+		await runChunked(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
 			waitingExecutions.forEach(async (execution) => {
 				const data = execution.workflowData;
 				let credentialsUpdated = false;
@@ -253,7 +237,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 						queryRunner.connection.driver.escapeQueryWithParameters(
 							`
 								UPDATE ${tablePrefix}execution_entity
-								SET "workflowData" = :data
+								SET workflowData = :data
 								WHERE id = '${execution.id}'
 							`,
 							{ data: JSON.stringify(data) },
@@ -266,10 +250,10 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 		});
 
 		const retryableExecutions = await queryRunner.query(`
-			SELECT id, "workflowData"
+			SELECT id, workflowData
 			FROM ${tablePrefix}execution_entity
-			WHERE "waitTill" IS NULL AND finished = FALSE AND mode != 'retry'
-			ORDER BY "startedAt" DESC
+			WHERE waitTill IS NULL AND finished = 0 AND mode != 'retry'
+			ORDER BY startedAt DESC
 			LIMIT 200
 		`);
 		// @ts-ignore
@@ -302,7 +286,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
 					`
 						UPDATE ${tablePrefix}execution_entity
-						SET "workflowData" = :data
+						SET workflowData = :data
 						WHERE id = '${execution.id}'
 					`,
 					{ data: JSON.stringify(data) },

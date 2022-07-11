@@ -239,14 +239,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Sales Accounts',
+				displayName: 'Sales Account Names or IDs',
 				name: 'sales_accounts',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'Accounts which contact belongs to',
+				description: 'Accounts which contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -361,6 +361,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'View Name or ID',
 		name: 'view',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -590,14 +591,14 @@ export const contactFields: INodeProperties[] = [
 				description: 'ID of the user to whom the contact is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Sales Accounts',
+				displayName: 'Sales Account Names or IDs',
 				name: 'sales_accounts',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'Accounts which contact belongs to',
+				description: 'Accounts which contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'State',

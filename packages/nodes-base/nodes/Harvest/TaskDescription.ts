@@ -111,7 +111,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active tasks and false to return inactive tasks',
+				description: 'Whether to only return active tasks and false to return inactive tasks',
 			},
 			{
 				displayName: 'Page',
@@ -212,7 +212,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: true,
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
+				description: 'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
@@ -278,7 +278,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: false,
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
+				description: 'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',

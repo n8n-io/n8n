@@ -137,7 +137,7 @@ export class FacebookTrigger implements INodeType {
 			},
 			//https://developers.facebook.com/docs/graph-api/webhooks/reference/page
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -147,7 +147,7 @@ export class FacebookTrigger implements INodeType {
 					],
 				},
 				default: [],
-				description: 'The set of fields in this object that are subscribed to',
+				description: 'The set of fields in this object that are subscribed to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Options',
@@ -161,7 +161,7 @@ export class FacebookTrigger implements INodeType {
 						name: 'includeValues',
 						type: 'boolean',
 						default: true,
-						description: 'Indicates if change notifications should include the new values',
+						description: 'Whether change notifications should include the new values',
 					},
 				],
 			},

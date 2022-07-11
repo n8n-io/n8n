@@ -49,6 +49,7 @@ export const bookmarkFields: INodeProperties[] = [
 		displayName: 'Collection Name or ID',
 		name: 'collectionId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -289,6 +290,7 @@ export const bookmarkFields: INodeProperties[] = [
 				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},

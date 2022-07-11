@@ -200,7 +200,6 @@ export const conversationMessageFields: INodeProperties[] = [
 				name: 'written_by_me',
 				description: 'Author of the message',
 				type: 'options',
-				required: true,
 				default: true,
 				options: [
 					{

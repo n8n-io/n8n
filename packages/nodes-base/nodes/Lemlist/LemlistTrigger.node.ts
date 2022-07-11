@@ -77,7 +77,7 @@ export class LemlistTrigger implements INodeType {
 						name: 'isFirst',
 						type: 'boolean',
 						default: false,
-						description: 'We\'ll call this hook only the first time this activity happened',
+						description: 'Whether to call this hook only the first time this activity happened',
 					},
 				],
 			},

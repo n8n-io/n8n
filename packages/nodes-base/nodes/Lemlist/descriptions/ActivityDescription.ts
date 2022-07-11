@@ -91,7 +91,6 @@ export const activityFields: INodeProperties[] = [
 				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
-				required: true,
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',

@@ -99,6 +99,7 @@ export const userProfileFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'This field can only be changed by admins for users on paid teams',
 			},
@@ -170,7 +171,7 @@ export const userProfileFields: INodeProperties[] = [
 				name: 'include_labels',
 				type: 'boolean',
 				default: false,
-				description: 'Include labels for each ID in custom profile fields',
+				description: 'Whether to include labels for each ID in custom profile fields',
 			},
 			{
 				displayName: 'User ID',

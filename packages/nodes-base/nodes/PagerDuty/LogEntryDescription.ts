@@ -144,7 +144,7 @@ export const logEntryFields: INodeProperties[] = [
 				name: 'isOverview',
 				type: 'boolean',
 				default: false,
-				description: 'If true, will return a subset of log entries that show only the most important changes to the incident',
+				description: 'Whether to return a subset of log entries that show only the most important changes to the incident',
 			},
 			{
 				displayName: 'Since',

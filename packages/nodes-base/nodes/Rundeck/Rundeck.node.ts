@@ -12,6 +12,7 @@ export class Rundeck implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Rundeck',
 		name: 'rundeck',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:rundeck.png',
 		group: ['transform'],
 		version: 1,

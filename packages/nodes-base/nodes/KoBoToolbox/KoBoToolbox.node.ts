@@ -55,7 +55,6 @@ export class KoBoToolbox implements INodeType {
 			{
 				name: 'koBoToolboxApi',
 				required: true,
-				testedBy: 'koBoToolboxApiCredentialTest',
 			},
 		],
 		properties: [
@@ -91,41 +90,6 @@ export class KoBoToolbox implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			async koBoToolboxApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data;
-				try {
-					const response = await this.helpers.request({
-						url: `${credentials!.URL}/api/v2/assets/hash`,
-						headers: {
-							'Accept': 'application/json',
-							'Authorization': `Token ${credentials!.token}`,
-						},
-						json: true,
-					});
-
-					if (response.hash) {
-						return {
-							status: 'OK',
-							message: 'Connection successful!',
-						};
-					}
-					else {
-						return {
-							status: 'Error',
-							message: `Credentials are not valid. Response: ${response.detail}`,
-						};
-					}
-				}
-				catch (err) {
-					return {
-						status: 'Error',
-						message: `Credentials validation failed: ${(err as JsonObject).message}`,
-					};
-				}
-			},
-		},
-
 		loadOptions: {
 			loadForms,
 		},

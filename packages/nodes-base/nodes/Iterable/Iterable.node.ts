@@ -38,6 +38,7 @@ export class Iterable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Iterable',
 		name: 'iterable',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:iterable.png',
 		group: ['input'],
 		version: 1,

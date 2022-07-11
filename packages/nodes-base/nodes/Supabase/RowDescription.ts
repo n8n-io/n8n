@@ -60,6 +60,7 @@ export const rowFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -183,6 +184,7 @@ export const rowFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: [
 								'tableId',

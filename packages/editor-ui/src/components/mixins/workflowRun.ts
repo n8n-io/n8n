@@ -60,12 +60,6 @@ export const workflowRun = mixins(
 		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
 			const workflow = this.getWorkflow();
 
-			if(nodeName) {
-				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId });
-			} else {
-				this.$telemetry.track('User clicked execute workflow button', { workflow_id: this.$store.getters.workflowId });
-			}
-
 			if (this.$store.getters.isActionActive('workflowRunning') === true) {
 				return;
 			}

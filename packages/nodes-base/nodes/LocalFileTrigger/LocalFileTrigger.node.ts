@@ -126,7 +126,7 @@ export class LocalFileTrigger implements INodeType {
 						name: 'followSymlinks',
 						type: 'boolean',
 						default: true,
-						description: 'When activated, linked files/folders will also be watched (this includes symlinks, aliases on MacOS and shortcuts on Windows). Otherwise only the links themselves will be monitored).',
+						description: 'Whether linked files/folders will also be watched (this includes symlinks, aliases on MacOS and shortcuts on Windows). Otherwise only the links themselves will be monitored).',
 					},
 					{
 						displayName: 'Ignore',

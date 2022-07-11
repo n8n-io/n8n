@@ -23,6 +23,7 @@ export class Spontit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Spontit',
 		name: 'spontit',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:spontit.png',
 		group: ['output'],
 		version: 1,

@@ -234,9 +234,11 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Fields to Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',

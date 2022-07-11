@@ -111,7 +111,7 @@ export const fieldFields: INodeProperties[] = [
 				name: 'includeFieldPerms',
 				type: 'boolean',
 				default: false,
-				description: 'Set to \'true\' if you\'d like to get back the custom permissions for the field(s)',
+				description: 'Whether to get back the custom permissions for the field(s)',
 			},
 		],
 	},

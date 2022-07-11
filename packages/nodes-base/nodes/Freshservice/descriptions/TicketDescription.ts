@@ -55,6 +55,7 @@ export const ticketFields: INodeProperties[] = [
 		name: 'email',
 		description: 'Email address of the ticket author',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -521,6 +522,7 @@ export const ticketFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Email address of the ticket author',
 			},

@@ -125,7 +125,7 @@ export const stockOnHandFields: INodeProperties[] = [
 				name: 'IsAssembled',
 				type: 'boolean',
 				default: false,
-				description: 'If set to True, the AvailableQty will also include the quantity that can be assembled',
+				description: 'Whether the AvailableQty will also include the quantity that can be assembled',
 			},
 			{
 				displayName: 'Modified Since',

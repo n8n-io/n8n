@@ -44,6 +44,7 @@ import {
 	Pagination,
 	Popover,
 
+	N8nInfoAccordion,
 	N8nActionBox,
 	N8nAvatar,
 	N8nActionToggle,
@@ -70,6 +71,7 @@ import {
 	N8nTabs,
 	N8nFormInputs,
 	N8nFormBox,
+	N8nPulse,
 	N8nSquareButton,
 	N8nTags,
 	N8nTag,
@@ -81,6 +83,7 @@ import { ElMessageBoxOptions } from "element-ui/types/message-box";
 Vue.use(Fragment.Plugin);
 
 // n8n design system
+Vue.use(N8nInfoAccordion);
 Vue.use(N8nActionBox);
 Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);
@@ -102,6 +105,7 @@ Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
 Vue.component('n8n-notice', N8nNotice);
 Vue.use(N8nOption);
+Vue.use(N8nPulse);
 Vue.use(N8nSelect);
 Vue.use(N8nSpinner);
 Vue.component('n8n-sticky', N8nSticky);

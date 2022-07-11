@@ -121,7 +121,6 @@ export const recordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the item properties to use as columns',
 	},
