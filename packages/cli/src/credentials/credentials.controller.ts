@@ -145,68 +145,20 @@ credentialsController.post(
 credentialsController.post(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.Create) => {
-		delete req.body.id; // delete if sent
+		const newCredential = await CredentialsService.prepareCredentialsCreateData(req.body);
 
-		const newCredential = new CredentialsEntity();
+		const encryptionKey = await CredentialsService.getEncryptionKey();
+		const encryptedData = CredentialsService.createEncryptedCredentialsData(
+			encryptionKey,
+			null,
+			newCredential,
+		);
+		const { id, ...rest } = await CredentialsService.saveCredentials(
+			newCredential,
+			encryptedData,
+			req.user,
+		);
 
-		Object.assign(newCredential, req.body);
-
-		await validateEntity(newCredential);
-
-		// Add the added date for node access permissions
-		for (const nodeAccess of newCredential.nodesAccess) {
-			nodeAccess.date = new Date();
-		}
-
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
-		}
-
-		// Encrypt the data
-		const coreCredential = createCredentialsFromCredentialsEntity(newCredential, true);
-
-		// @ts-ignore
-		coreCredential.setData(newCredential.data, encryptionKey);
-
-		const encryptedData = coreCredential.getDataToSave() as ICredentialsDb;
-
-		Object.assign(newCredential, encryptedData);
-
-		await externalHooks.run('credentials.create', [encryptedData]);
-
-		const role = await Db.collections.Role.findOneOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
-
-		const { id, ...rest } = await Db.transaction(async (transactionManager) => {
-			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
-
-			savedCredential.data = newCredential.data;
-
-			const newSharedCredential = new SharedCredentials();
-
-			Object.assign(newSharedCredential, {
-				role,
-				user: req.user,
-				credentials: savedCredential,
-			});
-
-			await transactionManager.save<SharedCredentials>(newSharedCredential);
-
-			return savedCredential;
-		});
-		LoggerProxy.verbose('New credential created', {
-			credentialId: newCredential.id,
-			ownerId: req.user.id,
-		});
 		return { id: id.toString(), ...rest };
 	}),
 );
@@ -281,12 +233,11 @@ credentialsController.patch(
 			req.body,
 			decryptedData,
 		);
-		const newCredentialData = CredentialsService.createEncryptedCredentials(
+		const newCredentialData = CredentialsService.createEncryptedCredentialsData(
 			encryptionKey,
 			credentialId,
 			preparedCredentialData,
 		);
-		await externalHooks.run('credentials.update', [newCredentialData]);
 
 		const responseData = await CredentialsService.updateCredentials(
 			credentialId,
@@ -320,15 +271,6 @@ credentialsController.get(
 	'/:id',
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
-
-		// const shared = await Db.collections.SharedCredentials.findOne({
-		// 	relations: ['credentials'],
-		// 	where: whereClause({
-		// 		user: req.user,
-		// 		entityType: 'credentials',
-		// 		entityId: credentialId,
-		// 	}),
-		// });
 
 		const shared = await CredentialsService.getSharedCredentials(req.user, credentialId, [
 			'credentials',
