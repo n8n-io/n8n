@@ -520,6 +520,7 @@ export default mixins(
 			canPinData (): boolean {
 				return this.paneType === 'output' &&
 					this.isPinDataNodeType &&
+					!this.isReadOnly &&
 					!(this.binaryData && this.binaryData.length > 0);
 			},
 			buttons(): Array<{label: string, value: string}> {
