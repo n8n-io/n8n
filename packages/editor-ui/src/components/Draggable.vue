@@ -30,6 +30,11 @@ export default Vue.extend({
 	components: {
 		Teleport,
 	},
+	props: {
+		disabled: {
+			type: Boolean,
+		},
+	},
 	data() {
 		return {
 			isDragging: false,
@@ -49,6 +54,10 @@ export default Vue.extend({
 	},
 	methods: {
 		onDragStart(e: DragEvent) {
+			if (this.disabled) {
+				return;
+			}
+
 			e.preventDefault();
 			e.stopPropagation();
 			this.isDragging = true;
@@ -69,6 +78,10 @@ export default Vue.extend({
 			this.draggablePosition = { x: e.pageX, y: e.pageY };
 		},
 		onDrag(e: MouseEvent) {
+			if (this.disabled) {
+				return;
+			}
+
 			e.preventDefault();
 			e.stopPropagation();
 
@@ -76,6 +89,10 @@ export default Vue.extend({
 			this.$emit('drag', {x: e.pageX, y: e.pageY});
 		},
 		onDragEnd(e: MouseEvent) {
+			if (this.disabled) {
+				return;
+			}
+
 			e.preventDefault();
 			e.stopPropagation();
 
