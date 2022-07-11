@@ -4,29 +4,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import express from 'express';
-import { In } from 'typeorm';
-import { UserSettings, Credentials } from 'n8n-core';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
-import {
-	CredentialsHelper,
-	Db,
-	GenericHelpers,
-	ICredentialsDb,
-	ICredentialsResponse,
-	whereClause,
-	ResponseHelper,
-} from '..';
+import { GenericHelpers, ICredentialsResponse, ResponseHelper } from '..';
 
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { validateEntity } from '../GenericHelpers';
-import { createCredentialsFromCredentialsEntity } from '../CredentialsHelper';
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
-import { externalHooks } from '../Server';
 import { CredentialsService } from './credentials.service';
 import { EECredentialsController } from './credentials.controller.ee';
 
