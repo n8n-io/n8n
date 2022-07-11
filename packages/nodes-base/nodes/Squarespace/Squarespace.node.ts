@@ -9,6 +9,7 @@ import { inventoryFields, inventoryOperations } from './description/InventoryDes
 import { productFields, productOperations } from './description/ProductDescription';
 import { profileFields, profileOperations } from './description/ProfileDescription';
 import { transactionFields, transactionOperations } from './description/TransactionDescription';
+import { orderFields, orderOperations } from './description/OrderDescription';
 
 const resource: INodeProperties = {
 	displayName: 'Resource',
@@ -19,6 +20,10 @@ const resource: INodeProperties = {
 		{
 			name: 'Inventory',
 			value: 'inventory',
+		},
+		{
+			name: 'Order',
+			value: 'order',
 		},
 		{
 			name: 'Product',
@@ -74,6 +79,8 @@ export class Squarespace implements INodeType {
 			resource,
 			...inventoryOperations,
 			...inventoryFields,
+			...orderOperations,
+			...orderFields,
 			...productOperations,
 			...productFields,
 			...profileOperations,

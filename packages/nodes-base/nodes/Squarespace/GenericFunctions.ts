@@ -63,6 +63,7 @@ export async function squarespaceApiPagination(this: IExecutePaginationFunctions
 	const resourceMapping: { [key: string]: string } = {
 		'product': 'products',
 		'inventory': 'inventory',
+		'order': 'result',
 		'profile': 'profiles',
 		'transaction': 'documents',
 	}
@@ -74,6 +75,12 @@ export async function squarespaceApiPagination(this: IExecutePaginationFunctions
 	do {
 
 		const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
+
+		if (!pageResponseData[0].json) {
+			responseData.push({ json: {} });
+			break;
+		}
+
 		const items = pageResponseData[0].json[rootProperty] as [];
 		items.forEach(item => responseData.push({ json: item }));
 
