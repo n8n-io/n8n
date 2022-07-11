@@ -6,6 +6,7 @@
 		<slot :isDragging="isDragging"></slot>
 
 		<div v-if="$slots.preview" :class="$style['draggable-data-transfer']" ref="draggableDataTransfer" />
+		<Teleport to="body">
 			<transition name="preview-transition">
 				<div
 					ref="draggable"
@@ -16,13 +17,19 @@
 					<slot name="preview"></slot>
 				</div>
 			</transition>
+		</Teleport>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
 
+import Teleport from 'vue2-teleport';
+
 export default Vue.extend({
+	components: {
+		Teleport,
+	},
 	data() {
 		return {
 			isDragging: false,
@@ -93,6 +100,7 @@ export default Vue.extend({
 
 .draggable {
 	position: fixed;
+	z-index: 9999999;
 }
 
 .draggable-data-transfer {
