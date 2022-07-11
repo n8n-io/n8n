@@ -3,3 +3,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 export const ACTIVE_DIRECTORY_FEATURE_NAME = 'activeDirectory';
+
+export const ACTIVE_DIRECTORY_DISABLED = 'activeDirectory.disabled';
+

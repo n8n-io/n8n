@@ -7,6 +7,7 @@
 				:value="value"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
+				:disabled="disabled"
 				@change="onInput"
 				@focus="onFocus"
 				@blur="onBlur"
@@ -26,6 +27,7 @@
 				:value="value"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
+				:disabled="disabled"
 				@input="onInput"
 				@blur="onBlur"
 				@focus="onFocus"
@@ -134,6 +136,10 @@ export default mixins(Locale).extend({
 		},
 		focusInitially: {
 			type: Boolean,
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	mounted() {

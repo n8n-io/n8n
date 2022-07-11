@@ -22,6 +22,7 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { SignInType } from './constants';
 
 export * from 'n8n-design-system/src/types';
 
@@ -518,6 +519,7 @@ export interface IUserResponse {
 	};
 	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
 	isPending: boolean;
+	signInType: SignInType;
 }
 
 export interface IUser extends IUserResponse {

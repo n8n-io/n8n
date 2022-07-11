@@ -6,9 +6,8 @@ import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { ActiveDirectoryManager } from './ActiveDirectoryManager';
-import { ActiveDirectoryConfig } from './types';
-
-const ACTIVE_DIRECTORY_DISABLED = 'activeDirectory.disabled';
+import { ACTIVE_DIRECTORY_DISABLED, ACTIVE_DIRECTORY_FEATURE_NAME } from './constants';
+import { ActiveDirectoryConfig, SignInType } from './types';
 
 const isActiveDirectoryDisabled = (): boolean => config.getEnv(ACTIVE_DIRECTORY_DISABLED);
 
@@ -66,7 +65,7 @@ export const getActiveDirectoryConfig = async (): Promise<{
 	data: ActiveDirectoryConfig;
 }> => {
 	const configuration = await Db.collections.FeatureConfig.findOneOrFail({
-		name: 'activeDirectory',
+		name: ACTIVE_DIRECTORY_FEATURE_NAME,
 	});
 	return {
 		name: configuration.name,
@@ -126,7 +125,7 @@ const getUserByUsername = async (usernameAttributeValue: string) => {
 	return Db.collections.User.findOne(
 		{
 			username: usernameAttributeValue,
-			signInType: 'ldap',
+			signInType: SignInType.LDAP,
 		},
 		{
 			relations: ['globalRole'],
@@ -154,6 +153,8 @@ export const handleActiveDirectoryLogin = async (
 
 	const adConfig = await getActiveDirectoryConfig();
 
+	if (!adConfig.data.activeDirectoryLoginEnabled) return undefined;
+
 	const {
 		data: { attributeMapping },
 	} = adConfig;
@@ -174,7 +175,7 @@ export const handleActiveDirectoryLogin = async (
 
 		await Db.collections.User.save({
 			password: randonPassword(),
-			signInType: 'ldap',
+			signInType: SignInType.LDAP,
 			globalRole: role,
 			...mapAttributesToLocalDb(adUser, attributeMapping),
 		});

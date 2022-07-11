@@ -243,3 +243,8 @@ export enum VIEWS {
 	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",
 }
+
+export enum SignInType {
+	LDAP = 'ldap',
+	EMAIL = 'email',
+}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import express from 'express';
 import type { User } from '../databases/entities/User';
 
@@ -18,6 +19,11 @@ export interface ActiveDirectoryConfig {
 		loginId: string;
 		username: string;
 	};
+}
+
+export enum SignInType {
+	LDAP = 'ldap',
+	EMAIL = 'email',
 }
 
 export type AuthenticatedRequest<

@@ -23,7 +23,7 @@
 					@submit="onSubmit"
 				/>
 			</div>
-			<div>
+			<div v-if="!signInWithAD">
 				<div :class="$style.sectionHeader">
 					<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 				</div>
@@ -42,7 +42,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/components/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
+import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -75,6 +75,7 @@ export default mixins(
 					required: true,
 					autocomplete: 'given-name',
 					capitalize: true,
+					disabled: this.signInWithAD,
 				},
 			},
 			{
@@ -86,6 +87,7 @@ export default mixins(
 					required: true,
 					autocomplete: 'family-name',
 					capitalize: true,
+					disabled: this.signInWithAD,
 				},
 			},
 			{
@@ -98,6 +100,7 @@ export default mixins(
 					validationRules: [{name: 'VALID_EMAIL'}],
 					autocomplete: 'email',
 					capitalize: true,
+					disabled: this.signInWithAD,
 				},
 			},
 		];
@@ -105,6 +108,9 @@ export default mixins(
 	computed: {
 		currentUser() {
 			return this.$store.getters['users/currentUser'] as IUser;
+		},
+		signInWithAD(): boolean {
+			return this.currentUser.signInType === SignInType.LDAP;
 		},
 	},
 	methods: {
