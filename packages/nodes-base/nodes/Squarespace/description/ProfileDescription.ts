@@ -51,7 +51,7 @@ export const profileOperations: INodeProperties[] = [
 				}
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
