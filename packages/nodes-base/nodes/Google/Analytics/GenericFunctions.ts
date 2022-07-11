@@ -14,6 +14,10 @@ import {
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
 	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+	const baseURL = apiVersion === 'dataAPI' ? 'https://analyticsdata.googleapis.com' : 'https://analyticsreporting.googleapis.com';
+
 	let options: OptionsWithUri = {
 		headers: {
 			'Accept': 'application/json',
@@ -22,7 +26,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		method,
 		body,
 		qs,
-		uri: uri || `https://analyticsreporting.googleapis.com${endpoint}`,
+		uri: uri || `${baseURL}${endpoint}`,
 		json: true,
 	};
 

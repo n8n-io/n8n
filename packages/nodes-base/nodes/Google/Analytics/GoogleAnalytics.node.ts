@@ -40,7 +40,7 @@ export class GoogleAnalytics implements INodeType {
 		name: 'googleAnalytics',
 		icon: 'file:analytics.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Use the Google Analytics API',
 		defaults: {
@@ -55,6 +55,54 @@ export class GoogleAnalytics implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					}
+				},
+				options: [
+					{
+						name: 'Reporting API V4',
+						value: 'reportingAPI',
+					},
+					{
+						name: 'Data API V1',
+						value: 'dataAPI',
+					},
+				],
+				default: 'reportingAPI',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					}
+				},
+				options: [
+					{
+						name: 'Reporting API V4',
+						value: 'reportingAPI',
+					},
+					{
+						name: 'Data API V1',
+						value: 'dataAPI',
+					},
+				],
+				default: 'dataAPI',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -147,6 +195,43 @@ export class GoogleAnalytics implements INodeType {
 				}
 				return returnData;
 			},
+
+			async getProperties(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const {accounts} = await googleApiRequest.call(
+					this,
+					'GET',
+					'',
+					{},
+					{},
+					'https://analyticsadmin.googleapis.com/v1alpha/accounts',
+				);
+
+				for (const acount of accounts || []) {
+					const { properties } = await googleApiRequest.call(
+						this,
+						'GET',
+						'',
+						{},
+						{ filter: `parent:${acount.name}` },
+						`https://analyticsadmin.googleapis.com/v1alpha/properties`,
+					);
+
+					if (properties && properties.length > 0) {
+						for (const property of properties) {
+							returnData.push({
+								name: property.displayName,
+								value: property.name,
+							});
+						}
+					}
+				}
+
+				return returnData;
+			},
 		},
 	};
 
@@ -156,6 +241,7 @@ export class GoogleAnalytics implements INodeType {
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
 		let method = '';
 		const qs: IDataObject = {};
@@ -164,7 +250,7 @@ export class GoogleAnalytics implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if(resource === 'report') {
-					if(operation === 'get') {
+					if(operation === 'get' && apiVersion === 'reportingAPI') {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 						method = 'POST';
 						endpoint = '/v4/reports:batchGet';
@@ -243,6 +329,40 @@ export class GoogleAnalytics implements INodeType {
 						} else if (returnAll === true && responseData.length > 1) {
 							responseData = merge(responseData);
 						}
+					}
+
+					if(operation === 'get' && apiVersion === 'dataAPI') {
+						//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
+						const propertyId = this.getNodeParameter('propertyId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						method = 'POST';
+						endpoint = `/v1beta/${propertyId}:runReport`;
+
+						const body: IDataObject = {
+							"metrics": [
+								{
+									"name": "sessions"
+								}
+							],
+							"dimensions": [
+								{
+									"name": "country"
+								}
+							],
+							"dateRanges": [
+								{
+									"startDate": "2020-01-01",
+									"endDate": "2020-01-31"
+								},
+								{
+									"startDate": "2021-01-01",
+									"endDate": "2021-01-31",
+									"name": ""
+								}
+							]
+						};
+
+						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 					}
 				}
 				if (resource === 'userActivity') {

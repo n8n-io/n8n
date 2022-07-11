@@ -28,6 +28,8 @@ export const reportOperations: INodeProperties[] = [
 ];
 
 export const reportFields: INodeProperties[] = [
+
+	//------------------------ Reporting API V4 ------------------------//
 	{
 		displayName: 'View Name or ID',
 		name: 'viewId',
@@ -45,11 +47,41 @@ export const reportFields: INodeProperties[] = [
 				operation: [
 					'get',
 				],
+				apiVersion: [
+					'reportingAPI',
+				],
 			},
 		},
 		placeholder: '123456',
 		description: 'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
+		//------------------------ Data API V1 ------------------------//
+	{
+		displayName: 'Property Name or ID',
+		name: 'propertyId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProperties',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'report',
+				],
+				operation: [
+					'get',
+				],
+				apiVersion: [
+					'dataAPI',
+				],
+			},
+		},
+		placeholder: '123456',
+		description: 'The Property ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	},
+	 //-------------------------------------------------------------------//
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -121,6 +153,9 @@ export const reportFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
+				],
+				apiVersion: [
+					'reportingAPI',
 				],
 			},
 		},
