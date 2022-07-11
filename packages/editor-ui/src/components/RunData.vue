@@ -66,15 +66,16 @@
 							<strong>{{ $locale.baseText('ndv.pinData.pin.title') }}</strong>
 							<n8n-text size="small" tag="p">
 								{{ $locale.baseText('ndv.pinData.pin.description') }}
+
+								<n8n-link :to="dataPinningDocsUrl" size="small">
+									{{ $locale.baseText('ndv.pinData.pin.link') }}
+								</n8n-link>
 							</n8n-text>
-							<n8n-link :to="dataPinningDocsUrl" size="small">
-								{{ $locale.baseText('ndv.pinData.pin.link') }}
-							</n8n-link>
 						</div>
 					</template>
 					<template #content v-else>
 						<div :class="$style['tooltip-container']">
-							{{ $locale.baseText('node.discovery.pinData') }}
+							{{ $locale.baseText('node.discovery.pinData.ndv') }}
 						</div>
 					</template>
 					<n8n-icon-button
@@ -374,10 +375,10 @@ import {
 
 import {
 	DATA_PINNING_DOCS_URL,
-	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
+	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
+	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
-	PIN_DATA_NODE_TYPES_DENYLIST,
 	TEST_PIN_DATA,
 } from '@/constants';
 
@@ -488,10 +489,14 @@ export default mixins(
 				this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 				this.eventBus.$on('data-unpinning', this.onDataUnpinning);
 
-				this.showPinDataDiscoveryTooltip(this.jsonData);
+				const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG);
+				if (!hasSeenPinDataTooltip) {
+					this.showPinDataDiscoveryTooltip(this.jsonData);
+				}
 			}
 		},
 		destroyed() {
+			this.hidePinDataDiscoveryTooltip();
 			this.eventBus.$off('data-pinning-error', this.onDataPinningError);
 			this.eventBus.$off('data-unpinning', this.onDataUnpinning);
 		},
@@ -692,22 +697,23 @@ export default mixins(
 				}
 
 				if (value && value.length > 0) {
-					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, 'true');
-					localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+					this.pinDataDiscoveryComplete();
 
-					this.isControlledPinDataTooltip = true;
 					setTimeout(() => {
+						this.isControlledPinDataTooltip = true;
 						this.pinDataDiscoveryTooltipVisible = true;
-					}, 500); // Wait for ndv to load before showing tooltip
-
-					setTimeout(() => {
-						this.pinDataDiscoveryTooltipVisible = false;
-
-						setTimeout(() => {
-							this.isControlledPinDataTooltip = false;
-						}, 500); // Wait for tooltip to disappear
-					}, 10000);
+					}, 500); // Wait for NDV to open
 				}
+			},
+			hidePinDataDiscoveryTooltip() {
+				if (this.pinDataDiscoveryTooltipVisible) {
+					this.isControlledPinDataTooltip = false;
+					this.pinDataDiscoveryTooltipVisible = false;
+				}
+			},
+			pinDataDiscoveryComplete() {
+				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, 'true');
+				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
 				const data = this.jsonData && this.jsonData.length > 0
@@ -841,6 +847,9 @@ export default mixins(
 						duration: 2000,
 					});
 				}
+
+				this.hidePinDataDiscoveryTooltip();
+				this.pinDataDiscoveryComplete();
 			},
 			switchToBinary() {
 				this.onDisplayModeChange('binary');
