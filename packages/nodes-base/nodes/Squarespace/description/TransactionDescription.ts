@@ -51,7 +51,7 @@ export const transactionOperations: INodeProperties[] = [
 				}
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
