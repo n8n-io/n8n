@@ -18,7 +18,7 @@ export class MailchimpApi implements ICredentialType {
 			default: '',
 		},
 	];
-	autheticate: IAuthenticateGeneric = {
+	authenticate: IAuthenticateGeneric = {
 		type:'generic',
 		properties:{
 			headers:{
@@ -28,7 +28,7 @@ export class MailchimpApi implements ICredentialType {
 	};
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://{{($credentials.apiKey as string).split("-").pop()}}.api.mailchimp.com/3.0',
+			baseURL: '=https://{{$credentials.apiKey.split("-").pop()}}.api.mailchimp.com/3.0',
 			url: '/lists',
 		},
 	};
