@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<n8n-callout
-			v-if="canPinData && hasPinData"
+			v-if="canPinData && hasPinData && !editMode.enabled"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style['pinned-data-callout']"
