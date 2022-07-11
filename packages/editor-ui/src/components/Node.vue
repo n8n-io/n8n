@@ -128,6 +128,7 @@ export default mixins(
 			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
 		},
 		hasIssues (): boolean {
+			if (this.hasPinData) return false;
 			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}

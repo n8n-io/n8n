@@ -693,7 +693,13 @@ export class WorkflowExecute {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
 
-		const workflowIssues = workflow.checkReadyForExecution({ startNode, destinationNode });
+		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
+
+		const workflowIssues = workflow.checkReadyForExecution({
+			startNode,
+			destinationNode,
+			pinDataNodeNames,
+		});
 		if (workflowIssues !== null) {
 			throw new Error(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',
