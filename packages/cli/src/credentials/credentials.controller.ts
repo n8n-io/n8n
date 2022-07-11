@@ -297,22 +297,12 @@ credentialsController.get(
 
 		const { data, id, ...rest } = credential;
 
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
-		}
-
-		const coreCredential = CredentialsService.createCredentialsFromCredentialsEntity(credential);
+		const encryptionKey = await CredentialsService.getEncryptionKey();
+		const decryptedData = await CredentialsService.decryptCredential(encryptionKey, credential);
 
 		return {
 			id: id.toString(),
-			data: coreCredential.getData(encryptionKey),
+			data: decryptedData,
 			...rest,
 		};
 	}),
