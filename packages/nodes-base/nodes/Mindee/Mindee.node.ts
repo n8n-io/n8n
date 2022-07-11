@@ -72,11 +72,11 @@ export class Mindee implements INodeType {
 				},
 				options: [
 					{
-						name: 'Version 1',
+						name: '1',
 						value: 'version1',
 					},
 					{
-						name: 'Version 3',
+						name: '3',
 						value: 'version3',
 					},
 				],
@@ -97,11 +97,11 @@ export class Mindee implements INodeType {
 				},
 				options: [
 					{
-						name: 'Version 1',
+						name: '1',
 						value: 'version1',
 					},
 					{
-						name: 'Version 3',
+						name: '3',
 						value: 'version3',
 					},
 				],
