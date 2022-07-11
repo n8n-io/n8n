@@ -212,5 +212,7 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
 	border-radius: var(--border-radius-base);
+	transform: translate(-50%, -105%);
+	white-space: nowrap;
 }
 </style>
