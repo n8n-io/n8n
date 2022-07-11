@@ -398,6 +398,9 @@ export class NocoDB implements INodeType {
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0) as number;
 							responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
+							if (version === 2) {
+								responseData = responseData.list;
+							}
 						}
 
 						returnData.push.apply(returnData, responseData);
