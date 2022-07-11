@@ -1,11 +1,23 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 import { Credentials, UserSettings } from 'n8n-core';
-import { ICredentialDataDecryptedObject, LoggerProxy } from 'n8n-workflow';
-import { FindOneOptions } from 'typeorm';
+import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	INodeCredentialTestResult,
+	LoggerProxy,
+} from 'n8n-workflow';
+import { FindOneOptions, In } from 'typeorm';
 import { clone } from 'lodash';
 
-import { createCredentialsFromCredentialsEntity, Db, ICredentialsDb, ResponseHelper } from '..';
+import {
+	createCredentialsFromCredentialsEntity,
+	CredentialsHelper,
+	Db,
+	ICredentialsDb,
+	ResponseHelper,
+	whereClause,
+} from '..';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
@@ -36,6 +48,41 @@ export class CredentialsService {
 		}
 
 		return Db.collections.SharedCredentials.findOne(options);
+	}
+
+	static async getFilteredCredentials(
+		user: User,
+		filter: Record<string, string>,
+	): Promise<ICredentialsDb[]> {
+		try {
+			if (user.globalRole.name === 'owner') {
+				return await Db.collections.Credentials.find({
+					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+					where: filter,
+				});
+			}
+			const shared = await Db.collections.SharedCredentials.find({
+				where: whereClause({
+					user,
+					entityType: 'credentials',
+				}),
+			});
+
+			if (!shared.length) return [];
+
+			return await Db.collections.Credentials.find({
+				select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+				where: {
+					// The ordering is important here. If id is before the object spread then
+					// a user can control the id field
+					...filter,
+					id: In(shared.map(({ credentialId }) => credentialId)),
+				},
+			});
+		} catch (error) {
+			LoggerProxy.error('Request to list credentials failed', error);
+			throw error;
+		}
 	}
 
 	static createCredentialsFromCredentialsEntity(
@@ -197,5 +244,16 @@ export class CredentialsService {
 		await externalHooks.run('credentials.delete', [credentials.id]);
 
 		await Db.collections.Credentials.remove(credentials);
+	}
+
+	static async testCredentials(
+		user: User,
+		encryptionKey: string,
+		credentials: ICredentialsDecrypted,
+		nodeToTestWith: string | undefined,
+	): Promise<INodeCredentialTestResult> {
+		const helper = new CredentialsHelper(encryptionKey);
+
+		return helper.testCredentials(user, credentials.type, credentials, nodeToTestWith);
 	}
 }

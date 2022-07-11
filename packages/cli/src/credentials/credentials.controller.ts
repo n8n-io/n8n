@@ -52,38 +52,9 @@ credentialsController.use('/', EECredentialsController);
 credentialsController.get(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
-		let credentials: ICredentialsDb[] = [];
-
 		const filter = req.query.filter ? (JSON.parse(req.query.filter) as Record<string, string>) : {};
 
-		try {
-			if (req.user.globalRole.name === 'owner') {
-				credentials = await Db.collections.Credentials.find({
-					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
-					where: filter,
-				});
-			} else {
-				const shared = await Db.collections.SharedCredentials.find({
-					where: whereClause({
-						user: req.user,
-						entityType: 'credentials',
-					}),
-				});
-
-				if (!shared.length) return [];
-
-				credentials = await Db.collections.Credentials.find({
-					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
-					where: {
-						id: In(shared.map(({ credentialId }) => credentialId)),
-						...filter,
-					},
-				});
-			}
-		} catch (error) {
-			LoggerProxy.error('Request to list credentials failed', error);
-			throw error;
-		}
+		const credentials = await CredentialsService.getFilteredCredentials(req.user, filter);
 
 		return credentials.map((credential) => {
 			// eslint-disable-next-line no-param-reassign
@@ -122,20 +93,8 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials, nodeToTestWith } = req.body;
 
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
-		}
-
-		const helper = new CredentialsHelper(encryptionKey);
-
-		return helper.testCredentials(req.user, credentials.type, credentials, nodeToTestWith);
+		const encryptionKey = await CredentialsService.getEncryptionKey();
+		return CredentialsService.testCredentials(req.user, encryptionKey, credentials, nodeToTestWith);
 	}),
 );
 
