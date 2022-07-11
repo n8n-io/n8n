@@ -48,7 +48,7 @@ export class Mqtt implements INodeType {
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON',
+				description: 'Whether to send the the data the node receives as JSON',
 			},
 			{
 				displayName: 'Message',
@@ -98,6 +98,7 @@ export class Mqtt implements INodeType {
 						name: 'retain',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Normally if a publisher publishes a message to a topic, and no one is subscribed to that topic the message is simply discarded by the broker. However the publisher can tell the broker to keep the last message on that topic by setting the retain flag to true.',
 					},
 				],

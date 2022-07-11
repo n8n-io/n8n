@@ -18,21 +18,25 @@ export const tableOperations: INodeProperties[] = [
 				name: 'Add Row',
 				value: 'addRow',
 				description: 'Adds rows to the end of the table',
+				action: 'Add a row',
 			},
 			{
 				name: 'Get Columns',
 				value: 'getColumns',
 				description: 'Retrieve a list of tablecolumns',
+				action: 'Get columns',
 			},
 			{
 				name: 'Get Rows',
 				value: 'getRows',
 				description: 'Retrieve a list of tablerows',
+				action: 'Get rows',
 			},
 			{
 				name: 'Lookup',
 				value: 'lookup',
 				description: 'Looks for a specific column value and then returns the matching row',
+				action: 'Look up a column',
 			},
 		],
 		default: 'addRow',
@@ -48,6 +52,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
@@ -67,6 +72,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -90,6 +96,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
@@ -145,6 +152,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
@@ -164,6 +172,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -187,6 +196,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
@@ -262,7 +272,7 @@ export const tableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should be returned RAW instead of parsed into keys according to their header',
+		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
@@ -320,6 +330,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
@@ -339,6 +350,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -362,6 +374,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
@@ -437,7 +450,7 @@ export const tableFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should be returned RAW instead of parsed into keys according to their header',
+		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
@@ -495,6 +508,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
@@ -515,6 +529,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -538,6 +553,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
@@ -617,6 +633,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'returnAllMatches',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
 			},
 		],

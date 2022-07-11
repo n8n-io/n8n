@@ -20,11 +20,13 @@ export const imageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an image',
+				action: 'Create an image',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an image',
+				action: 'Get an image',
 			},
 		],
 		default: 'create',
@@ -86,7 +88,7 @@ export const imageFields: INodeProperties[] = [
 				name: 'waitForImage',
 				type: 'boolean',
 				default: false,
-				description: 'Wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait Max Tries".',
+				description: 'Whether to wait for the image to be proccesed before returning. If after three tries the images is not ready, an error will be thrown. Number of tries can be increased by setting "Wait Max Tries".',
 			},
 			{
 				displayName: 'Wait Max Tries',

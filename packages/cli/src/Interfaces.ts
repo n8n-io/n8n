@@ -13,6 +13,7 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	ITelemetrySettings,
+	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	Workflow,
 	WorkflowExecuteMode,
@@ -195,8 +196,6 @@ export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
-export type ExecutionDataFieldFormat = 'empty' | 'flattened' | 'json';
-
 export interface IExecutionBase {
 	id?: number | string;
 	mode: WorkflowExecuteMode;
@@ -257,7 +256,7 @@ export interface IExecutionResponseApi {
 	finished: boolean;
 	retryOf?: number | string;
 	retrySuccessId?: number | string;
-	data?: string; // Just that we can remove it
+	data?: object;
 	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
 }
@@ -692,3 +691,14 @@ export interface IWorkflowExecuteProcess {
 }
 
 export type WhereClause = Record<string, { id: string }>;
+
+// ----------------------------------
+//               telemetry
+// ----------------------------------
+
+export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
+	workflow_id: string;
+	success: boolean;
+	error_node_type?: string;
+	is_manual: boolean;
+}

@@ -231,7 +231,7 @@ const typeMention: INodeProperties[] = [
 		},
 		type: 'boolean',
 		default: false,
-		description: 'Weather or not you want to define a date range',
+		description: 'Whether or not you want to define a date range',
 	},
 	{
 		displayName: 'Date',
@@ -544,6 +544,7 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 					displayName: 'Type Name or ID',
 					name: 'type',
 					type: 'options',
+					description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getBlockTypes',
 					},

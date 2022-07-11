@@ -1,21 +1,19 @@
-import path from 'path';
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
-	IAuthenticate,
 	IBinaryData,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IOAuth2Options,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
+import { replaceNullValues } from './GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -457,7 +455,7 @@ export class HttpRequest implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: 'If the query and/or body parameter should be set via the value-key pair UI or JSON/RAW',
+				description: 'Whether the query and/or body parameter should be set via the value-key pair UI or JSON/RAW',
 			},
 
 			{
@@ -526,28 +524,28 @@ export class HttpRequest implements INodeType {
 						name: 'fullResponse',
 						type: 'boolean',
 						default: false,
-						description: 'Returns the full reponse data instead of only the body',
+						description: 'Whether to return the full reponse data instead of only the body',
 					},
 					{
 						displayName: 'Follow All Redirects',
 						name: 'followAllRedirects',
 						type: 'boolean',
 						default: false,
-						description: 'Follow non-GET HTTP 3xx redirects',
+						description: 'Whether to follow non-GET HTTP 3xx redirects',
 					},
 					{
 						displayName: 'Follow GET Redirect',
 						name: 'followRedirect',
 						type: 'boolean',
 						default: true,
-						description: 'Follow GET HTTP 3xx redirects',
+						description: 'Whether to follow GET HTTP 3xx redirects',
 					},
 					{
 						displayName: 'Ignore Response Code',
 						name: 'ignoreResponseCode',
 						type: 'boolean',
 						default: false,
-						description: 'Succeeds also when status code is not 2xx',
+						description: 'Whether to succeeds also when status code is not 2xx',
 					},
 					{
 						displayName: 'MIME Type',
@@ -579,7 +577,7 @@ export class HttpRequest implements INodeType {
 						name: 'splitIntoItems',
 						type: 'boolean',
 						default: false,
-						description: 'Outputs each element of an array as own item',
+						description: 'Whether to output each element of an array as own item',
 						displayOptions: {
 							show: {
 								'/responseFormat': [
@@ -603,7 +601,7 @@ export class HttpRequest implements INodeType {
 						name: 'useQueryString',
 						type: 'boolean',
 						default: false,
-						description: 'Set this option to true if you need arrays to be serialized as foo=bar&foo=baz instead of the default foo[0]=bar&foo[1]=baz',
+						description: 'Whether you need arrays to be serialized as foo=bar&foo=baz instead of the default foo[0]=bar&foo[1]=baz',
 					},
 				],
 			},
@@ -631,7 +629,7 @@ export class HttpRequest implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If binary data should be send as body',
+				description: 'Whether binary data should be send as body',
 			},
 			{
 				displayName: 'Binary Property',
@@ -919,8 +917,7 @@ export class HttpRequest implements INodeType {
 				displayName: 'Query Paramters',
 			},
 		};
-
-		const returnItems: INodeExecutionData[] = [];
+		let returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
@@ -1206,9 +1203,31 @@ export class HttpRequest implements INodeType {
 					);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
+
+				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
+					clickUpOAuth2Api: {
+						keepBearer: false,
+						tokenType: 'Bearer',
+					},
+					slackOAuth2Api: {
+						tokenType: 'Bearer',
+						property: 'authed_user.access_token',
+					},
+					boxOAuth2Api: {
+						includeCredentialsOnRefreshOnBody: true,
+					},
+				};
+
+				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
+
 				// service-specific cred: OAuth1, OAuth2, plain
 				requestPromises.push(
-					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),
+					this.helpers.requestWithAuthentication.call(
+						this,
+						nodeCredentialType,
+						requestOptions,
+						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+					),
 				);
 			}
 		}
@@ -1263,6 +1282,7 @@ export class HttpRequest implements INodeType {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
+					// @ts-ignore
 					Object.assign(newItem.binary, items[itemIndex].binary);
 				}
 
@@ -1366,6 +1386,8 @@ export class HttpRequest implements INodeType {
 				}
 			}
 		}
+
+		returnItems = returnItems.map(replaceNullValues);
 
 		return this.prepareOutputData(returnItems);
 	}

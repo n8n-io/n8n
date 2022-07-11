@@ -28,10 +28,11 @@ import {
 	documentOperations,
 } from './DocumentDescription';
 
-export class CloudFirestore implements INodeType {
+export class GoogleFirebaseCloudFirestore implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Cloud Firestore',
 		name: 'googleFirebaseCloudFirestore',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googleFirebaseCloudFirestore.png',
 		group: ['input'],
 		version: 1,

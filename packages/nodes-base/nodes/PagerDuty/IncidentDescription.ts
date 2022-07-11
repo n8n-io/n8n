@@ -20,21 +20,25 @@ export const incidentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an incident',
+				action: 'Create an incident',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an incident',
+				action: 'Get an incident',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all incidents',
+				action: 'Get all incidents',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an incident',
+				action: 'Update an incident',
 			},
 		],
 		default: 'create',
@@ -89,6 +93,7 @@ export const incidentFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -323,12 +328,12 @@ export const incidentFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Assigness',
-						value: 'assigness',
-					},
-					{
 						name: 'Acknowledgers',
 						value: 'acknowledgers',
+					},
+					{
+						name: 'Assignees',
+						value: 'assigness',
 					},
 					{
 						name: 'Conferenece Bridge',
@@ -363,14 +368,14 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Additional details to include',
 			},
 			{
-				displayName: 'Service IDs',
+				displayName: 'Service Names or IDs',
 				name: 'serviceIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getServices',
 				},
 				default: [],
-				description: 'Returns only the incidents associated with the passed service(s)',
+				description: 'Returns only the incidents associated with the passed service(s). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Since',
@@ -483,6 +488,7 @@ export const incidentFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {

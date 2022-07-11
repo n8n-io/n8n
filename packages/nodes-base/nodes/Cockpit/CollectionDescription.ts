@@ -18,17 +18,20 @@ export const collectionOperations: INodeProperties[] = [
 				name: 'Create an Entry',
 				value: 'create',
 				description: 'Create a collection entry',
+				action: 'Create a collection entry',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
 				name: 'Get All Entries',
 				value: 'getAll',
 				description: 'Get all collection entries',
+				action: 'Get all collection entries',
 			},
 			{
 				name: 'Update an Entry',
 				value: 'update',
 				description: 'Update a collection entry',
+				action: 'Update a collection entry',
 			},
 		],
 		default: 'getAll',
@@ -147,16 +150,15 @@ export const collectionFields: INodeProperties[] = [
 				displayName: 'Populate',
 				name: 'populate',
 				type: 'boolean',
-				required: true,
 				default: true,
-				description: 'Resolve linked collection items',
+				description: 'Whether to resolve linked collection items',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Skip',
@@ -213,7 +215,7 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If new entry fields should be set via the value-key pair UI or JSON',
+		description: 'Whether new entry fields should be set via the value-key pair UI or JSON',
 	},
 	{
 		displayName: 'Entry Data',

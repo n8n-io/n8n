@@ -71,6 +71,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{

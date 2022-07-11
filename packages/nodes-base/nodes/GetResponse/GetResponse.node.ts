@@ -27,6 +27,7 @@ export class GetResponse implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GetResponse',
 		name: 'getResponse',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:getResponse.png',
 		group: ['input'],
 		version: 1,

@@ -97,21 +97,25 @@ export class GoogleSlides implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a presentation',
+						action: 'Create a presentation',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a presentation',
+						action: 'Get a presentation',
 					},
 					{
 						name: 'Get Slides',
 						value: 'getSlides',
 						description: 'Get presentation slides',
+						action: 'Get slides from a presentation',
 					},
 					{
 						name: 'Replace Text',
 						value: 'replaceText',
 						description: 'Replace text in a presentation',
+						action: 'Replace text in a presentation',
 					},
 				],
 				displayOptions: {
@@ -133,11 +137,13 @@ export class GoogleSlides implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a page',
+						action: 'Get a page',
 					},
 					{
 						name: 'Get Thumbnail',
 						value: 'getThumbnail',
 						description: 'Get a thumbnail',
+						action: 'Get the thumbnail for a page',
 					},
 				],
 				displayOptions: {
@@ -279,10 +285,10 @@ export class GoogleSlides implements INodeType {
 								name: 'matchCase',
 								type: 'boolean',
 								default: false,
-								description: 'Indicates whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
+								description: 'Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
 							},
 							{
-								displayName: 'Page IDs',
+								displayName: 'Page Names or IDs',
 								name: 'pageObjectIds',
 								type: 'multiOptions',
 								default: [],
@@ -292,7 +298,7 @@ export class GoogleSlides implements INodeType {
 										'presentationId',
 									],
 								},
-								description: 'If non-empty, limits the matches to page elements only on the given pages',
+								description: 'If non-empty, limits the matches to page elements only on the given pages. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 							{
 								displayName: 'Replace Text',
@@ -354,6 +360,7 @@ export class GoogleSlides implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Name of the binary property to which to write the data of the read page',
 			},
 			{

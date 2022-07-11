@@ -31,6 +31,12 @@ export class SlackOAuth2Api implements ICredentialType {
 	documentationUrl = 'slack';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

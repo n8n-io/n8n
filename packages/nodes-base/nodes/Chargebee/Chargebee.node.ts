@@ -28,6 +28,7 @@ export class Chargebee implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chargebee',
 		name: 'chargebee',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:chargebee.png',
 		group: ['input'],
 		version: 1,
@@ -89,6 +90,7 @@ export class Chargebee implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a customer',
+						action: 'Create a customer',
 					},
 				],
 				default: 'create',
@@ -140,6 +142,7 @@ export class Chargebee implements INodeType {
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 						description: 'The email address of the customer',
 					},
@@ -217,11 +220,13 @@ export class Chargebee implements INodeType {
 						name: 'List',
 						value: 'list',
 						description: 'Return the invoices',
+						action: 'List an invoice',
 					},
 					{
 						name: 'PDF Invoice URL',
 						value: 'pdfUrl',
 						description: 'Get URL for the invoice PDF',
+						action: 'Get URL for the invoice PDF',
 					},
 				],
 			},
@@ -408,11 +413,13 @@ export class Chargebee implements INodeType {
 						name: 'Cancel',
 						value: 'cancel',
 						description: 'Cancel a subscription',
+						action: 'Cancel a subscription',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a subscription',
+						action: 'Delete a subscription',
 					},
 				],
 				default: 'delete',
@@ -454,7 +461,7 @@ export class Chargebee implements INodeType {
 						],
 					},
 				},
-				description: 'If set it will not cancel it directly in will instead schedule the cancelation for the end of the term',
+				description: 'Whether it will not cancel it directly in will instead schedule the cancelation for the end of the term',
 			},
 
 			// ----------------------------------

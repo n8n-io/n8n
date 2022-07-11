@@ -2869,6 +2869,10 @@ class App {
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
+					void InternalHooksManager.getInstance().onFrontendSettingsAPI(
+						req.headers.sessionid as string,
+					);
+
 					return this.getSettingsForFrontend();
 				},
 			),
@@ -2905,6 +2909,8 @@ class App {
 						ResponseHelper.sendErrorResponse(res, error);
 						return;
 					}
+
+					res.header('Access-Control-Allow-Origin', '*');
 
 					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 					return;

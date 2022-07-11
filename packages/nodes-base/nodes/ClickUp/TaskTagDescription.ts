@@ -20,11 +20,13 @@ export const taskTagOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a tag to a task',
+				action: 'Add a task tag',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a tag from a task',
+				action: 'Remove a task tag',
 			},
 		],
 		default: 'add',
@@ -94,7 +96,7 @@ export const taskTagFields: INodeProperties[] = [
 				name: 'custom_task_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If you want to reference a task by it\'s custom task ID, this value must be true',
+				description: 'Whether to reference a task by it\'s custom task ID',
 			},
 			{
 				displayName: 'Team Name or ID',

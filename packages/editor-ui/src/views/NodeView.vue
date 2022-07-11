@@ -29,7 +29,7 @@
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						@runWorkflow="runWorkflow"
+						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
 						:id="'node-' + getNodeIndex(nodeData.name)"
@@ -58,7 +58,7 @@
 				</div>
 			</div>
 		</div>
-		<NodeDetailsView :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
 			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"
@@ -104,7 +104,7 @@
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
 			<n8n-button
-				@click.stop="runWorkflow()"
+				@click.stop="onRunWorkflow"
 				:loading="workflowRunning"
 				:label="runButtonText"
 				size="large"
@@ -193,6 +193,9 @@ import {
 	IRun,
 	ITaskData,
 	INodeCredentialsDetails,
+	TelemetryHelpers,
+	ITelemetryTrackProperties,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -404,6 +407,20 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
+			onRunNode(nodeName: string, source: string) {
+				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				this.runWorkflow(nodeName, source);
+			},
+			onRunWorkflow() {
+				this.getWorkflowDataToSave().then((workflowData) => {
+					this.$telemetry.track('User clicked execute workflow button', {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					});
+				});
+
+				this.runWorkflow();
+			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
 				const buttonsWrapper = mouseinEvent.target as Element;
 
@@ -1161,6 +1178,15 @@ export default mixins(
 					}
 				}
 				this.stopExecutionInProgress = false;
+
+				this.getWorkflowDataToSave().then((workflowData) => {
+					const trackProps = {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					};
+
+					this.$telemetry.track('User clicked stop workflow execution', trackProps);
+				});
 			},
 
 			async stopWaitingForWebhook () {
@@ -1493,11 +1519,17 @@ export default mixins(
 					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
 				} else {
 					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', {
+					const trackProperties: ITelemetryTrackProperties = {
 						node_type: nodeTypeName,
 						workflow_id: this.$store.getters.workflowId,
 						drag_and_drop: options.dragAndDrop,
-					} as IDataObject);
+					};
+
+					if (lastSelectedNode) {
+						trackProperties.input_node_type = lastSelectedNode.type;
+					}
+
+					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
 				}
 
 				// Automatically deselect all nodes and select the current one and also active

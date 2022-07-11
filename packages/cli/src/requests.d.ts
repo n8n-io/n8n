@@ -82,7 +82,7 @@ export declare namespace WorkflowRequest {
 // ----------------------------------
 
 export declare namespace CredentialRequest {
-	type RequestBody = Partial<{
+	type CredentialProperties = Partial<{
 		id: string; // delete if sent
 		name: string;
 		type: string;
@@ -90,7 +90,7 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
+	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
@@ -98,7 +98,7 @@ export declare namespace CredentialRequest {
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
 
 	type NewName = WorkflowRequest.NewName;
 

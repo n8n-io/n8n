@@ -2,8 +2,11 @@ import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-
 import type { ICredentialsDb, IDatabaseCollections } from '../../../src';
 import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import type { User } from '../../../src/databases/entities/User';
+import { MAPPING_TABLES } from './constants';
 
 export type CollectionName = keyof IDatabaseCollections;
+
+export type MappingName = keyof typeof MAPPING_TABLES;
 
 export type SmtpTestAccount = {
 	user: string;
@@ -34,3 +37,12 @@ export type SaveCredentialFunction = (
 export type PostgresSchemaSection = {
 	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
 };
+
+export interface TriggerTime {
+	mode: string;
+	hour: number;
+	minute: number;
+	dayOfMonth: number;
+	weekeday: number;
+	[key: string]: string | number;
+}

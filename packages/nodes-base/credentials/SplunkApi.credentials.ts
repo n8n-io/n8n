@@ -26,6 +26,7 @@ export class SplunkApi implements ICredentialType {
 			displayName: 'Allow Self-Signed Certificates',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 			default: false,
 		},
 	];

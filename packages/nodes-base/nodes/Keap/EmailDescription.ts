@@ -20,16 +20,19 @@ export const emailOperations: INodeProperties[] = [
 				name: 'Create Record',
 				value: 'createRecord',
 				description: 'Create a record of an email sent to a contact',
+				action: 'Create a record of an email sent',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all sent emails',
+				action: 'Get all emails',
 			},
 			{
 				name: 'Send',
 				value: 'send',
 				description: 'Send Email',
+				action: 'Send an email',
 			},
 		],
 		default: 'createRecord',
@@ -283,6 +286,7 @@ export const emailFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{

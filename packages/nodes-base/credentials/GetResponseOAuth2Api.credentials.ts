@@ -11,6 +11,12 @@ export class GetResponseOAuth2Api implements ICredentialType {
 	displayName = 'GetResponse OAuth2 API';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

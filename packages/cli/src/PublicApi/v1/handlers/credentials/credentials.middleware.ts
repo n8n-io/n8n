@@ -1,37 +1,36 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable consistent-return */
-import { RequestHandler } from 'express';
+/* eslint-disable @typescript-eslint/no-invalid-void-type */
+
+import express from 'express';
 import { validate } from 'jsonschema';
+
 import { CredentialsHelper, CredentialTypes } from '../../../..';
 import { CredentialRequest } from '../../../types';
 import { toJsonSchema } from './credentials.service';
 
-export const validCredentialType: RequestHandler = async (
+export const validCredentialType = (
 	req: CredentialRequest.Create,
-	res,
-	next,
-): Promise<any> => {
-	const { type } = req.body;
+	res: express.Response,
+	next: express.NextFunction,
+): express.Response | void => {
 	try {
-		CredentialTypes().getByName(type);
-	} catch (error) {
-		return res.status(400).json({
-			message: 'req.body.type is not a known type',
-		});
+		CredentialTypes().getByName(req.body.type);
+	} catch (_) {
+		return res.status(400).json({ message: 'req.body.type is not a known type' });
 	}
-	next();
+
+	return next();
 };
 
-export const validCredentialsProperties: RequestHandler = async (
+export const validCredentialsProperties = (
 	req: CredentialRequest.Create,
-	res,
-	next,
-): Promise<any> => {
+	res: express.Response,
+	next: express.NextFunction,
+): express.Response | void => {
 	const { type, data } = req.body;
 
-	let properties = new CredentialsHelper('').getCredentialsProperties(type);
-
-	properties = properties.filter((nodeProperty) => nodeProperty.type !== 'hidden');
+	const properties = new CredentialsHelper('')
+		.getCredentialsProperties(type)
+		.filter((property) => property.type !== 'hidden');
 
 	const schema = toJsonSchema(properties);
 
@@ -43,5 +42,5 @@ export const validCredentialsProperties: RequestHandler = async (
 		});
 	}
 
-	next();
+	return next();
 };

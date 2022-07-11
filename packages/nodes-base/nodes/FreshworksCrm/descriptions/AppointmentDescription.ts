@@ -24,26 +24,31 @@ export const appointmentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an appointment',
+				action: 'Create an appointment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an appointment',
+				action: 'Delete an appointment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an appointment',
+				action: 'Get an appointment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all appointments',
+				action: 'Get all appointments',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an appointment',
+				action: 'Update an appointment',
 			},
 		],
 		default: 'create',
@@ -152,6 +157,7 @@ export const appointmentFields: INodeProperties[] = [
 						displayName: 'User Name or ID',
 						name: 'userId',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						displayOptions: {
 							show: {
 								type: [
@@ -499,6 +505,7 @@ export const appointmentFields: INodeProperties[] = [
 								displayName: 'User Name or ID',
 								name: 'userId',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								displayOptions: {
 									show: {
 										type: [

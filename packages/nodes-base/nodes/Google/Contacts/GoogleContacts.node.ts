@@ -30,6 +30,7 @@ export class GoogleContacts implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Contacts',
 		name: 'googleContacts',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googleContacts.png',
 		group: ['input'],
 		version: 1,

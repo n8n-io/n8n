@@ -20,26 +20,31 @@ export const groupOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a group',
+				action: 'Create a group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a group',
+				action: 'Delete a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a group',
+				action: 'Get a group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all groups',
+				action: 'Get all groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a group',
+				action: 'Update a group',
 			},
 		],
 		default: 'create',
@@ -54,6 +59,7 @@ export const groupFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -313,6 +319,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The group\'s email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique.',
 			},

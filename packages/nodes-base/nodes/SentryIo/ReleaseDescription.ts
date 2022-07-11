@@ -20,26 +20,31 @@ export const releaseOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a release',
+				action: 'Create a release',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a release',
+				action: 'Delete a release',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get release by version identifier',
+				action: 'Get a release by version ID',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all releases',
+				action: 'Get all releases',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a release',
+				action: 'Update a release',
 			},
 		],
 		default: 'get',
@@ -245,7 +250,7 @@ export const releaseFields: INodeProperties[] = [
 		description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
 	},
 	{
-		displayName: 'Projects',
+		displayName: 'Project Names or IDs',
 		name: 'projects',
 		type: 'multiOptions',
 		typeOptions: {
@@ -263,7 +268,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'A list of project slugs that are involved in this release',
+		description: 'A list of project slugs that are involved in this release. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',

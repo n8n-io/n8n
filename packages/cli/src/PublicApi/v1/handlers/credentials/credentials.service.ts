@@ -11,6 +11,7 @@ import { SharedCredentials } from '../../../../databases/entities/SharedCredenti
 import { User } from '../../../../databases/entities/User';
 import { externalHooks } from '../../../../Server';
 import { IDependency, IJsonSchema } from '../../../types';
+import { CredentialRequest } from '../../../../requests';
 
 export async function getCredentials(
 	credentialId: number | string,
@@ -38,7 +39,7 @@ export async function getSharedCredentials(
 }
 
 export async function createCredential(
-	properties: Partial<CredentialsEntity>,
+	properties: CredentialRequest.CredentialProperties,
 ): Promise<CredentialsEntity> {
 	const newCredential = new CredentialsEntity();
 

@@ -13,6 +13,12 @@ export class GitlabOAuth2Api implements ICredentialType {
 	documentationUrl = 'gitlab';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Gitlab Server',
 			name: 'server',
 			type: 'string',

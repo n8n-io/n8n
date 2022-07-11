@@ -18,26 +18,31 @@ export const customerOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new customer',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a customer',
+				action: 'Get a customer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all customers',
+				action: 'Get all customers',
 			},
 			{
 				name: 'Properties',
 				value: 'properties',
 				description: 'Get customer property definitions',
+				action: 'Get customer properties',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a customer',
+				action: 'Update a customer',
 			},
 		],
 		default: 'create',
@@ -63,6 +68,7 @@ export const customerFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -214,6 +220,7 @@ export const customerFields: INodeProperties[] = [
 						displayName: 'Country Name or ID',
 						name: 'country',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountriesCodes',
 						},

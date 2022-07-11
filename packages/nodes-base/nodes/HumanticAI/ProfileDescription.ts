@@ -20,16 +20,19 @@ export const profileOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a profile',
+				action: 'Create a profile',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a profile',
+				action: 'Get a profile',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a profile',
+				action: 'Update a profile',
 			},
 		],
 		default: 'create',
@@ -73,7 +76,7 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Send a resume for a resume based analysis',
+		description: 'Whether to send a resume for a resume based analysis',
 	},
 	{
 		displayName: 'Binary Property',
@@ -192,7 +195,7 @@ export const profileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Send a resume for a resume of the user',
+		description: 'Whether to send a resume for a resume of the user',
 	},
 	{
 		displayName: 'Text',

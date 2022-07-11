@@ -20,11 +20,13 @@ export const stockOnHandOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a stock on hand',
+				action: 'Get a stock on hand',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all stocks on hand',
+				action: 'Get all stocks on hand',
 			},
 		],
 		default: 'getAll',
@@ -125,7 +127,7 @@ export const stockOnHandFields: INodeProperties[] = [
 				name: 'IsAssembled',
 				type: 'boolean',
 				default: false,
-				description: 'If set to True, the AvailableQty will also include the quantity that can be assembled',
+				description: 'Whether the AvailableQty will also include the quantity that can be assembled',
 			},
 			{
 				displayName: 'Modified Since',

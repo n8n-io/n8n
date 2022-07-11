@@ -20,26 +20,31 @@ export const recordOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a record',
+				action: 'Create a record',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a record',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a record',
+				action: 'Delete a record',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all records',
+				action: 'Get all records',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a record',
+				action: 'Update a record',
 			},
 		],
 		default: 'create',
@@ -122,7 +127,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Return Fields',
+				displayName: 'Return Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -132,14 +137,14 @@ export const recordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.',
+				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Use Field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Use Field IDs instead of Field Names in Columns',
+				description: 'Whether to use Field IDs instead of Field Names in Columns',
 			},
 		],
 	},
@@ -262,6 +267,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Select',
 				name: 'select',
 				type: 'multiOptions',
@@ -269,7 +275,7 @@ export const recordFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTableFields',
 				},
 				default: [],
-				description: 'An array of field IDs for the fields that should be returned in the response. If empty, the default columns on the table will be returned.',
+				description: 'An array of field IDs for the fields that should be returned in the response. If empty, the default columns on the table will be returned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Sort By',
@@ -362,7 +368,6 @@ export const recordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the properties which should used as columns for the new rows',
 	},
@@ -418,7 +423,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -428,14 +433,14 @@ export const recordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.',
+				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Use Field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Use Field IDs instead of Field Names in Columns',
+				description: 'Whether to use Field IDs instead of Field Names in Columns',
 			},
 			// {
 			// 	displayName: 'Merge Field ID',
@@ -488,7 +493,6 @@ export const recordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the properties which should used as columns for the new rows',
 	},
@@ -564,7 +568,7 @@ export const recordFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -574,14 +578,14 @@ export const recordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.',
+				description: 'Specify an array of field IDs that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Use Field IDs',
 				name: 'useFieldIDs',
 				type: 'boolean',
 				default: false,
-				description: 'Use Field IDs instead of Field Names in Columns',
+				description: 'Whether to use Field IDs instead of Field Names in Columns',
 			},
 		],
 	},

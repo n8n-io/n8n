@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
+
 import express from 'express';
 import superagent from 'superagent';
 import request from 'supertest';
@@ -7,6 +8,9 @@ import { URL } from 'url';
 import bodyParser from 'body-parser';
 import util from 'util';
 import { createTestAccount } from 'nodemailer';
+import { set } from 'lodash';
+import { CronJob } from 'cron';
+import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
 	IDataObject,
@@ -19,10 +23,8 @@ import {
 	ITriggerResponse,
 	LoggerProxy,
 } from 'n8n-workflow';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
-import { CronJob } from 'cron';
 
-import config = require('../../../config');
+import config from '../../../config';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
@@ -43,20 +45,17 @@ import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
-import type { User } from '../../../src/databases/entities/User';
-import type { ApiPath, EndpointGroup, PostgresSchemaSection, SmtpTestAccount } from './types';
-import { Telemetry } from '../../../src/telemetry';
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-import { set } from 'lodash';
-interface TriggerTime {
-	mode: string;
-	hour: number;
-	minute: number;
-	dayOfMonth: number;
-	weekeday: number;
-	[key: string]: string | number;
-}
 import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
+import type { User } from '../../../src/databases/entities/User';
+import type {
+	ApiPath,
+	EndpointGroup,
+	PostgresSchemaSection,
+	SmtpTestAccount,
+	TriggerTime,
+} from './types';
+import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+
 
 /**
  * Initialize a test server.
@@ -75,7 +74,7 @@ export async function initTestServer({
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
 		publicApiEndpoint: PUBLIC_API_REST_PATH_SEGMENT,
-		...(endpointGroups?.includes('credentials') ? { externalHooks: ExternalHooks() } : {}),
+		externalHooks: {},
 	};
 
 	testServer.app.use(bodyParser.json());
@@ -90,13 +89,17 @@ export async function initTestServer({
 
 	if (!endpointGroups) return testServer.app;
 
+	if (endpointGroups.includes('credentials')) {
+		testServer.externalHooks = ExternalHooks();
+	}
+
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
 		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
 		const map: Record<string, express.Router | express.Router[]> = {
 			credentials: credentialsController,
-			publicApi: apiRouters
+			publicApi: apiRouters,
 		};
 
 		for (const group of routerEndpoints) {
@@ -743,8 +746,8 @@ export async function initNodeTypes() {
 			},
 		},
 	};
-	const nodeTypes = NodeTypes();
-	await nodeTypes.init(types);
+
+	await NodeTypes().init(types);
 }
 
 /**
@@ -759,7 +762,7 @@ export function initTestLogger() {
  */
 export async function initBinaryManager() {
 	const binaryDataConfig = config.getEnv('binaryDataManager');
-	await BinaryDataManager.init(binaryDataConfig, true);
+	await BinaryDataManager.init(binaryDataConfig);
 }
 
 /**
@@ -783,7 +786,7 @@ export function initConfigFile() {
  */
 export function createAgent(
 	app: express.Application,
-	options?: { apiPath?: ApiPath; version?: string | number; auth: boolean; user: User },
+	options?: { auth: boolean; user: User; apiPath?: ApiPath; version?: string | number },
 ) {
 	const agent = request.agent(app);
 

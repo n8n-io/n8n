@@ -13,6 +13,7 @@ export const webinarOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a webinar',
 			},
 			// {
 			// 	name: 'Delete',
@@ -21,14 +22,17 @@ export const webinarOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a webinar',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all webinars',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a webinar',
 			},
 		],
 		displayOptions: {
@@ -167,6 +171,7 @@ export const webinarFields: INodeProperties[] = [
 				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
@@ -507,7 +512,6 @@ export const webinarFields: INodeProperties[] = [
 				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
-				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
 				description: 'Timezone where the webinar is to take place. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',

@@ -5,7 +5,7 @@
 		<div :class="$style.header">
 			<slot name="header"></slot>
 
-			<div v-if="!hasRunError" @click.stop :class="$style.displayModes">
+			<div v-show="!hasRunError && hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0))" @click.stop :class="$style.displayModes">
 				<n8n-radio-buttons
 					:value="displayMode"
 					:options="buttons"
@@ -454,7 +454,8 @@ export default mixins(
 					return [];
 				}
 
-				return this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.currentOutputIndex);
+				const binaryData = this.getBinaryData(this.workflowRunData, this.node.name, this.runIndex, this.currentOutputIndex);
+				return binaryData.filter((data) => Boolean(data && Object.keys(data).length));
 			},
 			currentOutputIndex(): number {
 				if (this.overrideOutputs && this.overrideOutputs.length && !this.overrideOutputs.includes(this.outputIndex)) {
@@ -883,6 +884,7 @@ export default mixins(
 	margin-bottom: var(--spacing-s);
 	padding: var(--spacing-s) var(--spacing-s) 0 var(--spacing-s);
 	position: relative;
+	height: 30px;
 
 	> *:first-child {
 		flex-grow: 1;

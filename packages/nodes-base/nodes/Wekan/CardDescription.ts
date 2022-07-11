@@ -23,26 +23,31 @@ export const cardOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new card',
+				action: 'Create a card',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a card',
+				action: 'Delete a card',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a card',
+				action: 'Get a card',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all cards',
+				action: 'Get all cards',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a card',
+				action: 'Update a card',
 			},
 		],
 		default: 'create',
@@ -145,6 +150,7 @@ export const cardFields: INodeProperties[] = [
 		displayName: 'Author Name or ID',
 		name: 'authorId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
@@ -179,14 +185,14 @@ export const cardFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Assignees',
+				displayName: 'Assignee Names or IDs',
 				name: 'assignees',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of assignee IDs attached to the card',
+				description: 'The new list of assignee IDs attached to the card. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -196,14 +202,14 @@ export const cardFields: INodeProperties[] = [
 				description: 'The new description of the card',
 			},
 			{
-				displayName: 'Members',
+				displayName: 'Member Names or IDs',
 				name: 'members',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of member IDs attached to the card',
+				description: 'The new list of member IDs attached to the card. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -596,14 +602,14 @@ export const cardFields: INodeProperties[] = [
 				description: 'Update the owner of the card. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Assignees',
+				displayName: 'Assignee Names or IDs',
 				name: 'assignees',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of assignee IDs attached to the card',
+				description: 'The new list of assignee IDs attached to the card. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Color',
@@ -756,20 +762,21 @@ export const cardFields: INodeProperties[] = [
 				description: 'The new list ID of the card (move operation). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Members',
+				displayName: 'Member Names or IDs',
 				name: 'members',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'The new list of member IDs attached to the card',
+				description: 'The new list of member IDs attached to the card. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Over Time',
 				name: 'isOverTime',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The new over time field of the card',
 			},
 			{

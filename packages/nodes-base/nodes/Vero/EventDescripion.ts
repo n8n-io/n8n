@@ -18,6 +18,7 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Track',
 				value: 'track',
 				description: 'Track an event for a specific customer',
+				action: 'Track an event',
 			},
 		],
 		default: 'track',
@@ -52,6 +53,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {

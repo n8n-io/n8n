@@ -18,6 +18,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Acuity Scheduling Trigger',
 		name: 'acuitySchedulingTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:acuityScheduling.png',
 		group: ['trigger'],
 		version: 1,
@@ -115,6 +116,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default does the webhook-data only contain the ID of the object. If this option gets activated, it will resolve the data automatically.',
 			},
 		],

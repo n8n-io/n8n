@@ -20,11 +20,13 @@ export const contactListOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to a list',
+				action: 'Add a contact to a list',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove contact from a list',
+				action: 'Remove a contact from a list',
 			},
 		],
 		default: 'add',
