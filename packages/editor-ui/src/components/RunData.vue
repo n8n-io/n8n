@@ -601,8 +601,22 @@ export default mixins(
 
 				return 0;
 			},
+			rawInputData (): INodeExecutionData[] {
+				let inputData: INodeExecutionData[] = [];
+
+				if (this.node) {
+					inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+				}
+
+				if (inputData.length === 0 || !Array.isArray(inputData)) {
+					return [];
+				}
+
+				return inputData;
+			},
 			inputData (): INodeExecutionData[] {
-				let inputData;
+				let inputData = this.rawInputData;
+
 				if (this.node && this.pinData) {
 					inputData = Array.isArray(this.pinData)
 						? this.pinData.map((value) => ({
@@ -611,12 +625,6 @@ export default mixins(
 						: [{
 							json: this.pinData,
 						}];
-				} else {
-					inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
-				}
-
-				if (inputData.length === 0 || !Array.isArray(inputData)) {
-					return [];
 				}
 
 				const offset = this.pageSize * (this.currentPage - 1);
@@ -710,8 +718,8 @@ export default mixins(
 				}
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
-				const data = this.jsonData && this.jsonData.length > 0
-					? this.jsonData
+				const data = this.rawInputData && this.rawInputData.length > 0
+					? this.convertToJson(this.rawInputData)
 					: TEST_PIN_DATA;
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
@@ -820,14 +828,16 @@ export default mixins(
 					return;
 				}
 
-				if (!this.isValidPinDataSize(this.jsonData)) {
+				const data = this.convertToJson(this.rawInputData);
+
+				if (!this.isValidPinDataSize(data)) {
 					this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
 					return;
 				}
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
-				this.$store.commit('pinData', { node: this.node, data: this.jsonData });
+				this.$store.commit('pinData', { node: this.node, data });
 
 				if (this.maxRunIndex > 0) {
 					this.$showToast({
