@@ -1,4 +1,7 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestFunctions,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -15,4 +18,18 @@ export class MailchimpApi implements ICredentialType {
 			default: '',
 		},
 	];
+	autheticate: IAuthenticateGeneric = {
+		type:'generic',
+		properties:{
+			headers:{
+				Authorization: '=apikey {{$credentials.apiKey}}',
+			},
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://{{($credentials.apiKey as string).split("-").pop()}}.api.mailchimp.com/3.0',
+			url: '/lists',
+		},
+	};
 }
