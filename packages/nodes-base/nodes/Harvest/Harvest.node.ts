@@ -70,6 +70,7 @@ export class Harvest implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Harvest',
 		name: 'harvest',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:harvest.png',
 		group: ['input'],
 		version: 1,
@@ -190,6 +191,7 @@ export class Harvest implements INodeType {
 				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',

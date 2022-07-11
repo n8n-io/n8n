@@ -20,6 +20,7 @@ export const notificationOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Sends notifications to users or groups',
+				action: 'Send a notification',
 			},
 		],
 		default: 'send',
@@ -136,6 +137,7 @@ export const notificationFields: INodeProperties[] = [
 				name: 'notificationDisabled',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: '<p>true: The user doesn\'t receive a push notification when the message is sent.</p><p>false: The user receives a push notification when the message is sent</p>',
 			},
 			{

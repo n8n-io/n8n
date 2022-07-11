@@ -27,6 +27,7 @@ export const transactionOperations: INodeProperties[] = [
 			{
 				name: 'Get Report',
 				value: 'getReport',
+				action: 'Get a report',
 			},
 		],
 		displayOptions: {
@@ -44,7 +45,7 @@ export const transactionFields: INodeProperties[] = [
 	//       transaction: getReport
 	// ----------------------------------
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -107,11 +108,11 @@ export const transactionFields: INodeProperties[] = [
 				options: TRANSACTION_REPORT_COLUMNS,
 			},
 			{
-				displayName: 'Customer',
+				displayName: 'Customer Names or IDs',
 				name: 'customer',
 				type: 'multiOptions',
 				default: [],
-				description: 'Customer to filter results by',
+				description: 'Customer to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomers',
 				},
@@ -265,11 +266,11 @@ export const transactionFields: INodeProperties[] = [
 				options: PREDEFINED_DATE_RANGES.map(toOptions),
 			},
 			{
-				displayName: 'Department',
+				displayName: 'Department Names or IDs',
 				name: 'department',
 				type: 'multiOptions',
 				default: [],
-				description: 'Department to filter results by',
+				description: 'Department to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -290,11 +291,11 @@ export const transactionFields: INodeProperties[] = [
 				options: GROUP_BY_OPTIONS.map(toOptions),
 			},
 			{
-				displayName: 'Memo',
+				displayName: 'Memo Names or IDs',
 				name: 'memo',
 				type: 'multiOptions',
 				default: [],
-				description: 'Memo to filter results by',
+				description: 'Memo to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getMemos',
 				},
@@ -355,11 +356,11 @@ export const transactionFields: INodeProperties[] = [
 				options: SOURCE_ACCOUNT_TYPES.map(toOptions).map(toDisplayName),
 			},
 			{
-				displayName: 'Term',
+				displayName: 'Term Names or IDs',
 				name: 'term',
 				type: 'multiOptions',
 				default: [],
-				description: 'Term to filter results by',
+				description: 'Term to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getTerms',
 				},
@@ -383,11 +384,11 @@ export const transactionFields: INodeProperties[] = [
 				options: TRANSACTION_TYPES.map(toOptions).map(toDisplayName),
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Names or IDs',
 				name: 'vendor',
 				type: 'multiOptions',
 				default: [],
-				description: 'Vendor to filter results by',
+				description: 'Vendor to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getVendors',
 				},

@@ -20,26 +20,31 @@ export const dealOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a deal',
+				action: 'Create a deal',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a deal',
+				action: 'Delete a deal',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a deal',
+				action: 'Get a deal',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all deals',
+				action: 'Get all deals',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a deal',
+				action: 'Update a deal',
 			},
 		],
 		default: 'create',
@@ -292,6 +297,7 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'View Name or ID',
 		name: 'view',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [

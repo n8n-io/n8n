@@ -20,21 +20,25 @@ export const adminOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet admin',
+				action: 'Create an admin',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet admin',
+				action: 'Delete an admin',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all Onfleet admins',
+				action: 'Get all admins',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet admin',
+				action: 'Update an admin',
 			},
 		],
 		default: 'getAll',
@@ -53,6 +57,7 @@ const adminEmailField = {
 	displayName: 'Email',
 	name: 'email',
 	type: 'string',
+	placeholder: 'name@email.com',
 	default: '',
 	description: 'The administrator\'s email address',
 } as INodeProperties;

@@ -20,21 +20,25 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new contact, or update the current one if it already exists (upsert)',
+				action: 'Create or update a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact by ID',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts',
+				action: 'Get all contacts',
 			},
 		],
 		default: 'upsert',
@@ -120,6 +124,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -236,14 +241,14 @@ export const contactFields: INodeProperties[] = [
 						displayName: 'List IDs',
 						values: [
 							{
-								displayName: 'List IDs',
+								displayName: 'List Names or IDs',
 								name: 'listIds',
 								type: 'multiOptions',
 								typeOptions: {
 									loadOptionsMethod: 'getListIds',
 								},
 								default: [],
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 							},
 						],
 					},
@@ -326,7 +331,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all contacts will be deleted',
+		description: 'Whether all contacts will be deleted',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -385,6 +390,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {

@@ -23,6 +23,7 @@ export class Uplead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Uplead',
 		name: 'uplead',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:uplead.png',
 		group: ['output'],
 		version: 1,

@@ -20,41 +20,49 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Edit Contact Points',
 				value: 'editContactPoint',
 				description: 'Edit contact\'s points',
+				action: 'Edit a contact\'s points',
 			},
 			{
 				name: 'Edit Do Not Contact List',
 				value: 'editDoNotContactList',
 				description: 'Add/remove contacts from/to the do not contact list',
+				action: 'Add/remove contacts from/to the do not contact list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a contact',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all contacts',
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Send Email',
 				value: 'sendEmail',
 				description: 'Send email to contact',
+				action: 'Send email to a contact',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
@@ -86,6 +94,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [
@@ -144,6 +153,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Primary Company Name or ID',
 		name: 'company',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCompanies',
 		},
@@ -420,15 +430,17 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStages',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -700,6 +712,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -848,6 +861,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Primary Company Name or ID',
 				name: 'company',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -900,6 +914,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -913,9 +928,10 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -1069,10 +1085,12 @@ export const contactFields: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a contact',
 			},
 		],
 		default: 'add',
@@ -1187,10 +1205,12 @@ export const contactFields: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a contact',
 			},
 		],
 		default: 'add',
@@ -1396,7 +1416,7 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Only return currently published entities',
+				description: 'Whether to return currently published entities',
 			},
 			{
 				displayName: 'Minimal',
@@ -1413,13 +1433,14 @@ export const contactFields: INodeProperties[] = [
 					},
 				},
 				default: false,
-				description: 'Return only array of entities without additional lists in it',
+				description: 'Whether to return array of entities without additional lists in it',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default only the data of the fields get returned. If this options gets set the RAW response with all data gets returned.',
 			},
 		],
@@ -1431,6 +1452,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Campaign Email Name or ID',
 		name: 'campaignEmailId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {

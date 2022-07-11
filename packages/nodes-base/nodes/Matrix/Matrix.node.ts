@@ -49,6 +49,7 @@ export class Matrix implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Matrix',
 		name: 'matrix',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:matrix.png',
 		group: ['output'],
 		version: 1,

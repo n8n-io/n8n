@@ -16,6 +16,7 @@ export class N8nTrigger implements INodeType {
 		version: 1,
 		description: 'Handle events from your n8n instance',
 		eventTriggerDescription: '',
+		mockManualExecution: true,
 		defaults: {
 			name: 'n8n Trigger',
 		},

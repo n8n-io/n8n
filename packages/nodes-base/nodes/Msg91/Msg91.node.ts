@@ -16,6 +16,7 @@ export class Msg91 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MSG91',
 		name: 'msg91',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:msg91.png',
 		group: ['transform'],
 		version: 1,
@@ -63,6 +64,7 @@ export class Msg91 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',

@@ -72,6 +72,7 @@ export class ApiTemplateIo implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
+						action: 'Create an image',
 					},
 				],
 				displayOptions: {
@@ -94,6 +95,7 @@ export class ApiTemplateIo implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
+						action: 'Get an account',
 					},
 				],
 				displayOptions: {
@@ -179,6 +181,7 @@ export class ApiTemplateIo implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{

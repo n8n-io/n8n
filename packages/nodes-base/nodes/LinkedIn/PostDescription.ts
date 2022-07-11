@@ -18,6 +18,7 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new post',
+				action: 'Create a post',
 			},
 		],
 		default: 'create',
@@ -32,7 +33,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Post As',
 		name: 'postAs',
 		type: 'options',
-		default: '',
+		default: 'person',
 		description: 'If to post on behalf of a user or an organization',
 		options: [
 			{

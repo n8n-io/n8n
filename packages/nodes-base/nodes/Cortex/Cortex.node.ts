@@ -55,7 +55,7 @@ export class Cortex implements INodeType {
 		name: 'cortex',
 		icon: 'file:cortex.svg',
 		group: ['transform'],
-		subtitle: '={{$parameter["resource"]+ ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"]+ ": " + $parameter["resource"]}}',
 		version: 1,
 		description: 'Apply the Cortex analyzer/responder on the given entity',
 		defaults: {
@@ -112,7 +112,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'POST',
-					`/analyzer/_search`,
+					`/analyzer/_search?range=all`,
 				);
 
 				const returnData: INodePropertyOptions[] = [];

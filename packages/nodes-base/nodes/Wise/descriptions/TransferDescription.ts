@@ -13,22 +13,27 @@ export const transferOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a transfer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a transfer',
 			},
 			{
 				name: 'Execute',
 				value: 'execute',
+				action: 'Execute a transfer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a transfer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all transfers',
 			},
 		],
 		displayOptions: {
@@ -227,7 +232,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the transfer receipt as a PDF file. Only for executed transfers, having status \'Outgoing Payment Sent\'.',
+		description: 'Whether to download the transfer receipt as a PDF file. Only for executed transfers, having status \'Outgoing Payment Sent\'.',
 		displayOptions: {
 			show: {
 				resource: [

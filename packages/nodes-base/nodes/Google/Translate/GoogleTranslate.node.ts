@@ -24,6 +24,7 @@ export class GoogleTranslate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Translate',
 		name: 'googleTranslate',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googletranslate.png',
 		group: ['input', 'output'],
 		version: 1,
@@ -105,6 +106,7 @@ export class GoogleTranslate implements INodeType {
 						name: 'Translate',
 						value: 'translate',
 						description: 'Translate data',
+						action: 'Translate a language',
 					},
 				],
 				default: 'translate',

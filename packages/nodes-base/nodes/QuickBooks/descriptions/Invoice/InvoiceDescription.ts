@@ -17,30 +17,37 @@ export const invoiceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an invoice',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an invoice',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all invoices',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send an invoice',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an invoice',
 			},
 			{
 				name: 'Void',
 				value: 'void',
+				action: 'Void an invoice',
 			},
 		],
 		displayOptions: {
@@ -132,6 +139,7 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
@@ -145,9 +153,10 @@ export const invoiceFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
-				displayName: 'Tax Code Ref',
+				displayName: 'Tax Code Ref Name or ID',
 				name: 'TaxCodeRef',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTaxCodeRefs',
@@ -379,6 +388,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		description: 'The email of the recipient of the invoice',

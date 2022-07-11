@@ -20,26 +20,31 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new thread in a channel',
+				action: 'Create a thread',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a thread',
+				action: 'Delete a thread',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get information about a thread',
+				action: 'Get a thread',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all threads',
+				action: 'Get all threads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a thread',
+				action: 'Update a thread',
 			},
 		],
 		default: 'create',
@@ -217,7 +222,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -227,10 +232,10 @@ export const threadFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned',
+				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Recipients',
+				displayName: 'Recipient Names or IDs',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {
@@ -240,14 +245,14 @@ export const threadFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that will attached to the thread',
+				description: 'The users that will attached to the thread. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Send as Integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
-				description: 'Displays the integration as the thread creator',
+				description: 'Whether to display the integration as the thread creator',
 			},
 			{
 				displayName: 'Temporary ID',
@@ -364,7 +369,7 @@ export const threadFields: INodeProperties[] = [
 				name: 'as_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only the IDs of the threads are returned',
+				description: 'Whether only the IDs of the threads are returned',
 			},
 			{
 				displayName: 'Filter By',
@@ -545,7 +550,7 @@ export const threadFields: INodeProperties[] = [
 				description: 'The content of the thread',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -555,7 +560,7 @@ export const threadFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned',
+				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Title',

@@ -20,16 +20,19 @@ export const stateOperations: INodeProperties[] = [
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a state',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a state for a specific entity',
+				action: 'Get a state',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all states',
+				action: 'Get all states',
 			},
 		],
 		default: 'get',
@@ -44,6 +47,7 @@ export const stateFields: INodeProperties[] = [
 		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAllEntities',
 		},

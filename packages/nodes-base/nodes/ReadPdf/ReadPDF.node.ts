@@ -8,7 +8,7 @@ import {
 
 const pdf = require('pdf-parse');
 
-export class ReadPdf implements INodeType {
+export class ReadPDF implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read PDF',
 		name: 'readPDF',

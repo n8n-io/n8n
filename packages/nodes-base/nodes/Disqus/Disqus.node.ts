@@ -16,6 +16,7 @@ export class Disqus implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Disqus',
 		name: 'disqus',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:disqus.png',
 		group: ['input'],
 		version: 1,
@@ -67,21 +68,25 @@ export class Disqus implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Return forum details',
+						action: 'Get a forum',
 					},
 					{
 						name: 'Get All Categories',
 						value: 'getCategories',
 						description: 'Return a list of categories within a forum',
+						action: 'Get all categories in a forum',
 					},
 					{
 						name: 'Get All Threads',
 						value: 'getThreads',
 						description: 'Return a list of threads within a forum',
+						action: 'Get all threads in a forum',
 					},
 					{
 						name: 'Get All Posts',
 						value: 'getPosts',
 						description: 'Return a list of posts within a forum',
+						action: 'Get all posts in a forum',
 					},
 				],
 				default: 'get',
@@ -290,16 +295,12 @@ export class Disqus implements INodeType {
 								value: 'Is_Anonymous',
 							},
 							{
-								name: 'Is_Flagged',
-								value: 'Is_Flagged',
-							},
-							{
-								name: 'No_Issue',
-								value: 'No_Issue',
-							},
-							{
 								name: 'Is_At_Flag_Limit',
 								value: 'Is_At_Flag_Limit',
+							},
+							{
+								name: 'Is_Flagged',
+								value: 'Is_Flagged',
 							},
 							{
 								name: 'Is_Toxic',
@@ -308,6 +309,10 @@ export class Disqus implements INodeType {
 							{
 								name: 'Modified_By_Rule',
 								value: 'Modified_By_Rule',
+							},
+							{
+								name: 'No_Issue',
+								value: 'No_Issue',
 							},
 							{
 								name: 'Shadow_Banned',

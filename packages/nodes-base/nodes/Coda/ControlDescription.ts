@@ -18,11 +18,13 @@ export const controlOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a control',
+				action: 'Get a control',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all controls',
+				action: 'Get all controls',
 			},
 		],
 		default: 'get',

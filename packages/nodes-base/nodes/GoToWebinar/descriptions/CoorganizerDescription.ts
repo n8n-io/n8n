@@ -13,18 +13,22 @@ export const coorganizerOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a coorganizer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a coorganizer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all coorganizers',
 			},
 			{
 				name: 'Reinvite',
 				value: 'reinvite',
+				action: 'Reinvite a coorganizer',
 			},
 		],
 		displayOptions: {
@@ -124,6 +128,7 @@ export const coorganizerFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'The co-organizer\'s email address',
 		displayOptions: {
@@ -198,6 +203,7 @@ export const coorganizerFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to \'true\'.',
 	},
 

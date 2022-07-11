@@ -11,6 +11,7 @@ export const customerCreateDescription: CustomerProperties = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: [

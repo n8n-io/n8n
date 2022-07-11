@@ -82,6 +82,7 @@ export class Freshdesk implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Freshdesk',
 		name: 'freshdesk',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:freshdesk.png',
 		group: ['output'],
 		version: 1,
@@ -135,26 +136,31 @@ export class Freshdesk implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new ticket',
+						action: 'Create a ticket',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a ticket',
+						action: 'Delete a ticket',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a ticket',
+						action: 'Get a ticket',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all tickets',
+						action: 'Get all tickets',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a ticket',
+						action: 'Update a ticket',
 					},
 				],
 				default: 'create',
@@ -794,7 +800,6 @@ export class Freshdesk implements INodeType {
 						displayName: 'Source',
 						name: 'source',
 						type: 'options',
-						required: true,
 						options: [
 							{
 								name: 'Chat',

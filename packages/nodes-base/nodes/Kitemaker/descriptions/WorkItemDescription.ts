@@ -13,18 +13,22 @@ export const workItemOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a work item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a work item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all work items',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a work item',
 			},
 		],
 		displayOptions: {
@@ -172,24 +176,24 @@ export const workItemFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Label IDs',
+				displayName: 'Label Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'ID of the label to set on the item to create',
+				description: 'ID of the label to set on the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Member IDs',
+				displayName: 'Member Names or IDs',
 				name: 'memberIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'ID of the user to assign to the item to create',
+				description: 'ID of the user to assign to the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},

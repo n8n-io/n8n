@@ -27,6 +27,7 @@ export const analyzersOperations: INodeProperties[] = [
 				name: 'Execute',
 				value: 'execute',
 				description: 'Execute Analyzer',
+				action: 'Execute an analyzer',
 			},
 		],
 	},
@@ -196,7 +197,7 @@ export const analyzerFields: INodeProperties[] = [
 				name: 'force',
 				type: 'boolean',
 				default: false,
-				description: 'To force bypassing the cache, set this parameter to true',
+				description: 'Whether to force bypassing the cache',
 			},
 			{
 				displayName: 'Timeout (Seconds)',

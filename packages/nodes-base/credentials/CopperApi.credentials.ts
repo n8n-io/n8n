@@ -20,6 +20,7 @@ export class CopperApi implements ICredentialType {
 			name: 'email',
 			required: true,
 			type: 'string',
+			placeholder: 'name@email.com',
 			default: '',
 		},
 	];

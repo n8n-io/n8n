@@ -71,21 +71,25 @@ export class Pushbullet implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a push',
+						action: 'Create a push',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a push',
+						action: 'Delete a push',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all pushes',
+						action: 'Get all pushes',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a push',
+						action: 'Update a push',
 					},
 				],
 				default: 'create',
@@ -377,6 +381,7 @@ export class Pushbullet implements INodeType {
 						name: 'active',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Don\'t return deleted pushes',
 					},
 					{
@@ -421,7 +426,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Marks a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible',
+				description: 'Whether to mark a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible',
 			},
 		],
 	};

@@ -8,6 +8,11 @@ import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
 import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
 import { isInstanceOwner } from '../users/users.service';
 import { Role } from '../../../../databases/entities/Role';
+import config from '../../../../../config';
+
+function insertIf(condition: boolean, elements: string[]): string[] {
+	return condition ? elements : [];
+}
 
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
@@ -26,7 +31,7 @@ export async function getSharedWorkflow(
 			...(!isInstanceOwner(user) && { user }),
 			...(workflowId && { workflow: { id: workflowId } }),
 		},
-		relations: ['workflow'],
+		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],
 	});
 }
 

@@ -845,7 +845,10 @@ export class Hubspot implements INodeType {
 			// Get all the ticket stages to display them to user so that he can
 			// select them easily
 			async getTicketStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const currentPipelineId = this.getCurrentNodeParameter('pipelineId') as string;
+				let currentPipelineId = this.getCurrentNodeParameter('pipelineId') as string;
+				if (currentPipelineId === undefined) {
+					currentPipelineId = this.getNodeParameter('updateFields.pipelineId', '') as string;
+				}
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/crm-pipelines/v1/pipelines/tickets';
 				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
@@ -2469,6 +2472,12 @@ export class Hubspot implements INodeType {
 								body.push({
 									name: 'hs_pipeline',
 									value: updateFields.pipelineId as string,
+								});
+							}
+							if (updateFields.stageId) {
+								body.push({
+									name: 'hs_pipeline_stage',
+									value: updateFields.stageId as string,
 								});
 							}
 							if (updateFields.ticketName) {

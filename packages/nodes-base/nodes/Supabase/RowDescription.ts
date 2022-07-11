@@ -25,26 +25,31 @@ export const rowOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new row',
+				action: 'Create a row',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a row',
+				action: 'Delete a row',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a row',
+				action: 'Get a row',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all rows',
+				action: 'Get all rows',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a row',
+				action: 'Update a row',
 			},
 		],
 		default: 'create',
@@ -60,6 +65,7 @@ export const rowFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -183,6 +189,7 @@ export const rowFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: [
 								'tableId',

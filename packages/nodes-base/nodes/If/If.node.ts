@@ -48,6 +48,7 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'boolean',
 								default: false,
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 								description: 'The value to compare with the second one',
 							},
 							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
@@ -73,6 +74,7 @@ export class If implements INodeType {
 								name: 'value2',
 								type: 'boolean',
 								default: false,
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 								description: 'The value to compare with the first one',
 							},
 						],

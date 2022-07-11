@@ -18,11 +18,13 @@ export const mailboxOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a mailbox',
+				action: 'Get a mailbox',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all mailboxes',
+				action: 'Get all mailboxes',
 			},
 		],
 		default: 'get',

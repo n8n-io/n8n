@@ -20,26 +20,31 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Add a event to calendar',
+				action: 'Create an event',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an event',
+				action: 'Delete an event',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an event',
+				action: 'Get an event',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all events from a calendar',
+				action: 'Get all events',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an event',
+				action: 'Update an event',
 			},
 		],
 		default: 'create',
@@ -54,6 +59,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Calendar Name or ID',
 		name: 'calendar',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCalendars',
 		},
@@ -196,6 +202,7 @@ export const eventFields: INodeProperties[] = [
 								displayName: 'Type Name or ID',
 								name: 'conferenceSolution',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getConferenceSolutations',
 									loadOptionsDependsOn: [

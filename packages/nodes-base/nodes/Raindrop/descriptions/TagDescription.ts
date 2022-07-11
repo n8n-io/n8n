@@ -13,10 +13,12 @@ export const tagOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all tags',
 			},
 		],
 		displayOptions: {
@@ -145,6 +147,7 @@ export const tagFields: INodeProperties[] = [
 				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},

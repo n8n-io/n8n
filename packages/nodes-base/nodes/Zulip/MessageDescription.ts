@@ -18,30 +18,36 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a message',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a message',
+				action: 'Get a message',
 			},
 			{
 				name: 'Send Private',
 				value: 'sendPrivate',
 				description: 'Send a private message',
+				action: 'Send a private message',
 			},
 			{
 				name: 'Send to Stream',
 				value: 'sendStream',
 				description: 'Send a message to stream',
+				action: 'Send a message to a stream',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a message',
+				action: 'Update a message',
 			},
 			{
 				name: 'Upload a File',
 				value: 'updateFile',
+				action: 'Upload a file',
 			},
 		],
 		default: 'sendPrivate',
@@ -54,6 +60,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                message:sendPrivate                         */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 		displayName: 'To',
 		name: 'to',
 		type: 'multiOptions',
@@ -72,7 +79,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Content',

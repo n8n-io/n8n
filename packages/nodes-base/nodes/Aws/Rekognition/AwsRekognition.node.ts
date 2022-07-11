@@ -118,7 +118,7 @@ export class AwsRekognition implements INodeType {
 						],
 					},
 				},
-				description: 'If the image to analize should be taken from binary field',
+				description: 'Whether the image to analize should be taken from binary field',
 			},
 			{
 				displayName: 'Binary Property',

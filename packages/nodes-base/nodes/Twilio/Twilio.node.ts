@@ -70,6 +70,7 @@ export class Twilio implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS/MMS/WhatsApp message',
+						action: 'Send an SMS/MMS/WhatsApp message',
 					},
 				],
 				default: 'send',
@@ -91,6 +92,7 @@ export class Twilio implements INodeType {
 					{
 						name: 'Make',
 						value: 'make',
+						action: 'Make a call',
 					},
 				],
 				default: 'make',
@@ -161,7 +163,7 @@ export class Twilio implements INodeType {
 						],
 					},
 				},
-				description: 'If the message should be send to WhatsApp',
+				description: 'Whether the message should be sent to WhatsApp',
 			},
 			{
 				displayName: 'Message',

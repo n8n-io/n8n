@@ -20,26 +20,31 @@ export const projectOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new project',
+				action: 'Create a project',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a project',
+				action: 'Delete a project',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get project by ID',
+				action: 'Get a project',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all projects',
+				action: 'Get all projects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a project',
+				action: 'Update a project',
 			},
 		],
 		default: 'get',
@@ -280,6 +285,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'isBookmarked',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The new platform for the updated project',
 			},
 			{

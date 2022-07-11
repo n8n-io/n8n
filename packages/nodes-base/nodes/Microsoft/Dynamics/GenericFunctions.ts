@@ -109,6 +109,7 @@ export function getAccountFields(): INodeProperties[] {
 			displayName: 'Account Rating Name or ID',
 			name: 'accountratingcode',
 			type: 'options',
+			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getAccountRatingCodes',
 			},
@@ -132,6 +133,7 @@ export function getAccountFields(): INodeProperties[] {
 							displayName: 'Address Type Name or ID',
 							name: 'addresstypecode',
 							type: 'options',
+							description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 							typeOptions: {
 								loadOptionsMethod: 'getAddressTypes',
 							},
@@ -227,6 +229,7 @@ export function getAccountFields(): INodeProperties[] {
 			displayName: 'Customer Size Name or ID',
 			name: 'customersizecode',
 			type: 'options',
+			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getCustomerSizeCodes',
 			},
@@ -236,6 +239,7 @@ export function getAccountFields(): INodeProperties[] {
 			displayName: 'Customer Type Name or ID',
 			name: 'customertypecode',
 			type: 'options',
+			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getCustomerTypeCodes',
 			},

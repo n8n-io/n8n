@@ -13,6 +13,7 @@ export const activityOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all activities',
 			},
 		],
 		displayOptions: {
@@ -91,7 +92,6 @@ export const activityFields: INodeProperties[] = [
 				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
-				required: true,
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',

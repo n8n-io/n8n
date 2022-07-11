@@ -18,26 +18,31 @@ export const orderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a order',
+				action: 'Create an order',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a order',
+				action: 'Delete an order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a order',
+				action: 'Get an order',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all orders',
+				action: 'Get all orders',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a order',
+				action: 'Update an order',
 			},
 		],
 		default: 'create',
@@ -114,7 +119,7 @@ export const orderFields: INodeProperties[] = [
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Define if the order is paid. It will set the status to processing and reduce stock items.',
+				description: 'Whether the order is paid. It will set the status to processing and reduce stock items.',
 			},
 			{
 				displayName: 'Status',
@@ -244,6 +249,7 @@ export const orderFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -946,6 +952,7 @@ export const orderFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{

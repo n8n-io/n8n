@@ -1138,7 +1138,8 @@ export function addToIssuesIfMissing(
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && value === undefined)
+		(nodeProperties.type === 'dateTime' && value === undefined) ||
+		(nodeProperties.type === 'options' && (value === '' || value === undefined))
 	) {
 		// Parameter is requried but empty
 		if (foundIssues.parameters === undefined) {

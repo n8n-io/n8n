@@ -19,6 +19,7 @@ export class LingvaNex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LingvaNex',
 		name: 'lingvaNex',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:lingvanex.png',
 		group: ['output'],
 		version: 1,
@@ -46,6 +47,7 @@ export class LingvaNex implements INodeType {
 						name: 'Translate',
 						value: 'translate',
 						description: 'Translate data',
+						action: 'Translate data',
 					},
 				],
 				default: 'translate',

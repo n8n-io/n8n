@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBasicAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -40,10 +40,17 @@ export class ServiceNowBasicApi implements ICredentialType {
 			required: true,
 		},
 	];
-	authenticate: IAuthenticateBasicAuth = {
-		type: 'basicAuth',
-		properties: {},
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.user}}',
+				password: '={{$credentials.password}}',
+			},
+		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials?.subdomain}}.service-now.com',

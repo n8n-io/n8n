@@ -20,11 +20,13 @@ export const recordOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new record',
+				action: 'Create a record',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all records',
+				action: 'Get all records',
 			},
 		],
 		default: 'create',
@@ -121,7 +123,6 @@ export const recordFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the item properties to use as columns',
 	},

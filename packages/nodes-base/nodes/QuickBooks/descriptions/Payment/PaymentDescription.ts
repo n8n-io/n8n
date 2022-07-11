@@ -17,30 +17,37 @@ export const paymentOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a payment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a payment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a payment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all payments',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send a payment',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a payment',
 			},
 			{
 				name: 'Void',
 				value: 'void',
+				action: 'Void a payment',
 			},
 		],
 		displayOptions: {
@@ -319,6 +326,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		description: 'The email of the recipient of the payment',

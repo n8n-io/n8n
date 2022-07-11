@@ -322,7 +322,7 @@ export const messagePostDescription: MessageProperties = [
 								name: 'short',
 								type: 'boolean',
 								default: true,
-								description: 'If items can be displayed next to each other',
+								description: 'Whether items can be displayed next to each other',
 							},
 						],
 					},
