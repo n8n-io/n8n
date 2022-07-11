@@ -171,14 +171,9 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await Db.collections.SharedCredentials.findOne({
-			relations: ['credentials'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'credentials',
-				entityId: credentialId,
-			}),
-		});
+		const shared = await CredentialsService.getSharedCredentials(req.user, credentialId, [
+			'credentials',
+		]);
 
 		if (!shared) {
 			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
@@ -192,9 +187,7 @@ credentialsController.delete(
 			);
 		}
 
-		await externalHooks.run('credentials.delete', [credentialId]);
-
-		await Db.collections.Credentials.remove(shared.credentials);
+		await CredentialsService.deleteCredentials(shared.credentials);
 
 		return true;
 	}),

@@ -192,4 +192,10 @@ export class CredentialsService {
 		});
 		return result;
 	}
+
+	static async deleteCredentials(credentials: CredentialsEntity): Promise<void> {
+		await externalHooks.run('credentials.delete', [credentials.id]);
+
+		await Db.collections.Credentials.remove(credentials);
+	}
 }
