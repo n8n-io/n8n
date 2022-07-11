@@ -32,4 +32,5 @@ Default.args = {
 	tooltipText: 'Checkbox tooltip',
 	disabled: false,
 	indeterminate: false,
+	size: 'small',
 };

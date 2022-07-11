@@ -2,7 +2,7 @@
 	<n8n-checkbox
 		v-if="type === 'checkbox'"
 		v-bind="$props"
-		@change="onInput"
+		@input="onInput"
 		@focus="onFocus"
 		ref="input"
 	></n8n-checkbox>
@@ -143,6 +143,12 @@ export default mixins(Locale).extend({
 		},
 		focusInitially: {
 			type: Boolean,
+		},
+		labelSize: {
+			type: String,
+			default: 'medium',
+			validator: (value: string): boolean =>
+				['small', 'medium'].includes(value),
 		},
 	},
 	mounted() {

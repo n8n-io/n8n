@@ -9,6 +9,8 @@
 		<n8n-input-label
 			:label="label"
 			:tooltipText="tooltipText"
+			:bold="false"
+			:size="labelSize"
 		></n8n-input-label>
 	</el-checkbox>
 </template>
@@ -44,6 +46,12 @@ export default Vue.extend({
 		value: {
 			type: Boolean,
 			default: false,
+		},
+		labelSize: {
+			type: String,
+			default: 'medium',
+			validator: (value: string): boolean =>
+				['small', 'medium'].includes(value),
 		},
 	},
 	methods: {
