@@ -101,8 +101,8 @@ export default Vue.extend({
 			const target = e.target;
 			if (target && this.mappingEnabled) {
 				const col = (target as HTMLElement).dataset.col;
-				if (col && !isNaN(parseInt(col))) {
-					this.activeColumn = parseInt(col);
+				if (col && !isNaN(parseInt(col, 10))) {
+					this.activeColumn = parseInt(col, 10);
 				}
 			}
 		},
