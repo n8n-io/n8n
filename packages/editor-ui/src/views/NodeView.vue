@@ -2978,10 +2978,9 @@ export default mixins(
 			this.$externalHooks().run('nodeView.mount');
 
 			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
-				setTimeout(async () => {
-					const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
-
-					if (onboardingResponse.nextPrompt) {
+				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+				if (onboardingResponse.nextPrompt) {
+					setTimeout(async () => {
 						this.$showToast({
 							type: 'info',
 							title: onboardingResponse.nextPrompt.title,
@@ -2998,8 +2997,8 @@ export default mixins(
 								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
 							},
 						});
-					}
-				}, 10000); // TODO: After testing set this back to ONBOARDING_PROMPT_TIMEOUT
+					}, 1000); // TODO: After testing set this back to ONBOARDING_PROMPT_TIMEOUT
+				}
 			}
 		},
 
