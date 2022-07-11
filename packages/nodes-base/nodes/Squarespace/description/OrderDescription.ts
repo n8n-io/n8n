@@ -116,6 +116,22 @@ const getAllOperations: Array<INodeProperties> = [
 		},
 		options: [
 			{
+				displayName: 'Fulfillment Status',
+				name: 'fulfillmentStatus',
+				type: 'options',
+				options: [
+					{ name: 'Fulfilled', value: 'FULFILLED' },
+					{ name: 'Canceled', value: 'CANCELED' },
+					{ name: 'Pending', value: 'PENDING' },
+				],
+				default: 'PENDING',
+				routing: {
+					send: {
+						type: 'query', property: 'fulfillmentStatus'
+					}
+				},
+			},
+			{
 				displayName: 'Modified After',
 				name: 'modifiedAfter',
 				type: 'dateTime',
