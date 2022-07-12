@@ -491,6 +491,26 @@ export const reportFields: INodeProperties[] = [
 				],
 			},
 			{
+				displayName: 'Metric Aggregation',
+				name: 'metricAggregations',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{
+						name: 'MAXIMUM',
+						value: 'MAXIMUM',
+					},
+					{
+						name: 'MINIMUM',
+						value: 'MINIMUM',
+					},
+					{
+						name: 'TOTAL',
+						value: 'TOTAL',
+					},
+				],
+			},
+			{
 				displayName: 'Metrics',
 				name: 'metricUi',
 				type: 'fixedCollection',
@@ -528,6 +548,98 @@ export const reportFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether false or unspecified, each row with all metrics equal to 0 will not be returned. If true, these rows will be returned if they are not separately removed by a filter.',
+			},
+			{
+				displayName: 'Order By',
+				name: 'orderByUI',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Order',
+				description: 'Specifies how rows are ordered in the response',
+				options: [
+					{
+						displayName: 'Metric Order By',
+						name: 'metricOrderBy',
+						values: [
+							{
+								displayName: 'Descending',
+								name: 'desc',
+								type: 'boolean',
+								default: false,
+								description: 'Whether true, sorts by descending order',
+							},
+							{
+								displayName: 'Metric Name or ID',
+								name: 'metricName',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getMetricsGA4',
+									loadOptionsDependsOn: [
+										'profileId',
+									],
+								},
+								default: '',
+								description: 'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+							},
+						],
+					},
+					{
+						displayName: 'Dimmension Order By',
+						name: 'dimmensionOrderBy',
+						values: [
+							{
+								displayName: 'Descending',
+								name: 'desc',
+								type: 'boolean',
+								default: false,
+								description: 'Whether true, sorts by descending order',
+							},
+							{
+								displayName: 'Dimmension Name or ID',
+								name: 'dimensionName',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDimensionsGA4',
+									loadOptionsDependsOn: [
+										'profileId',
+									],
+								},
+								default: '',
+								description: 'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+							},
+							{
+								displayName: 'Order Type',
+								name: 'orderType',
+								type: 'options',
+								default: 'ORDER_TYPE_UNSPECIFIED',
+								options: [
+									{
+										name: 'Alphanumeric',
+										value: 'ALPHANUMERIC',
+										description: 'Alphanumeric sort by Unicode code point',
+									},
+									{
+										name: 'Case Insensitive Alphanumeric',
+										value: 'CASE_INSENSITIVE_ALPHANUMERIC',
+										description: 'Case insensitive alphanumeric sort by lower case Unicode code point',
+									},
+									{
+										name: 'Numeric',
+										value: 'NUMERIC',
+										description: 'Dimension values are converted to numbers before sorting',
+									},
+									{
+										name: 'Unspecified',
+										value: 'ORDER_TYPE_UNSPECIFIED',
+									},
+								]
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Return Property Quota',

@@ -440,13 +440,48 @@ export class GoogleAnalytics implements INodeType {
 							}
 						}
 
+						if (additionalFields.metricAggregations) {
+							body.metricAggregations = additionalFields.metricAggregations;
+						}
+
 						if (additionalFields.keepEmptyRows) {
 							body.keepEmptyRows = additionalFields.keepEmptyRows;
+						}
+
+						if (additionalFields.orderByUI) {
+							let orderBys: IDataObject[] = [];
+							const metricOrderBy = (additionalFields.orderByUI as IDataObject).metricOrderBy as IDataObject[];
+							const dimmensionOrderBy = (additionalFields.orderByUI as IDataObject).dimmensionOrderBy as IDataObject[];
+							if (metricOrderBy) {
+								orderBys = orderBys.concat(metricOrderBy.map(order => {
+									return {
+										desc: order.desc,
+										metric: {
+											metricName: order.metricName,
+										},
+									}
+								}));
+							}
+							if (dimmensionOrderBy) {
+								orderBys = orderBys.concat(dimmensionOrderBy.map(order => {
+									return {
+										desc: order.desc,
+										dimension: {
+											dimensionName: order.dimensionName,
+											orderType: order.orderType,
+										},
+									}
+								}));
+							}
+							body.orderBys = orderBys;
 						}
 
 						if (additionalFields.returnPropertyQuota) {
 							body.returnPropertyQuota = additionalFields.returnPropertyQuota;
 						}
+
+
+						console.log(body, additionalFields);
 
 						if (returnAll === true) {
 							body.limit = 100000;
@@ -457,8 +492,6 @@ export class GoogleAnalytics implements INodeType {
 							responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 							// responseData = responseData.rows;
 						}
-
-						console.log(body);
 					}
 				}
 				if (resource === 'userActivity') {
