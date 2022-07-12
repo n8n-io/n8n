@@ -874,19 +874,22 @@ export interface IUiState {
 		};
 	};
 	mainPanelPosition: number;
-	settingsFakeDoor: IFakeDoor[];
+	fakeDoorFeatures: IFakeDoor[];
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export type IFakeDoor = {
 	featureName: string,
-	icon: string,
-	infoText: string,
+	icon?: string,
+	infoText?: string,
 	actionBoxTitle: string,
 	actionBoxDescription: string,
-	linkURL: string
+	linkURL: string,
+	uiLocations: IFakeDoorLocation[],
 };
+
+export type IFakeDoorLocation = 'settings' | 'credentialsModal';
 
 export interface ISettingsState {
 	settings: IN8nUISettings;

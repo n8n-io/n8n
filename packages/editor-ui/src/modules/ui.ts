@@ -23,6 +23,8 @@ import {
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
+	IFakeDoor,
+	IFakeDoorLocation,
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
@@ -104,7 +106,7 @@ const module: Module<IUiState, IRootState> = {
 			},
 		},
 		mainPanelPosition: 0.5,
-		settingsFakeDoor: [
+		fakeDoorFeatures: [
 			{
 				featureName: 'fakeDoor.settings.environments.name',
 				icon: 'server',
@@ -112,6 +114,7 @@ const module: Module<IUiState, IRootState> = {
 				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
 				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
 				linkURL: 'http://www.google.com', // TODO: Replace this as soon as TypeForm link is ready
+				uiLocations: ['settings'],
 			},
 			{
 				featureName: 'fakeDoor.settings.logging.name',
@@ -120,6 +123,14 @@ const module: Module<IUiState, IRootState> = {
 				actionBoxTitle: 'fakeDoor.settings.logging.actionBox.title',
 				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
 				linkURL: 'http://www.google.com', // TODO: Replace this as soon as TypeForm link is ready
+				uiLocations: ['settings'],
+			},
+			{
+				featureName: 'fakeDoor.credentialEdit.sharing.name',
+				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
+				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
+				linkURL: 'http://www.google.com', // TODO: Replace this as soon as TypeForm link is ready
+				uiLocations: ['credentialsModal'],
 			},
 		],
 	},
@@ -150,7 +161,15 @@ const module: Module<IUiState, IRootState> = {
 		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
-		getFakeDoorFeatures: (state: IUiState) => state.settingsFakeDoor,
+		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
+		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
+			return state.fakeDoorFeatures.reduce((filtered : Array<{}>, fakeDoor: IFakeDoor, index: number) => {
+				if(fakeDoor.uiLocations.includes(location)) {
+					return filtered.concat({ ...fakeDoor, storeIndex: index });
+				}
+				return filtered;
+			}, []);
+		},
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {

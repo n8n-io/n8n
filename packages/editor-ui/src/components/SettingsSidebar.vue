@@ -26,9 +26,9 @@
 				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
 			</n8n-menu-item>
 			<n8n-menu-item
-				v-for="fakeDoor, index in getFakeDoorFeatures"
+				v-for="fakeDoor in settingsFakeDoorFeatures"
 				v-bind:key="fakeDoor.featureName"
-				:index="`/settings/coming-soon?featureId=${index}`"
+				:index="`/settings/coming-soon?featureId=${fakeDoor.storeIndex}`"
 				:class="$style.tab"
 			>
 				<i :class="$style.icon">
@@ -57,7 +57,9 @@ export default mixins(
 	name: 'SettingsSidebar',
 	computed: {
 		...mapGetters('settings', ['versionCli']),
-		...mapGetters('ui', ['getFakeDoorFeatures']),
+		settingsFakeDoorFeatures(): {} {
+			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
+		},
 	},
 	methods: {
 		canAccessPersonalSettings(): boolean {
