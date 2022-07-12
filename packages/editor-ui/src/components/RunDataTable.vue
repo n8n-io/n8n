@@ -15,9 +15,9 @@
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
 					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<Draggable :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="onDragEnd">
-							<template #preview>
-								<div :class="$style.dragPill">
+						<Draggable type="mapping" :disabled="!mappingEnabled">
+							<template v-slot:preview="{ canDrop }">
+								<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
 									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: column } }) }}
 								</div>
 							</template>
@@ -91,12 +91,6 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		onDragStart() {
-			this.$store.commit('ui/setMappingDragState', true);
-		},
-		onDragEnd() {
-			this.$store.commit('ui/setMappingDragState', false);
-		},
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
 			if (target && this.mappingEnabled) {
@@ -205,7 +199,6 @@ export default Vue.extend({
 }
 
 .dragPill {
-	background-color: var(--color-primary);
 	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
 	color: var(--color-text-xlight);
 	font-weight: var(--font-weight-bold);
@@ -214,5 +207,13 @@ export default Vue.extend({
 	border-radius: var(--border-radius-base);
 	transform: translate(-50%, -100%);
 	white-space: nowrap;
+}
+
+.droppablePill {
+	background-color: var(--color-success);
+}
+
+.defaultPill {
+	background-color: var(--color-primary);
 }
 </style>

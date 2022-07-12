@@ -2,10 +2,10 @@
 	<div
 		:class="{[$style.dragging]: isDragging }"
 		@mousedown="onDragStart"
+		draggable
 	>
 		<slot :isDragging="isDragging"></slot>
 
-		<div v-if="$slots.preview" :class="$style['draggable-data-transfer']" ref="draggableDataTransfer" />
 		<Teleport to="body">
 			<transition name="preview-transition">
 				<div
@@ -14,7 +14,7 @@
 					:style="draggableStyle"
 					v-show="isDragging"
 				>
-					<slot name="preview"></slot>
+					<slot name="preview" :canDrop="canDrop"></slot>
 				</div>
 			</transition>
 		</Teleport>
@@ -35,6 +35,12 @@ export default Vue.extend({
 		disabled: {
 			type: Boolean,
 		},
+		type: {
+			type: String,
+		},
+		data: {
+			type: String,
+		},
 	},
 	data() {
 		return {
@@ -52,6 +58,9 @@ export default Vue.extend({
 				left: `${this.draggablePosition.x}px`,
 			};
 		},
+		canDrop(): boolean {
+			return this.$store.getters['ui/canDraggableDrop'];
+		},
 	},
 	methods: {
 		onDragStart(e: DragEvent) {
@@ -62,19 +71,13 @@ export default Vue.extend({
 			e.preventDefault();
 			e.stopPropagation();
 			this.isDragging = true;
+			this.$store.commit('ui/draggableStartDragging', {type: this.type, data: this.data || ''});
 
 			this.$emit('dragstart');
 			document.body.style.cursor = 'grabbing';
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
-
-			if (e.dataTransfer) {
-				e.dataTransfer.effectAllowed = "copy";
-				e.dataTransfer.dropEffect = "copy";
-				// e.dataTransfer.setData('nodeTypeName', this.nodeType.name);
-				e.dataTransfer.setDragImage(this.$refs.draggableDataTransfer as Element, 0, 0);
-			}
 
 			this.draggablePosition = { x: e.pageX, y: e.pageY };
 		},
@@ -104,6 +107,7 @@ export default Vue.extend({
 			setTimeout(() => {
 				this.$emit('dragend');
 				this.isDragging = false;
+				this.$store.commit('ui/draggableStopDragging');
 			}, 0);
 		},
 	},

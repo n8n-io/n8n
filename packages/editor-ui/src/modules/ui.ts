@@ -98,9 +98,14 @@ const module: Module<IUiState, IRootState> = {
 				displayMode: 'table',
 			},
 			mappableInputFocused: false,
-			mappingDrag: false,
 		},
 		mainPanelPosition: 0.5,
+		draggable: {
+			isDragging: false,
+			type: '',
+			data: '',
+			canDrop: false,
+		},
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -130,7 +135,9 @@ const module: Module<IUiState, IRootState> = {
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		showMappingHint: (state: IUiState) => state.ndv.mappableInputFocused,
-		showMappingTargets: (state: IUiState) => state.ndv.mappingDrag,
+		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
+		draggableType: (state: IUiState) => state.draggable.type,
+		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -180,8 +187,24 @@ const module: Module<IUiState, IRootState> = {
 		setMappableNDVInputFocus(state: IUiState, focus: boolean) {
 			Vue.set(state.ndv, 'mappableInputFocused', focus);
 		},
-		setMappingDragState(state: IUiState, dragging: boolean) {
-			Vue.set(state.ndv, 'mappingDrag', dragging);
+		draggableStartDragging(state: IUiState, {type, data}: {type: string, data: string}) {
+			state.draggable = {
+				isDragging: true,
+				type,
+				data,
+				canDrop: false,
+			};
+		},
+		draggableStopDragging(state: IUiState) {
+			state.draggable = {
+				isDragging: false,
+				type: '',
+				data: '',
+				canDrop: false,
+			};
+		},
+		setDraggableCanDrop(state: IUiState, canDrop: boolean) {
+			Vue.set(state.draggable, 'canDrop', canDrop);
 		},
 	},
 	actions: {

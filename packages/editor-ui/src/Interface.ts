@@ -871,9 +871,14 @@ export interface IUiState {
 			displayMode: IRunDataDisplayMode;
 		};
 		mappableInputFocused: boolean;
-		mappingDrag: boolean;
 	};
 	mainPanelPosition: number;
+	draggable: {
+		isDragging: boolean;
+		type: string;
+		data: string;
+		canDrop: boolean;
+	};
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';

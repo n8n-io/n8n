@@ -18,17 +18,23 @@
 			/>
 		</template>
 		<template>
-			<parameter-input
-				ref="param"
-				:parameter="parameter"
-				:value="value"
-				:displayOptions="displayOptions"
-				:path="path"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
-				@focus="onFocus"
-				@blur="onBlur"
-				inputSize="small" />
+			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly">
+				<template v-slot="{ droppable, activeDrop }">
+					<parameter-input
+						ref="param"
+						:parameter="parameter"
+						:value="value"
+						:displayOptions="displayOptions"
+						:path="path"
+						:isReadOnly="isReadOnly"
+						:droppable="droppable"
+						:activeDrop="activeDrop"
+						@valueChanged="valueChanged"
+						@focus="onFocus"
+						@blur="onBlur"
+						inputSize="small" />
+				</template>
+			</DraggableTarget>
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
 	</n8n-input-label>
@@ -44,6 +50,7 @@ import {
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import ParameterOptions from './ParameterOptions.vue';
+import DraggableTarget from '@/components/DraggableTarget.vue';
 
 export default Vue
 	.extend({
@@ -52,6 +59,7 @@ export default Vue
 			ParameterInput,
 			InputHint,
 			ParameterOptions,
+			DraggableTarget,
 		},
 		data() {
 			return {
