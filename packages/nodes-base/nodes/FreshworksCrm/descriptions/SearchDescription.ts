@@ -20,11 +20,13 @@ export const searchOperations: INodeProperties[] = [
 				name: 'Query',
 				value: 'query',
 				description: 'Search for records by entering search queries of your choice',
+				action: 'Search for records via search query',
 			},
 			{
 				name: 'Lookup',
 				value: 'lookup',
 				description: 'Search for the name or email address of records',
+				action: 'Search for records by name or email lookup',
 			},
 		],
 		default: 'query',
