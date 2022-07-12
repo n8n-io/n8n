@@ -6,16 +6,14 @@
 		<slot :isDragging="isDragging"></slot>
 
 		<Teleport to="body">
-			<transition name="preview-transition">
-				<div
-					ref="draggable"
-					:class="$style.draggable"
-					:style="draggableStyle"
-					v-show="isDragging"
-				>
-					<slot name="preview" :canDrop="canDrop"></slot>
-				</div>
-			</transition>
+			<div
+				ref="draggable"
+				:class="$style.draggable"
+				:style="draggableStyle"
+				v-show="isDragging"
+			>
+				<slot name="preview" :canDrop="canDrop"></slot>
+			</div>
 		</Teleport>
 	</div>
 </template>
