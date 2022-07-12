@@ -20,6 +20,7 @@ export const documentOperations: INodeProperties[] = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a document',
+				action: 'Upload a document',
 			},
 		],
 		default: 'upload',

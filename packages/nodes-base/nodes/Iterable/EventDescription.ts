@@ -20,6 +20,7 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Track',
 				value: 'track',
 				description: 'Record the actions a user perform',
+				action: 'Track an event',
 			},
 		],
 		default: 'track',

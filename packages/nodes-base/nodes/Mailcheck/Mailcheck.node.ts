@@ -63,6 +63,7 @@ export class Mailcheck implements INodeType {
 					{
 						name: 'Check',
 						value: 'check',
+						action: 'Check an email',
 					},
 				],
 				default: 'check',

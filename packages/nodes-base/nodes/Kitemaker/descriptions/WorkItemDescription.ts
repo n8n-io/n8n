@@ -13,18 +13,22 @@ export const workItemOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a work item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a work item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all work items',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a work item',
 			},
 		],
 		displayOptions: {

@@ -149,11 +149,13 @@ export class Mandrill implements INodeType {
 						name: 'Send Template',
 						value: 'sendTemplate',
 						description: 'Send message based on template',
+						action: 'Send a message based on a template',
 					},
 					{
 						name: 'Send HTML',
 						value: 'sendHtml',
 						description: 'Send message based on HTML',
+						action: 'Send a message based on HTML',
 					},
 				],
 				default: 'sendTemplate',

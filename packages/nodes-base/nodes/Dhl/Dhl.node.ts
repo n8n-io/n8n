@@ -69,6 +69,7 @@ export class Dhl implements INodeType {
 					{
 						name: 'Get Tracking Details',
 						value: 'get',
+						action: 'Get tracking details for a shipment',
 					},
 				],
 				default: 'get',

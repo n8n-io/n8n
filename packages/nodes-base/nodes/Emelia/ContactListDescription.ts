@@ -13,10 +13,12 @@ export const contactListOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a contact list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all contact lists',
 			},
 		],
 		displayOptions: {
