@@ -15,7 +15,7 @@
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
 					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<Draggable type="mapping" :disabled="!mappingEnabled">
+						<Draggable type="mapping" :data="getPath(column)" :disabled="!mappingEnabled">
 							<template v-slot:preview="{ canDrop }">
 								<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
 									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: column } }) }}
@@ -67,7 +67,7 @@
 </template>
 
 <script lang="ts">
-import { ITableData } from '@/Interface';
+import { INodeUi, ITableData } from '@/Interface';
 import Vue from 'vue';
 import Draggable from './Draggable.vue';
 
@@ -75,6 +75,9 @@ export default Vue.extend({
 	name: 'RunDataTable',
 	components: { Draggable },
 	props: {
+		node: {
+			type: Object as () => INodeUi | null,
+		},
 		tableData: {
 			type: Object as () => ITableData,
 		},
@@ -102,6 +105,13 @@ export default Vue.extend({
 		},
 		onMouseLeaveCell() {
 			this.activeColumn = -1;
+		},
+		getPath(column: string) {
+			if (this.node) {
+				return `{{ $node["${this.node.name}"].json["${column}"] }}`;
+			}
+
+			return '';
 		},
 	},
 });

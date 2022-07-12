@@ -18,7 +18,7 @@
 			/>
 		</template>
 		<template>
-			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly">
+			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly" @drop="onDrop">
 				<template v-slot="{ droppable, activeDrop }">
 					<parameter-input
 						ref="param"
@@ -44,6 +44,7 @@
 import Vue from 'vue';
 
 import {
+	INodeUi,
 	IUpdateInformation,
 } from '@/Interface';
 
@@ -75,6 +76,11 @@ export default Vue
 			'value',
 			'hideLabel',
 		],
+		computed: {
+			node (): INodeUi | null {
+				return this.$store.getters.activeNode;
+			},
+		},
 		methods: {
 			onFocus() {
 				this.focused = true;
@@ -97,6 +103,19 @@ export default Vue
 				}
 			},
 			valueChanged (parameterData: IUpdateInformation) {
+				this.$emit('valueChanged', parameterData);
+			},
+			onDrop(data: string) {
+				if (!this.node) {
+					return;
+				}
+
+				const parameterData = {
+					node: this.node.name,
+					name: this.path,
+					value: this.value.startsWith('=')? `${this.value} ${data}`: `=${data}`,
+				};
+
 				this.$emit('valueChanged', parameterData);
 			},
 		},

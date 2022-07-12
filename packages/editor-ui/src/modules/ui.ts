@@ -137,6 +137,7 @@ const module: Module<IUiState, IRootState> = {
 		showMappingHint: (state: IUiState) => state.ndv.mappableInputFocused,
 		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
 		draggableType: (state: IUiState) => state.draggable.type,
+		draggableData: (state: IUiState) => state.draggable.data,
 		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
 	},
 	mutations: {

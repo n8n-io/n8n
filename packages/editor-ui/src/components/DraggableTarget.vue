@@ -54,7 +54,10 @@ export default Vue.extend({
 			}
 		},
 		onMouseUp(e: MouseEvent) {
-
+			if (this.activeDrop) {
+				const data = this.$store.getters['ui/draggableData'];
+				this.$emit('drop', data);
+			}
 		},
 	},
 	watch: {
