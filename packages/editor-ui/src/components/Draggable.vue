@@ -2,7 +2,6 @@
 	<div
 		:class="{[$style.dragging]: isDragging }"
 		@mousedown="onDragStart"
-		draggable
 	>
 		<slot :isDragging="isDragging"></slot>
 
