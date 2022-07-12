@@ -43,7 +43,7 @@
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
 						<template #content>
-							{{ $locale.baseText('node.discovery.pinData') }}
+							{{ $locale.baseText('node.discovery.pinData.canvas') }}
 						</template>
 						<span />
 					</n8n-tooltip>
@@ -374,10 +374,6 @@ export default mixins(
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 
 				this.pinDataDiscoveryTooltipVisible = true;
-				setTimeout(() => {
-					this.pinDataDiscoveryTooltipVisible = false;
-				}, 10000);
-
 				this.unwatchWorkflowDataItems();
 			}
 		},
@@ -414,6 +410,7 @@ export default mixins(
 
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
+			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart () {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
