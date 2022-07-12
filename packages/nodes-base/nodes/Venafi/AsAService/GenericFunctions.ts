@@ -19,7 +19,9 @@ import {
 	get,
 } from 'lodash';
 
-export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+import * as nacl_factory from 'js-nacl';
+
+export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -35,16 +37,21 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		json: true,
 	};
 
+	if (Object.keys(option).length) {
+		Object.assign(options, option);
+	}
+
+	// For cert download we don't need any headers
+	// If we remove for everything the key fetch fails
 	if (operation === 'download') {
-		delete options!.headers!['Accept'];
-		delete options!.headers!['content-type'];
-		options.json = false;
+		// We need content-type for keystore
+		if (!resource.endsWith('keystore')) {
+			delete options!.headers!['Accept'];
+			delete options!.headers!['content-type'];
+		}
 	}
 
 	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
@@ -70,4 +77,44 @@ export async function venafiApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	);
 
 	return returnData;
+}
+
+export async function encryptPassphrase(this: IExecuteFunctions | ILoadOptionsFunctions, certificateId: string, passphrase: string, storePassphrase: string) {
+	let dekHash: string = '';
+	let dekResponse = await venafiApiRequest.call(this, 'GET', `/outagedetection/v1/certificates/${certificateId}`);
+
+	if (dekResponse.dekHash) {
+		dekHash = dekResponse.dekHash;
+	}
+
+	let pubKey: string = '';
+	let pubKeyResponse = await venafiApiRequest.call(this, 'GET', `/v1/edgeencryptionkeys/${dekHash}`);
+
+	if (pubKeyResponse.key) {
+		pubKey = pubKeyResponse.key;
+	}
+
+	let encryptedKeyPass: string = '';
+	let encryptedKeyStorePass: string = '';
+
+	const promise = () => {
+    return new Promise((resolve, reject) => {
+      nacl_factory.instantiate(function (nacl:any) {
+        try {
+					let passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
+					const keyPassBuffer = nacl.crypto_box_seal(passphraseUTF8, Buffer.from(pubKey, 'base64'));
+          encryptedKeyPass = Buffer.from(keyPassBuffer).toString('base64');
+
+					let storePassphraseUTF8 = nacl.encode_utf8(storePassphrase) as string;
+					const keyStorePassBuffer = nacl.crypto_box_seal(storePassphraseUTF8, Buffer.from(pubKey, 'base64'));
+          encryptedKeyStorePass = Buffer.from(keyStorePassBuffer).toString('base64');
+
+          return resolve([encryptedKeyPass, encryptedKeyStorePass]);
+        } catch (error) {
+          return reject(error)
+        }
+      });
+    });
+	};
+	return await promise();
 }

@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	encryptPassphrase,
 	venafiApiRequest,
 	venafiApiRequestAllItems,
 } from './GenericFunctions';
@@ -33,6 +34,7 @@ import {
 	IKeyTypeParameters,
 	ISubjectAltNamesByType,
 } from './CertificateInterface';
+import * as nacl from "js-nacl";
 
 export class VenafiAsAService implements INodeType {
 	description: INodeTypeDescription = {
@@ -294,8 +296,7 @@ export class VenafiAsAService implements INodeType {
 						const downloadItem = this.getNodeParameter('downloadItem', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-
-
+						// Cert Download
 						if (downloadItem === 'certificate') {
 							Object.assign(qs, options);
 							responseData = await venafiApiRequest.call(
@@ -304,6 +305,8 @@ export class VenafiAsAService implements INodeType {
 								`/outagedetection/v1/certificates/${certificateId}/contents`,
 								{},
 								qs,
+								undefined,
+								{encoding: null, json: false, resolveWithFullResponse: true, cert: true},
 							);
 						} else {
 							const exportFormat = this.getNodeParameter('keystoreType', i) as string;
@@ -312,16 +315,21 @@ export class VenafiAsAService implements INodeType {
 								exportFormat: exportFormat,
 							};
 
-							const encryptedPrivateKeyPassphrase = this.getNodeParameter('privateKeyPassphrase', i) as string;
+							const privateKeyPassphrase = this.getNodeParameter('privateKeyPassphrase', i) as string;
 							const certificateLabel = this.getNodeParameter('certificateLabel', i) as string;
 
-							body.encryptedPrivateKeyPassphrase = encryptedPrivateKeyPassphrase;
 							body.certificateLabel = certificateLabel;
 
+							let keystorePassphrase : string = '';
+
+							if (options.keystorePassphrase) {
+								keystorePassphrase = options.keystorePassphrase as string;
+							}
+
+							let encryptedValues = await encryptPassphrase.call(this, certificateId, privateKeyPassphrase, keystorePassphrase ) as string;
+							body.encryptedPrivateKeyPassphrase = encryptedValues[0];
 							if (exportFormat === 'JKS') {
-								if (options.keystorePassphrase) {
-									body.encryptedKeystorePassphrase = options.keystorePassphrase as string;
-								}
+								body.encryptedKeystorePassphrase = encryptedValues[1];
 							}
 
 							responseData = await venafiApiRequest.call(
@@ -329,16 +337,28 @@ export class VenafiAsAService implements INodeType {
 								'POST',
 								`/outagedetection/v1/certificates/${certificateId}/keystore`,
 								body,
+								{},
+								undefined,
+								{encoding: null, json: false, resolveWithFullResponse: true},
 							);
+
 						}
 
+						const contentDisposition = responseData.headers['content-disposition'];
+						const fileNameRegex = /(?<=filename=").*\b/;
+						const match = fileNameRegex.exec(contentDisposition);
+						let fileName = '';
 
-						const binaryData = await this.helpers.prepareBinaryData(Buffer.from(responseData));
+						if (match !== null) {
+							fileName = match[0];
+						}
+
+						const binaryData = await this.helpers.prepareBinaryData(Buffer.from(responseData.body), fileName);
 
 						responseData = {
 							json: {},
 							binary: {
-								[binaryProperty]: binaryData,
+								[binaryProperty]: binaryData
 							},
 						};
 					}
