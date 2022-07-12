@@ -51,6 +51,7 @@
 	"auth.role": "Role",
 	"auth.roles.member": "Member",
 	"auth.roles.owner": "Owner",
+	"auth.agreement.label": "I'd be OK sharing my opinion on n8n, and David could get in touch (no marketing tho)",
 	"auth.setup.confirmOwnerSetup": "Set up owner account?",
 	"auth.setup.confirmOwnerSetupMessage": "To give others access to your <b>{entities}</b>, you’ll need to share these account details with them. Or you can continue as before with no account, by going back and skipping this setup. <a href=\"https://docs.n8n.io/reference/user-management.html\" target=\"_blank\">More info</a>",
 	"auth.setup.createAccount": "Create account",

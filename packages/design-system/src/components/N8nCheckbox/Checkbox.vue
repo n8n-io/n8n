@@ -65,8 +65,8 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .n8nCheckbox {
-	display: flex;
-	white-space: normal;
+	display: flex !important;
+	white-space: normal !important;
 
 	> span:first-child {
 		padding-top: 3px;

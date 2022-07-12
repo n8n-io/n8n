@@ -82,7 +82,7 @@ export default mixins(
 				{
 					name: 'agree',
 					properties: {
-						label: 'I’d be OK sharing my opinion on n8n, and David could get in touch (no marketing tho)',
+						label: this.$locale.baseText('auth.agreement.label'),
 						type: 'checkbox',
 					},
 				},
