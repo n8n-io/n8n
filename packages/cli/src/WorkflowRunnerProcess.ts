@@ -349,7 +349,7 @@ export class WorkflowRunnerProcess {
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
 			return this.workflowExecute.run(
 				this.workflow,
-				undefined,
+				undefined, // TODO: Pass through?
 				this.data.destinationNode,
 				this.data.pinData,
 			);
