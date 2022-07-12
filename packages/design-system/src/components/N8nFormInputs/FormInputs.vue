@@ -18,7 +18,7 @@
 						:showValidationWarnings="showValidationWarnings"
 						@input="(value) => onInput(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
-						@enter="onSubmit"
+						@change="(value) => onInput(input.name, value)"
 					/>
 				</div>
 			</div>

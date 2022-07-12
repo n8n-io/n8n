@@ -31,6 +31,37 @@
 				<n8n-button float="left" :label=" loadingTestConnection ? $locale.baseText('settings.ad.testingConnection') : $locale.baseText('settings.ad.testConnection')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="OnTestConnectionClick" />
 			</div>
 		</div>
+<!--
+		  <el-table
+		border="true"
+		stripe="true"
+    :data="dataTable"
+    style="width: 100%"
+    height="250">
+    <el-table-column
+      prop="status"
+      label="Status"
+      >
+    </el-table-column>
+    <el-table-column
+      prop="runTime"
+      label="Run Time"
+     >
+    </el-table-column>
+    <el-table-column
+      prop="details"
+      label="Details"
+			>
+    </el-table-column>
+  </el-table>
+			<br>
+				<div>
+				<n8n-button float="left" label="Synchronize Now" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="OnTestConnectionClick" />
+			</div>
+						<br>
+			<br>
+			<br> -->
+
 	</SettingsView>
 </template>
 
@@ -51,6 +82,18 @@ export default mixins(
 	},
 	data() {
 		return {
+			// dataTable: [
+			// 	{
+			// 		status: "Succeeded",
+			// 		runTime: "2016-05-03",
+			// 		details: "Scanned 102 LDAP users",
+			// 	},
+			// 	{
+			// 		status: "Succeeded",
+			// 		runTime: "2016-05-03",
+			// 		details: "Scanned 102 LDAP users",
+			// 	},
+			// ],
 			adConfig: {} as IActiveDirectoryConfig,
 			loadingTestConnection: false,
 			hasAnyChanges: false,
