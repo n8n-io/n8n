@@ -23,6 +23,7 @@ export class RedisRateLimit implements INodeType {
 		inputs: ['main'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main'],
+		outputNames: ['allow', 'deny'],
 		credentials: [
 			{
 				name: 'redis',
