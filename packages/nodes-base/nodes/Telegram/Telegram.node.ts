@@ -2196,7 +2196,7 @@ export class Telegram implements INodeType {
 						addAdditionalFields.call(this, body, i);
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
 				let responseData;

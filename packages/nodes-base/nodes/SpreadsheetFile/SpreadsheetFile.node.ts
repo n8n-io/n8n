@@ -358,13 +358,13 @@ export class SpreadsheetFile implements INodeType {
 					}
 
 					if (workbook.SheetNames.length === 0) {
-						throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!');
+						throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!', { itemIndex: i });
 					}
 
 					let sheetName = workbook.SheetNames[0];
 					if (options.sheetName) {
 						if (!workbook.SheetNames.includes(options.sheetName as string)) {
-							throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+							throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`, { itemIndex: i });
 						}
 						sheetName = options.sheetName as string;
 					}

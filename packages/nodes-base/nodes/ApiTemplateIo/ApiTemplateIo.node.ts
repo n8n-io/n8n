@@ -480,7 +480,7 @@ export class ApiTemplateIo implements INodeType {
 							if (overrideJson !== '') {
 								const data = validateJSON(overrideJson);
 								if (data === undefined) {
-									throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.');
+									throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', { itemIndex: i });
 								}
 								body.overrides = data;
 							}
@@ -548,14 +548,14 @@ export class ApiTemplateIo implements INodeType {
 						if (jsonParameters === false) {
 							const properties = (this.getNodeParameter('propertiesUi', i) as IDataObject || {}).propertyValues as IDataObject[] || [];
 							if (properties.length === 0) {
-								throw new NodeOperationError(this.getNode(), 'The parameter properties cannot be empty');
+								throw new NodeOperationError(this.getNode(), 'The parameter properties cannot be empty', { itemIndex: i });
 							}
 							data = properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {});
 						} else {
 							const propertiesJson = this.getNodeParameter('propertiesJson', i) as string;
 							data = validateJSON(propertiesJson);
 							if (data === undefined) {
-								throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.');
+								throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', { itemIndex: i });
 							}
 						}
 

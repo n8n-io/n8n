@@ -492,7 +492,7 @@ export class Pushbullet implements INodeType {
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
