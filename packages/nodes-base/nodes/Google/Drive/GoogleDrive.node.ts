@@ -936,6 +936,13 @@ export class GoogleDrive implements INodeType {
 						default: false,
 						description: 'Whether to use the uploaded content as indexable text',
 					},
+					{
+						displayName: 'Move to trash',
+						name: 'trashed',
+						type: 'boolean',
+						default: true,
+						description: 'Move the file to trash',
+					},
 				],
 			},
 			{
@@ -2496,6 +2503,10 @@ export class GoogleDrive implements INodeType {
 
 						if (updateFields.fileName) {
 							body.name = updateFields.fileName;
+						}
+
+						if (updateFields.trashed) {
+							body.trashed = updateFields.trashed;
 						}
 
 						if (updateFields.parentId && updateFields.parentId !== '') {
