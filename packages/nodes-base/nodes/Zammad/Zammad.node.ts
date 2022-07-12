@@ -698,7 +698,7 @@ export class Zammad implements INodeType {
 						const article = this.getNodeParameter('article', i) as ZammadTypes.Article;
 
 						if (!Object.keys(article).length) {
-							throw new NodeOperationError(this.getNode(), 'Article is required');
+							throw new NodeOperationError(this.getNode(), 'Article is required', { itemIndex: i });
 						}
 
 						const {
