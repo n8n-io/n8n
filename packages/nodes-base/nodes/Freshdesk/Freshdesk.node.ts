@@ -1161,7 +1161,7 @@ export class Freshdesk implements INodeType {
 						if (requester === 'requesterId') {
 							// @ts-ignore
 							if (isNaN(value)) {
-								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', { itemIndex: i });
 							}
 							body.requester_id = parseInt(value, 10);
 						} else if (requester === 'email') {
@@ -1246,7 +1246,7 @@ export class Freshdesk implements INodeType {
 							if (updateFields.requester === 'requesterId') {
 								// @ts-ignore
 								if (isNaN(parseInt(value, 10))) {
-									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', { itemIndex: i });
 								}
 								body.requester_id = parseInt(value as string, 10);
 							} else if (updateFields.requester === 'email') {

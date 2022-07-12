@@ -363,11 +363,11 @@ export class AwsSqs implements INodeType {
 					const item = items[i];
 
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!');
+						throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!', { itemIndex: i });
 					}
 
 					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
+						throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`, { itemIndex: i });
 					}
 
 					const binaryData = item.binary[dataPropertyName].data;
