@@ -113,7 +113,7 @@ export default Vue
 				const parameterData = {
 					node: this.node.name,
 					name: this.path,
-					value: this.value.startsWith('=')? `${this.value} ${data}`: `=${data}`,
+					value: typeof this.value === 'string' && this.value.startsWith('=')? `${this.value} ${data}`: `=${data}`,
 				};
 
 				this.$emit('valueChanged', parameterData);

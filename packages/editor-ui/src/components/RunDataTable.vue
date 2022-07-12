@@ -87,6 +87,9 @@ export default Vue.extend({
 		showMappingHint: {
 			type: Boolean,
 		},
+		isParentNode: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
@@ -107,11 +110,15 @@ export default Vue.extend({
 			this.activeColumn = -1;
 		},
 		getPath(column: string) {
-			if (this.node) {
-				return `{{ $node["${this.node.name}"].json["${column}"] }}`;
+			if (!this.node) {
+				return '';
 			}
 
-			return '';
+			if (this.isParentNode) {
+				return `{{ $json["${column}"] }}`;
+			}
+
+			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
 		},
 	},
 });

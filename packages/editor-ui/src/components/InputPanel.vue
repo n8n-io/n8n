@@ -12,6 +12,7 @@
 		:overrideOutputs="connectedCurrentNodeOutputs"
 		:mappingEnabled="!readOnly"
 		:showMappingHint="showMappingHint"
+		:isParentNode="currentNodeDepth === 1"
 		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
@@ -140,6 +141,10 @@ export default mixins(
 			const nodes: IConnectedNode[] = (this.workflow as Workflow).getParentNodesByDepth(this.activeNode.name);
 
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
+		},
+		currentNodeDepth (): number {
+			const node = this.parentNodes.find((node) => node.name === this.currentNode.name);
+			return node? node.depth: -1;
 		},
 	},
 	methods: {
