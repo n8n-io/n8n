@@ -227,6 +227,11 @@ module.exports = {
 						trailingUnderscore: 'allowSingleOrDouble',
 					},
 					{
+						selector: 'parameter',
+						format: ['camelCase'],
+						leadingUnderscore: 'allowSingle',
+					},
+					{
 						selector: 'property',
 						format: ['camelCase', 'snake_case'],
 						leadingUnderscore: 'allowSingleOrDouble',

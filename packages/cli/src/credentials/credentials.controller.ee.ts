@@ -6,10 +6,9 @@ import type { CredentialRequest } from '../requests';
 import { UserService } from '../user/user.service';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
 
-EECredentialsController.use((req, res, next) => {
+EECredentialsController.use((_req, _res, next) => {
 	if (!config.getEnv('deployment.paid')) {
 		// skip ee router and use free one
 		next('router');
@@ -20,8 +19,9 @@ EECredentialsController.use((req, res, next) => {
 });
 
 /**
- * share a credential
  * (EE) POST /credentials/:id/share
+ *
+ * Grant a user access to a credential.
  */
 
 EECredentialsController.post('/:id/share', async (req: CredentialRequest.Share, res) => {
@@ -48,8 +48,9 @@ EECredentialsController.post('/:id/share', async (req: CredentialRequest.Share, 
 });
 
 /**
- * unshare a credential
  * (EE) DELETE /credentials/:id/share
+ *
+ * Revoke a user's access to a credential.
  */
 
 EECredentialsController.delete('/:id/share', async (req: CredentialRequest.Share, res) => {
