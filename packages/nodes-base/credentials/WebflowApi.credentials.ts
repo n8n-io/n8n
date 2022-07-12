@@ -28,7 +28,7 @@ export class WebflowApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.webflow.com',
-			url: '/user',
+			url: '/sites',
 		},
 	};
 }

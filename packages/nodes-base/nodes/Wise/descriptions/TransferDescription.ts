@@ -13,22 +13,27 @@ export const transferOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a transfer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a transfer',
 			},
 			{
 				name: 'Execute',
 				value: 'execute',
+				action: 'Execute a transfer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a transfer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all transfers',
 			},
 		],
 		displayOptions: {

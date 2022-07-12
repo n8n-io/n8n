@@ -25,12 +25,12 @@ export class UrlScanIoApi implements ICredentialType {
 				'API-KEY': '={{$credentials.apiKey}}',
 			},
 		},
-	};
+	} as IAuthenticateGeneric;
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://urlscan.io/api/v1',
-			url: '/quotas',
+			baseURL: 'https://urlscan.io',
+			url: '/user/quotas',
 		},
 	};
 }

@@ -62,6 +62,9 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
+		if (!uri) {
+			return this.helpers.requestWithAuthentication.call(this,'notionApi', options );
+		}
 		return this.helpers.request!(options);
 
 	} catch (error) {

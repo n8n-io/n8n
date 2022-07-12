@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -74,26 +74,31 @@ export class NocoDB implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a row',
+						action: 'Create a row',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a row',
+						action: 'Delete a row',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a row',
+						action: 'Get a row',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Retrieve all rows',
+						action: 'Get all rows',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a row',
+						action: 'Update a row',
 					},
 				],
 				default: 'get',

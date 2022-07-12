@@ -20,41 +20,49 @@ export const issueOperations: INodeProperties[] = [
 				name: 'Changelog',
 				value: 'changelog',
 				description: 'Get issue changelog',
+				action: 'Get an issue changelog',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new issue',
+				action: 'Create an issue',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an issue',
+				action: 'Delete an issue',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an issue',
+				action: 'Get an issue',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all issues',
+				action: 'Get all issues',
 			},
 			{
 				name: 'Notify',
 				value: 'notify',
 				description: 'Create an email notification for an issue and add it to the mail queue',
+				action: 'Create an email notification for an issue',
 			},
 			{
 				name: 'Status',
 				value: 'transitions',
 				description: 'Return either all transitions or a transition that can be performed by the user on an issue, based on the issue\'s status',
+				action: 'Get the status of an issue',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an issue',
+				action: 'Update an issue',
 			},
 		],
 		default: 'create',
@@ -168,6 +176,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Component Names or IDs',
 				name: 'componentIds',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectComponents',
 					loadOptionsDependsOn: [
@@ -218,6 +227,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
@@ -384,6 +394,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},

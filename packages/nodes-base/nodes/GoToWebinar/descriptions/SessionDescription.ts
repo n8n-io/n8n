@@ -13,14 +13,17 @@ export const sessionOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a session',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all sessions',
 			},
 			{
 				name: 'Get Details',
 				value: 'getDetails',
+				action: 'Get details on a session',
 			},
 		],
 		displayOptions: {

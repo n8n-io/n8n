@@ -20,11 +20,13 @@ export const userListOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add user to list',
+				action: 'Add a user to a list',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a user from a list',
+				action: 'Remove a user from a list',
 			},
 		],
 		default: 'add',

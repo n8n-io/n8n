@@ -20,21 +20,25 @@ export const timeEntryOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a time entry',
+				action: 'Create a time entry',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a time entry',
+				action: 'Delete a time entry',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get time entrie',
+				action: 'Get a time entry',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a time entry',
+				action: 'Update a time entry',
 			},
 		],
 		default: 'create',
@@ -154,9 +158,11 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -364,9 +370,11 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
