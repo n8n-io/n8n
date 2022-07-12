@@ -1,5 +1,12 @@
 <template>
-	<n8n-input-label :label="label" :tooltipText="tooltipText" :required="required && showRequiredAsterisk">
+	<n8n-checkbox
+		v-if="type === 'checkbox'"
+		v-bind="$props"
+		@input="onInput"
+		@focus="onFocus"
+		ref="input"
+	></n8n-checkbox>
+	<n8n-input-label v-else :label="label" :tooltipText="tooltipText" :required="required && showRequiredAsterisk">
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot"></slot>
 			<n8n-select
@@ -56,6 +63,7 @@ import N8nInput from '../N8nInput';
 import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
+import N8nCheckbox from '../N8nCheckbox';
 
 import { getValidationError, VALIDATORS } from './validators';
 import { Rule, RuleGroup, IValidator } from "../../types";
@@ -70,6 +78,7 @@ export default mixins(Locale).extend({
 		N8nInputLabel,
 		N8nOption,
 		N8nSelect,
+		N8nCheckbox,
 	},
 	data() {
 		return {
@@ -134,6 +143,12 @@ export default mixins(Locale).extend({
 		},
 		focusInitially: {
 			type: Boolean,
+		},
+		labelSize: {
+			type: String,
+			default: 'medium',
+			validator: (value: string): boolean =>
+				['small', 'medium'].includes(value),
 		},
 	},
 	mounted() {
