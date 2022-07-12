@@ -1,3 +1,4 @@
+/* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-labels */
@@ -71,6 +72,23 @@ export class WorkflowExecute {
 		};
 	}
 
+	findPinnedTrigger(workflow: Workflow, pinData?: PinData): INode | undefined {
+		if (!pinData) return;
+
+		const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
+
+		const isTrigger = (str: string) =>
+			TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().endsWith(suffix));
+
+		const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
+
+		if (!firstPinnedTriggerName) return;
+
+		return Object.values(workflow.nodes).find(
+			({ type, name }) => isTrigger(type) && name === firstPinnedTriggerName,
+		);
+	}
+
 	/**
 	 * Executes the given workflow.
 	 *
@@ -92,6 +110,10 @@ export class WorkflowExecute {
 	): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
+
+		const pinnedTrigger = this.findPinnedTrigger(workflow, pinData);
+
+		if (pinnedTrigger) startNode = pinnedTrigger;
 
 		if (startNode === undefined) {
 			throw new Error('No node to start the workflow from could be found!');
@@ -931,6 +953,8 @@ export class WorkflowExecute {
 							}
 
 							const { pinData } = this.runExecutionData.resultData;
+
+							// console.log('pinData', pinData);
 
 							if (pinData && pinData[executionNode.name] !== undefined) {
 								const nodePinData = pinData[executionNode.name];
