@@ -65,7 +65,7 @@ export class GoogleAnalytics implements INodeType {
 						'@version': [
 							1,
 						],
-					}
+					},
 				},
 				options: [
 					{
@@ -89,7 +89,7 @@ export class GoogleAnalytics implements INodeType {
 						'@version': [
 							2,
 						],
-					}
+					},
 				},
 				options: [
 					{
@@ -196,9 +196,7 @@ export class GoogleAnalytics implements INodeType {
 				return returnData;
 			},
 
-			async getProperties(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
 				const {accounts} = await googleApiRequest.call(
@@ -229,6 +227,70 @@ export class GoogleAnalytics implements INodeType {
 						}
 					}
 				}
+
+				return returnData;
+			},
+
+			async getDimensionsGA4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const propertyId = this.getCurrentNodeParameter('propertyId');
+				const { dimensions } = await googleApiRequest.call(
+					this,
+					'GET',
+					`/v1beta/${propertyId}/metadata`,
+					{},
+					{fields: 'dimensions'},
+				);
+
+				for (const dimesion of dimensions) {
+					returnData.push(
+						{
+							name: dimesion.uiName as string,
+							value: dimesion.apiName as string,
+							description: dimesion.description as string,
+						},
+					);
+				}
+
+				returnData.sort((a, b) => {
+					const aName= a.name.toLowerCase();
+					const bName= b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+
+			async getMetricsGA4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const propertyId = this.getCurrentNodeParameter('propertyId');
+				const { metrics } = await googleApiRequest.call(
+					this,
+					'GET',
+					`/v1beta/${propertyId}/metadata`,
+					{},
+					{fields: 'metrics'},
+				);
+
+				for (const metric of metrics) {
+					returnData.push(
+						{
+							name: metric.uiName as string,
+							value: metric.apiName as string,
+							description: metric.description as string,
+						},
+					);
+				}
+
+				returnData.sort((a, b) => {
+					const aName= a.name.toLowerCase();
+					const bName= b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -335,34 +397,68 @@ export class GoogleAnalytics implements INodeType {
 						//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
 						const propertyId = this.getNodeParameter('propertyId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 						method = 'POST';
 						endpoint = `/v1beta/${propertyId}:runReport`;
 
-						const body: IDataObject = {
-							"metrics": [
-								{
-									"name": "sessions"
-								}
-							],
-							"dimensions": [
-								{
-									"name": "country"
-								}
-							],
-							"dateRanges": [
-								{
-									"startDate": "2020-01-01",
-									"endDate": "2020-01-31"
-								},
-								{
-									"startDate": "2021-01-01",
-									"endDate": "2021-01-31",
-									"name": ""
-								}
-							]
-						};
+						const body: IDataObject = {};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						if (additionalFields.currencyCode) {
+							body.currencyCode = additionalFields.currencyCode;
+						}
+
+						if (additionalFields.dateRangesUi) {
+							const dateRanges = (additionalFields.dateRangesUi as IDataObject).dateRanges as IDataObject[];
+							if(dateRanges) {
+								body.dateRanges = dateRanges.map(range => {
+									const dateRange: IDataObject = {
+										startDate: moment(range.startDate as string).utc().format('YYYY-MM-DD'),
+										endDate: moment(range.endDate as string).utc().format('YYYY-MM-DD'),
+									};
+
+									if (range.name) {
+										dateRange.name = range.name;
+									}
+
+									return dateRange;
+								});
+							}
+						}
+
+						if (additionalFields.dimensionUi) {
+							const dimensions = (additionalFields.dimensionUi as IDataObject).dimensionValues as IDataObject[];
+							if (dimensions) {
+								body.dimensions = dimensions;
+							}
+						}
+
+						if (additionalFields.metricUi) {
+							const metrics = (additionalFields.metricUi as IDataObject).metricValues as IDataObject[];
+							if (metrics) {
+								body.metrics = metrics;
+							}
+						}
+
+						if (additionalFields.keepEmptyRows) {
+							body.keepEmptyRows = additionalFields.keepEmptyRows;
+						}
+
+						if (additionalFields.returnPropertyQuota) {
+							body.returnPropertyQuota = additionalFields.returnPropertyQuota;
+						}
+
+						if (returnAll === true) {
+							body.limit = 100000;
+							responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+							// responseData = responseData.rows;
+						} else {
+							body.limit = this.getNodeParameter('limit', 0) as number;
+							responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+							// responseData = responseData.rows;
+						}
+
+						console.log(body);
 					}
 				}
 				if (resource === 'userActivity') {
