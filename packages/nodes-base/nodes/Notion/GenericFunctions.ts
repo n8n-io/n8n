@@ -55,10 +55,6 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			json: true,
 		};
 		options = Object.assign({}, options, option);
-		if (!uri) {
-			//Make the request with the credentials whenever we are not downloading a file
-			return this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
-		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
