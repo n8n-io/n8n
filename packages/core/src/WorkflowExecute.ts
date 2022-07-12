@@ -933,7 +933,10 @@ export class WorkflowExecute {
 							const { pinData } = this.runExecutionData.resultData;
 
 							if (pinData && pinData[executionNode.name] !== undefined) {
-								const nodePinData = pinData[executionNode.name];
+								let nodePinData = pinData[executionNode.name];
+
+								if (!Array.isArray(nodePinData)) nodePinData = [nodePinData];
+
 								const itemsPerRun = nodePinData.map((item, index) => {
 									return { json: item, pairedItem: { item: index } };
 								});
