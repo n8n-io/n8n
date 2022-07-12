@@ -149,7 +149,6 @@ credentialsController.patch(
 		]);
 
 		if (!shared) {
-			console.error('cannae update');
 			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
