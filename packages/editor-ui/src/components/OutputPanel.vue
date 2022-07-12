@@ -34,7 +34,9 @@
 					v-if="hasNodeRun && staleData"
 				>
 					<template>
-						<span v-html="$locale.baseText('ndv.output.staleDataWarning')"></span>
+						<span v-html="$locale.baseText(
+							hasPinData ? 'ndv.output.staleDataWarning.pinData' : 'ndv.output.staleDataWarning.regular'
+						)"></span>
 					</template>
 				</n8n-info-tip>
 			</div>
