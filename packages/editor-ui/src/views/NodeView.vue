@@ -1294,6 +1294,10 @@ export default mixins(
 						});
 					});
 
+					if (workflowData.pinData) {
+						this.$store.commit('setWorkflowPinData', workflowData.pinData);
+					}
+
 					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
 					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
 						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');

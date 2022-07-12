@@ -259,6 +259,7 @@ export interface IWorkflowDataUpdate {
 	settings?: IWorkflowSettings;
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: PinData;
 }
 
 export interface IWorkflowTemplate {
