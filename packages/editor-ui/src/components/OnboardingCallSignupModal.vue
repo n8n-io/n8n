@@ -16,11 +16,9 @@
 			</div>
 			<div @keyup.enter="onSignup">
 				<n8n-input v-model="email" :placeholder="$locale.baseText('onboardingCallSignupModal.emailInput.placeholder')" />
-				<div v-if="showError" :class="[$style.error, 'mt-4xs']">
-					<n8n-text size="small">
-						{{ $locale.baseText('onboardingCallSignupModal.infoText.emailError') }}
-					</n8n-text>
-				</div>
+				<n8n-text v-if="showError" size="small" class="mt-4xs" tag="div" color="danger">
+					{{ $locale.baseText('onboardingCallSignupModal.infoText.emailError') }}
+				</n8n-text>
 			</div>
 		</template>
 		<template slot="footer">
@@ -79,7 +77,7 @@ export default mixins(
 	},
 	methods: {
 		onSignup() {
-			if(this.isEmailValid) {
+			if (this.isEmailValid) {
 				this.showError = false;
 				// TODO: Submit email here
 				this.$showMessage({
@@ -88,7 +86,7 @@ export default mixins(
 				});
 				this.exitConfirmed = true;
 				this.modalBus.$emit('close');
-			}else {
+			} else {
 				this.showError = true;
 			}
 		},
@@ -113,10 +111,6 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
-.error {
-	color: var(--color-danger);
-}
-
 .buttonsContainer {
 	display: flex;
 	justify-content: flex-end;

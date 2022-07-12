@@ -409,6 +409,7 @@ const router = new Router({
 				},
 				permissions: {
 					allow: {
+						// TODO: Once custom permissions are merged, this needs to be updated with index validation
 						loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
 					},
 				},

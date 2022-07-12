@@ -22,7 +22,6 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { type } from 'os';
 
 export * from 'n8n-design-system/src/types';
 

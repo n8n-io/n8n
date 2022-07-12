@@ -26,9 +26,9 @@
 				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
 			</n8n-menu-item>
 			<n8n-menu-item
-				v-for="fakeDoor in getFakeDoorFeatures"
+				v-for="fakeDoor, index in getFakeDoorFeatures"
 				v-bind:key="fakeDoor.featureName"
-				:index="`/settings/coming-soon?featureName=${fakeDoor.featureName}&infoText=${fakeDoor.infoText}&actionBoxTitle=${fakeDoor.actionBoxTitle}&actionBoxDescription=${fakeDoor.actionBoxDescription}&linkURL=${fakeDoor.linkURL}`"
+				:index="`/settings/coming-soon?featureId=${index}`"
 				:class="$style.tab"
 			>
 				<i :class="$style.icon">
