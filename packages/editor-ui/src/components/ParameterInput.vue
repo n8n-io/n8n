@@ -1027,7 +1027,7 @@ export default mixins(
 
 .activeDrop {
 	--input-border-color: var(--color-success);
-	--input-background-color: var(--color-success-tint-1);
+	--input-background-color: var(--color-success-tint-2);
 	--input-border-style: solid;
 }
 
