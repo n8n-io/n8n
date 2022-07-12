@@ -954,8 +954,6 @@ export class WorkflowExecute {
 
 							const { pinData } = this.runExecutionData.resultData;
 
-							// console.log('pinData', pinData);
-
 							if (pinData && pinData[executionNode.name] !== undefined) {
 								const nodePinData = pinData[executionNode.name];
 								const itemsPerRun = nodePinData.map((item, index) => {
