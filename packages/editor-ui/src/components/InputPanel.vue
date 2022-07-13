@@ -34,7 +34,10 @@
 		<template v-slot:node-not-run>
 			<div :class="$style.noOutputData" v-if="parentNodes.length">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
-				<NodeExecuteButton type="outline" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
+				<n8n-tooltip :manual="true" :value="showDraggableHint && showDraggableHintWithDelay">
+					<div slot="content" v-html="$locale.baseText('dataMapping.dragFromPreviousHint',  { interpolate: { name: focusedMappableInput } })"></div>
+					<NodeExecuteButton type="outline" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
+				</n8n-tooltip>
 				<n8n-text tag="div" size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
 				</n8n-text>
@@ -67,6 +70,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
+import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 
 export default mixins(
 	workflowHelpers,
@@ -95,7 +99,21 @@ export default mixins(
 			type: Boolean,
 		},
 	},
+	data() {
+		return {
+			showDraggableHintWithDelay: false,
+		};
+	},
 	computed: {
+		focusedMappableInput(): string {
+			return this.$store.getters['ui/focusedMappableInput'];
+		},
+		isUserOnboarded(): boolean {
+			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
+		},
+		showDraggableHint(): boolean {
+			return !!this.focusedMappableInput && !this.isUserOnboarded;
+		},
 		isExecutingPrevious(): boolean {
 			if (!this.workflowRunning) {
 				return false;
@@ -186,6 +204,18 @@ export default mixins(
 				return `${truncated}...`;
 			}
 			return truncated;
+		},
+	},
+	watch: {
+		showDraggableHint(curr: boolean) {
+			if (curr) {
+				setTimeout(() => {
+					this.showDraggableHintWithDelay = this.showDraggableHint;
+				}, 1000);
+			}
+			else {
+				this.showDraggableHintWithDelay = false;
+			}
 		},
 	},
 });
