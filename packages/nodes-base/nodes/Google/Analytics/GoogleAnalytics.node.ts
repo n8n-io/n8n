@@ -499,60 +499,6 @@ export class GoogleAnalytics implements INodeType {
 							body.returnPropertyQuota = additionalFields.returnPropertyQuota;
 						}
 
-						// body.dimensionFilter = {
-						// 	"orGroup": {
-						// 		"expressions": [
-						// 			{
-						// 				"filter": {
-						// 					"fieldName": "browser",
-						// 					"stringFilter": {
-						// 						"value": "Fi",
-						// 						matchType: "BEGINS_WITH",
-						// 						caseSensitive: true,
-						// 					},
-						// 				}
-						// 			},
-						// 			{
-						// 				"filter": {
-						// 					"fieldName": "browser",
-						// 					"numericFilter": {
-						// 						"value": {
-						// 							doubleValue: 12,
-						// 						},
-						// 					},
-						// 				}
-						// 			}
-						// 		]
-						// 	}
-						// },
-						// body.metricFilter = {
-						// 		"filter": {
-						// 			"fieldName": "eventCount",
-						// 			"numericFilter": {
-						// 				"value": {
-						// 					doubleValue: 12,
-						// 				},
-						// 			},
-						// 		}
-						// },
-						// body.metricFilter = {
-						// 	"andGroup": {
-						// 		"expressions": [
-						// 		{"filter": {
-						// 			"fieldName": "eventCount",
-						// 			"numericFilter": {
-						// 				"value": {
-						// 					doubleValue: 12,
-						// 				},
-						// 			},
-						// 		}}
-						// 		]
-						// 	}
-						// },
-
-
-						// console.log(body, additionalFields);
-
 						if (returnAll === true) {
 							body.limit = 100000;
 							responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
