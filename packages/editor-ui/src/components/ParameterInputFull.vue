@@ -92,13 +92,15 @@ export default mixins(
 			onFocus() {
 				this.focused = true;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ui/setMappableNDVInputFocus', true);
+					setTimeout(() => {
+						this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
+					}, 300);
 				}
 			},
 			onBlur() {
 				this.focused = false;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ui/setMappableNDVInputFocus', false);
+					this.$store.commit('ui/setMappableNDVInputFocus', '');
 				}
 			},
 			onMenuExpanded(expanded: boolean) {

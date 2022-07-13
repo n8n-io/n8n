@@ -97,7 +97,7 @@ const module: Module<IUiState, IRootState> = {
 			output: {
 				displayMode: 'table',
 			},
-			mappableInputFocused: false,
+			focusedMappableInput: '',
 		},
 		mainPanelPosition: 0.5,
 		draggable: {
@@ -134,7 +134,7 @@ const module: Module<IUiState, IRootState> = {
 		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
-		showMappingHint: (state: IUiState) => state.ndv.mappableInputFocused,
+		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
 		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
 		draggableType: (state: IUiState) => state.draggable.type,
 		draggableData: (state: IUiState) => state.draggable.data,
@@ -185,8 +185,8 @@ const module: Module<IUiState, IRootState> = {
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
 		},
-		setMappableNDVInputFocus(state: IUiState, focus: boolean) {
-			Vue.set(state.ndv, 'mappableInputFocused', focus);
+		setMappableNDVInputFocus(state: IUiState, paramName: string) {
+			Vue.set(state.ndv, 'focusedMappableInput', paramName);
 		},
 		draggableStartDragging(state: IUiState, {type, data}: {type: string, data: string}) {
 			state.draggable = {

@@ -13,7 +13,7 @@
 		<table :class="$style.table" v-else>
 			<tr>
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
-					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled">
+					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled && showMappingHint(0)">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
 						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled">
 							<template v-slot:preview="{ canDrop }">
@@ -26,25 +26,28 @@
 									:class="{
 										[$style.header]: true,
 										[$style.draggableHeader]: mappingEnabled,
-										[$style.activeHeader]: (i === activeColumn || showMappingHint) && mappingEnabled,
+										[$style.activeHeader]: (i === activeColumn || focusedMappableInput) && mappingEnabled,
 										[$style.draggingHeader]: isDragging,
 									}"
 								>
 									<span>{{ column || "&nbsp;" }}</span>
-									<div v-if="mappingEnabled" :class="$style.dragButton">
-										<div>
-											<div></div>
-											<div></div>
+									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="showMappingHint(i)">
+										<div slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
+										<div :class="$style.dragButton">
+											<div>
+												<div></div>
+												<div></div>
+											</div>
+											<div>
+												<div></div>
+												<div></div>
+											</div>
+											<div>
+												<div></div>
+												<div></div>
+											</div>
 										</div>
-										<div>
-											<div></div>
-											<div></div>
-										</div>
-										<div>
-											<div></div>
-											<div></div>
-										</div>
-									</div>
+									</n8n-tooltip>
 								</div>
 							</template>
 						</Draggable>
@@ -67,6 +70,7 @@
 </template>
 
 <script lang="ts">
+import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { INodeUi, ITableData } from '@/Interface';
 import Vue from 'vue';
 import Draggable from './Draggable.vue';
@@ -85,9 +89,6 @@ export default Vue.extend({
 		mappingEnabled: {
 			type: Boolean,
 		},
-		showMappingHint: {
-			type: Boolean,
-		},
 		isParentNode: {
 			type: Boolean,
 		},
@@ -96,6 +97,14 @@ export default Vue.extend({
 		return {
 			activeColumn: -1,
 		};
+	},
+	computed: {
+		focusedMappableInput(): string {
+			return this.$store.getters['ui/focusedMappableInput'];
+		},
+		isUserOnboarded(): boolean {
+			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
+		},
 	},
 	methods: {
 		shorten(s: string) {
@@ -123,6 +132,9 @@ export default Vue.extend({
 			}
 
 			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
+		},
+		showMappingHint(i: number): boolean {
+			return i === 0 && !!this.focusedMappableInput && !this.isUserOnboarded;
 		},
 	},
 });
