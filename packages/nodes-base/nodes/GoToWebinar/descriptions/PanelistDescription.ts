@@ -13,18 +13,22 @@ export const panelistOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a panelist',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a panelist',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all panelists',
 			},
 			{
 				name: 'Reinvite',
 				value: 'reinvite',
+				action: 'Reinvite a panelist',
 			},
 		],
 		displayOptions: {

@@ -18,6 +18,7 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new post',
+				action: 'Create a post',
 			},
 		],
 		default: 'create',

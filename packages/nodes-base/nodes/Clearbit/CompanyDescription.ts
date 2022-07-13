@@ -18,11 +18,13 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Autocomplete',
 				value: 'autocomplete',
 				description: 'Auto-complete company names and retrieve logo and domain',
+				action: 'Autocomplete a company',
 			},
 			{
 				name: 'Enrich',
 				value: 'enrich',
 				description: 'Look up person and company data based on an email or domain',
+				action: 'Enrich a company',
 			},
 		],
 		default: 'enrich',

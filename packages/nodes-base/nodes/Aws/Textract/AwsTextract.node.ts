@@ -122,11 +122,11 @@ export class AwsTextract implements INodeType {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 
 					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 					}
 
 					if ((items[i].binary as IBinaryKeyData)[binaryProperty] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 					}
 
 					const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryProperty];

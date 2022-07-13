@@ -13,6 +13,7 @@ export const exchangeRateOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an exchange rate',
 			},
 		],
 		displayOptions: {

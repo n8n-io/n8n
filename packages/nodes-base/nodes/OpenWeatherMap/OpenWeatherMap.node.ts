@@ -43,11 +43,13 @@ export class OpenWeatherMap implements INodeType {
 						name: 'Current Weather',
 						value: 'currentWeather',
 						description: 'Returns the current weather data',
+						action: 'Return current weather data',
 					},
 					{
 						name: '5 Day Forecast',
 						value: '5DayForecast',
 						description: 'Returns the weather data for the next 5 days',
+						action: 'Return weather data for the next 5 days',
 					},
 				],
 				default: 'currentWeather',
@@ -239,7 +241,7 @@ export class OpenWeatherMap implements INodeType {
 				} else if (locationSelection === 'zipCode') {
 					qs.zip = this.getNodeParameter('zipCode', i) as string;
 				} else {
-					throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`, { itemIndex: i });
 				}
 
 				// Get the language
@@ -261,7 +263,7 @@ export class OpenWeatherMap implements INodeType {
 
 					endpoint = 'forecast';
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 				}
 
 				const options: OptionsWithUri = {

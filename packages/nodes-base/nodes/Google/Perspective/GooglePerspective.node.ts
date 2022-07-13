@@ -241,7 +241,7 @@ export class GooglePerspective implements INodeType {
 					if (!attributes.length) {
 						throw new NodeOperationError(
 							this.getNode(),
-							'Please enter at least one attribute to analyze.',
+							'Please enter at least one attribute to analyze.', { itemIndex: i },
 						);
 					}
 
