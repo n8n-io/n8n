@@ -710,6 +710,7 @@ export default mixins(
 					setTimeout(() => {
 						this.isControlledPinDataTooltip = true;
 						this.pinDataDiscoveryTooltipVisible = true;
+						this.eventBus.$emit('data-pinning-discovery', { isTooltipVisible: true });
 					}, 500); // Wait for NDV to open
 				}
 			},
@@ -717,6 +718,7 @@ export default mixins(
 				if (this.pinDataDiscoveryTooltipVisible) {
 					this.isControlledPinDataTooltip = false;
 					this.pinDataDiscoveryTooltipVisible = false;
+					this.eventBus.$emit('data-pinning-discovery', { isTooltipVisible: false });
 				}
 			},
 			pinDataDiscoveryComplete() {
@@ -761,10 +763,10 @@ export default mixins(
 					return;
 				}
 
-				this.onDataPinningSuccess({ source: 'save-edit' });
-
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
 				this.$store.commit('pinData', { node: this.node, data: JSON.parse(value) });
+
+				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
 			},
