@@ -3,7 +3,7 @@
 		:label="hideLabel? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltipText="hideLabel? '': $locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
-		:showOptions="menuExpanded"
+		:showOptions="menuExpanded || forceShowOptions"
 		:bold="false"
 		size="small"
 	>
@@ -66,6 +66,7 @@ export default Vue
 			return {
 				focused: false,
 				menuExpanded: false,
+				forceShowOptions: false,
 			};
 		},
 		props: [
@@ -106,17 +107,19 @@ export default Vue
 				this.$emit('valueChanged', parameterData);
 			},
 			onDrop(data: string) {
-				if (!this.node) {
-					return;
-				}
+				this.forceShowOptions = true;
+				setTimeout(() => {
+					if (this.node) {
+						const parameterData = {
+							node: this.node.name,
+							name: this.path,
+							value: typeof this.value === 'string' && this.value.startsWith('=')? `${this.value} ${data}`: `=${data}`,
+						};
 
-				const parameterData = {
-					node: this.node.name,
-					name: this.path,
-					value: typeof this.value === 'string' && this.value.startsWith('=')? `${this.value} ${data}`: `=${data}`,
-				};
-
-				this.$emit('valueChanged', parameterData);
+						this.$emit('valueChanged', parameterData);
+					}
+					this.forceShowOptions = false;
+				}, 200);
 			},
 		},
 	});
