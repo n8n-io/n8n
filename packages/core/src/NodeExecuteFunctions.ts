@@ -1066,9 +1066,6 @@ export async function requestOAuth2(
 
 			// Make the request again with the new token
 			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
-			if (isN8nRequest) {
-				return this.helpers.httpRequest(newRequestOptions);
-			}
 
 			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 				Object.assign(newRequestOptions.headers, {
