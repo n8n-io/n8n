@@ -1,7 +1,5 @@
 import { document } from './../Elastic/Elasticsearch/descriptions/placeholders';
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryData,
@@ -13,11 +11,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	cleanData,
-	cleanDataPreviousApiVersions,
-	mindeeApiRequest,
-} from './GenericFunctions';
+import { cleanData, cleanDataPreviousApiVersions, mindeeApiRequest } from './GenericFunctions';
 
 export class Mindee implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +19,7 @@ export class Mindee implements INodeType {
 		name: 'mindee',
 		icon: 'file:mindee.svg',
 		group: ['input'],
-		version: [1,2],
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Mindee API',
 		defaults: {
@@ -39,9 +33,7 @@ export class Mindee implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'receipt',
-						],
+						resource: ['receipt'],
 					},
 				},
 			},
@@ -50,9 +42,7 @@ export class Mindee implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'invoice',
-						],
+						resource: ['invoice'],
 					},
 				},
 			},
@@ -65,9 +55,7 @@ export class Mindee implements INodeType {
 				isNodeSetting: true,
 				displayOptions: {
 					show: {
-						'@version': [
-							1,
-						],
+						'@version': [1],
 					},
 				},
 				options: [
@@ -90,9 +78,7 @@ export class Mindee implements INodeType {
 				isNodeSetting: true,
 				displayOptions: {
 					show: {
-						'@version': [
-							2,
-						],
+						'@version': [2],
 					},
 				},
 				options: [
@@ -146,16 +132,12 @@ export class Mindee implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						operation: [
-							'predict',
-						],
-						resource: [
-							'receipt',
-							'invoice',
-						],
+						operation: ['predict'],
+						resource: ['receipt', 'invoice'],
 					},
 				},
-				description: 'Name of the binary property which containsthe data for the file to be uploaded',
+				description:
+					'Name of the binary property which containsthe data for the file to be uploaded',
 			},
 			{
 				displayName: 'RAW Data',
@@ -195,9 +177,12 @@ export class Mindee implements INodeType {
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+							);
 						}
-						if(version === 1) {
+						if (version === 1) {
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
@@ -215,30 +200,30 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
-					 } else if(version === 3) {
+						} else if (version === 3) {
 							endpoint = '/expense_receipts/v3/predict';
 							responseData = await mindeeApiRequest.call(
-							 this,
-							 'POST',
-							 endpoint,
-							 {},
-							 {},
-							 {
-								 formData: {
-									 document: {
-										 value: dataBuffer,
-										 options: {
-											 filename: binaryData.fileName,
-										 },
-									 },
-								 },
-							 },
-						 );
-					 }
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
+						}
 						if (rawData === false) {
-							if(version === 1) {
+							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
-							}else if(version === 3) {
+							} else if (version === 3) {
 								responseData = cleanData(responseData.document);
 							}
 						}
@@ -261,11 +246,14 @@ export class Mindee implements INodeType {
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+							);
 						}
-						if(version === 1) {
-							 endpoint = '/invoices/v1/predict';
-							 responseData = await mindeeApiRequest.call(
+						if (version === 1) {
+							endpoint = '/invoices/v1/predict';
+							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
 								endpoint,
@@ -282,9 +270,9 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
-						} else if(version === 3) {
-							 endpoint = '/invoices/v3/predict';
-							 responseData = await mindeeApiRequest.call(
+						} else if (version === 3) {
+							endpoint = '/invoices/v3/predict';
+							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
 								endpoint,
@@ -301,14 +289,13 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
-
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Invalid API version');
 						}
 						if (rawData === false) {
-							if(version === 1) {
+							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
-							}else if(version === 3) {
+							} else if (version === 3) {
 								responseData = cleanData(responseData.document);
 							}
 						}

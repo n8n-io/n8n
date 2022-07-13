@@ -1,18 +1,18 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
+export async function mindeeApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	path: string,
+	body: any = {},
+	qs: IDataObject = {},
+	option = {},
+): Promise<any> {
+	// tslint:disable-line:no-any
 
 	const resource = this.getNodeParameter('resource', 0) as string;
 
@@ -26,7 +26,10 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 	const version = this.getNodeParameter('apiVersion', 0) as number;
 	// V1 of mindee is deprecated, we are keeping it for now but now V3 is active
-	const url = version === 1 ? `https://api.mindee.net/products${path}` : `https://api.mindee.net/v1/products/mindee${path}`;
+	const url =
+		version === 1
+			? `https://api.mindee.net/products${path}`
+			: `https://api.mindee.net/v1/products/mindee${path}`;
 
 	const options: OptionsWithUri = {
 		headers: {},
@@ -47,18 +50,16 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			Object.assign(options, option);
 		}
 
-		return await this.helpers.requestWithAuthentication.call(this, service , options);
+		return await this.helpers.requestWithAuthentication.call(this, service, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
 export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
-
 	const newData: IDataObject = {};
 
 	for (const key of Object.keys(predictions[0])) {
-
 		const data = predictions[0][key] as IDataObject | IDataObject[];
 
 		if (key === 'taxes' && data.length) {
@@ -67,13 +68,14 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 				rate: (data as IDataObject[])[0].rate,
 			};
 		} else if (key === 'locale') {
-				//@ts-ignore
-				newData['currency'] = data.currency;
-				//@ts-ignore
-				newData['locale'] = data.value;
+			//@ts-ignore
+			newData['currency'] = data.currency;
+			//@ts-ignore
+			newData['locale'] = data.value;
 		} else {
 			//@ts-ignore
-			newData[key] = data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+			newData[key] =
+				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
 		}
 	}
 
@@ -88,7 +90,6 @@ export function cleanData(document: IDataObject) {
 	newData['name'] = document.name;
 	newData['number_of_pages'] = document.n_pages;
 	for (const key of Object.keys(prediction)) {
-
 		const data = prediction[key] as IDataObject | IDataObject[];
 
 		if (key === 'taxes' && data.length) {
@@ -97,13 +98,14 @@ export function cleanData(document: IDataObject) {
 				rate: (data as IDataObject[])[0].rate,
 			};
 		} else if (key === 'locale') {
-				//@ts-ignore
-				newData['currency'] = data.currency;
-				//@ts-ignore
-				newData['locale'] = data.value;
+			//@ts-ignore
+			newData['currency'] = data.currency;
+			//@ts-ignore
+			newData['locale'] = data.value;
 		} else {
 			//@ts-ignore
-			newData[key] = data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+			newData[key] =
+				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
 		}
 	}
 
