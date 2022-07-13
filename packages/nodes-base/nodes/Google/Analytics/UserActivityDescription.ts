@@ -20,6 +20,7 @@ export const userActivityOperations: INodeProperties[] = [
 				name: 'Search',
 				value: 'search',
 				description: 'Return user activity data',
+				action: 'Search user activity data',
 			},
 		],
 		default: 'search',

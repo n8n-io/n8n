@@ -23,22 +23,27 @@ export const accountOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an account',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an account',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an account',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all accounts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an account',
 			},
 		],
 		default: 'create',

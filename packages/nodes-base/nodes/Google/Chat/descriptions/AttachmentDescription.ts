@@ -20,6 +20,7 @@ export const attachmentOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Gets the metadata of a message attachment. The attachment data is fetched using the media API.',
+				action: 'Get an attachment',
 			},
 		],
 		default: 'get',

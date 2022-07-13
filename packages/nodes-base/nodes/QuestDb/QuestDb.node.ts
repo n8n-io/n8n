@@ -45,11 +45,13 @@ export class QuestDb implements INodeType {
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Executes a SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 				],
 				default: 'insert',

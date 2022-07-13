@@ -39,6 +39,7 @@ export class OpenThesaurus implements INodeType {
 						name: 'Get Synonyms',
 						value: 'getSynonyms',
 						description: 'Get synonyms for a German word in German',
+						action: 'Get synonyms',
 					},
 				],
 				default: 'getSynonyms',

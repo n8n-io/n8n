@@ -106,6 +106,7 @@ export class Medium implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a post',
+						action: 'Create a post',
 					},
 				],
 				default: 'create',
@@ -347,6 +348,7 @@ export class Medium implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all publications',
+						action: 'Get all publications',
 					},
 				],
 				default: 'publication',
@@ -476,13 +478,13 @@ export class Medium implements INodeType {
 							bodyRequest.tags = tags.split(',').map(name => {
 								const returnValue = name.trim();
 								if (returnValue.length > 25) {
-									throw new NodeOperationError(this.getNode(), `The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`);
+									throw new NodeOperationError(this.getNode(), `The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`, { itemIndex: i });
 								}
 								return returnValue;
 							});
 
 							if ((bodyRequest.tags as string[]).length > 5) {
-								throw new NodeOperationError(this.getNode(), 'To many tags got used. Maximum 5 can be set.');
+								throw new NodeOperationError(this.getNode(), 'To many tags got used. Maximum 5 can be set.', { itemIndex: i });
 							}
 						}
 
