@@ -161,19 +161,18 @@ export default mixins(
 			triggerWaitingWarningEnabled: false,
 			isDragging: false,
 			mainPanelPosition: 0,
-			eventBus: dataPinningEventBus,
 			pinDataDiscoveryTooltipVisible: false,
 		};
 	},
 	mounted() {
 		this.$store.commit('ui/setNDVSessionId');
 
-		this.eventBus.$on('data-pinning-discovery', ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
+		dataPinningEventBus.$on('data-pinning-discovery', ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
 			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
 		});
 	},
 	destroyed () {
-		this.eventBus.$off('data-pinning-discovery');
+		dataPinningEventBus.$off('data-pinning-discovery');
 	},
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
