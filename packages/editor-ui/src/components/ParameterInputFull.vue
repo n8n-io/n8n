@@ -3,7 +3,7 @@
 		:label="hideLabel? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltipText="hideLabel? '': $locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
-		:showOptions="menuExpanded || forceShowOptions"
+		:showOptions="menuExpanded || forceShowExpression"
 		:bold="false"
 		size="small"
 	>
@@ -29,6 +29,7 @@
 						:isReadOnly="isReadOnly"
 						:droppable="droppable"
 						:activeDrop="activeDrop"
+						:forceShowExpression="forceShowExpression"
 						@valueChanged="valueChanged"
 						@focus="onFocus"
 						@blur="onBlur"
@@ -66,7 +67,7 @@ export default Vue
 			return {
 				focused: false,
 				menuExpanded: false,
-				forceShowOptions: false,
+				forceShowExpression: false,
 			};
 		},
 		props: [
@@ -107,23 +108,13 @@ export default Vue
 				this.$emit('valueChanged', parameterData);
 			},
 			onDrop(data: string) {
-				this.forceShowOptions = true;
-				const prevValue = this.value;
-				if (this.node) {
-					const parameterData = {
-						node: this.node.name,
-						name: this.path,
-						value: '=',
-					};
-
-					this.$emit('valueChanged', parameterData); // ensures smooth transition for different compoennts like switches
-				}
-
+				this.forceShowExpression= true;
 				setTimeout(() => {
 					if (this.node) {
+						const prevValue = this.value;
 						let updatedValue: string;
 						if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
-							updatedValue = `${prevValue} ${data}`;
+							updatedValue = `=${prevValue} ${data}`;
 						}
 						else {
 							updatedValue = `=${data}`;
@@ -137,8 +128,8 @@ export default Vue
 
 						this.$emit('valueChanged', parameterData);
 					}
-					this.forceShowOptions = false;
-				}, 300);
+					this.forceShowExpression= false;
+				}, 200);
 			},
 		},
 	});

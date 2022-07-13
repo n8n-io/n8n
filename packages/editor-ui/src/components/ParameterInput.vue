@@ -15,11 +15,11 @@
 			@click="openExpressionEdit"
 		>
 			<n8n-input
-				v-if="isValueExpression || droppable"
+				v-if="isValueExpression || droppable || forceShowExpression"
 				:size="inputSize"
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
-				:value="activeDrop? '': expressionDisplayValue"
+				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
 				:title="displayTitle"
 				@keydown.stop
 			/>
@@ -328,6 +328,7 @@ export default mixins(
 			'eventSource', // string
 			'activeDrop',
 			'droppable',
+			'forceShowExpression',
 		],
 		data () {
 			return {
@@ -647,7 +648,7 @@ export default mixins(
 					classes['parameter-value-container'] = true;
 				}
 
-				if (this.isValueExpression) {
+				if (this.isValueExpression || this.forceShowExpression) {
 					classes['expression'] = true;
 				}
 				if (this.getIssues.length || this.errorHighlight) {
