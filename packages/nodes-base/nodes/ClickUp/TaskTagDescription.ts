@@ -20,11 +20,13 @@ export const taskTagOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a tag to a task',
+				action: 'Add a task tag',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a tag from a task',
+				action: 'Remove a task tag',
 			},
 		],
 		default: 'add',

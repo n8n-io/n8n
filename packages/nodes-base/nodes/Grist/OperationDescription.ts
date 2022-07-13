@@ -13,22 +13,26 @@ export const operationFields: INodeProperties[] = [
 				name: 'Create Row',
 				value: 'create',
 				description: 'Create rows in a table',
+				action: 'Create rows in a table',
 			},
 			{
 				name: 'Delete Row',
 				value: 'delete',
 				description: 'Delete rows from a table',
+				action: 'Delete rows from a table',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
 				name: 'Get All Rows',
 				value: 'getAll',
 				description: 'Read rows from a table',
+				action: 'Read rows from a table',
 			},
 			{
 				name: 'Update Row',
 				value: 'update',
 				description: 'Update rows in a table',
+				action: 'Update rows in a table',
 			},
 		],
 		default: 'getAll',

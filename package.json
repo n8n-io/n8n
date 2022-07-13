@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.185.0",
+  "version": "0.186.0",
   "private": true,
   "homepage": "https://n8n.io",
   "scripts": {

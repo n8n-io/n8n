@@ -22,6 +22,7 @@ export const searchOperations: INodeProperties[] = [
 				name: 'Query',
 				value: 'query',
 				description: 'Search for something',
+				action: 'Perform a query',
 			},
 		],
 		default: 'query',
