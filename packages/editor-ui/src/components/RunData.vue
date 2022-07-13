@@ -764,11 +764,29 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: JSON.parse(value) });
+				this.$store.commit('pinData', { node: this.node, data: this.removeJsonKeys(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
+			},
+			removeJsonKeys(value: string) {
+				const parsed = JSON.parse(value);
+
+				if (Array.isArray(parsed) && parsed.some(item => this.isJsonKeyObject(item))) {
+					return parsed.map(item => item.json !== undefined ? item.json : item);
+				}
+
+				return parsed;
+			},
+			isJsonKeyObject(item: unknown) {
+				const isObject = typeof item === 'object' && item !== null && !Array.isArray(item);
+
+				if (!isObject) return false;
+
+				const keys = Object.keys(item || {});
+
+				return keys.length === 1 && keys[0] === 'json';
 			},
 			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 				this.$telemetry.track('User closed ndv edit state', {
