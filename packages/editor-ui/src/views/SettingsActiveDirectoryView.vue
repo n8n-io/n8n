@@ -223,7 +223,6 @@ export default mixins(
 						initialValue: this.adConfig.connection.url,
 						properties: {
 							label: 'Server Address',
-							maxlength: 32,
 							required: true,
 							autocomplete: 'given-name',
 							capitalize: true,
@@ -234,7 +233,6 @@ export default mixins(
 						initialValue: this.adConfig.binding.baseDn,
 						properties: {
 							label: 'Base DN',
-							maxlength: 32,
 							required: true,
 							autocomplete: 'family-name',
 							capitalize: true,
@@ -263,7 +261,6 @@ export default mixins(
 						initialValue: this.adConfig.binding.adminDn,
 						properties: {
 							label: 'Binding DN',
-							maxlength: 32,
 							required: true,
 							autocomplete: 'family-name',
 							capitalize: true,

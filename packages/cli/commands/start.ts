@@ -34,6 +34,8 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { handleActiveDirectoryFirstInit } from '../src/ActiveDirectory/helpers';
+// import { ActiveDirectoryService } from '../src/ActiveDirectory/ActiveDirectoryService';
+// import { SearchEntry } from 'ldapts';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -362,28 +364,33 @@ export class Start extends Command {
 				// const loginId = 'mail';
 				// const userFilter = '';
 
-				// const usernameInputFromUi = 'ricardo@n8n.io';
+				// const usernameInputFromUi = 'teresa.zeron1@gmail.com';
 				// const passwordInputFromUi = 'Ricardo_123';
 
 				// const activeDirectory = new ActiveDirectoryService();
 
-				// try {
-				// 	const searchResult = await activeDirectory.searchWithAdminBinding(
-				// 		`(${loginId}=${usernameInputFromUi})`,
-				// 	);
+				// const aja = await getActiveDirectoryConfig();
 
-				// 	if (!searchResult.length) {
-				// 		return;
-				// 	}
+				// activeDirectory.config = aja.data;
 
-				// 	// get the last user in the results
-				// 	let user = searchResult.pop();
+				// const searchResult = await activeDirectory.searchWithAdminBinding(
+				// 	`(${loginId}=${usernameInputFromUi})`,
+				// );
 
-				// 	if (user === undefined) {
-				// 		user = { dn: '' };
-				// 	}
+				// console.log(searchResult);
 
-				// 	await activeDirectory.validUser(user.dn, passwordInputFromUi);
+				// if (!searchResult.length) {
+				// 	return;
+				// }
+
+				// // get the last user in the results
+				// let user = searchResult.pop();
+
+				// if (user === undefined) {
+				// 	user = { dn: '' };
+				// }
+
+				// await activeDirectory.validUser(user.dn, passwordInputFromUi);
 
 				// const n8nUser: {
 				// 	email: string;

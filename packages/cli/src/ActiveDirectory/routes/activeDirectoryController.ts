@@ -3,7 +3,7 @@ import express from 'express';
 import { Db } from '../..';
 import { ActiveDirectoryManager } from '../ActiveDirectoryManager';
 import { ACTIVE_DIRECTORY_FEATURE_NAME } from '../constants';
-import { getActiveDirectoryConfig } from '../helpers';
+import { getActiveDirectoryConfig, updateActiveDirectoryConfig } from '../helpers';
 import type { ActiveDirectoryConfig } from '../types';
 
 export const activeDirectoryController = express.Router();
@@ -37,12 +37,7 @@ activeDirectoryController.post(
 activeDirectoryController.put(
 	'/config',
 	async (req: ActiveDirectoryConfig.Update, res: express.Response) => {
-		await Db.collections.FeatureConfig.update(
-			{ name: ACTIVE_DIRECTORY_FEATURE_NAME },
-			{ data: req.body },
-		);
-
-		// add json schema to validate the shape of the JSON;
+		await updateActiveDirectoryConfig(req.body);
 
 		const { data } = await getActiveDirectoryConfig();
 

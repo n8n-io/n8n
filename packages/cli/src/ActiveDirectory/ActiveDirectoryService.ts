@@ -27,6 +27,8 @@ export class ActiveDirectoryService {
 	private async bindAdmin(): Promise<void> {
 		await this.getClient();
 		if (this.client) {
+			console.log(this._config.binding.adminDn);
+			console.log(this._config.binding.adminPassword);
 			await this.client.bind(this._config.binding.adminDn, this._config.binding.adminPassword);
 		}
 	}
@@ -34,9 +36,11 @@ export class ActiveDirectoryService {
 	async searchWithAdminBinding(filter: string): Promise<Entry[]> {
 		await this.bindAdmin();
 		if (this.client) {
+			console.log(this._config.binding.baseDn);
 			const { searchEntries } = await this.client.search(this._config.binding.baseDn, {
 				filter,
 			});
+			console.log('aqui papa');
 			await this.client.unbind();
 			return searchEntries;
 		}

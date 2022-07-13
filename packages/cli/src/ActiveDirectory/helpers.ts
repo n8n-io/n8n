@@ -1,5 +1,9 @@
+/* eslint-disable no-param-reassign */
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable import/no-cycle */
+import { AES, enc } from 'crypto-js';
 import { Entry } from 'ldapts';
+import { UserSettings } from 'n8n-core';
 import { Db, IFeatureConfigDb } from '..';
 import config from '../../config';
 import { Settings } from '../databases/entities/Settings';
@@ -21,6 +25,11 @@ const isFirstRunAfterFeatureEnabled = (databaseSettings: Settings[]) => {
 
 const randonPassword = () => {
 	return Math.random().toString(36).slice(-8);
+};
+
+const encryptPassword = async (password: string) => {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+	return AES.encrypt(password, encryptionKey).toString();
 };
 
 const saveSettings = async () => {
@@ -60,6 +69,11 @@ const saveFeatureConfiguration = async () => {
 	await Db.collections.FeatureConfig.save<IFeatureConfigDb>(featureConfig);
 };
 
+const decryptPassword = async (password: string): Promise<string> => {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+	return AES.decrypt(password, encryptionKey).toString(enc.Utf8);
+};
+
 export const getActiveDirectoryConfig = async (): Promise<{
 	name: string;
 	data: ActiveDirectoryConfig;
@@ -67,10 +81,22 @@ export const getActiveDirectoryConfig = async (): Promise<{
 	const configuration = await Db.collections.FeatureConfig.findOneOrFail({
 		name: ACTIVE_DIRECTORY_FEATURE_NAME,
 	});
+	const configurationData = configuration.data as ActiveDirectoryConfig;
+	configurationData.binding.adminPassword = await decryptPassword(
+		configurationData.binding.adminPassword,
+	);
 	return {
 		name: configuration.name,
-		data: configuration.data as ActiveDirectoryConfig,
+		data: configurationData,
 	};
+};
+
+export const updateActiveDirectoryConfig = async (config: ActiveDirectoryConfig): Promise<void> => {
+	config.binding.adminPassword = await encryptPassword(config.binding.adminPassword);
+	await Db.collections.FeatureConfig.update(
+		{ name: ACTIVE_DIRECTORY_FEATURE_NAME },
+		{ data: config },
+	);
 };
 
 // rename to handle ad first init
