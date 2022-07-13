@@ -121,7 +121,7 @@ export default mixins(
 						const prevValue = this.value;
 						let updatedValue: string;
 						if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
-							updatedValue = `=${prevValue} ${data}`;
+							updatedValue = `${prevValue} ${data}`;
 						}
 						else {
 							updatedValue = `=${data}`;
