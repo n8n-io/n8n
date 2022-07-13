@@ -117,7 +117,7 @@ export default {
 
 .options {
 	opacity: 0;
-	transition: opacity 150ms cubic-bezier(0.87, 0, 0.13, 1);
+	transition: opacity 250ms cubic-bezier(0.87, 0, 0.13, 1);
 	background-color: var(--color-background-xlight);
 
 	> * {
