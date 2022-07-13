@@ -693,7 +693,13 @@ export class WorkflowExecute {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
 
-		const workflowIssues = workflow.checkReadyForExecution({ startNode, destinationNode });
+		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
+
+		const workflowIssues = workflow.checkReadyForExecution({
+			startNode,
+			destinationNode,
+			pinDataNodeNames,
+		});
 		if (workflowIssues !== null) {
 			throw new Error(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',
@@ -927,7 +933,10 @@ export class WorkflowExecute {
 							const { pinData } = this.runExecutionData.resultData;
 
 							if (pinData && pinData[executionNode.name] !== undefined) {
-								const nodePinData = pinData[executionNode.name];
+								let nodePinData = pinData[executionNode.name];
+
+								if (!Array.isArray(nodePinData)) nodePinData = [nodePinData];
+
 								const itemsPerRun = nodePinData.map((item, index) => {
 									return { json: item, pairedItem: { item: index } };
 								});
