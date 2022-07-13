@@ -204,7 +204,7 @@ export class Raindrop implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (isEmpty(updateFields)) {
-							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`), { itemIndex: i };
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
 						}
 
 						Object.assign(body, updateFields);

@@ -1750,7 +1750,7 @@ export class Github implements INodeType {
 								throw new NodeOperationError(
 									this.getNode(),
 									`No binary data property "${binaryPropertyName}" does not exists on item!`,
-									{ itemIndex: i }
+									{ itemIndex: i },
 								);
 							}
 
