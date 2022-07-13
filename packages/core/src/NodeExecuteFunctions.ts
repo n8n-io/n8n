@@ -956,10 +956,8 @@ export async function requestOAuth2(
 	}
 
 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-		Object.assign(newRequestOptions, {
-			headers: {
-				[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
-			},
+		Object.assign(newRequestOptions.headers, {
+			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
 	}
 
@@ -1073,10 +1071,8 @@ export async function requestOAuth2(
 			}
 
 			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-				Object.assign(newRequestOptions, {
-					headers: {
-						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
-					},
+				Object.assign(newRequestOptions.headers, {
+					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 				});
 			}
 
