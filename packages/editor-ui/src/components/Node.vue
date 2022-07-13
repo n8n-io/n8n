@@ -328,6 +328,13 @@ export default mixins(
 					this.showTriggerNodeTooltip = this.shouldShowTriggerTooltip;
 				}, 200);
 			}
+
+			if (this.pinDataDiscoveryTooltipVisible) {
+				this.pinDataDiscoveryTooltipVisible = false;
+				setTimeout(() => {
+					this.pinDataDiscoveryTooltipVisible = true;
+				}, 200);
+			}
 		},
 		shouldShowTriggerTooltip(shouldShowTriggerTooltip) {
 			if (shouldShowTriggerTooltip) {
