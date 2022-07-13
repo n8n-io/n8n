@@ -140,7 +140,7 @@ export class Marketstack implements INodeType {
 							if (!dateFrom || !dateTo) {
 								throw new NodeOperationError(
 									this.getNode(),
-									'Please enter a start and end date to filter by timeframe.', { itemIndex: i }
+									'Please enter a start and end date to filter by timeframe.', { itemIndex: i },
 								);
 							}
 							endpoint = '/eod';
