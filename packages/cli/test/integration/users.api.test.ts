@@ -503,9 +503,9 @@ test(
 		await utils.configureSmtp();
 
 		const testEmails = [
-			randomEmail(),
-			randomEmail().toUpperCase(),
-			memberShell.email,
+			// randomEmail(),
+			// randomEmail().toUpperCase(),
+			// memberShell.email,
 			member.email,
 		];
 
