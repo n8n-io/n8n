@@ -25,7 +25,12 @@ import {
 } from 'n8n-workflow';
 
 import config from '../../../config';
-import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from './constants';
+import {
+	AUTHLESS_ENDPOINTS,
+	PUBLIC_API_REST_PATH_SEGMENT,
+	REST_PATH_SEGMENT,
+	SMTP_TEST_TIMEOUT,
+} from './constants';
 import { AUTH_COOKIE_NAME } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import {
@@ -55,7 +60,6 @@ import type {
 	TriggerTime,
 } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-
 
 /**
  * Initialize a test server.
@@ -886,12 +890,21 @@ export async function configureSmtp() {
 
 export async function isTestSmtpServiceAvailable() {
 	try {
-		await configureSmtp();
-		await UserManagementMailer.getInstance();
-		return true;
+		return await Promise.race([checkSmtp(), timeout(SMTP_TEST_TIMEOUT)]);
 	} catch (_) {
 		return false;
 	}
+}
+
+async function checkSmtp() {
+	await configureSmtp();
+	await UserManagementMailer.getInstance();
+
+	return true;
+}
+
+function timeout(ms: number): Promise<boolean> {
+	return new Promise((resolve) => setTimeout(() => resolve(false), ms));
 }
 
 export function skipSmtpTest(expect: jest.Expect) {
