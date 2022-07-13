@@ -156,14 +156,14 @@ export class AgileCrm implements INodeType {
 							rules = getFilterRules(conditions, matchType);
 							Object.assign(filterJson, rules);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'At least one condition must be added.');
+							throw new NodeOperationError(this.getNode(), 'At least one condition must be added.', { itemIndex: i });
 						}
 					} else if (filterType === 'json') {
 						const filterJsonRules = this.getNodeParameter('filterJson', i) as string;
 						if (validateJSON(filterJsonRules) !== undefined) {
 							Object.assign(filterJson, JSON.parse(filterJsonRules) as IFilter);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'Filter (JSON) must be a valid json');
+							throw new NodeOperationError(this.getNode(), 'Filter (JSON) must be a valid json', { itemIndex: i });
 						}
 					}
 					body.filterJson = JSON.stringify(filterJson);
@@ -203,7 +203,7 @@ export class AgileCrm implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 							}
 						}
 
@@ -359,7 +359,7 @@ export class AgileCrm implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 							}
 						}
 					} else {
@@ -537,7 +537,7 @@ export class AgileCrm implements INodeType {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 							}
 						}
 
@@ -579,7 +579,7 @@ export class AgileCrm implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Additional fields must be valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be valid JSON', { itemIndex: i });
 							}
 						}
 

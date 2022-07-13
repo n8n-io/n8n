@@ -157,11 +157,11 @@ export class NocoDB implements INodeType {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
 								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 								const binaryPropertyName = field.binaryProperty;
 								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
+									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`, { itemIndex: i });
 								}
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
@@ -336,11 +336,11 @@ export class NocoDB implements INodeType {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
 								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 								const binaryPropertyName = field.binaryProperty;
 								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
+									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`, { itemIndex: i });
 								}
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);

@@ -416,7 +416,7 @@ export class DateTime implements INodeType {
 						continue;
 					}
 					if (options.fromFormat === undefined && !moment(currentDate as string | number).isValid()) {
-						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field');
+						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field', { itemIndex: i });
 					}
 
 					if (Number.isInteger(currentDate as unknown as number)) {
