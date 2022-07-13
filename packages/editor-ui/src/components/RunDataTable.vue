@@ -13,7 +13,7 @@
 		<table :class="$style.table" v-else>
 			<tr>
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
-					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled && showMappingHint(0)">
+					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || (showDraggables && actuallyShowDraggables)">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
 						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled">
 							<template v-slot:preview="{ canDrop }">
@@ -31,7 +31,7 @@
 									}"
 								>
 									<span>{{ column || "&nbsp;" }}</span>
-									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="showMappingHint(i)">
+									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showDraggables && actuallyShowDraggables">
 										<div slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
 										<div :class="$style.dragButton">
 											<div>
@@ -96,6 +96,7 @@ export default Vue.extend({
 	data() {
 		return {
 			activeColumn: -1,
+			actuallyShowDraggables: false,
 		};
 	},
 	computed: {
@@ -104,6 +105,9 @@ export default Vue.extend({
 		},
 		isUserOnboarded(): boolean {
 			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
+		},
+		showDraggables(): boolean {
+			return !!this.focusedMappableInput && !this.isUserOnboarded;
 		},
 	},
 	methods: {
@@ -133,8 +137,17 @@ export default Vue.extend({
 
 			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
 		},
-		showMappingHint(i: number): boolean {
-			return i === 0 && !!this.focusedMappableInput && !this.isUserOnboarded;
+	},
+	watch: {
+		showDraggables(curr: boolean, prev: boolean) {
+			if (curr) {
+				setTimeout(() => {
+					this.actuallyShowDraggables = this.showDraggables;
+				}, 1000);
+			}
+			else {
+				this.actuallyShowDraggables = false;
+			}
 		},
 	},
 });
