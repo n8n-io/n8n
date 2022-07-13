@@ -20,6 +20,9 @@ export class ActiveDirectoryService {
 		if (this.client === undefined) {
 			this.client = new Client({
 				url: this._config.connection.url,
+				tlsOptions: {
+					rejectUnauthorized: this._config.connection.useSsl,
+				},
 			});
 		}
 	}

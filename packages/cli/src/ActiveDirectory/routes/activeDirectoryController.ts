@@ -1,8 +1,6 @@
 /* eslint-disable import/no-cycle */
 import express from 'express';
-import { Db } from '../..';
 import { ActiveDirectoryManager } from '../ActiveDirectoryManager';
-import { ACTIVE_DIRECTORY_FEATURE_NAME } from '../constants';
 import { getActiveDirectoryConfig, updateActiveDirectoryConfig } from '../helpers';
 import type { ActiveDirectoryConfig } from '../types';
 

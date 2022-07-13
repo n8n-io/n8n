@@ -6,6 +6,7 @@ export interface ActiveDirectoryConfig {
 	activeDirectoryLoginEnabled: boolean;
 	connection: {
 		url: string;
+		useSsl: boolean;
 	};
 	binding: {
 		baseDn: string;

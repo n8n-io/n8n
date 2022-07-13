@@ -981,6 +981,7 @@ export interface IActiveDirectoryConfig {
 			baseDn: string;
 		};
 		connection: {
+			useSsl: boolean;
 			url: string;
 		};
 }

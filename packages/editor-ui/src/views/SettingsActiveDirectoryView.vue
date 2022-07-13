@@ -129,6 +129,7 @@ export default mixins(
 				lastName: string,
 				firstName: string,
 				username: string,
+				useSsl: string;
 				}) {
 			if (!this.hasAnyChanges) {
 				return;
@@ -138,6 +139,7 @@ export default mixins(
 				activeDirectoryLoginEnabled: form.loginEnaled === 'true' ? true : false,
 				connection: {
 					url: form.serverAddress,
+					useSsl: form.useSsl === 'true' ? true : false,
 				},
 				binding: {
 					baseDn: form.baseDn,
@@ -226,6 +228,25 @@ export default mixins(
 							required: true,
 							autocomplete: 'given-name',
 							capitalize: true,
+						},
+					},
+					{
+						name: 'useSsl',
+						initialValue: this.adConfig.connection.useSsl.toString(),
+						properties: {
+							type: 'select',
+							label: 'Use SSL',
+							required: true,
+							options: [
+								{
+									label: 'True',
+									value: 'true',
+								},
+								{
+									label: 'False',
+									value: 'false',
+								},
+							],
 						},
 					},
 					{

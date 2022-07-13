@@ -51,6 +51,7 @@ const saveFeatureConfiguration = async () => {
 			activeDirectoryLoginEnabled: false,
 			connection: {
 				url: config.getEnv('activeDirectory.connection.url'),
+				useSsl: true,
 			},
 			binding: {
 				baseDn: config.getEnv('activeDirectory.binding.baseDn'),
