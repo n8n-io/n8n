@@ -978,10 +978,24 @@ export async function requestOAuth2(
 						Authorization: '',
 					};
 				}
-				const newToken = await token.refresh(tokenRefreshOptions);
+
+				let newToken;
+
 				Logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 				);
+				// if it's OAuth2 with client credentials grant type, get a new token
+				// instead of refreshing it.
+				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
+					newToken = await token.client.credentials.getToken();
+				} else {
+					newToken = await token.refresh(tokenRefreshOptions);
+				}
+
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+				);
+
 				credentials.oauthTokenData = newToken.data;
 				// Find the credentials
 				if (!node.credentials || !node.credentials[credentialsType]) {
