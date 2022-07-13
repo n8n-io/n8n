@@ -27,7 +27,7 @@ let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
-let isSmtpAvailable = false;
+// let isSmtpAvailable = false;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
@@ -49,8 +49,8 @@ beforeAll(async () => {
 	utils.initTestTelemetry();
 	utils.initTestLogger();
 
-	isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
-	console.log('isSmtpAvailable', isSmtpAvailable);
+	// isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
+	// console.log('isSmtpAvailable', isSmtpAvailable);
 }, SMTP_TEST_TIMEOUT);
 
 beforeEach(async () => {
@@ -491,6 +491,8 @@ test('POST /users should fail if user management is disabled', async () => {
 test(
 	'POST /users should email invites and create user shells but ignore existing',
 	async () => {
+		const isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
+
 		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
 
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
@@ -545,6 +547,8 @@ test(
 test(
 	'POST /users should fail with invalid inputs',
 	async () => {
+		const isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
+
 		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
 
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
@@ -576,6 +580,8 @@ test(
 test(
 	'POST /users should ignore an empty payload',
 	async () => {
+		const isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
+
 		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
 
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
