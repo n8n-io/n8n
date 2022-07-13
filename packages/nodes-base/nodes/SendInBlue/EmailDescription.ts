@@ -34,6 +34,18 @@ export const emailOperations: INodeProperties[] = [
 
 const sendHtmlEmailFields: INodeProperties[] = [
 	{
+		displayName: 'Send HTML',
+		name: 'sendHTML',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['email'],
+				operation: ['send'],
+			},
+		},
+		default: false,
+	},
+	{
 		displayName: 'Subject',
 		name: 'subject',
 		type: 'string',
@@ -51,18 +63,6 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		},
 		default: '',
 		description: 'Subject of the email',
-	},
-	{
-		displayName: 'Send HTML',
-		name: 'sendHTML',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['email'],
-				operation: ['send'],
-			},
-		},
-		default: false,
 	},
 	{
 		displayName: 'Text Content',
@@ -207,9 +207,9 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Additional Parameters',
-		name: 'additionalParameters',
-		placeholder: 'Add Parameter',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		placeholder: 'Add Field',
 		description: 'Additional fields to add',
 		type: 'collection',
 		default: {},
