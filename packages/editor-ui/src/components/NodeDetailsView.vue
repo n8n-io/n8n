@@ -161,10 +161,18 @@ export default mixins(
 			triggerWaitingWarningEnabled: false,
 			isDragging: false,
 			mainPanelPosition: 0,
+			pinDataDiscoveryTooltipVisible: false,
 		};
 	},
 	mounted() {
 		this.$store.commit('ui/setNDVSessionId');
+
+		dataPinningEventBus.$on('data-pinning-discovery', ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
+			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
+		});
+	},
+	destroyed () {
+		dataPinningEventBus.$off('data-pinning-discovery');
 	},
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
@@ -357,8 +365,9 @@ export default mixins(
 							outogingConnections && outogingConnections.main && outogingConnections.main.length,
 						input_displayed_run_index: this.inputRun,
 						output_displayed_run_index: this.outputRun,
+						data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
 					});
-				}, 0); // wait for display mode to be set correctly
+				}, 2000); // wait for RunData to mount and present pindata discovery tooltip
 			}
 			if (window.top && !this.isActiveStickyNode) {
 				window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');

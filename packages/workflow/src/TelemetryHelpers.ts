@@ -122,6 +122,7 @@ export function generateNodesGraph(
 		node_connections: [],
 		nodes: {},
 		notes: {},
+		is_pinned: Object.keys(workflow.pinData ?? {}).length > 0,
 	};
 	const nodeNameAndIndex: INodeNameIndex = {};
 
