@@ -1087,7 +1087,7 @@ class App {
 
 					const sessionId = GenericHelpers.getSessionId(req);
 
-					const pinnedTrigger = findPinnedTrigger(workflowData, pinData);
+					const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
 
 					// If webhooks nodes exist and are active we have to wait for till we receive a call
 					if (
@@ -1139,6 +1139,11 @@ class App {
 						workflowData,
 						userId: req.user.id,
 					};
+
+					if (pinnedTrigger) {
+						data.startNodes = [pinnedTrigger.name];
+					}
+
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
 
@@ -3101,9 +3106,9 @@ function isOAuth(credType: ICredentialType) {
 const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
 
 const isTrigger = (str: string) =>
-	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().endsWith(suffix));
+	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
 
-function findPinnedTrigger(workflow: IWorkflowDb, pinData?: PinData) {
+function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: PinData) {
 	if (!pinData) return;
 
 	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
