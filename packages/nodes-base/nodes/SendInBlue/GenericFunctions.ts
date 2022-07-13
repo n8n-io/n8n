@@ -68,7 +68,7 @@ export async function validateAttachmentsData(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const dataPropertyList = this.getNodeParameter(
-		'additionalParameters.emailAttachments.attachment',
+		'additionalFields.emailAttachments.attachment',
 	) as JsonObject[];
 	const { body } = requestOptions;
 
