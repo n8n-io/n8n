@@ -53,8 +53,13 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
+import mixins from 'vue-typed-mixins';
+import { showMessage } from './mixins/showMessage';
+import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 
-export default Vue
+export default mixins(
+	showMessage,
+)
 	.extend({
 		name: 'ParameterInputFull',
 		components: {
@@ -127,6 +132,16 @@ export default Vue
 						};
 
 						this.$emit('valueChanged', parameterData);
+
+						if (window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true') {
+							this.$showMessage({
+								title: this.$locale.baseText('dataMapping.success.title'),
+								message: this.$locale.baseText('dataMapping.success.moreInfo'),
+								type: 'success',
+							});
+
+							window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+						}
 					}
 					this.forceShowExpression= false;
 				}, 200);
