@@ -20,8 +20,7 @@ export class WhatsApp implements INodeType {
 		icon: 'file:whatsapp.svg',
 		group: ['transform'],
 		version: 1,
-		subtitle:
-			'={{ $parameter["resource"] + ": " + ($parameter["resource"] == "media" ? $parameter["operation"] : $parameter["type"]) }}',
+		subtitle: '={{ $parameter["resource"] + ": " + $parameter["operation"] }}',
 		description: 'Access WhatsApp API',
 		defaults: {
 			name: 'WhatsApp',

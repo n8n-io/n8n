@@ -5,6 +5,53 @@ export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
 export const messageFields: INodeProperties[] = [
 	{
+		displayName: 'Operation',
+		noDataExpression: true,
+		name: 'operation',
+		type: 'options',
+		placeholder: '',
+		options: [
+			{
+				name: 'Send Audio',
+				value: 'audio',
+			},
+			{
+				name: 'Send Document',
+				value: 'document',
+			},
+			{
+				name: 'Send Image',
+				value: 'image',
+			},
+			{
+				name: 'Send Template',
+				value: 'template',
+			},
+			{
+				name: 'Send Text',
+				value: 'text',
+			},
+			{
+				name: 'Send Video',
+				value: 'video',
+			},
+		],
+		default: 'template',
+		description: 'The type of the message',
+		routing: {
+			send: {
+				type: 'body',
+				property: 'type',
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['messages'],
+			},
+		},
+	},
+
+	{
 		displayName: 'Messaging Product',
 		name: 'messagingProduct',
 		default: 'whatsapp',
@@ -61,51 +108,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Type',
-		name: 'type',
-		type: 'options',
-		placeholder: '',
-		options: [
-			{
-				name: 'Audio',
-				value: 'audio',
-			},
-			{
-				name: 'Document',
-				value: 'document',
-			},
-			{
-				name: 'Image',
-				value: 'image',
-			},
-			{
-				name: 'Template',
-				value: 'template',
-			},
-			{
-				name: 'Text',
-				value: 'text',
-			},
-			{
-				name: 'Video',
-				value: 'video',
-			},
-		],
-		default: 'template',
-		description: 'The type of the message',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'type',
-			},
-		},
-		displayOptions: {
-			show: {
-				resource: ['messages'],
-			},
-		},
-	},
 ];
 
 export const messageTypeFields: INodeProperties[] = [
@@ -120,31 +122,13 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'The body of the message (max 4096 characters)',
 		displayOptions: {
 			show: {
-				type: ['text'],
+				operation: ['text'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
 				property: 'text.body',
-			},
-		},
-	},
-	{
-		displayName: 'Preview URL',
-		name: 'previewUrl',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to display URL previews in text messages',
-		displayOptions: {
-			show: {
-				type: ['text'],
-			},
-		},
-		routing: {
-			send: {
-				type: 'body',
-				property: 'text.preview_url',
 			},
 		},
 	},
@@ -172,7 +156,7 @@ export const messageTypeFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				type: mediaTypes,
+				operation: mediaTypes,
 			},
 		},
 	},
@@ -184,14 +168,14 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'Link of the media to be sent',
 		displayOptions: {
 			show: {
-				type: mediaTypes,
+				operation: mediaTypes,
 				mediaPath: ['useMediaLink'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
-				property: '={{$parameter["type"]}}.link',
+				property: '={{$parameter["operation"]}}.link',
 			},
 		},
 	},
@@ -203,14 +187,14 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'ID of the media to be sent',
 		displayOptions: {
 			show: {
-				type: mediaTypes,
+				operation: mediaTypes,
 				mediaPath: ['useMediaId'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
-				property: '={{$parameter["type"]}}.id',
+				property: '={{$parameter["operation"]}}.id',
 			},
 		},
 	},
@@ -222,14 +206,14 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'The name of the file (required when using a file ID)',
 		displayOptions: {
 			show: {
-				type: ['document'],
+				operation: ['document'],
 				mediaPath: ['useMediaId'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
-				property: '={{$parameter["type"]}}.filename',
+				property: '={{$parameter["operation"]}}.filename',
 			},
 		},
 	},
@@ -241,13 +225,13 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'The caption of the media',
 		displayOptions: {
 			show: {
-				type: ['image', 'video', 'document'],
+				operation: ['image', 'video', 'document'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
-				property: '={{$parameter["type"]}}.caption',
+				property: '={{$parameter["operation"]}}.caption',
 			},
 		},
 	},
@@ -262,7 +246,7 @@ export const messageTypeFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				type: ['template'],
+				operation: ['template'],
 				resource: ['messages'],
 			},
 		},
@@ -283,7 +267,7 @@ export const messageTypeFields: INodeProperties[] = [
 		default: 'en_US',
 		displayOptions: {
 			show: {
-				type: ['template'],
+				operation: ['template'],
 				resource: ['messages'],
 			},
 		},
@@ -306,7 +290,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				type: ['template'],
+				operation: ['template'],
 				resource: ['messages'],
 			},
 		},
@@ -330,6 +314,7 @@ export const messageTypeFields: INodeProperties[] = [
 								name: 'Body',
 								value: 'body',
 							},
+							// TODO: Sort this out
 							{
 								name: 'Button',
 								value: 'button',
@@ -389,6 +374,34 @@ export const messageTypeFields: INodeProperties[] = [
 						],
 					},
 				],
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['messages'],
+				operation: ['text'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Preview URL',
+				name: 'previewUrl',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to display URL previews in text messages',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'text.preview_url',
+					},
+				},
 			},
 		],
 	},
