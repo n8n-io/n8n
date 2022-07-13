@@ -68,3 +68,14 @@ export function isString(value: unknown): value is string {
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
 }
+
+export function shorten(s: string, limit: number, keep: number) {
+	if (s.length <= limit) {
+		return s;
+	}
+
+	const first = s.slice(0, limit - keep);
+	const last = s.slice(s.length - keep, s.length);
+
+	return `${first}...${last}`;
+}

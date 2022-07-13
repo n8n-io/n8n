@@ -15,10 +15,10 @@
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
 					<n8n-tooltip placement="bottom-start" :open-delay="1000" :disabled="!mappingEnabled">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<Draggable type="mapping" :data="getPath(column)" :disabled="!mappingEnabled">
+						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled">
 							<template v-slot:preview="{ canDrop }">
 								<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: column } }) }}
+									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: shorten(column) } }) }}
 								</div>
 							</template>
 							<template v-slot="{ isDragging }">
@@ -70,6 +70,7 @@
 import { INodeUi, ITableData } from '@/Interface';
 import Vue from 'vue';
 import Draggable from './Draggable.vue';
+import { shorten } from './helpers';
 
 export default Vue.extend({
 	name: 'RunDataTable',
@@ -97,6 +98,9 @@ export default Vue.extend({
 		};
 	},
 	methods: {
+		shorten(s: string) {
+			return shorten(s, 16, 2);
+		},
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
 			if (target && this.mappingEnabled) {
@@ -109,7 +113,7 @@ export default Vue.extend({
 		onMouseLeaveCell() {
 			this.activeColumn = -1;
 		},
-		getPath(column: string) {
+		getExpression(column: string) {
 			if (!this.node) {
 				return '';
 			}
