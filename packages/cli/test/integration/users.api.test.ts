@@ -50,6 +50,7 @@ beforeAll(async () => {
 	utils.initTestLogger();
 
 	isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
+	console.log('isSmtpAvailable', isSmtpAvailable);
 }, SMTP_TEST_TIMEOUT);
 
 beforeEach(async () => {
