@@ -1,5 +1,10 @@
 import { BinaryDataManager } from 'n8n-core';
-import { IExecuteSingleFunctions, IHttpRequestOptions, NodeOperationError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import FormData from 'form-data';
 
@@ -18,7 +23,9 @@ export async function setupUpload(
 		);
 	}
 	const binaryFile = this.getInputData().binary![mediaPropertyName]!;
-	const mediaFileName = this.getNodeParameter('mediaFileName') as string;
+	const mediaFileName = (this.getNodeParameter('mediaFileName') as IDataObject).mediaFileName as
+		| string
+		| undefined;
 	const binaryFileName = binaryFile.fileName;
 	if (!mediaFileName && !binaryFileName) {
 		throw new NodeOperationError(this.getNode(), 'No file name given for media upload.');

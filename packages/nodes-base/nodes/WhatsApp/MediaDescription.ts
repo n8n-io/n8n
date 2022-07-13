@@ -77,20 +77,6 @@ export const mediaTypeFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'File Name',
-		name: 'mediaFileName',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				operation: ['mediaUpload'],
-				resource: ['media'],
-			},
-		},
-		description: 'The name to use for the file',
-	},
-
 	// ----------------------------------
 	//         type: mediaUrlGet
 	// ----------------------------------
@@ -136,5 +122,27 @@ export const mediaTypeFields: INodeProperties[] = [
 		},
 		required: true,
 		description: 'The ID of the media',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['media'],
+				operation: ['mediaUpload'],
+			},
+		},
+		options: [
+			{
+				displayName: 'File Name',
+				name: 'mediaFileName',
+				type: 'string',
+				default: '',
+				description: 'The name to use for the file',
+			},
+		],
 	},
 ];
