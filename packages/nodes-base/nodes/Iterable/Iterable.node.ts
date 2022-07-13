@@ -194,7 +194,7 @@ export class Iterable implements INodeType {
 					if (this.continueOnFail() === false) {
 						if (responseData.code !== 'Success') {
 							throw new NodeOperationError(this.getNode(),
-								`Iterable error response [400]: ${responseData.msg}`, { itemIndex: i }
+								`Iterable error response [400]: ${responseData.msg}`, { itemIndex: i },
 							);
 						}
 					}

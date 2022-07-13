@@ -73,6 +73,7 @@ export class Redis implements INodeType {
 						name: 'Pop',
 						value: 'pop',
 						description: 'Pop data from a redis list',
+						action: 'Pop data from a redis list',
 					},
 					{
 						name: 'Publish',
@@ -84,6 +85,7 @@ export class Redis implements INodeType {
 						name: 'Push',
 						value: 'push',
 						description: 'Push data to a redis list',
+						action: 'Push data to a redis list',
 					},
 					{
 						name: 'Set',
