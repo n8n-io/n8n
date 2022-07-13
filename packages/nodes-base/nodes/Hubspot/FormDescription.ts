@@ -20,11 +20,13 @@ export const formOperations: INodeProperties[] = [
 				name: 'Get Fields',
 				value: 'getFields',
 				description: 'Get all fields from a form',
+				action: 'Get all fields from a form',
 			},
 			{
 				name: 'Submit',
 				value: 'submit',
 				description: 'Submit data to a form',
+				action: 'Submit a form',
 			},
 		],
 		default: 'getFields',

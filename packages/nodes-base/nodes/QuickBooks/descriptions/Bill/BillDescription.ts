@@ -17,22 +17,27 @@ export const billOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a bill',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a bill',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a bill',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all bills',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a bill',
 			},
 		],
 		displayOptions: {

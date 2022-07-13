@@ -14,11 +14,13 @@ export const couponOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a coupon',
+				action: 'Create a coupon',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all coupons',
+				action: 'Get all coupons',
 			},
 		],
 		displayOptions: {

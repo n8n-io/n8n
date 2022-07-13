@@ -14,14 +14,10 @@ import {
 } from 'n8n-workflow';
 
 export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('sendGridApi');
 
 	const host = 'api.sendgrid.com/v3';
 
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Bearer ${credentials.apiKey}`,
-		},
 		method,
 		qs,
 		body,
@@ -39,7 +35,7 @@ export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunction
 
 	try {
 		//@ts-ignore
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

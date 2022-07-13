@@ -20,6 +20,7 @@ export const pushOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a push notification',
+				action: 'Create a push notification',
 			},
 		],
 		default: 'create',

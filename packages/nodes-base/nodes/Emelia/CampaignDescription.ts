@@ -13,30 +13,37 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Add Contact',
 				value: 'addContact',
+				action: 'Add a contact to a campaign',
 			},
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a campaign',
 			},
 			{
 				name: 'Duplicate',
 				value: 'duplicate',
+				action: 'Duplicate a campaign',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a campaign',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all campaigns',
 			},
 			{
 				name: 'Pause',
 				value: 'pause',
+				action: 'Pause a campaign',
 			},
 			{
 				name: 'Start',
 				value: 'start',
+				action: 'Start a campaign',
 			},
 		],
 		displayOptions: {

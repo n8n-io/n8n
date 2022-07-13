@@ -4,6 +4,7 @@ import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import type { Role } from '../../src/databases/entities/Role';
+import { PinData } from 'n8n-workflow';
 
 jest.mock('../../src/telemetry');
 
@@ -43,9 +44,9 @@ test('POST /workflows should store pin data for node in workflow', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	const { pinData } = response.body.data;
+	const { pinData } = response.body.data as { pinData: PinData };
 
-	expect(pinData).toMatchObject({ Spotify: { myKey: 'myValue' } });
+	expect(pinData).toMatchObject({ Spotify: [{ myKey: 'myValue' }] });
 });
 
 test('POST /workflows should set pin data to null if no pin data', async () => {
@@ -58,12 +59,12 @@ test('POST /workflows should set pin data to null if no pin data', async () => {
 
 	expect(response.statusCode).toBe(200);
 
-	const { pinData } = response.body.data;
+	const { pinData } = response.body.data as { pinData: PinData };
 
 	expect(pinData).toBeNull();
 });
 
-test.skip('GET /workflows/:id should return pin data', async () => {
+test('GET /workflows/:id should return pin data', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
@@ -77,9 +78,9 @@ test.skip('GET /workflows/:id should return pin data', async () => {
 
 	expect(workflowRetrievalResponse.statusCode).toBe(200);
 
-	const { pinData } = workflowRetrievalResponse.body.data as { pinData: object };
+	const { pinData } = workflowRetrievalResponse.body.data as { pinData: PinData };
 
-	expect(pinData).toMatchObject({ Spotify: { myKey: 'myValue' } });
+	expect(pinData).toMatchObject({ Spotify: [{ myKey: 'myValue' }] });
 });
 
 function makeWorkflow({ withPinData }: { withPinData: boolean }) {
@@ -99,7 +100,7 @@ function makeWorkflow({ withPinData }: { withPinData: boolean }) {
 	];
 
 	if (withPinData) {
-		workflow.pinData = { Spotify: { myKey: 'myValue' } };
+		workflow.pinData = { Spotify: [{ myKey: 'myValue' }] };
 	}
 
 	return workflow;

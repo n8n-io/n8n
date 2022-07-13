@@ -19,22 +19,27 @@ export const listOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all lists',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a list',
 			},
 		],
 		default: 'get',
