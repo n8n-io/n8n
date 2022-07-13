@@ -49,6 +49,7 @@
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
+					:disabled="node.disabled"
 					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
