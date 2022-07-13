@@ -221,3 +221,9 @@ export const handleActiveDirectoryLogin = async (
 
 	return updatedUser;
 };
+
+const syncActiveDirectoryUsers = () => {
+	//query all users in the active directory server;
+	//
+
+}

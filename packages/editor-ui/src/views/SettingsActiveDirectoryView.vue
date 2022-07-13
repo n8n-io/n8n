@@ -61,7 +61,9 @@
 						<br>
 			<br>
 			<br> -->
-
+			<div>
+				<n8n-button float="left" label="Synchronize Now" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="OnTestConnectionClick" />
+			</div>
 	</SettingsView>
 </template>
 

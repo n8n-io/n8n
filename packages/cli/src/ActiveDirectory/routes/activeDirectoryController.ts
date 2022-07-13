@@ -45,6 +45,22 @@ activeDirectoryController.put(
 	},
 );
 
+/**
+ * POST /active-directory/sync
+ */
+activeDirectoryController.post(
+	'/sync',
+	async (req: ActiveDirectoryConfig.Update, res: express.Response) => {
+		await updateActiveDirectoryConfig(req.body);
+
+		const { data } = await getActiveDirectoryConfig();
+
+		ActiveDirectoryManager.getInstance().config = data;
+
+		return res.status(200).json(data);
+	},
+);
+
 // const aja = {
 // 	activeDirectoryLoginEnabled: true,
 // 	connection: {
