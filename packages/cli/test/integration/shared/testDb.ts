@@ -21,7 +21,7 @@ import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
 import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
 import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
 import { categorize, getPostgresSchemaSection } from './utils';
-import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
+import { createCredentialsFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
 import type { Role } from '../../../src/databases/entities/Role';
 import { User } from '../../../src/databases/entities/User';
@@ -301,6 +301,11 @@ export async function saveCredential(
 	});
 
 	return savedCredential;
+}
+
+export function affixRoleToSaveCredential(role: Role) {
+	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
+		saveCredential(credentialPayload, { user, role });
 }
 
 // ----------------------------------
@@ -681,7 +686,7 @@ export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions =
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const encryptionKey = await UserSettings.getEncryptionKey();
 
-	const coreCredential = createCredentiasFromCredentialsEntity(credential, true);
+	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
 	coreCredential.setData(credential.data, encryptionKey);

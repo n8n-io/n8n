@@ -227,6 +227,19 @@ module.exports = {
 						trailingUnderscore: 'allowSingleOrDouble',
 					},
 					{
+						selector: 'variable',
+						filter: {
+							regex: '^EE',
+							match: true,
+						},
+						format: null,
+					},
+					{
+						selector: 'parameter',
+						format: ['camelCase'],
+						leadingUnderscore: 'allowSingleOrDouble',
+					},
+					{
 						selector: 'property',
 						format: ['camelCase', 'snake_case'],
 						leadingUnderscore: 'allowSingleOrDouble',

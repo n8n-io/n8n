@@ -852,6 +852,12 @@ export const schema = {
 			default: 'default',
 			env: 'N8N_DEPLOYMENT_TYPE',
 		},
+		paid: {
+			doc: 'Whether paid features are enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_PAID',
+		},
 	},
 
 	hiringBanner: {

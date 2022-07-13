@@ -23,10 +23,12 @@ import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { validateEntity } from '../GenericHelpers';
-import { createCredentiasFromCredentialsEntity } from '../CredentialsHelper';
+import { createCredentialsFromCredentialsEntity } from '../CredentialsHelper';
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
 import { externalHooks } from '../Server';
+import { CredentialsService } from './credentials.service';
+import { EECredentialsController } from './credentials.controller.ee';
 
 export const credentialsController = express.Router();
 
@@ -41,6 +43,8 @@ credentialsController.use((req, res, next) => {
 	}
 	next();
 });
+
+credentialsController.use('/', EECredentialsController);
 
 /**
  * GET /credentials
@@ -166,7 +170,7 @@ credentialsController.post(
 		}
 
 		// Encrypt the data
-		const coreCredential = createCredentiasFromCredentialsEntity(newCredential, true);
+		const coreCredential = createCredentialsFromCredentialsEntity(newCredential, true);
 
 		// @ts-ignore
 		coreCredential.setData(newCredential.data, encryptionKey);
@@ -298,7 +302,7 @@ credentialsController.patch(
 			);
 		}
 
-		const coreCredential = createCredentiasFromCredentialsEntity(credential);
+		const coreCredential = createCredentialsFromCredentialsEntity(credential);
 
 		const decryptedData = coreCredential.getData(encryptionKey);
 
@@ -361,14 +365,7 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await Db.collections.SharedCredentials.findOne({
-			relations: ['credentials'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'credentials',
-				entityId: credentialId,
-			}),
-		});
+		const shared = await CredentialsService.getSharing(req.user.id, credentialId, ['credentials']);
 
 		if (!shared) {
 			throw new ResponseHelper.ResponseError(
@@ -402,7 +399,7 @@ credentialsController.get(
 			);
 		}
 
-		const coreCredential = createCredentiasFromCredentialsEntity(credential);
+		const coreCredential = CredentialsService.createCredentialsFromCredentialsEntity(credential);
 
 		return {
 			id: id.toString(),

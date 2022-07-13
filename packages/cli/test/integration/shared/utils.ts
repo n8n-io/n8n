@@ -43,7 +43,7 @@ import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/ro
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
-import { credentialsController } from '../../../src/api/credentials.api';
+import { credentialsController } from '../../../src/credentials/credentials.controller';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
 import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
 import type { User } from '../../../src/databases/entities/User';
@@ -55,7 +55,6 @@ import type {
 	TriggerTime,
 } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-
 
 /**
  * Initialize a test server.
@@ -807,6 +806,10 @@ export function createAgent(
 	}
 
 	return agent;
+}
+
+export function createAuthAgent(app: express.Application) {
+	return (user: User) => createAgent(app, { auth: true, user });
 }
 
 /**
