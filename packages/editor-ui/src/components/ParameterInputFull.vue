@@ -110,10 +110,18 @@ export default Vue
 				this.forceShowOptions = true;
 				setTimeout(() => {
 					if (this.node) {
+						let updatedValue: string;
+						if (typeof this.value === 'string' && this.value.startsWith('=') && this.value.length > 1) {
+							updatedValue = `${this.value} ${data}`;
+						}
+						else {
+							updatedValue = `=${data}`;
+						}
+
 						const parameterData = {
 							node: this.node.name,
 							name: this.path,
-							value: typeof this.value === 'string' && this.value.startsWith('=')? `${this.value} ${data}`: `=${data}`,
+							value: updatedValue,
 						};
 
 						this.$emit('valueChanged', parameterData);
