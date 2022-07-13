@@ -602,6 +602,11 @@ export default mixins(
 				this.resetWorkspace();
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
+
+				if (data.workflow.pinData) {
+					this.$store.commit('setWorkflowPinData', data.workflow.pinData);
+				}
+
 				this.$nextTick(() => {
 					this.zoomToFit();
 				});
