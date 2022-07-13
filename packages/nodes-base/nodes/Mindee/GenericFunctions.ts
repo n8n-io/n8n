@@ -24,9 +24,9 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		service = 'mindeeInvoiceApi';
 	}
 
-	const version = this.getNodeParameter('apiVersion', 0) as string;
+	const version = this.getNodeParameter('apiVersion', 0) as number;
 	// V1 of mindee is deprecated, we are keeping it for now but now V3 is active
-	const url = version === 'version1' ? `https://api.mindee.net/products${path}` : `https://api.mindee.net/v1/products/mindee${path}`;
+	const url = version === 1 ? `https://api.mindee.net/products${path}` : `https://api.mindee.net/v1/products/mindee${path}`;
 
 	const options: OptionsWithUri = {
 		headers: {},

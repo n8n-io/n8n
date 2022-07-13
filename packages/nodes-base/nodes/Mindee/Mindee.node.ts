@@ -73,14 +73,14 @@ export class Mindee implements INodeType {
 				options: [
 					{
 						name: '1',
-						value: 'version1',
+						value: 1,
 					},
 					{
 						name: '3',
-						value: 'version3',
+						value: 3,
 					},
 				],
-				default: 'version1',
+				default: 1,
 				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
@@ -98,14 +98,14 @@ export class Mindee implements INodeType {
 				options: [
 					{
 						name: '1',
-						value: 'version1',
+						value: 1,
 					},
 					{
 						name: '3',
-						value: 'version3',
+						value: 3,
 					},
 				],
-				default: 'version3',
+				default: 3,
 				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
@@ -173,7 +173,7 @@ export class Mindee implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const version = this.getNodeParameter('apiVersion', 0) as string;
+		const version = this.getNodeParameter('apiVersion', 0) as number;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let endpoint;
@@ -197,7 +197,7 @@ export class Mindee implements INodeType {
 						if (binaryData === undefined) {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
-						if(version === 'version1') {
+						if(version === 1) {
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
@@ -215,7 +215,7 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
-					 } else if(version === 'version3') {
+					 } else if(version === 3) {
 							endpoint = '/expense_receipts/v3/predict';
 							responseData = await mindeeApiRequest.call(
 							 this,
@@ -236,9 +236,9 @@ export class Mindee implements INodeType {
 						 );
 					 }
 						if (rawData === false) {
-							if(version === 'version1') {
+							if(version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
-							}else if(version === 'version3') {
+							}else if(version === 3) {
 								responseData = cleanData(responseData.document);
 							}
 						}
@@ -263,7 +263,7 @@ export class Mindee implements INodeType {
 						if (binaryData === undefined) {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
-						if(version === 'version1') {
+						if(version === 1) {
 							 endpoint = '/invoices/v1/predict';
 							 responseData = await mindeeApiRequest.call(
 								this,
@@ -282,7 +282,7 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
-						} else if(version === 'version3') {
+						} else if(version === 3) {
 							 endpoint = '/invoices/v3/predict';
 							 responseData = await mindeeApiRequest.call(
 								this,
@@ -306,9 +306,9 @@ export class Mindee implements INodeType {
 							throw new NodeOperationError(this.getNode(), 'Invalid API version');
 						}
 						if (rawData === false) {
-							if(version === 'version1') {
+							if(version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
-							}else if(version === 'version3') {
+							}else if(version === 3) {
 								responseData = cleanData(responseData.document);
 							}
 						}
