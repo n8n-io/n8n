@@ -1,4 +1,10 @@
-import { IExecuteSingleFunctions, IHttpRequestOptions, INodeExecutionData, INodeProperties, JsonObject } from 'n8n-workflow';
+import {
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INodeExecutionData,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
 import { INTERCEPTORS } from './GenericFunctions';
 
 export const attributeOperations: INodeProperties[] = [
@@ -9,9 +15,7 @@ export const attributeOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
+				resource: ['attribute'],
 			},
 		},
 		options: [
@@ -21,7 +25,7 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{$parameter.attributeName.toLowerCase()}}',
+						url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{encodeURI($parameter.attributeName)}}',
 					},
 					output: {
 						postReceive: [
@@ -35,10 +39,13 @@ export const attributeOperations: INodeProperties[] = [
 					},
 					send: {
 						preSend: [
-							async function(this: IExecuteSingleFunctions, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+							async function (
+								this: IExecuteSingleFunctions,
+								requestOptions: IHttpRequestOptions,
+							): Promise<IHttpRequestOptions> {
 								const selectedCategory = this.getNodeParameter('attributeCategory') as string;
 								const override = INTERCEPTORS.get(selectedCategory);
-								if(override) {
+								if (override) {
 									override.call(this, requestOptions.body! as JsonObject);
 								}
 
@@ -97,9 +104,12 @@ export const attributeOperations: INodeProperties[] = [
 									property: 'attributes',
 								},
 							},
-							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
+							async function (
+								this: IExecuteSingleFunctions,
+								items: INodeExecutionData[],
+							): Promise<INodeExecutionData[]> {
 								const returnAll = this.getNodeParameter('returnAll') as boolean;
-								if(returnAll === false) {
+								if (returnAll === false) {
 									const limit = this.getNodeParameter('limit') as number;
 
 									items = items.slice(0, limit);
@@ -123,16 +133,24 @@ const createAttributeOperations: INodeProperties[] = [
 		displayName: 'Category',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'createAttribute',
-				],
+				resource: ['attribute'],
+				operation: ['createAttribute'],
 			},
 		},
 		name: 'attributeCategory',
 		options: [
+			{
+				name: 'Calculated',
+				value: 'calculated',
+			},
+			{
+				name: 'Category',
+				value: 'category',
+			},
+			{
+				name: 'Global',
+				value: 'global',
+			},
 			{
 				name: 'Normal',
 				value: 'normal',
@@ -140,18 +158,6 @@ const createAttributeOperations: INodeProperties[] = [
 			{
 				name: 'Transactional',
 				value: 'transactional',
-			},
-			{
-				name: 'Category',
-				value: 'category',
-			},
-			{
-				name: 'Calculated',
-				value: 'calculated',
-			},
-			{
-				name: 'Global',
-				value: 'global',
 			},
 		],
 		type: 'options',
@@ -162,12 +168,8 @@ const createAttributeOperations: INodeProperties[] = [
 		displayName: 'Name',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'createAttribute',
-				],
+				resource: ['attribute'],
+				operation: ['createAttribute'],
 			},
 		},
 		required: true,
@@ -180,15 +182,9 @@ const createAttributeOperations: INodeProperties[] = [
 		displayName: 'Type',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'createAttribute',
-				],
-				attributeCategory: [
-					'normal',
-				],
+				resource: ['attribute'],
+				operation: ['createAttribute'],
+				attributeCategory: ['normal'],
 			},
 		},
 		name: 'attributeType',
@@ -226,16 +222,9 @@ const createAttributeOperations: INodeProperties[] = [
 		displayName: 'Value',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'createAttribute',
-				],
-				attributeCategory: [
-					'global',
-					'calculated',
-				],
+				resource: ['attribute'],
+				operation: ['createAttribute'],
+				attributeCategory: ['global', 'calculated'],
 			},
 		},
 		name: 'attributeValue',
@@ -257,15 +246,9 @@ const createAttributeOperations: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'createAttribute',
-				],
-				attributeCategory: [
-					'category',
-				],
+				resource: ['attribute'],
+				operation: ['createAttribute'],
+				attributeCategory: ['category'],
 			},
 		},
 		options: [
@@ -327,12 +310,8 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayName: 'Category',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'updateAttribute',
-				],
+				resource: ['attribute'],
+				operation: ['updateAttribute'],
 			},
 		},
 		name: 'updateAttributeCategory',
@@ -358,12 +337,8 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayName: 'Name',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'updateAttribute',
-				],
+				resource: ['attribute'],
+				operation: ['updateAttribute'],
 			},
 		},
 		name: 'updateAttributeName',
@@ -375,16 +350,9 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayName: 'Value',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'updateAttribute',
-				],
-				attributeCategory: [
-					'global',
-					'calculated',
-				],
+				resource: ['attribute'],
+				operation: ['updateAttribute'],
+				attributeCategory: ['global', 'calculated'],
 			},
 		},
 		name: 'updateAttributeValue',
@@ -407,15 +375,9 @@ const updateAttributeOperations: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'updateAttribute',
-				],
-				updateAttributeCategory: [
-					'category',
-				],
+				resource: ['attribute'],
+				operation: ['updateAttribute'],
+				updateAttributeCategory: ['category'],
 			},
 		},
 		options: [
@@ -477,12 +439,8 @@ const deleteAttribueOperations: INodeProperties[] = [
 		displayName: 'Category',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'deleteAttribute',
-				],
+				resource: ['attribute'],
+				operation: ['deleteAttribute'],
 			},
 		},
 		name: 'deleteAttributeCategory',
@@ -516,12 +474,8 @@ const deleteAttribueOperations: INodeProperties[] = [
 		displayName: 'Name',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'deleteAttribute',
-				],
+				resource: ['attribute'],
+				operation: ['deleteAttribute'],
 			},
 		},
 		name: 'deleteAttributeName',
@@ -536,12 +490,8 @@ const getAllAttributeOperations: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['attribute'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -553,22 +503,16 @@ const getAllAttributeOperations: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'attribute',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['attribute'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
-		default: 10,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 ];

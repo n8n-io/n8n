@@ -8,9 +8,7 @@ export const contactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -91,12 +89,8 @@ const createOperations: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -115,12 +109,8 @@ const createOperations: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -204,12 +194,8 @@ const createOperations: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -242,12 +228,8 @@ const getAllOperations: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -259,15 +241,9 @@ const getAllOperations: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		routing: {
@@ -280,7 +256,7 @@ const getAllOperations: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 1000,
 		},
-		default: 10,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -290,12 +266,8 @@ const getAllOperations: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -305,8 +277,8 @@ const getAllOperations: INodeProperties[] = [
 				name: 'sort',
 				type: 'options',
 				options: [
-					{name:'DESC', value: 'desc'},
-					{name:'ASC', value: 'asc'},
+					{ name: 'DESC', value: 'desc' },
+					{ name: 'ASC', value: 'asc' },
 				],
 				routing: {
 					send: {
@@ -327,12 +299,8 @@ const getAllOperations: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -348,7 +316,8 @@ const getAllOperations: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Filter (urlencoded) the contacts modified after a given UTC date-time (YYYY-MM-DDTHH:mm:ss.SSSZ)',
+				description:
+					'Filter (urlencoded) the contacts modified after a given UTC date-time (YYYY-MM-DDTHH:mm:ss.SSSZ)',
 			},
 		],
 	},
@@ -361,12 +330,8 @@ const getOperations: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		routing: {
@@ -388,12 +353,8 @@ const deleteOperations: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		routing: {
@@ -424,12 +385,8 @@ const updateOperations: INodeProperties[] = [
 		displayName: 'Contact Identifier',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		name: 'identifier',
@@ -445,12 +402,8 @@ const updateOperations: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		options: [
