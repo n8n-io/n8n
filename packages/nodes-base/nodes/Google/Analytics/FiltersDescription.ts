@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-const filterExpressions: INodeProperties[] = [
+const dimensionsFilterExpressions: INodeProperties[] = [
 	{
 		displayName: 'Expression',
 		name: 'expression',
@@ -11,53 +11,6 @@ const filterExpressions: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add Expression',
 		options: [
-			// {
-			// 	displayName: 'Between Filter',
-			// 	name: 'betweenFilter',
-			// 	values: [
-			// 		{
-			// 			displayName: 'Dimension Name or ID',
-			// 			name: 'fieldName',
-			// 			type: 'options',
-			// 			typeOptions: {
-			// 				loadOptionsMethod: 'getDimensionsGA4',
-			// 				loadOptionsDependsOn: [
-			// 					'profileId',
-			// 				],
-			// 			},
-			// 			default: '',
-			// 			description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
-			// 		},
-			// 		{
-			// 			displayName: 'Value Type',
-			// 			name: 'valueType',
-			// 			type: 'options',
-			// 			default: 'doubleValue',
-			// 			options: [
-			// 				{
-			// 					name: 'Double Value',
-			// 					value: 'doubleValue',
-			// 				},
-			// 				{
-			// 					name: 'Integer Value',
-			// 					value: 'int64Value',
-			// 				},
-			// 			],
-			// 		},
-			// 		{
-			// 			displayName: 'From Value',
-			// 			name: 'fromValue',
-			// 			type: 'string',
-			// 			default: '',
-			// 		},
-			// 		{
-			// 			displayName: 'To Value',
-			// 			name: 'toValue',
-			// 			type: 'string',
-			// 			default: '',
-			// 		},
-			// 	],
-			// },
 			{
 				displayName: 'String Filter',
 				name: 'stringFilter',
@@ -263,7 +216,178 @@ export const dimensionFilterField: INodeProperties[] = [
 							},
 						],
 					},
-					...filterExpressions,
+					...dimensionsFilterExpressions,
+				],
+			},
+		],
+	},
+];
+
+const metricsFilterExpressions: INodeProperties[] = [
+	{
+		displayName: 'Expression',
+		name: 'expression',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		placeholder: 'Add Expression',
+		options: [
+			{
+				displayName: 'Between Filter',
+				name: 'betweenFilter',
+				values: [
+					{
+						displayName: 'Metric Name or ID',
+						name: 'fieldName',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getMetricsGA4',
+							loadOptionsDependsOn: [
+								'profileId',
+							],
+						},
+						default: '',
+						description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+					},
+					{
+						displayName: 'Value Type',
+						name: 'valueType',
+						type: 'options',
+						default: 'doubleValue',
+						options: [
+							{
+								name: 'Double Value',
+								value: 'doubleValue',
+							},
+							{
+								name: 'Integer Value',
+								value: 'int64Value',
+							},
+						],
+					},
+					{
+						displayName: 'From Value',
+						name: 'fromValue',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'To Value',
+						name: 'toValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+			{
+				displayName: 'Numeric Filter',
+				name: 'numericFilter',
+				values: [
+					{
+						displayName: 'Metric Name or ID',
+						name: 'fieldName',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getMetricsGA4',
+							loadOptionsDependsOn: [
+								'profileId',
+							],
+						},
+						default: '',
+						description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+					},
+					{
+						displayName: 'Value Type',
+						name: 'valueType',
+						type: 'options',
+						default: 'doubleValue',
+						options: [
+							{
+								name: 'Double Value',
+								value: 'doubleValue',
+							},
+							{
+								name: 'Integer Value',
+								value: 'int64Value',
+							},
+						],
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						default: 'OPERATION_UNSPECIFIED',
+						options: [
+							{
+								name: 'Equal',
+								value: 'EQUAL',
+							},
+							{
+								name: 'Greater Than',
+								value: 'GREATER_THAN',
+							},
+							{
+								name: 'Greater than or Equal',
+								value: 'GREATER_THAN_OR_EQUAL',
+							},
+							{
+								name: 'Less Than',
+								value: 'LESS_THAN',
+							},
+							{
+								name: 'Less than or Equal',
+								value: 'LESS_THAN_OR_EQUAL',
+							},
+							{
+								name: 'Unspecified',
+								value: 'OPERATION_UNSPECIFIED',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+];
+
+export const metricsFilterField: INodeProperties[] = [
+	{
+		displayName: 'Metrics Filters',
+		name: 'metricsFiltersUI',
+		type: 'fixedCollection',
+		default: {},
+		placeholder: 'Add Filter',
+		options: [
+			{
+				displayName: 'Filter Expressions',
+				name: 'filterExpressions',
+				values: [
+					{
+						displayName: 'Filter Expression Type',
+						name: 'filterExpressionType',
+						type: 'options',
+						default: 'andGroup',
+						options: [
+							{
+								name: 'And Group',
+								value: 'andGroup',
+							},
+							{
+								name: 'Or Group',
+								value: 'orGroup',
+							},
+						],
+					},
+					...metricsFilterExpressions,
 				],
 			},
 		],

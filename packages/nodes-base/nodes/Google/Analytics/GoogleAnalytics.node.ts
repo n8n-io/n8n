@@ -450,6 +450,15 @@ export class GoogleAnalytics implements INodeType {
 							}
 						}
 
+						if (additionalFields.metricsFiltersUI) {
+							const {filterExpressionType, expression} = (additionalFields.metricsFiltersUI as IDataObject).filterExpressions as IDataObject;
+							if (expression) {
+								body.metricFilter = {
+									[filterExpressionType as string]: {expressions: processFilters(expression as IDataObject)},
+								};
+							}
+						}
+
 						if (additionalFields.metricAggregations) {
 							body.metricAggregations = additionalFields.metricAggregations;
 						}

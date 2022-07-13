@@ -3,7 +3,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	dimensionFilterField
+	dimensionFilterField,
+	metricsFilterField,
 } from './FiltersDescription';
 
 export const reportOperations: INodeProperties[] = [
@@ -547,6 +548,7 @@ export const reportFields: INodeProperties[] = [
 					},
 				],
 			},
+			...metricsFilterField,
 			{
 				displayName: 'Keep Empty Rows',
 				name: 'keepEmptyRows',
