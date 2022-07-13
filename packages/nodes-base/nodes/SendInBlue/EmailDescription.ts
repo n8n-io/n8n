@@ -350,7 +350,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		type: 'options',
 		name: 'templateId',
 		displayName: 'Template ID',
-		default: 0,
+		default: {},
 		typeOptions: {
 			loadOptions: {
 				routing: {
