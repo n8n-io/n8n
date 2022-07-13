@@ -10,15 +10,15 @@ export const mediaFields: INodeProperties[] = [
 		placeholder: '',
 		options: [
 			{
-				name: 'Upload Media',
+				name: 'Upload',
 				value: 'mediaUpload',
 			},
 			{
-				name: 'Get Media URL',
+				name: 'Get',
 				value: 'mediaUrlGet',
 			},
 			{
-				name: 'Delete Media',
+				name: 'Delete',
 				value: 'mediaDelete',
 			},
 		],
