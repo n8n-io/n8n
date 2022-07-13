@@ -108,11 +108,22 @@ export default Vue
 			},
 			onDrop(data: string) {
 				this.forceShowOptions = true;
+				const prevValue = this.value;
+				if (this.node) {
+					const parameterData = {
+						node: this.node.name,
+						name: this.path,
+						value: '=',
+					};
+
+					this.$emit('valueChanged', parameterData); // ensures smooth transition for different compoennts like switches
+				}
+
 				setTimeout(() => {
 					if (this.node) {
 						let updatedValue: string;
-						if (typeof this.value === 'string' && this.value.startsWith('=') && this.value.length > 1) {
-							updatedValue = `${this.value} ${data}`;
+						if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
+							updatedValue = `${prevValue} ${data}`;
 						}
 						else {
 							updatedValue = `=${data}`;
@@ -127,7 +138,7 @@ export default Vue
 						this.$emit('valueChanged', parameterData);
 					}
 					this.forceShowOptions = false;
-				}, 200);
+				}, 300);
 			},
 		},
 	});
