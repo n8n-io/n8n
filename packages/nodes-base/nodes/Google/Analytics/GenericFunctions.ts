@@ -106,3 +106,46 @@ export function merge(responseData: [any]) { // tslint:disable-line:no-any
 	response.data.rows = allRows as [];
 	return [response];
 }
+
+export function processFilters(expression: IDataObject): IDataObject[] {
+	const processedFilters: IDataObject[] = [];
+
+	Object.entries(expression as IDataObject).forEach(entry => {
+		const [filterType, filters] = entry;
+
+		(filters as IDataObject[]).forEach(filter => {
+			const { fieldName } = filter;
+			delete filter.fieldName;
+
+			if (filterType === 'inListFilter') {
+				filter.values = (filter.values as string).split(',');
+			}
+
+			if (filterType === 'numericFilter') {
+				filter.value = {
+					[filter.valueType as string]: filter.value,
+				};
+				delete filter.valueType;
+			}
+
+			if (filterType === 'betweenFilter') {
+				filter.fromValue = {
+					[filter.valueType as string]: filter.fromValue,
+				};
+				filter.toValue = {
+					[filter.valueType as string]: filter.toValue,
+				};
+				delete filter.valueType;
+			}
+
+			processedFilters.push({
+				filter: {
+						fieldName,
+						[filterType]: filter,
+					},
+			});
+		});
+	});
+
+	return processedFilters;
+}

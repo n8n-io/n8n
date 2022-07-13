@@ -25,6 +25,7 @@ import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 	merge,
+	processFilters,
 	simplify,
 } from './GenericFunctions';
 
@@ -426,6 +427,15 @@ export class GoogleAnalytics implements INodeType {
 							}
 						}
 
+						if (additionalFields.dimensionFiltersUI) {
+							const {filterExpressionType, expression} = (additionalFields.dimensionFiltersUI as IDataObject).filterExpressions as IDataObject;
+							if (expression) {
+								body.dimensionFilter = {
+									[filterExpressionType as string]: {expressions: processFilters(expression as IDataObject)},
+								};
+							}
+						}
+
 						if (additionalFields.dimensionUi) {
 							const dimensions = (additionalFields.dimensionUi as IDataObject).dimensionValues as IDataObject[];
 							if (dimensions) {
@@ -459,7 +469,7 @@ export class GoogleAnalytics implements INodeType {
 										metric: {
 											metricName: order.metricName,
 										},
-									}
+									};
 								}));
 							}
 							if (dimmensionOrderBy) {
@@ -470,7 +480,7 @@ export class GoogleAnalytics implements INodeType {
 											dimensionName: order.dimensionName,
 											orderType: order.orderType,
 										},
-									}
+									};
 								}));
 							}
 							body.orderBys = orderBys;
@@ -480,8 +490,59 @@ export class GoogleAnalytics implements INodeType {
 							body.returnPropertyQuota = additionalFields.returnPropertyQuota;
 						}
 
+						// body.dimensionFilter = {
+						// 	"orGroup": {
+						// 		"expressions": [
+						// 			{
+						// 				"filter": {
+						// 					"fieldName": "browser",
+						// 					"stringFilter": {
+						// 						"value": "Fi",
+						// 						matchType: "BEGINS_WITH",
+						// 						caseSensitive: true,
+						// 					},
+						// 				}
+						// 			},
+						// 			{
+						// 				"filter": {
+						// 					"fieldName": "browser",
+						// 					"numericFilter": {
+						// 						"value": {
+						// 							doubleValue: 12,
+						// 						},
+						// 					},
+						// 				}
+						// 			}
+						// 		]
+						// 	}
+						// },
+						// body.metricFilter = {
+						// 		"filter": {
+						// 			"fieldName": "eventCount",
+						// 			"numericFilter": {
+						// 				"value": {
+						// 					doubleValue: 12,
+						// 				},
+						// 			},
+						// 		}
+						// },
+						// body.metricFilter = {
+						// 	"andGroup": {
+						// 		"expressions": [
+						// 		{"filter": {
+						// 			"fieldName": "eventCount",
+						// 			"numericFilter": {
+						// 				"value": {
+						// 					doubleValue: 12,
+						// 				},
+						// 			},
+						// 		}}
+						// 		]
+						// 	}
+						// },
 
-						console.log(body, additionalFields);
+
+						// console.log(body, additionalFields);
 
 						if (returnAll === true) {
 							body.limit = 100000;

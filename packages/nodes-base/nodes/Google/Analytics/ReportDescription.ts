@@ -2,6 +2,10 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import {
+	dimensionFilterField
+} from './FiltersDescription';
+
 export const reportOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -490,6 +494,7 @@ export const reportFields: INodeProperties[] = [
 					},
 				],
 			},
+			...dimensionFilterField,
 			{
 				displayName: 'Metric Aggregation',
 				name: 'metricAggregations',
@@ -635,7 +640,7 @@ export const reportFields: INodeProperties[] = [
 										name: 'Unspecified',
 										value: 'ORDER_TYPE_UNSPECIFIED',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -651,3 +656,4 @@ export const reportFields: INodeProperties[] = [
 		],
 	},
 ];
+
