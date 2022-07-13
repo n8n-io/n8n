@@ -996,6 +996,13 @@ export async function requestOAuth2(
 					credentials,
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+
+				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+					Object.assign(newRequestOptions.headers, {
+						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
+					});
+				}
+
 				return this.helpers.httpRequest(refreshedRequestOption);
 			}
 			throw error;
