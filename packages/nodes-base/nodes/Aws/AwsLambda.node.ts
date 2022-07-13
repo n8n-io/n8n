@@ -44,6 +44,7 @@ export class AwsLambda implements INodeType {
 						name: 'Invoke',
 						value: 'invoke',
 						description: 'Invoke a function',
+						action: 'Invoke a function',
 					},
 				],
 				default: 'invoke',

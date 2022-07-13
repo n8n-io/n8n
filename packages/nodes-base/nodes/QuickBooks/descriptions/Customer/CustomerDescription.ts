@@ -17,18 +17,22 @@ export const customerOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a customer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a customer',
 			},
 		],
 		displayOptions: {

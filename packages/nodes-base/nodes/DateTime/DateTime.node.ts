@@ -44,11 +44,13 @@ export class DateTime implements INodeType {
 						name: 'Calculate a Date',
 						description: 'Add or subtract time from a date',
 						value: 'calculate',
+						action: 'Add or subtract time from a date',
 					},
 					{
 						name: 'Format a Date',
 						description: 'Convert a date to a different format',
 						value: 'format',
+						action: 'Convert a date to a different format',
 					},
 				],
 				default: 'format',
@@ -245,11 +247,13 @@ export class DateTime implements INodeType {
 						name: 'Add',
 						value: 'add',
 						description: 'Add time to Date Value',
+						action: 'Add time to Date Value',
 					},
 					{
 						name: 'Subtract',
 						value: 'subtract',
 						description: 'Subtract time from Date Value',
+						action: 'Subtract time from Date Value',
 					},
 				],
 				default: 'add',
@@ -412,7 +416,7 @@ export class DateTime implements INodeType {
 						continue;
 					}
 					if (options.fromFormat === undefined && !moment(currentDate as string | number).isValid()) {
-						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field');
+						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field', { itemIndex: i });
 					}
 
 					if (Number.isInteger(currentDate as unknown as number)) {

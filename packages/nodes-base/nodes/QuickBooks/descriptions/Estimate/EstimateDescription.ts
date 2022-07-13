@@ -17,26 +17,32 @@ export const estimateOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an estimate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an estimate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an estimate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all estimates',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send an estimate',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an estimate',
 			},
 		],
 		displayOptions: {

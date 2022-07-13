@@ -19,22 +19,27 @@ export const incidentOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an incident',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an incident',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an incident',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all incidents',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an incident',
 			},
 		],
 		default: 'get',

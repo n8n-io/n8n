@@ -26,6 +26,7 @@ export const respondersOperations: INodeProperties[] = [
 				name: 'Execute',
 				value: 'execute',
 				description: 'Execute Responder',
+				action: 'Execute a responder',
 			},
 		],
 		default: 'execute',

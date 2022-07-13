@@ -20,6 +20,7 @@ export const mediaOperations: INodeProperties[] = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Send media to a chat room',
+				action: 'Upload media to a chatroom',
 			},
 		],
 		default: 'upload',

@@ -13,14 +13,17 @@ export const attendeeOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an attendee',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all attendees',
 			},
 			{
 				name: 'Get Details',
 				value: 'getDetails',
+				action: 'Get details of an attendee',
 			},
 		],
 		displayOptions: {

@@ -416,7 +416,7 @@ export class GraphQL implements INodeType {
 							try {
 								requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
 							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error);
+								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error, { itemIndex });
 							}
 						}
 						if (requestOptions.body.operationName === '') {
@@ -450,7 +450,7 @@ export class GraphQL implements INodeType {
 						try {
 							response = JSON.parse(response);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
+							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"', { itemIndex });
 						}
 					}
 
