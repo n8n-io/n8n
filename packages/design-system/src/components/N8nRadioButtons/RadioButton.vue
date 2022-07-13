@@ -1,5 +1,5 @@
 <template>
-	<label role="radio" tabindex="-1" :class="$style.container" aria-checked="true">
+	<label role="radio" tabindex="-1" :class="{[$style.container]: true, [$style.hoverable]: !this.disabled}" aria-checked="true">
 		<input type="radio" tabindex="-1" autocomplete="off" :class="$style.input" :value="value">
 		<div :class="{[$style.button]: true, [$style.active]: active, [$style[size]]: true, [$style.disabled]: disabled}" @click="$emit('click')">{{ label }}</div>
 	</label>
@@ -39,11 +39,11 @@ export default {
 	display: inline-block;
 	outline: 0;
 	position: relative;
+}
 
-	&:hover {
-		.button:not(.active) {
-			color: var(--color-primary);
-		}
+.hoverable:hover {
+	.button:not(.active) {
+		color: var(--color-primary);
 	}
 }
 
