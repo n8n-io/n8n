@@ -46,7 +46,7 @@
 			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
 			<n8n-text v-if="!workflowRunning">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
-				<span @click="insertTestData" v-if="isPinDataNodeType">
+				<span @click="insertTestData" v-if="canPinData">
 					<br>
 					{{ $locale.baseText('generic.or') }}
 					<n8n-text
@@ -196,6 +196,9 @@ export default mixins(
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
 			return this.$store.getters['ui/outputPanelEditMode'];
+		},
+		canPinData(): boolean {
+			return this.isPinDataNodeType && !this.isReadOnly;
 		},
 	},
 	methods: {

@@ -7,7 +7,7 @@
 			:class="$style['pinned-data-callout']"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span class="ml-4xs">
+			<span class="ml-4xs" v-if="!isReadOnly">
 				<n8n-link
 					theme="secondary"
 					size="small"
@@ -45,7 +45,7 @@
 					@input="onDisplayModeChange"
 				/>
 				<n8n-icon-button
-					v-if="canPinData"
+					v-if="canPinData && !isReadOnly"
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
@@ -83,7 +83,7 @@
 						type="tertiary"
 						active
 						icon="thumbtack"
-						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData)"
+						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
 					/>
 				</n8n-tooltip>
