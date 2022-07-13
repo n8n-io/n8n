@@ -1,4 +1,3 @@
-import { document } from './../Elastic/Elasticsearch/descriptions/placeholders';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
