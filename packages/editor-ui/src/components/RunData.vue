@@ -773,18 +773,14 @@ export default mixins(
 			removeJsonKeys(value: string) {
 				const parsed = JSON.parse(value);
 
-				if (Array.isArray(parsed) && parsed.some(item => this.isJsonKeyObject(item))) {
-					return parsed.map(item => item.json !== undefined ? item.json : item);
-				}
-
-				return parsed;
+				return Array.isArray(parsed)
+					? parsed.map(item => this.isJsonKeyObject(item) ? item.json : item)
+					: parsed;
 			},
-			isJsonKeyObject(item: unknown) {
-				const isObject = typeof item === 'object' && item !== null && !Array.isArray(item);
+			isJsonKeyObject(item: unknown): item is { json: unknown } {
+				if (!this.isObjectLiteral(item)) return false;
 
-				if (!isObject) return false;
-
-				const keys = Object.keys(item || {});
+				const keys = Object.keys(item);
 
 				return keys.length === 1 && keys[0] === 'json';
 			},

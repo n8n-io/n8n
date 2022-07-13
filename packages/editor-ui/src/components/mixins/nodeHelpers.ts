@@ -47,10 +47,14 @@ export const nodeHelpers = mixins(
 				return Object.keys(node.parameters).includes('nodeCredentialType');
 			},
 
+			isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
+				return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
+			},
+
 			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
 				const { parameters } = nodeValues;
 
-				if (!isObjectLiteral(parameters)) return false;
+				if (!this.isObjectLiteral(parameters)) return false;
 
 				return (
 					parameters.resource !== undefined && parameters.resource.includes(CUSTOM_API_CALL_KEY) ||
@@ -511,8 +515,4 @@ declare namespace HttpRequestNode {
 			nodeCredentialType: string;
 		};
 	}
-}
-
-function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
-	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
 }
