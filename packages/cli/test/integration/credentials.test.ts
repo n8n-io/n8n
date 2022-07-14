@@ -1,15 +1,13 @@
 import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { Db } from '../../src';
-import { randomName, randomString } from './shared/random';
-import config from '../../config';
-import * as utils from './shared/utils';
-import type { CredentialPayload, SaveCredentialFunction } from './shared/types';
-import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
-import * as testDb from './shared/testDb';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
+import type { Role } from '../../src/databases/entities/Role';
+import { randomCredentialPayload, randomName, randomString } from './shared/random';
+import * as testDb from './shared/testDb';
+import type { SaveCredentialFunction } from './shared/types';
+import * as utils from './shared/utils';
 
 jest.mock('../../src/telemetry');
 
@@ -32,7 +30,8 @@ beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+
+	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
 	utils.initTestLogger();
 	utils.initTestTelemetry();
@@ -50,7 +49,7 @@ test('POST /credentials should create cred', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const payload = credentialPayload();
+	const payload = randomCredentialPayload();
 
 	const response = await authOwnerAgent.post('/credentials').send(payload);
 
@@ -60,14 +59,14 @@ test('POST /credentials should create cred', async () => {
 
 	expect(name).toBe(payload.name);
 	expect(type).toBe(payload.type);
-	expect(nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
+	expect(nodesAccess[0].nodeType).toBe(payload.nodesAccess![0].nodeType);
 	expect(encryptedData).not.toBe(payload.data);
 
 	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(payload.name);
 	expect(credential.type).toBe(payload.type);
-	expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
+	expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess![0].nodeType);
 	expect(credential.data).not.toBe(payload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -98,7 +97,7 @@ test('POST /credentials should fail with missing encryption key', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
+	const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
 
 	expect(response.statusCode).toBe(500);
 
@@ -111,13 +110,13 @@ test('POST /credentials should ignore ID in payload', async () => {
 
 	const firstResponse = await authOwnerAgent
 		.post('/credentials')
-		.send({ id: '8', ...credentialPayload() });
+		.send({ id: '8', ...randomCredentialPayload() });
 
 	expect(firstResponse.body.data.id).not.toBe('8');
 
 	const secondResponse = await authOwnerAgent
 		.post('/credentials')
-		.send({ id: 8, ...credentialPayload() });
+		.send({ id: 8, ...randomCredentialPayload() });
 
 	expect(secondResponse.body.data.id).not.toBe(8);
 });
@@ -125,7 +124,7 @@ test('POST /credentials should ignore ID in payload', async () => {
 test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
 
 	const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -145,7 +144,7 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
-	const savedCredential = await saveCredential(credentialPayload(), { user: member });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 	const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -164,7 +163,7 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 test('DELETE /credentials/:id should delete owned cred for member', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-	const savedCredential = await saveCredential(credentialPayload(), { user: member });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 	const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -184,7 +183,7 @@ test('DELETE /credentials/:id should not delete non-owned cred for member', asyn
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
 
 	const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
@@ -211,8 +210,8 @@ test('DELETE /credentials/:id should fail if cred not found', async () => {
 test('PATCH /credentials/:id should update owned cred for owner', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
-	const patchPayload = credentialPayload();
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
+	const patchPayload = randomCredentialPayload();
 
 	const response = await authOwnerAgent
 		.patch(`/credentials/${savedCredential.id}`)
@@ -224,14 +223,14 @@ test('PATCH /credentials/:id should update owned cred for owner', async () => {
 
 	expect(name).toBe(patchPayload.name);
 	expect(type).toBe(patchPayload.type);
-	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
 	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
-	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -246,8 +245,8 @@ test('PATCH /credentials/:id should update non-owned cred for owner', async () =
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
-	const savedCredential = await saveCredential(credentialPayload(), { user: member });
-	const patchPayload = credentialPayload();
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+	const patchPayload = randomCredentialPayload();
 
 	const response = await authOwnerAgent
 		.patch(`/credentials/${savedCredential.id}`)
@@ -259,14 +258,14 @@ test('PATCH /credentials/:id should update non-owned cred for owner', async () =
 
 	expect(name).toBe(patchPayload.name);
 	expect(type).toBe(patchPayload.type);
-	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
 	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
-	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -280,8 +279,8 @@ test('PATCH /credentials/:id should update non-owned cred for owner', async () =
 test('PATCH /credentials/:id should update owned cred for member', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-	const savedCredential = await saveCredential(credentialPayload(), { user: member });
-	const patchPayload = credentialPayload();
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+	const patchPayload = randomCredentialPayload();
 
 	const response = await authMemberAgent
 		.patch(`/credentials/${savedCredential.id}`)
@@ -293,14 +292,14 @@ test('PATCH /credentials/:id should update owned cred for member', async () => {
 
 	expect(name).toBe(patchPayload.name);
 	expect(type).toBe(patchPayload.type);
-	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
 	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
-	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -315,8 +314,8 @@ test('PATCH /credentials/:id should not update non-owned cred for member', async
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
-	const patchPayload = credentialPayload();
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
+	const patchPayload = randomCredentialPayload();
 
 	const response = await authMemberAgent
 		.patch(`/credentials/${savedCredential.id}`)
@@ -332,7 +331,7 @@ test('PATCH /credentials/:id should not update non-owned cred for member', async
 test('PATCH /credentials/:id should fail with invalid inputs', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
 
 	await Promise.all(
 		INVALID_PAYLOADS.map(async (invalidPayload) => {
@@ -349,7 +348,7 @@ test('PATCH /credentials/:id should fail if cred not found', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	const response = await authOwnerAgent.patch('/credentials/123').send(credentialPayload());
+	const response = await authOwnerAgent.patch('/credentials/123').send(randomCredentialPayload());
 
 	expect(response.statusCode).toBe(404);
 });
@@ -361,7 +360,7 @@ test('PATCH /credentials/:id should fail with missing encryption key', async () 
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
+	const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
 
 	expect(response.statusCode).toBe(500);
 
@@ -373,12 +372,12 @@ test('GET /credentials should retrieve all creds for owner', async () => {
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	for (let i = 0; i < 3; i++) {
-		await saveCredential(credentialPayload(), { user: ownerShell });
+		await saveCredential(randomCredentialPayload(), { user: ownerShell });
 	}
 
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	await saveCredential(credentialPayload(), { user: member });
+	await saveCredential(randomCredentialPayload(), { user: member });
 
 	const response = await authOwnerAgent.get('/credentials');
 
@@ -402,7 +401,7 @@ test('GET /credentials should retrieve owned creds for member', async () => {
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 	for (let i = 0; i < 3; i++) {
-		await saveCredential(credentialPayload(), { user: member });
+		await saveCredential(randomCredentialPayload(), { user: member });
 	}
 
 	const response = await authMemberAgent.get('/credentials');
@@ -428,7 +427,7 @@ test('GET /credentials should not retrieve non-owned creds for member', async ()
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
 
 	for (let i = 0; i < 3; i++) {
-		await saveCredential(credentialPayload(), { user: ownerShell });
+		await saveCredential(randomCredentialPayload(), { user: ownerShell });
 	}
 
 	const response = await authMemberAgent.get('/credentials');
@@ -440,7 +439,7 @@ test('GET /credentials should not retrieve non-owned creds for member', async ()
 test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
 
 	const firstResponse = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
 
@@ -465,7 +464,7 @@ test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 test('GET /credentials/:id should retrieve owned cred for member', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-	const savedCredential = await saveCredential(credentialPayload(), { user: member });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 	const firstResponse = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
 
@@ -492,7 +491,7 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
 
 	const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
 
@@ -503,7 +502,7 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 test('GET /credentials/:id should fail with missing encryption key', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-	const savedCredential = await saveCredential(credentialPayload(), { user: ownerShell });
+	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
 
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
@@ -524,13 +523,6 @@ test('GET /credentials/:id should return 404 if cred not found', async () => {
 	const response = await authMemberAgent.get('/credentials/789');
 
 	expect(response.statusCode).toBe(404);
-});
-
-const credentialPayload = () => ({
-	name: randomName(),
-	type: randomName(),
-	nodesAccess: [{ nodeType: randomName() }],
-	data: { accessToken: randomString(6, 16) },
 });
 
 const INVALID_PAYLOADS = [
@@ -558,8 +550,3 @@ const INVALID_PAYLOADS = [
 	[],
 	undefined,
 ];
-
-function affixRoleToSaveCredential(role: Role) {
-	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
-		testDb.saveCredential(credentialPayload, { user, role });
-}

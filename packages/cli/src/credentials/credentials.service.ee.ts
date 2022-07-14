@@ -6,34 +6,31 @@ import { SharedCredentials } from '../databases/entities/SharedCredentials';
 import { User } from '../databases/entities/User';
 import { RoleService } from '../role/role.service';
 
-export class EECreditentialsService extends CredentialsService {
+export class EECredentialsService extends CredentialsService {
 	static async isOwned(
 		user: User,
 		credentialId: string,
-	): Promise<[boolean, CredentialsEntity | null]> {
-		const sharedCredentials = await this.getSharedCredentials(user.id, credentialId, [
-			'credentials',
-		]);
+	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
+		const sharing = await this.getSharedCredentials(user, credentialId, ['credentials'], false);
 
-		return sharedCredentials ? [true, sharedCredentials.credentials] : [false, null];
+		return sharing
+			? { ownsCredential: true, credential: sharing.credentials }
+			: { ownsCredential: false };
 	}
 
 	static async share(credentials: CredentialsEntity, sharee: User): Promise<SharedCredentials> {
 		const role = await RoleService.get({ scope: 'credential', name: 'editor' });
 
-		const newSharedCredential = new SharedCredentials();
-		Object.assign(newSharedCredential, {
+		return Db.collections.SharedCredentials.save({
 			credentials,
 			user: sharee,
 			role,
 		});
-
-		return Db.collections.SharedCredentials.save(newSharedCredential);
 	}
 
-	static async unshare(credentialsId: string, shareeId: string): Promise<void> {
+	static async unshare(credentialId: string, shareeId: string): Promise<void> {
 		return Db.collections.SharedCredentials.delete({
-			credentials: { id: credentialsId },
+			credentials: { id: credentialId },
 			user: { id: shareeId },
 		});
 	}

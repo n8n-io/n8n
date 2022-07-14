@@ -303,6 +303,11 @@ export async function saveCredential(
 	return savedCredential;
 }
 
+export function affixRoleToSaveCredential(role: Role) {
+	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
+		saveCredential(credentialPayload, { user, role });
+}
+
 // ----------------------------------
 //           user creation
 // ----------------------------------

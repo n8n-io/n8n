@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 import { Db } from '..';
 import { User } from '../databases/entities/User';
 

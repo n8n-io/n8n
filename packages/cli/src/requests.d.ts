@@ -103,6 +103,8 @@ export declare namespace CredentialRequest {
 	type NewName = WorkflowRequest.NewName;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
+
+	type Share = AuthenticatedRequest<{ id: string }, {}, { shareeId: string }>;
 }
 
 // ----------------------------------

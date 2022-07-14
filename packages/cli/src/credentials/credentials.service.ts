@@ -31,6 +31,7 @@ export class CredentialsService {
 		user: User,
 		credentialId: number | string,
 		relations?: string[],
+		allowGlobalOwner = true,
 	): Promise<SharedCredentials | undefined> {
 		const options: FindOneOptions = {
 			where: {
@@ -38,7 +39,7 @@ export class CredentialsService {
 			},
 		};
 
-		if (user.globalRole.name !== 'owner') {
+		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			options.where.user = { id: user.id };
 		}
@@ -97,7 +98,7 @@ export class CredentialsService {
 	}
 
 	static async prepareCredentialsCreateData(
-		data: CredentialRequest.RequestBody,
+		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
 		// Make a copy so we can delete the provided ID
 		const dataCopy = clone(data);
@@ -117,7 +118,7 @@ export class CredentialsService {
 	}
 
 	static async prepareCredentialsUpdateData(
-		data: CredentialRequest.RequestBody,
+		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
 		const updateData = new CredentialsEntity();
