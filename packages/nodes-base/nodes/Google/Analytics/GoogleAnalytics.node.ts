@@ -500,8 +500,8 @@ export class GoogleAnalytics implements INodeType {
 						}
 
 						if (returnAll === true) {
-							body.limit = 100000;
-							responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+							// responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+							responseData = await googleApiRequestAllItems.call(this, '', method, endpoint, body, qs);
 							// responseData = responseData.rows;
 						} else {
 							body.limit = this.getNodeParameter('limit', 0) as number;
