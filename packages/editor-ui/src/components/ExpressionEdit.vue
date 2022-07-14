@@ -92,9 +92,11 @@ export default mixins(
 		},
 
 		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('valueChanged', this.latestValue);
+			if (this.latestValue !== this.value) {
+				// Handle the close externally as the visible parameter is an external prop
+				// and is so not allowed to be changed here.
+				this.$emit('valueChanged', this.latestValue);
+			}
 			this.$emit('closeDialog');
 			return false;
 		},
