@@ -947,7 +947,7 @@ export class EditImage implements INodeType {
 									loadOptionsMethod: 'getFonts',
 								},
 								default: 'default',
-								description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -991,7 +991,7 @@ export class EditImage implements INodeType {
 							loadOptionsMethod: 'getFonts',
 						},
 						default: 'default',
-						description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Format',

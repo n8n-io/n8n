@@ -159,7 +159,7 @@ const teamsField = {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'One or more teams of which the worker is a member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'One or more teams of which the worker is a member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const teamsFilterField = {
@@ -170,7 +170,7 @@ const teamsFilterField = {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'A list of the teams that workers must be part of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A list of the teams that workers must be part of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const statesFilterField = {
@@ -347,7 +347,7 @@ const scheduleTimezoneField = {
 		loadOptionsMethod: 'getTimezones',
 	},
 	default: '',
-	description: 'A valid timezone. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A valid timezone. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const scheduleStartField = {

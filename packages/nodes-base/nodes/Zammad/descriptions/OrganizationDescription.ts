@@ -77,7 +77,7 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to update. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Organization to update. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -95,7 +95,7 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to delete. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Organization to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -113,7 +113,7 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to retrieve. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Organization to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -172,7 +172,7 @@ export const organizationDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadOrganizationCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -241,7 +241,7 @@ export const organizationDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadOrganizationCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',

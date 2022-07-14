@@ -124,7 +124,7 @@ export const accountFields: INodeProperties[] = [
 									loadOptionsMethod: 'getAccountCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -216,7 +216,7 @@ export const accountFields: INodeProperties[] = [
 									loadOptionsMethod: 'getAccountCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',

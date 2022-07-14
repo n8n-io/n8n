@@ -79,7 +79,7 @@ const workersField = {
 		loadOptionsMethod: 'getWorkers',
 	},
 	default: [],
-	description: 'A list of workers. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A list of workers. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const managersField = {
@@ -90,7 +90,7 @@ const managersField = {
 		loadOptionsMethod: 'getAdmins',
 	},
 	default: [],
-	description: 'A list of managing administrators. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A list of managing administrators. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const hubField = {
@@ -101,7 +101,7 @@ const hubField = {
 		loadOptionsMethod: 'getHubs',
 	},
 	default: '',
-	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {
