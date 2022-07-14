@@ -932,7 +932,7 @@ export class WorkflowExecute {
 
 							const { pinData } = this.runExecutionData.resultData;
 
-							if (pinData && pinData[executionNode.name] !== undefined) {
+							if (pinData && !executionNode.disabled && pinData[executionNode.name] !== undefined) {
 								let nodePinData = pinData[executionNode.name];
 
 								if (!Array.isArray(nodePinData)) nodePinData = [nodePinData];
