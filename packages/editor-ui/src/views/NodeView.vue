@@ -221,7 +221,6 @@ import {
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
-import { fetchNextOnboardingPrompt } from '@/api/workflow-webhooks';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -3003,20 +3002,20 @@ export default mixins(
 
 			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
 				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
-				if (onboardingResponse.nextPrompt) {
+				if (onboardingResponse.title && onboardingResponse.description) {
 					setTimeout(async () => {
 						this.$showToast({
 							type: 'info',
-							title: onboardingResponse.nextPrompt.title,
-							message: onboardingResponse.nextPrompt.body,
+							title: onboardingResponse.title,
+							message: onboardingResponse.description,
 							duration: 0,
 							customClass: 'clickable',
 							closeOnClick: true,
 							onClick: () => {
 								this.$telemetry.track('user_clicked_onboarding_session_toast_link', {
-									toast_sequence_num: onboardingResponse.nextPrompt.index + 1,
-									title: onboardingResponse.nextPrompt.title,
-									text: onboardingResponse.nextPrompt.body,
+									toast_sequence_num: 1, // TODO: This needs to be supplied from the WF
+									title: onboardingResponse.title,
+									text: onboardingResponse.description,
 								});
 								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
 							},
