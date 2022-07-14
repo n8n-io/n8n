@@ -89,10 +89,12 @@ export default {
 
 	.options {
 		opacity: 1;
+		transition: opacity 100ms ease-in; // transition on hover in
 	}
 
 	.overlay {
 		opacity: 1;
+		transition: opacity 100ms ease-in; // transition on hover in
 	}
 }
 
@@ -117,8 +119,8 @@ export default {
 
 .options {
 	opacity: 0;
-	transition: opacity 250ms cubic-bezier(0.87, 0, 0.13, 1);
 	background-color: var(--color-background-xlight);
+	transition: opacity 250ms cubic-bezier(.98,-0.06,.49,-0.2); // transition on hover out
 
 	> * {
 		float: right;
@@ -129,6 +131,7 @@ export default {
 	position: relative;
 	flex-grow: 1;
 	opacity: 0;
+	transition: opacity 250ms cubic-bezier(.98,-0.06,.49,-0.2); // transition on hover out
 
 	> div {
 		position: absolute;
