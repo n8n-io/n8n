@@ -18,6 +18,7 @@ export const formOperations: INodeProperties[] = [
 				name: 'Submit a Form',
 				value: 'submit',
 				description: 'Store data from a form submission',
+				action: 'Submit a form',
 			},
 
 		],

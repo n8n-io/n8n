@@ -65,11 +65,13 @@ export class Signl4 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send an alert',
+						action: 'Send an alert',
 					},
 					{
 						name: 'Resolve',
 						value: 'resolve',
 						description: 'Resolve an alert',
+						action: 'Resolve an alert',
 					},
 				],
 				default: 'send',
@@ -303,7 +305,7 @@ export class Signl4 implements INodeType {
 
 									if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
 
-										throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
+										throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`, { itemIndex: i });
 									}
 
 									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
@@ -316,7 +318,7 @@ export class Signl4 implements INodeType {
 									};
 
 								} else {
-									throw new NodeOperationError(this.getNode(), `Binary property ${propertyName} does not exist on input`);
+									throw new NodeOperationError(this.getNode(), `Binary property ${propertyName} does not exist on input`, { itemIndex: i });
 								}
 							}
 						}

@@ -495,7 +495,7 @@ export class MoveBinaryData implements INodeType {
 					}
 				}
 			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`, { itemIndex });
 			}
 
 			returnData.push(newItem);

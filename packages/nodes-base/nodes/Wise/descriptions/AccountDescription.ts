@@ -14,16 +14,19 @@ export const accountOperations: INodeProperties[] = [
 				name: 'Get Balances',
 				value: 'getBalances',
 				description: 'Retrieve balances for all account currencies of this user',
+				action: 'Get balances',
 			},
 			{
 				name: 'Get Currencies',
 				value: 'getCurrencies',
 				description: 'Retrieve currencies in the borderless account of this user',
+				action: 'Get currencies',
 			},
 			{
 				name: 'Get Statement',
 				value: 'getStatement',
 				description: 'Retrieve the statement for the borderless account of this user',
+				action: 'Get a statement',
 			},
 		],
 		displayOptions: {

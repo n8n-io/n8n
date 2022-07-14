@@ -19,6 +19,7 @@ export const businessServiceOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all business services',
 			},
 		],
 		default: 'getAll',

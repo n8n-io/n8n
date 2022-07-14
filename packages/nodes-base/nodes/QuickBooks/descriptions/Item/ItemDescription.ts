@@ -13,10 +13,12 @@ export const itemOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all items',
 			},
 		],
 		displayOptions: {

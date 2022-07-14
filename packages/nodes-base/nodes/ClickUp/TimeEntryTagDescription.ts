@@ -20,16 +20,19 @@ export const timeEntryTagOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add tag to time entry',
+				action: 'Add a time entry tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all time entry tags',
+				action: 'Get all time entry tags',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove tag from time entry',
+				action: 'Remove a time entry tag',
 			},
 		],
 		default: 'add',
@@ -237,6 +240,7 @@ export const timeEntryTagFields: INodeProperties[] = [
 		displayName: 'Tag Names or IDs',
 		name: 'tagNames',
 		type: 'multiOptions',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTimeEntryTags',
 			loadOptionsDependsOn: [

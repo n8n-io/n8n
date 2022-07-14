@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -110,6 +111,7 @@ export class Ssh implements INodeType {
 						name: 'Execute',
 						value: 'execute',
 						description: 'Execute a command',
+						action: 'Execute a command',
 					},
 				],
 				default: 'execute',
@@ -165,11 +167,13 @@ export class Ssh implements INodeType {
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file',
+						action: 'Download a file',
 					},
 					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
+						action: 'Upload a file',
 					},
 				],
 				default: 'upload',
@@ -384,7 +388,7 @@ export class Ssh implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -392,7 +396,7 @@ export class Ssh implements INodeType {
 							const binaryData = item.binary[propertyNameUpload] as IBinaryData;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
 							}
 
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);

@@ -20,11 +20,13 @@ export const trackOperations: INodeProperties[] = [
 				name: 'Page',
 				value: 'page',
 				description: 'Track a page',
+				action: 'Track a page',
 			},
 			{
 				name: 'Screen',
 				value: 'screen',
 				description: 'Track a screen',
+				action: 'Track a screen',
 			},
 		],
 		default: 'page',

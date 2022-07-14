@@ -23,22 +23,27 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a message',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a message',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all messages',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a message',
 			},
 		],
 		default: 'create',

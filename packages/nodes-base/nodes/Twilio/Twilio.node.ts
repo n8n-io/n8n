@@ -70,6 +70,7 @@ export class Twilio implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS/MMS/WhatsApp message',
+						action: 'Send an SMS/MMS/WhatsApp message',
 					},
 				],
 				default: 'send',
@@ -91,6 +92,7 @@ export class Twilio implements INodeType {
 					{
 						name: 'Make',
 						value: 'make',
+						action: 'Make a call',
 					},
 				],
 				default: 'make',
@@ -280,7 +282,7 @@ export class Twilio implements INodeType {
 							body.To = `whatsapp:${body.To}`;
 						}
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else if (resource === 'call') {
 					if (operation === 'make') {
@@ -304,10 +306,10 @@ export class Twilio implements INodeType {
 
 						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
 				const responseData = await twilioApiRequest.call(this, requestMethod, endpoint, body, qs);

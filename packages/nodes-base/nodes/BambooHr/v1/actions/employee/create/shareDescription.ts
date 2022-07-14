@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 
 export const createEmployeeSharedDescription = (sync = false): INodeProperties[] => {
-	let elements = [
+	let elements: INodeProperties[] = [
 		{
 			displayName: 'Address',
 			name: 'address',
@@ -290,7 +290,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 			placeholder: '123-45-6789',
 			description: 'A standard United States Social Security number, with dashes',
 		},
-	] as INodeProperties[];
+	];
 
 	if (sync === true) {
 		elements = elements.map(element => {

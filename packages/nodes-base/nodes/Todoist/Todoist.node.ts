@@ -10,7 +10,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {FormatDueDatetime, todoistApiRequest,} from './GenericFunctions';
+import {todoistApiRequest,} from './GenericFunctions';
 
 import {OperationType, TodoistService} from './Service';
 interface IBodyCreateTask {
@@ -117,36 +117,43 @@ export class Todoist implements INodeType {
 						name: 'Close',
 						value: 'close',
 						description: 'Close a task',
+						action: 'Close a task',
 					},
 					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new task',
+						action: 'Create a task',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a task',
+						action: 'Delete a task',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a task',
+						action: 'Get a task',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all tasks',
+						action: 'Get all tasks',
 					},
 					{
 						name: 'Move',
 						value: 'move',
 						description: 'Move a task',
+						action: 'Move a task',
 					},
 					{
 						name: 'Reopen',
 						value: 'reopen',
 						description: 'Reopen a task',
+						action: 'Reopen a task',
 					},
 					// {
 					// 	name: 'Sync',
@@ -157,6 +164,7 @@ export class Todoist implements INodeType {
 						name: 'Update',
 						value: 'update',
 						description: 'Update a task',
+						action: 'Update a task',
 					},
 				],
 				default: 'create',
@@ -561,6 +569,7 @@ export class Todoist implements INodeType {
 						displayName: 'Label Names or IDs',
 						name: 'labels',
 						type: 'multiOptions',
+						description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getLabels',
 						},
@@ -698,7 +707,7 @@ export class Todoist implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'task') {
-					responseData = (await service.execute(this, OperationType[operation as keyof typeof OperationType]));
+					responseData = (await service.execute(this, OperationType[operation as keyof typeof OperationType], i));
 				}
 				if (Array.isArray(responseData?.data)) {
 					returnData.push.apply(returnData, responseData?.data as IDataObject[]);
