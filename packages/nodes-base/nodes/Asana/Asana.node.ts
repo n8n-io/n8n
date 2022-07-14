@@ -222,7 +222,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: '',
-						description: 'Set Assignee on the subtask. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Set Assignee on the subtask. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Assignee Status',
@@ -289,7 +289,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getWorkspaces',
 						},
 						default: '',
-						description: 'The workspace to create the subtask in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The workspace to create the subtask in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -384,7 +384,7 @@ export class Asana implements INodeType {
 							'name',
 							'resource_type',
 						],
-						description: 'Defines fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Defines fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Pretty',
@@ -480,7 +480,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace to create the task in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The workspace to create the task in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Name',
@@ -614,7 +614,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: '',
-						description: 'The assignee to filter tasks on. Note: If you specify assignee, you must also specify the workspace to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The assignee to filter tasks on. Note: If you specify assignee, you must also specify the workspace to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Names or IDs',
@@ -628,7 +628,7 @@ export class Asana implements INodeType {
 							'name',
 							'resource_type',
 						],
-						description: 'Defines fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Defines fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Pretty',
@@ -645,7 +645,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: '',
-						description: 'The project to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The project to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Section Name or ID',
@@ -655,7 +655,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getSections',
 						},
 						default: '',
-						description: 'The section to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The section to filter tasks on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Workspace Name or ID',
@@ -665,7 +665,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getWorkspaces',
 						},
 						default: '',
-						description: 'The workspace to filter tasks on. Note: If you specify workspace, you must also specify the assignee to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The workspace to filter tasks on. Note: If you specify workspace, you must also specify the assignee to filter on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Completed Since',
@@ -726,7 +726,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'Project to show the sections of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Project to show the sections of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Section Name or ID',
@@ -751,7 +751,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The Section to move the task to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The Section to move the task to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 
 			// ----------------------------------
@@ -799,7 +799,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace in which the task is searched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The workspace in which the task is searched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Filters',
@@ -869,7 +869,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: '',
-						description: 'Set Assignee on the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Set Assignee on the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Assignee Status',
@@ -950,7 +950,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getProjects',
 						},
 						default: [],
-						description: 'The project to filter tasks on. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The project to filter tasks on. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -1197,7 +1197,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The project where the task will be added. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The project where the task will be added. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1281,7 +1281,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The project where the task will be removed from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The project where the task will be removed from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			// ----------------------------------
 			//         taskTag
@@ -1360,7 +1360,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The tag that should be added. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The tag that should be added. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 
 			// ----------------------------------
@@ -1407,7 +1407,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The tag that should be added. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The tag that should be added. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 
 			// ----------------------------------
@@ -1487,7 +1487,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace in which to get users. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The workspace in which to get users. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 
 			// ----------------------------------
@@ -1581,7 +1581,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace to create the project in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The workspace to create the project in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Team Name or ID',
@@ -1604,7 +1604,7 @@ export class Asana implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The team this project will be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The team this project will be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1712,7 +1712,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace in which to get users. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The workspace in which to get users. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Return All',
@@ -1791,7 +1791,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getTeams',
 						},
 						default: '',
-						description: 'The new name of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The new name of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -1818,7 +1818,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace in which to get users. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The workspace in which to get users. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Project ID',
@@ -1903,7 +1903,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getTeams',
 						},
 						default: '',
-						description: 'The team this project will be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The team this project will be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},

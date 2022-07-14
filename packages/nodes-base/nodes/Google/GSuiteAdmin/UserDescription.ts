@@ -114,7 +114,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDomains',
 		},
@@ -472,7 +472,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'View Type',
@@ -606,7 +606,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Customer',

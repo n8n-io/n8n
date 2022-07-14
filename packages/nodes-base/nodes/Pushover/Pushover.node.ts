@@ -264,7 +264,7 @@ export class Pushover implements INodeType {
 							loadOptionsMethod: 'getSounds',
 						},
 						default: '',
-						description: 'The name of one of the sounds supported by device clients to override the user\'s default sound choice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The name of one of the sounds supported by device clients to override the user\'s default sound choice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Timestamp',

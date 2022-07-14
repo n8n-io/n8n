@@ -76,7 +76,7 @@ export const ticketDescription: INodeProperties[] = [
 			loadOptionsMethod: 'loadGroupNames',
 		},
 		placeholder: 'First-Level Helpdesk',
-		description: 'Group that will own the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Group that will own the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -97,7 +97,7 @@ export const ticketDescription: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'loadCustomerEmails',
 		},
-		description: 'Email address of the customer concerned in the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Email address of the customer concerned in the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		placeholder: 'hello@n8n.io',
 		required: true,
@@ -116,7 +116,7 @@ export const ticketDescription: INodeProperties[] = [
 		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
-		description: 'Ticket to retrieve. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Ticket to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -135,7 +135,7 @@ export const ticketDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		default: '',
-		description: 'Ticket to delete. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Ticket to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 		displayOptions: {
 			show: {
@@ -279,7 +279,7 @@ export const ticketDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadTicketCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
