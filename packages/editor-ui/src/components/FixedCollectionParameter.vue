@@ -10,7 +10,7 @@
 			class="fixed-collection-parameter-property"
 		>
 			<n8n-input-label
-				v-if="property.displayName !== '' && (property.options && property.options.length !== 1)"
+				v-if="property.displayName !== '' && (parameter.options && parameter.options.length !== 1)"
 				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
 				size="small"
