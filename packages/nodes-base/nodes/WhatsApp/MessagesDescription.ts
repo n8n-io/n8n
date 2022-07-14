@@ -331,20 +331,20 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template Components',
-		name: 'templateComponents',
-		placeholder: 'Add Component',
+		displayName: 'Template Parameters',
+		name: 'templateParameters',
 		type: 'fixedCollection',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
+		placeholder: 'Add Parameter',
 		displayOptions: {
 			show: {
 				operation: ['template'],
 				resource: ['messages'],
 			},
 		},
-		default: {},
 		routing: {
 			send: {
 				preSend: [addTemplateComponents],
@@ -352,76 +352,37 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Component',
-				name: 'component',
+				displayName: 'Parameter',
+				name: 'parameter',
 				values: [
+					// TODO: Multiple types
+					// {
+					// 	displayName: 'Type',
+					// 	name: 'type',
+					// 	type: 'options',
+					// 	options: [
+					// 		{
+					// 			name: 'Text',
+					// 			value: 'text',
+					// 		},
+					// 		{
+					// 			name: 'Currency',
+					// 			value: 'currency',
+					// 		},
+					// 	],
+					// 	default: 'text',
+					// },
 					{
 						displayName: 'Type',
+						type: 'hidden',
 						name: 'type',
-						type: 'options',
-						options: [
-							{
-								name: 'Body',
-								value: 'body',
-							},
-							// TODO: Sort this out
-							{
-								name: 'Button',
-								value: 'button',
-							},
-							{
-								name: 'Header',
-								value: 'header',
-							},
-						],
-						default: 'body',
+						default: 'text',
 					},
 					{
-						displayName: 'Parameters',
-						name: 'parameters',
-						type: 'fixedCollection',
-						default: {},
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Parameter',
-						options: [
-							{
-								displayName: 'Parameter',
-								name: 'parameter',
-								values: [
-									// TODO: Multiple types
-									// {
-									// 	displayName: 'Type',
-									// 	name: 'type',
-									// 	type: 'options',
-									// 	options: [
-									// 		{
-									// 			name: 'Text',
-									// 			value: 'text',
-									// 		},
-									// 		{
-									// 			name: 'Currency',
-									// 			value: 'currency',
-									// 		},
-									// 	],
-									// 	default: 'text',
-									// },
-									{
-										displayName: 'Type',
-										type: 'hidden',
-										name: 'type',
-										default: 'text',
-									},
-									{
-										displayName: 'Text',
-										name: 'text',
-										default: '',
-										type: 'string',
-									},
-								],
-							},
-						],
+						displayName: 'Text',
+						name: 'text',
+						default: '',
+						type: 'string',
 					},
 				],
 			},

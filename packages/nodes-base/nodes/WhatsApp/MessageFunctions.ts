@@ -13,16 +13,16 @@ export async function addTemplateComponents(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ) {
-	const comps = this.getNodeParameter('templateComponents') as IDataObject;
-	if (!comps.component) {
+	const params = this.getNodeParameter('templateParameters') as IDataObject;
+	if (!params?.parameter) {
 		return requestOptions;
 	}
-	const components = (comps.component as IDataObject[]).map((v) => {
-		return {
-			type: v.type,
-			parameters: (v.parameters as IDataObject).parameter,
-		};
-	});
+	const components = [
+		{
+			type: 'body',
+			parameters: params.parameter,
+		},
+	];
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
