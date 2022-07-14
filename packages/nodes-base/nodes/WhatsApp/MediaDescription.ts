@@ -137,7 +137,7 @@ export const mediaTypeFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'File Name',
+				displayName: 'Filename',
 				name: 'mediaFileName',
 				type: 'string',
 				default: '',

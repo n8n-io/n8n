@@ -1,5 +1,5 @@
-import { IDataObject, INodeProperties } from 'n8n-workflow';
-import { addTemplateComponents } from './MessageFunctions';
+import { IDataObject, INodeProperties, NodeOperationError } from 'n8n-workflow';
+import { addTemplateComponents, mediaUploadFromItem } from './MessageFunctions';
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
@@ -136,11 +136,11 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: media
 	// ----------------------------------
 	{
-		displayName: 'Link or ID',
+		displayName: 'Take Media From',
 		name: 'mediaPath',
 		type: 'options',
 		default: 'useMediaLink',
-		description: 'Use a link or an ID to upload a media file',
+		description: 'Use a link, an ID, or n8n to upload a media file',
 		options: [
 			{
 				name: 'Link',
@@ -149,9 +149,15 @@ export const messageTypeFields: INodeProperties[] = [
 					'When using a link, WhatsApp will download the media, saving you the step of uploading media yourself',
 			},
 			{
-				name: 'ID',
+				name: 'WhatsApp Media',
 				value: 'useMediaId',
 				description: 'You can use an ID if you have already uploaded the media to WhatsApp',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'n8n',
+				value: 'useMedian8n',
+				description: 'Upload a binary file on the item being processed in n8n',
 			},
 		],
 		displayOptions: {
@@ -199,11 +205,31 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Input Data Field Name',
+		name: 'mediaPropertyName',
+		type: 'string',
+		default: 'data',
+		description: 'The name of the input field containing the binary file data to be uploaded',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: mediaTypes,
+				mediaPath: ['useMedian8n'],
+			},
+		},
+		routing: {
+			send: {
+				preSend: [mediaUploadFromItem],
+			},
+		},
+	},
+	{
 		displayName: 'Filename',
 		name: 'mediaFilename',
 		type: 'string',
 		default: '',
 		description: 'The name of the file (required when using a file ID)',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['document'],
@@ -217,23 +243,47 @@ export const messageTypeFields: INodeProperties[] = [
 			},
 		},
 	},
+
 	{
-		displayName: 'Media Caption',
-		name: 'mediaCaption',
-		type: 'string',
-		default: '',
-		description: 'The caption of the media',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
-				operation: ['image', 'video', 'document'],
+				resource: ['messages'],
+				operation: mediaTypes,
 			},
 		},
-		routing: {
-			send: {
-				type: 'body',
-				property: '={{$parameter["operation"]}}.caption',
+		options: [
+			{
+				displayName: 'Filename',
+				name: 'mediaFilename',
+				type: 'string',
+				default: '',
+				description: 'The name of the file',
+				routing: {
+					send: {
+						type: 'body',
+						property: '={{$parameter["operation"]}}.filename',
+					},
+				},
 			},
-		},
+			{
+				displayName: 'Media Caption',
+				name: 'mediaCaption',
+				type: 'string',
+				default: '',
+				description: 'The caption of the media',
+				routing: {
+					send: {
+						type: 'body',
+						property: '={{$parameter["operation"]}}.caption',
+					},
+				},
+			},
+		],
 	},
 
 	// ----------------------------------

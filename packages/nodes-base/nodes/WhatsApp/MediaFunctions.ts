@@ -23,7 +23,7 @@ export async function setupUpload(
 		);
 	}
 	const binaryFile = this.getInputData().binary![mediaPropertyName]!;
-	const mediaFileName = (this.getNodeParameter('mediaFileName') as IDataObject).mediaFileName as
+	const mediaFileName = (this.getNodeParameter('additionalFields') as IDataObject).mediaFileName as
 		| string
 		| undefined;
 	const binaryFileName = binaryFile.fileName;
