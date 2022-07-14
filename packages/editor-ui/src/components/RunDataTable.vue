@@ -165,6 +165,7 @@ export default Vue.extend({
 		border-left: var(--border-base);
 		position: sticky;
 		top: 0;
+		max-width: 300px;
 	}
 
 	td {
@@ -192,6 +193,9 @@ export default Vue.extend({
 	padding: var(--spacing-2xs);
 
 	span {
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
 		flex-grow: 1;
 	}
 }
