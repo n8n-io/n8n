@@ -916,6 +916,13 @@ export class GoogleDrive implements INodeType {
 						description: 'Whether to set the \'keepForever\' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.',
 					},
 					{
+						displayName: 'Move to Trash',
+						name: 'trashed',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to move a file to the trash. Only the owner may trash a file.',
+					},
+					{
 						displayName: 'OCR Language',
 						name: 'ocrLanguage',
 						type: 'string',
@@ -935,13 +942,6 @@ export class GoogleDrive implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to use the uploaded content as indexable text',
-					},
-					{
-						displayName: 'Move to trash',
-						name: 'trashed',
-						type: 'boolean',
-						default: true,
-						description: 'Move the file to trash',
 					},
 				],
 			},
@@ -2505,7 +2505,7 @@ export class GoogleDrive implements INodeType {
 							body.name = updateFields.fileName;
 						}
 
-						if (updateFields.trashed) {
+						if (updateFields.hasOwnProperty('trashed')) {
 							body.trashed = updateFields.trashed;
 						}
 
