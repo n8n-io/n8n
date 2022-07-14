@@ -85,7 +85,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 		const binaryData = items[i].binary as IBinaryKeyData;
 
 		if (binaryData === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!');
+			throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!', { itemIndex: i });
 		}
 
 		if (!binaryData[binaryPropertyName]) {
@@ -101,7 +101,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 		const isImage = binaryData[binaryPropertyName].mimeType.includes('image');
 
 		if (isImage && isAnimatedWebp) {
-			throw new NodeOperationError(this.getNode(), 'Animated .webp images are not supported use .gif instead');
+			throw new NodeOperationError(this.getNode(), 'Animated .webp images are not supported use .gif instead', { itemIndex: i });
 		}
 
 		if (isImage) {

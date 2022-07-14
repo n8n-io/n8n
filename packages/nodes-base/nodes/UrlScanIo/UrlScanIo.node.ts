@@ -144,7 +144,7 @@ export class UrlScanIo implements INodeType {
 							if (tags.length > 10) {
 								throw new NodeOperationError(
 									this.getNode(),
-									'Please enter at most 10 tags',
+									'Please enter at most 10 tags', { itemIndex: i },
 								);
 							}
 

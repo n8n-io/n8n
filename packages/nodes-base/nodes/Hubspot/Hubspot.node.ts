@@ -2200,7 +2200,7 @@ export class Hubspot implements INodeType {
 							if (!Object.keys(metadata).length) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`At least one metadata field needs to set`,
+									`At least one metadata field needs to set`, { itemIndex: i },
 								);
 							}
 

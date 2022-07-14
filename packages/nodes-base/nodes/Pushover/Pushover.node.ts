@@ -368,7 +368,7 @@ export class Pushover implements INodeType {
 								const binaryPropertyName = attachment.binaryPropertyName as string;
 
 								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 
 								const item = items[i].binary as IBinaryKeyData;
@@ -376,7 +376,7 @@ export class Pushover implements INodeType {
 								const binaryData = item[binaryPropertyName] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);

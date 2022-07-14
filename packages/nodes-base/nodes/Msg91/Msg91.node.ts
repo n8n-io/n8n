@@ -169,10 +169,10 @@ export class Msg91 implements INodeType {
 					qs.message = this.getNodeParameter('message', i) as string;
 
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 				}
 			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 			}
 
 			const responseData = await msg91ApiRequest.call(this, requestMethod, endpoint, body, qs);
