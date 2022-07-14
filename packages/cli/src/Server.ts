@@ -74,6 +74,7 @@ import {
 	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
+	PinData,
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
@@ -129,6 +130,7 @@ import {
 	WorkflowRunner,
 	getCredentialForUser,
 	getCredentialWithoutUser,
+	IWorkflowDb,
 } from '.';
 
 import config from '../config';
@@ -1085,12 +1087,15 @@ class App {
 
 					const sessionId = GenericHelpers.getSessionId(req);
 
+					const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
+
 					// If webhooks nodes exist and are active we have to wait for till we receive a call
 					if (
-						runData === undefined ||
-						startNodes === undefined ||
-						startNodes.length === 0 ||
-						destinationNode === undefined
+						pinnedTrigger === undefined &&
+						(runData === undefined ||
+							startNodes === undefined ||
+							startNodes.length === 0 ||
+							destinationNode === undefined)
 					) {
 						const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 						const nodeTypes = NodeTypes();
@@ -1134,6 +1139,11 @@ class App {
 						workflowData,
 						userId: req.user.id,
 					};
+
+					if (pinnedTrigger) {
+						data.startNodes = [pinnedTrigger.name];
+					}
+
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
 
@@ -3094,5 +3104,22 @@ function isOAuth(credType: ICredentialType) {
 		credType.extends.some((parentType) =>
 			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
 		)
+	);
+}
+
+const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
+
+const isTrigger = (str: string) =>
+	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
+
+function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: PinData) {
+	if (!pinData) return;
+
+	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
+
+	if (!firstPinnedTriggerName) return;
+
+	return workflow.nodes.find(
+		({ type, name }) => isTrigger(type) && name === firstPinnedTriggerName,
 	);
 }

@@ -345,11 +345,19 @@ export class WorkflowRunnerProcess {
 		) {
 			// Execute all nodes
 
+			let startNode;
+			if (
+				this.data.startNodes?.length === 1 &&
+				Object.keys(this.data.pinData ?? {}).includes(this.data.startNodes[0])
+			) {
+				startNode = this.workflow.getNode(this.data.startNodes[0]) ?? undefined;
+			}
+
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
 			return this.workflowExecute.run(
 				this.workflow,
-				undefined,
+				startNode,
 				this.data.destinationNode,
 				this.data.pinData,
 			);
