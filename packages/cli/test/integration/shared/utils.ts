@@ -6,8 +6,6 @@ import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 import bodyParser from 'body-parser';
-import util from 'util';
-import { createTestAccount } from 'nodemailer';
 import { set } from 'lodash';
 import { CronJob } from 'cron';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
