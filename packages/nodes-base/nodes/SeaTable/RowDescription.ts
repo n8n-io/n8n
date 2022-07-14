@@ -67,7 +67,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -86,7 +86,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -173,7 +173,7 @@ export const rowFields: INodeProperties[] = [
 						displayName: 'Column Name or ID',
 						name: 'columnName',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: [
 								'table',
@@ -295,7 +295,7 @@ export const rowFields: INodeProperties[] = [
 				displayName: 'View Name or ID',
 				name: 'view_name',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getViews',
 				},
@@ -350,7 +350,7 @@ export const rowFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAllSortableColumns',
 				},
 				default: '',
-				description: 'A column\'s name or ID, use this column to sort the rows. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'A column\'s name or ID, use this column to sort the rows. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

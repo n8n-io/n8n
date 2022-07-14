@@ -46,7 +46,7 @@ export const teamMemberFields: INodeProperties[] = [
 	{
 		displayName: 'User Name or ID',
 		name: 'userId',
-		description: 'User to add to a team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'User to add to a team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -67,7 +67,7 @@ export const teamMemberFields: INodeProperties[] = [
 	{
 		displayName: 'Team Name or ID',
 		name: 'teamId',
-		description: 'Team to add the user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Team to add the user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -92,7 +92,7 @@ export const teamMemberFields: INodeProperties[] = [
 	{
 		displayName: 'User Name or ID',
 		name: 'memberId',
-		description: 'User to remove from the team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'User to remove from the team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -113,7 +113,7 @@ export const teamMemberFields: INodeProperties[] = [
 	{
 		displayName: 'Team Name or ID',
 		name: 'teamId',
-		description: 'Team to remove the user from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Team to remove the user from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		default: '',
@@ -138,7 +138,7 @@ export const teamMemberFields: INodeProperties[] = [
 	{
 		displayName: 'Team Name or ID',
 		name: 'teamId',
-		description: 'Team to retrieve all members from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Team to retrieve all members from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},

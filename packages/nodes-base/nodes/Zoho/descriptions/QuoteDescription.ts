@@ -215,7 +215,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			shippingAddress,
 			{
@@ -409,7 +409,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			shippingAddress,
 			{

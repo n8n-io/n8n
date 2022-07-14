@@ -66,7 +66,7 @@ export class AwsLambda implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'The function you want to invoke. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The function you want to invoke. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Qualifier',

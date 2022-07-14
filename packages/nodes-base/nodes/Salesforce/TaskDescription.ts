@@ -81,7 +81,7 @@ export const taskFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getTaskStatuses',
 		},
-		description: 'The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -142,7 +142,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskCallTypes',
 				},
-				description: 'The type of call being answered: Inbound, Internal, or Outbound. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The type of call being answered: Inbound, Internal, or Outbound. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -167,7 +167,7 @@ export const taskFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -205,7 +205,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the User who owns the record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Priority Name or ID',
@@ -215,7 +215,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: 'Indicates the importance or urgency of a task, such as high or low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Indicates the importance or urgency of a task, such as high or low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence Type Name or ID',
@@ -225,7 +225,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
-				description: 'Recurrence Type of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Recurrence Type of the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence Instance Name or ID',
@@ -235,7 +235,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -373,7 +373,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskSubjects',
 				},
-				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Type Name or ID',
@@ -383,7 +383,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: 'Represents Type of the task, such as Call or Meeting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Represents Type of the task, such as Call or Meeting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'What ID',
@@ -482,7 +482,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskCallTypes',
 				},
-				description: 'The type of call being answered: Inbound, Internal, or Outbound. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The type of call being answered: Inbound, Internal, or Outbound. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -507,7 +507,7 @@ export const taskFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -545,7 +545,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the User who owns the record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the User who owns the record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Priority Name or ID',
@@ -555,7 +555,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskPriorities',
 				},
-				description: 'Indicates the importance or urgency of a task, such as high or low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Indicates the importance or urgency of a task, such as high or low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Status Name or ID',
@@ -565,7 +565,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskStatuses',
 				},
-				description: 'The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Subject Name or ID',
@@ -575,7 +575,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskSubjects',
 				},
-				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence Day Of Month',
@@ -606,7 +606,7 @@ export const taskFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTaskRecurrenceInstances',
 				},
 				default: '',
-				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The frequency of the recurring task. For example, “2nd” or “3rd.”. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence Interval',
@@ -709,7 +709,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
-				description: 'Website for the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Website for the task. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recurrence TimeZone SidKey',
@@ -733,7 +733,7 @@ export const taskFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTaskTypes',
 				},
-				description: 'Represents Type of the task, such as Call or Meeting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Represents Type of the task, such as Call or Meeting. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'What ID',
@@ -880,7 +880,7 @@ export const taskFields: INodeProperties[] = [
 									loadOptionsMethod: 'getTaskFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{

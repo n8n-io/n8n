@@ -227,7 +227,7 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The upcoming subscription payment ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The upcoming subscription payment ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Date',
