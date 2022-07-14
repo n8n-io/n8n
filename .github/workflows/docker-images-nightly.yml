@@ -58,6 +58,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: n8nio/n8n:${{ github.event.inputs.tag || 'nightly' }}
+          no-cache: true
       - name: Call Success URL - optionally
         run: |
           [[ "${{github.event.inputs.success-url}}" != "" ]] && curl -v ${{github.event.inputs.success-url}} || echo ""

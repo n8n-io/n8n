@@ -20,41 +20,49 @@ export const coinOperations: INodeProperties[] = [
 				name: 'Candlestick',
 				value: 'candlestick',
 				description: 'Get a candlestick open-high-low-close chart for the selected currency',
+				action: 'Get a candlestick for a coin',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get current data for a coin',
+				action: 'Get a coin',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all coins',
+				action: 'Get all coins',
 			},
 			{
 				name: 'History',
 				value: 'history',
 				description: 'Get historical data (name, price, market, stats) at a given date for a coin',
+				action: 'Get history for a coin',
 			},
 			{
 				name: 'Market',
 				value: 'market',
 				description: 'Get prices and market related data for all trading pairs that match the selected currency',
+				action: 'Get market prices for a coin',
 			},
 			{
 				name: 'Market Chart',
 				value: 'marketChart',
 				description: 'Get historical market data include price, market cap, and 24h volume (granularity auto)',
+				action: 'Get market chart for a coin',
 			},
 			{
 				name: 'Price',
 				value: 'price',
 				description: 'Get the current price of any cryptocurrencies in any other supported currencies that you need',
+				action: 'Get the price for a coin',
 			},
 			{
 				name: 'Ticker',
 				value: 'ticker',
 				description: 'Get coin tickers',
+				action: 'Get the ticker for a coin',
 			},
 		],
 		default: 'getAll',
@@ -182,7 +190,7 @@ export const coinFields: INodeProperties[] = [
 		placeholder: 'bitcoin',
 	},
 	{
-		displayName: 'Base Currencies Name or ID',
+		displayName: 'Base Currency Names or IDs',
 		name: 'baseCurrencies',
 		required: true,
 		type: 'multiOptions',
@@ -330,7 +338,7 @@ export const coinFields: INodeProperties[] = [
 		description: 'The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
-		displayName: 'Quote Currencies Name or ID',
+		displayName: 'Quote Currency Names or IDs',
 		name: 'quoteCurrencies',
 		type: 'multiOptions',
 		typeOptions: {

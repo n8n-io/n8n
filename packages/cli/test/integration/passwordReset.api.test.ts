@@ -35,7 +35,7 @@ beforeAll(async () => {
 	utils.initTestLogger();
 
 	isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
-});
+}, SMTP_TEST_TIMEOUT);
 
 beforeEach(async () => {
 	await testDb.truncate(['User'], testDbName);

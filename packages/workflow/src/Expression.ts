@@ -1,6 +1,6 @@
 /* eslint-disable id-denylist */
 // @ts-ignore
-import * as tmpl from 'riot-tmpl';
+import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
 // eslint-disable-next-line import/no-cycle

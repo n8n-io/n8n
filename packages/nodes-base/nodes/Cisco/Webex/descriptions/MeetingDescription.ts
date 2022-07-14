@@ -19,22 +19,27 @@ export const meetingOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a meeting',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a meeting',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a meeting',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all meetings',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a meeting',
 			},
 		],
 		default: 'create',

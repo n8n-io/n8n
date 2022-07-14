@@ -17,6 +17,7 @@ export const personOperations: INodeProperties[] = [
 			{
 				name: 'Enrich',
 				value: 'enrich',
+				action: 'Enrich a person',
 			},
 		],
 		default: 'enrich',

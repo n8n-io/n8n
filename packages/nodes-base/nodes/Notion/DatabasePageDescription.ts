@@ -16,7 +16,7 @@ import {
 	filters,
 } from './Filters';
 
-export const databasePageOperations = [
+export const databasePageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -37,21 +37,25 @@ export const databasePageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a pages in a database',
+				action: 'Create a database page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a page in a database',
+				action: 'Get a database page',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all pages in a database',
+				action: 'Get all database pages',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update pages in a database',
+				action: 'Update a database page',
 			},
 		],
 		default: 'create',
@@ -76,21 +80,24 @@ export const databasePageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a pages in a database',
+				action: 'Create a database page',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all pages in a database',
+				action: 'Get all database pages',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update pages in a database',
+				action: 'Update a database page',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
 export const databasePageFields = [
 
@@ -682,6 +689,7 @@ export const databasePageFields = [
 						displayName: 'Option Names or IDs',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
+						description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},

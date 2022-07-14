@@ -435,6 +435,12 @@ export default mixins(
 			}
 
 			this.retryExecution(commandData.row, loadWorkflow);
+
+			this.$telemetry.track('User clicked retry execution button', {
+				workflow_id: this.$store.getters.workflowId,
+				execution_id: commandData.row.id,
+				retry_type: loadWorkflow ? 'current' : 'original',
+			});
 		},
 		getRowClass (data: IDataObject): string {
 			const classes: string[] = [];

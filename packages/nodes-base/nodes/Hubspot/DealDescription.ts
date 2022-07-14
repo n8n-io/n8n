@@ -20,41 +20,49 @@ export const dealOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a deal',
+				action: 'Create a deal',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a deal',
+				action: 'Delete a deal',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a deal',
+				action: 'Get a deal',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all deals',
+				action: 'Get all deals',
 			},
 			{
 				name: 'Get Recently Created',
 				value: 'getRecentlyCreated',
 				description: 'Get recently created deals',
+				action: 'Get recently created deals',
 			},
 			{
 				name: 'Get Recently Modified',
 				value: 'getRecentlyModified',
 				description: 'Get recently modified deals',
+				action: 'Get recently modified deals',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search deals',
+				action: 'Search for deals',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a deal',
+				action: 'Update a deal',
 			},
 		],
 		default: 'create',
@@ -115,15 +123,17 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Associated Company Names or IDs',
 				name: 'associatedCompany',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
 			},
 			{
-				displayName: 'Associated Vids Names or IDs',
+				displayName: 'Associated Vid Names or IDs',
 				name: 'associatedVids',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
 				},
@@ -302,7 +312,6 @@ export const dealFields: INodeProperties[] = [
 				displayName: 'Deal Stage Name or ID',
 				name: 'stage',
 				type: 'options',
-				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getDealStages',
 				},
@@ -456,7 +465,8 @@ export const dealFields: INodeProperties[] = [
 				description: '<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Property Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Properties with History',
 				name: 'propertiesWithHistory',
 				type: 'multiOptions',
 				typeOptions: {

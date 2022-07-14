@@ -17,6 +17,7 @@ export const companyOperations: INodeProperties[] = [
 			{
 				name: 'Enrich',
 				value: 'enrich',
+				action: 'Enrich a company',
 			},
 		],
 		default: 'enrich',

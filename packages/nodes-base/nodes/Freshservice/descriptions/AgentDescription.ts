@@ -24,26 +24,31 @@ export const agentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an agent',
+				action: 'Create an agent',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an agent',
+				action: 'Delete an agent',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an agent',
+				action: 'Get an agent',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all agents',
+				action: 'Get all agents',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an agent',
+				action: 'Update an agent',
 			},
 		],
 		default: 'create',
@@ -235,7 +240,8 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Member Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Member of Group Names/IDs',
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
@@ -251,7 +257,8 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Observer Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Observer of Group Names/IDs',
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],
@@ -593,7 +600,8 @@ export const agentFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Member Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Member of Group Names/IDs',
 				name: 'member_of',
 				type: 'multiOptions',
 				default: [],
@@ -609,7 +617,8 @@ export const agentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Observer Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Observer of Group Names/IDs',
 				name: 'observer_of',
 				type: 'multiOptions',
 				default: [],

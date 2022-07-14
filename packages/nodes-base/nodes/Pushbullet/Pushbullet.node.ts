@@ -71,21 +71,25 @@ export class Pushbullet implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a push',
+						action: 'Create a push',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a push',
+						action: 'Delete a push',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all pushes',
+						action: 'Get all pushes',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a push',
+						action: 'Update a push',
 					},
 				],
 				default: 'create',
@@ -488,7 +492,7 @@ export class Pushbullet implements INodeType {
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];

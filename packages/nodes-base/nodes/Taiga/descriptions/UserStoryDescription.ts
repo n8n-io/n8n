@@ -20,26 +20,31 @@ export const userStoryOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user story',
+				action: 'Create a user story',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user story',
+				action: 'Delete a user story',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user story',
+				action: 'Get a user story',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all user stories',
+				action: 'Get all user stories',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user story',
+				action: 'Update a user story',
 			},
 		],
 		default: 'create',
@@ -198,6 +203,7 @@ export const userStoryFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'projectId',
@@ -430,6 +436,7 @@ export const userStoryFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'projectId',
@@ -598,6 +605,7 @@ export const userStoryFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'projectId',

@@ -20,6 +20,7 @@ export const reportOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Return the analytics data',
+				action: 'Get a report',
 			},
 		],
 		default: 'get',

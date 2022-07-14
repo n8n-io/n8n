@@ -20,26 +20,31 @@ export const userOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user',
+				action: 'Get a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all users',
+				action: 'Get all users',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
+				action: 'Update a user',
 			},
 		],
 		default: 'create',
@@ -453,7 +458,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schemas Name or ID',
+				displayName: 'Custom Schema Names or IDs',
 				name: 'customFieldMask',
 				type: 'multiOptions',
 				displayOptions: {
@@ -587,7 +592,7 @@ export const userFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Schemas Name or ID',
+				displayName: 'Custom Schema Names or IDs',
 				name: 'customFieldMask',
 				type: 'multiOptions',
 				displayOptions: {

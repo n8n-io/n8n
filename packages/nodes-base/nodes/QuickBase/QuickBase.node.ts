@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -400,7 +400,7 @@ export class QuickBase implements INodeType {
 					}
 
 					if (items[i].json[updateKey] === undefined) {
-						throw new NodeOperationError(this.getNode(), `The update key ${updateKey} could not be found in the input`);
+						throw new NodeOperationError(this.getNode(), `The update key ${updateKey} could not be found in the input`, { itemIndex: i });
 					}
 
 					data.push(record);
@@ -475,7 +475,7 @@ export class QuickBase implements INodeType {
 					}
 
 					if (items[i].json[updateKey] === undefined) {
-						throw new NodeOperationError(this.getNode(), `The update key ${updateKey} could not be found in the input`);
+						throw new NodeOperationError(this.getNode(), `The update key ${updateKey} could not be found in the input`, { itemIndex: i });
 					}
 
 					record[mergeFieldId] = { value: items[i].json[updateKey] };

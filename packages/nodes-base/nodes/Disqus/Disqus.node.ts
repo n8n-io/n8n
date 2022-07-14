@@ -68,21 +68,25 @@ export class Disqus implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Return forum details',
+						action: 'Get a forum',
 					},
 					{
 						name: 'Get All Categories',
 						value: 'getCategories',
 						description: 'Return a list of categories within a forum',
+						action: 'Get all categories in a forum',
 					},
 					{
 						name: 'Get All Threads',
 						value: 'getThreads',
 						description: 'Return a list of threads within a forum',
+						action: 'Get all threads in a forum',
 					},
 					{
 						name: 'Get All Posts',
 						value: 'getPosts',
 						description: 'Return a list of posts within a forum',
+						action: 'Get all posts in a forum',
 					},
 				],
 				default: 'get',
@@ -772,11 +776,11 @@ export class Disqus implements INodeType {
 						}
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

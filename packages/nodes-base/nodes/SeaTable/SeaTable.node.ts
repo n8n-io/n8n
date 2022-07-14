@@ -170,7 +170,7 @@ export class SeaTable implements INodeType {
 
 						const { _id: insertId } = responseData;
 						if (insertId === undefined) {
-							throw new NodeOperationError(this.getNode(), 'SeaTable: No identity after appending row.');
+							throw new NodeOperationError(this.getNode(), 'SeaTable: No identity after appending row.', { itemIndex: i });
 						}
 
 						const newRowInsertData = rowMapKeyToName(responseData, tableColumns);
@@ -180,7 +180,7 @@ export class SeaTable implements INodeType {
 						const newRow = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${encodeURIComponent(insertId)}/`, body, qs);
 
 						if (newRow._id === undefined) {
-							throw new NodeOperationError(this.getNode(), 'SeaTable: No identity for appended row.');
+							throw new NodeOperationError(this.getNode(), 'SeaTable: No identity for appended row.', { itemIndex: i });
 						}
 
 						const row = rowFormatColumns({ ...newRowInsertData, ...newRow }, tableColumns.map(({ name }) => name).concat(['_id', '_ctime', '_mtime']));

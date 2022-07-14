@@ -136,26 +136,31 @@ export class Freshdesk implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new ticket',
+						action: 'Create a ticket',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a ticket',
+						action: 'Delete a ticket',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a ticket',
+						action: 'Get a ticket',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all tickets',
+						action: 'Get all tickets',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a ticket',
+						action: 'Update a ticket',
 					},
 				],
 				default: 'create',
@@ -795,7 +800,6 @@ export class Freshdesk implements INodeType {
 						displayName: 'Source',
 						name: 'source',
 						type: 'options',
-						required: true,
 						options: [
 							{
 								name: 'Chat',
@@ -1157,7 +1161,7 @@ export class Freshdesk implements INodeType {
 						if (requester === 'requesterId') {
 							// @ts-ignore
 							if (isNaN(value)) {
-								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', { itemIndex: i });
 							}
 							body.requester_id = parseInt(value, 10);
 						} else if (requester === 'email') {
@@ -1242,7 +1246,7 @@ export class Freshdesk implements INodeType {
 							if (updateFields.requester === 'requesterId') {
 								// @ts-ignore
 								if (isNaN(parseInt(value, 10))) {
-									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', { itemIndex: i });
 								}
 								body.requester_id = parseInt(value as string, 10);
 							} else if (updateFields.requester === 'email') {

@@ -69,6 +69,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					{
 						name: 'Analyze Sentiment',
 						value: 'analyzeSentiment',
+						action: 'Analyze sentiment',
 					},
 				],
 				default: 'analyzeSentiment',
@@ -167,7 +168,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 						],
 						default: 'PLAIN_TEXT',
 						description: 'The type of input document',
-						required: true,
 					},
 					{
 						displayName: 'Encoding Type',

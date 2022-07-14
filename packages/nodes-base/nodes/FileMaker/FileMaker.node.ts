@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {IExecuteFunctions} from 'n8n-core';
 import {
 	ILoadOptionsFunctions,
@@ -881,7 +881,7 @@ export class FileMaker implements INodeType {
 						...parseScripts.call(this, i),
 					};
 				} else {
-					throw new NodeOperationError(this.getNode(), `The action "${action}" is not implemented yet!`);
+					throw new NodeOperationError(this.getNode(), `The action "${action}" is not implemented yet!`, { itemIndex: i });
 				}
 
 				// Now that the options are all set make the actual http request
@@ -893,7 +893,7 @@ export class FileMaker implements INodeType {
 				}
 
 				if (typeof response === 'string') {
-					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
+					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"', { itemIndex: i });
 				}
 				returnData.push({json: response});
 			}

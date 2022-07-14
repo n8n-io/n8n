@@ -49,6 +49,17 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 ];
 
 /**
+ * Mapping tables link entities but, unlike `SharedWorkflow` and `SharedCredentials`,
+ * have no entity representation. Therefore, mapping tables must be cleared
+ * on truncation of any of the collections they link.
+ */
+export const MAPPING_TABLES_TO_CLEAR: Record<string, string[] | undefined> = {
+	Workflow: ['workflows_tags'],
+	Tag: ['workflows_tags'],
+};
+
+
+/**
  * Name of the connection used for creating and dropping a Postgres DB
  * for each suite test run.
  */
@@ -64,3 +75,15 @@ export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
  * Timeout (in milliseconds) to account for fake SMTP service being slow to respond.
  */
 export const SMTP_TEST_TIMEOUT = 30_000;
+
+/**
+ * Timeout (in milliseconds) to account for DB being slow to initialize.
+ */
+export const DB_INITIALIZATION_TIMEOUT = 30_000;
+
+/**
+ * Mapping tables having no entity representation.
+ */
+export const MAPPING_TABLES = {
+	WorkflowsTags: 'workflows_tags',
+} as const;

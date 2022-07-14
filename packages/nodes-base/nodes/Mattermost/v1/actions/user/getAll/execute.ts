@@ -56,24 +56,24 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 
 			if (additionalFields.inTeam !== undefined
 				&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
-				throw new NodeOperationError(this.getNode(), `When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
+				throw new NodeOperationError(this.getNode(), `When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`, { itemIndex: index });
 			}
 			if (additionalFields.inChannel !== undefined
 				&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
-				throw new NodeOperationError(this.getNode(), `When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
+				throw new NodeOperationError(this.getNode(), `When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`, { itemIndex: index });
 			}
 			if (additionalFields.inChannel === ''
 				&& additionalFields.sort !== 'username') {
-				throw new NodeOperationError(this.getNode(), 'When sort is different than username In Channel must be set');
+				throw new NodeOperationError(this.getNode(), 'When sort is different than username In Channel must be set', { itemIndex: index });
 			}
 
 			if (additionalFields.inTeam === ''
 				&& additionalFields.sort !== 'username') {
-				throw new NodeOperationError(this.getNode(), 'When sort is different than username In Team must be set');
+				throw new NodeOperationError(this.getNode(), 'When sort is different than username In Team must be set', { itemIndex: index });
 			}
 
 		} else {
-			throw new NodeOperationError(this.getNode(), `When sort is defined either 'in team' or 'in channel' must be defined`);
+			throw new NodeOperationError(this.getNode(), `When sort is defined either 'in team' or 'in channel' must be defined`, { itemIndex: index });
 		}
 	}
 

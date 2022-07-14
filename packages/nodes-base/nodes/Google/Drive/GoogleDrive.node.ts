@@ -21,7 +21,7 @@ export class GoogleDrive implements INodeType {
 		name: 'googleDrive',
 		icon: 'file:googleDrive.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on Google Drive',
 		defaults: {
@@ -113,36 +113,43 @@ export class GoogleDrive implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a file',
+						action: 'Copy a file',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a file',
+						action: 'Delete a file',
 					},
 					{
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file',
+						action: 'Download a file',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List files and folders',
+						action: 'List a file',
 					},
 					{
 						name: 'Share',
 						value: 'share',
 						description: 'Share a file',
+						action: 'Share a file',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a file',
+						action: 'Update a file',
 					},
 					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
+						action: 'Upload a file',
 					},
 				],
 				default: 'upload',
@@ -165,16 +172,19 @@ export class GoogleDrive implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a folder',
+						action: 'Create a folder',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a folder',
+						action: 'Delete a folder',
 					},
 					{
 						name: 'Share',
 						value: 'share',
 						description: 'Share a folder',
+						action: 'Share a folder',
 					},
 				],
 				default: 'create',
@@ -475,7 +485,7 @@ export class GoogleDrive implements INodeType {
 					minValue: 1,
 					maxValue: 1000,
 				},
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 			},
 			{
@@ -951,7 +961,7 @@ export class GoogleDrive implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All fields',
 							},
@@ -1020,7 +1030,6 @@ export class GoogleDrive implements INodeType {
 								value: 'webViewLink',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The fields to return',
 					},
@@ -1254,7 +1263,6 @@ export class GoogleDrive implements INodeType {
 								value: 'webViewLink',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The fields to return',
 					},
@@ -1406,7 +1414,7 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All spaces',
 							},
@@ -1423,7 +1431,6 @@ export class GoogleDrive implements INodeType {
 								value: 'photos',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The spaces to operate on',
 					},
@@ -1463,7 +1470,6 @@ export class GoogleDrive implements INodeType {
 								description: 'All drives',
 							},
 						],
-						required: true,
 						default: '',
 						description: 'The corpora to operate on',
 					},
@@ -1509,26 +1515,31 @@ export class GoogleDrive implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a drive',
+						action: 'Create a drive',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a drive',
+						action: 'Delete a drive',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a drive',
+						action: 'Get a drive',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List all drives',
+						action: 'List all drives',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a drive',
+						action: 'Update a drive',
 					},
 				],
 				default: 'create',
@@ -2272,6 +2283,7 @@ export class GoogleDrive implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
+							// @ts-ignore
 							Object.assign(newItem.binary, items[i].binary);
 						}
 
@@ -2369,7 +2381,13 @@ export class GoogleDrive implements INodeType {
 
 						const files = response!.files;
 
-						return [this.helpers.returnJsonArray(files as IDataObject[])];
+						const version = this.getNode().typeVersion;
+
+						if (version === 1) {
+							return [this.helpers.returnJsonArray(files as IDataObject[])];
+						} else {
+							returnData.push(...files);
+						}
 
 					} else if (operation === 'upload') {
 						// ----------------------------------
@@ -2385,13 +2403,13 @@ export class GoogleDrive implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
 							}
 
 							if (item.binary[propertyNameUpload].mimeType) {
