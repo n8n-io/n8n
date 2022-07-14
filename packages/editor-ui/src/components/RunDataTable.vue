@@ -103,11 +103,8 @@ export default Vue.extend({
 		focusedMappableInput(): string {
 			return this.$store.getters['ui/focusedMappableInput'];
 		},
-		isUserOnboarded(): boolean {
-			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
-		},
 		showDraggables(): boolean {
-			return !!this.focusedMappableInput && !this.isUserOnboarded;
+			return !!this.focusedMappableInput && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 		},
 	},
 	methods: {
