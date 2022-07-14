@@ -3,7 +3,7 @@
 		:label="hideLabel? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltipText="hideLabel? '': $locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
-		:showOptions="menuExpanded || forceShowExpression"
+		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
 		size="small"
 	>
