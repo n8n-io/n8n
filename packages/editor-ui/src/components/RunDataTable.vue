@@ -13,7 +13,7 @@
 		<table :class="$style.table" v-else>
 			<tr>
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
-					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || (showDraggables && actuallyShowDraggables)">
+					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || (showDraggables && actuallyShowDraggables)" :open-delay="1000">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
 						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled">
 							<template v-slot:preview="{ canDrop }">
