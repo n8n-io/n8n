@@ -79,79 +79,92 @@ export class Git implements INodeType {
 					},
 				},
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				default: 'log',
-				description: 'Operation to perform',
 				options: [
 					{
 						name: 'Add',
 						value: 'add',
 						description: 'Add a file or folder to commit',
+						action: 'Add a file or folder to commit',
 					},
 					{
 						name: 'Add Config',
 						value: 'addConfig',
 						description: 'Add configuration property',
+						action: 'Add configuration property',
 					},
 					{
 						name: 'Clone',
 						value: 'clone',
 						description: 'Clone a repository',
+						action: 'Clone a repository',
 					},
 					{
 						name: 'Commit',
 						value: 'commit',
 						description: 'Commit files or folders to git',
+						action: 'Commit files or folders to git',
 					},
 					{
 						name: 'Fetch',
 						value: 'fetch',
 						description: 'Fetch from remote repository',
+						action: 'Fetch from remote repository',
 					},
 					{
 						name: 'List Config',
 						value: 'listConfig',
 						description: 'Return current configuration',
+						action: 'Return current configuration',
 					},
 					{
 						name: 'Log',
 						value: 'log',
 						description: 'Return git commit history',
+						action: 'Return git commit history',
 					},
 					{
 						name: 'Pull',
 						value: 'pull',
 						description: 'Pull from remote repository',
+						action: 'Pull from remote repository',
 					},
 					{
 						name: 'Push',
 						value: 'push',
 						description: 'Push to remote repository',
+						action: 'Push to remote repository',
 					},
 					{
 						name: 'Push Tags',
 						value: 'pushTags',
 						description: 'Push Tags to remote repository',
+						action: 'Push tags to remote repository',
 					},
 					{
 						name: 'Status',
 						value: 'status',
 						description: 'Return status of current repository',
+						action: 'Return status of current repository',
 					},
 					{
 						name: 'Tag',
 						value: 'tag',
 						description: 'Create a new tag',
+						action: 'Create a new tag',
 					},
 					{
 						name: 'User Setup',
 						value: 'userSetup',
 						description: 'Set the user',
+						action: 'Set up a user',
 					},
 				],
 			},
@@ -170,7 +183,7 @@ export class Git implements INodeType {
 				default: '',
 				placeholder: '/tmp/repository',
 				required: true,
-				description: 'Local path of the git repository to operate on.',
+				description: 'Local path of the git repository to operate on',
 			},
 			{
 				displayName: 'New Repository Path',
@@ -186,7 +199,7 @@ export class Git implements INodeType {
 				default: '',
 				placeholder: '/tmp/repository',
 				required: true,
-				description: 'Local path to which the git repository should be cloned into.',
+				description: 'Local path to which the git repository should be cloned into',
 			},
 
 			...addFields,
@@ -259,7 +272,14 @@ export class Git implements INodeType {
 
 					await git.add(pathsToAdd.split(','));
 
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'addConfig') {
 					// ----------------------------------
@@ -275,7 +295,14 @@ export class Git implements INodeType {
 					}
 
 					await git.addConfig(key, value, append);
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'clone') {
 					// ----------------------------------
@@ -287,7 +314,14 @@ export class Git implements INodeType {
 
 					await git.clone(sourceRepository, '.');
 
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'commit') {
 					// ----------------------------------
@@ -303,7 +337,14 @@ export class Git implements INodeType {
 
 					await git.commit(message, pathsToAdd);
 
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'fetch') {
 					// ----------------------------------
@@ -311,7 +352,14 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					await git.fetch();
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'log') {
 					// ----------------------------------
@@ -331,7 +379,12 @@ export class Git implements INodeType {
 					const log = await git.log(logOptions);
 
 					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray(log.all));
+					returnItems.push(...this.helpers.returnJsonArray(log.all).map(item => {
+						return {
+							...item,
+							pairedItem: { item: itemIndex },
+						};
+					}));
 
 				} else if (operation === 'pull') {
 					// ----------------------------------
@@ -339,7 +392,14 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					await git.pull();
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'push') {
 					// ----------------------------------
@@ -370,7 +430,14 @@ export class Git implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'pushTags') {
 					// ----------------------------------
@@ -378,7 +445,14 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					await git.pushTags();
-					returnItems.push({ json: { success: true } });
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 
 				} else if (operation === 'listConfig') {
 					// ----------------------------------
@@ -396,7 +470,12 @@ export class Git implements INodeType {
 					}
 
 					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray(data));
+					returnItems.push(...this.helpers.returnJsonArray(data).map(item => {
+						return {
+							...item,
+							pairedItem: { item: itemIndex },
+						};
+					}));
 
 				} else if (operation === 'status') {
 					// ----------------------------------
@@ -406,7 +485,12 @@ export class Git implements INodeType {
 					const status = await git.status();
 
 					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray([status]));
+					returnItems.push(...this.helpers.returnJsonArray([status]).map(item => {
+						return {
+							...item,
+							pairedItem: { item: itemIndex },
+						};
+					}));
 
 				} else if (operation === 'tag') {
 					// ----------------------------------
@@ -416,14 +500,27 @@ export class Git implements INodeType {
 					const name = this.getNodeParameter('name', itemIndex, '') as string;
 
 					await git.addTag(name);
-					returnItems.push({ json: { success: true } });
-
+					returnItems.push({
+						json: {
+							success: true,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				}
 
 			} catch (error) {
 
 				if (this.continueOnFail()) {
-					returnItems.push({ json: { error: error.toString() } });
+					returnItems.push({
+						json: {
+							error: error.toString(),
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 

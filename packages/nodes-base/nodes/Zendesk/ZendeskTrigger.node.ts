@@ -90,7 +90,6 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Service',
@@ -119,9 +118,9 @@ export class ZendeskTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Fields',
+						displayName: 'Field Names or IDs',
 						name: 'fields',
-						description: 'The fields to return the values of.',
+						description: 'The fields to return the values of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 						type: 'multiOptions',
 						default: [],
 						typeOptions: {
@@ -146,7 +145,7 @@ export class ZendeskTrigger implements INodeType {
 						],
 					},
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{

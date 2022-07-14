@@ -7,6 +7,7 @@ export const organizationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,43 +17,49 @@ export const organizationOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Count',
+				value: 'count',
+				description: 'Count organizations',
+				action: 'Count organizations',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an organization',
+				action: 'Create an organization',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an organization',
-			},
-			{
-				name: 'Count',
-				value: 'count',
-				description: 'Count organizations',
+				action: 'Delete an organization',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an organization',
+				action: 'Get an organization',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all organizations',
+				action: 'Get all organizations',
 			},
 			{
 				name: 'Get Related Data',
 				value: 'getRelatedData',
 				description: 'Get data related to the organization',
+				action: 'Get data related to an organization',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a organization',
+				action: 'Update an organization',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -131,9 +138,10 @@ export const organizationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getOrganizationFields',
 								},
@@ -150,14 +158,14 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'IDs of tags applied to this organization',
+				description: 'IDs of tags applied to this organization. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -240,9 +248,10 @@ export const organizationFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getOrganizationFields',
 								},
@@ -259,14 +268,14 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'IDs of tags applied to this organization',
+				description: 'IDs of tags applied to this organization. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -308,7 +317,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -332,7 +341,7 @@ export const organizationFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                organization:delete                         */

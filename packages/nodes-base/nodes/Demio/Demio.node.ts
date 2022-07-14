@@ -50,6 +50,7 @@ export class Demio implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Event',
@@ -61,7 +62,6 @@ export class Demio implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'Resource to consume.',
 			},
 			// Event
 			...eventOperations,

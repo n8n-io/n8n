@@ -7,6 +7,7 @@ export const affiliateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const affiliateOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an affiliate',
+				action: 'Create an affiliate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an affiliate',
+				action: 'Delete an affiliate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an affiliate by ID',
+				action: 'Get an affiliate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all affiliates',
+				action: 'Get all affiliates',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -49,6 +53,7 @@ export const affiliateFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -61,7 +66,7 @@ export const affiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The affiliate’s email.`,
+		description: 'The affiliate’s email',
 	},
 	{
 		displayName: 'First Name',
@@ -79,7 +84,7 @@ export const affiliateFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The affiliate’s firstname.`,
+		description: 'The affiliate’s firstname',
 	},
 	{
 		displayName: 'Last Name',
@@ -97,7 +102,7 @@ export const affiliateFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The affiliate’s lastname.`,
+		description: 'The affiliate’s lastname',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -165,7 +170,7 @@ export const affiliateFields: INodeProperties[] = [
 								name: 'country',
 								type: 'string',
 								default: '',
-								description: `The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.`,
+								description: 'The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.',
 							},
 						],
 					},
@@ -176,7 +181,7 @@ export const affiliateFields: INodeProperties[] = [
 				name: 'companyName',
 				type: 'string',
 				default: '',
-				description: `The affiliate’s company data.`,
+				description: 'The affiliate’s company data',
 			},
 		],
 	},
@@ -200,7 +205,7 @@ export const affiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -222,7 +227,7 @@ export const affiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -243,7 +248,7 @@ export const affiliateFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -267,7 +272,7 @@ export const affiliateFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -291,7 +296,7 @@ export const affiliateFields: INodeProperties[] = [
 				name: 'affiliate_group_id',
 				type: 'string',
 				default: '',
-				description: 'Retrieves affiliates for a certain affiliate group.',
+				description: 'Retrieves affiliates for a certain affiliate group',
 			},
 			{
 				displayName: 'Click ID',
@@ -303,6 +308,7 @@ export const affiliateFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'An email address,',
 			},
@@ -311,7 +317,7 @@ export const affiliateFields: INodeProperties[] = [
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Retrieves children for a certain parent affiliate.',
+				description: 'Retrieves children for a certain parent affiliate',
 			},
 			{
 				displayName: 'Referral Code',

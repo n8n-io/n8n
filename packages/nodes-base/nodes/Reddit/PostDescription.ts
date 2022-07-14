@@ -7,33 +7,38 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Submit a post to a subreddit',
+				action: 'Create a post',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a post from a subreddit',
+				action: 'Delete a post',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a post from a subreddit',
+				action: 'Get a post',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all posts from a subreddit',
+				action: 'Get all posts',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search posts in a subreddit or in all of Reddit.',
+				description: 'Search posts in a subreddit or in all of Reddit',
+				action: 'Search for a post',
 			},
 		],
 		displayOptions: {
@@ -56,7 +61,7 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Subreddit to create the post in.',
+		description: 'Subreddit to create the post in',
 		displayOptions: {
 			show: {
 				resource: [
@@ -87,7 +92,7 @@ export const postFields: INodeProperties[] = [
 			},
 		],
 		default: 'self',
-		description: 'The kind of the post to create.',
+		description: 'The kind of the post to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -105,7 +110,7 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Title of the post, up to 300 characters long.',
+		description: 'Title of the post, up to 300 characters long',
 		displayOptions: {
 			show: {
 				resource: [
@@ -123,7 +128,7 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'URL of the post.',
+		description: 'URL of the post',
 		displayOptions: {
 			show: {
 				resource: [
@@ -165,7 +170,7 @@ export const postFields: INodeProperties[] = [
 		name: 'resubmit',
 		type: 'boolean',
 		default: false,
-		description: 'If toggled on, the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
+		description: 'Whether the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -214,7 +219,7 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to retrieve the post from.',
+		description: 'The name of subreddit to retrieve the post from',
 		displayOptions: {
 			show: {
 				resource: [
@@ -255,7 +260,7 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to retrieve the posts from.',
+		description: 'The name of subreddit to retrieve the posts from',
 		displayOptions: {
 			show: {
 				resource: [
@@ -272,7 +277,7 @@ export const postFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -289,7 +294,7 @@ export const postFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -329,9 +334,8 @@ export const postFields: INodeProperties[] = [
 				displayName: 'Category',
 				name: 'category',
 				type: 'options',
-				required: true,
 				default: 'top',
-				description: 'Category of the posts to retrieve.',
+				description: 'Category of the posts to retrieve',
 				options: [
 					{
 						name: 'Top Posts',
@@ -362,17 +366,17 @@ export const postFields: INodeProperties[] = [
 		name: 'location',
 		type: 'options',
 		default: 'subreddit',
-		description: 'Location where to search for posts.',
+		description: 'Location where to search for posts',
 		options: [
 			{
 				name: 'All Reddit',
 				value: 'allReddit',
-				description: 'Search for posts in all of Reddit.',
+				description: 'Search for posts in all of Reddit',
 			},
 			{
 				name: 'Subreddit',
 				value: 'subreddit',
-				description: 'Search for posts in a specific subreddit.',
+				description: 'Search for posts in a specific subreddit',
 			},
 		],
 		displayOptions: {
@@ -392,7 +396,7 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to search in.',
+		description: 'The name of subreddit to search in',
 		displayOptions: {
 			show: {
 				resource: [
@@ -413,7 +417,7 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The keyword for the search.',
+		description: 'The keyword for the search',
 		displayOptions: {
 			show: {
 				resource: [
@@ -430,7 +434,7 @@ export const postFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -447,7 +451,7 @@ export const postFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -489,7 +493,7 @@ export const postFields: INodeProperties[] = [
 				placeholder: '',
 				type: 'options',
 				default: 'relevance',
-				description: 'The category to sort results by.',
+				description: 'The category to sort results by',
 				options: [
 					{
 						name: 'Comments',
@@ -504,12 +508,12 @@ export const postFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'Top',
-						value: 'top',
-					},
-					{
 						name: 'Relevance',
 						value: 'relevance',
+					},
+					{
+						name: 'Top',
+						value: 'top',
 					},
 				],
 			},

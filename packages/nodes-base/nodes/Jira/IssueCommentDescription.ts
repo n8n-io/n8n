@@ -7,6 +7,7 @@ export const issueCommentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const issueCommentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add comment to issue',
+				action: 'Add a comment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a comment',
+				action: 'Get a comment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all comments',
+				action: 'Get all comments',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a comment',
+				action: 'Remove a comment',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a comment',
+				action: 'Update a comment',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,6 +72,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
 		description: 'issueComment Key',
 	},
 	{
@@ -103,7 +109,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Comment's text`,
+		description: 'Comment\'s text',
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -123,7 +129,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.`,
+		description: 'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -177,7 +183,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID or key of the issue.',
+		description: 'The ID or key of the issue',
 	},
 	{
 		displayName: 'Comment ID',
@@ -249,7 +255,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID or key of the issue.',
+		description: 'The ID or key of the issue',
 	},
 	{
 		displayName: 'Return All',
@@ -266,7 +272,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -290,7 +296,7 @@ export const issueCommentFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -344,7 +350,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID or key of the issue.',
+		description: 'The ID or key of the issue',
 	},
 	{
 		displayName: 'Comment ID',
@@ -362,7 +368,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the comment.',
+		description: 'The ID of the comment',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -384,7 +390,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The Issue Comment key.',
+		description: 'The Issue Comment key',
 	},
 	{
 		displayName: 'Comment ID',
@@ -402,7 +408,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the comment.',
+		description: 'The ID of the comment',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -438,7 +444,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Comment's text.`,
+		description: 'Comment\'s text',
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -458,7 +464,7 @@ export const issueCommentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.`,
+		description: 'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
 	},
 	{
 		displayName: 'Options',

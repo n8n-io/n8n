@@ -7,6 +7,7 @@ export const searchOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const searchOperations: INodeProperties[] = [
 				name: 'Query',
 				value: 'query',
 				description: 'Execute a SOQL query that returns all the results in a single response',
+				action: 'Perform a query',
 			},
 		],
 		default: 'query',
-		description: 'The operation to perform.',
 	},
 ];
 

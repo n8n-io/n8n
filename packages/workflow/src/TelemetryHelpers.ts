@@ -11,8 +11,6 @@ import {
 } from '.';
 import { INodeType } from './Interfaces';
 
-import { getInstance as getLoggerInstance } from './LoggerProxy';
-
 const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
@@ -60,6 +58,59 @@ function areOverlapping(
 	);
 }
 
+const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathname>\/.*)/;
+
+export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
+	try {
+		const url = new URL(raw);
+
+		return [url.protocol, url.hostname].join('//');
+	} catch (_) {
+		const match = urlParts.exec(raw);
+
+		if (!match?.groups?.protocolPlusDomain) return '';
+
+		return match.groups.protocolPlusDomain;
+	}
+}
+
+function isSensitive(segment: string) {
+	if (/^v\d+$/.test(segment)) return false;
+
+	return /%40/.test(segment) || /\d/.test(segment) || /^[0-9A-F]{8}/i.test(segment);
+}
+
+export const ANONYMIZATION_CHARACTER = '*';
+
+function sanitizeRoute(raw: string, check = isSensitive, char = ANONYMIZATION_CHARACTER) {
+	return raw
+		.split('/')
+		.map((segment) => (check(segment) ? char.repeat(segment.length) : segment))
+		.join('/');
+}
+
+/**
+ * Return pathname plus query string from URL, anonymizing IDs in route and query params.
+ */
+export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
+	try {
+		const url = new URL(raw);
+
+		if (!url.hostname) throw new Error('Malformed URL');
+
+		return sanitizeRoute(url.pathname);
+	} catch (_) {
+		const match = urlParts.exec(raw);
+
+		if (!match?.groups?.pathname) return '';
+
+		// discard query string
+		const route = match.groups.pathname.split('?').shift() as string;
+
+		return sanitizeRoute(route);
+	}
+}
+
 export function generateNodesGraph(
 	workflow: IWorkflowBase,
 	nodeTypes: INodeTypes,
@@ -71,6 +122,7 @@ export function generateNodesGraph(
 		notes: {},
 	};
 	const nodeNameAndIndex: INodeNameIndex = {};
+	const webhookNodeNames: string[] = [];
 
 	try {
 		const notes = workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
@@ -100,12 +152,32 @@ export function generateNodesGraph(
 				position: node.position,
 			};
 
-			if (node.type === 'n8n-nodes-base.httpRequest') {
+			if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
 				try {
 					nodeItem.domain = new URL(node.parameters.url as string).hostname;
-				} catch (e) {
-					nodeItem.domain = node.parameters.url as string;
+				} catch (_) {
+					nodeItem.domain = getDomainBase(node.parameters.url as string);
 				}
+			} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 2) {
+				const { authentication } = node.parameters as { authentication: string };
+
+				nodeItem.credential_type = {
+					none: 'none',
+					genericCredentialType: node.parameters.genericAuthType as string,
+					existingCredentialType: node.parameters.nodeCredentialType as string,
+				}[authentication];
+
+				nodeItem.credential_set = node.credentials
+					? Object.keys(node.credentials).length > 0
+					: false;
+
+				const { url } = node.parameters as { url: string };
+
+				nodeItem.domain_base = getDomainBase(url);
+				nodeItem.domain_path = getDomainPath(url);
+				nodeItem.method = node.parameters.requestMethod as string;
+			} else if (node.type === 'n8n-nodes-base.webhook') {
+				webhookNodeNames.push(node.name);
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -139,12 +211,9 @@ export function generateNodesGraph(
 				});
 			});
 		});
-	} catch (e) {
-		const logger = getLoggerInstance();
-		logger.warn(`Failed to generate nodes graph for workflowId: ${workflow.id as string | number}`);
-		logger.warn((e as Error).message);
-		logger.warn((e as Error).stack ?? '');
+	} catch (_) {
+		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 	}
 
-	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex };
+	return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 }

@@ -48,6 +48,7 @@ export class Clearbit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -57,11 +58,10 @@ export class Clearbit implements INodeType {
 					{
 						name: 'Person',
 						value: 'person',
-						description: 'The Person API lets you retrieve social information associated with an email address, such as a person’s name, location and Twitter handle.',
+						description: 'The Person API lets you retrieve social information associated with an email address, such as a person’s name, location and Twitter handle',
 					},
 				],
 				default: 'company',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...companyFields,

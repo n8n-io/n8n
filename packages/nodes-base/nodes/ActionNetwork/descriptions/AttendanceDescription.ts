@@ -11,6 +11,7 @@ export const attendanceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,18 +23,20 @@ export const attendanceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an attendance',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an attendance',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all attendances',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -44,7 +47,7 @@ export const attendanceFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to create an attendance for.',
+		description: 'ID of the person to create an attendance for',
 		type: 'string',
 		default: '',
 		required: true,
@@ -62,7 +65,7 @@ export const attendanceFields: INodeProperties[] = [
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
-		description: 'ID of the event to create an attendance for.',
+		description: 'ID of the event to create an attendance for',
 		type: 'string',
 		default: '',
 		required: true,
@@ -85,7 +88,7 @@ export const attendanceFields: INodeProperties[] = [
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
-		description: 'ID of the event whose attendance to retrieve.',
+		description: 'ID of the event whose attendance to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -103,7 +106,7 @@ export const attendanceFields: INodeProperties[] = [
 	{
 		displayName: 'Attendance ID',
 		name: 'attendanceId',
-		description: 'ID of the attendance to retrieve.',
+		description: 'ID of the attendance to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -126,7 +129,7 @@ export const attendanceFields: INodeProperties[] = [
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
-		description: 'ID of the event to create an attendance for.',
+		description: 'ID of the event to create an attendance for',
 		type: 'string',
 		default: '',
 		required: true,
@@ -146,7 +149,7 @@ export const attendanceFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -163,7 +166,7 @@ export const attendanceFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

@@ -31,6 +31,7 @@ export class GSuiteAdmin implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'G Suite Admin',
 		name: 'gSuiteAdmin',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:gSuiteAdmin.png',
 		group: ['input'],
 		version: 1,
@@ -52,6 +53,7 @@ export class GSuiteAdmin implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Group',
@@ -63,7 +65,6 @@ export class GSuiteAdmin implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.',
 			},
 			...groupOperations,
 			...groupFields,
@@ -328,7 +329,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined', { itemIndex: i });
 					}
 
 					responseData = await googleApiRequest.call(
@@ -361,7 +362,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
-						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined');
+						throw new NodeOperationError(this.getNode(), 'When projection is set to custom, the custom schemas field must be defined', { itemIndex: i });
 					}
 
 					if (returnAll) {

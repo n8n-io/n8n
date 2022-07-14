@@ -39,7 +39,7 @@ export class EmailSend implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'admin@example.com',
-				description: 'Email address of the sender optional with name.',
+				description: 'Email address of the sender optional with name',
 			},
 			{
 				displayName: 'To Email',
@@ -48,7 +48,7 @@ export class EmailSend implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'info@example.com',
-				description: 'Email address of the recipient.',
+				description: 'Email address of the recipient',
 			},
 			{
 				displayName: 'CC Email',
@@ -56,7 +56,7 @@ export class EmailSend implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'cc@example.com',
-				description: 'Email address of CC recipient.',
+				description: 'Email address of CC recipient',
 			},
 			{
 				displayName: 'BCC Email',
@@ -64,7 +64,7 @@ export class EmailSend implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'bcc@example.com',
-				description: 'Email address of BCC recipient.',
+				description: 'Email address of BCC recipient',
 			},
 			{
 				displayName: 'Subject',
@@ -72,7 +72,7 @@ export class EmailSend implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'My subject line',
-				description: 'Subject line of the email.',
+				description: 'Subject line of the email',
 			},
 			{
 				displayName: 'Text',
@@ -83,7 +83,7 @@ export class EmailSend implements INodeType {
 					rows: 5,
 				},
 				default: '',
-				description: 'Plain text message of email.',
+				description: 'Plain text message of email',
 			},
 			{
 				displayName: 'HTML',
@@ -93,7 +93,7 @@ export class EmailSend implements INodeType {
 					rows: 5,
 				},
 				default: '',
-				description: 'HTML text message of email.',
+				description: 'HTML text message of email',
 			},
 			{
 				displayName: 'Attachments',
@@ -114,7 +114,7 @@ export class EmailSend implements INodeType {
 						name: 'allowUnauthorizedCerts',
 						type: 'boolean',
 						default: false,
-						description: 'Do connect even if SSL certificate validation is not possible.',
+						description: 'Whether to connect even if SSL certificate validation is not possible',
 					},
 				],
 			},
@@ -204,11 +204,23 @@ export class EmailSend implements INodeType {
 				// Send the email
 				const info = await transporter.sendMail(mailOptions);
 
-				returnData.push({ json: info as unknown as IDataObject });
+				returnData.push({
+					json: info as unknown as IDataObject,
+					pairedItem: {
+						item: itemIndex,
+					},
+				});
 
-			}catch (error) {
+			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

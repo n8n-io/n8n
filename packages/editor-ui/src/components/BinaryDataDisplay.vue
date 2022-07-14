@@ -101,7 +101,7 @@ export default mixins(
 	z-index: 10;
 	width: 100%;
 	height: calc(100% - 50px);
-	background-color: var(--color-background-light);
+	background-color: var(--color-background-base);
 	overflow: hidden;
 	text-align: center;
 

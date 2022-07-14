@@ -7,16 +7,18 @@ export const itemOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all items',
 			},
 		],
 		displayOptions: {
@@ -39,7 +41,7 @@ export const itemFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the item to retrieve.',
+		description: 'The ID of the item to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -60,7 +62,7 @@ export const itemFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -76,8 +78,8 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

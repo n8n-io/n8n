@@ -7,6 +7,7 @@ export const folderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,40 @@ export const folderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a folder',
+				action: 'Create a folder',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a folder',
+				action: 'Delete a folder',
 			},
 			{
 				name: 'Get Children',
 				value: 'getChildren',
 				description: 'Get items inside a folder',
+				action: 'Get items in a folder',
+			},
+			{
+				name: 'Rename',
+				value: 'rename',
+				description: 'Rename a folder',
+				action: 'Rename a folder',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search a folder',
+				action: 'Search a folder',
 			},
 			{
 				name: 'Share',
 				value: 'share',
 				description: 'Share a folder',
+				action: 'Share a folder',
 			},
 		],
 		default: 'getChildren',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -116,6 +127,43 @@ export const folderFields: INodeProperties[] = [
 		},
 		default: '',
 	},
+/* -------------------------------------------------------------------------- */
+/*                               folder:rename                                */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Item ID',
+	name: 'itemId',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'rename',
+			],
+			resource: [
+				'folder',
+			],
+		},
+	},
+	default: '',
+	description: 'ID of the folder',
+},
+{
+	displayName: 'New Name',
+	name: 'newName',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'rename',
+			],
+			resource: [
+				'folder',
+			],
+		},
+	},
+	default: '',
+	description: 'New name for folder',
+},
 /* -------------------------------------------------------------------------- */
 /*                                 folder:search                              */
 /* -------------------------------------------------------------------------- */

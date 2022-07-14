@@ -4,18 +4,18 @@
 
 n8n is a free and open [fair-code](http://faircode.io) distributed node-based Workflow Automation Tool. You can self-host n8n, easily extend it, and even use it with internal tools.
 
-<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
-
+<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" alt="n8n.io - Screenshot"></a>
 
 ## Contents
 
 <!-- TOC -->
+
 - [Demo](#demo)
 - [Getting Started](#getting-started)
-	- [Use npx](#use-npx)
-	- [Run with Docker](#run-with-docker)
-	- [Install with npm](#install-with-npm)
-	- [Sign-up on n8n.cloud](#sign-up-on-n8n.cloud)
+  - [Use npx](#use-npx)
+  - [Run with Docker](#run-with-docker)
+  - [Install with npm](#install-with-npm)
+  - [Sign-up on n8n.cloud](#sign-up-on-n8n.cloud)
 - [Available integrations](#available-integrations)
 - [Documentation](#documentation)
 - [Create Custom Nodes](#create-custom-nodes)
@@ -29,7 +29,7 @@ n8n is a free and open [fair-code](http://faircode.io) distributed node-based Wo
 
 ## Demo
 
-📺  Here's a [short demo (<3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) that shows how to create a simple workflow to automatically sends a notification on Slack every time a GitHub repository gets starred or un-starred.
+📺 Here's a [:tv: short video (< 4 min)](https://www.youtube.com/watch?v=RpjQTGKm-ok) that goes over key concepts of creating workflows in n8n.
 
 ## Getting Started
 
@@ -96,6 +96,7 @@ n8n start
 Sign-up for an [n8n.cloud](https://www.n8n.cloud/) account.
 
 While n8n.cloud and n8n are the same in terms of features, n8n.cloud provides certain conveniences such as:
+
 - Not having to set up and maintain your n8n instance
 - Managed OAuth for authentication
 - Easily upgrading to the newer n8n versions
@@ -110,16 +111,15 @@ To learn more about n8n, refer to the official documentation here: [https://docs
 
 You can find additional information and example workflows on the [n8n.io](https://n8n.io) website.
 
-
 ## Create Custom Nodes
 
 You can create custom nodes for n8n. Follow the instructions mentioned in the documentation to create your node: [Creating nodes](https://docs.n8n.io/nodes/creating-nodes/create-node.html)
 
 ## Contributing
 
-🐛  Did you find a bug?
+🐛 Did you find a bug?
 
-✨  Do you want to contribute a feature?
+✨ Do you want to contribute a feature?
 
 The [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) will help you set up your development environment.
 
@@ -140,7 +140,6 @@ If you run into issues or have any questions reach out to us via our community f
 ## Jobs
 
 If you are interested in working at n8n and building the project, check out the [job openings](https://apply.workable.com/n8n/).
-
 
 ## Upgrading
 

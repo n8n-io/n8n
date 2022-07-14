@@ -154,7 +154,6 @@ export class Mautic implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'Resource to consume',
 			},
 			...companyOperations,
 			...companyFields,
@@ -630,7 +629,7 @@ export class Mautic implements INodeType {
 							if (json !== undefined) {
 								body = { ...json };
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+								throw new NodeOperationError(this.getNode(), 'Invalid JSON', { itemIndex: i });
 							}
 						}
 						if (additionalFields.ipAddress) {
@@ -739,7 +738,7 @@ export class Mautic implements INodeType {
 							if (json !== undefined) {
 								body = { ...json };
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+								throw new NodeOperationError(this.getNode(), 'Invalid JSON', { itemIndex: i });
 							}
 						}
 						if (updateFields.ipAddress) {

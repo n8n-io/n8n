@@ -53,7 +53,7 @@ import clientOAuth2 from 'client-oauth2';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 import csrf from 'csrf';
 import requestPromise, { OptionsWithUrl } from 'request-promise-native';
-import { createHmac } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -102,6 +102,7 @@ import {
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
+	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
@@ -110,7 +111,6 @@ import {
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
-	IDiagnosticInfo,
 	IN8nUISettings,
 	IPackageVersions,
 	ITagWithCountDb,
@@ -138,7 +138,7 @@ import * as TagHelpers from './TagHelpers';
 import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
+import { getSharedWorkflowIds, isBelowOnboardingThreshold, whereClause } from './WorkflowHelpers';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 
@@ -146,11 +146,13 @@ import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import type {
+	AuthenticatedRequest,
+	CredentialRequest,
 	ExecutionRequest,
-	WorkflowRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
 	TagsRequest,
+	WorkflowRequest,
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
@@ -162,6 +164,7 @@ import {
 	isEmailSetUp,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
+import { loadPublicApiVersions } from './PublicApi';
 
 require('body-parser-xml')(bodyParser);
 
@@ -210,6 +213,8 @@ class App {
 
 	restEndpoint: string;
 
+	publicApiEndpoint: string;
+
 	frontendSettings: IN8nUISettings;
 
 	protocol: string;
@@ -234,14 +239,15 @@ class App {
 		this.defaultWorkflowName = config.getEnv('workflows.defaultName');
 		this.defaultCredentialsName = config.getEnv('credentials.defaultName');
 
-		this.saveDataErrorExecution = config.getEnv('executions.saveDataOnError');
-		this.saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess');
-		this.saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
-		this.executionTimeout = config.getEnv('executions.timeout');
-		this.maxExecutionTimeout = config.getEnv('executions.maxTimeout');
-		this.payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-		this.timezone = config.getEnv('generic.timezone');
-		this.restEndpoint = config.getEnv('endpoints.rest');
+		this.saveDataErrorExecution = config.get('executions.saveDataOnError');
+		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess');
+		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
+		this.executionTimeout = config.get('executions.timeout');
+		this.maxExecutionTimeout = config.get('executions.maxTimeout');
+		this.payloadSizeMax = config.get('endpoints.payloadSizeMax');
+		this.timezone = config.get('generic.timezone');
+		this.restEndpoint = config.get('endpoints.rest');
+		this.publicApiEndpoint = config.get('publicApi.path');
 
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
@@ -310,6 +316,11 @@ class App {
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
 			},
+			publicApi: {
+				enabled: config.getEnv('publicApi.disabled') === false,
+				latestVersion: 1,
+				path: config.getEnv('publicApi.path'),
+			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
@@ -373,6 +384,9 @@ class App {
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
 		];
+		if (!config.getEnv('publicApi.disabled')) {
+			ignoredEndpoints.push(this.publicApiEndpoint);
+		}
 		// eslint-disable-next-line prefer-spread
 		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
 
@@ -484,8 +498,9 @@ class App {
 
 			// eslint-disable-next-line no-inner-declarations
 			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '')
+				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') {
 					return true;
+				}
 
 				for (const [k, v] of Object.entries(decodedToken)) {
 					if (k === jwtNamespace) {
@@ -543,6 +558,15 @@ class App {
 			});
 		}
 
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		if (!config.getEnv('publicApi.disabled')) {
+			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(this.publicApiEndpoint);
+			this.app.use(...apiRouters);
+			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
+		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
@@ -786,7 +810,7 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
 				const { id, ...rest } = savedWorkflow;
 
@@ -911,7 +935,14 @@ class App {
 				const requestedName =
 					req.query.name && req.query.name !== '' ? req.query.name : this.defaultWorkflowName;
 
-				return await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+				const name = await GenericHelpers.generateUniqueName(requestedName, 'workflow');
+
+				const onboardingFlowEnabled =
+					!config.getEnv('workflows.onboardingFlowDisabled') &&
+					!req.user.settings?.isOnboarded &&
+					(await isBelowOnboardingThreshold(req.user));
+
+				return { name, onboardingFlowEnabled };
 			}),
 		);
 
@@ -1069,7 +1100,11 @@ class App {
 				}
 
 				await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow);
+				void InternalHooksManager.getInstance().onWorkflowSaved(
+					req.user.id,
+					updatedWorkflow,
+					false,
+				);
 
 				if (updatedWorkflow.active) {
 					// When the workflow is supposed to be active add it again
@@ -1137,7 +1172,7 @@ class App {
 
 				await Db.collections.Workflow.delete(workflowId);
 
-				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId);
+				void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
 				await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 				return true;
@@ -1234,7 +1269,7 @@ class App {
 						return TagHelpers.getTagsWithCountDb(tablePrefix);
 					}
 
-					return Db.collections.Tag.find({ select: ['id', 'name'] });
+					return Db.collections.Tag.find({ select: ['id', 'name', 'createdAt', 'updatedAt'] });
 				},
 			),
 		);
@@ -1449,7 +1484,7 @@ class App {
 					if (defaultLocale === 'en') {
 						return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
 							const { description } = NodeTypes().getByNameAndVersion(name, version);
-							acc.push(description);
+							acc.push(injectCustomApiCallOption(description));
 							return acc;
 						}, []);
 					}
@@ -1473,7 +1508,7 @@ class App {
 							// ignore - no translation exists at path
 						}
 
-						nodeTypes.push(description);
+						nodeTypes.push(injectCustomApiCallOption(description));
 					}
 
 					const nodeTypes: INodeTypeDescription[] = [];
@@ -2269,7 +2304,7 @@ class App {
 						let filterToAdd = {};
 
 						if (key === 'waitTill') {
-							filterToAdd = { waitTill: !IsNull() };
+							filterToAdd = { waitTill: Not(IsNull()) };
 						} else if (key === 'finished' && value === false) {
 							filterToAdd = { finished: false, waitTill: IsNull() };
 						} else {
@@ -2658,7 +2693,8 @@ class App {
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							!sharedWorkflowIds.includes(data.workflowId.toString())
+							(data.workflowId !== undefined &&
+								!sharedWorkflowIds.includes(data.workflowId.toString()))
 						) {
 							continue;
 						}
@@ -2820,6 +2856,10 @@ class App {
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
+					void InternalHooksManager.getInstance().onFrontendSettingsAPI(
+						req.headers.sessionid as string,
+					);
+
 					return this.getSettingsForFrontend();
 				},
 			),
@@ -2856,6 +2896,8 @@ class App {
 						ResponseHelper.sendErrorResponse(res, error);
 						return;
 					}
+
+					res.header('Access-Control-Allow-Origin', '*');
 
 					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 					return;
@@ -3105,4 +3147,59 @@ async function getExecutionsCount(
 	});
 
 	return { count, estimated: false };
+}
+
+const CUSTOM_API_CALL_NAME = 'Custom API Call';
+const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
+/**
+ * Inject a `Custom API Call` option into `resource` and `operation`
+ * parameters in a node that supports proxy auth.
+ */
+function injectCustomApiCallOption(description: INodeTypeDescription) {
+	if (!supportsProxyAuth(description)) return description;
+
+	description.properties.forEach((p) => {
+		if (
+			['resource', 'operation'].includes(p.name) &&
+			Array.isArray(p.options) &&
+			p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+		) {
+			p.options.push({
+				name: CUSTOM_API_CALL_NAME,
+				value: CUSTOM_API_CALL_KEY,
+			});
+		}
+
+		return p;
+	});
+
+	return description;
+}
+
+const credentialTypes = CredentialTypes();
+
+/**
+ * Whether any of the node's credential types may be used to
+ * make a request from a node other than itself.
+ */
+function supportsProxyAuth(description: INodeTypeDescription) {
+	if (!description.credentials) return false;
+
+	return description.credentials.some(({ name }) => {
+		const credType = credentialTypes.getByName(name);
+
+		if (credType.authenticate !== undefined) return true;
+
+		return isOAuth(credType);
+	});
+}
+
+function isOAuth(credType: ICredentialType) {
+	return (
+		Array.isArray(credType.extends) &&
+		credType.extends.some((parentType) =>
+			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+		)
+	);
 }

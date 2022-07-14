@@ -7,6 +7,7 @@ export const bucketOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const bucketOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a bucket',
+				action: 'Create a bucket',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a bucket',
+				action: 'Delete a bucket',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all buckets',
+				action: 'Get all buckets',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search within a bucket',
+				action: 'Search a bucket',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -62,7 +66,7 @@ export const bucketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'A succinct description of the nature, symptoms, cause, or effect of the bucket.',
+		description: 'A succinct description of the nature, symptoms, cause, or effect of the bucket',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -104,56 +108,56 @@ export const bucketFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The canned ACL to apply to the bucket.',
+				description: 'The canned ACL to apply to the bucket',
 			},
 			{
 				displayName: 'Bucket Object Lock Enabled',
 				name: 'bucketObjectLockEnabled',
 				type: 'boolean',
 				default: false,
-				description: 'Specifies whether you want S3 Object Lock to be enabled for the new bucket.',
+				description: 'Whether you want S3 Object Lock to be enabled for the new bucket',
 			},
 			{
 				displayName: 'Grant Full Control',
 				name: 'grantFullControl',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee the read, write, read ACP, and write ACP permissions on the bucket.',
+				description: 'Whether to allow grantee the read, write, read ACP, and write ACP permissions on the bucket',
 			},
 			{
 				displayName: 'Grant Read',
 				name: 'grantRead',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to list the objects in the bucket.',
+				description: 'Whether to allow grantee to list the objects in the bucket',
 			},
 			{
 				displayName: 'Grant Read ACP',
 				name: 'grantReadAcp',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to read the bucket ACL.',
+				description: 'Whether to allow grantee to read the bucket ACL',
 			},
 			{
 				displayName: 'Grant Write',
 				name: 'grantWrite',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to create, overwrite, and delete any object in the bucket.',
+				description: 'Whether to allow grantee to create, overwrite, and delete any object in the bucket',
 			},
 			{
 				displayName: 'Grant Write ACP',
 				name: 'grantWriteAcp',
 				type: 'boolean',
 				default: false,
-				description: 'Allows grantee to write the ACL for the applicable bucket.',
+				description: 'Whether to allow grantee to write the ACL for the applicable bucket',
 			},
 			{
 				displayName: 'Region',
 				name: 'region',
 				type: 'string',
 				default: '',
-				description: 'Region you want to create the bucket in, by default the buckets are created on the region defined on the credentials.',
+				description: 'Region you want to create the bucket in, by default the buckets are created on the region defined on the credentials',
 			},
 		],
 	},
@@ -177,7 +181,7 @@ export const bucketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name of the AWS S3 bucket to delete.',
+		description: 'Name of the AWS S3 bucket to delete',
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -198,7 +202,7 @@ export const bucketFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -222,7 +226,7 @@ export const bucketFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 bucket:search                              */
@@ -259,7 +263,7 @@ export const bucketFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -283,7 +287,7 @@ export const bucketFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -307,7 +311,7 @@ export const bucketFields: INodeProperties[] = [
 				name: 'delimiter',
 				type: 'string',
 				default: '',
-				description: 'A delimiter is a character you use to group keys.',
+				description: 'A delimiter is a character you use to group keys',
 			},
 			{
 				displayName: 'Encoding Type',
@@ -320,28 +324,29 @@ export const bucketFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Encoding type used by Amazon S3 to encode object keys in the response.',
+				description: 'Encoding type used by Amazon S3 to encode object keys in the response',
 			},
 			{
 				displayName: 'Fetch Owner',
 				name: 'fetchOwner',
 				type: 'boolean',
 				default: false,
-				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
 			},
 			{
 				displayName: 'Prefix',
 				name: 'prefix',
 				type: 'string',
 				default: '',
-				description: 'Limits the response to keys that begin with the specified prefix.',
+				description: 'Limits the response to keys that begin with the specified prefix',
 			},
 			{
 				displayName: 'Requester Pays',
 				name: 'requesterPays',
 				type: 'boolean',
 				default: false,
-				description: 'Weather the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
+				description: 'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
 			},
 			{
 				displayName: 'Start After',

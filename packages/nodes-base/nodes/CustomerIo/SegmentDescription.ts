@@ -5,6 +5,7 @@ export const segmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,14 +17,15 @@ export const segmentOperations: INodeProperties[] = [
 			{
 				name: 'Add Customer',
 				value: 'add',
+				action: 'Add a customer to a segment',
 			},
 			{
 				name: 'Remove Customer',
 				value: 'remove',
+				action: 'Remove a customer from a segment',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -49,7 +51,7 @@ export const segmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the segment.',
+		description: 'The unique identifier of the segment',
 	},
 	{
 		displayName: 'Customer IDs',
@@ -68,6 +70,6 @@ export const segmentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'A list of customer ids to add to the segment.',
+		description: 'A list of customer IDs to add to the segment',
 	},
 ];

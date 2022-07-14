@@ -7,6 +7,7 @@ export const groupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -21,21 +22,25 @@ export const groupOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a group',
+				action: 'Create a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a group',
+				action: 'Get a group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all groups',
+				action: 'Get all groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a group',
+				action: 'Update a group',
 			},
 		],
 		default: 'create',
@@ -63,7 +68,7 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the group.',
+		description: 'Name of the group',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -84,7 +89,7 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -108,7 +113,7 @@ export const groupFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -130,7 +135,7 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group to update.',
+		description: 'ID of the group to update',
 	},
 	{
 		displayName: 'Name',
@@ -148,6 +153,6 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'New name of the group.',
+		description: 'New name of the group',
 	},
 ];

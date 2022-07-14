@@ -10,6 +10,36 @@ export const options = {
 	default: {},
 	options: [
 		{
+			displayName: 'Download Attachments',
+			name: 'download',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to download submitted attachments',
+		},
+		{
+			displayName: 'Attachments Naming Scheme',
+			name: 'binaryNamingScheme',
+			type: 'options',
+			default: 'sequence',
+			displayOptions: {
+				show: {
+					download: [
+						true,
+					],
+				},
+			},
+			options: [
+				{
+					name: 'Sequence (e.g. attachment_N)',
+					value: 'sequence',
+				},
+				{
+					name: 'Use Original Form Question ID',
+					value: 'question',
+				},
+			],
+		},
+		{
 			displayName: 'Attachments Prefix',
 			name: 'dataPropertyAttachmentsPrefixName',
 			type: 'string',
@@ -18,17 +48,13 @@ export const options = {
 					download: [
 						true,
 					],
+					binaryNamingScheme: [
+						'sequence',
+					],
 				},
 			},
 			default: 'attachment_',
 			description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
-		},
-		{
-			displayName: 'Download Attachments',
-			name: 'download',
-			type: 'boolean',
-			default: false,
-			description: 'Download submitted attachments',
 		},
 		{
 			displayName: 'File Size',
@@ -81,7 +107,7 @@ export const options = {
 			name: 'reformat',
 			type: 'boolean',
 			default: false,
-			description: 'Apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
+			description: 'Whether to apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
 		},
 	],
 } as INodeProperties;

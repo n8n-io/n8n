@@ -18,6 +18,7 @@ export class Sms77 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'sms77',
 		name: 'sms77',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:sms77.png',
 		group: ['transform'],
 		version: 1,
@@ -39,6 +40,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -50,7 +52,6 @@ export class Sms77 implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 
 			// operations
@@ -58,6 +59,7 @@ export class Sms77 implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -70,15 +72,16 @@ export class Sms77 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -91,10 +94,10 @@ export class Sms77 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Converts text to voice and calls a given number',
+						action: 'Convert text to voice',
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'From',
@@ -102,7 +105,6 @@ export class Sms77 implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: '+4901234567890',
-				required: false,
 				displayOptions: {
 					show: {
 						operation: [
@@ -179,7 +181,7 @@ export class Sms77 implements INodeType {
 						name: 'debug',
 						type: 'boolean',
 						default: false,
-						description: 'If enabled, the API returns fake responses like in a sandbox',
+						description: 'Whether the API returns fake responses like in a sandbox',
 					},
 					{
 						displayName: 'Delay',
@@ -201,6 +203,7 @@ export class Sms77 implements INodeType {
 						name: 'flash',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Send as flash message being displayed directly the receiver\'s display',
 					},
 					{
@@ -216,14 +219,14 @@ export class Sms77 implements INodeType {
 						name: 'no_reload',
 						type: 'boolean',
 						default: false,
-						description: 'Disable reload lock to allow sending duplicate messages',
+						description: 'Whether to disable reload lock to allow sending duplicate messages',
 					},
 					{
 						displayName: 'Performance Tracking',
 						name: 'performance_tracking',
 						type: 'boolean',
 						default: false,
-						description: 'Enable performance tracking for URLs found in the message text',
+						description: 'Whether to enable performance tracking for URLs found in the message text',
 					},
 					{
 						displayName: 'TTL',
@@ -259,7 +262,7 @@ export class Sms77 implements INodeType {
 						name: 'debug',
 						type: 'boolean',
 						default: false,
-						description: 'If enabled, the API returns fake responses like in a sandbox',
+						description: 'Whether the API returns fake responses like in a sandbox',
 					},
 					{
 						displayName: 'From',
@@ -274,7 +277,7 @@ export class Sms77 implements INodeType {
 						name: 'xml',
 						type: 'boolean',
 						default: false,
-						description: 'Enable if text is of XML format',
+						description: 'Whether the text is in XML format',
 					},
 				],
 			},

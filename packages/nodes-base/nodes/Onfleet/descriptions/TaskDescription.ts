@@ -15,6 +15,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -24,41 +25,47 @@ export const taskOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new Onfleet task',
-			},
-			{
 				name: 'Clone',
 				value: 'clone',
 				description: 'Clone an Onfleet task',
+				action: 'Clone a task',
 			},
 			{
 				name: 'Complete',
 				value: 'complete',
 				description: 'Force-complete a started Onfleet task',
+				action: 'Complete a task',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new Onfleet task',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet task',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all Onfleet tasks',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific Onfleet task',
+				action: 'Get a task',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all Onfleet tasks',
+				action: 'Get all tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet task',
+				action: 'Update a task',
 			},
-
 		],
 		default: 'get',
 	},
@@ -165,7 +172,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -189,7 +196,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		...destinationExternalField,

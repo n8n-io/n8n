@@ -21,6 +21,7 @@ export class Nasa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'NASA',
 		name: 'nasa',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:nasa.png',
 		group: ['transform'],
 		version: 1,
@@ -45,10 +46,11 @@ export class Nasa implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Astronomy Picture of the Day',
-						value: 'astronomyPictureOfTheDay',
+						name: 'Asteroid Neo-Browse',
+						value: 'asteroidNeoBrowse',
 					},
 					{
 						name: 'Asteroid Neo-Feed',
@@ -59,12 +61,16 @@ export class Nasa implements INodeType {
 						value: 'asteroidNeoLookup',
 					},
 					{
-						name: 'Asteroid Neo-Browse',
-						value: 'asteroidNeoBrowse',
+						name: 'Astronomy Picture of the Day',
+						value: 'astronomyPictureOfTheDay',
 					},
 					{
 						name: 'DONKI Coronal Mass Ejection',
 						value: 'donkiCoronalMassEjection',
+					},
+					{
+						name: 'DONKI High Speed Stream',
+						value: 'donkiHighSpeedStream',
 					},
 					// {
 					// 	name: 'DONKI Geomagnetic Storm',
@@ -75,44 +81,39 @@ export class Nasa implements INodeType {
 						value: 'donkiInterplanetaryShock',
 					},
 					{
-						name: 'DONKI Solar Flare',
-						value: 'donkiSolarFlare',
-					},
-					{
-						name: 'DONKI Solar Energetic Particle',
-						value: 'donkiSolarEnergeticParticle',
-					},
-					{
 						name: 'DONKI Magnetopause Crossing',
 						value: 'donkiMagnetopauseCrossing',
+					},
+					{
+						name: 'DONKI Notification',
+						value: 'donkiNotifications',
 					},
 					{
 						name: 'DONKI Radiation Belt Enhancement',
 						value: 'donkiRadiationBeltEnhancement',
 					},
 					{
-						name: 'DONKI High Speed Stream',
-						value: 'donkiHighSpeedStream',
+						name: 'DONKI Solar Energetic Particle',
+						value: 'donkiSolarEnergeticParticle',
+					},
+					{
+						name: 'DONKI Solar Flare',
+						value: 'donkiSolarFlare',
 					},
 					{
 						name: 'DONKI WSA+EnlilSimulation',
 						value: 'donkiWsaEnlilSimulation',
 					},
 					{
-						name: 'DONKI Notifications',
-						value: 'donkiNotifications',
+						name: 'Earth Asset',
+						value: 'earthAssets',
 					},
 					{
 						name: 'Earth Imagery',
 						value: 'earthImagery',
 					},
-					{
-						name: 'Earth Assets',
-						value: 'earthAssets',
-					},
 				],
 				default: 'astronomyPictureOfTheDay',
-				description: 'The resource to operate on',
 			},
 			// ----------------------------------
 			//            operations
@@ -121,6 +122,7 @@ export class Nasa implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -133,15 +135,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get the Astronomy Picture of the Day',
+						action: 'Get the astronomy picture of the day',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -154,15 +157,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a list of asteroids based on their closest approach date to Earth',
+						action: 'Get an asteroid neo feed',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -175,15 +179,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Look up an asteroid based on its NASA SPK-ID',
+						action: 'Get an asteroid neo lookup',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -196,15 +201,16 @@ export class Nasa implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Browse the overall asteroid dataset',
+						action: 'Get all asteroid neos',
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -217,15 +223,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI coronal mass ejection data',
+						action: 'Get a DONKI coronal mass ejection',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -238,15 +245,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI geomagnetic storm data',
+						action: 'Get a DONKI geomagnetic storm',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -259,15 +267,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI interplanetary shock data',
+						action: 'Get a DONKI interplanetary shock',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -280,15 +289,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI solar flare data',
+						action: 'Get a DONKI solar flare',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -301,15 +311,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI solar energetic particle data',
+						action: 'Get a DONKI solar energetic particle',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -322,15 +333,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve data on DONKI magnetopause crossings',
+						action: 'Get a DONKI magnetopause crossing',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -343,15 +355,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI radiation belt enhancement data',
+						action: 'Get a DONKI radiation belt enhancement',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -364,15 +377,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI high speed stream data',
+						action: 'Get a DONKI high speed stream',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -385,15 +399,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI WSA+EnlilSimulation data',
+						action: 'Get a DONKI wsa enlil simulation',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -406,15 +421,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve DONKI notifications data',
+						action: 'Get a DONKI notifications',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -427,15 +443,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve Earth imagery',
+						action: 'Get Earth imagery',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -448,15 +465,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve Earth assets',
+						action: 'Get Earth assets',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -469,15 +487,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve Insight Mars Weather Service data',
+						action: 'Get Insight Mars Weather Service',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -490,15 +509,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve Image and Video Library data',
+						action: 'Get image and video library data',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -511,15 +531,16 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve TechTransfer data',
+						action: 'Get a TechTransfer data',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -532,10 +553,10 @@ export class Nasa implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve Two-Line Element Set data',
+						action: 'Get a Two-Line Element Set',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------
@@ -600,7 +621,8 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: true,
-				description: 'By default just the url of the image is returned. When set to true the image will be downloaded.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'By default just the URL of the image is returned. When set to true the image will be downloaded.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -681,14 +703,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start date',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End date',
+						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
@@ -720,14 +742,14 @@ export class Nasa implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Start date',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
-						displayName: 'End date',
+						displayName: 'End Date',
 						name: 'endDate',
 						type: 'dateTime',
 						default: '',
@@ -895,12 +917,16 @@ export class Nasa implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				description: 'Max number of results to return',
 				default: 20,
 				displayOptions: {
 					show: {
@@ -982,7 +1008,7 @@ export class Nasa implements INodeType {
 						endpoint = `/neo/rest/v1/neo/${asteroidId}`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 
 				}
@@ -1001,7 +1027,7 @@ export class Nasa implements INodeType {
 						endpoint = `/neo/rest/v1/neo/browse`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 
 				}

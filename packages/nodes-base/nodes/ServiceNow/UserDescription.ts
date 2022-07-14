@@ -19,22 +19,27 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all users',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a user',
 			},
 		],
 		default: 'get',
@@ -127,6 +132,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address associated with the user',
 			},
@@ -208,14 +214,14 @@ export const userFields: INodeProperties[] = [
 				description: 'The main phone number of the user',
 			},
 			{
-				displayName: 'Roles',
+				displayName: 'Role Names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUserRoles',
 				},
 				default: [],
-				description: 'Roles of the user',
+				description: 'Roles of the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Source',
@@ -297,7 +303,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'The max number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -324,7 +330,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -334,7 +340,7 @@ export const userFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -484,7 +490,7 @@ export const userFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -494,7 +500,7 @@ export const userFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -605,6 +611,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address associated with the user',
 			},
@@ -686,14 +693,14 @@ export const userFields: INodeProperties[] = [
 				description: 'The main phone number of the user',
 			},
 			{
-				displayName: 'Roles',
+				displayName: 'Role Names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUserRoles',
 				},
 				default: [],
-				description: 'Roles of the user',
+				description: 'Roles of the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Source',

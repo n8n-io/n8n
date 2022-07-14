@@ -7,18 +7,20 @@ export const couponOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a coupon',
+				action: 'Create a coupon',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all coupons',
+				action: 'Get all coupons',
 			},
 		],
 		displayOptions: {
@@ -117,7 +119,7 @@ export const couponFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Currency',
+		displayName: 'Currency Name or ID',
 		name: 'currency',
 		type: 'options',
 		typeOptions: {
@@ -125,7 +127,7 @@ export const couponFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -191,7 +193,7 @@ export const couponFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

@@ -79,6 +79,7 @@ export class GoogleBooks implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Bookshelf',
@@ -94,22 +95,24 @@ export class GoogleBooks implements INodeType {
 					},
 				],
 				default: 'bookshelf',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a specific bookshelf resource for the specified user',
+						action: 'Get a bookshelf',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all public bookshelf resource for the specified user',
+						action: 'Get all bookshelves',
 					},
 				],
 				displayOptions: {
@@ -120,37 +123,42 @@ export class GoogleBooks implements INodeType {
 					},
 				},
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Add',
 						value: 'add',
 						description: 'Add a volume to a bookshelf',
+						action: 'Add a bookshelf volume',
 					},
 					{
 						name: 'Clear',
 						value: 'clear',
 						description: 'Clears all volumes from a bookshelf',
+						action: 'Clear a bookshelf volume',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all volumes in a specific bookshelf for the specified user',
+						action: 'Get all bookshelf volumes',
 					},
 					{
 						name: 'Move',
 						value: 'move',
 						description: 'Moves a volume within a bookshelf',
+						action: 'Move a bookshelf volume',
 					},
 					{
 						name: 'Remove',
 						value: 'remove',
 						description: 'Removes a volume from a bookshelf',
+						action: 'Remove a bookshelf volume',
 					},
 				],
 				displayOptions: {
@@ -161,22 +169,24 @@ export class GoogleBooks implements INodeType {
 					},
 				},
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a volume resource based on ID',
+						action: 'Get a volume',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all volumes filtered by query',
+						action: 'Get all volumes',
 					},
 				],
 				displayOptions: {
@@ -187,7 +197,6 @@ export class GoogleBooks implements INodeType {
 					},
 				},
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'My Library',
@@ -216,7 +225,7 @@ export class GoogleBooks implements INodeType {
 				displayName: 'Search Query',
 				name: 'searchQuery',
 				type: 'string',
-				description: 'Full-text search query string.',
+				description: 'Full-text search query string',
 				default: '',
 				required: true,
 				displayOptions: {
@@ -259,7 +268,7 @@ export class GoogleBooks implements INodeType {
 				displayName: 'Bookshelf ID',
 				name: 'shelfId',
 				type: 'string',
-				description: 'ID of the bookshelf.',
+				description: 'ID of the bookshelf',
 				default: '',
 				required: true,
 				displayOptions: {
@@ -282,7 +291,7 @@ export class GoogleBooks implements INodeType {
 				displayName: 'Bookshelf ID',
 				name: 'shelfId',
 				type: 'string',
-				description: 'ID of the bookshelf.',
+				description: 'ID of the bookshelf',
 				default: '',
 				required: true,
 				displayOptions: {
@@ -300,7 +309,7 @@ export class GoogleBooks implements INodeType {
 				displayName: 'Volume ID',
 				name: 'volumeId',
 				type: 'string',
-				description: 'ID of the volume.',
+				description: 'ID of the volume',
 				default: '',
 				required: true,
 				displayOptions: {
@@ -322,7 +331,7 @@ export class GoogleBooks implements INodeType {
 				displayName: 'Volume Position',
 				name: 'volumePosition',
 				type: 'string',
-				description: 'Position on shelf to move the item (0 puts the item before the current first item, 1 puts it between the first and the second and so on).',
+				description: 'Position on shelf to move the item (0 puts the item before the current first item, 1 puts it between the first and the second and so on)',
 				default: '',
 				required: true,
 				displayOptions: {
@@ -348,7 +357,7 @@ export class GoogleBooks implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -369,7 +378,7 @@ export class GoogleBooks implements INodeType {
 					maxValue: 40,
 				},
 				default: 40,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 		],
 	};

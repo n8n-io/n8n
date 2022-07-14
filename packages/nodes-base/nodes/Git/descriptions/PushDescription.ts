@@ -23,7 +23,7 @@ export const pushFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'https://github.com/n8n-io/n8n',
-				description: 'The URL or path of the repository to push to.',
+				description: 'The URL or path of the repository to push to',
 			},
 		],
 	},

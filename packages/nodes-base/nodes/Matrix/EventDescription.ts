@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get single event by ID',
+				action: 'Get an event by ID',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

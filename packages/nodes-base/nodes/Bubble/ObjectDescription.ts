@@ -7,28 +7,33 @@ export const objectOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an object',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an object',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an object',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all objects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an object',
 			},
 		],
 		displayOptions: {
@@ -50,7 +55,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'typeName',
 		type: 'string',
 		required: true,
-		description: 'Name of data type of the object to create.',
+		description: 'Name of data type of the object to create',
 		default: '',
 		displayOptions: {
 			show: {
@@ -92,14 +97,14 @@ export const objectFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Field to set for the object to create.',
+						description: 'Field to set for the object to create',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the object to create.',
+						description: 'Value to set for the object to create',
 					},
 				],
 			},
@@ -114,7 +119,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'typeName',
 		type: 'string',
 		required: true,
-		description: 'Name of data type of the object to retrieve.',
+		description: 'Name of data type of the object to retrieve',
 		default: '',
 		displayOptions: {
 			show: {
@@ -133,7 +138,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'objectId',
 		type: 'string',
 		required: true,
-		description: 'ID of the object to retrieve.',
+		description: 'ID of the object to retrieve',
 		default: '',
 		displayOptions: {
 			show: {
@@ -156,7 +161,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'typeName',
 		type: 'string',
 		required: true,
-		description: 'Name of data type of the object to update.',
+		description: 'Name of data type of the object to update',
 		default: '',
 		displayOptions: {
 			show: {
@@ -174,7 +179,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'objectId',
 		type: 'string',
 		required: true,
-		description: 'ID of the object to update.',
+		description: 'ID of the object to update',
 		default: '',
 		displayOptions: {
 			show: {
@@ -216,14 +221,14 @@ export const objectFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Field to set for the object to create.',
+						description: 'Field to set for the object to create',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the object to create.',
+						description: 'Value to set for the object to create',
 					},
 				],
 			},
@@ -238,7 +243,7 @@ export const objectFields: INodeProperties[] = [
 		name: 'typeName',
 		type: 'string',
 		required: true,
-		description: 'Name of data type of the object to create.',
+		description: 'Name of data type of the object to create',
 		default: '',
 		displayOptions: {
 			show: {
@@ -266,7 +271,7 @@ export const objectFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -290,7 +295,7 @@ export const objectFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -351,17 +356,18 @@ export const objectFields: INodeProperties[] = [
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'Field to set for the object to create.',
+								description: 'Field to set for the object to create',
 							},
 							{
 								displayName: 'Constrain',
 								name: 'constraint_type',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Equals',
 										value: 'equals',
-										description: 'Use to test strict equality, for all field types.',
+										description: 'Use to test strict equality, for all field types',
 									},
 									{
 										name: 'Not Equal',
@@ -371,12 +377,12 @@ export const objectFields: INodeProperties[] = [
 									{
 										name: 'Is Empty',
 										value: 'is_empty',
-										description: `Use to test whether a thing's given field is empty, for all field types.`,
+										description: 'Use to test whether a thing\'s given field is empty, for all field types',
 									},
 									{
 										name: 'Is Not Empty',
 										value: 'is_not_empty',
-										description: `Use to test whether a thing's given field is not empty, for all field types.`,
+										description: 'Use to test whether a thing\'s given field is not empty, for all field types',
 									},
 									{
 										name: 'Text Contains',
@@ -391,47 +397,47 @@ export const objectFields: INodeProperties[] = [
 									{
 										name: 'Greater Than',
 										value: 'greater than',
-										description: `Use to compare a thing's field value relative to a string or number, for text, number, and date fields`,
+										description: 'Use to compare a thing\'s field value relative to a string or number, for text, number, and date fields',
 									},
 									{
 										name: 'Less Than',
 										value: 'less than',
-										description: `Use to compare a thing's field value relative to a string or number, for text, number, and date fields`,
+										description: 'Use to compare a thing\'s field value relative to a string or number, for text, number, and date fields',
 									},
 									{
 										name: 'In',
 										value: 'in',
-										description: `Use to test whether a thing's field is in a list, for all field types.`,
+										description: 'Use to test whether a thing\'s field is in a list, for all field types',
 									},
 									{
 										name: 'Not In',
 										value: 'not in',
-										description: `Use to test whether a thing's field is not in a list, for all field types.`,
+										description: 'Use to test whether a thing\'s field is not in a list, for all field types',
 									},
 									{
 										name: 'Contains',
 										value: 'contains',
-										description: `Use to test whether a list field contains an entry, for list fields only`,
+										description: 'Use to test whether a list field contains an entry, for list fields only',
 									},
 									{
 										name: 'Not Contains',
 										value: 'not contains',
-										description: `Use to test whether a list field does not contains an entry, for list fields only`,
+										description: 'Use to test whether a list field does not contains an entry, for list fields only',
 									},
 									{
 										name: 'Empty',
 										value: 'empty',
-										description: `Use to test whether a list field is empty, for list fields only`,
+										description: 'Use to test whether a list field is empty, for list fields only',
 									},
 									{
 										name: 'Not Empty',
 										value: 'not empty',
-										description: `Use to test whether a list field is not empty, for list fields only`,
+										description: 'Use to test whether a list field is not empty, for list fields only',
 									},
 									{
 										name: 'Geographic Search',
 										value: 'geographic_search',
-										description: `Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href="https://manual.bubble.io/core-resources/api/data-api">link</a>.`,
+										description: 'Use to test if the current thing is within a radius from a central address. To use this, the value sent with the constraint must have an address and a range. See <a href="https://manual.bubble.io/core-resources/api/data-api">link</a>.',
 									},
 								],
 								default: '',
@@ -451,7 +457,7 @@ export const objectFields: INodeProperties[] = [
 									},
 								},
 								default: '',
-								description: 'Value to set for the object to create.',
+								description: 'Value to set for the object to create',
 							},
 						],
 					},
@@ -504,7 +510,7 @@ export const objectFields: INodeProperties[] = [
 								name: 'geo_reference',
 								type: 'string',
 								default: '',
-								description: `When the field's type is geographic address, you need to add another parameter geo_reference and provide an address as a string`,
+								description: 'When the field\'s type is geographic address, you need to add another parameter geo_reference and provide an address as a string',
 							},
 						],
 					},

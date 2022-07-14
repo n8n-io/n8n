@@ -35,7 +35,6 @@ export const eventNameField = {
 			displayName: 'Name',
 			name: 'name',
 			type: 'string',
-			required: false,
 			default: '',
 			description: 'A name for the webhook for identification',
 		},

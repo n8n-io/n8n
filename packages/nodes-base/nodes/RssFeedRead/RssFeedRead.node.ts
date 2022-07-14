@@ -31,7 +31,7 @@ export class RssFeedRead implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'URL of the RSS feed.',
+				description: 'URL of the RSS feed',
 			},
 		],
 	};

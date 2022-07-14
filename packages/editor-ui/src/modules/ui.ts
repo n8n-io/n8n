@@ -25,6 +25,7 @@ import { ActionContext, Module } from 'vuex';
 import {
 	EditorTheme,
 	IRootState,
+	IRunDataDisplayMode,
 	IUiState,
 } from '../Interface';
 
@@ -100,6 +101,16 @@ const module: Module<IUiState, IRootState> = {
 		isPageLoading: true,
 		currentView: '',
 		theme: INITIAL_THEME,
+		ndv: {
+			sessionId: '',
+			input: {
+				displayMode: 'table',
+			},
+			output: {
+				displayMode: 'table',
+			},
+		},
+		mainPanelPosition: 0.5,
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -122,6 +133,13 @@ const module: Module<IUiState, IRootState> = {
 		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 		editorTheme: (state: IUiState): string => state.theme,
+		ndvSessionId: (state: IUiState): string => state.ndv.sessionId,
+		getPanelDisplayMode: (state: IUiState)  => {
+			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
+		},
+		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
+		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
+		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -166,6 +184,19 @@ const module: Module<IUiState, IRootState> = {
 			});
 			document.body.classList.add(`theme-${state.theme}`);
 		},
+		setNDVSessionId: (state: IUiState) => {
+			Vue.set(state.ndv, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
+		},
+		resetNDVSessionId: (state: IUiState) => {
+			Vue.set(state.ndv, 'sessionId', '');
+		},
+		setPanelDisplayMode: (state: IUiState, params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}) => {
+			Vue.set(state.ndv[params.pane], 'displayMode', params.mode);
+		},
+		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
+			state.mainPanelPosition = relativePosition;
+		},
+
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {

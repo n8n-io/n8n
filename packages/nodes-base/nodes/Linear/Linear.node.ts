@@ -20,7 +20,7 @@ import {
 	linearApiRequest,
 	linearApiRequestAllItems,
 	sort,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunctions';
 
 import {
@@ -61,6 +61,7 @@ export class Linear implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Issue',
@@ -78,7 +79,7 @@ export class Linear implements INodeType {
 		credentialTest: {
 			async linearApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					const { error: err } = error as JsonObject;
 					const errors = (err as IDataObject).errors as [{ extensions: { code: string } }];

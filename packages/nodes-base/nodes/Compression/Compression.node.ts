@@ -68,6 +68,7 @@ export class Compression implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Compress',
@@ -105,11 +106,11 @@ export class Compression implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'gzip',
+						name: 'Gzip',
 						value: 'gzip',
 					},
 					{
-						name: 'zip',
+						name: 'Zip',
 						value: 'zip',
 					},
 				],
@@ -147,7 +148,6 @@ export class Compression implements INodeType {
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',
-				required: false,
 				displayOptions: {
 					show: {
 						outputFormat: [
@@ -159,7 +159,7 @@ export class Compression implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property to which to write the data of the compressed files.',
+				description: 'Name of the binary property to which to write the data of the compressed files',
 			},
 			{
 				displayName: 'Output Prefix',
@@ -217,11 +217,11 @@ export class Compression implements INodeType {
 
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 						}
 						//@ts-ignore
 						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 						}
 
 						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -257,6 +257,9 @@ export class Compression implements INodeType {
 					returnData.push({
 						json: items[i].json,
 						binary: binaryObject,
+						pairedItem: {
+							item: i,
+						},
 					});
 				}
 
@@ -272,11 +275,11 @@ export class Compression implements INodeType {
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 
 						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 						}
 						//@ts-ignore
 						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 						}
 
 						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -314,6 +317,9 @@ export class Compression implements INodeType {
 							binary: {
 								[binaryPropertyOutput]: data,
 							},
+							pairedItem: {
+								item: i,
+							},
 						});
 					}
 
@@ -321,13 +327,23 @@ export class Compression implements INodeType {
 						returnData.push({
 							json: items[i].json,
 							binary: binaryObject,
+							pairedItem: {
+								item: i,
+							},
 						});
 					}
 				}
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;

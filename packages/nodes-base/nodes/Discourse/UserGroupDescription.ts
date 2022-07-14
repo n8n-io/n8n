@@ -7,6 +7,7 @@ export const userGroupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -21,11 +22,13 @@ export const userGroupOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Create a user to group',
+				action: 'Add a user to a group',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove user from group',
+				action: 'Remove a user from a group',
 			},
 		],
 		default: 'add',
@@ -70,7 +73,7 @@ export const userGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group.',
+		description: 'ID of the group',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -110,7 +113,7 @@ export const userGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group to remove.',
+		description: 'ID of the group to remove',
 	},
 
 ];

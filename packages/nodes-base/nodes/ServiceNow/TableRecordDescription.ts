@@ -19,22 +19,27 @@ export const tableRecordOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a table record',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a table record',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a table record',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all table records',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a table record',
 			},
 		],
 		default: 'get',
@@ -46,9 +51,10 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -83,7 +89,7 @@ export const tableRecordFields: INodeProperties[] = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: `Don't send any column data`,
+				description: 'Don\'t send any column data',
 			},
 		],
 		displayOptions: {
@@ -116,7 +122,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
@@ -147,9 +152,10 @@ export const tableRecordFields: INodeProperties[] = [
 				name: 'field',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field Name or ID',
 						name: 'column',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [
@@ -173,9 +179,10 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:getAll                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -231,7 +238,7 @@ export const tableRecordFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'The max number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -258,7 +265,7 @@ export const tableRecordFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -268,7 +275,7 @@ export const tableRecordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -306,7 +313,7 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:get/delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
 		typeOptions: {
@@ -325,7 +332,7 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Name of the table in which the record exists',
+		description: 'Name of the table in which the record exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Table Record ID',
@@ -371,7 +378,7 @@ export const tableRecordFields: INodeProperties[] = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -381,7 +388,7 @@ export const tableRecordFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'A list of fields to return',
+				description: 'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
@@ -412,9 +419,10 @@ export const tableRecordFields: INodeProperties[] = [
 	/*                                tableRecord:update                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
@@ -467,7 +475,7 @@ export const tableRecordFields: INodeProperties[] = [
 			{
 				name: 'Nothing',
 				value: 'nothing',
-				description: `Don't send any column data`,
+				description: 'Don\'t send any column data',
 			},
 		],
 		displayOptions: {
@@ -500,7 +508,6 @@ export const tableRecordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		required: false,
 		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.',
 	},
 	{
@@ -531,9 +538,10 @@ export const tableRecordFields: INodeProperties[] = [
 				name: 'field',
 				values: [
 					{
-						displayName: 'Field Name',
+						displayName: 'Field Name or ID',
 						name: 'column',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: [

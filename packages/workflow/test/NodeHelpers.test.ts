@@ -3008,6 +3008,333 @@ describe('Workflow', () => {
 					},
 				},
 			},
+			{
+				description:
+					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has all values set to the default values (by having it as an empty object) in combination with another value',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'mode',
+							displayName: 'mode',
+							type: 'string',
+							default: 'mode1',
+						},
+						{
+							displayName: 'Options',
+							name: 'options',
+							placeholder: 'Add Option',
+							type: 'collection',
+							default: {},
+							options: [
+								{
+									displayName: 'Sort',
+									name: 'sort',
+									type: 'fixedCollection',
+									typeOptions: {
+										multipleValues: false,
+									},
+									default: {},
+									placeholder: 'Add Sort',
+									options: [
+										{
+											displayName: 'Sort',
+											name: 'value',
+											values: [
+												{
+													displayName: 'Descending',
+													name: 'descending',
+													type: 'boolean',
+													default: true,
+													description: 'Sort by descending order',
+												},
+												{
+													displayName: 'Order By',
+													name: 'ordering',
+													type: 'options',
+													default: 'date',
+													options: [
+														{
+															name: 'Date',
+															value: 'date',
+														},
+														{
+															name: 'Name',
+															value: 'name',
+														},
+													],
+												},
+											],
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						mode: 'changed',
+						options: {
+							sort: {
+								value: {},
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							mode: 'changed',
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							mode: 'changed',
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							mode: 'changed',
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							mode: 'changed',
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has all values set to the default values (by having it as an empty object)',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Options',
+							name: 'options',
+							placeholder: 'Add Option',
+							type: 'collection',
+							default: {},
+							options: [
+								{
+									displayName: 'Sort',
+									name: 'sort',
+									type: 'fixedCollection',
+									typeOptions: {
+										multipleValues: false,
+									},
+									default: {},
+									placeholder: 'Add Sort',
+									options: [
+										{
+											displayName: 'Sort',
+											name: 'value',
+											values: [
+												{
+													displayName: 'Descending',
+													name: 'descending',
+													type: 'boolean',
+													default: true,
+													description: 'Sort by descending order',
+												},
+												{
+													displayName: 'Order By',
+													name: 'ordering',
+													type: 'options',
+													default: 'date',
+													options: [
+														{
+															name: 'Date',
+															value: 'date',
+														},
+														{
+															name: 'Name',
+															value: 'name',
+														},
+													],
+												},
+											],
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						options: {
+							sort: {
+								value: {},
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has all values set to the default values (by having each value set)',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Options',
+							name: 'options',
+							placeholder: 'Add Option',
+							type: 'collection',
+							default: {},
+							options: [
+								{
+									displayName: 'Sort',
+									name: 'sort',
+									type: 'fixedCollection',
+									typeOptions: {
+										multipleValues: false,
+									},
+									default: {},
+									options: [
+										{
+											displayName: 'Sort',
+											name: 'value',
+											values: [
+												{
+													displayName: 'Descending',
+													name: 'descending',
+													type: 'boolean',
+													default: true,
+												},
+												{
+													displayName: 'Order By',
+													name: 'ordering',
+													type: 'options',
+													default: 'date',
+													options: [
+														{
+															name: 'Date',
+															value: 'date',
+														},
+														{
+															name: 'Name',
+															value: 'name',
+														},
+													],
+												},
+											],
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						options: {
+							sort: {
+								value: {
+									descending: true,
+									ordering: 'date',
+								},
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {

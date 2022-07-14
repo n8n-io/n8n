@@ -43,7 +43,7 @@ export const addressFixedCollection: INodeProperties = {
 					name: 'country',
 					type: 'string',
 					default: '',
-					description: 'ISO 3166 alpha-2 country code.',
+					description: 'ISO 3166 alpha-2 country code',
 				},
 			],
 		},
@@ -101,6 +101,7 @@ export const emailsFixedCollection: INodeProperties = {
 					displayName: 'Email',
 					name: 'email',
 					type: 'string',
+					placeholder: 'name@email.com',
 					default: '',
 				},
 				{
@@ -130,6 +131,7 @@ export const emailFixedCollection: INodeProperties = {
 					displayName: 'Email',
 					name: 'email',
 					type: 'string',
+					placeholder: 'name@email.com',
 					default: '',
 				},
 				{

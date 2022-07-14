@@ -12,6 +12,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,18 +24,20 @@ export const eventOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an event',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an event',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all events',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -45,7 +48,7 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Origin System',
 		name: 'originSystem',
-		description: 'Source where the event originated.',
+		description: 'Source where the event originated',
 		type: 'string',
 		required: true,
 		default: '',
@@ -63,7 +66,7 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Title',
 		name: 'title',
-		description: 'Title of the event to create.',
+		description: 'Title of the event to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -104,7 +107,7 @@ export const eventFields: INodeProperties[] = [
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
-		description: 'ID of the event to retrieve.',
+		description: 'ID of the event to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
@@ -129,7 +132,7 @@ export const eventFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -146,7 +149,7 @@ export const eventFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

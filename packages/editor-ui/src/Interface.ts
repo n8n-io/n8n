@@ -159,6 +159,9 @@ export interface IExternalHooks {
 	run(eventName: string, metadata?: IDataObject): Promise<void>;
 }
 
+/**
+ * @deprecated Do not add methods to this interface.
+ */
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined >;
@@ -340,6 +343,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	id: string;
 	data: IRunExecutionData;
 	workflowData: IWorkflowDb;
+	executedNode?: string;
 }
 
 export interface IExecutionShortResponse {
@@ -554,6 +558,7 @@ export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
 	um?: boolean;
+	api?: boolean;
 }
 
 export interface IPermissions {
@@ -656,6 +661,11 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	publicApi: {
+		enabled: boolean;
+		latestVersion: number;
+		path: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -729,6 +739,8 @@ export interface ITag {
 	id: string;
 	name: string;
 	usageCount?: number;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface ITagRow {
@@ -841,6 +853,7 @@ export interface IModalState {
 }
 
 export type EditorTheme = 'light' | 'dark';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
 
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
@@ -851,6 +864,16 @@ export interface IUiState {
 	isPageLoading: boolean;
 	currentView: string;
 	theme: EditorTheme;
+	ndv: {
+		sessionId: string;
+		input: {
+			displayMode: IRunDataDisplayMode;
+		};
+		output: {
+			displayMode: IRunDataDisplayMode;
+		};
+	};
+	mainPanelPosition: number;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -860,6 +883,11 @@ export interface ISettingsState {
 	promptsData: IN8nPrompts;
 	userManagement: IUserManagementConfig;
 	templatesEndpointHealthy: boolean;
+	api: {
+		enabled: boolean;
+		latestVersion: number;
+		path: string;
+	};
 }
 
 export interface ITemplateState {

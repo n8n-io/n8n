@@ -35,6 +35,7 @@ export class Cockpit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cockpit',
 		name: 'cockpit',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:cockpit.png',
 		group: ['output'],
 		version: 1,
@@ -56,8 +57,8 @@ export class Cockpit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				default: 'collection',
-				description: 'Resource to consume.',
 				options: [
 					{
 						name: 'Collection',

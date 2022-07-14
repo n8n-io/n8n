@@ -16,7 +16,7 @@ import {
 
 import {
 	dropcontactApiRequest,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
@@ -65,6 +65,7 @@ export class Dropcontact implements INodeType {
 						name: 'Enrich',
 						value: 'enrich',
 						description: 'Find B2B emails and enrich your contact from his name and his website',
+						action: 'Find B2B emails',
 					},
 					{
 						name: 'Fetch Request',
@@ -95,6 +96,7 @@ export class Dropcontact implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -121,8 +123,8 @@ export class Dropcontact implements INodeType {
 						],
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.',
 			},
 			{
@@ -271,7 +273,7 @@ export class Dropcontact implements INodeType {
 		credentialTest: {
 			async dropcontactApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					return {
 						status: 'Error',

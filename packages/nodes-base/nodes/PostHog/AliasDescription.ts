@@ -7,6 +7,7 @@ export const aliasOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const aliasOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an alias',
+				action: 'Create an alias',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -47,7 +48,7 @@ export const aliasFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of the alias.',
+		description: 'The name of the alias',
 	},
 	{
 		displayName: 'Distinct ID',
@@ -65,7 +66,7 @@ export const aliasFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's distinct ID.`,
+		description: 'The user\'s distinct ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -119,7 +120,7 @@ export const aliasFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: `If not set, it'll automatically be set to the current time.`,
+				description: 'If not set, it\'ll automatically be set to the current time',
 			},
 		],
 	},

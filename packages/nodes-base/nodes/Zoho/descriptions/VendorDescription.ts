@@ -14,6 +14,7 @@ export const vendorOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -26,35 +27,40 @@ export const vendorOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a vendor',
+				action: 'Create a vendor',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a vendor',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a vendor',
+				action: 'Delete a vendor',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a vendor',
+				action: 'Get a vendor',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all vendors',
+				action: 'Get all vendors',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a vendor',
+				action: 'Update a vendor',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -171,7 +177,7 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to delete.',
+		description: 'ID of the vendor to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -193,7 +199,7 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to retrieve.',
+		description: 'ID of the vendor to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -220,7 +226,7 @@ export const vendorFields: INodeProperties[] = [
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',
-		description: 'ID of the vendor to update.',
+		description: 'ID of the vendor to update',
 		type: 'string',
 		required: true,
 		default: '',

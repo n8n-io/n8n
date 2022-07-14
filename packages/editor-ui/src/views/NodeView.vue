@@ -29,7 +29,7 @@
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						@runWorkflow="runWorkflow"
+						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
 						:id="'node-' + getNodeIndex(nodeData.name)"
@@ -58,14 +58,22 @@
 				</div>
 			</div>
 		</div>
-		<DataDisplay :renaming="renamingActive" @valueChanged="valueChanged"/>
+		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
 		<div
-			class="node-buttons-wrapper"
+			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
 			v-if="!createNodeActive && !isReadOnly"
+			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div class="node-creator-button">
-				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"/>
-				<div class="add-sticky-button" @click="nodeTypeSelected(STICKY_NODE_TYPE)">
+				<n8n-icon-button
+					size="xlarge"
+					icon="plus"
+					@click="() => openNodeCreator('add_node_button')" :title="$locale.baseText('nodeView.addNode')"
+				/>
+				<div
+					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
+					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
+				>
 					<n8n-icon-button size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
 				</div>
 			</div>
@@ -99,7 +107,7 @@
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
 			<n8n-button
-				@click.stop="runWorkflow()"
+				@click.stop="onRunWorkflow"
 				:loading="workflowRunning"
 				:label="runButtonText"
 				size="large"
@@ -150,7 +158,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -164,11 +172,10 @@ import { newVersions } from '@/components/mixins/newVersions';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
-import DataDisplay from '@/components/DataDisplay.vue';
+import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
-import RunData from '@/components/RunData.vue';
 import Sticky from '@/components/Sticky.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
@@ -189,6 +196,9 @@ import {
 	IRun,
 	ITaskData,
 	INodeCredentialsDetails,
+	TelemetryHelpers,
+	ITelemetryTrackProperties,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -235,11 +245,10 @@ export default mixins(
 	.extend({
 		name: 'NodeView',
 		components: {
-			DataDisplay,
+			NodeDetailsView,
 			Node,
 			NodeCreator,
 			NodeSettings,
-			RunData,
 			Sticky,
 		},
 		errorCaptured: (err, vm, info) => {
@@ -391,6 +400,7 @@ export default mixins(
 				pullConnActive: false,
 				dropPrevented: false,
 				renamingActive: false,
+				showStickyButton: false,
 			};
 		},
 		beforeDestroy () {
@@ -403,6 +413,43 @@ export default mixins(
 		methods: {
 			toggleTheme () {
 				this.$store.commit('ui/toggleTheme');
+			},
+			onRunNode(nodeName: string, source: string) {
+				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				this.runWorkflow(nodeName, source);
+			},
+			onRunWorkflow() {
+				this.getWorkflowDataToSave().then((workflowData) => {
+					this.$telemetry.track('User clicked execute workflow button', {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					});
+				});
+
+				this.runWorkflow();
+			},
+			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
+				const buttonsWrapper = mouseinEvent.target as Element;
+
+				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
+				this.showStickyButton = true;
+				const moveCallback = (mousemoveEvent: MouseEvent) => {
+					if(buttonsWrapper) {
+						const wrapperBounds = buttonsWrapper.getBoundingClientRect();
+						const wrapperH = wrapperBounds.height;
+						const wrapperW = wrapperBounds.width;
+						const wrapperLeftNear = wrapperBounds.left;
+						const wrapperLeftFar = wrapperLeftNear + wrapperW;
+						const wrapperTopNear = wrapperBounds.top;
+						const wrapperTopFar = wrapperTopNear + wrapperH;
+						const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
+						if(!inside) {
+							this.showStickyButton = false;
+							document.removeEventListener('mousemove', moveCallback, false);
+						}
+					}
+				};
+				document.addEventListener('mousemove', moveCallback, false);
 			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -603,7 +650,7 @@ export default mixins(
 				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
-				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
+				await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', true);
@@ -1138,6 +1185,15 @@ export default mixins(
 					}
 				}
 				this.stopExecutionInProgress = false;
+
+				this.getWorkflowDataToSave().then((workflowData) => {
+					const trackProps = {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					};
+
+					this.$telemetry.track('User clicked stop workflow execution', trackProps);
+				});
 			},
 
 			async stopWaitingForWebhook () {
@@ -1209,7 +1265,7 @@ export default mixins(
 					workflow_id: this.$store.getters.workflowId,
 				});
 
-				return this.importWorkflowData(workflowData!);
+				return this.importWorkflowData(workflowData!, false);
 			},
 
 			// Returns the workflow data from a given URL. If no data gets found or
@@ -1236,7 +1292,7 @@ export default mixins(
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowDataUpdate): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowDataUpdate, importTags = true): Promise<void> {
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -1262,6 +1318,40 @@ export default mixins(
 							this.nodeSelectedByName(node.name);
 						});
 					});
+
+					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
+					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
+						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
+						const tagNames = new Set(allTags.map((tag) => tag.name));
+
+						const workflowTags = workflowData.tags as ITag[];
+						const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
+
+						const creatingTagPromises: Array<Promise<ITag>> = [];
+						for (const tag of notFound) {
+							const creationPromise = this.$store.dispatch('tags/create', tag.name)
+								.then((tag: ITag) => {
+									allTags.push(tag);
+									return tag;
+								});
+
+							creatingTagPromises.push(creationPromise);
+						}
+
+						await Promise.all(creatingTagPromises);
+
+						const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
+							const tag = allTags.find(tag => tag.name === imported.name);
+							if (tag) {
+								accu.push(tag.id);
+							}
+
+							return accu;
+						}, []);
+
+						this.$store.commit('addWorkflowTagIds', tagIds);
+					}
+
 				} catch (error) {
 					this.$showError(
 						error,
@@ -1436,11 +1526,17 @@ export default mixins(
 					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
 				} else {
 					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', {
+					const trackProperties: ITelemetryTrackProperties = {
 						node_type: nodeTypeName,
 						workflow_id: this.$store.getters.workflowId,
 						drag_and_drop: options.dragAndDrop,
-					} as IDataObject);
+					};
+
+					if (lastSelectedNode) {
+						trackProperties.input_node_type = lastSelectedNode.type;
+					}
+
+					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
 				}
 
 				// Automatically deselect all nodes and select the current one and also active
@@ -1843,7 +1939,8 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				await this.$store.dispatch('workflows/setNewWorkflowName');
+				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
+
 				this.$store.commit('setStateDirty', false);
 
 				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
@@ -1855,6 +1952,24 @@ export default mixins(
 				this.setZoomLevel(1);
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
+					// For novice users (onboardingFlowEnabled == true)
+					// Inject welcome sticky note and zoom to fit
+					if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
+						this.$nextTick(async () => {
+							await this.addNodes([
+								{
+									...CanvasHelpers.WELCOME_STICKY_NODE,
+									parameters: {
+										// Use parameters from the template but add translated content
+										...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+										content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+									},
+								},
+							]);
+							this.zoomToFit();
+							this.$telemetry.track('welcome note inserted');
+						});
+					}
 				}, 0);
 			},
 			async initView (): Promise<void> {
@@ -2220,7 +2335,13 @@ export default mixins(
 				}
 
 				if(node.type === STICKY_NODE_TYPE) {
-					this.$telemetry.track('User deleted workflow note', { workflow_id: this.$store.getters.workflowId });
+					this.$telemetry.track(
+						'User deleted workflow note',
+						{
+							workflow_id: this.$store.getters.workflowId,
+							is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
+						},
+					);
 				} else {
 					this.$externalHooks().run('node.deleteNode', { node });
 					this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
@@ -2920,6 +3041,10 @@ export default mixins(
 	bottom: 10px;
 }
 
+.no-events {
+	pointer-events: none;
+}
+
 .node-buttons-wrapper {
 	position: fixed;
 	width: 150px;
@@ -2935,10 +3060,9 @@ export default mixins(
 		transition-timing-function: linear;
 	}
 
-	&:hover {
-		.add-sticky-button {
-			opacity: 1;
-		}
+	.visible-button {
+		opacity: 1;
+		pointer-events: all;
 	}
 }
 
@@ -2947,6 +3071,7 @@ export default mixins(
 	text-align: center;
 	top: 80px;
 	right: 20px;
+	pointer-events: all !important;
 }
 
 .node-creator-button button {

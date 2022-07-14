@@ -12,6 +12,7 @@ export const personOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,22 +24,25 @@ export const personOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a person',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a person',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all people',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a person',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -53,7 +57,7 @@ export const personFields: INodeProperties[] = [
 		type: 'fixedCollection',
 		default: {},
 		placeholder: 'Add Email Address Field',
-		description: 'Person’s email addresses.',
+		description: 'Person’s email addresses',
 		displayOptions: {
 			show: {
 				resource: [
@@ -74,21 +78,21 @@ export const personFields: INodeProperties[] = [
 						name: 'address',
 						type: 'string',
 						default: '',
-						description: 'Person\'s email address.',
+						description: 'Person\'s email address',
 					},
 					{
 						displayName: 'Primary',
 						name: 'primary',
 						type: 'hidden',
 						default: true,
-						description: 'Whether this is the person\'s primary email address.',
+						description: 'Whether this is the person\'s primary email address',
 					},
 					{
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
 						default: 'subscribed',
-						description: 'Subscription status of this email address.',
+						description: 'Subscription status of this email address',
 						options: [
 							{
 								name: 'Bouncing',
@@ -145,7 +149,7 @@ export const personFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to retrieve.',
+		description: 'ID of the person to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -170,7 +174,7 @@ export const personFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -187,7 +191,7 @@ export const personFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 25,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 25,
@@ -214,7 +218,7 @@ export const personFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to update.',
+		description: 'ID of the person to update',
 		type: 'string',
 		required: true,
 		default: '',

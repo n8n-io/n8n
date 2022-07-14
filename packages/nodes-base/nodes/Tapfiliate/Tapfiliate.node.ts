@@ -57,6 +57,7 @@ export class Tapfiliate implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Affiliate',
@@ -73,7 +74,6 @@ export class Tapfiliate implements INodeType {
 				],
 				default: 'affiliate',
 				required: true,
-				description: 'Resource to consume',
 			},
 			...affiliateOperations,
 			...affiliateFields,
@@ -177,7 +177,7 @@ export class Tapfiliate implements INodeType {
 						const affiliateId = this.getNodeParameter('affiliateId', i) as string;
 						const metadata = (this.getNodeParameter('metadataUi', i) as IDataObject || {}).metadataValues as IDataObject[] || [];
 						if (metadata.length === 0) {
-							throw new NodeOperationError(this.getNode(), 'Metadata cannot be empty.');
+							throw new NodeOperationError(this.getNode(), 'Metadata cannot be empty.', { itemIndex: i });
 						}
 						for (const { key, value } of metadata) {
 							await tapfiliateApiRequest.call(this, 'PUT', `/affiliates/${affiliateId}/meta-data/${key}/`, { value });

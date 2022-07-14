@@ -7,6 +7,7 @@ export const formOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,28 +20,32 @@ export const formOperations: INodeProperties[] = [
 				name: 'Add Subscriber',
 				value: 'addSubscriber',
 				description: 'Add a subscriber',
+				action: 'Add a subscriber',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all forms',
+				action: 'Get all forms',
 			},
 			{
 				name: 'Get Subscriptions',
 				value: 'getSubscriptions',
 				description: 'List subscriptions to a form including subscriber data',
+				action: 'Get all subscriptions',
 			},
 		],
 		default: 'addSubscriber',
-		description: 'The operations to perform.',
+		description: 'The operations to perform',
 	},
 ];
 
 export const formFields: INodeProperties[] = [
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'id',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getForms',
 		},
@@ -62,6 +67,7 @@ export const formFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -74,7 +80,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The subscriber's email address.`,
+		description: 'The subscriber\'s email address',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -97,7 +103,7 @@ export const formFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fieldsUi',
 				placeholder: 'Add Custom Field',
-				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here).',
+				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -114,7 +120,7 @@ export const formFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: `The field's key.`,
+								description: 'The field\'s key',
 							},
 							{
 								displayName: 'Field Value',
@@ -122,7 +128,7 @@ export const formFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'Doe',
-								description: 'Value of the field.',
+								description: 'Value of the field',
 							},
 						],
 					},
@@ -133,7 +139,7 @@ export const formFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `The subscriber's first name.`,
+				description: 'The subscriber\'s first name',
 			},
 		],
 	},
@@ -153,7 +159,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -178,7 +184,7 @@ export const formFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -214,6 +220,6 @@ export const formFields: INodeProperties[] = [
 				default: 'active',
 			},
 		],
-		description: 'Receive only active subscribers or cancelled subscribers.',
+		description: 'Receive only active subscribers or cancelled subscribers',
 	},
 ];

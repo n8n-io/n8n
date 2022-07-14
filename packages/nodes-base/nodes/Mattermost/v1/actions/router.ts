@@ -44,6 +44,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			if (this.continueOnFail()) {
 				operationResult.push({json: this.getInputData(i)[0].json, error: err});
 			} else {
+				if (err.context) err.context.itemIndex = i;
 				throw err;
 			}
 		}

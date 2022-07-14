@@ -16,6 +16,7 @@ export const descriptions: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,21 +28,23 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Add a reaction to a post.',
+				description: 'Add a reaction to a post',
+				action: 'Create a reaction',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Remove a reaction from a post',
+				action: 'Delete a reaction',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all the reactions to one or more posts',
+				action: 'Get all reactions',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 	...create.description,
 	...del.description,

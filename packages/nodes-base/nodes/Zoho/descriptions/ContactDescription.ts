@@ -15,6 +15,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,35 +28,40 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or Update a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts',
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -102,7 +108,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Assistant',
 				type: 'string',
 				default: '',
-				description: 'Name of the contact’s assistant.',
+				description: 'Name of the contact’s assistant',
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
@@ -116,7 +122,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Department',
 				type: 'string',
 				default: '',
-				description: 'Company department to which the contact belongs.',
+				description: 'Company department to which the contact belongs',
 			},
 			{
 				displayName: 'Description',
@@ -173,7 +179,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Phone (Home)',
@@ -204,7 +210,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',
@@ -257,7 +263,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Assistant',
 				type: 'string',
 				default: '',
-				description: 'Name of the contact’s assistant.',
+				description: 'Name of the contact’s assistant',
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
@@ -271,7 +277,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Department',
 				type: 'string',
 				default: '',
-				description: 'Company department to which the contact belongs.',
+				description: 'Company department to which the contact belongs',
 			},
 			{
 				displayName: 'Description',
@@ -329,7 +335,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Phone (Home)',
@@ -360,7 +366,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',
@@ -377,7 +383,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to delete.',
+		description: 'ID of the contact to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -399,7 +405,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to retrieve.',
+		description: 'ID of the contact to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -426,7 +432,7 @@ export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to update.',
+		description: 'ID of the contact to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -469,14 +475,14 @@ export const contactFields: INodeProperties[] = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Currency',
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('contact'),
@@ -577,7 +583,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',

@@ -64,6 +64,7 @@ export class PostHog implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Alias',
@@ -83,7 +84,6 @@ export class PostHog implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on.',
 			},
 			...aliasOperations,
 			...aliasFields,

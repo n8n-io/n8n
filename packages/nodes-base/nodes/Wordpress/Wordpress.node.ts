@@ -32,7 +32,7 @@ export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wordpress',
 		name: 'wordpress',
-		icon: 'file:wordpress.png',
+		icon: 'file:wordpress.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -53,6 +53,7 @@ export class Wordpress implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -64,7 +65,6 @@ export class Wordpress implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'Resource to consume.',
 			},
 			...postOperations,
 			...postFields,
@@ -169,6 +169,9 @@ export class Wordpress implements INodeType {
 						if (additionalFields.sticky) {
 							body.sticky = additionalFields.sticky as boolean;
 						}
+						if (additionalFields.postTemplate) {
+							body.template = this.getNodeParameter('additionalFields.postTemplate.values.template', i, '') as string;
+						}
 						if (additionalFields.categories) {
 							body.categories = additionalFields.categories as number[];
 						}
@@ -213,6 +216,9 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.sticky) {
 							body.sticky = updateFields.sticky as boolean;
+						}
+						if (updateFields.postTemplate) {
+							body.template = this.getNodeParameter('updateFields.postTemplate.values.template', i, '') as string;
 						}
 						if (updateFields.categories) {
 							body.categories = updateFields.categories as number[];

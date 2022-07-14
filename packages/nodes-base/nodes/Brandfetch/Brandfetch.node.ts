@@ -17,6 +17,7 @@ export class Brandfetch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Brandfetch',
 		name: 'Brandfetch',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:brandfetch.png',
 		group: ['output'],
 		version: 1,
@@ -38,36 +39,41 @@ export class Brandfetch implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 
 					{
 						name: 'Color',
 						value: 'color',
 						description: 'Return a company\'s colors',
+						action: 'Return a company\'s colors',
 					},
 					{
 						name: 'Company',
 						value: 'company',
 						description: 'Return a company\'s data',
+						action: 'Return a company\'s data',
 					},
 					{
 						name: 'Font',
 						value: 'font',
 						description: 'Return a company\'s fonts',
+						action: 'Return a company\'s fonts',
 					},
 					{
 						name: 'Industry',
 						value: 'industry',
 						description: 'Return a company\'s industry',
+						action: 'Return a company\'s industry',
 					},
 					{
 						name: 'Logo',
 						value: 'logo',
 						description: 'Return a company\'s logo & icon',
+						action: 'Return a company\'s logo & icon',
 					},
 				],
 				default: 'logo',
-				description: 'The operation to perform',
 			},
 
 			// ----------------------------------
@@ -78,7 +84,7 @@ export class Brandfetch implements INodeType {
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the company.',
+				description: 'The domain name of the company',
 				required: true,
 			},
 			{
@@ -94,7 +100,8 @@ export class Brandfetch implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
 				displayName: 'Image Type',
@@ -153,7 +160,7 @@ export class Brandfetch implements INodeType {
 				default: [
 					'png',
 				],
-				description: 'The image format in which the logo should be returned as.',
+				description: 'The image format in which the logo should be returned as',
 				required: true,
 			},
 		],

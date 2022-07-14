@@ -7,6 +7,7 @@ export const meetingOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,26 +19,30 @@ export const meetingOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a meeting',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a meeting',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a meeting',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all meetings',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a meeting',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -128,21 +133,21 @@ export const meetingFields: INodeProperties[] = [
 				name: 'allowAnyUserToBeCoHost',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting`,
+				description: 'Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting',
 			},
 			{
 				displayName: 'Allow Authenticated Devices',
 				name: 'allowAuthenticatedDevices',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow authenticated video devices in the meeting's organization to start or join the meeting without a prompt`,
+				description: 'Whether or not to allow authenticated video devices in the meeting\'s organization to start or join the meeting without a prompt',
 			},
 			{
 				displayName: 'Allow First User To Be Co-Host',
 				name: 'allowFirstUserToBeCoHost',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host`,
+				description: 'Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host',
 			},
 			{
 				displayName: 'Auto Accept Request',
@@ -156,28 +161,28 @@ export const meetingFields: INodeProperties[] = [
 				name: 'enableConnectAudioBeforeHost',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting`,
+				description: 'Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting',
 			},
 			{
 				displayName: 'Enabled Auto Record Meeting',
 				name: 'enabledAutoRecordMeeting',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not meeting is recorded automatically`,
+				description: 'Whether or not meeting is recorded automatically',
 			},
 			{
 				displayName: 'Enabled Join Before Host',
 				name: 'enabledJoinBeforeHost',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow any attendee to join the meeting before the host joins the meeting`,
+				description: 'Whether or not to allow any attendee to join the meeting before the host joins the meeting',
 			},
 			{
 				displayName: 'Exclude Password',
 				name: 'excludePassword',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to exclude password from the meeting email invitation`,
+				description: 'Whether or not to exclude password from the meeting email invitation',
 			},
 			{
 				displayName: 'Host Email',
@@ -211,6 +216,7 @@ export const meetingFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Email address of meeting invitee',
@@ -256,14 +262,14 @@ export const meetingFields: INodeProperties[] = [
 					},
 				],
 				default: 0,
-				description: `The number of minutes an attendee can join the meeting before the meeting start time and the host joins`,
+				description: 'The number of minutes an attendee can join the meeting before the meeting start time and the host joins',
 			},
 			{
 				displayName: 'Public Meeting',
 				name: 'publicMeeting',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow the meeting to be listed on the public calendar`,
+				description: 'Whether or not to allow the meeting to be listed on the public calendar',
 			},
 			{
 				displayName: 'Recurrence',
@@ -276,6 +282,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Required Registration Info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Require First Name',
@@ -338,16 +345,17 @@ export const meetingFields: INodeProperties[] = [
 				name: 'reminderTime',
 				type: 'number',
 				default: 1,
-				description: `The number of minutes before the meeting begins, for sending an email reminder to the host`,
+				description: 'The number of minutes before the meeting begins, for sending an email reminder to the host',
 			},
 			{
 				displayName: 'Send Email',
 				name: 'sendEmail',
 				type: 'boolean',
 				default: true,
-				description: `Whether or not to send emails to host and invitees`,
+				description: 'Whether or not to send emails to host and invitees',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -355,7 +363,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site.',
+				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 		],
 	},
@@ -410,7 +418,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'sendEmail',
 				type: 'boolean',
 				default: true,
-				description: 'Whether or not to send emails to host and invitees.',
+				description: 'Whether or not to send emails to host and invitees',
 			},
 		],
 	},
@@ -485,7 +493,7 @@ export const meetingFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -502,7 +510,7 @@ export const meetingFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -563,7 +571,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'current',
 				type: 'boolean',
 				default: true,
-				description: 'For meeting series, whether to return just the current meeting or all meetings',
+				description: 'Whether to return just the current meeting or all meetings',
 			},
 			{
 				displayName: 'Meeting Number',
@@ -603,6 +611,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Email of a person that must be a meeting participant',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -610,7 +619,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the API lists meetings from',
+				description: 'URL of the Webex site which the API lists meetings from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -622,32 +631,32 @@ export const meetingFields: INodeProperties[] = [
 						value: 'active',
 					},
 					{
-						name: 'Scheduled',
-						value: 'scheduled',
+						name: 'Ended',
+						value: 'ended',
 					},
 					{
-						name: 'Ready',
-						value: 'ready',
-					},
-					{
-						name: 'Lobby',
-						value: 'lobby',
+						name: 'Expired',
+						value: 'expired',
 					},
 					{
 						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{
-						name: 'Ended',
-						value: 'ended',
+						name: 'Lobby',
+						value: 'lobby',
 					},
 					{
 						name: 'Missed',
 						value: 'missed',
 					},
 					{
-						name: 'Expired',
-						value: 'expired',
+						name: 'Ready',
+						value: 'ready',
+					},
+					{
+						name: 'Scheduled',
+						value: 'scheduled',
 					},
 				],
 				default: '',
@@ -720,42 +729,42 @@ export const meetingFields: INodeProperties[] = [
 				name: 'allowAnyUserToBeCoHost',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting`,
+				description: 'Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting',
 			},
 			{
 				displayName: 'Allow Authenticated Devices',
 				name: 'allowAuthenticatedDevices',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow authenticated video devices in the meeting's organization to start or join the meeting without a prompt`,
+				description: 'Whether or not to allow authenticated video devices in the meeting\'s organization to start or join the meeting without a prompt',
 			},
 			{
 				displayName: 'Allow First User To Be Co-Host',
 				name: 'allowFirstUserToBeCoHost',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host`,
+				description: 'Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host',
 			},
 			{
 				displayName: 'Enable Connect Audio Before Host',
 				name: 'enableConnectAudioBeforeHost',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting`,
+				description: 'Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting',
 			},
 			{
 				displayName: 'Enabled Auto Record Meeting',
 				name: 'enabledAutoRecordMeeting',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not meeting is recorded automatically`,
+				description: 'Whether or not meeting is recorded automatically',
 			},
 			{
 				displayName: 'Enabled Join Before Host',
 				name: 'enabledJoinBeforeHost',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow any attendee to join the meeting before the host joins the meeting`,
+				description: 'Whether or not to allow any attendee to join the meeting before the host joins the meeting',
 			},
 			{
 				displayName: 'End',
@@ -769,7 +778,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'excludePassword',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to exclude password from the meeting email invitation`,
+				description: 'Whether or not to exclude password from the meeting email invitation',
 			},
 			{
 				displayName: 'Host Email',
@@ -796,6 +805,7 @@ export const meetingFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Email address of meeting invitee',
@@ -841,33 +851,34 @@ export const meetingFields: INodeProperties[] = [
 					},
 				],
 				default: 0,
-				description: `The number of minutes an attendee can join the meeting before the meeting start time and the host joins`,
+				description: 'The number of minutes an attendee can join the meeting before the meeting start time and the host joins',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: `Meeting password. Must conform to the site's password complexity settings. If not specified, a random password conforming to the site's password rules will be generated automatically`,
+				description: 'Meeting password. Must conform to the site\'s password complexity settings. If not specified, a random password conforming to the site\'s password rules will be generated automatically',
 			},
 			{
 				displayName: 'Public Meeting',
 				name: 'publicMeeting',
 				type: 'boolean',
 				default: false,
-				description: `Whether or not to allow the meeting to be listed on the public calendar`,
+				description: 'Whether or not to allow the meeting to be listed on the public calendar',
 			},
 			{
 				displayName: 'Recurrence',
 				name: 'recurrence',
 				type: 'string',
 				default: '',
-				description: `Meeting series recurrence rule (conforming with RFC 2445), applying only to meeting series`,
+				description: 'Meeting series recurrence rule (conforming with RFC 2445), applying only to meeting series',
 			},
 			{
 				displayName: 'Required Registration Info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Require First Name',
@@ -930,7 +941,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'reminderTime',
 				type: 'number',
 				default: 1,
-				description: `The number of minutes before the meeting begins, for sending an email reminder to the host`,
+				description: 'The number of minutes before the meeting begins, for sending an email reminder to the host',
 			},
 			{
 				displayName: 'Send Email',
@@ -940,6 +951,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -947,7 +959,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site.',
+				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Start',

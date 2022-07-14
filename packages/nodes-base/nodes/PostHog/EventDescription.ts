@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an event',
+				action: 'Create an event',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -47,7 +48,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of the event.',
+		description: 'The name of the event',
 	},
 	{
 		displayName: 'Distinct ID',
@@ -65,7 +66,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's distinct ID.`,
+		description: 'The user\'s distinct ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -119,7 +120,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: `If not set, it'll automatically be set to the current time.`,
+				description: 'If not set, it\'ll automatically be set to the current time',
 			},
 		],
 	},

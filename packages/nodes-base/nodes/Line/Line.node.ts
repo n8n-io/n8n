@@ -24,6 +24,7 @@ export class Line implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Line',
 		name: 'line',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:line.png',
 		group: ['input'],
 		version: 1,
@@ -52,6 +53,7 @@ export class Line implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Notification',
@@ -59,7 +61,6 @@ export class Line implements INodeType {
 					},
 				],
 				default: 'notification',
-				description: 'The resource to operate on.',
 			},
 			...notificationOperations,
 			...notificationFields,
@@ -108,11 +109,11 @@ export class Line implements INodeType {
 
 							if (image && image.binaryData === true) {
 								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 								//@ts-ignore
 								if (items[i].binary[image.binaryProperty] === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${image.binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${image.binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const binaryData = (items[i].binary as IBinaryKeyData)[image.binaryProperty as string];

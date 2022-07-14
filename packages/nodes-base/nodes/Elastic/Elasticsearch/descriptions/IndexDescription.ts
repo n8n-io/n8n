@@ -9,6 +9,7 @@ export const indexOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,22 +21,25 @@ export const indexOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an index',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an index',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an index',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all indices',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -92,7 +96,7 @@ export const indexFields: INodeProperties[] = [
 			{
 				displayName: 'Include Type Name',
 				name: 'include_type_name',
-				description: 'If true, a mapping type is expected in the body of mappings. Defaults to false.',
+				description: 'Whether a mapping type is expected in the body of mappings. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
@@ -205,6 +209,7 @@ export const indexFields: INodeProperties[] = [
 			{
 				displayName: 'Allow No Indices',
 				name: 'allow_no_indices',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true.',
 				type: 'boolean',
 				default: true,
@@ -241,28 +246,28 @@ export const indexFields: INodeProperties[] = [
 			{
 				displayName: 'Flat Settings',
 				name: 'flat_settings',
-				description: 'If true, return settings in flat format. Defaults to false.',
+				description: 'Whether to return settings in flat format. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Ignore Unavailable',
 				name: 'ignore_unavailable',
-				description: 'If false, requests that target a missing index return an error. Defaults to false.',
+				description: 'Whether to request that target a missing index return an error. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Include Defaults',
 				name: 'include_defaults',
-				description: 'If true, return all default settings in the response. Defaults to false.',
+				description: 'Whether to return all default settings in the response. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
 			{
 				displayName: 'Local',
 				name: 'local',
-				description: 'If true, retrieve information from the local node only. Defaults to false.',
+				description: 'Whether to retrieve information from the local node only. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
@@ -301,7 +306,7 @@ export const indexFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

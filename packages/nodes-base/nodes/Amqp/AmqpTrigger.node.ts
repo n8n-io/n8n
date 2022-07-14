@@ -20,6 +20,7 @@ export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Trigger',
 		name: 'amqpTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:amqp.png',
 		group: ['trigger'],
 		version: 1,
@@ -42,7 +43,7 @@ export class AmqpTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'name of the queue of topic to listen to',
+				description: 'Name of the queue of topic to listen to',
 			},
 			{
 				displayName: 'Clientname',
@@ -50,7 +51,7 @@ export class AmqpTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'for durable/persistent topic subscriptions, example: "n8n"',
-				description: 'Leave empty for non-durable topic subscriptions or queues. ',
+				description: 'Leave empty for non-durable topic subscriptions or queues',
 			},
 			{
 				displayName: 'Subscription',
@@ -79,14 +80,14 @@ export class AmqpTrigger implements INodeType {
 						name: 'jsonConvertByteArrayToString',
 						type: 'boolean',
 						default: false,
-						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
+						description: 'Whether to convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
-						description: 'Parse the body to an object.',
+						description: 'Whether to parse the body to an object',
 					},
 					{
 						displayName: 'Messages per Cicle',
@@ -100,14 +101,14 @@ export class AmqpTrigger implements INodeType {
 						name: 'onlyBody',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the body property.',
+						description: 'Whether to return only the body property',
 					},
 					{
 						displayName: 'Reconnect',
 						name: 'reconnect',
 						type: 'boolean',
 						default: true,
-						description: 'Automatically reconnect if disconnected',
+						description: 'Whether to automatically reconnect if disconnected',
 					},
 					{
 						displayName: 'Reconnect Limit',
@@ -121,7 +122,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'sleepTime',
 						type: 'number',
 						default: 10,
-						description: 'Milliseconds to sleep after every cicle.',
+						description: 'Milliseconds to sleep after every cicle',
 					},
 				],
 			},

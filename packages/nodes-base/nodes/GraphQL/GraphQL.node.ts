@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
@@ -16,6 +17,7 @@ export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GraphQL',
 		name: 'graphql',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:graphql.png',
 		group: ['input'],
 		version: 1,
@@ -112,8 +114,8 @@ export class GraphQL implements INodeType {
 						value: 'headerAuth',
 					},
 					{
-						name: 'Query Auth',
-						value: 'queryAuth',
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'OAuth1',
@@ -124,12 +126,12 @@ export class GraphQL implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'None',
-						value: 'none',
+						name: 'Query Auth',
+						value: 'queryAuth',
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 			},
 			{
 				displayName: 'HTTP Request Method',
@@ -146,7 +148,7 @@ export class GraphQL implements INodeType {
 					},
 				],
 				default: 'POST',
-				description: 'The underlying HTTP request method to use.',
+				description: 'The underlying HTTP request method to use',
 			},
 			{
 				displayName: 'Endpoint',
@@ -154,7 +156,7 @@ export class GraphQL implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'http://example.com/graphql',
-				description: 'The GraphQL endpoint.',
+				description: 'The GraphQL endpoint',
 				required: true,
 			},
 			{
@@ -162,7 +164,8 @@ export class GraphQL implements INodeType {
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
-				description: 'Still fetch the response even if SSL certificate validation is not possible.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-ignore-ssl-issues
+				description: 'Whether to download the response even if SSL certificate validation is not possible',
 			},
 			{
 				displayName: 'Request Format',
@@ -171,7 +174,7 @@ export class GraphQL implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'GraphQL (raw)',
+						name: 'GraphQL (Raw)',
 						value: 'graphql',
 					},
 					{
@@ -246,7 +249,7 @@ export class GraphQL implements INodeType {
 					},
 				],
 				default: 'json',
-				description: 'The format in which the data gets returned from the URL.',
+				description: 'The format in which the data gets returned from the URL',
 			},
 			{
 				displayName: 'Response Data Property Name',
@@ -261,7 +264,7 @@ export class GraphQL implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the property to which to write the response data.',
+				description: 'Name of the property to which to write the response data',
 			},
 
 			// Header Parameters
@@ -273,7 +276,7 @@ export class GraphQL implements INodeType {
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The headers to send.',
+				description: 'The headers to send',
 				default: {},
 				options: [
 					{
@@ -285,14 +288,14 @@ export class GraphQL implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Name of the header.',
+								description: 'Name of the header',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set for the header.',
+								description: 'Value to set for the header',
 							},
 						],
 					},
@@ -413,7 +416,7 @@ export class GraphQL implements INodeType {
 							try {
 								requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
 							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error);
+								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error, { itemIndex });
 							}
 						}
 						if (requestOptions.body.operationName === '') {
@@ -447,7 +450,7 @@ export class GraphQL implements INodeType {
 						try {
 							response = JSON.parse(response);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
+							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"', { itemIndex });
 						}
 					}
 

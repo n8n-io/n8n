@@ -13,6 +13,7 @@ export const operations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -31,7 +32,6 @@ export const operations: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +52,7 @@ export const fields: INodeProperties[] = [
 			},
 		},
 		default: 'master',
-		description: 'The id for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
+		description: 'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
 		displayName: 'Return All',
@@ -69,7 +69,7 @@ export const fields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -93,7 +93,7 @@ export const fields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Asset ID',
@@ -190,14 +190,14 @@ export const fields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: ' Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
+				description: 'Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'If the data should be returned RAW instead of parsed.',
+				description: 'Whether the data should be returned RAW instead of parsed',
 			},
 		],
 	},

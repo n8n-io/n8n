@@ -5,6 +5,7 @@ export const customerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,30 +18,34 @@ export const customerOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new customer',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a customer',
+				action: 'Get a customer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all customers',
+				action: 'Get all customers',
 			},
 			{
 				name: 'Properties',
 				value: 'properties',
 				description: 'Get customer property definitions',
+				action: 'Get customer properties',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a customer',
+				action: 'Update a customer',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -63,6 +68,7 @@ export const customerFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -90,14 +96,14 @@ export const customerFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: `Customer’s age`,
+				description: 'Customer’s age',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `First name of the customer. When defined it must be between 1 and 40 characters.`,
+				description: 'First name of the customer. When defined it must be between 1 and 40 characters.',
 			},
 			{
 				displayName: 'Gender',
@@ -118,7 +124,7 @@ export const customerFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Gender of this customer.',
+				description: 'Gender of this customer',
 			},
 			{
 				displayName: 'Job Title',
@@ -139,7 +145,7 @@ export const customerFields: INodeProperties[] = [
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'Location of the customer.',
+				description: 'Location of the customer',
 			},
 			{
 				displayName: 'Notes',
@@ -191,14 +197,12 @@ export const customerFields: INodeProperties[] = [
 						name: 'line1',
 						type: 'string',
 						default: '',
-						description: 'line1',
 					},
 					{
 						displayName: 'Line 2',
 						name: 'line2',
 						type: 'string',
 						default: '',
-						description: 'line2',
 					},
 					{
 						displayName: 'City',
@@ -213,9 +217,10 @@ export const customerFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country',
+						displayName: 'Country Name or ID',
 						name: 'country',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountriesCodes',
 						},
@@ -517,7 +522,7 @@ export const customerFields: INodeProperties[] = [
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Social Profile handle (url for example)',
+						description: 'Social Profile handle (URL for example)',
 					},
 				],
 			},
@@ -576,7 +581,7 @@ export const customerFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -599,7 +604,7 @@ export const customerFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -763,14 +768,14 @@ export const customerFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: `Customer’s age`,
+				description: 'Customer’s age',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `First name of the customer. When defined it must be between 1 and 40 characters.`,
+				description: 'First name of the customer. When defined it must be between 1 and 40 characters.',
 			},
 			{
 				displayName: 'Gender',
@@ -791,7 +796,7 @@ export const customerFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Gender of this customer.',
+				description: 'Gender of this customer',
 			},
 			{
 				displayName: 'Job Title',
@@ -812,7 +817,7 @@ export const customerFields: INodeProperties[] = [
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'Location of the customer.',
+				description: 'Location of the customer',
 			},
 			{
 				displayName: 'Notes',

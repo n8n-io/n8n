@@ -48,6 +48,7 @@ export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'YouTube',
 		name: 'youTube',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:youTube.png',
 		group: ['input'],
 		version: 1,
@@ -69,6 +70,7 @@ export class YouTube implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -92,7 +94,6 @@ export class YouTube implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,
@@ -412,11 +413,11 @@ export class YouTube implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 						}
 
 						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 						}
 
 						if (item.binary[binaryProperty].mimeType) {
@@ -825,7 +826,7 @@ export class YouTube implements INodeType {
 						}
 
 						if (qs.relatedToVideoId && qs.forDeveloper !== undefined) {
-							throw new NodeOperationError(this.getNode(), `When using the parameter 'related to video' the parameter 'for developer' cannot be set`);
+							throw new NodeOperationError(this.getNode(), `When using the parameter 'related to video' the parameter 'for developer' cannot be set`, { itemIndex: i });
 						}
 
 						if (returnAll) {
@@ -899,11 +900,11 @@ export class YouTube implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 						}
 
 						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 						}
 
 						if (item.binary[binaryProperty].mimeType) {

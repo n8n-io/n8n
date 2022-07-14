@@ -36,7 +36,7 @@ export class If implements INodeType {
 					multipleValues: true,
 					sortable: true,
 				},
-				description: 'The type of values to compare.',
+				description: 'The type of values to compare',
 				default: {},
 				options: [
 					{
@@ -48,8 +48,10 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'boolean',
 								default: false,
-								description: 'The value to compare with the second one.',
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+								description: 'The value to compare with the second one',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -65,14 +67,15 @@ export class If implements INodeType {
 									},
 								],
 								default: 'equal',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'boolean',
 								default: false,
-								description: 'The value to compare with the first one.',
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+								description: 'The value to compare with the first one',
 							},
 						],
 					},
@@ -85,31 +88,32 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'dateTime',
 								default: '',
-								description: 'The value to compare with the second one.',
+								description: 'The value to compare with the second one',
 							},
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
 								options: [
 									{
-										name: 'Occurred after',
+										name: 'Occurred After',
 										value: 'after',
 									},
 									{
-										name: 'Occurred before',
+										name: 'Occurred Before',
 										value: 'before',
 									},
 								],
 								default: 'after',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'dateTime',
 								default: '',
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 						],
 					},
@@ -122,12 +126,14 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'number',
 								default: 0,
-								description: 'The value to compare with the second one.',
+								description: 'The value to compare with the second one',
 							},
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Smaller',
@@ -163,7 +169,7 @@ export class If implements INodeType {
 									},
 								],
 								default: 'smaller',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
@@ -178,7 +184,7 @@ export class If implements INodeType {
 									},
 								},
 								default: 0,
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 						],
 					},
@@ -191,12 +197,14 @@ export class If implements INodeType {
 								name: 'value1',
 								type: 'string',
 								default: '',
-								description: 'The value to compare with the second one.',
+								description: 'The value to compare with the second one',
 							},
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Contains',
@@ -248,7 +256,7 @@ export class If implements INodeType {
 									},
 								],
 								default: 'equal',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
@@ -265,7 +273,7 @@ export class If implements INodeType {
 									},
 								},
 								default: '',
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 							{
 								displayName: 'Regex',
@@ -281,7 +289,7 @@ export class If implements INodeType {
 								},
 								default: '',
 								placeholder: '/text/i',
-								description: 'The regex which has to match.',
+								description: 'The regex which has to match',
 							},
 						],
 					},
@@ -294,17 +302,17 @@ export class If implements INodeType {
 				options: [
 					{
 						name: 'ALL',
-						description: 'Only if all conditions are meet it goes into "true" branch.',
+						description: 'Only if all conditions are meet it goes into "true" branch',
 						value: 'all',
 					},
 					{
 						name: 'ANY',
-						description: 'If any of the conditions is meet it goes into "true" branch.',
+						description: 'If any of the conditions is meet it goes into "true" branch',
 						value: 'any',
 					},
 				],
 				default: 'all',
-				description: 'If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get meet.',
+				description: 'If multiple rules got set this settings decides if it is true as soon as ANY condition matches or only if ALL get meet',
 			},
 		],
 	};

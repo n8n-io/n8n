@@ -52,6 +52,7 @@ export class MicrosoftOneDrive implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -63,7 +64,6 @@ export class MicrosoftOneDrive implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 			...fileOperations,
 			...fileFields,
@@ -182,11 +182,11 @@ export class MicrosoftOneDrive implements INodeType {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -207,7 +207,7 @@ export class MicrosoftOneDrive implements INodeType {
 						} else {
 							const body = this.getNodeParameter('fileContent', i) as string;
 							if (fileName === '') {
-								throw new NodeOperationError(this.getNode(), 'File name must be set!');
+								throw new NodeOperationError(this.getNode(), 'File name must be set!', { itemIndex: i });
 							}
 							const encodedFilename = encodeURIComponent(fileName);
 							responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${encodedFilename}:/content`, body, {}, undefined, { 'Content-Type': 'text/plain' });
@@ -269,6 +269,15 @@ export class MicrosoftOneDrive implements INodeType {
 						};
 						responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${folderId}/createLink`, body);
 						returnData.push(responseData);
+					}
+				}
+				if (resource === 'file' || resource === 'folder') {
+					if (operation === 'rename') {
+						const itemId = this.getNodeParameter('itemId', i) as string;
+						const newName = this.getNodeParameter('newName', i) as string;
+						const body = {name: newName};
+						responseData = await microsoftApiRequest.call(this, 'PATCH', `/drive/items/${itemId}`, body);
+						returnData.push(responseData as IDataObject);
 					}
 				}
 			} catch (error) {

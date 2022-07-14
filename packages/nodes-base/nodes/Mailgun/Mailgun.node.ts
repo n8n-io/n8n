@@ -36,7 +36,7 @@ export class Mailgun implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'Admin <admin@example.com>',
-				description: 'Email address of the sender optional with name.',
+				description: 'Email address of the sender optional with name',
 			},
 			{
 				displayName: 'To Email',
@@ -69,7 +69,7 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'My subject line',
-				description: 'Subject line of the email.',
+				description: 'Subject line of the email',
 			},
 			{
 				displayName: 'Text',
@@ -80,7 +80,7 @@ export class Mailgun implements INodeType {
 					rows: 5,
 				},
 				default: '',
-				description: 'Plain text message of email.',
+				description: 'Plain text message of email',
 			},
 			{
 				displayName: 'HTML',
@@ -90,7 +90,7 @@ export class Mailgun implements INodeType {
 					rows: 5,
 				},
 				default: '',
-				description: 'HTML text message of email.',
+				description: 'HTML text message of email',
 			},
 			{
 				displayName: 'Attachments',

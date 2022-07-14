@@ -43,7 +43,7 @@ export class TheHiveTrigger implements INodeType {
 					{
 						name: '*',
 						value: '*',
-						description: 'Any time any event is triggered (Wildcard Event).',
+						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
 						name: 'Alert Created',
@@ -51,29 +51,14 @@ export class TheHiveTrigger implements INodeType {
 						description: 'Triggered when an alert is created',
 					},
 					{
-						name: 'Alert Updated',
-						value: 'alert_update',
-						description: 'Triggered when an alert is updated',
-					},
-					{
 						name: 'Alert Deleted',
 						value: 'alert_delete',
 						description: 'Triggered when an alert is deleted',
 					},
 					{
-						name: 'Observable Created',
-						value: 'case_artifact_create',
-						description: 'Triggered when an observable is created',
-					},
-					{
-						name: 'Observable Updated',
-						value: 'case_artifact_update',
-						description: 'Triggered when an observable is updated',
-					},
-					{
-						name: 'Observable Deleted',
-						value: 'case_artifact_delete',
-						description: 'Triggered when an observable is deleted',
+						name: 'Alert Updated',
+						value: 'alert_update',
+						description: 'Triggered when an alert is updated',
 					},
 					{
 						name: 'Case Created',
@@ -81,29 +66,14 @@ export class TheHiveTrigger implements INodeType {
 						description: 'Triggered when a case is created',
 					},
 					{
-						name: 'Case Updated',
-						value: 'case_update',
-						description: 'Triggered when a case is updated',
-					},
-					{
 						name: 'Case Deleted',
 						value: 'case_delete',
 						description: 'Triggered when a case is deleted',
 					},
 					{
-						name: 'Task Created',
-						value: 'case_task_create',
-						description: 'Triggered when a task is created',
-					},
-					{
-						name: 'Task Updated',
-						value: 'case_task_update',
-						description: 'Triggered when a task is updated',
-					},
-					{
-						name: 'Task Deleted',
-						value: 'case_task_delete',
-						description: 'Triggered when a task is deleted',
+						name: 'Case Updated',
+						value: 'case_update',
+						description: 'Triggered when a case is updated',
 					},
 					{
 						name: 'Log Created',
@@ -111,14 +81,44 @@ export class TheHiveTrigger implements INodeType {
 						description: 'Triggered when a task log is created',
 					},
 					{
+						name: 'Log Deleted',
+						value: 'case_task_log_delete',
+						description: 'Triggered when a task log is deleted',
+					},
+					{
 						name: 'Log Updated',
 						value: 'case_task_log_update',
 						description: 'Triggered when a task log is updated',
 					},
 					{
-						name: 'Log Deleted',
-						value: 'case_task_log_delete',
-						description: 'Triggered when a task log is deleted',
+						name: 'Observable Created',
+						value: 'case_artifact_create',
+						description: 'Triggered when an observable is created',
+					},
+					{
+						name: 'Observable Deleted',
+						value: 'case_artifact_delete',
+						description: 'Triggered when an observable is deleted',
+					},
+					{
+						name: 'Observable Updated',
+						value: 'case_artifact_update',
+						description: 'Triggered when an observable is updated',
+					},
+					{
+						name: 'Task Created',
+						value: 'case_task_create',
+						description: 'Triggered when a task is created',
+					},
+					{
+						name: 'Task Deleted',
+						value: 'case_task_delete',
+						description: 'Triggered when a task is deleted',
+					},
+					{
+						name: 'Task Updated',
+						value: 'case_task_update',
+						description: 'Triggered when a task is updated',
 					},
 				],
 			},

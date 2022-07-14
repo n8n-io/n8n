@@ -4,6 +4,7 @@
 			v-if="!loading"
 			ref="editor"
 			:class="$style[theme]" v-html="htmlContent"
+			@click="onClick"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks"
@@ -117,6 +118,7 @@ export default {
 			}
 
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
+			const imageFilesRegex = /\.(jpeg|jpg|gif|png|webp|bmp|tif|tiff|apng|svg|avif)$/;
 			let contentToRender = this.content;
 			if (this.withMultiBreaks) {
 				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
@@ -129,7 +131,10 @@ export default {
 							const id = value.split('fileId:')[1];
 							return `src=${xss.friendlyAttrValue(imageUrls[id])}` || '';
 						}
-						if (!value.startsWith('https://')) {
+						// Only allow http requests to supported image files from the `static` directory
+						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
+						const isStaticImageFile = isImageFile && value.startsWith('/static/');
+						if (!value.startsWith('https://') && !isStaticImageFile) {
 							return '';
 						}
 					}
@@ -154,6 +159,22 @@ export default {
 				.use(markdownTasklists, this.options.tasklists),
 		};
 	},
+	methods: {
+		onClick(event) {
+			let clickedLink = null;
+
+			if(event.target instanceof HTMLAnchorElement) {
+				clickedLink = event.target;
+			}
+			if(event.target.matches('a *')) {
+				const parentLink = event.target.closest('a');
+				if(parentLink) {
+					clickedLink = parentLink;
+				}
+			}
+			this.$emit('markdown-click', clickedLink, event);
+		}
+	}
 };
 </script>
 
@@ -287,6 +308,10 @@ export default {
 
 	img {
 		object-fit: contain;
+
+		&[src*="#full-width"] {
+			width: 100%;
+		}
 	}
 }
 

@@ -7,6 +7,7 @@ export const paymentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,16 +19,17 @@ export const paymentOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all payment.',
+				description: 'Get all payment',
+				action: 'Get all payments',
 			},
 			{
 				name: 'Reschedule',
 				value: 'reschedule',
-				description: 'Reschedule payment.',
+				description: 'Reschedule payment',
+				action: 'Reschedule a payment',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -50,7 +52,7 @@ export const paymentFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -74,7 +76,7 @@ export const paymentFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -113,7 +115,7 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Attributes in JSON form.`,
+		description: 'Attributes in JSON form',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -140,35 +142,35 @@ export const paymentFields: INodeProperties[] = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'payment starting from date.',
+				description: 'Payment starting from date',
 			},
 			{
 				displayName: 'Date To',
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				description: 'payment up until date.',
+				description: 'Payment up until date',
 			},
 			{
 				displayName: 'Is Paid',
 				name: 'isPaid',
 				type: 'boolean',
 				default: false,
-				description: 'payment is paid.',
+				description: 'Whether payment is paid',
 			},
 			{
 				displayName: 'Plan ID',
 				name: 'plan',
 				type: 'string',
 				default: '',
-				description: 'Filter: The product/plan ID (single or comma-separated values).',
+				description: 'Filter: The product/plan ID (single or comma-separated values)',
 			},
 			{
 				displayName: 'Subscription ID',
 				name: 'subscriptionId',
 				type: 'number',
 				default: '',
-				description: 'A specific user subscription ID.',
+				description: 'A specific user subscription ID',
 			},
 			{
 				displayName: 'State',
@@ -196,7 +198,7 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'One off charge',
+				displayName: 'One Off Charge',
 				name: 'isOneOffCharge',
 				type: 'boolean',
 				default: false,
@@ -207,7 +209,7 @@ export const paymentFields: INodeProperties[] = [
 	/*                                 payment:reschedule                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payment ID',
+		displayName: 'Payment Name or ID',
 		name: 'paymentId',
 		type: 'options',
 		typeOptions: {
@@ -225,7 +227,7 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The upcoming subscription payment ID.',
+		description: 'The upcoming subscription payment ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Date',
@@ -242,6 +244,6 @@ export const paymentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Date you want to move the payment to.',
+		description: 'Date you want to move the payment to',
 	},
 ];

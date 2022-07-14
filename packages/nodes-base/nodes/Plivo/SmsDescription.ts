@@ -7,6 +7,7 @@ export const smsOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,11 +19,11 @@ export const smsOperations: INodeProperties[] = [
 			{
 				name: 'Send',
 				value: 'send',
-				description: 'Send an SMS message.',
+				description: 'Send an SMS message',
+				action: 'Send an SMS',
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -35,7 +36,7 @@ export const smsFields: INodeProperties[] = [
 		name: 'from',
 		type: 'string',
 		default: '',
-		description: 'Plivo Number to send the SMS from.',
+		description: 'Plivo Number to send the SMS from',
 		placeholder: '+14156667777',
 		required: true,
 		displayOptions: {
@@ -54,7 +55,7 @@ export const smsFields: INodeProperties[] = [
 		name: 'to',
 		type: 'string',
 		default: '',
-		description: 'Phone number to send the message to.',
+		description: 'Phone number to send the message to',
 		placeholder: '+14156667778',
 		required: true,
 		displayOptions: {
@@ -73,7 +74,7 @@ export const smsFields: INodeProperties[] = [
 		name: 'message',
 		type: 'string',
 		default: '',
-		description: 'Message to send.',
+		description: 'Message to send',
 		required: true,
 		displayOptions: {
 			show: {

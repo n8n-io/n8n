@@ -7,6 +7,7 @@ export const listOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,26 +19,30 @@ export const listOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all lists',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a list',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -61,7 +66,7 @@ export const listFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'List display name.',
+		description: 'List display name',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -85,7 +90,7 @@ export const listFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox.',
+		description: 'The identifier of the list, unique in the user\'s mailbox',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -106,7 +111,7 @@ export const listFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -128,7 +133,7 @@ export const listFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -150,6 +155,6 @@ export const listFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'List display name.',
+		description: 'List display name',
 	},
 ];

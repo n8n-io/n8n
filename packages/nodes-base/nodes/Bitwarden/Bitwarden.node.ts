@@ -73,6 +73,7 @@ export class Bitwarden implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Collection',
@@ -92,7 +93,6 @@ export class Bitwarden implements INodeType {
 					},
 				],
 				default: 'collection',
-				description: 'Resource to consume',
 			},
 			...collectionOperations,
 			...collectionFields,
@@ -177,7 +177,7 @@ export class Bitwarden implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as CollectionUpdateFields;
 
 					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
 					}
 
 					const { groups, externalId } = updateFields;
@@ -308,7 +308,7 @@ export class Bitwarden implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as GroupUpdateFields;
 
 					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
 					}
 
 					// set defaults for `name` and `accessAll`, required by Bitwarden but optional in n8n
@@ -452,7 +452,7 @@ export class Bitwarden implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as MemberUpdateFields;
 
 					if (isEmpty(updateFields)) {
-						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
 					}
 
 					const { accessAll, collections, externalId, type } = updateFields;

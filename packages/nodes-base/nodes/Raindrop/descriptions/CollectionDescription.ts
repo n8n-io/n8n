@@ -7,28 +7,33 @@ export const collectionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a collection',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a collection',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a collection',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all collections',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a collection',
 			},
 		],
 		displayOptions: {
@@ -51,7 +56,7 @@ export const collectionFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Title of the collection to create.',
+		description: 'Title of the collection to create',
 		displayOptions: {
 			show: {
 				resource: [
@@ -85,21 +90,21 @@ export const collectionFields: INodeProperties[] = [
 				name: 'cover',
 				type: 'string',
 				default: '',
-				description: 'URL of an image to use as cover for the collection.',
+				description: 'URL of an image to use as cover for the collection',
 			},
 			{
 				displayName: 'Public',
 				name: 'public',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the collection will be accessible without authentication.',
+				description: 'Whether the collection will be accessible without authentication',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'ID of this collection\'s parent collection, if it is a child collection.',
+				description: 'ID of this collection\'s parent collection, if it is a child collection',
 			},
 			{
 				displayName: 'Sort Order',
@@ -113,7 +118,7 @@ export const collectionFields: INodeProperties[] = [
 				name: 'view',
 				type: 'options',
 				default: 'list',
-				description: 'View style of this collection.',
+				description: 'View style of this collection',
 				options: [
 					{
 						name: 'List',
@@ -145,7 +150,7 @@ export const collectionFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the collection to delete.',
+		description: 'The ID of the collection to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -167,7 +172,7 @@ export const collectionFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the collection to retrieve.',
+		description: 'The ID of the collection to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -203,12 +208,12 @@ export const collectionFields: INodeProperties[] = [
 			{
 				name: 'Parent',
 				value: 'parent',
-				description: 'Root-level collections.',
+				description: 'Root-level collections',
 			},
 			{
 				name: 'Children',
 				value: 'children',
-				description: 'Nested collections.',
+				description: 'Nested collections',
 			},
 		],
 	},
@@ -227,7 +232,7 @@ export const collectionFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -251,7 +256,7 @@ export const collectionFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	// ----------------------------------
@@ -263,7 +268,7 @@ export const collectionFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the collection to update.',
+		description: 'The ID of the collection to update',
 		displayOptions: {
 			show: {
 				resource: [
@@ -298,21 +303,21 @@ export const collectionFields: INodeProperties[] = [
 				type: 'string',
 				default: 'data',
 				placeholder: '',
-				description: 'Name of the binary property containing the data for the image to upload as a cover.',
+				description: 'Name of the binary property containing the data for the image to upload as a cover',
 			},
 			{
 				displayName: 'Public',
 				name: 'public',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the collection will be accessible without authentication.',
+				description: 'Whether the collection will be accessible without authentication',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'ID of this collection\'s parent collection, if it is a child collection.',
+				description: 'ID of this collection\'s parent collection, if it is a child collection',
 			},
 			{
 				displayName: 'Sort Order',
@@ -326,14 +331,14 @@ export const collectionFields: INodeProperties[] = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the collection to update.',
+				description: 'Title of the collection to update',
 			},
 			{
 				displayName: 'View',
 				name: 'view',
 				type: 'options',
 				default: 'list',
-				description: 'View style of this collection.',
+				description: 'View style of this collection',
 				options: [
 					{
 						name: 'List',

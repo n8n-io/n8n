@@ -11,6 +11,7 @@ export const tagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,30 +24,34 @@ export const tagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a tag',
+				action: 'Create a tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a tag',
+				action: 'Delete a tag',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a tag',
+				action: 'Get a tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all tags',
+				action: 'Get all tags',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a tag',
+				action: 'Update a tag',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -147,13 +152,13 @@ export const tagFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the tag to update.',
+		description: 'ID of the tag to update',
 	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		description: 'The fields to update.',
+		description: 'The fields to update',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
@@ -172,7 +177,7 @@ export const tagFields: INodeProperties[] = [
 				name: 'tag',
 				type: 'string',
 				default: '',
-				description: 'Name of the contact.',
+				description: 'Name of the contact',
 			},
 			{
 				displayName: 'Description',
@@ -202,7 +207,7 @@ export const tagFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the tag to delete.',
+		description: 'ID of the tag to delete',
 	},
 	// ----------------------------------
 	//         contact:get
@@ -223,7 +228,7 @@ export const tagFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the tag to get.',
+		description: 'ID of the tag to get',
 	},
 	// ----------------------------------
 	//         tag:getAll

@@ -7,6 +7,7 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,9 +20,9 @@ export const accountOperations: INodeProperties[] = [
 				name: 'Me',
 				value: 'me',
 				description: 'Get current user\'s account information',
+				action: 'Get the current user\'s account information',
 			},
 		],
 		default: 'me',
-		description: 'The operation to perform.',
 	},
 ];

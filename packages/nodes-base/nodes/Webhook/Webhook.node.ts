@@ -53,6 +53,14 @@ export class Webhook implements INodeType {
 		defaults: {
 			name: 'Webhook',
 		},
+		triggerPanel: {
+			header: '',
+			executionsHelp: {
+				inactive: 'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. These executions will show up in the executions list, but not in the editor.',
+				active: 'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. Since the workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key=\"executions\">executions list</a>, but not in the editor.',
+			},
+			activationHint: 'Once you’ve finished building your workflow, run it without having to click this button by using the production webhook URL.',
+		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
@@ -115,7 +123,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate.',
+				description: 'The way to authenticate',
 			},
 			{
 				displayName: 'HTTP Method',
@@ -148,7 +156,7 @@ export class Webhook implements INodeType {
 					},
 				],
 				default: 'GET',
-				description: 'The HTTP method to listen to.',
+				description: 'The HTTP method to listen to',
 			},
 			{
 				displayName: 'Path',
@@ -157,7 +165,7 @@ export class Webhook implements INodeType {
 				default: '',
 				placeholder: 'webhook',
 				required: true,
-				description: 'The path to listen to.',
+				description: 'The path to listen to',
 			},
 			{
 				displayName: 'Respond',
@@ -170,18 +178,18 @@ export class Webhook implements INodeType {
 						description: 'As soon as this node executes',
 					},
 					{
-						name: 'When last node finishes',
+						name: 'When Last Node Finishes',
 						value: 'lastNode',
 						description: 'Returns data of the last-executed node',
 					},
 					{
-						name: 'Using \'Respond to Webhook\' node',
+						name: 'Using \'Respond to Webhook\' Node',
 						value: 'responseNode',
 						description: 'Response defined in that node',
 					},
 				],
 				default: 'onReceived',
-				description: 'When and how to respond to the webhook.',
+				description: 'When and how to respond to the webhook',
 			},
 			{
 				displayName: 'Insert a \'Respond to Webhook\' node to control when and how you respond. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.respondToWebhook" target="_blank">More details</a>',
@@ -244,7 +252,7 @@ export class Webhook implements INodeType {
 					{
 						name: 'No Response Body',
 						value: 'noData',
-						description: 'Returns without a body.',
+						description: 'Returns without a body',
 					},
 				],
 				default: 'firstEntryJson',
@@ -286,7 +294,7 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Set to true if webhook will receive binary data.',
+						description: 'Whether the webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
@@ -308,14 +316,14 @@ export class Webhook implements INodeType {
 						name: 'ignoreBots',
 						type: 'boolean',
 						default: false,
-						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
+						description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 					},
 					{
 						displayName: 'No Response Body',
 						name: 'noResponseBody',
 						type: 'boolean',
 						default: false,
-						description: 'Do not send any body in the response',
+						description: 'Whether to send any body in the response',
 						displayOptions: {
 							hide: {
 								'rawBody': [
@@ -344,6 +352,7 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Raw body (binary)',
 					},
 					{
@@ -364,7 +373,7 @@ export class Webhook implements INodeType {
 						},
 						default: '',
 						placeholder: 'success',
-						description: 'Custom response data to send.',
+						description: 'Custom response data to send',
 					},
 					{
 						displayName: 'Response Content-Type',
@@ -382,13 +391,14 @@ export class Webhook implements INodeType {
 						},
 						default: '',
 						placeholder: 'application/xml',
-						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
+						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{
 						displayName: 'Response Headers',
 						name: 'responseHeaders',
 						placeholder: 'Add Response Header',
-						description: 'Add headers to the webhook response.',
+						description: 'Add headers to the webhook response',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -404,14 +414,14 @@ export class Webhook implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the header.',
+										description: 'Name of the header',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value of the header.',
+										description: 'Value of the header',
 									},
 								],
 							},
@@ -432,7 +442,7 @@ export class Webhook implements INodeType {
 							},
 						},
 						default: 'data',
-						description: 'Name of the property to return the data of instead of the whole JSON.',
+						description: 'Name of the property to return the data of instead of the whole JSON',
 					},
 				],
 			},

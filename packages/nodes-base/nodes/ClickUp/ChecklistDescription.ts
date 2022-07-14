@@ -7,6 +7,7 @@ export const checklistOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const checklistOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a checklist',
+				action: 'Create a checklist',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a checklist',
+				action: 'Delete a checklist',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a checklist',
+				action: 'Update a checklist',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

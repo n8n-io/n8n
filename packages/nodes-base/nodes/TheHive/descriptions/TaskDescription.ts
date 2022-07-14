@@ -4,10 +4,12 @@ import {
 
 export const taskOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -80,7 +82,7 @@ export const taskFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -105,7 +107,7 @@ export const taskFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Title',
@@ -177,13 +179,14 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Flag of the task. Default=false.',
+		description: 'Whether to flag the task. Default=false.',
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -214,7 +217,6 @@ export const taskFields: INodeProperties[] = [
 		type: 'collection',
 		name: 'options',
 		placeholder: 'Add Option',
-		required: false,
 		default: {},
 		displayOptions: {
 			show: {
@@ -265,7 +267,6 @@ export const taskFields: INodeProperties[] = [
 		name: 'updateFields',
 		placeholder: 'Add Field',
 		default: {},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -296,7 +297,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the task. Default=false.',
+				description: 'Whether to flag the task. Default=false.',
 			},
 			{
 				displayName: 'Owner',
@@ -381,7 +382,6 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		required: false,
 		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
@@ -415,7 +415,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the task. Default=false.',
+				description: 'Whether to flag the task. Default=false.',
 			},
 			{
 				displayName: 'Owner',

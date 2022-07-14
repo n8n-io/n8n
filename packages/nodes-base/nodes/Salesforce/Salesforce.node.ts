@@ -181,51 +181,52 @@ export class Salesforce implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
 						value: 'account',
-						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners).',
+						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners)',
 					},
 					{
 						name: 'Attachment',
 						value: 'attachment',
-						description: 'Represents a file that a has uploaded and attached to a parent object.',
+						description: 'Represents a file that a has uploaded and attached to a parent object',
 					},
 					{
 						name: 'Case',
 						value: 'case',
-						description: 'Represents a case, which is a customer issue or problem.',
+						description: 'Represents a case, which is a customer issue or problem',
 					},
 					{
 						name: 'Contact',
 						value: 'contact',
-						description: 'Represents a contact, which is an individual associated with an account.',
+						description: 'Represents a contact, which is an individual associated with an account',
 					},
 					{
 						name: 'Custom Object',
 						value: 'customObject',
-						description: 'Represents a custom object.',
+						description: 'Represents a custom object',
 					},
 					{
 						name: 'Document',
 						value: 'document',
-						description: 'Represents a document.',
+						description: 'Represents a document',
 					},
 					{
 						name: 'Flow',
 						value: 'flow',
-						description: 'Represents an autolaunched flow.',
+						description: 'Represents an autolaunched flow',
 					},
 					{
 						name: 'Lead',
 						value: 'lead',
-						description: 'Represents a prospect or potential.',
+						description: 'Represents a prospect or potential',
 					},
 					{
 						name: 'Opportunity',
 						value: 'opportunity',
-						description: 'Represents an opportunity, which is a sale or pending deal.',
+						description: 'Represents an opportunity, which is a sale or pending deal',
 					},
 					{
 						name: 'Search',
@@ -240,11 +241,10 @@ export class Salesforce implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
-						description: 'Represents a person, which is one user in system.',
+						description: 'Represents a person, which is one user in system',
 					},
 				],
 				default: 'lead',
-				description: 'Resource to consume.',
 			},
 			...leadOperations,
 			...leadFields,
@@ -285,10 +285,9 @@ export class Salesforce implements INodeType {
 				const statuses = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 				for (const status of statuses) {
 					const statusName = status.MasterLabel;
-					const statusId = status.Id;
 					returnData.push({
 						name: statusName,
-						value: statusId,
+						value: statusName,
 					});
 				}
 				sortOptions(returnData);
@@ -1133,7 +1132,7 @@ export class Salesforce implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: ILead = {};
 						if (!Object.keys(updateFields).length) {
-							throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
+							throw new NodeOperationError(this.getNode(), 'You must add at least one update field', { itemIndex: i });
 						}
 						if (updateFields.lastname !== undefined) {
 							body.LastName = updateFields.lastname as string;
@@ -1420,7 +1419,7 @@ export class Salesforce implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						const body: IContact = {};
 						if (!Object.keys(updateFields).length) {
-							throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
+							throw new NodeOperationError(this.getNode(), 'You must add at least one update field', { itemIndex: i });
 						}
 						if (updateFields.lastName !== undefined) {
 							body.LastName = updateFields.lastName as string;
@@ -1723,7 +1722,7 @@ export class Salesforce implements INodeType {
 							};
 
 						} else {
-							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
+							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`, { itemIndex: i });
 						}
 						responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/ContentVersion', {}, {}, undefined, { formData: data });
 					}
@@ -2588,7 +2587,7 @@ export class Salesforce implements INodeType {
 							body.Body = items[i].binary![binaryPropertyName].data;
 							body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 						} else {
-							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
+							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`, { itemIndex: i });
 						}
 						if (additionalFields.description !== undefined) {
 							body.Description = additionalFields.description as string;
@@ -2612,7 +2611,7 @@ export class Salesforce implements INodeType {
 								body.Body = items[i].binary![binaryPropertyName].data;
 								body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 							} else {
-								throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
+								throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`, { itemIndex: i });
 							}
 						}
 						if (updateFields.name !== undefined) {

@@ -38,6 +38,7 @@ export class Iterable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Iterable',
 		name: 'iterable',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:iterable.png',
 		group: ['input'],
 		version: 1,
@@ -59,6 +60,7 @@ export class Iterable implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Event',
@@ -74,7 +76,6 @@ export class Iterable implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.',
 			},
 			...eventOperations,
 			...eventFields,
@@ -124,7 +125,7 @@ export class Iterable implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (!additionalFields.email && !additionalFields.id) {
-						throw new NodeOperationError(this.getNode(), 'Either email or userId must be passed in to identify the user. Please add one of both via "Additional Fields". If both are passed in, email takes precedence.');
+						throw new NodeOperationError(this.getNode(), 'Either email or userId must be passed in to identify the user. Please add one of both via "Additional Fields". If both are passed in, email takes precedence.', { itemIndex: i });
 					}
 
 					const body: IDataObject = {
@@ -193,7 +194,7 @@ export class Iterable implements INodeType {
 					if (this.continueOnFail() === false) {
 						if (responseData.code !== 'Success') {
 							throw new NodeOperationError(this.getNode(),
-								`Iterable error response [400]: ${responseData.msg}`,
+								`Iterable error response [400]: ${responseData.msg}`, { itemIndex: i },
 							);
 						}
 					}

@@ -16,6 +16,7 @@ export class Hunter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hunter',
 		name: 'hunter',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:hunter.png',
 		group: ['output'],
 		version: 1,
@@ -37,25 +38,29 @@ export class Hunter implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: ' Domain Search',
+						name: 'Domain Search',
 						value: 'domainSearch',
 						description: 'Get every email address found on the internet using a given domain name, with sources',
+						action: 'Get every email address found on the internet using a given domain name, with sources',
 					},
 					{
-						name: ' Email Finder',
+						name: 'Email Finder',
 						value: 'emailFinder',
 						description: 'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
+						action: 'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
 					},
 					{
 						name: 'Email Verifier',
 						value: 'emailVerifier',
 						description: 'Verify the deliverability of an email address',
+						action: 'Verify the deliverability of an email address',
 					},
 				],
 				default: 'domainSearch',
-				description: 'operation to consume.',
+				description: 'Operation to consume',
 			},
 			{
 				displayName: 'Domain',
@@ -84,7 +89,7 @@ export class Hunter implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return only the the found emails.',
+				description: 'Whether to return only the the found emails',
 			},
 			{
 				displayName: 'Return All',
@@ -98,7 +103,7 @@ export class Hunter implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -119,7 +124,7 @@ export class Hunter implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -178,44 +183,44 @@ export class Hunter implements INodeType {
 						default: [],
 						options: [
 							{
-								name: 'Executive',
-								value: 'executive',
+								name: 'Communication',
+								value: 'communication',
 							},
 							{
-								name: 'IT',
-								value: 'it',
+								name: 'Executive',
+								value: 'executive',
 							},
 							{
 								name: 'Finance',
 								value: 'finance',
 							},
 							{
-								name: 'Management',
-								value: 'management',
+								name: 'HR',
+								value: 'hr',
 							},
 							{
-								name: 'Sales',
-								value: 'sales',
+								name: 'IT',
+								value: 'it',
 							},
 							{
 								name: 'Legal',
 								value: 'legal',
 							},
 							{
-								name: 'Support',
-								value: 'support',
-							},
-							{
-								name: 'HR',
-								value: 'hr',
+								name: 'Management',
+								value: 'management',
 							},
 							{
 								name: 'Marketing',
 								value: 'marketing',
 							},
 							{
-								name: 'Communication',
-								value: 'communication',
+								name: 'Sales',
+								value: 'sales',
+							},
+							{
+								name: 'Support',
+								value: 'support',
 							},
 						],
 					},
@@ -249,7 +254,7 @@ export class Hunter implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: `The person's first name. It doesn't need to be in lowercase.`,
+				description: 'The person\'s first name. It doesn\'t need to be in lowercase.',
 			},
 			{
 				displayName: 'Last Name',
@@ -264,12 +269,13 @@ export class Hunter implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: `The person's last name. It doesn't need to be in lowercase.`,
+				description: 'The person\'s last name. It doesn\'t need to be in lowercase.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						operation: [
@@ -279,7 +285,7 @@ export class Hunter implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The email address you want to verify.',
+				description: 'The email address you want to verify',
 			},
 		],
 	};

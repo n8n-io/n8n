@@ -7,23 +7,26 @@ export const customerCardOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Add',
 				value: 'add',
 				description: 'Add a customer card',
+				action: 'Add a customer card',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a customer card',
+				action: 'Get a customer card',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a customer card',
+				action: 'Remove a customer card',
 			},
 		],
 		displayOptions: {

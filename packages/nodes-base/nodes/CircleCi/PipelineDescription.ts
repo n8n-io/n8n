@@ -7,6 +7,7 @@ export const pipelineOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const pipelineOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a pipeline',
+				action: 'Get a pipeline',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all pipelines',
+				action: 'Get all pipelines',
 			},
 			{
 				name: 'Trigger',
 				value: 'trigger',
 				description: 'Trigger a pipeline',
+				action: 'Trigger a pipeline',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -133,7 +136,7 @@ export const pipelineFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -157,7 +160,7 @@ export const pipelineFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -181,7 +184,7 @@ export const pipelineFields: INodeProperties[] = [
 				name: 'branch',
 				type: 'string',
 				default: '',
-				description: 'The name of a vcs branch.',
+				description: 'The name of a vcs branch',
 			},
 		],
 	},
@@ -211,14 +214,14 @@ export const pipelineFields: INodeProperties[] = [
 				name: 'branch',
 				type: 'string',
 				default: '',
-				description: `The branch where the pipeline ran. The HEAD commit on this branch was used for the pipeline. Note that branch and tag are mutually exclusive.`,
+				description: 'The branch where the pipeline ran. The HEAD commit on this branch was used for the pipeline. Note that branch and tag are mutually exclusive.',
 			},
 			{
 				displayName: 'Tag',
 				name: 'tag',
 				type: 'string',
 				default: '',
-				description: `The tag used by the pipeline. The commit that this tag points to was used for the pipeline. Note that branch and tag are mutually exclusive`,
+				description: 'The tag used by the pipeline. The commit that this tag points to was used for the pipeline. Note that branch and tag are mutually exclusive',
 			},
 		],
 	},

@@ -22,6 +22,7 @@ export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CrateDB',
 		name: 'crateDb',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:cratedb.png',
 		group: ['input'],
 		version: 1,
@@ -42,25 +43,28 @@ export class CrateDb implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in database',
+						action: 'Update rows in database',
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -111,7 +115,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to insert data to.',
+				description: 'Name of the table in which to insert data to',
 			},
 			{
 				displayName: 'Columns',
@@ -124,7 +128,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 			// ----------------------------------
@@ -167,7 +171,8 @@ export class CrateDb implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description: `Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".`,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description: 'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -180,7 +185,7 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: `Comma-separated list of the properties which should used as columns for rows to update.`,
+				description: 'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 			// ----------------------------------
@@ -219,7 +224,7 @@ export class CrateDb implements INodeType {
 								description: 'Execute each query independently',
 							},
 							{
-								name: 'Multiple queries',
+								name: 'Multiple Queries',
 								value: 'multiple',
 								description: '<b>Default</b>. Sends multiple queries at once to database.',
 							},
@@ -240,7 +245,7 @@ export class CrateDb implements INodeType {
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma-separated list of properties which should be used as query parameters.',
+						description: 'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},

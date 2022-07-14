@@ -7,6 +7,7 @@ export const labelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const labelOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new label',
+				action: 'Create a label',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a label',
+				action: 'Delete a label',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a label',
+				action: 'Get a label',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all labels',
+				action: 'Get all labels',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -110,7 +114,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The visibility of the label in the label list in the Gmail web interface.',
+		description: 'The visibility of the label in the label list in the Gmail web interface',
 	},
 	{
 		displayName: 'Message List Visibility',
@@ -122,7 +126,7 @@ export const labelFields: INodeProperties[] = [
 				value: 'hide',
 			},
 			{
-				name: 'show',
+				name: 'Show',
 				value: 'show',
 			},
 		],
@@ -138,7 +142,7 @@ export const labelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The visibility of messages with this label in the message list in the Gmail web interface.',
+		description: 'The visibility of messages with this label in the message list in the Gmail web interface',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 label:getAll                               */
@@ -158,7 +162,7 @@ export const labelFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -182,6 +186,6 @@ export const labelFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

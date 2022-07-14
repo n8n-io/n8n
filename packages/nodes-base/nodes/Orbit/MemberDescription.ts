@@ -7,6 +7,7 @@ export const memberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,38 +17,43 @@ export const memberOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new member, or update the current one if it already exists (upsert)',
+				action: 'Create or update a member',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a member',
+				action: 'Delete a member',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a member',
+				action: 'Get a member',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all members in a workspace',
+				action: 'Get all members',
 			},
 			{
 				name: 'Lookup',
 				value: 'lookup',
 				description: 'Lookup a member by identity',
+				action: 'Lookup a member',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a member',
-			},
-			{
-				name: 'Upsert',
-				value: 'upsert',
-				description: 'Create/Update a member',
+				action: 'Update a member',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -57,9 +63,10 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -99,9 +106,10 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -150,6 +158,7 @@ export const memberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 
@@ -157,9 +166,10 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -191,7 +201,7 @@ export const memberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -215,7 +225,7 @@ export const memberFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Resolve Identities',
@@ -232,6 +242,7 @@ export const memberFields: INodeProperties[] = [
 			},
 		},
 		default: false,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 	{
@@ -256,7 +267,7 @@ export const memberFields: INodeProperties[] = [
 				name: 'sort',
 				type: 'string',
 				default: '',
-				description: 'Name of the field the response will be sorted by.',
+				description: 'Name of the field the response will be sorted by',
 			},
 			{
 				displayName: 'Sort Direction',
@@ -281,9 +292,10 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:lookup                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -334,7 +346,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Set to github, twitter, email, discourse or the source of any identities you've manually created.`,
+		description: 'Set to github, twitter, email, discourse or the source of any identities you\'ve manually created',
 	},
 	{
 		displayName: 'Search By',
@@ -392,7 +404,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The username at the source.`,
+		description: 'The username at the source',
 	},
 	{
 		displayName: 'Username',
@@ -418,12 +430,13 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The username at the source.`,
+		description: 'The username at the source',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -439,7 +452,7 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The email address.`,
+		description: 'The email address',
 	},
 	{
 		displayName: 'Host',
@@ -466,9 +479,10 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -606,9 +620,10 @@ export const memberFields: INodeProperties[] = [
 	/*                                member:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -673,7 +688,7 @@ export const memberFields: INodeProperties[] = [
 							},
 						],
 						default: '',
-						description: `Set to github, twitter, email, discourse or the source of any identities you've manually created.`,
+						description: 'Set to github, twitter, email, discourse or the source of any identities you\'ve manually created',
 					},
 					{
 						displayName: 'Search By',
@@ -719,7 +734,7 @@ export const memberFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: `The username at the source.`,
+						description: 'The username at the source',
 					},
 					{
 						displayName: 'Username',
@@ -739,12 +754,13 @@ export const memberFields: INodeProperties[] = [
 								],
 							},
 						},
-						description: `The username at the source.`,
+						description: 'The username at the source',
 					},
 					{
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 						required: true,
 						displayOptions: {
@@ -843,14 +859,14 @@ export const memberFields: INodeProperties[] = [
 				name: 'tagsToAdd',
 				type: 'string',
 				default: '',
-				description: 'Adds tags to member; comma-separated string or array.',
+				description: 'Adds tags to member; comma-separated string or array',
 			},
 			{
 				displayName: 'Tag List',
 				name: 'tagList',
 				type: 'string',
 				default: '',
-				description: 'Replaces all tags for the member; comma-separated string or array.',
+				description: 'Replaces all tags for the member; comma-separated string or array',
 			},
 			{
 				displayName: 'T-Shirt',

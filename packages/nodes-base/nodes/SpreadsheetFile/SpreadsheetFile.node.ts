@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	JSON2SheetOpts,
 	read as xlsxRead,
 	Sheet2JSONOpts,
 	utils as xlsxUtils,
@@ -66,20 +67,22 @@ export class SpreadsheetFile implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Read from file',
+						name: 'Read From File',
 						value: 'fromFile',
 						description: 'Reads data from a spreadsheet file',
+						action: 'Read data from a spreadsheet file',
 					},
 					{
-						name: 'Write to file',
+						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
+						action: 'Write the workflow data to a spreadsheet file',
 					},
 				],
 				default: 'fromFile',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -100,7 +103,7 @@ export class SpreadsheetFile implements INodeType {
 
 				},
 				placeholder: '',
-				description: 'Name of the binary property from which to read the binary data of the spreadsheet file.',
+				description: 'Name of the binary property from which to read the binary data of the spreadsheet file',
 			},
 
 			// ----------------------------------
@@ -150,7 +153,7 @@ export class SpreadsheetFile implements INodeType {
 						],
 					},
 				},
-				description: 'The format of the file to save the data as.',
+				description: 'The format of the file to save the data as',
 			},
 			{
 				displayName: 'Binary Property',
@@ -166,7 +169,7 @@ export class SpreadsheetFile implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property in which to save the binary data of the spreadsheet file.',
+				description: 'Name of the binary property in which to save the binary data of the spreadsheet file',
 			},
 
 			{
@@ -192,7 +195,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Weather compression will be applied or not',
+						description: 'Whether compression will be applied or not',
 					},
 					{
 						displayName: 'File Name',
@@ -206,7 +209,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
+						description: 'File name to set in binary data. By default will "spreadsheet.&lt;fileFormat&gt;" be used.',
 					},
 					{
 						displayName: 'Header Row',
@@ -216,11 +219,12 @@ export class SpreadsheetFile implements INodeType {
 							show: {
 								'/operation': [
 									'fromFile',
+									'toFile',
 								],
 							},
 						},
 						default: true,
-						description: 'The first row of the file contains the header names.',
+						description: 'Whether the first row of the file contains the header names',
 					},
 					{
 						displayName: 'Include Empty Cells',
@@ -234,7 +238,8 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'When reading from file the empty cells will be filled with an empty string in the JSON.',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'When reading from file the empty cells will be filled with an empty string in the JSON',
 					},
 					{
 						displayName: 'RAW Data',
@@ -248,7 +253,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'If the data should be returned RAW instead of parsed.',
+						description: 'Whether the data should be returned RAW instead of parsed',
 					},
 					{
 						displayName: 'Read As String',
@@ -262,7 +267,8 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'In some cases and file formats, it is necessary to read specifically as string else some special character get interpreted wrong.',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'In some cases and file formats, it is necessary to read specifically as string else some special character get interpreted wrong',
 					},
 					{
 						displayName: 'Range',
@@ -309,7 +315,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: 'Sheet',
-						description: 'Name of the sheet to create in the spreadsheet.',
+						description: 'Name of the sheet to create in the spreadsheet',
 					},
 				],
 			},
@@ -352,13 +358,13 @@ export class SpreadsheetFile implements INodeType {
 					}
 
 					if (workbook.SheetNames.length === 0) {
-						throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!');
+						throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!', { itemIndex: i });
 					}
 
 					let sheetName = workbook.SheetNames[0];
 					if (options.sheetName) {
 						if (!workbook.SheetNames.includes(options.sheetName as string)) {
-							throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+							throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`, { itemIndex: i });
 						}
 						sheetName = options.sheetName as string;
 					}
@@ -391,17 +397,36 @@ export class SpreadsheetFile implements INodeType {
 					if (options.headerRow === false) {
 						// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
 						for (const rowData of sheetJson) {
-							newItems.push({ json: { row: rowData } } as INodeExecutionData);
+							newItems.push({
+								json: {
+									row: rowData,
+								},
+								pairedItem: {
+									item: i,
+								},
+							} as INodeExecutionData);
 						}
 					} else {
 						for (const rowData of sheetJson) {
-							newItems.push({ json: rowData } as INodeExecutionData);
+							newItems.push({
+								json: rowData,
+								pairedItem: {
+									item: i,
+								},
+							} as INodeExecutionData);
 						}
 					}
 
 				} catch (error) {
 					if (this.continueOnFail()) {
-						newItems.push({json:{ error: error.message }});
+						newItems.push({
+							json: {
+								error: error.message,
+							},
+							pairedItem: {
+								item: i,
+							},
+						});
 						continue;
 					}
 					throw error;
@@ -416,7 +441,10 @@ export class SpreadsheetFile implements INodeType {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 				const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-
+				const sheetToJsonOptions: JSON2SheetOpts = {};
+				if (options.headerRow === false) {
+					sheetToJsonOptions.skipHeader = true;
+				}
 				// Get the json data of the items and flatten it
 				let item: INodeExecutionData;
 				const itemData: IDataObject[] = [];
@@ -425,7 +453,7 @@ export class SpreadsheetFile implements INodeType {
 					itemData.push(flattenObject(item.json));
 				}
 
-				const ws = xlsxUtils.json_to_sheet(itemData);
+				const ws = xlsxUtils.json_to_sheet(itemData, sheetToJsonOptions);
 
 				const wopts: WritingOptions = {
 					bookSST: false,
@@ -466,6 +494,9 @@ export class SpreadsheetFile implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
+					pairedItem: {
+						item: 0,
+					},
 				};
 
 				let fileName = `spreadsheet.${fileFormat}`;
@@ -478,7 +509,14 @@ export class SpreadsheetFile implements INodeType {
 				newItems.push(newItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					newItems.push({json:{ error: error.message }});
+					newItems.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: 0,
+						},
+					});
 				} else {
 					throw error;
 				}

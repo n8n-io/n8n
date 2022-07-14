@@ -5,6 +5,7 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,15 +18,16 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Autocomplete',
 				value: 'autocomplete',
 				description: 'Auto-complete company names and retrieve logo and domain',
+				action: 'Autocomplete a company',
 			},
 			{
 				name: 'Enrich',
 				value: 'enrich',
 				description: 'Look up person and company data based on an email or domain',
+				action: 'Enrich a company',
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -50,7 +52,7 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The domain to look up.',
+		description: 'The domain to look up',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -74,28 +76,28 @@ export const companyFields: INodeProperties[] = [
 				name: 'companyName',
 				type: 'string',
 				default: '',
-				description: 'The name of the company.',
+				description: 'The name of the company',
 			},
 			{
 				displayName: 'Facebook',
 				name: 'facebook',
 				type: 'string',
 				default: '',
-				description: 'The Facebook URL for the company.',
+				description: 'The Facebook URL for the company',
 			},
 			{
 				displayName: 'Linkedin',
 				name: 'linkedin',
 				type: 'string',
 				default: '',
-				description: 'The LinkedIn URL for the company.',
+				description: 'The LinkedIn URL for the company',
 			},
 			{
 				displayName: 'Twitter',
 				name: 'twitter',
 				type: 'string',
 				default: '',
-				description: 'The Twitter handle for the company.',
+				description: 'The Twitter handle for the company',
 			},
 		],
 	},
@@ -119,6 +121,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Name is the partial name of the company.',
+		description: 'Name is the partial name of the company',
 	},
 ];

@@ -7,6 +7,7 @@ export const containerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,16 +20,19 @@ export const containerOperations: INodeProperties[] = [
 				name: 'Add Tasks',
 				value: 'addTask',
 				description: 'Add task at index (or append)',
+				action: 'Add tasks',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get container information',
+				action: 'Get a container',
 			},
 			{
 				name: 'Update Tasks',
 				value: 'updateTask',
 				description: 'Fully replace a container\'s tasks',
+				action: 'Update tasks',
 			},
 		],
 		default: 'get',

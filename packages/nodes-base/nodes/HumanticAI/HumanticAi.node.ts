@@ -25,6 +25,7 @@ export class HumanticAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Humantic AI',
 		name: 'humanticAi',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:humanticai.png',
 		group: ['output'],
 		version: 1,
@@ -46,6 +47,7 @@ export class HumanticAi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Profile',
@@ -53,7 +55,6 @@ export class HumanticAi implements INodeType {
 					},
 				],
 				default: 'profile',
-				description: 'Resource to consume.',
 			},
 			// PROFILE
 			...profileOperations,
@@ -80,7 +81,7 @@ export class HumanticAi implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 						}
 
 						const item = items[i].binary as IBinaryKeyData;
@@ -89,7 +90,7 @@ export class HumanticAi implements INodeType {
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 						}
 
 						responseData = await humanticAiApiRequest.call(
@@ -141,7 +142,7 @@ export class HumanticAi implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 						}
 
 						const item = items[i].binary as IBinaryKeyData;
@@ -150,7 +151,7 @@ export class HumanticAi implements INodeType {
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 						}
 
 						responseData = await humanticAiApiRequest.call(

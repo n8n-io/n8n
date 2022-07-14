@@ -10,6 +10,12 @@ export default {
 				options: ['small', 'medium', 'large'],
 			},
 		},
+		type: {
+			control: {
+				type: 'select',
+				options: ['dots', 'ring'],
+			},
+		},
 	},
 };
 

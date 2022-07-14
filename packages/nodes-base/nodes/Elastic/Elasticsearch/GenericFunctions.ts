@@ -8,6 +8,7 @@ import {
 
 import {
 	IDataObject,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -23,23 +24,17 @@ export async function elasticsearchApiRequest(
 	qs: IDataObject = {},
 ) {
 	const {
-		username,
-		password,
 		baseUrl,
+		ignoreSSLIssues,
 	} = await this.getCredentials('elasticsearchApi') as ElasticsearchApiCredentials;
 
-	const token = Buffer.from(`${username}:${password}`).toString('base64');
-
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Basic ${token}`,
-			'Content-Type': 'application/json',
-		},
 		method,
 		body,
 		qs,
 		uri: `${baseUrl}${endpoint}`,
 		json: true,
+		rejectUnauthorized: !ignoreSSLIssues,
 	};
 
 	if (!Object.keys(body).length) {
@@ -51,8 +46,8 @@ export async function elasticsearchApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'elasticsearchApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

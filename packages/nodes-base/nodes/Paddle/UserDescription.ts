@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const userOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all users',
+				action: 'Get all users',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -45,7 +46,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -70,7 +71,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Number of subscription records to return per page.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -109,7 +110,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Attributes in JSON form.`,
+		description: 'Attributes in JSON form',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -136,14 +137,14 @@ export const userFields: INodeProperties[] = [
 				name: 'planId',
 				type: 'string',
 				default: '',
-				description: 'Filter: The subscription plan ID.',
+				description: 'Filter: The subscription plan ID',
 			},
 			{
 				displayName: 'Subscription ID',
 				name: 'subscriptionId',
 				type: 'string',
 				default: '',
-				description: 'A specific user subscription ID.',
+				description: 'A specific user subscription ID',
 			},
 			{
 				displayName: 'State',

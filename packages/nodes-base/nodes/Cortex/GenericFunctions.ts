@@ -3,12 +3,6 @@ import {
 } from 'request';
 
 import {
-	IAnalyzer,
-	IJob,
-	IResponder,
-} from './AnalyzerInterface';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -25,10 +19,8 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 	const credentials = await this.getCredentials('cortexApi');
 
-	const headerWithAuthentication = Object.assign({}, { Authorization: ` Bearer ${credentials.cortexApiKey}` });
-
 	let options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+		headers: {},
 		method,
 		qs: query,
 		uri: uri || `${credentials.host}/api${resource}`,
@@ -47,7 +39,7 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'cortexApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

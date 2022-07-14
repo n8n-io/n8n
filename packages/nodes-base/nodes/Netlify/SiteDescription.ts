@@ -7,6 +7,7 @@ export const siteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const siteOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a site',
+				action: 'Delete a site',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a site',
+				action: 'Get a site',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Returns all sites',
+				action: 'Get all sites',
 			},
 		],
 		default: 'delete',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -94,6 +97,6 @@ export const siteFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 ];

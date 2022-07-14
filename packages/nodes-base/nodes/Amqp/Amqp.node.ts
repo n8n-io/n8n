@@ -18,6 +18,7 @@ export class Amqp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Sender',
 		name: 'amqp',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:amqp.png',
 		group: ['transform'],
 		version: 1,
@@ -38,7 +39,7 @@ export class Amqp implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'name of the queue of topic to publish to',
+				description: 'Name of the queue of topic to publish to',
 			},
 			// Header Parameters
 			{
@@ -67,14 +68,14 @@ export class Amqp implements INodeType {
 						name: 'dataAsObject',
 						type: 'boolean',
 						default: false,
-						description: 'Send the data as an object.',
+						description: 'Whether to send the data as an object',
 					},
 					{
 						displayName: 'Reconnect',
 						name: 'reconnect',
 						type: 'boolean',
 						default: true,
-						description: 'Automatically reconnect if disconnected',
+						description: 'Whether to automatically reconnect if disconnected',
 					},
 					{
 						displayName: 'Reconnect Limit',
@@ -84,7 +85,7 @@ export class Amqp implements INodeType {
 						description: 'Maximum number of reconnect attempts',
 					},
 					{
-						displayName: 'Send property',
+						displayName: 'Send Property',
 						name: 'sendOnlyProperty',
 						type: 'string',
 						default: '',

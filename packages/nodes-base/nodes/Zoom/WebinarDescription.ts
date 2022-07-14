@@ -7,6 +7,7 @@ export const webinarOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const webinarOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a webinar',
+				action: 'Create a webinar',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a webinar',
+				action: 'Delete a webinar',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a webinar',
+				action: 'Get a webinar',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all webinars',
+				action: 'Get all webinars',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a webinar',
+				action: 'Update a webinar',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -66,7 +71,7 @@ export const webinarFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID or email ID.',
+		description: 'User ID or email ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -91,14 +96,14 @@ export const webinarFields: INodeProperties[] = [
 				name: 'agenda',
 				type: 'string',
 				default: '',
-				description: 'Webinar agenda.',
+				description: 'Webinar agenda',
 			},
 			{
 				displayName: 'Alternative Hosts',
 				name: 'alternativeHosts',
 				type: 'string',
 				default: '',
-				description: 'Alternative hosts email IDs.',
+				description: 'Alternative hosts email IDs',
 			},
 			{
 				displayName: 'Approval Type',
@@ -140,7 +145,7 @@ export const webinarFields: INodeProperties[] = [
 
 				],
 				default: 'both',
-				description: 'Determine how participants can join audio portion of the webinar.',
+				description: 'Determine how participants can join audio portion of the webinar',
 			},
 			{
 				displayName: 'Auto Recording',
@@ -173,28 +178,28 @@ export const webinarFields: INodeProperties[] = [
 				name: 'hostVideo',
 				type: 'boolean',
 				default: false,
-				description: 'Start video when host joins the webinar.',
+				description: 'Whether to start a video when host joins the webinar',
 			},
 			{
 				displayName: 'Panelists Video',
 				name: 'panelistsVideo',
 				type: 'boolean',
 				default: false,
-				description: 'Start video when panelists joins the webinar.',
+				description: 'Whether to start a video when panelists joins the webinar',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Password to join the webinar with maximum 10 characters.',
+				description: 'Password to join the webinar with maximum 10 characters',
 			},
 			{
 				displayName: 'Practice Session',
 				name: 'practiceSession',
 				type: 'boolean',
 				default: false,
-				description: 'Enable Practice session.',
+				description: 'Whether to enable Practice session',
 			},
 			{
 				displayName: 'Registration Type',
@@ -202,14 +207,17 @@ export const webinarFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Attendees register once and can attend any of the occurrences',
 						value: 1,
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Attendees need to register for every occurrence',
 						value: 2,
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Attendees register once and can choose one or more occurrences to attend',
 						value: 3,
 					},
@@ -225,14 +233,14 @@ export const webinarFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Webinar Topic',
@@ -250,11 +258,11 @@ export const webinarFields: INodeProperties[] = [
 						value: 5,
 					},
 					{
-						name: 'Recurring webinar with no fixed time',
+						name: 'Recurring Webinar with No Fixed Time',
 						value: 6,
 					},
 					{
-						name: 'Recurring webinar with fixed time',
+						name: 'Recurring Webinar with Fixed Time',
 						value: 9,
 					},
 				],
@@ -306,14 +314,14 @@ export const webinarFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'To view webinar details of a particular occurrence of the recurring webinar.',
+				description: 'To view webinar details of a particular occurrence of the recurring webinar',
 			},
 			{
 				displayName: 'Show Previous Occurrences',
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: false,
-				description: 'To view webinar details of all previous occurrences of the recurring webinar.',
+				description: 'Whether to view webinar details of all previous occurrences of the recurring webinar',
 			},
 		],
 	},
@@ -336,7 +344,7 @@ export const webinarFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID or email-ID.',
+		description: 'User ID or email-ID',
 	},
 	{
 		displayName: 'Return All',
@@ -353,7 +361,7 @@ export const webinarFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -377,7 +385,7 @@ export const webinarFields: INodeProperties[] = [
 			maxValue: 300,
 		},
 		default: 30,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 webinar:delete                                */
@@ -421,7 +429,7 @@ export const webinarFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Webinar occurrence ID.',
+				description: 'Webinar occurrence ID',
 			},
 
 		],
@@ -446,7 +454,7 @@ export const webinarFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'User ID or email address of user.',
+		description: 'User ID or email address of user',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -471,14 +479,14 @@ export const webinarFields: INodeProperties[] = [
 				name: 'agenda',
 				type: 'string',
 				default: '',
-				description: 'Webinar agenda.',
+				description: 'Webinar agenda',
 			},
 			{
 				displayName: 'Alternative Hosts',
 				name: 'alternativeHosts',
 				type: 'string',
 				default: '',
-				description: 'Alternative hosts email IDs.',
+				description: 'Alternative hosts email IDs',
 			},
 			{
 				displayName: 'Approval Type',
@@ -540,7 +548,7 @@ export const webinarFields: INodeProperties[] = [
 
 				],
 				default: 'both',
-				description: 'Determine how participants can join audio portion of the webinar.',
+				description: 'Determine how participants can join audio portion of the webinar',
 			},
 			{
 				displayName: 'Duration',
@@ -553,35 +561,35 @@ export const webinarFields: INodeProperties[] = [
 				name: 'hostVideo',
 				type: 'boolean',
 				default: false,
-				description: 'Start video when host joins the webinar.',
+				description: 'Whether to start video when host joins the webinar',
 			},
 			{
 				displayName: 'Occurrence ID',
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: `Webinar occurrence ID.`,
+				description: 'Webinar occurrence ID',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Password to join the webinar with maximum 10 characters.',
+				description: 'Password to join the webinar with maximum 10 characters',
 			},
 			{
 				displayName: 'Panelists Video',
 				name: 'panelistsVideo',
 				type: 'boolean',
 				default: false,
-				description: 'Start video when panelists joins the webinar.',
+				description: 'Whether to start a video when panelists joins the webinar',
 			},
 			{
 				displayName: 'Practice Session',
 				name: 'practiceSession',
 				type: 'boolean',
 				default: false,
-				description: 'Enable Practice session.',
+				description: 'Whether to enable Practice session',
 			},
 			{
 				displayName: 'Registration Type',
@@ -589,15 +597,15 @@ export const webinarFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Attendees register once and can attend any of the occurrences',
+						name: 'Attendees Register Once and Can Attend Any of the Occurrences',
 						value: 1,
 					},
 					{
-						name: 'Attendees need to register for every occurrence',
+						name: 'Attendees Need to Register for Every Occurrence',
 						value: 2,
 					},
 					{
-						name: 'Attendees register once and can choose one or more occurrences to attend',
+						name: 'Attendees Register Once and Can Choose One or More Occurrences to Attend',
 						value: 3,
 					},
 				],
@@ -609,17 +617,17 @@ export const webinarFields: INodeProperties[] = [
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'Start time should be used only for scheduled or recurring webinar with fixed time.',
+				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
 				displayName: 'Webinar Topic',
@@ -637,11 +645,11 @@ export const webinarFields: INodeProperties[] = [
 						value: 5,
 					},
 					{
-						name: 'Recurring webinar with no fixed time',
+						name: 'Recurring Webinar with No Fixed Time',
 						value: 6,
 					},
 					{
-						name: 'Recurring webinar with fixed time',
+						name: 'Recurring Webinar with Fixed Time',
 						value: 9,
 					},
 				],

@@ -42,6 +42,7 @@ export class AwsRekognition implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Image',
@@ -49,12 +50,12 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Analyze',
@@ -62,7 +63,6 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'analyze',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',
@@ -101,7 +101,6 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'detectFaces',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Binary Data',
@@ -119,7 +118,7 @@ export class AwsRekognition implements INodeType {
 						],
 					},
 				},
-				description: 'If the image to analize should be taken from binary field.',
+				description: 'Whether the image to analize should be taken from binary field',
 			},
 			{
 				displayName: 'Binary Property',
@@ -139,7 +138,7 @@ export class AwsRekognition implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data.',
+				description: 'Object property name which holds binary data',
 				required: true,
 			},
 			{
@@ -226,28 +225,28 @@ export class AwsRekognition implements INodeType {
 										displayName: 'Height',
 										name: 'height',
 										type: 'number',
-										description: 'Height of the bounding box as a ratio of the overall image height.',
+										description: 'Height of the bounding box as a ratio of the overall image height',
 										default: 0,
 									},
 									{
 										displayName: 'Left',
 										name: 'left',
 										type: 'number',
-										description: 'Left coordinate of the bounding box as a ratio of overall image width.',
+										description: 'Left coordinate of the bounding box as a ratio of overall image width',
 										default: 0,
 									},
 									{
 										displayName: 'Top',
 										name: 'top',
 										type: 'number',
-										description: 'Top coordinate of the bounding box as a ratio of overall image height.',
+										description: 'Top coordinate of the bounding box as a ratio of overall image height',
 										default: 0,
 									},
 									{
 										displayName: 'Width',
 										name: 'Width',
 										type: 'number',
-										description: 'Width of the bounding box as a ratio of the overall image width.',
+										description: 'Width of the bounding box as a ratio of the overall image width',
 										default: 0,
 									},
 								],
@@ -324,7 +323,7 @@ export class AwsRekognition implements INodeType {
 						typeOptions: {
 							minValue: 0,
 						},
-						description: `Maximum number of labels you want the service to return in the response. The service returns the specified number of highest confidence labels.`,
+						description: 'Maximum number of labels you want the service to return in the response. The service returns the specified number of highest confidence labels.',
 					},
 					{
 						displayName: 'Min Confidence',
@@ -343,7 +342,7 @@ export class AwsRekognition implements INodeType {
 							minValue: 0,
 							maxValue: 100,
 						},
-						description: `Specifies the minimum confidence level for the labels to return. Amazon Rekognition doesn't return any labels with a confidence level lower than this specified value.`,
+						description: 'Specifies the minimum confidence level for the labels to return. Amazon Rekognition doesn\'t return any labels with a confidence level lower than this specified value.',
 					},
 					{
 						displayName: 'Attributes',
@@ -367,7 +366,7 @@ export class AwsRekognition implements INodeType {
 							},
 						],
 						default: [],
-						description: `An array of facial attributes you want to be returned`,
+						description: 'An array of facial attributes you want to be returned',
 					},
 				],
 			},
@@ -461,11 +460,11 @@ export class AwsRekognition implements INodeType {
 								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 
 								if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];

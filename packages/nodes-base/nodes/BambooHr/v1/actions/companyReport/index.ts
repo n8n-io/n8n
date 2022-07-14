@@ -13,6 +13,7 @@ export const descriptions: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,6 +26,7 @@ export const descriptions: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a company report',
+				action: 'Get a company report',
 			},
 		],
 		default: 'get',

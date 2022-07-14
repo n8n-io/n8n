@@ -38,6 +38,7 @@ export class Mailcheck implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Email',
@@ -50,6 +51,7 @@ export class Mailcheck implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -61,6 +63,7 @@ export class Mailcheck implements INodeType {
 					{
 						name: 'Check',
 						value: 'check',
+						action: 'Check an email',
 					},
 				],
 				default: 'check',
@@ -69,6 +72,7 @@ export class Mailcheck implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -80,7 +84,7 @@ export class Mailcheck implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email address to check.',
+				description: 'Email address to check',
 			},
 		],
 	};

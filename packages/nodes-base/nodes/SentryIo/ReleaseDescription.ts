@@ -7,6 +7,7 @@ export const releaseOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const releaseOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a release',
+				action: 'Create a release',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a release',
+				action: 'Delete a release',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get release by version identifier',
+				action: 'Get a release by version ID',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all releases',
+				action: 'Get all releases',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a release',
+				action: 'Update a release',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -51,7 +56,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -69,7 +74,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the releases belong to.',
+		description: 'The slug of the organization the releases belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -86,7 +91,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -110,7 +115,7 @@ export const releaseFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -134,7 +139,7 @@ export const releaseFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'This parameter can be used to create a “starts with” filter for the version.',
+				description: 'This parameter can be used to create a “starts with” filter for the version',
 			},
 		],
 	},
@@ -143,7 +148,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:get/delete                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -162,7 +167,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to.',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -181,14 +186,14 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The version identifier of the release.',
+		description: 'The version identifier of the release',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                release:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -206,7 +211,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to.',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -245,7 +250,7 @@ export const releaseFields: INodeProperties[] = [
 		description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
 	},
 	{
-		displayName: 'Projects',
+		displayName: 'Project Names or IDs',
 		name: 'projects',
 		type: 'multiOptions',
 		typeOptions: {
@@ -263,7 +268,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'A list of project slugs that are involved in this release.',
+		description: 'A list of project slugs that are involved in this release. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -283,7 +288,7 @@ export const releaseFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Date released',
+				displayName: 'Date Released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
@@ -292,7 +297,7 @@ export const releaseFields: INodeProperties[] = [
 			{
 				displayName: 'Commits',
 				name: 'commits',
-				description: 'An optional list of commit data to be associated with the release.',
+				description: 'An optional list of commit data to be associated with the release',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -308,7 +313,7 @@ export const releaseFields: INodeProperties[] = [
 								name: 'id',
 								type: 'string',
 								default: '',
-								description: 'The sha of the commit.',
+								description: 'The sha of the commit',
 								required: true,
 							},
 							{
@@ -316,21 +321,21 @@ export const releaseFields: INodeProperties[] = [
 								name: 'authorEmail',
 								type: 'string',
 								default: '',
-								description: 'Authors email.',
+								description: 'Authors email',
 							},
 							{
 								displayName: 'Author Name',
 								name: 'authorName',
 								type: 'string',
 								default: '',
-								description: 'Name of author.',
+								description: 'Name of author',
 							},
 							{
 								displayName: 'Message',
 								name: 'message',
 								type: 'string',
 								default: '',
-								description: 'Message of commit.',
+								description: 'Message of commit',
 							},
 							{
 								displayName: 'Patch Set',
@@ -359,7 +364,7 @@ export const releaseFields: INodeProperties[] = [
 												name: 'type',
 												type: 'options',
 												default: '',
-												description: 'The types of changes that happend in that commit.',
+												description: 'The types of changes that happend in that commit',
 												options: [
 													{
 														name: 'Add',
@@ -384,14 +389,14 @@ export const releaseFields: INodeProperties[] = [
 								name: 'repository',
 								type: 'string',
 								default: '',
-								description: 'Repository name.',
+								description: 'Repository name',
 							},
 							{
 								displayName: 'Timestamp',
 								name: 'timestamp',
 								type: 'dateTime',
 								default: '',
-								description: 'Timestamp of commit.',
+								description: 'Timestamp of commit',
 							},
 						],
 					},
@@ -400,7 +405,7 @@ export const releaseFields: INodeProperties[] = [
 			{
 				displayName: 'Refs',
 				name: 'refs',
-				description: 'An optional way to indicate the start and end commits for each repository included in a release.',
+				description: 'An optional way to indicate the start and end commits for each repository included in a release',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -416,7 +421,7 @@ export const releaseFields: INodeProperties[] = [
 								name: 'commit',
 								type: 'string',
 								default: '',
-								description: 'The head sha of the commit.',
+								description: 'The head sha of the commit',
 								required: true,
 							},
 							{
@@ -424,7 +429,7 @@ export const releaseFields: INodeProperties[] = [
 								name: 'repository',
 								type: 'string',
 								default: '',
-								description: 'Repository name.',
+								description: 'Repository name',
 								required: true,
 							},
 							{
@@ -432,7 +437,7 @@ export const releaseFields: INodeProperties[] = [
 								name: 'previousCommit',
 								type: 'string',
 								default: '',
-								description: 'The sha of the HEAD of the previous release.',
+								description: 'The sha of the HEAD of the previous release',
 							},
 						],
 					},
@@ -445,7 +450,7 @@ export const releaseFields: INodeProperties[] = [
 	/*                                release:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -463,7 +468,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to.',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -503,7 +508,7 @@ export const releaseFields: INodeProperties[] = [
 			{
 				displayName: 'Commits',
 				name: 'commits',
-				description: 'An optional list of commit data to be associated with the release.',
+				description: 'An optional list of commit data to be associated with the release',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -519,7 +524,7 @@ export const releaseFields: INodeProperties[] = [
 								name: 'id',
 								type: 'string',
 								default: '',
-								description: 'The sha of the commit.',
+								description: 'The sha of the commit',
 								required: true,
 							},
 							{
@@ -527,21 +532,21 @@ export const releaseFields: INodeProperties[] = [
 								name: 'authorEmail',
 								type: 'string',
 								default: '',
-								description: 'Authors email.',
+								description: 'Authors email',
 							},
 							{
 								displayName: 'Author Name',
 								name: 'authorName',
 								type: 'string',
 								default: '',
-								description: 'Name of author.',
+								description: 'Name of author',
 							},
 							{
 								displayName: 'Message',
 								name: 'message',
 								type: 'string',
 								default: '',
-								description: 'Message of commit.',
+								description: 'Message of commit',
 							},
 							{
 								displayName: 'Patch Set',
@@ -570,7 +575,7 @@ export const releaseFields: INodeProperties[] = [
 												name: 'type',
 												type: 'options',
 												default: '',
-												description: 'The types of changes that happend in that commit.',
+												description: 'The types of changes that happend in that commit',
 												options: [
 													{
 														name: 'Add',
@@ -595,25 +600,25 @@ export const releaseFields: INodeProperties[] = [
 								name: 'repository',
 								type: 'string',
 								default: '',
-								description: 'Repository name.',
+								description: 'Repository name',
 							},
 							{
 								displayName: 'Timestamp',
 								name: 'timestamp',
 								type: 'dateTime',
 								default: '',
-								description: 'Timestamp of commit.',
+								description: 'Timestamp of commit',
 							},
 						],
 					},
 				],
 			},
 			{
-				displayName: 'Date released',
+				displayName: 'Date Released',
 				name: 'dateReleased',
 				type: 'dateTime',
 				default: '',
-				description: 'an optional date that indicates when the release went live. If not provided the current time is assumed.',
+				description: 'An optional date that indicates when the release went live. If not provided the current time is assumed.',
 			},
 			{
 				displayName: 'Ref',
@@ -625,7 +630,7 @@ export const releaseFields: INodeProperties[] = [
 			{
 				displayName: 'Refs',
 				name: 'refs',
-				description: 'An optional way to indicate the start and end commits for each repository included in a release.',
+				description: 'An optional way to indicate the start and end commits for each repository included in a release',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -641,7 +646,7 @@ export const releaseFields: INodeProperties[] = [
 								name: 'commit',
 								type: 'string',
 								default: '',
-								description: 'The head sha of the commit.',
+								description: 'The head sha of the commit',
 								required: true,
 							},
 							{
@@ -649,7 +654,7 @@ export const releaseFields: INodeProperties[] = [
 								name: 'repository',
 								type: 'string',
 								default: '',
-								description: 'Repository name.',
+								description: 'Repository name',
 								required: true,
 							},
 							{
@@ -657,7 +662,7 @@ export const releaseFields: INodeProperties[] = [
 								name: 'previousCommit',
 								type: 'string',
 								default: '',
-								description: 'The sha of the HEAD of the previous release.',
+								description: 'The sha of the HEAD of the previous release',
 							},
 						],
 					},

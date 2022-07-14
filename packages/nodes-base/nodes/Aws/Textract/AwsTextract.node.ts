@@ -19,7 +19,7 @@ import {
 	awsApiRequestREST,
 	IExpenseDocument,
 	simplify,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunctions';
 
 export class AwsTextract implements INodeType {
@@ -48,6 +48,7 @@ export class AwsTextract implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Analyze Receipt or Invoice',
@@ -72,7 +73,7 @@ export class AwsTextract implements INodeType {
 				description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -83,7 +84,7 @@ export class AwsTextract implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data.',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -92,7 +93,7 @@ export class AwsTextract implements INodeType {
 		credentialTest: {
 			async awsTextractApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject, 'sts');
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -121,11 +122,11 @@ export class AwsTextract implements INodeType {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 
 					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 					}
 
 					if ((items[i].binary as IBinaryKeyData)[binaryProperty] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 					}
 
 					const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryProperty];

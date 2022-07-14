@@ -11,6 +11,7 @@ export const clientOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -20,32 +21,36 @@ export const clientOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a client`,
+				description: 'Create a client',
+				action: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a client`,
+				description: 'Delete a client',
+				action: 'Delete a client',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
+				action: 'Get data of a client',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all clients',
+				action: 'Get data of all clients',
 			},
 
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a client`,
+				description: 'Update a client',
+				action: 'Update a client',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -69,7 +74,7 @@ export const clientFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your clients.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -91,7 +96,7 @@ export const clientFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -113,14 +118,14 @@ export const clientFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active clients and false to return inactive clients.',
+				description: 'Whether to only return active clients and false to return inactive clients',
 			},
 			{
 				displayName: 'Updated Since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return clients that have been updated since the given date and time.',
+				description: 'Only return clients that have been updated since the given date and time',
 			},
 		],
 	},
@@ -129,7 +134,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -142,14 +147,14 @@ export const clientFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the client you are retrieving.',
+		description: 'The ID of the client you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                client:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -162,7 +167,7 @@ export const clientFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the client you want to delete.',
+		description: 'The ID of the client you want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -182,7 +187,7 @@ export const clientFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the client.',
+		description: 'The name of the client',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -204,7 +209,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.',
+				description: 'A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
@@ -227,7 +232,7 @@ export const clientFields: INodeProperties[] = [
 	/*                                client:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -240,7 +245,7 @@ export const clientFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the client want to update.',
+		description: 'The ID of the client want to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -262,7 +267,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.',
+				description: 'A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',

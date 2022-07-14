@@ -11,6 +11,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -20,37 +21,42 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a user`,
+				description: 'Create a user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a user`,
+				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a user',
+				action: 'Get data of a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all users',
+				action: 'Get data of all users',
 			},
 
 			{
 				name: 'Me',
 				value: 'me',
 				description: 'Get data of authenticated user',
+				action: 'Get data of authenticated user',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a user`,
+				description: 'Update a user',
+				action: 'Update a user',
 			},
 		],
 		default: 'me',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -74,7 +80,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your users.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -96,7 +102,7 @@ export const userFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -118,14 +124,14 @@ export const userFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active users and false to return inactive users.',
+				description: 'Whether to only return active users and false to return inactive users',
 			},
 			{
 				displayName: 'Updated Since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return users belonging to the user with the given ID.',
+				description: 'Only return users belonging to the user with the given ID',
 			},
 			{
 				displayName: 'Page',
@@ -135,7 +141,7 @@ export const userFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: 'The page number to use in pagination..',
+				description: 'The page number to use in pagination',
 			},
 		],
 	},
@@ -144,7 +150,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -157,14 +163,14 @@ export const userFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the user you are retrieving.',
+		description: 'The ID of the user you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                user:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -177,7 +183,7 @@ export const userFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the user you want to delete.',
+		description: 'The ID of the user you want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -197,7 +203,7 @@ export const userFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The first name of the user.',
+		description: 'The first name of the user',
 	},
 	{
 		displayName: 'Last Name',
@@ -213,12 +219,13 @@ export const userFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The last name of the user.',
+		description: 'The last name of the user',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				operation: [
@@ -229,7 +236,7 @@ export const userFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The email of the user.',
+		description: 'The email of the user',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -275,62 +282,63 @@ export const userFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount.',
+				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
 				type: 'string',
 				default: '0',
-				description: 'The billable rate to use for this user when they are added to a project.',
+				description: 'The billable rate to use for this user when they are added to a project',
 			},
 			{
 				displayName: 'Has Access To All Future Projects',
 				name: 'has_access_to_all_future_projects',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user should be automatically added to future projects.',
+				description: 'Whether the user should be automatically added to future projects',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the user is active or archived.',
+				description: 'Whether the user is active or archived',
 			},
 			{
 				displayName: 'Is Admin',
 				name: 'is_admin',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user has Admin permissions.',
+				description: 'Whether the user has Admin permissions',
 			},
 			{
 				displayName: 'Is Contractor',
 				name: 'is_contractor',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user is a contractor or an employee.',
+				description: 'Whether the user is a contractor or an employee',
 			},
 			{
 				displayName: 'Is Project Manager',
 				name: 'is_project_manager',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user has Project Manager permissions.',
+				description: 'Whether the user has Project Manager permissions',
 			},
 			{
 				displayName: 'Roles',
 				name: 'roles',
 				type: 'string',
 				default: '',
-				description: 'The role names assigned to this person.',
+				description: 'The role names assigned to this person',
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-url-missing-protocol
 				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
@@ -350,7 +358,7 @@ export const userFields: INodeProperties[] = [
 	/*                                user:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -363,7 +371,7 @@ export const userFields: INodeProperties[] = [
 				resource,
 			},
 		},
-		description: 'The ID of the time entry to update.',
+		description: 'The ID of the time entry to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -409,19 +417,20 @@ export const userFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount.',
+				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
 				type: 'string',
 				default: '0',
-				description: 'The billable rate to use for this user when they are added to a project.',
+				description: 'The billable rate to use for this user when they are added to a project',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The user email',
 			},
@@ -437,35 +446,35 @@ export const userFields: INodeProperties[] = [
 				name: 'has_access_to_all_future_projects',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user should be automatically added to future projects.',
+				description: 'Whether the user should be automatically added to future projects',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the user is active or archived.',
+				description: 'Whether the user is active or archived',
 			},
 			{
 				displayName: 'Is Admin',
 				name: 'is_admin',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user has Admin permissions.',
+				description: 'Whether the user has Admin permissions',
 			},
 			{
 				displayName: 'Is Contractor',
 				name: 'is_contractor',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user is a contractor or an employee.',
+				description: 'Whether the user is a contractor or an employee',
 			},
 			{
 				displayName: 'Is Project Manager',
 				name: 'is_project_manager',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user has Project Manager permissions.',
+				description: 'Whether the user has Project Manager permissions',
 			},
 			{
 				displayName: 'Last Name',
@@ -479,13 +488,14 @@ export const userFields: INodeProperties[] = [
 				name: 'roles',
 				type: 'string',
 				default: '',
-				description: 'The role names assigned to this person.',
+				description: 'The role names assigned to this person',
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-url-missing-protocol
 				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{

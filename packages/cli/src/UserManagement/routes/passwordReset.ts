@@ -89,6 +89,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				void InternalHooksManager.getInstance().onEmailFailed({
 					user_id: user.id,
 					message_type: 'Reset password',
+					public_api: false,
 				});
 				if (error instanceof Error) {
 					throw new ResponseHelper.ResponseError(
@@ -103,6 +104,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			void InternalHooksManager.getInstance().onUserTransactionalEmail({
 				user_id: id,
 				message_type: 'Reset password',
+				public_api: false,
 			});
 
 			void InternalHooksManager.getInstance().onUserPasswordResetRequestClick({

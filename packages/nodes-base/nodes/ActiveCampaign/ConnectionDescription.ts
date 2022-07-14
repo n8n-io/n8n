@@ -11,6 +11,7 @@ export const connectionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,30 +24,34 @@ export const connectionOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a connection',
+				action: 'Create a connection',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a connection',
+				action: 'Delete a connection',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a connection',
+				action: 'Get a connection',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all connections',
+				action: 'Get all connections',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a connection',
+				action: 'Update a connection',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -71,10 +76,10 @@ export const connectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the service.',
+		description: 'The name of the service',
 	},
 	{
-		displayName: 'External accout ID',
+		displayName: 'External Account ID',
 		name: 'externalid',
 		type: 'string',
 		default: '',
@@ -89,7 +94,7 @@ export const connectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The id of the account in the external service.',
+		description: 'The ID of the account in the external service',
 	},
 	{
 		displayName: 'Account Name',
@@ -125,7 +130,7 @@ export const connectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The URL to a logo image for the external service.',
+		description: 'The URL to a logo image for the external service',
 	},
 	{
 		displayName: 'Link URL',
@@ -143,7 +148,7 @@ export const connectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The URL to a page where the integration with the external service can be managed in the third-party\'s website.',
+		description: 'The URL to a page where the integration with the external service can be managed in the third-party\'s website',
 	},
 
 	// ----------------------------------
@@ -165,13 +170,13 @@ export const connectionFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the connection to update.',
+		description: 'ID of the connection to update',
 	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		description: 'The fields to update.',
+		description: 'The fields to update',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
@@ -190,14 +195,14 @@ export const connectionFields: INodeProperties[] = [
 				name: 'service',
 				type: 'string',
 				default: '',
-				description: 'The name of the service.',
+				description: 'The name of the service',
 			},
 			{
-				displayName: 'External accout ID',
+				displayName: 'External Account ID',
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the account in the external service.',
+				description: 'The ID of the account in the external service',
 			},
 			{
 				displayName: 'Account Name',
@@ -211,14 +216,14 @@ export const connectionFields: INodeProperties[] = [
 				name: 'logoUrl',
 				type: 'string',
 				default: '',
-				description: 'The URL to a logo image for the external service.',
+				description: 'The URL to a logo image for the external service',
 			},
 			{
 				displayName: 'Link URL',
 				name: 'linkUrl',
 				type: 'string',
 				default: '',
-				description: 'The URL to a page where the integration with the external service can be managed in the third-party\'s website.',
+				description: 'The URL to a page where the integration with the external service can be managed in the third-party\'s website',
 			},
 			{
 				displayName: 'Status',
@@ -232,7 +237,7 @@ export const connectionFields: INodeProperties[] = [
 				name: 'syncStatus',
 				type: 'number',
 				default: 1,
-				description: 'The status of a sync triggered on the connection (0 = sync stopped; 1 = sync running).',
+				description: 'The status of a sync triggered on the connection (0 = sync stopped; 1 = sync running)',
 			},
 		],
 	},
@@ -256,7 +261,7 @@ export const connectionFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the connection to delete.',
+		description: 'ID of the connection to delete',
 	},
 
 	// ----------------------------------
@@ -278,7 +283,7 @@ export const connectionFields: INodeProperties[] = [
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the connection to get.',
+		description: 'ID of the connection to get',
 	},
 
 	// ----------------------------------

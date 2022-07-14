@@ -7,6 +7,7 @@ export const directMessageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const directMessageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a direct message',
+				action: 'Create a direct message',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,7 +47,7 @@ export const directMessageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the user who should receive the direct message.',
+		description: 'The ID of the user who should receive the direct message',
 	},
 	{
 		displayName: 'Text',
@@ -91,7 +92,7 @@ export const directMessageFields: INodeProperties[] = [
 				name: 'attachment',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary property which contain data that should be added to the direct message as attachment.',
+				description: 'Name of the binary property which contain data that should be added to the direct message as attachment',
 			},
 		],
 	},

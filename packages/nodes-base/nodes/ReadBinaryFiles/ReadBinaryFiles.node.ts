@@ -34,7 +34,7 @@ export class ReadBinaryFiles implements INodeType {
 				default: '',
 				required: true,
 				placeholder: '*.jpg',
-				description: 'Pattern for files to read.',
+				description: 'Pattern for files to read',
 			},
 			{
 				displayName: 'Property Name',
@@ -42,7 +42,7 @@ export class ReadBinaryFiles implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property to which to write the data of the read files.',
+				description: 'Name of the binary property to which to write the data of the read files',
 			},
 		],
 	};
@@ -65,6 +65,9 @@ export class ReadBinaryFiles implements INodeType {
 					[dataPropertyName]: await this.helpers.prepareBinaryData(data, filePath),
 				},
 				json: {},
+				pairedItem: {
+					item: 0,
+				},
 			};
 
 			items.push(item);

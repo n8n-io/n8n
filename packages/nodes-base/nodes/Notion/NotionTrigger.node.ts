@@ -20,6 +20,7 @@ import moment from 'moment';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
 		displayName: 'Notion Trigger (Beta)',
 		name: 'notionTrigger',
 		icon: 'file:notion.svg',
@@ -51,7 +52,7 @@ export class NotionTrigger implements INodeType {
 						value: 'pageAddedToDatabase',
 					},
 					{
-						name: 'Paged Updated in Database',
+						name: 'Page Updated in Database',
 						value: 'pagedUpdatedInDatabase',
 					},
 				],
@@ -59,7 +60,13 @@ export class NotionTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Database',
+				displayName: 'In Notion, make sure you share your database with your integration. Otherwise it won\'t be accessible, or listed here.',
+				name: 'notionNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName: 'Database Name or ID',
 				name: 'databaseId',
 				type: 'options',
 				typeOptions: {
@@ -75,10 +82,10 @@ export class NotionTrigger implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The ID of this database',
+				description: 'The ID of this database. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 			},
 			{
-				displayName: 'Simplify Output',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {

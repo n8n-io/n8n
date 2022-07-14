@@ -7,6 +7,7 @@ export const agentRoleOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,11 +20,13 @@ export const agentRoleOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an agent role',
+				action: 'Get an agent role',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all agent roles',
+				action: 'Get all agent roles',
 			},
 		],
 		default: 'get',
@@ -78,7 +81,7 @@ export const agentRoleFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

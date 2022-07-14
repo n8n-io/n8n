@@ -11,24 +11,28 @@ export const employeeOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an employee',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an employee',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all employees',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an employee',
 			},
 		],
 		displayOptions: {
@@ -105,7 +109,7 @@ export const employeeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the employee to retrieve.',
+		description: 'The ID of the employee to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -126,7 +130,7 @@ export const employeeFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -142,8 +146,8 @@ export const employeeFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -202,7 +206,7 @@ export const employeeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the employee to update.',
+		description: 'The ID of the employee to update',
 		displayOptions: {
 			show: {
 				resource: [

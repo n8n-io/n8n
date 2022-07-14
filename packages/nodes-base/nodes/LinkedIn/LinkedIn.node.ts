@@ -19,9 +19,10 @@ export class LinkedIn implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',
-		icon: 'file:linkedin.png',
+		icon: 'file:linkedin.svg',
 		group: ['input'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume LinkedIn API',
 		defaults: {
 			name: 'LinkedIn',
@@ -39,6 +40,7 @@ export class LinkedIn implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -46,7 +48,6 @@ export class LinkedIn implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The resource to consume',
 			},
 			//POST
 			...postOperations,
@@ -75,7 +76,8 @@ export class LinkedIn implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let body = {};
+
+		let body:any = {};// tslint:disable-line:no-any
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -137,13 +139,13 @@ export class LinkedIn implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
 							}
 
 							// Buffer binary data
@@ -219,6 +221,15 @@ export class LinkedIn implements INodeType {
 									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
 								},
 							};
+
+							if (description === '') {
+								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].description;
+							}
+
+							if (title === '') {
+								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].title;
+							}
+
 						} else {
 							body = {
 								author: authorUrn,
