@@ -239,10 +239,10 @@ const createAttributeOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'List',
+		displayName: 'Contact Attribute List',
 		name: 'attributeCategoryList',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Attributes',
 		default: {},
 		displayOptions: {
 			show: {
