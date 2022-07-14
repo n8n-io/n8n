@@ -28,7 +28,7 @@
 			<n8n-menu-item
 				v-for="fakeDoor in settingsFakeDoorFeatures"
 				v-bind:key="fakeDoor.featureName"
-				:index="`/settings/coming-soon?featureId=${fakeDoor.storeIndex}`"
+				:index="`/settings/coming-soon/${fakeDoor.id}`"
 				:class="$style.tab"
 			>
 				<i :class="$style.icon">
@@ -50,6 +50,7 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
+import { IFakeDoor } from '@/Interface';
 
 export default mixins(
 	userHelpers,
@@ -57,7 +58,7 @@ export default mixins(
 	name: 'SettingsSidebar',
 	computed: {
 		...mapGetters('settings', ['versionCli']),
-		settingsFakeDoorFeatures(): {} {
+		settingsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
 		},
 	},

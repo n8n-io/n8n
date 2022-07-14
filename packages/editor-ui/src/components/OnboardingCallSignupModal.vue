@@ -77,18 +77,18 @@ export default mixins(
 	},
 	methods: {
 		onSignup() {
-			if (this.isEmailValid) {
-				this.showError = false;
-				// TODO: Submit email here
-				this.$showMessage({
-					type: 'success',
-					title: this.$locale.baseText('onboardingCallSignupSucess.title'),
-				});
-				this.exitConfirmed = true;
-				this.modalBus.$emit('close');
-			} else {
+			if (!this.isEmailValid) {
 				this.showError = true;
+				return;
 			}
+			this.showError = false;
+			// TODO: Submit email here
+			this.$showMessage({
+				type: 'success',
+				title: this.$locale.baseText('onboardingCallSignupSucess.title'),
+			});
+			this.exitConfirmed = true;
+			this.modalBus.$emit('close');
 		},
 		async onCancel() {
 			const deleteConfirmed = await this.confirmMessage(

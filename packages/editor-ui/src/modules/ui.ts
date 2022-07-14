@@ -19,6 +19,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+	FAKE_DOOR_FEATURES,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -108,6 +109,7 @@ const module: Module<IUiState, IRootState> = {
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
 			{
+				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
 				featureName: 'fakeDoor.settings.environments.name',
 				icon: 'server',
 				infoText: 'fakeDoor.settings.environments.infoText',
@@ -117,6 +119,7 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['settings'],
 			},
 			{
+				id: FAKE_DOOR_FEATURES.LOGGING,
 				featureName: 'fakeDoor.settings.logging.name',
 				icon: 'sign-in-alt',
 				infoText: 'fakeDoor.settings.logging.infoText',
@@ -126,6 +129,7 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['settings'],
 			},
 			{
+				id: FAKE_DOOR_FEATURES.SHARING,
 				featureName: 'fakeDoor.credentialEdit.sharing.name',
 				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
 				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
@@ -163,12 +167,10 @@ const module: Module<IUiState, IRootState> = {
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
 		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
-			return state.fakeDoorFeatures.reduce((filtered : Array<{}>, fakeDoor: IFakeDoor, index: number) => {
-				if(fakeDoor.uiLocations.includes(location)) {
-					return filtered.concat({ ...fakeDoor, storeIndex: index });
-				}
-				return filtered;
-			}, []);
+			return state.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
+		},
+		getFakeDoorById: (state: IUiState) => (id: string) => {
+			return state.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
 		},
 	},
 	mutations: {

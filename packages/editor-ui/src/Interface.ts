@@ -22,6 +22,7 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { FAKE_DOOR_FEATURES } from './constants';
 
 export * from 'n8n-design-system/src/types';
 
@@ -880,6 +881,7 @@ export interface IUiState {
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export type IFakeDoor = {
+	id: FAKE_DOOR_FEATURES,
 	featureName: string,
 	icon?: string,
 	infoText?: string,

@@ -3013,7 +3013,7 @@ export default mixins(
 							closeOnClick: true,
 							onClick: () => {
 								this.$telemetry.track('user_clicked_onboarding_session_toast_link', {
-									toast_sequence_num: 1, // TODO: This needs to be supplied from the WF
+									toast_sequence_num: onboardingResponse.toast_sequence_num,
 									title: onboardingResponse.title,
 									text: onboardingResponse.description,
 								});

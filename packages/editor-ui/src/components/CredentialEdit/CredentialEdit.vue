@@ -60,7 +60,7 @@
 						<n8n-menu-item
 							v-for="fakeDoor in credentialsFakeDoorFeatures"
 							v-bind:key="fakeDoor.featureName"
-							:index="`coming-soon/${fakeDoor.storeIndex}`"
+							:index="`coming-soon/${fakeDoor.id}`"
 							:class="$style.tab"
 						>
 							<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
@@ -111,6 +111,7 @@ import Vue from 'vue';
 import {
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
+	IFakeDoor,
 } from '@/Interface';
 
 import {
@@ -364,7 +365,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 			return true;
 		},
-		credentialsFakeDoorFeatures(): {} {
+		credentialsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
 		},
 	},

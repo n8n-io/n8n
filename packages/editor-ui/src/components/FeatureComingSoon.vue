@@ -35,7 +35,7 @@ export default Vue.extend({
 	},
 	computed: {
 		featureInfo(): IFakeDoor {
-			return this.$store.getters['ui/getFakeDoorFeatures'][this.featureId] as IFakeDoor;
+			return this.$store.getters['ui/getFakeDoorById'](this.featureId);
 		},
 	},
 	methods: {

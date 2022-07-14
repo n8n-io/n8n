@@ -377,10 +377,10 @@ const router = new Router({
 			},
 		},
 		{
-			path: '/settings/coming-soon',
+			path: '/settings/coming-soon/:featureId',
 			name: VIEWS.FAKE_DOOR,
 			component: SettingsFakeDoorView,
-			props: route => Object.assign({}, route.query),
+			props: true,
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',

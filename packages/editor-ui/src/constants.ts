@@ -244,3 +244,9 @@ export enum VIEWS {
 	NOT_FOUND = "NotFoundView",
 	FAKE_DOOR = "ComingSoon",
 }
+
+export enum FAKE_DOOR_FEATURES {
+	ENVIRONMENTS = 'environments',
+	LOGGING = 'logging',
+	SHARING = 'sharing',
+}
