@@ -10,6 +10,8 @@ export class CalendlyApi implements ICredentialType {
 	displayName = 'Calendly API';
 	documentationUrl = 'calendly';
 	properties: INodeProperties[] = [
+		// Change name to Personal Access Token once API Keys
+		// are deprecated
 		{
 			displayName: 'API Key or Personal Access Token',
 			name: 'apiKey',
@@ -29,11 +31,11 @@ export class CalendlyApi implements ICredentialType {
 			requestOptions.headers!['X-TOKEN'] = apiKey;
 		}
 		return requestOptions;
-	};
+	}
 }
 
  const getAuthenticationType = (data: string): 'accessToken' | 'apiKey' => {
 	// The access token is a JWT, so it will always include dots to separate
 	// header, payoload and signature.
 	return data.includes('.') ? 'accessToken' : 'apiKey';
-}
+};

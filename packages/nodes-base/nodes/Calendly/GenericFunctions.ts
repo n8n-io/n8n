@@ -26,6 +26,7 @@ export async function calendlyApiRequest(this: IExecuteFunctions | IWebhookFunct
 
 	let endpoint = 'https://api.calendly.com';
 
+	// remove once API key is deprecated
 	if (authenticationType === 'apiKey') {
 		endpoint = 'https://calendly.com/api/v1';
 	}
@@ -46,7 +47,6 @@ export async function calendlyApiRequest(this: IExecuteFunctions | IWebhookFunct
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
-
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
 	} catch (error) {
