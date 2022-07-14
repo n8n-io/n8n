@@ -363,7 +363,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -619,7 +619,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the API lists meetings from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'URL of the Webex site which the API lists meetings from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -959,7 +959,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start',

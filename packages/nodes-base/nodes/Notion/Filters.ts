@@ -12,7 +12,7 @@ export const filters = (conditions: any) => [{
 		],
 	},
 	default: '',
-	description: 'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 },
 {
 	displayName: 'Type',
@@ -83,7 +83,7 @@ export const filters = (conditions: any) => [{
 	displayName: 'Option Name or ID',
 	name: 'multiSelectValue',
 	type: 'options',
-	description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+	description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	typeOptions: {
 		loadOptionsMethod: 'getPropertySelectValues',
 	},
@@ -106,7 +106,7 @@ export const filters = (conditions: any) => [{
 	displayName: 'Option Name or ID',
 	name: 'selectValue',
 	type: 'options',
-	description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+	description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	typeOptions: {
 		loadOptionsMethod: 'getPropertySelectValues',
 	},
@@ -184,7 +184,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 },
 {
 	displayName: 'User Name or ID',
@@ -207,7 +207,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 },
 {
 	displayName: 'User Name or ID',
@@ -230,7 +230,7 @@ export const filters = (conditions: any) => [{
 		},
 	},
 	default: '',
-	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 },
 {
 	displayName: 'Relation ID',

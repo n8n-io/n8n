@@ -149,7 +149,7 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
@@ -348,7 +348,7 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -663,7 +663,7 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
@@ -869,7 +869,7 @@ export const productFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -1190,7 +1190,7 @@ export const productFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Context',
@@ -1359,7 +1359,7 @@ export const productFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
