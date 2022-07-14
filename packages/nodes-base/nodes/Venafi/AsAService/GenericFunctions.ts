@@ -80,41 +80,41 @@ export async function venafiApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 }
 
 export async function encryptPassphrase(this: IExecuteFunctions | ILoadOptionsFunctions, certificateId: string, passphrase: string, storePassphrase: string) {
-	let dekHash: string = '';
-	let dekResponse = await venafiApiRequest.call(this, 'GET', `/outagedetection/v1/certificates/${certificateId}`);
+	let dekHash = '';
+	const dekResponse = await venafiApiRequest.call(this, 'GET', `/outagedetection/v1/certificates/${certificateId}`);
 
 	if (dekResponse.dekHash) {
 		dekHash = dekResponse.dekHash;
 	}
 
-	let pubKey: string = '';
-	let pubKeyResponse = await venafiApiRequest.call(this, 'GET', `/v1/edgeencryptionkeys/${dekHash}`);
+	let pubKey = '';
+	const pubKeyResponse = await venafiApiRequest.call(this, 'GET', `/v1/edgeencryptionkeys/${dekHash}`);
 
 	if (pubKeyResponse.key) {
 		pubKey = pubKeyResponse.key;
 	}
 
-	let encryptedKeyPass: string = '';
-	let encryptedKeyStorePass: string = '';
+	let encryptedKeyPass = '';
+	let encryptedKeyStorePass = '';
 
 	const promise = () => {
-    return new Promise((resolve, reject) => {
-      nacl_factory.instantiate(function (nacl:any) {
-        try {
-					let passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
+		return new Promise((resolve, reject) => {
+			nacl_factory.instantiate(function (nacl:any) {
+				try {
+					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
 					const keyPassBuffer = nacl.crypto_box_seal(passphraseUTF8, Buffer.from(pubKey, 'base64'));
-          encryptedKeyPass = Buffer.from(keyPassBuffer).toString('base64');
+					encryptedKeyPass = Buffer.from(keyPassBuffer).toString('base64');
 
-					let storePassphraseUTF8 = nacl.encode_utf8(storePassphrase) as string;
+					const storePassphraseUTF8 = nacl.encode_utf8(storePassphrase) as string;
 					const keyStorePassBuffer = nacl.crypto_box_seal(storePassphraseUTF8, Buffer.from(pubKey, 'base64'));
-          encryptedKeyStorePass = Buffer.from(keyStorePassBuffer).toString('base64');
+					encryptedKeyStorePass = Buffer.from(keyStorePassBuffer).toString('base64');
 
-          return resolve([encryptedKeyPass, encryptedKeyStorePass]);
-        } catch (error) {
-          return reject(error)
-        }
-      });
-    });
+					return resolve([encryptedKeyPass, encryptedKeyStorePass]);
+				} catch (error) {
+					return reject(error);
+				}
+			});
+		});
 	};
 	return await promise();
 }

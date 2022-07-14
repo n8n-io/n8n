@@ -59,7 +59,7 @@ export class VenafiAsAServiceTrigger implements INodeType {
 
 		const now = moment().format();
 
-		var startDate = webhookData.lastTimeChecked || now;
+		const startDate = webhookData.lastTimeChecked || now;
 		const endDate = now;
 
 		const { certificates: certificates } = await venafiApiRequest.call(
@@ -70,34 +70,34 @@ export class VenafiAsAServiceTrigger implements INodeType {
 				expression: {
 					operands: [
 						{
-							operator: "AND",
+							operator: 'AND',
 							operands: [
 								{
-									field: "validityEnd",
-									operator: "LTE",
+									field: 'validityEnd',
+									operator: 'LTE',
 									values: [
-										endDate
-									]
+										endDate,
+									],
 								},
 								{
-									field: "validityEnd",
-									operator: "GTE",
+									field: 'validityEnd',
+									operator: 'GTE',
 									values: [
-										startDate
-									]
-								}
-							]
-						}
-					]
+										startDate,
+									],
+								},
+							],
+						},
+					],
 				},
 				ordering: {
 					orders: [
 						{
-							field: "certificatInstanceModificationDate",
-							direction: "DESC"
-						}
-					]
-				}
+							field: 'certificatInstanceModificationDate',
+							direction: 'DESC',
+						},
+					],
+				},
 			},
 			{},
 		);

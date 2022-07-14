@@ -28,13 +28,13 @@ import {
 } from './CertificateRequestDescription';
 
 import {
-	ICertficateRequest,
 	ICertficateKeystoreRequest,
+	ICertficateRequest,
 	ICsrAttributes,
 	IKeyTypeParameters,
 	ISubjectAltNamesByType,
 } from './CertificateInterface';
-import * as nacl from "js-nacl";
+import * as nacl from 'js-nacl';
 
 export class VenafiAsAService implements INodeType {
 	description: INodeTypeDescription = {
@@ -312,7 +312,7 @@ export class VenafiAsAService implements INodeType {
 							const exportFormat = this.getNodeParameter('keystoreType', i) as string;
 
 							const body: ICertficateKeystoreRequest = {
-								exportFormat: exportFormat,
+								exportFormat,
 							};
 
 							const privateKeyPassphrase = this.getNodeParameter('privateKeyPassphrase', i) as string;
@@ -320,13 +320,13 @@ export class VenafiAsAService implements INodeType {
 
 							body.certificateLabel = certificateLabel;
 
-							let keystorePassphrase : string = '';
+							let keystorePassphrase = '';
 
 							if (options.keystorePassphrase) {
 								keystorePassphrase = options.keystorePassphrase as string;
 							}
 
-							let encryptedValues = await encryptPassphrase.call(this, certificateId, privateKeyPassphrase, keystorePassphrase ) as string;
+							const encryptedValues = await encryptPassphrase.call(this, certificateId, privateKeyPassphrase, keystorePassphrase ) as string;
 							body.encryptedPrivateKeyPassphrase = encryptedValues[0];
 							if (exportFormat === 'JKS') {
 								body.encryptedKeystorePassphrase = encryptedValues[1];
@@ -358,7 +358,7 @@ export class VenafiAsAService implements INodeType {
 						responseData = {
 							json: {},
 							binary: {
-								[binaryProperty]: binaryData
+								[binaryProperty]: binaryData,
 							},
 						};
 					}
