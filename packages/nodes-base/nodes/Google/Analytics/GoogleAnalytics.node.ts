@@ -27,6 +27,7 @@ import {
 	merge,
 	processFilters,
 	simplify,
+	simplifyGA4,
 } from './GenericFunctions';
 
 import moment from 'moment-timezone';
@@ -399,6 +400,7 @@ export class GoogleAnalytics implements INodeType {
 						const propertyId = this.getNodeParameter('propertyId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						method = 'POST';
 						endpoint = `/v1beta/${propertyId}:runReport`;
@@ -500,13 +502,14 @@ export class GoogleAnalytics implements INodeType {
 						}
 
 						if (returnAll === true) {
-							// responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 							responseData = await googleApiRequestAllItems.call(this, '', method, endpoint, body, qs);
-							// responseData = responseData.rows;
 						} else {
 							body.limit = this.getNodeParameter('limit', 0) as number;
 							responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-							// responseData = responseData.rows;
+						}
+
+						if (responseData && responseData.length && simple === true) {
+							responseData = simplifyGA4(responseData[0]);
 						}
 					}
 				}

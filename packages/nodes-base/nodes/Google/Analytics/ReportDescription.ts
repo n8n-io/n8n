@@ -140,9 +140,6 @@ export const reportFields: INodeProperties[] = [
 				resource: [
 					'report',
 				],
-				apiVersion: [
-					'reportingAPI',
-				],
 			},
 		},
 		default: true,
@@ -500,6 +497,7 @@ export const reportFields: INodeProperties[] = [
 				displayName: 'Metric Aggregation',
 				name: 'metricAggregations',
 				type: 'multiOptions',
+				hint: 'Simplify need to be turned off for this to be shown in output',
 				default: [],
 				options: [
 					{
@@ -654,6 +652,7 @@ export const reportFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to return the current state of this Analytics Property\'s quota. Quota is returned in PropertyQuota.',
+				hint: 'Simplify need to be turned off for this to be shown in output',
 			},
 		],
 	},

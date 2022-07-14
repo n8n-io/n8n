@@ -114,6 +114,27 @@ export function simplify(responseData: any | [any]) { // tslint:disable-line:no-
 	return response;
 }
 
+export function simplifyGA4 (response: IDataObject) {
+	if (!response.rows)  return [];
+	const dimensionHeaders = (response.dimensionHeaders as IDataObject[]).map(header => header.name as string);
+	const metricHeaders = (response.metricHeaders as IDataObject[]).map(header => header.name as string);
+	const returnData: IDataObject[] = [];
+
+	(response.rows as IDataObject[]).forEach(row => {
+		if (!row) return;
+		const returnRow: IDataObject = {};
+		dimensionHeaders.forEach((dimension, index) => {
+			returnRow[dimension] = (row.dimensionValues as IDataObject[])[index].value;
+		});
+		metricHeaders.forEach((metric, index) => {
+			returnRow[metric] = (row.metricValues as IDataObject[])[index].value;
+		});
+		returnData.push(returnRow);
+	});
+
+	return returnData;
+};
+
 export function merge(responseData: [any]) { // tslint:disable-line:no-any
 	const response: { columnHeader: IDataObject, data: { rows: [] } } = {
 		columnHeader: responseData[0].columnHeader,
