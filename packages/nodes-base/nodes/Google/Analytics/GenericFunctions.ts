@@ -9,7 +9,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
@@ -116,8 +117,8 @@ export function simplify(responseData: any | [any]) { // tslint:disable-line:no-
 
 export function simplifyGA4 (response: IDataObject) {
 	if (!response.rows)  return [];
-	const dimensionHeaders = (response.dimensionHeaders as IDataObject[]).map(header => header.name as string);
-	const metricHeaders = (response.metricHeaders as IDataObject[]).map(header => header.name as string);
+	const dimensionHeaders = (response.dimensionHeaders as IDataObject[] || []).map(header => header.name as string);
+	const metricHeaders = (response.metricHeaders as IDataObject[] || []).map(header => header.name as string);
 	const returnData: IDataObject[] = [];
 
 	(response.rows as IDataObject[]).forEach(row => {

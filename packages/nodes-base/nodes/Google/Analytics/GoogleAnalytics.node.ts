@@ -120,6 +120,33 @@ export class GoogleAnalytics implements INodeType {
 						value: 'userActivity',
 					},
 				],
+				displayOptions: {
+					show: {
+						apiVersion: [
+							'reportingAPI',
+						],
+					},
+				},
+				default: 'report',
+			},
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Report',
+						value: 'report',
+					},
+				],
+				displayOptions: {
+					show: {
+						apiVersion: [
+							'dataAPI',
+						],
+					},
+				},
 				default: 'report',
 			},
 			//-------------------------------
