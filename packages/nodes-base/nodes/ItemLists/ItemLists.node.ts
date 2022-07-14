@@ -65,8 +65,8 @@ export class ItemLists implements INodeType {
 					{
 						name: 'Aggregate Items',
 						value: 'aggregateItems',
-						description: 'Merge fields into a single new item',
-						action: 'Merge fields into a single new item',
+						description: 'Combine fields into a single new item',
+						action: 'Combine fields into a single new item',
 					},
 					{
 						name: 'Limit',
@@ -220,7 +220,7 @@ export class ItemLists implements INodeType {
 					multipleValues: true,
 				},
 				placeholder: 'Add Field To Aggregate',
-				default: {},
+				default: {fieldToAggregate: [{fieldToAggregate: '', renameField: false}]},
 				displayOptions: {
 					show: {
 						resource: [
