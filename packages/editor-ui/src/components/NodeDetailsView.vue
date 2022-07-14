@@ -345,28 +345,30 @@ export default mixins(
 				});
 
 				setTimeout(() => {
-					const outogingConnections = this.$store.getters.outgoingConnectionsByNodeName(
-						this.activeNode.name,
-					) as INodeConnections;
+					if (this.activeNode) {
+						const outogingConnections = this.$store.getters.outgoingConnectionsByNodeName(
+							this.activeNode.name,
+						) as INodeConnections;
 
-					this.$telemetry.track('User opened node modal', {
-						node_type: this.activeNodeType ? this.activeNodeType.name : '',
-						workflow_id: this.$store.getters.workflowId,
-						session_id: this.sessionId,
-						parameters_pane_position: this.mainPanelPosition,
-						input_first_connector_runs: this.maxInputRun,
-						output_first_connector_runs: this.maxOutputRun,
-						selected_view_inputs: this.isTriggerNode
-							? 'trigger'
-							: this.$store.getters['ui/inputPanelDispalyMode'],
-						selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
-						input_connectors: this.parentNodes.length,
-						output_connectors:
-							outogingConnections && outogingConnections.main && outogingConnections.main.length,
-						input_displayed_run_index: this.inputRun,
-						output_displayed_run_index: this.outputRun,
-						data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
-					});
+						this.$telemetry.track('User opened node modal', {
+							node_type: this.activeNodeType ? this.activeNodeType.name : '',
+							workflow_id: this.$store.getters.workflowId,
+							session_id: this.sessionId,
+							parameters_pane_position: this.mainPanelPosition,
+							input_first_connector_runs: this.maxInputRun,
+							output_first_connector_runs: this.maxOutputRun,
+							selected_view_inputs: this.isTriggerNode
+								? 'trigger'
+								: this.$store.getters['ui/inputPanelDispalyMode'],
+							selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
+							input_connectors: this.parentNodes.length,
+							output_connectors:
+								outogingConnections && outogingConnections.main && outogingConnections.main.length,
+							input_displayed_run_index: this.inputRun,
+							output_displayed_run_index: this.outputRun,
+							data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
+						});
+					}
 				}, 2000); // wait for RunData to mount and present pindata discovery tooltip
 			}
 			if (window.top && !this.isActiveStickyNode) {
