@@ -219,6 +219,8 @@ export class Start extends Command {
 
 				await handleActiveDirectoryFirstInit(databaseSettings);
 
+				console.log('sali');
+
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
 					const redisPassword = config.getEnv('queue.bull.redis.password');

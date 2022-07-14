@@ -1,20 +1,15 @@
-import { ActiveDirectoryService } from './ActiveDirectoryService';
-
 /* eslint-disable no-underscore-dangle */
-let activeDirectorySync: ActiveDirectorySync | undefined;
+import { ActiveDirectoryService } from './ActiveDirectoryService';
+import type { ActiveDirectoryConfig } from './types';
 
-interface ActiveDirectorySettings {
-	seconds?: number | undefined;
-}
-
-class ActiveDirectorySync {
+export class ActiveDirectorySync {
 	private intervalId: NodeJS.Timeout;
 
-	private _config: ActiveDirectorySettings = {};
+	private _config: ActiveDirectoryConfig;
 
 	private _activeDirectoryService: ActiveDirectoryService;
 
-	set config(config: ActiveDirectorySettings) {
+	set config(config: ActiveDirectoryConfig) {
 		this._config = config;
 	}
 
@@ -23,12 +18,12 @@ class ActiveDirectorySync {
 	}
 
 	start() {
-		if (!this._config.seconds) {
-			throw new Error('Seconds variable has to be defined');
-		}
-		this.intervalId = setInterval(async () => {
-			await this.run();
-		}, this._config.seconds * 1000);
+		// if (!this._config.seconds) {
+		// 	throw new Error('Seconds variable has to be defined');
+		// }
+		// this.intervalId = setInterval(async () => {
+		// 	await this.run();
+		// }, this._config.seconds * 1000);
 	}
 
 	async run(): Promise<void> {
@@ -38,11 +33,4 @@ class ActiveDirectorySync {
 	stop() {
 		clearInterval(this.intervalId);
 	}
-}
-
-export function getActiveDirectorySyncInstance(): ActiveDirectorySync {
-	if (activeDirectorySync === undefined) {
-		return new ActiveDirectorySync();
-	}
-	return activeDirectorySync;
 }

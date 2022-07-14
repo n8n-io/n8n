@@ -65,6 +65,10 @@ const saveFeatureConfiguration = async () => {
 				loginId: config.getEnv('activeDirectory.attributeMapping.loginId'),
 				username: config.getEnv('activeDirectory.attributeMapping.username'),
 			},
+			syncronization: {
+				enabled: false,
+				interval: 60,
+			},
 		},
 	};
 	await Db.collections.FeatureConfig.save<IFeatureConfigDb>(featureConfig);
@@ -122,7 +126,7 @@ const findUserOnActiveDirectory = async (
 	password: string,
 	loginIdAttribute: string,
 ): Promise<Entry | undefined> => {
-	const activeDirectoryService = ActiveDirectoryManager.getInstance();
+	const activeDirectoryService = ActiveDirectoryManager.getInstance().service;
 
 	const searchResult = await activeDirectoryService.searchWithAdminBinding(
 		`(${loginIdAttribute}=${email})`,
@@ -222,8 +226,7 @@ export const handleActiveDirectoryLogin = async (
 	return updatedUser;
 };
 
-const syncActiveDirectoryUsers = () => {
-	//query all users in the active directory server;
-	//
-
-}
+// const syncActiveDirectoryUsers = () => {
+// 	// query all users in the active directory server;
+// 	//
+// };

@@ -20,7 +20,7 @@ activeDirectoryController.post(
 	'/test-connection',
 	async (req: express.Request, res: express.Response) => {
 		try {
-			await ActiveDirectoryManager.getInstance().testConnection();
+			await ActiveDirectoryManager.getInstance().service.testConnection();
 		} catch (error) {
 			const errorObject = error as { message: string };
 			return res.status(400).json({ message: errorObject.message });
@@ -39,7 +39,7 @@ activeDirectoryController.put(
 
 		const { data } = await getActiveDirectoryConfig();
 
-		ActiveDirectoryManager.getInstance().config = data;
+		ActiveDirectoryManager.config(data);
 
 		return res.status(200).json(data);
 	},
@@ -55,7 +55,7 @@ activeDirectoryController.post(
 
 		const { data } = await getActiveDirectoryConfig();
 
-		ActiveDirectoryManager.getInstance().config = data;
+		ActiveDirectoryManager.config(data);
 
 		return res.status(200).json(data);
 	},

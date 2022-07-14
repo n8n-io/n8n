@@ -20,6 +20,10 @@ export interface ActiveDirectoryConfig {
 		loginId: string;
 		username: string;
 	};
+	syncronization: {
+		enabled: boolean;
+		interval: number; // minutes
+	};
 }
 
 export type AuthenticatedRequest<

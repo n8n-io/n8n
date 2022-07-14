@@ -131,7 +131,9 @@ export default mixins(
 				lastName: string,
 				firstName: string,
 				username: string,
+				syncronizationEnabled: string,
 				useSsl: string;
+				syncronizationInterval: string;
 				}) {
 			if (!this.hasAnyChanges) {
 				return;
@@ -154,6 +156,10 @@ export default mixins(
 					lastName: form.lastName,
 					loginId: form.loginId,
 					username: form.username,
+				},
+				syncronization: {
+					enabled: form.syncronizationEnabled === 'true' ? true : false,
+					interval: parseInt(form.syncronizationInterval, 10),
 				},
 			};
 
@@ -365,6 +371,44 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+						},
+					},
+					{
+						name: 'syncronizationInfo',
+						properties: {
+							label: 'Syncronization Info',
+							type: 'info',
+						},
+					},
+					{
+						name: 'syncronizationEnabled',
+						initialValue: this.adConfig.syncronization.enabled.toString(),
+						properties: {
+							type: 'select',
+							label: 'Enabled Active Directory Syncronization',
+							required: true,
+							options: [
+								{
+									label: 'True',
+									value: 'true',
+								},
+								{
+									label: 'False',
+									value: 'false',
+								},
+							],
+						},
+					},
+					{
+						name: 'syncronizationInterval',
+						initialValue:this.adConfig.syncronization.interval,
+						properties: {
+							label: 'Syncronization Interval',
+							type: 'text',
+							required: true,
+						},
+						shouldDisplay(values): boolean {
+							return values['syncronizationEnabled'] === 'true';
 						},
 					},
 				];

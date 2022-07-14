@@ -984,4 +984,8 @@ export interface IActiveDirectoryConfig {
 			useSsl: boolean;
 			url: string;
 		};
+		syncronization: {
+			enabled: boolean;
+			interval: number; // minutes
+		};
 }
