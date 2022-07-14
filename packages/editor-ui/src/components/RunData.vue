@@ -1169,9 +1169,16 @@ export default mixins(
 			handleCopyClick (commandData: { command: string }) {
 				const isNotSelected = this.selectedOutput.path === deselectedPlaceholder;
 				const selectedPath = isNotSelected ? '[""]' : this.selectedOutput.path;
-				const selectedValue = isNotSelected
-					? this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex))
-					: this.selectedOutput.value;
+
+				let selectedValue = this.selectedOutput.value;
+				if (isNotSelected) {
+					if (this.hasPinData) {
+						selectedValue = this.pinData as object;
+					} else {
+						selectedValue = this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
+					}
+				}
+
 				const newPath = this.convertPath(selectedPath);
 
 				let value: string;
