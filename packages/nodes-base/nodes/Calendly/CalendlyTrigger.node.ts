@@ -257,7 +257,7 @@ export class CalendlyTrigger implements INodeType {
 				if (authenticationType === 'accessToken') {
 					if (webhookData.webhookURI !== undefined) {
 						try {
-							console.log(await calendlyApiRequest.call(this, 'DELETE', '', {}, {},  webhookData.webhookURI as string));
+							await calendlyApiRequest.call(this, 'DELETE', '', {}, {},  webhookData.webhookURI as string);
 						} catch (error) {
 							return false;
 						}

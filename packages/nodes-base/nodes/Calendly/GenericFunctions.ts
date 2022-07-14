@@ -80,7 +80,6 @@ export async function validateCredentials(this: ICredentialTestFunctions, decryp
 	} else {
 		Object.assign(options, { headers: { 'X-TOKEN': apiKey }, uri: 'https://calendly.com/api/v1/users/me' });
 	}
-
 	return this.helpers.request!(options);
 }
 
