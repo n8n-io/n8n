@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	encryptPassphrase,
 	venafiApiRequest,
 	venafiApiRequestAllItems,
 } from './GenericFunctions';
@@ -27,11 +28,13 @@ import {
 } from './CertificateRequestDescription';
 
 import {
+	ICertficateKeystoreRequest,
 	ICertficateRequest,
 	ICsrAttributes,
 	IKeyTypeParameters,
 	ISubjectAltNamesByType,
 } from './CertificateInterface';
+import * as nacl from 'js-nacl';
 
 export class VenafiAsAService implements INodeType {
 	description: INodeTypeDescription = {
@@ -290,19 +293,67 @@ export class VenafiAsAService implements INodeType {
 					if (operation === 'download') {
 						const certificateId = this.getNodeParameter('certificateId', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const downloadItem = this.getNodeParameter('downloadItem', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						Object.assign(qs, options);
+						// Cert Download
+						if (downloadItem === 'certificate') {
+							Object.assign(qs, options);
+							responseData = await venafiApiRequest.call(
+								this,
+								'GET',
+								`/outagedetection/v1/certificates/${certificateId}/contents`,
+								{},
+								qs,
+								undefined,
+								{encoding: null, json: false, resolveWithFullResponse: true, cert: true},
+							);
+						} else {
+							const exportFormat = this.getNodeParameter('keystoreType', i) as string;
 
-						responseData = await venafiApiRequest.call(
-							this,
-							'GET',
-							`/outagedetection/v1/certificates/${certificateId}/contents`,
-							{},
-							qs,
-						);
+							const body: ICertficateKeystoreRequest = {
+								exportFormat,
+							};
 
-						const binaryData = await this.helpers.prepareBinaryData(Buffer.from(responseData));
+							const privateKeyPassphrase = this.getNodeParameter('privateKeyPassphrase', i) as string;
+							const certificateLabel = this.getNodeParameter('certificateLabel', i) as string;
+
+							body.certificateLabel = certificateLabel;
+
+							let keystorePassphrase = '';
+
+							if (exportFormat === 'JKS') {
+								keystorePassphrase = this.getNodeParameter('keystorePassphrase', i) as string;
+							}
+
+							const encryptedValues = await encryptPassphrase.call(this, certificateId, privateKeyPassphrase, keystorePassphrase ) as string;
+							body.encryptedPrivateKeyPassphrase = encryptedValues[0];
+							if (exportFormat === 'JKS') {
+								body.encryptedKeystorePassphrase = encryptedValues[1];
+							}
+
+							responseData = await venafiApiRequest.call(
+								this,
+								'POST',
+								`/outagedetection/v1/certificates/${certificateId}/keystore`,
+								body,
+								{},
+								undefined,
+								{encoding: null, json: false, resolveWithFullResponse: true},
+							);
+
+						}
+
+						const contentDisposition = responseData.headers['content-disposition'];
+						const fileNameRegex = /(?<=filename=").*\b/;
+						const match = fileNameRegex.exec(contentDisposition);
+						let fileName = '';
+
+						if (match !== null) {
+							fileName = match[0];
+						}
+
+						const binaryData = await this.helpers.prepareBinaryData(Buffer.from(responseData.body), fileName);
 
 						responseData = {
 							json: {},

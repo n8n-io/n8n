@@ -259,7 +259,7 @@ export const certificateRequestFields: INodeProperties[] = [
 				name: 'SubjectAltNamesUi',
 				placeholder: 'Add Subject',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},

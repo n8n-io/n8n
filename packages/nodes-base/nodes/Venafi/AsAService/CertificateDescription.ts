@@ -68,6 +68,128 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Download Item',
+		name: 'downloadItem',
+		type: 'options',
+		options: [
+			{
+				name: 'Certificate',
+				value: 'certificate',
+			},
+			{
+				name: 'Keystore',
+				value: 'keystore',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+			},
+		},
+		default: 'certificate',
+	},
+	{
+		displayName: 'Keystore Type',
+		name: 'keystoreType',
+		type: 'options',
+		options: [
+			{
+				name: 'JKS',
+				value: 'JKS',
+			},
+			{
+				name: 'PKCS12',
+				value: 'PKCS12',
+			},
+			{
+				name: 'PEM',
+				value: 'PEM',
+			},
+		],
+		default: 'PEM',
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+				downloadItem: [
+					'keystore',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Certificate Label',
+		name: 'certificateLabel',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+				downloadItem: [
+					'keystore',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Private Key Passphrase',
+		name: 'privateKeyPassphrase',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+				downloadItem: [
+					'keystore',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Keystore Passphrase',
+		name: 'keystorePassphrase',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+				downloadItem: [
+					'keystore',
+				],
+				keystoreType: [
+					'JKS',
+				],
+			},
+		},
+		default: '',
+	},
+	{
 		displayName: 'Binary Property',
 		name: 'binaryProperty',
 		type: 'string',
@@ -124,6 +246,22 @@ export const certificateFields: INodeProperties[] = [
 					},
 				],
 				default: 'ROOT_FIRST',
+			},
+			{
+				displayName: 'Format',
+				name: 'format',
+				type: 'options',
+				options: [
+					{
+						name: 'PEM',
+						value: 'PEM',
+					},
+					{
+						name: 'DER',
+						value: 'DER',
+					},
+				],
+				default: 'PEM',
 			},
 		],
 	},
