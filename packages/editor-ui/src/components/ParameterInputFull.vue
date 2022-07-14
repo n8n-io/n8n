@@ -3,7 +3,7 @@
 		:label="hideLabel? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltipText="hideLabel? '': $locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
-		:showOptions="menuExpanded || focused"
+		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
 		size="small"
 	>
@@ -18,17 +18,24 @@
 			/>
 		</template>
 		<template>
-			<parameter-input
-				ref="param"
-				:parameter="parameter"
-				:value="value"
-				:displayOptions="displayOptions"
-				:path="path"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
-				@focus="focused = true"
-				@blur="focused = false"
-				inputSize="small" />
+			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly" @drop="onDrop">
+				<template v-slot="{ droppable, activeDrop }">
+					<parameter-input
+						ref="param"
+						:parameter="parameter"
+						:value="value"
+						:displayOptions="displayOptions"
+						:path="path"
+						:isReadOnly="isReadOnly"
+						:droppable="droppable"
+						:activeDrop="activeDrop"
+						:forceShowExpression="forceShowExpression"
+						@valueChanged="valueChanged"
+						@focus="onFocus"
+						@blur="onBlur"
+						inputSize="small" />
+				</template>
+			</DraggableTarget>
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
 	</n8n-input-label>
@@ -38,25 +45,34 @@
 import Vue from 'vue';
 
 import {
+	INodeUi,
 	IUpdateInformation,
 } from '@/Interface';
 
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import ParameterOptions from './ParameterOptions.vue';
+import DraggableTarget from '@/components/DraggableTarget.vue';
+import mixins from 'vue-typed-mixins';
+import { showMessage } from './mixins/showMessage';
+import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 
-export default Vue
+export default mixins(
+	showMessage,
+)
 	.extend({
 		name: 'ParameterInputFull',
 		components: {
 			ParameterInput,
 			InputHint,
 			ParameterOptions,
+			DraggableTarget,
 		},
 		data() {
 			return {
 				focused: false,
 				menuExpanded: false,
+				forceShowExpression: false,
 			};
 		},
 		props: [
@@ -67,7 +83,26 @@ export default Vue
 			'value',
 			'hideLabel',
 		],
+		computed: {
+			node (): INodeUi | null {
+				return this.$store.getters.activeNode;
+			},
+		},
 		methods: {
+			onFocus() {
+				this.focused = true;
+				if (!this.parameter.noDataExpression) {
+					setTimeout(() => {
+						this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
+					}, 300);
+				}
+			},
+			onBlur() {
+				this.focused = false;
+				if (!this.parameter.noDataExpression) {
+					this.$store.commit('ui/setMappableNDVInputFocus', '');
+				}
+			},
 			onMenuExpanded(expanded: boolean) {
 				this.menuExpanded = expanded;
 			},
@@ -78,6 +113,40 @@ export default Vue
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
+			},
+			onDrop(data: string) {
+				this.forceShowExpression= true;
+				setTimeout(() => {
+					if (this.node) {
+						const prevValue = this.value;
+						let updatedValue: string;
+						if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
+							updatedValue = `${prevValue} ${data}`;
+						}
+						else {
+							updatedValue = `=${data}`;
+						}
+
+						const parameterData = {
+							node: this.node.name,
+							name: this.path,
+							value: updatedValue,
+						};
+
+						this.$emit('valueChanged', parameterData);
+
+						if (window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true') {
+							this.$showMessage({
+								title: this.$locale.baseText('dataMapping.success.title'),
+								message: this.$locale.baseText('dataMapping.success.moreInfo'),
+								type: 'success',
+							});
+
+							window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+						}
+					}
+					this.forceShowExpression= false;
+				}, 200);
 			},
 		},
 	});
