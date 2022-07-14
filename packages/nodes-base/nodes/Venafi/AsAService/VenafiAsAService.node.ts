@@ -322,8 +322,8 @@ export class VenafiAsAService implements INodeType {
 
 							let keystorePassphrase = '';
 
-							if (options.keystorePassphrase) {
-								keystorePassphrase = options.keystorePassphrase as string;
+							if (exportFormat === 'JKS') {
+								keystorePassphrase = this.getNodeParameter('keystorePassphrase', i) as string;
 							}
 
 							const encryptedValues = await encryptPassphrase.call(this, certificateId, privateKeyPassphrase, keystorePassphrase ) as string;

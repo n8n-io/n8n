@@ -167,6 +167,29 @@ export const certificateFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Keystore Passphrase',
+		name: 'keystorePassphrase',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'download',
+				],
+				resource: [
+					'certificate',
+				],
+				downloadItem: [
+					'keystore',
+				],
+				keystoreType: [
+					'JKS',
+				],
+			},
+		},
+		default: '',
+	},
+	{
 		displayName: 'Binary Property',
 		name: 'binaryProperty',
 		type: 'string',
@@ -239,12 +262,6 @@ export const certificateFields: INodeProperties[] = [
 					},
 				],
 				default: 'PEM',
-			},
-			{
-				displayName: 'Keystore Passphrase',
-				name: 'keystorePassphrase',
-				type: 'string',
-				default: '',
 			},
 		],
 	},
