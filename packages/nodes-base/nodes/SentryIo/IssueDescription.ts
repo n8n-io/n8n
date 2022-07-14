@@ -92,7 +92,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -116,7 +116,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the project the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
