@@ -4,10 +4,11 @@
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
 
 		<n8n-input
-			v-if="isValueExpression && showExpressionAsTextInput"
+			v-if="isValueExpression"
 			:size="inputSize"
+			:type="getStringInputType"
+			:rows="getArgument('rows')"
 			:value="expressionDisplayValue"
-			:disabled="isReadOnly"
 			:title="displayTitle"
 			@keydown.stop
 		/>
@@ -35,10 +36,10 @@
 				@focus="setFocus"
 				@blur="onBlur"
 				:title="displayTitle"
-				:placeholder="isValueExpression ? '' : getPlaceholder()"
+				:placeholder="getPlaceholder()"
 			>
 				<div slot="suffix" class="expand-input-icon-container">
-					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$locale.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
+					<font-awesome-icon v-if="!isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$locale.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
 				</div>
 			</n8n-input>
 		</div>
@@ -123,15 +124,6 @@
 				<parameter-issues
 					:issues="getIssues"
 				/>
-				<parameter-options
-				 	v-if="displayOptionsComputed"
-					:displayOptionsComputed="displayOptionsComputed"
-					:parameter="parameter"
-					:isValueExpression="isValueExpression"
-					:isDefault="isDefault"
-					:hasRemoteMethod="hasRemoteMethod"
-					@optionSelected="optionSelected"
-				/>
 			</template>
 		</credentials-select>
 
@@ -205,16 +197,6 @@
 		:issues="getIssues"
 	/>
 
-	<parameter-options
-		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect'"
-		:displayOptionsComputed="displayOptionsComputed"
-		:parameter="parameter"
-		:isValueExpression="isValueExpression"
-		:isDefault="isDefault"
-		:hasRemoteMethod="hasRemoteMethod"
-		@optionSelected="optionSelected"
-	/>
-
 	</div>
 </template>
 
@@ -274,7 +256,6 @@ export default mixins(
 			TextEdit,
 		},
 		props: [
-			'displayOptions', // boolean
 			'inputSize',
 			'isReadOnly',
 			'documentationUrl',
@@ -351,11 +332,6 @@ export default mixins(
 			},
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
-			},
-			showExpressionAsTextInput(): boolean {
-				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
-
-				return types.includes(this.parameter.type);
 			},
 			dependentParametersValues (): string | null {
 				const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn') as string[] | undefined;
@@ -462,20 +438,6 @@ export default mixins(
 
 				return value;
 			},
-			displayOptionsComputed (): boolean {
-				if (this.isReadOnly === true) {
-					return false;
-				}
-				if (this.parameter.type === 'collection') {
-					return false;
-				}
-
-				if (this.displayOptions === true) {
-					return true;
-				}
-
-				return false;
-			},
 			expressionValueComputed (): NodeParameterValue | string[] | null {
 				if (this.areExpressionsDisabled) {
 					return this.value;
@@ -510,6 +472,10 @@ export default mixins(
 
 				const rows = this.getArgument('rows');
 				if (rows !== undefined && rows > 1) {
+					return 'textarea';
+				}
+
+				if (this.parameter.type === 'code') {
 					return 'textarea';
 				}
 
@@ -581,9 +547,6 @@ export default mixins(
 
 				return [];
 			},
-			isDefault (): boolean {
-				return this.parameter.default === this.value;
-			},
 			isEditor (): boolean {
 				return ['code', 'json'].includes(this.editorType);
 			},
@@ -632,9 +595,6 @@ export default mixins(
 				};
 				if (this.parameter.type === 'credentialsSelect') {
 					return styles;
-				}
-				if (this.displayOptionsComputed === true) {
-					deductWidth += 25;
 				}
 				if (this.getIssues.length) {
 					deductWidth += 20;
@@ -868,6 +828,8 @@ export default mixins(
 			optionSelected (command: string) {
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
+				} else if (command === 'openExpression') {
+					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
 						this.valueChanged(`={{${this.value}}}`);
@@ -876,8 +838,10 @@ export default mixins(
 						this.valueChanged(`=${this.value}`);
 					}
 
-					this.expressionEditDialogVisible = true;
-					this.trackExpressionEditOpen();
+					setTimeout(() => {
+						this.expressionEditDialogVisible = true;
+						this.trackExpressionEditOpen();
+					}, 250);
 				} else if (command === 'removeExpression') {
 					let value = this.expressionValueComputed;
 
@@ -893,6 +857,8 @@ export default mixins(
 			},
 		},
 		mounted () {
+			this.$on('optionSelected', this.optionSelected);
+
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {
 				this.nodeName = this.node.name;
@@ -986,18 +952,13 @@ export default mixins(
 }
 
 .expression {
-	textarea[disabled], input[disabled] {
+	textarea, input {
 		cursor: pointer !important;
 	}
 
-	.el-switch__core {
-		border: 1px dashed $--custom-expression-text;
-	}
-
-	--input-border-color: #{$--custom-expression-text};
-	--input-border-style: dashed;
-	--input-background-color: #{$--custom-expression-background};
-	--disabled-border: #{$--custom-expression-text};
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-2);
+	--input-font-color: var(--color-secondary);
 }
 
 .has-issues {
