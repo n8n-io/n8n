@@ -266,7 +266,7 @@ const createAttributeOperations: INodeProperties[] = [
 						displayName: 'Attribute',
 						values: [
 							{
-								displayName: 'Value',
+								displayName: 'Value ID',
 								name: 'attributeCategoryValue',
 								type: 'number',
 								default: 1,
