@@ -58,7 +58,7 @@ div.el-input {
 
 	&:hover {
 		input:not(:focus) {
-			border: $--custom-input-border-shadow
+			border: 1px solid var(--color-text-lighter);
 		}
 	}
 }

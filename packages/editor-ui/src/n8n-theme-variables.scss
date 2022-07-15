@@ -10,31 +10,24 @@ $--custom-font-dark: var(--color-text-dark);
 $--custom-font-light: var(--color-text-light);
 $--custom-font-very-light: var(--color-text-light);
 
-$--custom-header-background: var(--color-foreground-xdark);
-
-$--custom-expression-text: var(--color-text-dark);
+$--custom-expression-text: var(--color-secondary);
 $--custom-expression-background: var(--color-background-lighter);
 
 // Badge
 $--badge-danger-color: var(--color-danger);
-$--badge-danger-background-color: #fef0f0;
-$--badge-danger-border-color: #fde2e2;
-$--badge-warning-background-color: rgba(255, 229, 100, 0.3);
-$--badge-warning-color: #6b5900;
+$--badge-danger-background-color: var(--color-primary-tint-3);
+$--badge-danger-border-color: var(--color-primary-tint-2);
+$--badge-warning-background-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), .3);
+$--badge-warning-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), .3);;
+$--badge-warning-color: var(--color-text-dark);
 
 // Warning tooltip
-$--warning-tooltip-color: #ff8080;
+$--warning-tooltip-color: var(--color-danger);
 
 // Table
-$--custom-table-background-main: $--custom-header-background;
+$--custom-table-background-main: hsla(var(--color-background-dark-h), var(--color-background-dark-s), var(--color-background-dark-l), .8);
 $--custom-table-background-stripe-color: var(--color-foreground-light);
 $--custom-table-background-hover-color: var(--color-foreground-base);
-
-$--custom-input-background-disabled: #ccc;
-$--custom-input-font: #333;
-$--custom-input-border-color: var(--color-text-lighter);
-$--custom-input-font-disabled: #555;
-$--custom-input-border-shadow: 1px solid $--custom-input-border-color;
 
 $--header-height: 65px;
 
@@ -57,10 +50,10 @@ $--breakpoint-md: 1200px;
 $--breakpoint-lg: 1920px;
 
 // tags
-$--tag-background-color: #dce1e9;
-$--tag-text-color: #3d3f46;
-$--tag-close-background-color: #717782;
-$--tag-close-background-hover-color: #3d3f46;
+$--tag-background-color: var(--color-foreground-base);
+$--tag-text-color: var(--color-text-dark);
+$--tag-close-background-color: var(--color-text-light);
+$--tag-close-background-hover-color: var(--color-text-dark);
 
 // Node creator
 $--node-creator-width: 385px;
@@ -75,7 +68,7 @@ $--node-creator-no-results-background-color: var(--color-background-xlight);
 $--node-creator-close-button-color: var(--color-text-xlight);
 $--node-creator-search-clear-background-color: var(--color-text-light);
 $--node-creator-search-clear-background-color-hover: var(--color-text-base);
-$--node-creator-search-placeholder-color: var(--color-foreground-xdark);
+$--node-creator-search-placeholder-color: var(--color-text-light);
 $--node-creator-subcategory-panel-header-bacground-color: var(--color-background-base);
 $--node-creator-description-color: var(--color-text-base);
 
@@ -99,5 +92,5 @@ $--version-card-background-color: var(--color-background-xlight);
 $--version-card-border: var(--border-base);
 $--version-card-description-text-color: var(--color-text-base);
 $--version-card-release-date-text-color: var(--color-foreground-xdark);
-$--version-card-box-shadow-color: rgba(109, 48, 40, 0.07);
+$--version-card-box-shadow-color: hsla(var(--color-background-dark-h), var(--color-background-dark-s), var(--color-background-dark-l), .07);
 
