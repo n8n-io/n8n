@@ -82,6 +82,3 @@ export async function validateCredentials(this: ICredentialTestFunctions, decryp
 	}
 	return this.helpers.request!(options);
 }
-
-
-

@@ -4,11 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
-	INodeCredentialTestResult,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -17,7 +13,6 @@ import {
 import {
 	calendlyApiRequest,
 	getAuthenticationType,
-	validateCredentials,
 } from './GenericFunctions';
 
 export class CalendlyTrigger implements INodeType {
@@ -37,7 +32,6 @@ export class CalendlyTrigger implements INodeType {
 			{
 				name: 'calendlyApi',
 				required: true,
-				testedBy: 'calendlyApiCredentialTest',
 			},
 		],
 		webhooks: [
@@ -90,25 +84,6 @@ export class CalendlyTrigger implements INodeType {
 			},
 		],
 
-	};
-
-	methods = {
-		credentialTest: {
-			async calendlyApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The security token included in the request is invalid',
-					};
-				}
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
 	};
 
 	// @ts-ignore (because of request)
@@ -280,4 +255,3 @@ export class CalendlyTrigger implements INodeType {
 		};
 	}
 }
-

@@ -1,5 +1,6 @@
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
@@ -32,6 +33,13 @@ export class CalendlyApi implements ICredentialType {
 		}
 		return requestOptions;
 	}
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://calendly.com',
+			url: '/api/v1/users/me',
+		},
+	};
 }
 
  const getAuthenticationType = (data: string): 'accessToken' | 'apiKey' => {
