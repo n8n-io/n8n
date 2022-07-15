@@ -1,4 +1,3 @@
-// eslint-disable-next-line n8n-nodes-base/filesystem-wrong-cred-filename
 import {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
