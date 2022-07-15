@@ -68,7 +68,7 @@ $--tag-close-background-hover-color: #3d3f46;
 
 // Node creator
 $--node-creator-width: 385px;
-$--node-creator-text-color: #555;
+$--node-creator-text-color: var(--color-text-dark);
 $--node-creator-select-background-color: #f2f4f8;
 $--node-creator-background-color: var(--color-background-xlight);
 $--node-creator-search-background-color: var(--color-foreground-xlight);
@@ -95,7 +95,7 @@ $--updates-panel-info-url-color: $--color-primary;
 $--updates-panel-border: 1px #dbdfe7 solid;
 $--updates-panel-dark-background-color: #f8f9fb;
 $--updates-panel-description-text-color: #7d7d87;
-$--updates-panel-text-color: #555;
+$--updates-panel-text-color: var(--color-text-dark);
 
 // versions card
 $--version-card-name-text-color: #666;

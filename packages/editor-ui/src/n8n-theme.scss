@@ -87,14 +87,14 @@
 		background-color: $--custom-table-background-main;
 	}
 	tr {
-		color: #555;
+		color: var(--color-text-dark);
 
 		td {
 			border: none;
 		}
 	}
 	.tr {
-		color: #555;
+		color: var(--color-text-dark);
 	}
 }
 .el-table--striped {
@@ -137,7 +137,7 @@
 .el-pagination .btn-prev,
 .el-pagination .btn-next {
 	background: none;
-	color: #555;
+	color: var(--color-text-dark);
 }
 .el-pagination button:disabled {
 	background: none;
@@ -145,7 +145,7 @@
 }
 .el-pager li.btn-quicknext,
 .el-pager li.btn-quickprev {
-	color: #555;
+	color: var(--color-text-dark);
 }
 
 // Notification

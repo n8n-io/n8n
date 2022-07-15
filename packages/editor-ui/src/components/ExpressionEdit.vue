@@ -221,7 +221,7 @@ export default mixins(
 	border-top-left-radius: 8px;
 
 	background-color: var(--color-background-base);
-	color: #555;
+	color: var(--color-text-dark);
 	border-bottom: 1px solid $--color-primary;
 	margin-bottom: 1em;
 
