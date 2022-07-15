@@ -192,7 +192,7 @@ export default mixins(
 	white-space: normal;
 	overflow: visible;
 	text-overflow: initial;
-	color: #404040;
+	color: var(--color-text-dark);
 	text-align: left;
 	direction: ltr;
 	word-break: break-all;

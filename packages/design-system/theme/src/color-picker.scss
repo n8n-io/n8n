@@ -350,7 +350,7 @@
 
 	@include mixins.e(empty) {
 		font-size: 12px;
-		color: #999;
+		color: var(--color-text-light);
 		position: absolute;
 		top: 50%;
 		left: 50%;

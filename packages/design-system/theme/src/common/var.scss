@@ -429,7 +429,7 @@ $select-group-font-size: 12px;
 
 $select-dropdown-background: $color-white;
 $select-dropdown-shadow: $box-shadow-light;
-$select-dropdown-empty-color: #999;
+$select-dropdown-empty-color: var(--color-text-light);
 /// height||Other|4
 $select-dropdown-max-height: 274px;
 $select-dropdown-padding: 6px 0;
