@@ -73,7 +73,7 @@
 		width: 4px;
 		height: 100%;
 		border-radius: 1px;
-		background: #fff;
+		background: var(--color-foreground-xlight);
 		border: 1px solid #f0f0f0;
 		box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
 		z-index: 1;
@@ -168,7 +168,7 @@
 		width: 4px;
 		height: 100%;
 		border-radius: 1px;
-		background: #fff;
+		background: var(--color-foreground-xlight);
 		border: 1px solid #f0f0f0;
 		box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
 		z-index: 1;

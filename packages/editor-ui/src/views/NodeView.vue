@@ -3200,7 +3200,7 @@ export default mixins(
 	margin: 0 0.1em;
 	border-radius: 3px;
 	font-size: 1.2em;
-	background: #fff;
+	background: var(--color-foreground-xlight);
 	width: 40px;
 	height: 40px;
 	color: #666;

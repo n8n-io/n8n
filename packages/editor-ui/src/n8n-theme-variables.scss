@@ -4,7 +4,7 @@ $--color-primary-light: #fbebed;
 
 // Dialog
 $--custom-dialog-text-color: #666;
-$--custom-dialog-background: #fff;
+$--custom-dialog-background: var(--color-background-xlight);
 
 $--custom-font-black: #000;
 $--custom-font-dark: #595e67;
