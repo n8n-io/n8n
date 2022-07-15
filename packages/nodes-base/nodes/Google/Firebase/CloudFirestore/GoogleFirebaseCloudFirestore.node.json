@@ -13,7 +13,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleFirebaseCloudFirestore/"
+				"url": "https://docs.n8n.io/integrations/nodes/n8n-nodes-base.googlecloudfirestore/"
 			}
 		]
 	}

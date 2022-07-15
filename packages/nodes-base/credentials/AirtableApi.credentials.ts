@@ -20,8 +20,8 @@ export class AirtableApi implements ICredentialType {
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			headers: {
-				Authorization: '={{$credentials.apiKey}}',
+			qs: {
+				api_key: '={{$credentials.apiKey}}',
 			},
 		},
 	};

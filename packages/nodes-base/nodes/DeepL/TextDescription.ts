@@ -29,7 +29,7 @@ export const textOperations: INodeProperties[] = [
 			loadOptionsMethod: 'getLanguages',
 		},
 		default: '',
-		description: 'Language to translate to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Language to translate to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 		displayOptions: {
 			show: {
@@ -51,7 +51,7 @@ export const textOperations: INodeProperties[] = [
 				name: 'sourceLang',
 				type: 'options',
 				default: '',
-				description: 'Language to translate from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Language to translate from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
