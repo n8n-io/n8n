@@ -67,9 +67,11 @@ export async function getWorkflowIdsViaTags(tags: string[]): Promise<number[]> {
 		relations: ['workflows'],
 	});
 
-	const workflowIdsPerTag = dbTags.map((tag) => tag.workflows.map((workflow) => workflow.id));
+	const workflowIdsPerTag = dbTags.map((tag: { workflows: WorkflowEntity[] }) =>
+		tag.workflows.map((workflow: WorkflowEntity) => workflow.id),
+	);
 
-	return intersection(...workflowIdsPerTag);
+	return intersection<number>(...workflowIdsPerTag);
 }
 
 export async function createWorkflow(

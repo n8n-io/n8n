@@ -195,7 +195,10 @@ test('GET /workflows should return all owned workflows with pagination', async (
 });
 
 test('GET /workflows should return all owned workflows filtered by tag', async () => {
-	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+	const member = await testDb.createUser({
+		globalRole: globalMemberRole,
+		apiKey: randomApiKey(),
+	});
 
 	const authAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -204,7 +207,7 @@ test('GET /workflows should return all owned workflows filtered by tag', async (
 		version: 1,
 	});
 
-	const tag = await testDb.createTag({});
+	const tag = await testDb.createTag({ name: 'tag', id: 1 });
 
 	const [workflow] = await Promise.all([
 		testDb.createWorkflow({ tags: [tag] }, member),
