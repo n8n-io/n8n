@@ -21,14 +21,17 @@ export const contactOperations: INodeProperties[] = [
 						url: '/v3/contacts',
 					},
 				},
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
@@ -60,6 +63,7 @@ export const contactOperations: INodeProperties[] = [
 						},
 					},
 				},
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Update',
@@ -76,6 +80,7 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
@@ -87,6 +92,7 @@ const createOperations: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: ['contact'],

@@ -54,6 +54,7 @@ export const attributeOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Create an attribute',
 			},
 			{
 				name: 'Update',
@@ -61,9 +62,10 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/v3/contacts/attributes/{{$parameter.updateAttributeCategory}}/{{$parameter.updateAttributeName.toLowerCase()}}',
+						url: '=/v3/contacts/attributes/{{$parameter.updateAttributeCategory}}/{{encodeURI($parameter.updateAttributeName)}}',
 					},
 				},
+				action: 'Update an attribute',
 			},
 			{
 				name: 'Delete',
@@ -71,7 +73,7 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/v3/contacts/attributes/{{$parameter.deleteAttributeCategory}}/{{$parameter.deleteAttributeName.toLowerCase()}}',
+						url: '=/v3/contacts/attributes/{{$parameter.deleteAttributeCategory}}/{{encodeURI($parameter.deleteAttributeName)}}',
 					},
 					output: {
 						postReceive: [
@@ -84,6 +86,7 @@ export const attributeOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Delete an attribute',
 			},
 			{
 				name: 'Get All',
@@ -120,6 +123,7 @@ export const attributeOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get all attributes',
 			},
 		],
 		default: 'createAttribute',
@@ -446,24 +450,24 @@ const deleteAttribueOperations: INodeProperties[] = [
 		name: 'deleteAttributeCategory',
 		options: [
 			{
-				name: 'Normal',
-				value: 'normal',
-			},
-			{
-				name: 'Transactional',
-				value: 'transactional',
+				name: 'Calculated',
+				value: 'calculated',
 			},
 			{
 				name: 'Category',
 				value: 'category',
 			},
 			{
-				name: 'Calculated',
-				value: 'calculated',
-			},
-			{
 				name: 'Global',
 				value: 'global',
+			},
+			{
+				name: 'Normal',
+				value: 'normal',
+			},
+			{
+				name: 'Transactional',
+				value: 'transactional',
 			},
 		],
 		type: 'options',

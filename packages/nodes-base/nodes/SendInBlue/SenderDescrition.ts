@@ -17,6 +17,7 @@ export const senderOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a sender',
 			},
 			{
 				name: 'Delete',
@@ -37,6 +38,7 @@ export const senderOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Delete a sender',
 			},
 			{
 				name: 'Get All',
@@ -70,6 +72,7 @@ export const senderOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get all senders',
 			},
 		],
 		default: 'create',
@@ -109,6 +112,7 @@ const senderCreateOperation: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		displayOptions: {
 			show: {
