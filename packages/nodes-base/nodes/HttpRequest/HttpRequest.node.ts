@@ -1216,6 +1216,10 @@ export class HttpRequest implements INodeType {
 					boxOAuth2Api: {
 						includeCredentialsOnRefreshOnBody: true,
 					},
+					shopifyOAuth2Api: {
+						tokenType: 'Bearer',
+						keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
+					},
 				};
 
 				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];

@@ -260,6 +260,8 @@
       "dist/credentials/ServiceNowBasicApi.credentials.js",
       "dist/credentials/Sftp.credentials.js",
       "dist/credentials/ShopifyApi.credentials.js",
+      "dist/credentials/ShopifyAccessTokenApi.credentials.js",
+      "dist/credentials/ShopifyOAuth2Api.credentials.js",
       "dist/credentials/Signl4Api.credentials.js",
       "dist/credentials/SlackApi.credentials.js",
       "dist/credentials/SlackOAuth2Api.credentials.js",
