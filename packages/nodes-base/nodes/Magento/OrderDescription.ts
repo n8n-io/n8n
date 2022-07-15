@@ -11,6 +11,7 @@ export const orderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,25 +24,28 @@ export const orderOperations: INodeProperties[] = [
 				name: 'Cancel',
 				value: 'cancel',
 				description: 'Cancel an order',
+				action: 'Cancel an order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an order',
+				action: 'Get an order',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all orders',
+				action: 'Get all orders',
 			},
 			{
 				name: 'Ship',
 				value: 'ship',
 				description: 'Ship an order',
+				action: 'Ship an order',
 			},
 		],
 		default: 'cancel',
-		description: 'The operation to perform',
 	},
 ];
 

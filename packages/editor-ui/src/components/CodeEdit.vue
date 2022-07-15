@@ -144,7 +144,10 @@ export default mixins(
 				const workflow = this.getWorkflow();
 				const activeNode: INodeUi | null = this.$store.getters.activeNode;
 				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
-				const inputIndex = workflow.getNodeConnectionOutputIndex(activeNode!.name, parentNode[0]) || 0;
+				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]) || {
+					sourceIndex: 0,
+					destinationIndex: 0,
+				};
 
 				const autocompleteData: string[] = [];
 
@@ -164,7 +167,7 @@ export default mixins(
 					}
 				}
 
-				const connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
+				const connectionInputData = this.connectionInputData(parentNode, activeNode!.name, inputName, runIndex, nodeConnection);
 
 				const additionalProxyKeys: IWorkflowDataProxyAdditionalKeys = {
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,

@@ -5,6 +5,7 @@ export const viewOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,40 +18,45 @@ export const viewOperations: INodeProperties[] = [
 				name: 'Delete Row',
 				value: 'deleteViewRow',
 				description: 'Delete view row',
+				action: 'Delete a view row',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a view',
+				action: 'Get a view',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all views',
+				action: 'Get all views',
 			},
 			{
 				name: 'Get Columns',
 				value: 'getAllViewColumns',
 				description: 'Get all views columns',
+				action: 'Get all view columns',
 			},
 			{
 				name: 'Get Rows',
 				value: 'getAllViewRows',
 				description: 'Get all views rows',
-			},
-			{
-				name: 'Update Row',
-				value: 'updateViewRow',
-				description: 'Update row',
+				action: 'Get a view row',
 			},
 			{
 				name: 'Push Button',
 				value: 'pushViewButton',
 				description: 'Push view button',
+				action: 'Push a view button',
+			},
+			{
+				name: 'Update Row',
+				value: 'updateViewRow',
+				action: 'Update a view row',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -60,7 +66,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:get                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -78,7 +84,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'View ID',
@@ -102,7 +108,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:getAll                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -120,7 +126,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -167,7 +173,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:getAllViewRows                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -185,10 +191,10 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -209,7 +215,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the rows from',
+		description: 'The table to get the rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -284,7 +290,7 @@ export const viewFields: INodeProperties[] = [
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: 'Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
+				description: 'Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -312,7 +318,7 @@ export const viewFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Sort By',
@@ -337,7 +343,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:getAllViewColumns                   */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -355,10 +361,10 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -379,7 +385,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the rows from',
+		description: 'The table to get the rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -426,7 +432,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:deleteViewRow                       */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -444,10 +450,10 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		required: true,
@@ -468,10 +474,10 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from',
+		description: 'The view to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Row',
+		displayName: 'Row Name or ID',
 		name: 'rowId',
 		type: 'options',
 		required: true,
@@ -492,13 +498,13 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from',
+		description: 'The view to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   view:pushViewButton                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -516,10 +522,10 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		required: true,
@@ -540,10 +546,10 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from',
+		description: 'The view to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Row',
+		displayName: 'Row Name or ID',
 		name: 'rowId',
 		type: 'options',
 		required: true,
@@ -564,12 +570,13 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from',
+		description: 'The view to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Column',
+		displayName: 'Column Name or ID',
 		name: 'columnId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getViewColumns',
@@ -594,7 +601,7 @@ export const viewFields: INodeProperties[] = [
 /*                                   view:updateViewRow                       */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -612,10 +619,10 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'View',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		required: true,
@@ -636,10 +643,10 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from',
+		description: 'The view to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Row',
+		displayName: 'Row Name or ID',
 		name: 'rowId',
 		type: 'options',
 		required: true,
@@ -660,7 +667,7 @@ export const viewFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The view to get the row from',
+		description: 'The view to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Key Name',
@@ -702,7 +709,7 @@ export const viewFields: INodeProperties[] = [
 				name: 'disableParsing',
 				type: 'boolean',
 				default: false,
-				description: 'If true, the API will not attempt to parse the data in any way',
+				description: 'Whether the API will not attempt to parse the data in any way',
 			},
 		],
 	},

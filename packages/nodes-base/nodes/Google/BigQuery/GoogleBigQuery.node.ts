@@ -93,7 +93,6 @@ export class GoogleBigQuery implements INodeType {
 					},
 				],
 				default: 'record',
-				description: 'The resource to operate on',
 			},
 			...recordOperations,
 			...recordFields,

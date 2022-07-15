@@ -156,6 +156,7 @@
 
 .el-notification__content {
 	text-align: left;
+	word-break: break-word;
 }
 
 
@@ -189,22 +190,21 @@
 	}
 
 	i.el-select__caret {
-		color: var(--color-foreground-xlight);
+		color: var(--color-text-dark);
 	}
 	.el-input .el-input__inner {
 		&,
 		&:hover,
 		&:focus {
 			border-radius: 20px;
-			color: var(--color-foreground-xlight);
-			font-weight: 600;
-			background-color: var(--color-primary);
-			border-color: var(--color-primary);
+			color: var(--color-text-dark);
+			background-color: var(--color-background-base);
+			border-color: var(--color-foreground-base);
 			text-align: center;
 		}
 
 		&::placeholder {
-			color: var(--color-foreground-xlight);
+			color: var(--color-text-dark);
 			opacity: 1; /** Firefox */
 		}
 	}

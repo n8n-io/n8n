@@ -11,6 +11,7 @@ export const webhookOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,16 +24,19 @@ export const webhookOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet webhook',
+				action: 'Create a webhook',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet webhook',
+				action: 'Delete a webhook',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all Onfleet webhooks',
+				action: 'Get all webhooks',
 			},
 		],
 		default: 'getAll',

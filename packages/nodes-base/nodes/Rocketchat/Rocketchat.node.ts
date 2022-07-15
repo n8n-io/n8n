@@ -73,6 +73,7 @@ export class Rocketchat implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Chat',
@@ -80,12 +81,12 @@ export class Rocketchat implements INodeType {
 					},
 				],
 				default: 'chat',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -98,10 +99,10 @@ export class Rocketchat implements INodeType {
 						name: 'Post Message',
 						value: 'postMessage',
 						description: 'Post a message to a channel or a direct message',
+						action: 'Post a message',
 					},
 				],
 				default: 'postMessage',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Channel',
@@ -183,7 +184,7 @@ export class Rocketchat implements INodeType {
 						name: 'avatar',
 						type: 'string',
 						default: '',
-						description: 'If provided, this will make the avatar use the provided image url',
+						description: 'If provided, this will make the avatar use the provided image URL',
 					},
 					{
 						displayName: 'Emoji',
@@ -259,6 +260,7 @@ export class Rocketchat implements INodeType {
 						name: 'collapsed',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Causes the image, audio, and video sections to be hiding when collapsed is true',
 					},
 					{
@@ -302,6 +304,7 @@ export class Rocketchat implements INodeType {
 						name: 'titleLinkDownload',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'When this is true, a download icon appears and clicking this saves the link to file',
 					},
 					{
@@ -320,7 +323,7 @@ export class Rocketchat implements INodeType {
 						description: 'Audio file to play, only supports what html audio does',
 					},
 					{
-						displayName: 'video URL',
+						displayName: 'Video URL',
 						name: 'videoUrl',
 						type: 'string',
 						default: '',

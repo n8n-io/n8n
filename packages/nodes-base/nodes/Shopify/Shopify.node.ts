@@ -57,13 +57,63 @@ export class Shopify implements INodeType {
 			{
 				name: 'shopifyApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'shopifyAccessTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'shopifyOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+				],
+				default: 'apiKey',
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Order',
@@ -75,7 +125,6 @@ export class Shopify implements INodeType {
 					},
 				],
 				default: 'order',
-				description: 'Resource to consume.',
 			},
 			// ORDER
 			...orderOperations,
@@ -140,7 +189,7 @@ export class Shopify implements INodeType {
 						const shipping = additionalFields.shippingAddressUi as IDataObject;
 						const lineItem = (this.getNodeParameter('limeItemsUi', i) as IDataObject).lineItemValues as IDataObject[];
 						if (lineItem === undefined) {
-							throw new NodeOperationError(this.getNode(), 'At least one line item has to be added');
+							throw new NodeOperationError(this.getNode(), 'At least one line item has to be added', { itemIndex: i });
 						}
 						const body: IOrder = {
 							test: true,

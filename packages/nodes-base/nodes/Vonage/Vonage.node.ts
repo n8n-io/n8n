@@ -17,6 +17,7 @@ export class Vonage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vonage',
 		name: 'vonage',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:vonage.png',
 		group: ['input'],
 		version: 1,
@@ -38,6 +39,7 @@ export class Vonage implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'SMS',
@@ -45,16 +47,17 @@ export class Vonage implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Send',
 						value: 'send',
+						action: 'Send an SMS',
 					},
 				],
 				displayOptions: {
@@ -65,7 +68,6 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: 'send',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'From',
@@ -401,10 +403,10 @@ export class Vonage implements INodeType {
 						name: 'status-report-req',
 						type: 'boolean',
 						default: false,
-						description: 'Boolean indicating if you like to receive a Delivery Receipt',
+						description: 'Whether to receive a Delivery Receipt',
 					},
 					{
-						displayName: 'TTL (in minutes)',
+						displayName: 'TTL (in Minutes)',
 						name: 'ttl',
 						type: 'number',
 						default: 4320,

@@ -7,6 +7,7 @@ export const documentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,18 +19,20 @@ export const documentOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a document',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a document',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a document',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -38,9 +41,10 @@ export const documentFields: INodeProperties[] = [
 	/*                                 document: create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Drive',
+		displayName: 'Drive Name or ID',
 		name: 'driveId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDrives',
 		},
@@ -58,9 +62,10 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Folder',
+		displayName: 'Folder Name or ID',
 		name: 'folderId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'driveId',
@@ -120,7 +125,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'The ID in the document URL (or just paste the whole URL)',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -134,7 +139,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'When set to true the document text content will be used else the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -159,7 +164,7 @@ export const documentFields: INodeProperties[] = [
 		description: 'The ID in the document URL (or just paste the whole URL)',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -173,7 +178,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplified version of the response will be used else the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Actions',
@@ -267,7 +272,7 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Find and replace text',
+								name: 'Find and Replace Text',
 								value: 'replaceAll',
 							},
 							{
@@ -584,7 +589,7 @@ export const documentFields: INodeProperties[] = [
 					},
 					// delete named range
 					{
-						displayName: 'Specify range by',
+						displayName: 'Specify Range By',
 						name: 'namedRangeReference',
 						type: 'options',
 						options: [
@@ -740,12 +745,12 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
 								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
@@ -792,12 +797,12 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
 								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
@@ -878,12 +883,12 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'At end of specific position',
+								name: 'At End of Specific Position',
 								value: 'endOfSegmentLocation',
 								description: 'Inserts the text at the end of a header, footer, footnote, or document body',
 							},
 							{
-								name: 'At index',
+								name: 'At Index',
 								value: 'location',
 							},
 						],
@@ -979,7 +984,7 @@ export const documentFields: INodeProperties[] = [
 						displayName: 'Match Case',
 						name: 'matchCase',
 						type: 'boolean',
-						description: 'Indicates whether the search should respect case sensitivity',
+						description: 'Whether the search should respect case sensitivity',
 						default: false,
 						displayOptions: {
 							show: {
@@ -1086,11 +1091,11 @@ export const documentFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Before content at index',
+								name: 'Before Content at Index',
 								value: false,
 							},
 							{
-								name: 'After content at index',
+								name: 'After Content at Index',
 								value: true,
 							},
 						],
@@ -1181,7 +1186,7 @@ export const documentFields: INodeProperties[] = [
 				name: 'writeControlObject',
 				values: [
 					{
-						displayName: 'Revision mode',
+						displayName: 'Revision Mode',
 						name: 'control',
 						type: 'options',
 						options: [

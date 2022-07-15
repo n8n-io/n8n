@@ -7,6 +7,7 @@ export const callOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const callOperations: INodeProperties[] = [
 				name: 'Make',
 				value: 'make',
 				description: 'Make a voice call',
+				action: 'Make a call',
 			},
 		],
 		default: 'make',
-		description: 'Operation to perform.',
 	},
 ];
 

@@ -7,6 +7,7 @@ export const urlOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const urlOperations: INodeProperties[] = [
 				name: 'Expand',
 				value: 'expand',
 				description: 'Expand a URL',
+				action: 'Expand a URL',
 			},
 			{
 				name: 'Shorten',
 				value: 'shorten',
 				description: 'Shorten a URL',
+				action: 'Shorten a URL',
 			},
 			{
 				name: 'Stats',
 				value: 'stats',
 				description: 'Get stats about one short URL',
+				action: 'Get stats for a URL',
 			},
 		],
 		default: 'shorten',
-		description: 'The operation to perform.',
 	},
 ];
 

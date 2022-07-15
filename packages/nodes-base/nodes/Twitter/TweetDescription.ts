@@ -7,6 +7,7 @@ export const tweetOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const tweetOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create or reply a tweet',
+				action: 'Create a tweet',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a tweet',
-			},
-			{
-				name: 'Search',
-				value: 'search',
-				description: 'Search tweets',
+				action: 'Delete a tweet',
 			},
 			{
 				name: 'Like',
 				value: 'like',
 				description: 'Like a tweet',
+				action: 'Like a tweet',
 			},
 			{
 				name: 'Retweet',
 				value: 'retweet',
 				description: 'Retweet a tweet',
+				action: 'Retweet a tweet',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search tweets',
+				action: 'Search for tweets',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -146,7 +151,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'possiblySensitive',
 				type: 'boolean',
 				default: false,
-				description: 'If you upload Tweet media that might be considered sensitive content such as nudity, or medical procedures, you must set this value to true',
+				description: 'Whether you are uploading Tweet media that might be considered sensitive content such as nudity, or medical procedures',
 			},
 		],
 	},
@@ -259,17 +264,17 @@ export const tweetFields: INodeProperties[] = [
 				name: 'includeEntities',
 				type: 'boolean',
 				default: false,
-				description: 'The entities node will not be included when set to false',
+				description: 'Whether the entities node will be included',
 			},
 			{
-				displayName: 'Language',
+				displayName: 'Language Name or ID',
 				name: 'lang',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'Restricts tweets to the given language, given by an ISO 639-1 code. Language detection is best-effort.',
+				description: 'Restricts tweets to the given language, given by an ISO 639-1 code. Language detection is best-effort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Location',
@@ -425,7 +430,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'includeEntities',
 				type: 'boolean',
 				default: false,
-				description: 'The entities will be omitted when set to false',
+				description: 'Whether the entities will be omitted',
 			},
 		],
 	},
@@ -473,7 +478,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'trimUser',
 				type: 'boolean',
 				default: false,
-				description: 'When set to either true, each tweet returned in a timeline will include a user object including only the status authors numerical ID',
+				description: 'Whether each tweet returned in a timeline will include a user object including only the status authors numerical ID',
 			},
 		],
 	},

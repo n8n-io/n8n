@@ -7,6 +7,7 @@ export const trackOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const trackOperations: INodeProperties[] = [
 				name: 'Page',
 				value: 'page',
 				description: 'Track a page',
+				action: 'Track a page',
 			},
 			{
 				name: 'Screen',
 				value: 'screen',
 				description: 'Track a screen',
+				action: 'Track a screen',
 			},
 		],
 		default: 'page',
-		description: 'The operation to perform.',
 	},
 ];
 

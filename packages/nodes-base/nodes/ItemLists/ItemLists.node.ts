@@ -59,31 +59,37 @@ export class ItemLists implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
-					{
-						name: 'Split Out Items',
-						value: 'splitOutItems',
-						description: 'Turn a list inside item(s) into separate items',
-					},
 					{
 						name: 'Aggregate Items',
 						value: 'aggregateItems',
 						description: 'Merge fields into a single new item',
-					},
-					{
-						name: 'Remove Duplicates',
-						value: 'removeDuplicates',
-						description: 'Remove extra items that are similar',
-					},
-					{
-						name: 'Sort',
-						value: 'sort',
-						description: 'Change the item order',
+						action: 'Merge fields into a single new item',
 					},
 					{
 						name: 'Limit',
 						value: 'limit',
 						description: 'Remove items if there are too many',
+						action: 'Remove items if there are too many',
+					},
+					{
+						name: 'Remove Duplicates',
+						value: 'removeDuplicates',
+						description: 'Remove extra items that are similar',
+						action: 'Remove extra items that are similar',
+					},
+					{
+						name: 'Sort',
+						value: 'sort',
+						description: 'Change the item order',
+						action: 'Change the item order',
+					},
+					{
+						name: 'Split Out Items',
+						value: 'splitOutItems',
+						description: 'Turn a list inside item(s) into separate items',
+						action: 'Turn a list inside item(s) into separate items',
 					},
 				],
 				default: 'splitOutItems',
@@ -643,7 +649,7 @@ return 0;`,
 							},
 						},
 						default: false,
-						description: 'If the field to aggregate is a list, whether to merge the output into a single flat list (rather than a list of lists)',
+						description: 'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
 					},
 					{
 						displayName: 'Keep Missing And Null Values',
@@ -690,12 +696,12 @@ return 0;`,
 						if (fieldToSplitOut.includes('.') && disableDotNotation === true) {
 							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
 						} else {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`);
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`, { itemIndex: i });
 						}
 					}
 
 					if (!Array.isArray(arrayToSplit)) {
-						throw new NodeOperationError(this.getNode(), `The provided field '${fieldToSplitOut}' is not an array`);
+						throw new NodeOperationError(this.getNode(), `The provided field '${fieldToSplitOut}' is not an array`, { itemIndex: i });
 					} else {
 
 						for (const element of arrayToSplit) {
@@ -751,7 +757,12 @@ return 0;`,
 								newItem = { ...newItem, [destinationFieldName as string || fieldToSplitOut as string]: element };
 							}
 
-							returnData.push({ json: newItem });
+							returnData.push({
+								json: newItem,
+								pairedItem: {
+									item: i,
+								},
+							});
 						}
 					}
 				}
@@ -789,8 +800,17 @@ return 0;`,
 					}
 				}
 
+
 				let newItem: INodeExecutionData;
-				newItem = { json: {} };
+				newItem = {
+					json: {},
+					pairedItem: Array.from({length}, (_, i) => i).map(index => {
+						return {
+							item: index,
+						};
+					}),
+				};
+
 				// tslint:disable-next-line: no-any
 				const values: { [key: string]: any } = {};
 				const outputFields: string[] = [];
@@ -898,9 +918,10 @@ return 0;`,
 					}
 					keys = fieldsToCompare.map(key => (key.trim()));
 				}
+
 				// This solution is O(nlogn)
 				// add original index to the items
-				const newItems = items.map((item, index) => ({ json: { ...item['json'], __INDEX: index, }, } as INodeExecutionData));
+				const newItems = items.map((item, index) => ({ json: { ...item['json'], __INDEX: index, }, pairedItem: { item: index, } } as INodeExecutionData));
 				//sort items using the compare keys
 				newItems.sort((a, b) => {
 					let result = 0;
@@ -961,7 +982,7 @@ return 0;`,
 				let data = items.filter((_, index) => !removedIndexes.includes(index));
 
 				if (removeOtherFields) {
-					data = data.map(item => ({ json: pick(item.json, ...keys) }));
+					data = data.map((item, index) => ({ json: pick(item.json, ...keys), pairedItem: { item: index, } }));
 				}
 
 				// return the filtered items

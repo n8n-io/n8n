@@ -362,7 +362,7 @@ export const petitionAdditionalFieldsOptions: INodeProperties[] = [
 ];
 
 export const makeSimpleField = (resource: Resource, operation: Operation): INodeProperties => ({
-	displayName: 'Simple',
+	displayName: 'Simplify',
 	name: 'simple',
 	type: 'boolean',
 	displayOptions: {
@@ -376,5 +376,5 @@ export const makeSimpleField = (resource: Resource, operation: Operation): INode
 		},
 	},
 	default: true,
-	description: 'Return a simplified version of the response instead of the raw data',
+	description: 'Whether to return a simplified version of the response instead of the raw data',
 });

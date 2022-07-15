@@ -7,6 +7,7 @@ export const reportOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -20,16 +21,19 @@ export const reportOperations: INodeProperties[] = [
 				name: 'Download',
 				value: 'download',
 				description: 'Download a generated report',
+				action: 'Download a report',
 			},
 			{
 				name: 'Generate',
 				value: 'generate',
 				description: 'Generate a report',
+				action: 'Generate a report',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get list of recently generated report',
+				action: 'Get all reports',
 			},
 		],
 		default: 'getAll',

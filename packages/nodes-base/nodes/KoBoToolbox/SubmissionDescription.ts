@@ -7,6 +7,7 @@ export const submissionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,26 +20,31 @@ export const submissionOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a single submission',
+				action: 'Delete a submission',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single submission',
+				action: 'Get a submission',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all submissions',
+				action: 'Get all submissions',
 			},
 			{
 				name: 'Get Validation Status',
 				value: 'getValidation',
 				description: 'Get the validation status for the submission',
+				action: 'Get the validation status for a submission',
 			},
 			{
 				name: 'Update Validation Status',
 				value: 'setValidation',
 				description: 'Set the validation status of the submission',
+				action: 'Update the validation status for a submission',
 			},
 		],
 		default: 'getAll',
@@ -51,7 +57,7 @@ export const submissionFields: INodeProperties[] = [
 	/*                                submission:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -72,7 +78,7 @@ export const submissionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Submission ID',
@@ -131,7 +137,7 @@ export const submissionFields: INodeProperties[] = [
 	/*                                submission:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form Name/ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -149,7 +155,7 @@ export const submissionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -282,7 +288,7 @@ export const submissionFields: INodeProperties[] = [
 				name: 'download',
 				type: 'boolean',
 				default: false,
-				description: 'Download submitted attachments',
+				description: 'Whether to download submitted attachments',
 			},
 			{
 				displayName: 'Attachments Naming Scheme',
@@ -382,7 +388,7 @@ export const submissionFields: INodeProperties[] = [
 				name: 'reformat',
 				type: 'boolean',
 				default: false,
-				description: 'Apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
+				description: 'Whether to apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
 			},
 			{
 				displayName: 'Sort',

@@ -7,6 +7,7 @@ export const affiliateMetadataOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const affiliateMetadataOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add metadata to affiliate',
+				action: 'Add metadata to an affiliate',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove metadata from affiliate',
+				action: 'Remove metadata from an affiliate',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update affiliate\'s metadata',
+				action: 'Update metadata for an affiliate',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 

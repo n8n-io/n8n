@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const userOperations: INodeProperties[] = [
 				name: 'Info',
 				value: 'info',
 				description: 'Get information about a user',
+				action: 'Get information about a user',
 			},
 			{
 				name: 'Get Presence',
 				value: 'getPresence',
 				description: 'Get online status of a user',
+				action: 'Get a user\'s presence status',
 			},
 		],
 		default: 'info',
-		description: 'The operation to perform.',
 	},
 ];
 

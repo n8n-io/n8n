@@ -47,6 +47,7 @@ export class Vero implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'User',
@@ -60,7 +61,6 @@ export class Vero implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'Resource to consume.',
 			},
 			...userOperations,
 			...eventOperations,

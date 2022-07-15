@@ -7,6 +7,7 @@ export const customFieldOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const customFieldOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a field',
+				action: 'Create a custom field',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a field',
+				action: 'Delete a custom field',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all fields',
+				action: 'Get all custom fields',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a field',
+				action: 'Update a custom field',
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
 ];
 

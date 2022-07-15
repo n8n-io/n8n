@@ -7,6 +7,7 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -20,26 +21,31 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Get Factor Scores',
 				value: 'getFactor',
 				description: 'Get company factor scores and issue counts',
+				action: 'Get a company factor scores and issue counts',
 			},
 			{
 				name: 'Get Historical Factor Scores',
 				value: 'getFactorHistorical',
 				description: 'Get company\'s historical factor scores',
+				action: 'Get a company\'s historical factor scores',
 			},
 			{
 				name: 'Get Historical Scores',
 				value: 'getHistoricalScore',
 				description: 'Get company\'s historical scores',
+				action: 'Get a company\'s historical scores',
 			},
 			{
 				name: 'Get Information and Scorecard',
 				value: 'getScorecard',
 				description: 'Get company information and summary of their scorecard',
+				action: 'Get company information and a summary of their scorecard',
 			},
 			{
 				name: 'Get Score Plan',
 				value: 'getScorePlan',
 				description: 'Get company\'s score improvement plan',
+				action: 'Get a company\'s score improvement plan',
 			},
 		],
 		default: 'getFactor',
@@ -135,7 +141,7 @@ export const companyFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -150,7 +156,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	// company:getFactor

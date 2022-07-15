@@ -7,36 +7,43 @@ export const groupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all groups',
 			},
 			{
 				name: 'Get Members',
 				value: 'getMembers',
+				action: 'Get group members',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a group',
 			},
 			{
 				name: 'Update Members',
 				value: 'updateMembers',
+				action: 'Update group members',
 			},
 		],
 		displayOptions: {
@@ -101,6 +108,9 @@ export const groupFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 10,
 		description: 'Max number of results to return',
 		displayOptions: {
@@ -144,7 +154,7 @@ export const groupFields: INodeProperties[] = [
 		name: 'accessAll',
 		type: 'boolean',
 		default: false,
-		description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
+		description: 'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -164,10 +174,10 @@ export const groupFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group',
+				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -208,13 +218,13 @@ export const groupFields: INodeProperties[] = [
 				name: 'accessAll',
 				type: 'boolean',
 				default: false,
-				description: 'Allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
+				description: 'Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.',
 			},
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group',
+				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',

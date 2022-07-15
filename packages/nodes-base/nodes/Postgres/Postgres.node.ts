@@ -35,25 +35,28 @@ export class Postgres implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in database',
+						action: 'Update rows in database',
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -116,6 +119,7 @@ export class Postgres implements INodeType {
 					},
 				},
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id:int,name:text,description',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 				description: 'Comma-separated list of the properties which should used as columns for the new rows. You can use type casting with colons (:) like id:int.',
@@ -214,7 +218,7 @@ export class Postgres implements INodeType {
 								description: 'Execute each query independently',
 							},
 							{
-								name: 'Multiple queries',
+								name: 'Multiple Queries',
 								value: 'multiple',
 								description: '<b>Default</b>. Sends multiple queries at once to database.',
 							},
@@ -226,6 +230,24 @@ export class Postgres implements INodeType {
 						],
 						default: 'multiple',
 						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.postgres/">the docs</a> for more examples',
+					},
+					{
+						displayName: 'Output Large-Format Numbers As',
+						name: 'largeNumbersOutput',
+						type: 'options',
+						options: [
+							{
+								name: 'Numbers',
+								value: 'numbers',
+							},
+							{
+								name: 'Text',
+								value: 'text',
+								description: 'Use this if you expect numbers longer than 16 digits (otherwise numbers may be incorrect)',
+							},
+						],
+						hint: 'Applies to NUMERIC and BIGINT columns only',
+						default: 'text',
 					},
 					{
 						displayName: 'Query Parameters',
@@ -249,8 +271,18 @@ export class Postgres implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('postgres');
+		const largeNumbersOutput = this.getNodeParameter('additionalFields.largeNumbersOutput', 0, '') as string;
 
 		const pgp = pgPromise();
+
+		if (largeNumbersOutput === 'numbers') {
+			pgp.pg.types.setTypeParser(20, (value: string) => {
+				return parseInt(value, 10);
+			});
+			pgp.pg.types.setTypeParser(1700, (value: string) => {
+				return parseFloat(value);
+			});
+		}
 
 		const config: IDataObject = {
 			host: credentials.host as string,

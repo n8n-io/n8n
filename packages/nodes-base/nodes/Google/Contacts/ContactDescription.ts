@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all contacts',
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -341,9 +346,10 @@ export const contactFields: INodeProperties[] = [
 				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Names or IDs',
 				name: 'group',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
@@ -396,24 +402,28 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: 'Google Voice',
+										value: 'googleVoice',
+									},
+									{
 										name: 'Home',
 										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
 									},
 									{
 										name: 'Home Fax',
 										value: 'homeFax',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
+										name: 'Main',
+										value: 'main',
+									},
+									{
+										name: 'Mobile',
+										value: 'mobile',
+									},
+									{
+										name: 'Other',
+										value: 'other',
 									},
 									{
 										name: 'Other Fax',
@@ -424,24 +434,20 @@ export const contactFields: INodeProperties[] = [
 										value: 'pager',
 									},
 									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
+									},
+									{
 										name: 'Work Mobile',
 										value: 'workMobile',
 									},
 									{
 										name: 'Work Pager',
 										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
 									},
 								],
 								default: '',
@@ -719,7 +725,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns the data exactly in the way it got received from the API',
+		description: 'Whether to return the data exactly in the way it got received from the API',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:getAll                             */
@@ -936,7 +942,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns the data exactly in the way it got received from the API',
+		description: 'Whether to return the data exactly in the way it got received from the API',
 	},
 	{
 		displayName: 'Options',
@@ -1406,9 +1412,10 @@ export const contactFields: INodeProperties[] = [
 				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Names or IDs',
 				name: 'group',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
@@ -1461,24 +1468,28 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: 'Google Voice',
+										value: 'googleVoice',
+									},
+									{
 										name: 'Home',
 										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
 									},
 									{
 										name: 'Home Fax',
 										value: 'homeFax',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
+										name: 'Main',
+										value: 'main',
+									},
+									{
+										name: 'Mobile',
+										value: 'mobile',
+									},
+									{
+										name: 'Other',
+										value: 'other',
 									},
 									{
 										name: 'Other Fax',
@@ -1489,24 +1500,20 @@ export const contactFields: INodeProperties[] = [
 										value: 'pager',
 									},
 									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
+									},
+									{
 										name: 'Work Mobile',
 										value: 'workMobile',
 									},
 									{
 										name: 'Work Pager',
 										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
 									},
 								],
 								default: '',

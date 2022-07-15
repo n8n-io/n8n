@@ -11,6 +11,7 @@ export const tagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,30 +24,34 @@ export const tagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a tag',
+				action: 'Create a tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a tag',
+				action: 'Delete a tag',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a tag',
+				action: 'Get a tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all tags',
+				action: 'Get all tags',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a tag',
+				action: 'Update a tag',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

@@ -7,6 +7,7 @@ export const roomMemberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const roomMemberOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all members',
+				action: 'Get all room members',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -32,9 +33,10 @@ export const roomMemberFields: INodeProperties[] = [
 	/*                             roomMember:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -70,7 +72,7 @@ export const roomMemberFields: INodeProperties[] = [
 		placeholder: 'Add filter',
 		options: [
 			{
-				displayName: 'Exclude membership',
+				displayName: 'Exclude Membership',
 				name: 'notMembership',
 				type: 'options',
 				default: '',

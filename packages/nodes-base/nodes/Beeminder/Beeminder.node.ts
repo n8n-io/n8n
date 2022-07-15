@@ -37,6 +37,7 @@ export class Beeminder implements INodeType {
 		defaults: {
 			name: 'Beeminder',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:beeminder.png',
 		inputs: ['main'],
 		outputs: ['main'],
@@ -51,6 +52,7 @@ export class Beeminder implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -59,40 +61,43 @@ export class Beeminder implements INodeType {
 					},
 				],
 				default: 'datapoint',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create datapoint for goal',
+						action: 'Create datapoint for goal',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a datapoint',
+						action: 'Delete a datapoint',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all datapoints for a goal',
+						action: 'Get all datapoints for a goal',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a datapoint',
+						action: 'Update a datapoint',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 				required: true,
 			},
 			{
-				displayName: 'Goal Name',
+				displayName: 'Goal Name or ID',
 				name: 'goalName',
 				type: 'options',
 				typeOptions: {
@@ -106,7 +111,7 @@ export class Beeminder implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The name of the goal',
+				description: 'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				required: true,
 			},
 			{

@@ -7,6 +7,7 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,21 +20,23 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create Meeting Registrants',
+				action: 'Create a meeting registrant',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update Meeting Registrant Status',
+				action: 'Update a meeting registrant',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all Meeting Registrants',
+				action: 'Get all meeting registrants',
 			},
 
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -42,7 +45,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 	/*                                 meetingRegistrant:create                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -62,6 +65,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -177,25 +181,26 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				displayName: 'Purchasing Time Frame',
 				name: 'purchasingTimeFrame',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Within a month',
+						name: 'Within a Month',
 						value: 'Within a month',
 					},
 					{
-						name: '1-3 months',
+						name: '1-3 Months',
 						value: '1-3 months',
 					},
 					{
-						name: '4-6 months',
+						name: '4-6 Months',
 						value: '4-6 months',
 					},
 					{
-						name: 'More than 6 months',
+						name: 'More than 6 Months',
 						value: 'More than 6 months',
 					},
 					{
-						name: 'No timeframe',
+						name: 'No Timeframe',
 						value: 'No timeframe',
 					},
 				],
@@ -392,14 +397,17 @@ export const meetingRegistrantFields: INodeProperties[] = [
 			{
 				name: 'Cancel',
 				value: 'cancel',
+				action: 'Cancel a meeting registrant',
 			},
 			{
 				name: 'Approved',
 				value: 'approve',
+				action: 'Approved a meeting registrant',
 			},
 			{
 				name: 'Deny',
 				value: 'deny',
+				action: 'Deny a meeting registrant',
 			},
 		],
 		default: '',

@@ -14,7 +14,7 @@ export const options = {
 			name: 'download',
 			type: 'boolean',
 			default: false,
-			description: 'Download submitted attachments',
+			description: 'Whether to download submitted attachments',
 		},
 		{
 			displayName: 'Attachments Naming Scheme',
@@ -107,7 +107,7 @@ export const options = {
 			name: 'reformat',
 			type: 'boolean',
 			default: false,
-			description: 'Apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
+			description: 'Whether to apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
 		},
 	],
 } as INodeProperties;

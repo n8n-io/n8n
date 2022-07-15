@@ -13,6 +13,7 @@ export const personOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -24,26 +25,30 @@ export const personOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a person',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a person',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a person',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all people',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a person',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 

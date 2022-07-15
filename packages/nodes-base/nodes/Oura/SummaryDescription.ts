@@ -7,6 +7,7 @@ export const summaryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const summaryOperations: INodeProperties[] = [
 				name: 'Get Activity Summary',
 				value: 'getActivity',
 				description: 'Get the user\'s activity summary',
+				action: 'Get activity summary',
 			},
 			{
 				name: 'Get Readiness Summary',
 				value: 'getReadiness',
 				description: 'Get the user\'s readiness summary',
+				action: 'Get readiness summary',
 			},
 			{
 				name: 'Get Sleep Periods',
 				value: 'getSleep',
 				description: 'Get the user\'s sleep summary',
+				action: 'Get sleep summary',
 			},
 		],
 		default: 'getSleep',
-		description: 'Operation to perform.',
 	},
 ];
 

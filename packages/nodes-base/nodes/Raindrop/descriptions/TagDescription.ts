@@ -7,16 +7,18 @@ export const tagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all tags',
 			},
 		],
 		displayOptions: {
@@ -69,14 +71,14 @@ export const tagFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Collection ID',
+				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},
 				default: '',
-				description: 'It\'s possible to restrict remove action to just one collection. It\'s optional.',
+				description: 'It\'s possible to restrict remove action to just one collection. It\'s optional. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -142,9 +144,10 @@ export const tagFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Collection ID',
+				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},

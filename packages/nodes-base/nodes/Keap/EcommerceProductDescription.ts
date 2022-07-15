@@ -7,6 +7,7 @@ export const ecommerceProductOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const ecommerceProductOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an ecommerce product',
+				action: 'Create an e-commerce product',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an ecommerce product',
+				action: 'Delete an e-commerce product',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an ecommerce product',
+				action: 'Get an e-commerce product',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all ecommerce product',
+				action: 'Get all e-commerce products',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

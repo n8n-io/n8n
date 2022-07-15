@@ -7,6 +7,7 @@ export const projectOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const projectOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a project',
+				action: 'Create a project',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a project',
+				action: 'Delete a project',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a project',
+				action: 'Get a project',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all projects',
+				action: 'Get all projects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a project',
+				action: 'Update a project',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -99,9 +104,10 @@ export const projectFields: INodeProperties[] = [
 				default: '#0000FF',
 			},
 			{
-				displayName: 'Client ID',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -279,9 +285,10 @@ export const projectFields: INodeProperties[] = [
 				default: true,
 			},
 			{
-				displayName: 'Client IDs',
+				displayName: 'Client Names or IDs',
 				name: 'clients',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -295,7 +302,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'contains-client',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they have a client',
+				description: 'Whether to return only projects having a client',
 			},
 			{
 				displayName: 'Client Status',
@@ -319,14 +326,14 @@ export const projectFields: INodeProperties[] = [
 				name: 'contains-user',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they have users',
+				description: 'Whether to return only projects having users',
 			},
 			{
 				displayName: 'Is Template',
 				name: 'is-template',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they are used as a template',
+				description: 'Whether to return only projects as templates',
 			},
 			{
 				displayName: 'Name',
@@ -371,9 +378,10 @@ export const projectFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User IDs',
+				displayName: 'User Name or ID',
 				name: 'users',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -452,9 +460,10 @@ export const projectFields: INodeProperties[] = [
 				default: '#0000FF',
 			},
 			{
-				displayName: 'Client ID',
+				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',

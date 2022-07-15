@@ -1243,6 +1243,7 @@ describe('Workflow', () => {
 										],
 									],
 								},
+								source: [],
 							},
 						],
 					},
@@ -1282,6 +1283,400 @@ describe('Workflow', () => {
 					},
 				],
 			});
+		});
+	});
+
+	describe('getParentNodesByDepth', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const SIMPLE_WORKFLOW = new Workflow({
+			nodeTypes,
+			nodes: [
+				{
+					parameters: {},
+					name: 'Start',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					name: 'Set',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [460, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					name: 'Set1',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [680, 300],
+				},
+			],
+			connections: {
+				Start: {
+					main: [
+						[
+							{
+								node: 'Set',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+				Set: {
+					main: [
+						[
+							{
+								node: 'Set1',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+			},
+			active: false,
+		});
+
+		const WORKFLOW_WITH_SWITCH = new Workflow({
+			active: false,
+			nodeTypes,
+			nodes: [
+				{
+					parameters: {},
+					name: 'Switch',
+					type: 'test.switch',
+					typeVersion: 1,
+					position: [460, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					name: 'Set',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [740, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					name: 'Set1',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [780, 100],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					name: 'Set2',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [1040, 260],
+				},
+			],
+			connections: {
+				Switch: {
+					main: [
+						[
+							{
+								node: 'Set1',
+								type: 'main',
+								index: 0,
+							},
+						],
+						[
+							{
+								node: 'Set',
+								type: 'main',
+								index: 0,
+							},
+						],
+						[
+							{
+								node: 'Set',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+				Set: {
+					main: [
+						[
+							{
+								node: 'Set2',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+				Set1: {
+					main: [
+						[
+							{
+								node: 'Set2',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+			},
+		});
+
+		const WORKFLOW_WITH_LOOPS = new Workflow({
+			nodeTypes,
+			active: false,
+			nodes: [
+				{
+					parameters: {},
+					name: 'Switch',
+					type: 'test.switch',
+					typeVersion: 1,
+					position: [920, 340],
+				},
+				{
+					parameters: {},
+					name: 'Start',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					name: 'Set1',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [700, 340],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					name: 'Set',
+					type: 'test.set',
+					typeVersion: 1,
+					position: [1220, 300],
+				},
+				{
+					parameters: {},
+					name: 'Switch',
+					type: 'test.switch',
+					typeVersion: 1,
+					position: [920, 340],
+				},
+			],
+			connections: {
+				Switch: {
+					main: [
+						[
+							{
+								node: 'Set',
+								type: 'main',
+								index: 0,
+							},
+						],
+						[], // todo why is null not accepted
+						[
+							{
+								node: 'Switch',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+				Start: {
+					main: [
+						[
+							{
+								node: 'Set1',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+				Set1: {
+					main: [
+						[
+							{
+								node: 'Set1',
+								type: 'main',
+								index: 0,
+							},
+							{
+								node: 'Switch',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+				Set: {
+					main: [
+						[
+							{
+								node: 'Set1',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+			},
+		});
+
+		test('Should return parent nodes of nodes', () => {
+			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Start')).toEqual([]);
+			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set')).toEqual([
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Start',
+				},
+			]);
+			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set1')).toEqual([
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Set',
+				},
+				{
+					depth: 2,
+					indicies: [0],
+					name: 'Start',
+				},
+			]);
+		});
+
+		test('Should return parent up to depth', () => {
+			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set1', 0)).toEqual([]);
+			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set1', 1)).toEqual([
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Set',
+				},
+			]);
+		});
+
+		test('Should return all parents with depth of -1', () => {
+			expect(SIMPLE_WORKFLOW.getParentNodesByDepth('Set1', -1)).toEqual([
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Set',
+				},
+				{
+					depth: 2,
+					indicies: [0],
+					name: 'Start',
+				},
+			]);
+		});
+
+		test('Should return parents of nodes with all connected output indicies', () => {
+			expect(WORKFLOW_WITH_SWITCH.getParentNodesByDepth('Switch')).toEqual([]);
+			expect(WORKFLOW_WITH_SWITCH.getParentNodesByDepth('Set1')).toEqual([
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Switch',
+				},
+			]);
+			expect(WORKFLOW_WITH_SWITCH.getParentNodesByDepth('Set')).toEqual([
+				{
+					depth: 1,
+					indicies: [1, 2],
+					name: 'Switch',
+				},
+			]);
+
+			expect(WORKFLOW_WITH_SWITCH.getParentNodesByDepth('Set2')).toEqual([
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Set',
+				},
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Set1',
+				},
+				{
+					depth: 2,
+					indicies: [1, 2, 0],
+					name: 'Switch',
+				},
+			]);
+		});
+
+		test('Should handle loops within workflows', () => {
+			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Start')).toEqual([]);
+			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Set')).toEqual([
+				{
+					depth: 1,
+					indicies: [0, 2],
+					name: 'Switch',
+				},
+				{
+					depth: 2,
+					indicies: [0],
+					name: 'Set1',
+				},
+				{
+					depth: 3,
+					indicies: [0],
+					name: 'Start',
+				},
+			]);
+			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Switch')).toEqual([
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Set1',
+				},
+				{
+					depth: 2,
+					indicies: [0],
+					name: 'Start',
+				},
+				{
+					depth: 2,
+					indicies: [0],
+					name: 'Set',
+				},
+			]);
+			expect(WORKFLOW_WITH_LOOPS.getParentNodesByDepth('Set1')).toEqual([
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Start',
+				},
+				{
+					depth: 1,
+					indicies: [0],
+					name: 'Set',
+				},
+				{
+					depth: 2,
+					indicies: [0, 2],
+					name: 'Switch',
+				},
+			]);
 		});
 	});
 });

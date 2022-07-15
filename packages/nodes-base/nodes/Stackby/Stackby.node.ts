@@ -20,6 +20,7 @@ export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stackby',
 		name: 'stackby',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:stackby.png',
 		group: ['transform'],
 		version: 1,
@@ -40,6 +41,7 @@ export class Stackby implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Append',
@@ -247,7 +249,7 @@ export class Stackby implements INodeType {
 					const record: { [key: string]: any } = {};
 					for (const column of columnList) {
 						if (items[i].json[column] === undefined) {
-							throw new NodeOperationError(this.getNode(), `Column ${column} does not exist on input`);
+							throw new NodeOperationError(this.getNode(), `Column ${column} does not exist on input`, { itemIndex: i });
 						} else {
 							record[column] = items[i].json[column];
 						}

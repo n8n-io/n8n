@@ -7,6 +7,7 @@ export const publicStatusPageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,22 +20,26 @@ export const publicStatusPageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a public status page',
+				action: 'Create a public status page',
 
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a public status page',
+				action: 'Delete a public status page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a public status page',
+				action: 'Get a public status page',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all a public status pages',
+				action: 'Get all public status pages',
 			},
 			// Got deactivated because it did not work reliably. Looks like it is on the UptimeRobot
 			// side but we deactivate for now just to be sure
@@ -45,7 +50,6 @@ export const publicStatusPageOperations: INodeProperties[] = [
 			// },
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 

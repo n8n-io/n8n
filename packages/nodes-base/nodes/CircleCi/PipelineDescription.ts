@@ -7,6 +7,7 @@ export const pipelineOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const pipelineOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a pipeline',
+				action: 'Get a pipeline',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all pipelines',
+				action: 'Get all pipelines',
 			},
 			{
 				name: 'Trigger',
 				value: 'trigger',
 				description: 'Trigger a pipeline',
+				action: 'Trigger a pipeline',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

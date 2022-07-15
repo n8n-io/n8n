@@ -7,6 +7,7 @@ export const ticketFieldOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const ticketFieldOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a ticket field',
+				action: 'Get a ticket field',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all system and custom ticket fields',
+				action: 'Get all ticket fields',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +54,6 @@ export const ticketFieldFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ticketField ID',
 	},
 
 /* -------------------------------------------------------------------------- */

@@ -13,6 +13,7 @@ export const dealOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -25,35 +26,40 @@ export const dealOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a deal',
+				action: 'Create a deal',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or Update a deal',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a deal',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a deal',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts',
+				action: 'Get all deals',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a deal',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -104,9 +110,10 @@ export const dealFields: INodeProperties[] = [
 	//          deal: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Stage',
+		displayName: 'Stage Name or ID',
 		name: 'stage',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -372,9 +379,10 @@ export const dealFields: INodeProperties[] = [
 				description: 'Averge number of days to win the deal',
 			},
 			{
-				displayName: 'Stage',
+				displayName: 'Stage Name or ID',
 				name: 'Stage',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 					typeOptions: {
 						loadOptionsMethod: 'getDealStage',
 					},

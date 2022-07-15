@@ -76,6 +76,9 @@ export class ReadBinaryFile implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: item.json,
 					binary: {},
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 
 				if (item.binary !== undefined) {
@@ -90,7 +93,14 @@ export class ReadBinaryFile implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

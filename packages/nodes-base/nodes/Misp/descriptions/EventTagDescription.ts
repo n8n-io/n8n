@@ -19,10 +19,12 @@ export const eventTagOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a tag to an event',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a tag from an event',
 			},
 		],
 		default: 'add',
@@ -52,9 +54,9 @@ export const eventTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tag Name/ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		type: 'options',
 		required: true,
 		default: '',
@@ -95,9 +97,9 @@ export const eventTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tag Name/ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		type: 'options',
 		required: true,
 		default: '',

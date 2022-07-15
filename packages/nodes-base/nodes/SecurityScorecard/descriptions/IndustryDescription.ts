@@ -7,6 +7,7 @@ export const industryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -19,14 +20,17 @@ export const industryOperations: INodeProperties[] = [
 			{
 				name: 'Get Factor Scores',
 				value: 'getFactor',
+				action: 'Get factor scores for an industry',
 			},
 			{
 				name: 'Get Historical Factor Scores',
 				value: 'getFactorHistorical',
+				action: 'Get historical factor scores for an industry',
 			},
 			{
 				name: 'Get Score',
 				value: 'getScore',
+				action: 'Get the score for an industry',
 			},
 		],
 		default: 'getFactor',
@@ -119,7 +123,7 @@ export const industryFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -134,7 +138,7 @@ export const industryFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',

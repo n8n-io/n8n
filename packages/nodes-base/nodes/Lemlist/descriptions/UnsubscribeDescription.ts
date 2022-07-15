@@ -7,20 +7,23 @@ export const unsubscribeOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'add',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add an email to an unsubscribe list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an email from an unsubscribe list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all unsubscribed emails',
 			},
 		],
 		displayOptions: {
@@ -41,6 +44,7 @@ export const unsubscribeFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email to add to the unsubscribes',
 		displayOptions: {
@@ -62,6 +66,7 @@ export const unsubscribeFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email to delete from the unsubscribes',
 		displayOptions: {

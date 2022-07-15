@@ -83,7 +83,6 @@ export class Mailjet implements INodeType {
 					},
 				],
 				default: 'email',
-				description: 'Resource to consume',
 			},
 			...emailOperations,
 			...emailFields,
@@ -152,7 +151,7 @@ export class Mailjet implements INodeType {
 							const variablesJson = this.getNodeParameter('variablesJson', i) as string;
 							const parsedJson = validateJSON(variablesJson);
 							if (parsedJson === undefined) {
-								throw new NodeOperationError(this.getNode(),`Parameter 'Variables (JSON)' has a invalid JSON`);
+								throw new NodeOperationError(this.getNode(),`Parameter 'Variables (JSON)' has a invalid JSON`, { itemIndex: i });
 							}
 							body.Variables = parsedJson;
 						} else {
@@ -240,7 +239,7 @@ export class Mailjet implements INodeType {
 							const variablesJson = this.getNodeParameter('variablesJson', i) as string;
 							const parsedJson = validateJSON(variablesJson);
 							if (parsedJson === undefined) {
-								throw new NodeOperationError(this.getNode(), `Parameter 'Variables (JSON)' has a invalid JSON`);
+								throw new NodeOperationError(this.getNode(), `Parameter 'Variables (JSON)' has a invalid JSON`, { itemIndex: i });
 							}
 							body.Variables = parsedJson;
 						} else {

@@ -7,6 +7,7 @@ export const labelOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const labelOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new label',
+				action: 'Create a label',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a label',
+				action: 'Delete a label',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a label',
+				action: 'Get a label',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all labels',
+				action: 'Get all labels',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -122,7 +126,7 @@ export const labelFields: INodeProperties[] = [
 				value: 'hide',
 			},
 			{
-				name: 'show',
+				name: 'Show',
 				value: 'show',
 			},
 		],

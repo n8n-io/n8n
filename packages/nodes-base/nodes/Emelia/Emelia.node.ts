@@ -70,7 +70,6 @@ export class Emelia implements INodeType {
 				],
 				default: 'campaign',
 				required: true,
-				description: 'The resource to operate on',
 			},
 			...campaignOperations,
 			...campaignFields,

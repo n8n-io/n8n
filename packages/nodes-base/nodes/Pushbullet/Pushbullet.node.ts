@@ -45,6 +45,7 @@ export class Pushbullet implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Push',
@@ -52,12 +53,12 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -70,25 +71,28 @@ export class Pushbullet implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a push',
+						action: 'Create a push',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a push',
+						action: 'Delete a push',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all pushes',
+						action: 'Get all pushes',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a push',
+						action: 'Update a push',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',
@@ -274,7 +278,7 @@ export class Pushbullet implements INodeType {
 				description: 'The value to be set depending on the target selected. For example, if the target selected is email then this field would take the email address of the person you are trying to send the push to.',
 			},
 			{
-				displayName: 'Value',
+				displayName: 'Value Name or ID',
 				name: 'value',
 				type: 'options',
 				typeOptions: {
@@ -295,7 +299,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: '',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Push ID',
@@ -377,6 +381,7 @@ export class Pushbullet implements INodeType {
 						name: 'active',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Don\'t return deleted pushes',
 					},
 					{
@@ -421,7 +426,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Marks a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible',
+				description: 'Whether to mark a push as having been dismissed by the user, will cause any notifications for the push to be hidden if possible',
 			},
 		],
 	};
@@ -487,7 +492,7 @@ export class Pushbullet implements INodeType {
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];

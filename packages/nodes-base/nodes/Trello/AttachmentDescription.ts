@@ -10,6 +10,7 @@ export const attachmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,25 +23,28 @@ export const attachmentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new attachment for a card',
+				action: 'Create an attachment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an attachment',
+				action: 'Delete an attachment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of an attachment',
+				action: 'Get an attachment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Returns all attachments for the card',
+				action: 'Get all attachments',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];

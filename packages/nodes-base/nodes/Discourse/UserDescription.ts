@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -21,16 +22,19 @@ export const userOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user',
+				action: 'Get a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all users',
+				action: 'Get all users',
 			},
 		],
 		default: 'create',
@@ -63,6 +67,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {

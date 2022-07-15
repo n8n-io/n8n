@@ -7,6 +7,7 @@ export const buildOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const buildOperations: INodeProperties[] = [
 				name: 'Cancel',
 				value: 'cancel',
 				description: 'Cancel a build',
+				action: 'Cancel a build',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a build',
+				action: 'Get a build',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all builds',
+				action: 'Get all builds',
 			},
 			{
 				name: 'Restart',
 				value: 'restart',
 				description: 'Restart a build',
+				action: 'Restart a build',
 			},
 			{
 				name: 'Trigger',
 				value: 'trigger',
 				description: 'Trigger a build',
+				action: 'Trigger a build',
 			},
 		],
 		default: 'cancel',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -209,28 +214,24 @@ export const buildFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'ID',
-						value: 'id',
-					},
-					{
 						name: 'Created At',
 						value: 'created_at',
 					},
 					{
-						name: 'Started At',
-						value: 'started_at',
-					},
-					{
 						name: 'Finished At',
 						value: 'finished_at',
 					},
 					{
-						name: 'Finished At',
-						value: 'finished_at',
+						name: 'ID',
+						value: 'id',
 					},
 					{
 						name: 'Number',
 						value: 'number',
+					},
+					{
+						name: 'Started At',
+						value: 'started_at',
 					},
 				],
 				default: 'number',
@@ -328,16 +329,16 @@ export const buildFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'Deep Merge',
+						value: 'deep_merge',
+					},
+					{
 						name: 'Deep Merge Append',
 						value: 'deep_merge_append',
 					},
 					{
 						name: 'Deep Merge Prepend',
 						value: 'deep_merge_prepend',
-					},
-					{
-						name: 'Deep Merge',
-						value: 'deep_merge',
 					},
 					{
 						name: 'Merge',

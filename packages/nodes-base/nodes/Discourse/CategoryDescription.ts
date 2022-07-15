@@ -7,6 +7,7 @@ export const categoryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -21,16 +22,19 @@ export const categoryOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a category',
+				action: 'Create a category',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all categories',
+				action: 'Get all categories',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a category',
+				action: 'Update a category',
 			},
 		],
 		default: 'create',

@@ -22,6 +22,7 @@ import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
+	IRunDataDisplayMode,
 	IUiState,
 } from '../Interface';
 
@@ -88,6 +89,16 @@ const module: Module<IUiState, IRootState> = {
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
 		currentView: '',
+		ndv: {
+			sessionId: '',
+			input: {
+				displayMode: 'table',
+			},
+			output: {
+				displayMode: 'table',
+			},
+		},
+		mainPanelPosition: 0.5,
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -109,6 +120,13 @@ const module: Module<IUiState, IRootState> = {
 			return (name: string) => state.modals[name].mode;
 		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
+		ndvSessionId: (state: IUiState): string => state.ndv.sessionId,
+		getPanelDisplayMode: (state: IUiState)  => {
+			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
+		},
+		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
+		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
+		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -143,6 +161,19 @@ const module: Module<IUiState, IRootState> = {
 		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;
 		},
+		setNDVSessionId: (state: IUiState) => {
+			Vue.set(state.ndv, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
+		},
+		resetNDVSessionId: (state: IUiState) => {
+			Vue.set(state.ndv, 'sessionId', '');
+		},
+		setPanelDisplayMode: (state: IUiState, params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}) => {
+			Vue.set(state.ndv[params.pane], 'displayMode', params.mode);
+		},
+		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
+			state.mainPanelPosition = relativePosition;
+		},
+
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {

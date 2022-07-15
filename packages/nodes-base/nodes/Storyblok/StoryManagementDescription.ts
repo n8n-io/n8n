@@ -7,6 +7,7 @@ export const storyManagementOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				source: [
@@ -27,30 +28,34 @@ export const storyManagementOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a story',
+				action: 'Delete a story',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a story',
+				action: 'Get a story',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all stories',
+				action: 'Get all stories',
 			},
 			{
 				name: 'Publish',
 				value: 'publish',
 				description: 'Publish a story',
+				action: 'Publish a story',
 			},
 			{
 				name: 'Unpublish',
 				value: 'unpublish',
 				description: 'Unpublish a story',
+				action: 'Unpublish a story',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -313,7 +318,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -334,7 +339,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -362,7 +367,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -383,7 +388,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -411,7 +416,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -432,7 +437,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -515,7 +520,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:publish                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -536,7 +541,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -600,7 +605,7 @@ export const storyManagementFields: INodeProperties[] = [
 	/*                                story:unpublish                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'space',
 		type: 'options',
 		typeOptions: {
@@ -621,7 +626,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',

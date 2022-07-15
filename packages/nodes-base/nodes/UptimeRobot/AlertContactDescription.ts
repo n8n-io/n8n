@@ -7,6 +7,7 @@ export const alertContactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const alertContactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an alert contact',
+				action: 'Create an alert contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an alert contact',
+				action: 'Delete an alert contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an alert contact',
+				action: 'Get an alert contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all alert contacts',
+				action: 'Get all alert contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an alert contact',
+				action: 'Update an alert contact',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -80,16 +85,8 @@ export const alertContactFields: INodeProperties[] = [
 				value: 4,
 			},
 			{
-				name: 'E-mail',
+				name: 'E-Mail',
 				value: 2,
-			},
-			{
-				name: 'SMS',
-				value: 1,
-			},
-			{
-				name: 'Twitter DM',
-				value: 3,
 			},
 			{
 				name: 'Pushbullet',
@@ -98,6 +95,14 @@ export const alertContactFields: INodeProperties[] = [
 			{
 				name: 'Pushover',
 				value: 9,
+			},
+			{
+				name: 'SMS',
+				value: 1,
+			},
+			{
+				name: 'Twitter DM',
+				value: 3,
 			},
 			{
 				name: 'Webhook',
@@ -116,7 +121,6 @@ export const alertContactFields: INodeProperties[] = [
 			// 	name:'Zapier',
 			// 	value:7,
 			// },
-
 		],
 		displayOptions: {
 			show: {

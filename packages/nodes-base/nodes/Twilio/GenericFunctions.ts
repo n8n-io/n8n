@@ -41,21 +41,23 @@ export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions,
 		json: true,
 	};
 
-	if (credentials.authType === 'apiKey') {
-		options.auth = {
-			user: credentials.apiKeySid,
-			password: credentials.apiKeySecret,
-		};
-	} else if (credentials.authType === 'authToken') {
-		options.auth = {
-			user: credentials.accountSid,
-			pass: credentials.authToken,
-		};
-	}
-
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+const XML_CHAR_MAP: { [key: string]: string } = {
+	'<': '&lt;',
+	'>': '&gt;',
+	'&': '&amp;',
+	'"': '&quot;',
+	'\'': '&apos;',
+};
+
+export function escapeXml(str: string) {
+	return str.replace(/[<>&"']/g, (ch: string) => {
+		return XML_CHAR_MAP[ch];
+	});
 }

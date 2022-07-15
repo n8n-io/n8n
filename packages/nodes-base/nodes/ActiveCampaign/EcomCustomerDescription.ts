@@ -11,6 +11,7 @@ export const ecomCustomerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,30 +24,34 @@ export const ecomCustomerOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a E-commerce Customer',
+				action: 'Create an e-commerce customer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a E-commerce Customer',
+				action: 'Delete an e-commerce customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a E-commerce Customer',
+				action: 'Get an e-commerce customer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all E-commerce Customer',
+				action: 'Get all e-commerce customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a E-commerce Customer',
+				action: 'Update an e-commerce customer',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -94,6 +99,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 		displayName: 'Customer Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -130,7 +136,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'acceptsMarketing',
 				type: 'boolean',
 				default: false,
-				description: 'Indication of whether customer has opt-ed in to marketing communications',
+				description: 'Whether customer has opt-ed in to marketing communications',
 			},
 		],
 	},
@@ -192,6 +198,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				displayName: 'Customer Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address of the customer',
 			},
@@ -200,7 +207,7 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'acceptsMarketing',
 				type: 'boolean',
 				default: false,
-				description: 'Indication of whether customer has opt-ed in to marketing communications',
+				description: 'Whether customer has opt-ed in to marketing communications',
 			},
 		],
 	},

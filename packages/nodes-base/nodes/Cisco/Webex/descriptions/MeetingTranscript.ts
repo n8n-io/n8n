@@ -7,6 +7,7 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,14 +19,15 @@ export const meetingTranscriptOperations: INodeProperties[] = [
 			{
 				name: 'Download',
 				value: 'download',
+				action: 'Download a meeting transcript',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all meeting transcripts',
 			},
 		],
 		default: 'download',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -92,10 +94,12 @@ export const meetingTranscriptFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'txt',
 						value: 'txt',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'vtt',
 						value: 'vtt',
 					},

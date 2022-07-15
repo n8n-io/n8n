@@ -7,6 +7,7 @@ export const templateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const templateOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a template',
+				action: 'Get a template',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all templates',
+				action: 'Get all templates',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

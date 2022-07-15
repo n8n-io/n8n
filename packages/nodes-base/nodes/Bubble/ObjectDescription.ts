@@ -7,28 +7,33 @@ export const objectOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an object',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an object',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an object',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all objects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an object',
 			},
 		],
 		displayOptions: {
@@ -357,6 +362,7 @@ export const objectFields: INodeProperties[] = [
 								displayName: 'Constrain',
 								name: 'constraint_type',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Equals',

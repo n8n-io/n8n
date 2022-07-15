@@ -11,6 +11,7 @@ export const signatureOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,22 +23,25 @@ export const signatureOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a signature',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a signature',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all signatures',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a signature',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 

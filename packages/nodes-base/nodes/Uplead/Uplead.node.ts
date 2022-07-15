@@ -23,6 +23,7 @@ export class Uplead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Uplead',
 		name: 'uplead',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:uplead.png',
 		group: ['output'],
 		version: 1,
@@ -44,6 +45,7 @@ export class Uplead implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
@@ -57,7 +59,6 @@ export class Uplead implements INodeType {
 					},
 				],
 				default: 'company',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...companyFields,

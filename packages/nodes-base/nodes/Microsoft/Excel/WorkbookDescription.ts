@@ -5,6 +5,7 @@ export const workbookOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,15 +18,16 @@ export const workbookOperations: INodeProperties[] = [
 				name: 'Add Worksheet',
 				value: 'addWorksheet',
 				description: 'Adds a new worksheet to the workbook',
+				action: 'Add a worksheet to a workbook',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all workbooks',
+				action: 'Get all workbooks',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -35,9 +37,10 @@ export const workbookFields: INodeProperties[] = [
 /*                                 workbook:addWorksheet                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',

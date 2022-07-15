@@ -51,6 +51,7 @@ export const customerUpdateDescription: CustomerProperties = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{

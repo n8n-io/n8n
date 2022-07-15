@@ -98,12 +98,12 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'apiToken',
-				description: 'The resource to operate on',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Ticket',
@@ -127,7 +127,6 @@ export class Zendesk implements INodeType {
 					},
 				],
 				default: 'ticket',
-				description: 'Resource to consume',
 			},
 			// TICKET
 			...ticketOperations,
@@ -297,7 +296,7 @@ export class Zendesk implements INodeType {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 								}
 							}
 
@@ -349,7 +348,7 @@ export class Zendesk implements INodeType {
 									Object.assign(body, JSON.parse(updateFieldsJson));
 
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 								}
 							}
 

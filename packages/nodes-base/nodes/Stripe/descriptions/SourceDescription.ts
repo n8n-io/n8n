@@ -7,23 +7,26 @@ export const sourceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a source',
+				action: 'Create a source',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a source',
+				action: 'Delete a source',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a source',
+				action: 'Get a source',
 			},
 		],
 		displayOptions: {
@@ -104,14 +107,14 @@ export const sourceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Currency',
+		displayName: 'Currency Name or ID',
 		name: 'currency',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCurrencies',
 		},
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

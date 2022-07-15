@@ -7,6 +7,7 @@ export const campaignOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const campaignOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a campaign',
+				action: 'Create a campaign',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -148,7 +149,7 @@ export const campaignFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Set to true if you want to send the campaign as well and not just create a draft. Default is false.',
+		description: 'Whether to send the campaign as well and not just create a draft. Default is false.',
 	},
 	{
 		displayName: 'Brand ID',
@@ -234,14 +235,14 @@ export const campaignFields: INodeProperties[] = [
 				name: 'trackClicks',
 				type: 'boolean',
 				default: true,
-				description: 'Set to false if you want to disable clicks tracking. Default is true.',
+				description: 'Whether to disable clicks tracking. Default is true.',
 			},
 			{
 				displayName: 'Track Opens',
 				name: 'trackOpens',
 				type: 'boolean',
 				default: true,
-				description: 'Set to false if you want to disable opens tracking. Default is true.',
+				description: 'Whether to disable opens tracking. Default is true.',
 			},
 		],
 	},

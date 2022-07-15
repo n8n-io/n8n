@@ -10,6 +10,7 @@ export const boardMemberOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,25 +23,28 @@ export const boardMemberOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add member to board using member ID',
+				action: 'Add a board member',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all members of a board',
+				action: 'Get all board members',
 			},
 			{
 				name: 'Invite',
 				value: 'invite',
 				description: 'Invite a new member to a board via email',
+				action: 'Invite a board member',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove member from board using member ID',
+				action: 'Remove a board member',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -87,6 +91,9 @@ export const boardMemberFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
@@ -200,7 +207,7 @@ export const boardMemberFields: INodeProperties[] = [
 				name: 'allowBillableGuest',
 				type: 'boolean',
 				default: false,
-				description: 'Allows organization admins to add multi-board guests onto a board',
+				description: 'Whether to allow organization admins to add multi-board guests onto a board',
 			},
 		],
 	},
@@ -230,6 +237,7 @@ export const boardMemberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {

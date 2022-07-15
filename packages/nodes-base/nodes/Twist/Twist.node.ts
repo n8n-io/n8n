@@ -43,6 +43,7 @@ export class Twist implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twist',
 		name: 'twist',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:twist.png',
 		group: ['input'],
 		version: 1,
@@ -64,6 +65,7 @@ export class Twist implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Channel',
@@ -83,7 +85,6 @@ export class Twist implements INodeType {
 					},
 				],
 				default: 'messageConversation',
-				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,
@@ -273,7 +274,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -377,7 +378,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -451,7 +452,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -548,7 +549,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -622,7 +623,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -725,7 +726,7 @@ export class Twist implements INodeType {
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);

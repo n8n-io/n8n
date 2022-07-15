@@ -7,6 +7,7 @@ export const maintenanceWindowOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,31 +20,35 @@ export const maintenanceWindowOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a maintenance window',
+				action: 'Create a maintenance window',
 
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a maintenance window',
+				action: 'Delete a maintenance window',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a maintenance window',
+				action: 'Get a maintenance window',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all a maintenance windows',
+				action: 'Get all maintenance windows',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a maintenance window',
+				action: 'Update a maintenance window',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +57,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 	/*                                maintenanceWindow:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
@@ -140,6 +145,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Monday',
@@ -330,7 +336,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 		description: 'The ID of the maintenance window',
 	},
 	{
-		displayName: 'Duration (minutes)',
+		displayName: 'Duration (Minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
@@ -414,6 +420,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Monday',

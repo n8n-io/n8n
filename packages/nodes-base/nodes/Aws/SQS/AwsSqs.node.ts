@@ -51,18 +51,19 @@ export class AwsSqs implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Send message',
+						name: 'Send Message',
 						value: 'sendMessage',
 						description: 'Send a message to a queue',
+						action: 'Send a message to a queue',
 					},
 				],
 				default: 'sendMessage',
-				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Queue',
+				displayName: 'Queue Name or ID',
 				name: 'queue',
 				type: 'options',
 				typeOptions: {
@@ -78,7 +79,7 @@ export class AwsSqs implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'Queue to send a message to',
+				description: 'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',
@@ -97,14 +98,13 @@ export class AwsSqs implements INodeType {
 					},
 				],
 				default: 'standard',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the data the node receives as JSON to SQS',
+				description: 'Whether to send the data the node receives as JSON to SQS',
 			},
 			{
 				displayName: 'Message',
@@ -363,11 +363,11 @@ export class AwsSqs implements INodeType {
 					const item = items[i];
 
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!');
+						throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!', { itemIndex: i });
 					}
 
 					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
+						throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`, { itemIndex: i });
 					}
 
 					const binaryData = item.binary[dataPropertyName].data;

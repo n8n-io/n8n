@@ -11,6 +11,7 @@ export const attendanceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,18 +23,20 @@ export const attendanceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an attendance',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an attendance',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all attendances',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 

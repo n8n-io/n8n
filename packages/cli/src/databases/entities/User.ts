@@ -21,7 +21,7 @@ import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
-import { answersFormatter, lowerCaser } from '../utils/transformers';
+import { objectRetriever, lowerCaser } from '../utils/transformers';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -98,7 +98,7 @@ export class User {
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
-		transformer: answersFormatter,
+		transformer: objectRetriever,
 	})
 	personalizationAnswers: IPersonalizationSurveyAnswers | null;
 
@@ -133,9 +133,13 @@ export class User {
 	@BeforeInsert()
 	@BeforeUpdate()
 	preUpsertHook(): void {
-		this.email = this.email?.toLowerCase();
+		this.email = this.email?.toLowerCase() ?? null;
 		this.updatedAt = new Date();
 	}
+
+	@Column({ type: String, nullable: true })
+	@Index({ unique: true })
+	apiKey?: string | null;
 
 	/**
 	 * Whether the user is pending setup completion.

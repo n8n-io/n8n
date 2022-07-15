@@ -7,6 +7,7 @@ export const logOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const logOperations: INodeProperties[] = [
 				name: 'Get Error Logs',
 				value: 'getErroLogs',
 				description: 'Get a log for a specific entity',
+				action: 'Get a log for an entity',
 			},
 			{
 				name: 'Get Logbook Entries',
 				value: 'getLogbookEntries',
 				description: 'Get all logs',
+				action: 'Get all logs for an entity',
 			},
 		],
 		default: 'getErroLogs',
-		description: 'The operation to perform.',
 	},
 ];
 

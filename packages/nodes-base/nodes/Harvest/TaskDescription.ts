@@ -11,6 +11,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -21,30 +22,34 @@ export const taskOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a task',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a task',
+				action: 'Get data of a task',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all tasks',
+				action: 'Get data of all tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
+				action: 'Update a task',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -111,7 +116,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active tasks and false to return inactive tasks',
+				description: 'Whether to only return active tasks and false to return inactive tasks',
 			},
 			{
 				displayName: 'Page',
@@ -137,7 +142,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -157,7 +162,7 @@ export const taskFields: INodeProperties[] = [
 	/*                                task:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -212,7 +217,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: true,
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
+				description: 'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
@@ -278,7 +283,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: false,
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
+				description: 'Whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',

@@ -7,6 +7,7 @@ export const mmsOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const mmsOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Send an MMS message (US/Canada only)',
+				action: 'Send an MMS',
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 

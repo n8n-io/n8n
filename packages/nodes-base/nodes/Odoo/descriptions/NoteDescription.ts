@@ -21,26 +21,31 @@ export const noteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new note',
+				action: 'Create a note',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a note',
+				action: 'Delete a note',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a note',
+				action: 'Get a note',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all notes',
+				action: 'Get all notes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a note',
+				action: 'Update a note',
 			},
 		],
 	},
@@ -179,9 +184,11 @@ export const noteDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Fields to Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',

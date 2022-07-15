@@ -7,13 +7,14 @@ export const spaceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'getAll',
-		description: 'Operation to perform.',
 		options: [
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve data on all the spaces in the logged-in user\'s organization',
+				action: 'Get all spaces',
 			},
 		],
 		displayOptions: {

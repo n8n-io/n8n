@@ -7,6 +7,7 @@ export const formOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,11 +20,13 @@ export const formOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a form',
+				action: 'Get a form',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all forms',
+				action: 'Get all forms',
 			},
 		],
 		default: 'get',
@@ -133,7 +136,7 @@ export const formFields: INodeProperties[] = [
 								name: 'descending',
 								type: 'boolean',
 								default: true,
-								description: 'Sort by descending order',
+								description: 'Whether to sort by descending order',
 							},
 							{
 								displayName: 'Order By',

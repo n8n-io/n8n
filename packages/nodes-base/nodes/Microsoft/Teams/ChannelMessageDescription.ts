@@ -20,11 +20,13 @@ export const channelMessageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a message',
+				action: 'Create a message in a channel',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all messages',
+				action: 'Get all messages in a channel',
 			},
 		],
 		default: 'create',
@@ -37,10 +39,11 @@ export const channelMessageFields: INodeProperties[] = [
 	/*                                 channelMessage:create                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
@@ -57,9 +60,10 @@ export const channelMessageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 			loadOptionsDependsOn: [
@@ -157,10 +161,11 @@ export const channelMessageFields: INodeProperties[] = [
 	/*                                 channelMessage:getAll                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'teamId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
@@ -177,9 +182,10 @@ export const channelMessageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 			loadOptionsDependsOn: [

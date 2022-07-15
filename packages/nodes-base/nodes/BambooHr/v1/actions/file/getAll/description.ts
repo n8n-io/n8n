@@ -45,7 +45,7 @@ export const fileGetAllDescription: FileProperties = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,
@@ -59,6 +59,6 @@ export const fileGetAllDescription: FileProperties = [
 				],
 			},
 		},
-		description: 'Whether to simplify the output or not',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

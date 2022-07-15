@@ -7,24 +7,28 @@ export const panelistOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a panelist',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a panelist',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all panelists',
 			},
 			{
 				name: 'Reinvite',
 				value: 'reinvite',
+				action: 'Reinvite a panelist',
 			},
 		],
 		displayOptions: {
@@ -63,6 +67,7 @@ export const panelistFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		description: 'Email address of the panelist to create',
@@ -78,7 +83,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -86,7 +91,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar that the panelist will present at',
+		description: 'Key of the webinar that the panelist will present at. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -103,7 +108,7 @@ export const panelistFields: INodeProperties[] = [
 	//        panelist: getAll
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -111,7 +116,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to retrieve all panelists from',
+		description: 'Key of the webinar to retrieve all panelists from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -169,7 +174,7 @@ export const panelistFields: INodeProperties[] = [
 	//        panelist: delete
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -177,7 +182,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to delete the panelist from',
+		description: 'Key of the webinar to delete the panelist from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -212,7 +217,7 @@ export const panelistFields: INodeProperties[] = [
 	//        panelist: reinvite
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -220,7 +225,7 @@ export const panelistFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to reinvite the panelist to',
+		description: 'Key of the webinar to reinvite the panelist to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

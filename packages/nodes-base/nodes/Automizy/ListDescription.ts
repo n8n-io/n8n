@@ -7,6 +7,7 @@ export const listOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const listOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a list',
+				action: 'Create a list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a list',
+				action: 'Delete a list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a list',
+				action: 'Get a list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all lists',
+				action: 'Get all lists',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a list',
+				action: 'Update a list',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

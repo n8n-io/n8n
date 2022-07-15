@@ -11,6 +11,7 @@ export const tagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,18 +23,20 @@ export const tagOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a tag',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all tags',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 

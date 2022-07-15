@@ -7,6 +7,7 @@ export const meetingOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const meetingOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a meeting',
+				action: 'Create a meeting',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a meeting',
+				action: 'Delete a meeting',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a meeting',
+				action: 'Get a meeting',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all meetings',
+				action: 'Get all meetings',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a meeting',
+				action: 'Update a meeting',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -196,28 +201,28 @@ export const meetingFields: INodeProperties[] = [
 						name: 'hostVideo',
 						type: 'boolean',
 						default: false,
-						description: 'Start video when host joins the meeting',
+						description: 'Whether to start a video when host joins the meeting',
 					},
 					{
 						displayName: 'Join Before Host',
 						name: 'joinBeforeHost',
 						type: 'boolean',
 						default: false,
-						description: 'Allow participants to join the meeting before host starts it',
+						description: 'Whether to allow participants to join the meeting before host starts it',
 					},
 					{
 						displayName: 'Muting Upon Entry',
 						name: 'muteUponEntry',
 						type: 'boolean',
 						default: false,
-						description: 'Mute participants upon entry',
+						description: 'Whether to mute participants upon entry',
 					},
 					{
 						displayName: 'Participant Video',
 						name: 'participantVideo',
 						type: 'boolean',
 						default: false,
-						description: 'Start video when participant joins the meeting',
+						description: 'Whether to start a video when participant joins the meeting',
 					},
 					{
 						displayName: 'Registration Type',
@@ -225,14 +230,17 @@ export const meetingFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees register once and can attend any of the occurrences',
 								value: 1,
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees need to register for every occurrence',
 								value: 2,
 							},
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 								name: 'Attendees register once and can choose one or more occurrences to attend',
 								value: 3,
 							},
@@ -245,7 +253,7 @@ export const meetingFields: INodeProperties[] = [
 						name: 'watermark',
 						type: 'boolean',
 						default: false,
-						description: 'Adds watermark when viewing a shared screen',
+						description: 'Whether to add a watermark when viewing a shared screen',
 					},
 				],
 			},
@@ -257,14 +265,14 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Type',
@@ -280,11 +288,11 @@ export const meetingFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Recurring Meeting with no fixed time',
+						name: 'Recurring Meeting with No Fixed Time',
 						value: 3,
 					},
 					{
-						name: 'Recurring Meeting with fixed time',
+						name: 'Recurring Meeting with Fixed Time',
 						value: 8,
 					},
 
@@ -345,7 +353,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: false,
-				description: 'To view meeting details of all previous occurrences of the recurring meeting',
+				description: 'Whether to view meeting details of all previous occurrences of the recurring meeting',
 			},
 		],
 	},
@@ -487,7 +495,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'scheduleForReminder',
 				type: 'boolean',
 				default: false,
-				description: 'Notify hosts and alternative hosts about meeting cancellation via email',
+				description: 'Whether to notify hosts and alternative hosts about meeting cancellation via email',
 			},
 		],
 
@@ -637,28 +645,28 @@ export const meetingFields: INodeProperties[] = [
 						name: 'hostVideo',
 						type: 'boolean',
 						default: false,
-						description: 'Start video when host joins the meeting',
+						description: 'Whether to start a video when host joins the meeting',
 					},
 					{
 						displayName: 'Join Before Host',
 						name: 'joinBeforeHost',
 						type: 'boolean',
 						default: false,
-						description: 'Allow participants to join the meeting before host starts it',
+						description: 'Whether to allow participants to join the meeting before host starts it',
 					},
 					{
 						displayName: 'Muting Upon Entry',
 						name: 'muteUponEntry',
 						type: 'boolean',
 						default: false,
-						description: 'Mute participants upon entry',
+						description: 'Whether to mute participants upon entry',
 					},
 					{
 						displayName: 'Participant Video',
 						name: 'participantVideo',
 						type: 'boolean',
 						default: false,
-						description: 'Start video when participant joins the meeting',
+						description: 'Whether to start a video when participant joins the meeting',
 					},
 					{
 						displayName: 'Registration Type',
@@ -666,15 +674,15 @@ export const meetingFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Attendees register once and can attend any of the occurrences',
+								name: 'Attendees Register Once and Can Attend Any of the Occurrences',
 								value: 1,
 							},
 							{
-								name: 'Attendees need to register for every occurrence',
+								name: 'Attendees Need to Register for Every Occurrence',
 								value: 2,
 							},
 							{
-								name: 'Attendees register once and can choose one or more occurrences to attend',
+								name: 'Attendees Register Once and Can Choose One or More Occurrences to Attend',
 								value: 3,
 							},
 						],
@@ -686,7 +694,7 @@ export const meetingFields: INodeProperties[] = [
 						name: 'watermark',
 						type: 'boolean',
 						default: false,
-						description: 'Adds watermark when viewing a shared screen',
+						description: 'Whether to add watermark when viewing a shared screen',
 					},
 				],
 			},
@@ -698,14 +706,14 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
 			},
 			{
-				displayName: 'Timezone',
+				displayName: 'Timezone Name or ID',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				description: 'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Topic',
@@ -728,11 +736,11 @@ export const meetingFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Recurring Meeting with no fixed time',
+						name: 'Recurring Meeting with No Fixed Time',
 						value: 3,
 					},
 					{
-						name: 'Recurring Meeting with fixed time',
+						name: 'Recurring Meeting with Fixed Time',
 						value: 8,
 					},
 

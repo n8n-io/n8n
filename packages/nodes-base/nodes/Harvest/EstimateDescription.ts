@@ -11,6 +11,7 @@ export const estimateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -21,30 +22,34 @@ export const estimateOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an estimate',
+				action: 'Create an estimate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an estimate',
+				action: 'Delete an estimate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an estimate',
+				action: 'Get data of an estimate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all estimates',
+				action: 'Get data of all estimates',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an estimate',
+				action: 'Update an estimate',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -159,7 +164,7 @@ export const estimateFields: INodeProperties[] = [
 	/*                                estimate:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Estimate Id',
+		displayName: 'Estimate ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -179,7 +184,7 @@ export const estimateFields: INodeProperties[] = [
 	/*                                estimate:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Estimate Id',
+		displayName: 'Estimate ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -199,7 +204,7 @@ export const estimateFields: INodeProperties[] = [
 	/*                                estimate:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
 		displayOptions: {
@@ -299,7 +304,7 @@ export const estimateFields: INodeProperties[] = [
 	/*                                estimate:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice Id',
+		displayName: 'Invoice ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -330,7 +335,7 @@ export const estimateFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Client Id',
+				displayName: 'Client ID',
 				name: 'client_id',
 				type: 'string',
 				default: '',

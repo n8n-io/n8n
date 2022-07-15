@@ -7,6 +7,7 @@ export const salesOrderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const salesOrderOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all sales orders',
+				action: 'Get all sales orders',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 

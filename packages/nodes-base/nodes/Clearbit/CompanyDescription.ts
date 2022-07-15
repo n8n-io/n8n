@@ -5,6 +5,7 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,15 +18,16 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Autocomplete',
 				value: 'autocomplete',
 				description: 'Auto-complete company names and retrieve logo and domain',
+				action: 'Autocomplete a company',
 			},
 			{
 				name: 'Enrich',
 				value: 'enrich',
 				description: 'Look up person and company data based on an email or domain',
+				action: 'Enrich a company',
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
 ];
 

@@ -23,6 +23,7 @@ export class TravisCi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TravisCI',
 		name: 'travisCi',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:travisci.png',
 		group: ['output'],
 		version: 1,
@@ -44,14 +45,14 @@ export class TravisCi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: ' Build',
+						name: 'Build',
 						value: 'build',
 					},
 				],
 				default: 'build',
-				description: 'Resource to consume.',
 			},
 			...buildOperations,
 			...buildFields,

@@ -7,6 +7,7 @@ export const noteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,16 +20,19 @@ export const noteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a note',
+				action: 'Create a note',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a note',
+				action: 'Delete a note',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a note',
+				action: 'Update a note',
 			},
 		],
 		default: 'create',

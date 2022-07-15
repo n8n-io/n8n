@@ -42,6 +42,7 @@ export class AwsRekognition implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Image',
@@ -49,12 +50,12 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Analyze',
@@ -62,7 +63,6 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'analyze',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',
@@ -101,7 +101,6 @@ export class AwsRekognition implements INodeType {
 					},
 				],
 				default: 'detectFaces',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Binary Data',
@@ -119,7 +118,7 @@ export class AwsRekognition implements INodeType {
 						],
 					},
 				},
-				description: 'If the image to analize should be taken from binary field',
+				description: 'Whether the image to analize should be taken from binary field',
 			},
 			{
 				displayName: 'Binary Property',
@@ -461,11 +460,11 @@ export class AwsRekognition implements INodeType {
 								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 
 								if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];

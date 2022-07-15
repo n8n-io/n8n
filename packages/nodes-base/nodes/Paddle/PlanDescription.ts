@@ -7,6 +7,7 @@ export const planOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const planOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a plan',
+				action: 'Get a plan',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all plans',
+				action: 'Get all plans',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

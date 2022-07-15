@@ -7,24 +7,28 @@ export const leadOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a lead',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a lead',
 			},
 			{
 				name: 'Unsubscribe',
 				value: 'unsubscribe',
+				action: 'Unsubscribe a lead',
 			},
 		],
 		displayOptions: {
@@ -42,7 +46,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: create
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -50,7 +54,7 @@ export const leadFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
-		description: 'ID of the campaign to create the lead under',
+		description: 'ID of the campaign to create the lead under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -66,6 +70,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email of the lead to create',
 		displayOptions: {
@@ -108,7 +113,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'deduplicate',
 				type: 'boolean',
 				default: false,
-				description: 'Do not insert if this email is already present in another campaign',
+				description: 'Whether to do not insert if this email is already present in another campaign',
 			},
 			{
 				displayName: 'First Name',
@@ -143,14 +148,14 @@ export const leadFields: INodeProperties[] = [
 				name: 'picture',
 				type: 'string',
 				default: '',
-				description: 'Picture url of the lead to create',
+				description: 'Picture URL of the lead to create',
 			},
 			{
 				displayName: 'LinkedIn URL',
 				name: 'linkedinUrl',
 				type: 'string',
 				default: '',
-				description: 'LinkedIn url of the lead to create',
+				description: 'LinkedIn URL of the lead to create',
 			},
 		],
 	},
@@ -159,7 +164,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: delete
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -167,7 +172,7 @@ export const leadFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
-		description: 'ID of the campaign to remove the lead from',
+		description: 'ID of the campaign to remove the lead from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -183,6 +188,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email of the lead to delete',
 		displayOptions: {
@@ -204,6 +210,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email of the lead to retrieve',
 		displayOptions: {
@@ -222,7 +229,7 @@ export const leadFields: INodeProperties[] = [
 	//        lead: unsubscribe
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		required: true,
@@ -230,7 +237,7 @@ export const leadFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
-		description: 'ID of the campaign to unsubscribe the lead from',
+		description: 'ID of the campaign to unsubscribe the lead from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -246,6 +253,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email of the lead to unsubscribe',
 		displayOptions: {

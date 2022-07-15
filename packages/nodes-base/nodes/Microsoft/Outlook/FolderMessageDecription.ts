@@ -7,6 +7,7 @@ export const folderMessageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const folderMessageOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all the messages in a folder',
+				action: 'Get all folder messages',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

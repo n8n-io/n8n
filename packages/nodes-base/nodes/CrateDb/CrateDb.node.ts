@@ -22,6 +22,7 @@ export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CrateDB',
 		name: 'crateDb',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:cratedb.png',
 		group: ['input'],
 		version: 1,
@@ -42,25 +43,28 @@ export class CrateDb implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in database',
+						action: 'Update rows in database',
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -220,7 +224,7 @@ export class CrateDb implements INodeType {
 								description: 'Execute each query independently',
 							},
 							{
-								name: 'Multiple queries',
+								name: 'Multiple Queries',
 								value: 'multiple',
 								description: '<b>Default</b>. Sends multiple queries at once to database.',
 							},

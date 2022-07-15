@@ -7,6 +7,7 @@ export const reportOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const reportOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a report',
+				action: 'Get a report',
 			},
 			{
 				name: 'Run',
 				value: 'run',
 				description: 'Run a report',
+				action: 'Run a report',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

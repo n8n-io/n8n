@@ -5,6 +5,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,15 +18,16 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Track',
 				value: 'track',
 				description: 'Track a customer event',
+				action: 'Track a customer event',
 			},
 			{
 				name: 'Track Anonymous',
 				value: 'trackAnonymous',
 				description: 'Track an anonymous event',
+				action: 'Track an anonymous event',
 			},
 		],
 		default: 'track',
-		description: 'The operation to perform.',
 	},
 ];
 

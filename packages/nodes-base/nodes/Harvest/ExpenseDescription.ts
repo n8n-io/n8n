@@ -11,6 +11,7 @@ export const expenseOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -18,33 +19,37 @@ export const expenseOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get data of an expense',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get data of all expenses',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an expense',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update an expense',
+				action: 'Create an expense',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an expense',
+				action: 'Delete an expense',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of an expense',
+				action: 'Get data of an expense',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get data of all expenses',
+				action: 'Get data of all expenses',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an expense',
+				action: 'Update an expense',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 
 ];
@@ -126,7 +131,7 @@ export const expenseFields: INodeProperties[] = [
 				name: 'is_billed',
 				type: 'boolean',
 				default: false,
-				description: 'Pass true to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
+				description: 'Whether to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
 			},
 			{
 				displayName: 'Page',
@@ -173,7 +178,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                expense:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Expense Id',
+		displayName: 'Expense ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -193,7 +198,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                expense:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Expense Id',
+		displayName: 'Expense ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -213,7 +218,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                expense:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'projectId',
 		type: 'string',
 		displayOptions: {
@@ -229,7 +234,7 @@ export const expenseFields: INodeProperties[] = [
 		description: 'The ID of the project associated with this expense',
 	},
 	{
-		displayName: 'Expense Category Id',
+		displayName: 'Expense Category ID',
 		name: 'expenseCategoryId',
 		type: 'string',
 		displayOptions: {
@@ -304,10 +309,11 @@ export const expenseFields: INodeProperties[] = [
 				description: 'The quantity of units to use in calculating the total_cost of the expense',
 			},
 			{
-				displayName: 'User Id',
+				displayName: 'User ID',
 				name: 'user_id',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
 			},
 		],
@@ -317,7 +323,7 @@ export const expenseFields: INodeProperties[] = [
 	/*                                invoice:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Invoice Id',
+		displayName: 'Invoice ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -355,7 +361,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'Whether this expense is billable or not. Defaults to true.',
 			},
 			{
-				displayName: 'Expense Category Id',
+				displayName: 'Expense Category ID',
 				name: 'expense_category_id',
 				type: 'string',
 				default: '',
@@ -369,7 +375,7 @@ export const expenseFields: INodeProperties[] = [
 				description: 'Notes about the expense',
 			},
 			{
-				displayName: 'Project Id',
+				displayName: 'Project ID',
 				name: 'project_id',
 				type: 'string',
 				default: '',
@@ -397,10 +403,11 @@ export const expenseFields: INodeProperties[] = [
 				description: 'The quantity of units to use in calculating the total_cost of the expense',
 			},
 			{
-				displayName: 'User Id',
+				displayName: 'User ID',
 				name: 'user_id',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
 			},
 		],

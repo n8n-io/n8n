@@ -7,6 +7,7 @@ export const stateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,23 +17,25 @@ export const stateOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create or update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a state',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a state for a specific entity',
+				action: 'Get a state',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all states',
+				action: 'Get all states',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -41,9 +44,10 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity ID',
+		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAllEntities',
 		},
@@ -110,7 +114,7 @@ export const stateFields: INodeProperties[] = [
 	/*                                state:upsert                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Entity ID',
+		displayName: 'Entity Name or ID',
 		name: 'entityId',
 		type: 'options',
 		typeOptions: {
@@ -128,7 +132,7 @@ export const stateFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID for which a state will be created',
+		description: 'The entity ID for which a state will be created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'State',

@@ -20,21 +20,25 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a message',
+				action: 'Create a message',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a message',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a message',
+				action: 'Get a message',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a message',
+				action: 'Update a message',
 			},
 		],
 		default: 'create',
@@ -47,7 +51,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name/ID',
+		displayName: 'Space Name or ID',
 		name: 'spaceId',
 		type: 'options',
 		required: true,
@@ -65,7 +69,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY.',
+		description: 'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',

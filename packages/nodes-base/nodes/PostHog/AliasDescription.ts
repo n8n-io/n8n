@@ -7,6 +7,7 @@ export const aliasOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const aliasOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an alias',
+				action: 'Create an alias',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

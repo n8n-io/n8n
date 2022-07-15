@@ -24,11 +24,13 @@ export const memberOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a membership',
+				action: 'Get a member',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all memberships in a space',
+				action: 'Get all members',
 			},
 		],
 		default: 'get',
@@ -63,7 +65,7 @@ export const memberFields: INodeProperties[] = [
 	/*                                 member:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Space Name/ID',
+		displayName: 'Space Name or ID',
 		name: 'spaceId',
 		type: 'options',
 		required: true,
@@ -81,7 +83,7 @@ export const memberFields: INodeProperties[] = [
 			},
 		},
 		default: [],
-		description: 'The name of the space for which to retrieve members, in the form "spaces/*"',
+		description: 'The name of the space for which to retrieve members, in the form "spaces/*". Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	...getPagingParameters('member'),

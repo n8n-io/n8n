@@ -77,10 +77,9 @@ export class WebflowTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
-				displayName: 'Site',
+				displayName: 'Site Name or ID',
 				name: 'site',
 				type: 'options',
 				required: true,
@@ -88,7 +87,7 @@ export class WebflowTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getSites',
 				},
-				description: 'Site that will trigger the events',
+				description: 'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event',
@@ -209,18 +208,22 @@ export class WebflowTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const siteId = this.getNodeParameter('site') as string;
-				if (webhookData.webhookId === undefined) {
-					return false;
+
+				const event = this.getNodeParameter('event') as string;
+				const registeredWebhooks = await webflowApiRequest.call(this, 'GET', `/sites/${siteId}/webhooks`) as IDataObject[];
+
+				for (const webhook of registeredWebhooks) {
+					if (webhook.url === webhookUrl && webhook.triggerType === event) {
+						webhookData.webhookId = webhook._id;
+						return true;
+					}
 				}
-				const endpoint = `/sites/${siteId}/webhooks/${webhookData.webhookId}`;
-				try {
-					await webflowApiRequest.call(this, 'GET', endpoint);
-				} catch (error) {
-					return false;
-				}
-				return true;
+
+				return false;
 			},
+
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');

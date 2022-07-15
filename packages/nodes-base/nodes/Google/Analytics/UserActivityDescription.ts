@@ -7,6 +7,7 @@ export const userActivityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,16 +20,16 @@ export const userActivityOperations: INodeProperties[] = [
 				name: 'Search',
 				value: 'search',
 				description: 'Return user activity data',
+				action: 'Search user activity data',
 			},
 		],
 		default: 'search',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const userActivityFields: INodeProperties[] = [
 	{
-		displayName: 'View ID',
+		displayName: 'View Name or ID',
 		name: 'viewId',
 		type: 'options',
 		typeOptions: {
@@ -47,7 +48,7 @@ export const userActivityFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '123456',
-		description: 'The View ID of Google Analytics',
+		description: 'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'User ID',

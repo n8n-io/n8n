@@ -7,6 +7,7 @@ export const directMessageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const directMessageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a direct message',
+				action: 'Create a direct message',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

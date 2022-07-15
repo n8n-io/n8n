@@ -7,6 +7,7 @@ export const messageAttachmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const messageAttachmentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add an attachment to a message',
+				action: 'Add a message attachment',
 			},
 			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download attachment content',
+				action: 'Download a message attachment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an attachment from a message',
+				action: 'Get a message attachment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all the message\'s attachments',
+				action: 'Get all message attachments',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 

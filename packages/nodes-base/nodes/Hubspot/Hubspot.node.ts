@@ -150,13 +150,17 @@ export class Hubspot implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'The method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: 'Company',
+						value: 'company',
+					},
 					{
 						name: 'Contact',
 						value: 'contact',
@@ -164,10 +168,6 @@ export class Hubspot implements INodeType {
 					{
 						name: 'Contact List',
 						value: 'contactList',
-					},
-					{
-						name: 'Company',
-						value: 'company',
 					},
 					{
 						name: 'Deal',
@@ -187,7 +187,6 @@ export class Hubspot implements INodeType {
 					},
 				],
 				default: 'deal',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,
@@ -846,7 +845,10 @@ export class Hubspot implements INodeType {
 			// Get all the ticket stages to display them to user so that he can
 			// select them easily
 			async getTicketStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const currentPipelineId = this.getCurrentNodeParameter('pipelineId') as string;
+				let currentPipelineId = this.getCurrentNodeParameter('pipelineId') as string;
+				if (currentPipelineId === undefined) {
+					currentPipelineId = this.getNodeParameter('updateFields.pipelineId', '') as string;
+				}
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/crm-pipelines/v1/pipelines/tickets';
 				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
@@ -912,12 +914,16 @@ export class Hubspot implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/contacts/v1/lists/all/contacts/all';
 				const contacts = await hubspotApiRequestAllItems.call(this, 'contacts', 'GET', endpoint);
+
 				for (const contact of contacts) {
-					const contactName = `${contact.properties.firstname.value} ${contact.properties.lastname.value}`;
+					const firstName = contact.properties?.firstname?.value || '';
+					const lastName = contact.properties?.lastname?.value || '';
+					const contactName = `${firstName} ${lastName}`;
 					const contactId = contact.vid;
 					returnData.push({
 						name: contactName,
 						value: contactId,
+						description: `Contact VID: ${contactId}`,
 					});
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
@@ -2194,7 +2200,7 @@ export class Hubspot implements INodeType {
 							if (!Object.keys(metadata).length) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`At least one metadata field needs to set`,
+									`At least one metadata field needs to set`, { itemIndex: i },
 								);
 							}
 
@@ -2323,14 +2329,17 @@ export class Hubspot implements INodeType {
 							const ticketName = this.getNodeParameter('ticketName', i) as string;
 							const body: IDataObject[] = [
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'hs_pipeline',
 									value: pipelineId,
 								},
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'hs_pipeline_stage',
 									value: stageId,
 								},
 								{
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 									name: 'subject',
 									value: ticketName,
 								},
@@ -2463,6 +2472,12 @@ export class Hubspot implements INodeType {
 								body.push({
 									name: 'hs_pipeline',
 									value: updateFields.pipelineId as string,
+								});
+							}
+							if (updateFields.stageId) {
+								body.push({
+									name: 'hs_pipeline_stage',
+									value: updateFields.stageId as string,
 								});
 							}
 							if (updateFields.ticketName) {

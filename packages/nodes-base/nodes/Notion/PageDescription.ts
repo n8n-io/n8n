@@ -6,11 +6,12 @@ import {
 	blocks,
 } from './Blocks';
 
-export const pageOperations = [
+export const pageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -26,16 +27,19 @@ export const pageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a page',
+				action: 'Create a page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a page',
+				action: 'Get a page',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Text search of pages',
+				action: 'Search a page',
 			},
 		],
 		default: 'create',
@@ -44,6 +48,7 @@ export const pageOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -59,21 +64,24 @@ export const pageOperations = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archive a page',
+				action: 'Archive a page',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a page',
+				action: 'Create a page',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Text search of pages',
+				action: 'Search a page',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
 export const pageFields = [
 
@@ -102,7 +110,7 @@ export const pageFields = [
 		description: 'The Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -161,7 +169,7 @@ export const pageFields = [
 		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -203,7 +211,7 @@ export const pageFields = [
 		description: 'The Page URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -284,7 +292,7 @@ export const pageFields = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {

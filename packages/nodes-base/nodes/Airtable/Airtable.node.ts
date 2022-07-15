@@ -40,35 +40,40 @@ export class Airtable implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Append',
 						value: 'append',
 						description: 'Append the data to a table',
+						action: 'Append data to a table',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete data from a table',
+						action: 'Delete data from a table',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List data from a table',
+						action: 'List data from a table',
 					},
 					{
 						name: 'Read',
 						value: 'read',
 						description: 'Read data from a table',
+						action: 'Read data from a table',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update data in a table',
+						action: 'Update data in a table',
 					},
 				],
 				default: 'read',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -107,7 +112,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all fields should be sent to Airtable or only specific ones',
+				description: 'Whether all fields should be sent to Airtable or only specific ones',
 			},
 			{
 				displayName: 'Fields',
@@ -202,7 +207,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: false,
-				description: 'When set to true the attachment fields define in \'Download Fields\' will be downloaded',
+				description: 'Whether the attachment fields define in \'Download Fields\' will be downloaded',
 			},
 			{
 				displayName: 'Download Fields',
@@ -362,7 +367,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all fields should be sent to Airtable or only specific ones',
+				description: 'Whether all fields should be sent to Airtable or only specific ones',
 			},
 			{
 				displayName: 'Fields',
@@ -448,7 +453,7 @@ export class Airtable implements INodeType {
 							},
 						},
 						default: false,
-						description: 'If the Airtable API should attempt mapping of string values for linked records & select options',
+						description: 'Whether the Airtable API should attempt mapping of string values for linked records & select options',
 					},
 				],
 			},

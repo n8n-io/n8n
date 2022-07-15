@@ -11,36 +11,43 @@ export const invoiceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an invoice',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an invoice',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all invoices',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send an invoice',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an invoice',
 			},
 			{
 				name: 'Void',
 				value: 'void',
+				action: 'Void an invoice',
 			},
 		],
 		displayOptions: {
@@ -58,11 +65,11 @@ export const invoiceFields: INodeProperties[] = [
 	//         invoice: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the invoice is for',
+		description: 'The ID of the customer who the invoice is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -100,27 +107,6 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Detail Type',
-				name: 'DetailType',
-				type: 'options',
-				default: 'SalesItemLineDetail',
-				options: [
-					{
-						name: 'Sales Item Line Detail',
-						value: 'SalesItemLineDetail',
-					},
-				],
-			},
-			{
-				displayName: 'Item',
-				name: 'itemId',
-				type: 'options',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getItems',
-				},
-			},
-			{
 				displayName: 'Amount',
 				name: 'Amount',
 				description: 'Monetary amount of the line item',
@@ -138,11 +124,43 @@ export const invoiceFields: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Detail Type',
+				name: 'DetailType',
+				type: 'options',
+				default: 'SalesItemLineDetail',
+				options: [
+					{
+						name: 'Sales Item Line Detail',
+						value: 'SalesItemLineDetail',
+					},
+				],
+			},
+			{
+				displayName: 'Item Name or ID',
+				name: 'itemId',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getItems',
+				},
+			},
+			{
 				displayName: 'Position',
 				name: 'LineNum',
 				description: 'Position of the line item relative to others',
 				type: 'number',
 				default: 1,
+			},
+			{
+				displayName: 'Tax Code Ref Name or ID',
+				name: 'TaxCodeRef',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getTaxCodeRefs',
+				},
 			},
 		],
 	},
@@ -214,7 +232,7 @@ export const invoiceFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the invoice as a PDF file',
+		description: 'Whether to download the invoice as a PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -294,7 +312,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
@@ -370,6 +388,7 @@ export const invoiceFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		description: 'The email of the recipient of the invoice',

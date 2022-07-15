@@ -7,6 +7,7 @@ export const identityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,10 +19,10 @@ export const identityOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an identity',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

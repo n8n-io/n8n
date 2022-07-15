@@ -8,36 +8,42 @@ export const campaignOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		default: 'get',
-		description: 'Operation to perform',
 		noDataExpression: true,
 		options: [
 			{
 				name: 'Add Contact',
 				value: 'addContact',
+				action: 'Add a contact to a campaign',
 			},
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a campaign',
 			},
 			{
 				name: 'Duplicate',
 				value: 'duplicate',
+				action: 'Duplicate a campaign',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a campaign',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all campaigns',
 			},
 			{
 				name: 'Pause',
 				value: 'pause',
+				action: 'Pause a campaign',
 			},
 			{
 				name: 'Start',
 				value: 'start',
+				action: 'Start a campaign',
 			},
 		],
 		displayOptions: {
@@ -55,7 +61,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: addContact
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -63,7 +69,7 @@ export const campaignFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the campaign to add the contact to',
+		description: 'The ID of the campaign to add the contact to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -332,12 +338,12 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: duplicate
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'The ID of the campaign to duplicate',
+		description: 'The ID of the campaign to duplicate. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},

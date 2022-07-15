@@ -30,6 +30,11 @@ import {
 } from './ProjectInterfaces';
 
 import {
+	clientFields,
+	clientOperations,
+} from './ClientDescription';
+
+import {
 	projectFields,
 	projectOperations,
 } from './ProjectDescription';
@@ -48,6 +53,16 @@ import {
 	timeEntryFields,
 	timeEntryOperations,
 } from './TimeEntryDescription';
+
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
+import {
+	workspaceFields,
+	workspaceOperations,
+} from './WorkspaceDescription';
 
 import moment from 'moment-timezone';
 
@@ -76,7 +91,12 @@ export class Clockify implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
 					{
 						name: 'Project',
 						value: 'project',
@@ -93,27 +113,48 @@ export class Clockify implements INodeType {
 						name: 'Time Entry',
 						value: 'timeEntry',
 					},
+					{
+						name: 'User',
+						value: 'user',
+					},
+					{
+						name: 'Workspace',
+						value: 'workspace',
+					},
 				],
 				default: 'project',
-				description: 'The resource to operate on.',
 			},
+			...clientOperations,
 			...projectOperations,
 			...tagOperations,
 			...taskOperations,
 			...timeEntryOperations,
+			...userOperations,
+			...workspaceOperations,
+			...workspaceFields,
 			{
-				displayName: 'Workspace ID',
+				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'listWorkspaces',
 				},
 				required: true,
 				default: [],
+				displayOptions: {
+					hide: {
+						resource: [
+							'workspace',
+						],
+					},
+				},
 			},
+			...clientFields,
 			...projectFields,
 			...tagFields,
 			...taskFields,
+			...userFields,
 			...timeEntryFields,
 		],
 	};
@@ -242,8 +283,122 @@ export class Clockify implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-
 			try {
+				if (resource === 'client') {
+
+
+					if (operation === 'create') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const name = this.getNodeParameter('name', i) as string;
+
+						const body: IDataObject = {
+							name,
+						};
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'POST',
+							`/workspaces/${workspaceId}/clients`,
+							body,
+							qs,
+						);
+					}
+
+					if (operation === 'delete') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const clientId = this.getNodeParameter('clientId', i) as string;
+
+						responseData =	await clockifyApiRequest.call(
+							this,
+							'DELETE',
+							`/workspaces/${workspaceId}/clients/${clientId}`,
+							{},
+							qs,
+						);
+					}
+
+					if (operation === 'update') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const clientId = this.getNodeParameter('clientId', i) as string;
+						const name = this.getNodeParameter('name', i) as string;
+
+						const updateFields = this.getNodeParameter(
+							'updateFields',
+							i,
+						) as IDataObject;
+
+						const body: IDataObject = {
+							name,
+						};
+
+						Object.assign(body, updateFields);
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'PUT',
+							`/workspaces/${workspaceId}/clients/${clientId}`,
+							body,
+							qs,
+						);
+					}
+
+					if (operation === 'get') {
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const clientId = this.getNodeParameter('clientId', i) as string;
+
+						responseData = await clockifyApiRequest.call(
+							this,
+							'GET',
+							`/workspaces/${workspaceId}/clients/${clientId}`,
+							{},
+							qs,
+						);
+					}
+
+					if (operation === 'getAll') {
+
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						Object.assign(qs, additionalFields);
+
+						if (returnAll) {
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/clients`,
+								{},
+								qs,
+							);
+
+						} else {
+
+							qs.limit = this.getNodeParameter('limit', i) as number;
+
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/clients`,
+								{},
+								qs,
+							);
+
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
+				}
+
 				if (resource === 'project') {
 
 					if (operation === 'create') {
@@ -290,7 +445,6 @@ export class Clockify implements INodeType {
 							qs,
 						);
 
-						responseData = { success: true };
 					}
 
 					if (operation === 'get') {
@@ -728,12 +882,66 @@ export class Clockify implements INodeType {
 					}
 				}
 
+				if (resource === 'user') {
+
+					if (operation === 'getAll') {
+
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						Object.assign(qs, additionalFields);
+
+						if (returnAll) {
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/users`,
+								{},
+								qs,
+							);
+
+						} else {
+
+							qs.limit = this.getNodeParameter('limit', i) as number;
+
+							responseData = await clockifyApiRequestAllItems.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/users`,
+								{},
+								qs,
+							);
+
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
+				}
+
+				if (resource === 'workspace') {
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						responseData = await clockifyApiRequest.call(
+							this,
+							'GET',
+							'/workspaces',
+							{},
+							qs,
+						);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+							responseData = responseData.splice(0, qs.limit);
+						}
+					}
+				}
+
 				if (Array.isArray(responseData)) {
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 
 				} else if (responseData !== undefined) {
-
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {

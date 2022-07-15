@@ -12,6 +12,7 @@ export const petitionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,22 +24,25 @@ export const petitionOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a petition',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a petition',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all petitions',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a petition',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 

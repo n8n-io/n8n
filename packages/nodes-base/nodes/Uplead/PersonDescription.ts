@@ -5,6 +5,7 @@ export const personOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,10 +17,10 @@ export const personOperations: INodeProperties[] = [
 			{
 				name: 'Enrich',
 				value: 'enrich',
+				action: 'Enrich a person',
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -32,6 +33,7 @@ export const personFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		displayOptions: {
 			show: {

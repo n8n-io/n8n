@@ -122,6 +122,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
@@ -130,12 +131,12 @@ export class Mandrill implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'Resource to consume.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -145,21 +146,22 @@ export class Mandrill implements INodeType {
 				},
 				options: [
 					{
-						name: 'Send template',
+						name: 'Send Template',
 						value: 'sendTemplate',
 						description: 'Send message based on template',
+						action: 'Send a message based on a template',
 					},
 					{
 						name: 'Send HTML',
 						value: 'sendHtml',
 						description: 'Send message based on HTML',
+						action: 'Send a message based on HTML',
 					},
 				],
 				default: 'sendTemplate',
-				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Template',
+				displayName: 'Template Name or ID',
 				name: 'template',
 				type: 'options',
 				typeOptions: {
@@ -175,7 +177,7 @@ export class Mandrill implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'The template you want to send',
+				description: 'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'From Email',
@@ -245,7 +247,7 @@ export class Mandrill implements INodeType {
 						name: 'async',
 						type: 'boolean',
 						default: false,
-						description: 'Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the \'reject\' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.',
+						description: 'Whether to enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the \'reject\' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.',
 					},
 					{
 						displayName: 'Auto Text',
@@ -270,7 +272,7 @@ export class Mandrill implements INodeType {
 						description: 'An optional address to receive an exact copy of each recipient\'s email',
 					},
 					{
-						displayName: 'From name',
+						displayName: 'From Name',
 						name: 'fromName',
 						type: 'string',
 						default: '',
@@ -426,7 +428,7 @@ export class Mandrill implements INodeType {
 						name: 'viewContentLink',
 						type: 'boolean',
 						default: false,
-						description: 'Set to false to remove content logging for sensitive emails',
+						description: 'Whether to remove content logging for sensitive emails',
 					},
 				],
 			},

@@ -7,6 +7,7 @@ export const issueAttachmentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const issueAttachmentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add attachment to issue',
+				action: 'Add an attachment to an issue',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an attachment',
+				action: 'Get an attachment from an issue',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all attachments',
+				action: 'Get all issue attachments',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove an attachment',
+				action: 'Remove an attachment from an issue',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 

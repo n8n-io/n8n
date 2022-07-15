@@ -7,12 +7,13 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all events',
 			},
 		],
 		displayOptions: {
@@ -51,6 +52,9 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 10,
 		description: 'Max number of results to return',
 		displayOptions: {

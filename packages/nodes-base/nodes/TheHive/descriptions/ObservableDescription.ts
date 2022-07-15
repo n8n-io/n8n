@@ -8,9 +8,11 @@ import {
 
 export const observableOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		noDataExpression: true,
 		required: true,
 		default: 'getAll',
 		displayOptions: {
@@ -115,7 +117,7 @@ export const observableFields: INodeProperties[] = [
 		description: 'ID of the observable',
 	},
 	{
-		displayName: 'Data Type',
+		displayName: 'Data Type Name or ID',
 		name: 'dataType',
 		type: 'options',
 		required: true,
@@ -134,7 +136,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Type of the observable',
+		description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Data',
@@ -267,7 +269,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+		description: 'Whether the observable is an IOC (Indicator of compromise)',
 	},
 	{
 		displayName: 'Sighted',
@@ -285,7 +287,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Sighted previously',
+		description: 'Whether sighted previously',
 	},
 	{
 		displayName: 'Status',
@@ -317,9 +319,10 @@ export const observableFields: INodeProperties[] = [
 	},
 	// required for analyzer execution
 	{
-		displayName: 'Analyzer',
+		displayName: 'Analyzer Names or IDs',
 		name: 'analyzers',
 		type: 'multiOptions',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -348,9 +351,10 @@ export const observableFields: INodeProperties[] = [
 
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -464,12 +468,12 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+				description: 'Whether the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
-				description: 'sighted previously',
+				description: 'Whether sighted previously',
 				type: 'boolean',
 				default: false,
 			},
@@ -541,33 +545,33 @@ export const observableFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Data Type',
+				displayName: 'Data Type Names or IDs',
 				name: 'dataType',
 				type: 'multiOptions',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'loadObservableTypes',
 				},
-				description: 'Type of the observable',
+				description: 'Type of the observable. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Date range',
+				displayName: 'Date Range',
 				type: 'fixedCollection',
 				name: 'range',
 				default: {},
 				options: [
 					{
-						displayName: 'Add date range inputs',
+						displayName: 'Add Date Range Inputs',
 						name: 'dateRange',
 						values: [
 							{
-								displayName: 'From date',
+								displayName: 'From Date',
 								name: 'fromDate',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'To date',
+								displayName: 'To Date',
 								name: 'toDate',
 								type: 'dateTime',
 								default: '',
@@ -588,7 +592,7 @@ export const observableFields: INodeProperties[] = [
 				name: 'ioc',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+				description: 'Whether the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Keyword',

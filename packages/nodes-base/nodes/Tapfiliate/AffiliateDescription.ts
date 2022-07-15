@@ -7,6 +7,7 @@ export const affiliateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const affiliateOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an affiliate',
+				action: 'Create an affiliate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an affiliate',
+				action: 'Delete an affiliate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an affiliate by ID',
+				action: 'Get an affiliate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all affiliates',
+				action: 'Get all affiliates',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -49,6 +53,7 @@ export const affiliateFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -303,6 +308,7 @@ export const affiliateFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'An email address,',
 			},

@@ -60,6 +60,7 @@ export class UptimeRobot implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -83,7 +84,6 @@ export class UptimeRobot implements INodeType {
 					},
 				],
 				default: 'account',
-				description: 'Resource to consume.',
 			},
 			/* -------------------------------------------------------------------------- */
 			/*                                account:getAccountDetails					  */
@@ -92,6 +92,7 @@ export class UptimeRobot implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -104,10 +105,10 @@ export class UptimeRobot implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get account details',
+						action: 'Get an account',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			/* -------------------------------------------------------------------------- */
 			/*                                Monitor									  */

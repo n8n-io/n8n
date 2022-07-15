@@ -74,7 +74,7 @@ export class HtmlExtract implements INodeType {
 					},
 				],
 				default: 'json',
-				description: 'If HTML should be read from binary or json data',
+				description: 'If HTML should be read from binary or JSON data',
 			},
 			{
 				displayName: 'Binary Property',
@@ -104,7 +104,7 @@ export class HtmlExtract implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the json property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
+				description: 'Name of the JSON property in which the HTML to extract the data from can be found. The property can either contain a string or an array of strings.',
 			},
 			{
 				displayName: 'Extraction Values',
@@ -184,7 +184,7 @@ export class HtmlExtract implements INodeType {
 								name: 'returnArray',
 								type: 'boolean',
 								default: false,
-								description: 'Returns the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
+								description: 'Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.',
 							},
 						],
 					},
@@ -203,7 +203,7 @@ export class HtmlExtract implements INodeType {
 						name: 'trimValues',
 						type: 'boolean',
 						default: true,
-						description: 'Removes automatically all spaces and newlines from the beginning and end of the values',
+						description: 'Whether to remove automatically all spaces and newlines from the beginning and end of the values',
 					},
 				],
 			},
@@ -229,15 +229,15 @@ export class HtmlExtract implements INodeType {
 				let htmlArray: string[] | string = [];
 				if (sourceData === 'json') {
 					if (item.json[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
+						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`, { itemIndex });
 					}
 					htmlArray = item.json[dataPropertyName] as string;
 				} else {
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`);
+						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`, { itemIndex });
 					}
 					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
+						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`, { itemIndex });
 					}
 
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
@@ -254,6 +254,9 @@ export class HtmlExtract implements INodeType {
 
 					const newItem: INodeExecutionData = {
 						json: {},
+						pairedItem: {
+							item: itemIndex,
+						},
 					};
 
 					// Itterate over all the defined values which should be extracted
@@ -277,7 +280,14 @@ export class HtmlExtract implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

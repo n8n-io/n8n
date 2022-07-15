@@ -5,6 +5,7 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,30 +18,34 @@ export const activityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an activity',
+				action: 'Create an activity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an activity',
+				action: 'Delete an activity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an activity',
+				action: 'Get an activity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all companies',
+				action: 'Get all activities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an activity',
+				action: 'Update an activity',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,9 +72,10 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
@@ -119,7 +125,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -174,14 +180,14 @@ export const activityFields: INodeProperties[] = [
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
-				description: 'This field is used to send calendar invite',
+				description: 'Whether to send calendar invite',
 			},
 			{
 				displayName: 'Is Completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
-				description: 'This field indicates whether the activity is completed or not',
+				description: 'Whether the activity is completed or not',
 			},
 		],
 	},
@@ -220,7 +226,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -293,14 +299,14 @@ export const activityFields: INodeProperties[] = [
 				name: 'isCalendarInvite',
 				type: 'boolean',
 				default: false,
-				description: 'This field is used to send calendar invite',
+				description: 'Whether to send calendar invite',
 			},
 			{
 				displayName: 'Is Completed',
 				name: 'isCompleted',
 				type: 'boolean',
 				default: false,
-				description: 'This field indicates whether the activity is completed or not',
+				description: 'Whether the activity is completed or not',
 			},
 		],
 
@@ -340,7 +346,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If the data should include the fields details',
+		description: 'Whether the data should include the fields details',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 activity:getAll                            */
@@ -550,6 +556,7 @@ export const activityFields: INodeProperties[] = [
 										displayName: 'Condition',
 										name: 'condition',
 										type: 'options',
+										// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 										options: [
 											{
 												name: 'Equals',
@@ -560,20 +567,20 @@ export const activityFields: INodeProperties[] = [
 												value: 'NOT_EQUALS',
 											},
 											{
-												name: 'Empty',
-												value: 'EMPTY',
-											},
-											{
-												name: 'Not Empty',
-												value: 'NOT_EMPTY',
-											},
-											{
 												name: 'CONTAINS',
 												value: 'Contains',
 											},
 											{
 												name: 'Does Not Contains',
 												value: 'DOES_NOT_CONTAINS',
+											},
+											{
+												name: 'Empty',
+												value: 'EMPTY',
+											},
+											{
+												name: 'Not Empty',
+												value: 'NOT_EMPTY',
 											},
 											{
 												name: 'Starts With',

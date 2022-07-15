@@ -11,6 +11,7 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -23,30 +24,34 @@ export const accountOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an account',
+				action: 'Create an account',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an account',
+				action: 'Delete an account',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an account',
+				action: 'Get an account',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all accounts',
+				action: 'Get all accounts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an account',
+				action: 'Update an account',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -112,14 +117,14 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getAccountCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -204,14 +209,14 @@ export const accountFields: INodeProperties[] = [
 						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'customFieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getAccountCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',

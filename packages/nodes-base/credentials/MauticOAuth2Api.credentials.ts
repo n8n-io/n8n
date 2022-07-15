@@ -12,6 +12,12 @@ export class MauticOAuth2Api implements ICredentialType {
 	documentationUrl = 'mautic';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'URL',
 			name: 'url',
 			type: 'string',

@@ -59,6 +59,7 @@ export class MicrosoftExcel implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Table',
@@ -77,7 +78,6 @@ export class MicrosoftExcel implements INodeType {
 					},
 				],
 				default: 'workbook',
-				description: 'The resource to operate on.',
 			},
 			...workbookOperations,
 			...workbookFields,

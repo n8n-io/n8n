@@ -11,6 +11,7 @@ export const messageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,26 +23,30 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a message',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a message',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all messages',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a message',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -77,9 +82,10 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',
 		},
@@ -461,9 +467,9 @@ export const messageFields: INodeProperties[] = [
 	//             message: getAll
 	// ----------------------------------------
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
-		description: 'List messages in a room, by ID',
+		description: 'List messages in a room, by ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',

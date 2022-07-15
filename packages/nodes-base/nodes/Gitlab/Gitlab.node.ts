@@ -69,12 +69,12 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Issue',
@@ -94,7 +94,6 @@ export class Gitlab implements INodeType {
 					},
 				],
 				default: 'issue',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -106,6 +105,7 @@ export class Gitlab implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -118,36 +118,41 @@ export class Gitlab implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new issue',
+						action: 'Create an issue',
 					},
 					{
 						name: 'Create Comment',
 						value: 'createComment',
 						description: 'Create a new comment on an issue',
+						action: 'Create a comment on an issue',
 					},
 					{
 						name: 'Edit',
 						value: 'edit',
 						description: 'Edit an issue',
+						action: 'Edit an issue',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get the data of a single issue',
+						action: 'Get an issue',
 					},
 					{
 						name: 'Lock',
 						value: 'lock',
 						description: 'Lock an issue',
+						action: 'Lock an issue',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -160,21 +165,23 @@ export class Gitlab implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get the data of a single repository',
+						action: 'Get a repository',
 					},
 					{
 						name: 'Get Issues',
 						value: 'getIssues',
 						description: 'Returns issues of a repository',
+						action: 'Get issues of a repository',
 					},
 				],
 				default: 'getIssues',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -187,16 +194,17 @@ export class Gitlab implements INodeType {
 						name: 'Get Repositories',
 						value: 'getRepositories',
 						description: 'Returns the repositories of a user',
+						action: 'Get a user\'s repositories',
 					},
 				],
 				default: 'getRepositories',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -209,30 +217,34 @@ export class Gitlab implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new release',
+						action: 'Create a release',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a new release',
+						action: 'Delete a release',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a new release',
+						action: 'Get a release',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all releases',
+						action: 'Get all releases',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a new release',
+						action: 'Update a release',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 
@@ -837,7 +849,7 @@ export class Gitlab implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Order by',
+						displayName: 'Order By',
 						name: 'order_by',
 						type: 'options',
 						options: [

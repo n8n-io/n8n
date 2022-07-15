@@ -7,6 +7,7 @@ export const groupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -21,21 +22,25 @@ export const groupOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a group',
+				action: 'Create a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a group',
+				action: 'Get a group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all groups',
+				action: 'Get all groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a group',
+				action: 'Update a group',
 			},
 		],
 		default: 'create',

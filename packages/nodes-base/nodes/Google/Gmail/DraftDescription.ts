@@ -7,6 +7,7 @@ export const draftOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const draftOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new email draft',
+				action: 'Create a draft',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a draft',
+				action: 'Delete a draft',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a draft',
+				action: 'Get a draft',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all drafts',
+				action: 'Get all drafts',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -96,7 +100,7 @@ export const draftFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Switch ON if the message should also be included as HTML',
+		description: 'Whether the message should also be included as HTML',
 	},
 	{
 		displayName: 'HTML Message',
@@ -413,7 +417,7 @@ export const draftFields: INodeProperties[] = [
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
-				description: 'Include messages from SPAM and TRASH in the results',
+				description: 'Whether to include messages from SPAM and TRASH in the results',
 			},
 		],
 	},

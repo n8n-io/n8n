@@ -7,6 +7,7 @@ export const storyContentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				source: [
@@ -22,15 +23,16 @@ export const storyContentOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a story',
+				action: 'Get a story',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all stories',
+				action: 'Get all stories',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 

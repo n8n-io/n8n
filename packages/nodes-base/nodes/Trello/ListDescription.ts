@@ -10,6 +10,7 @@ export const listOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,35 +23,40 @@ export const listOperations: INodeProperties[] = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archive/Unarchive a list',
+				action: 'Archive/unarchive a list',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new list',
+				action: 'Create a list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a list',
+				action: 'Get a list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all the lists',
+				action: 'Get all lists',
 			},
 			{
 				name: 'Get Cards',
 				value: 'getCards',
 				description: 'Get all the cards in a list',
+				action: 'Get all cards in a list',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a list',
+				action: 'Update a list',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -91,7 +97,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the list should be archived or unarchived',
+		description: 'Whether the list should be archived or unarchived',
 	},
 
 	// ----------------------------------
@@ -211,6 +217,9 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
@@ -343,6 +352,9 @@ export const listFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {

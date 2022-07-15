@@ -19,14 +19,17 @@ export const secureScoreControlProfileOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a secure score control profile',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all secure score control profiles',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a secure score control profile',
 			},
 		],
 		default: 'get',
@@ -123,6 +126,7 @@ export const secureScoreControlProfileFields: INodeProperties[] = [
 				description: '<a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">Query parameter</a> to filter results by',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'startsWith(id, \'AATP\')',
 			},
 		],

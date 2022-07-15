@@ -7,6 +7,7 @@ export const emailOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const emailOperations: INodeProperties[] = [
 				name: 'Create Record',
 				value: 'createRecord',
 				description: 'Create a record of an email sent to a contact',
+				action: 'Create a record of an email sent',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all sent emails',
+				action: 'Get all emails',
 			},
 			{
 				name: 'Send',
 				value: 'send',
 				description: 'Send Email',
+				action: 'Send an email',
 			},
 		],
 		default: 'createRecord',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -114,7 +117,7 @@ export const emailFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'HTML content',
+				displayName: 'HTML Content',
 				name: 'htmlContent',
 				type: 'string',
 				default: '',
@@ -283,6 +286,7 @@ export const emailFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -306,7 +310,7 @@ export const emailFields: INodeProperties[] = [
 /*                                 email:send                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		required: true,
@@ -324,7 +328,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The infusionsoft user to send the email on behalf of',
+		description: 'The infusionsoft user to send the email on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Contact IDs',
@@ -378,7 +382,7 @@ export const emailFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Address field',
+				displayName: 'Address Field',
 				name: 'addressField',
 				type: 'string',
 				default: '',

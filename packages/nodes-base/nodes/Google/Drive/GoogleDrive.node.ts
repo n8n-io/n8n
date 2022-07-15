@@ -21,7 +21,7 @@ export class GoogleDrive implements INodeType {
 		name: 'googleDrive',
 		icon: 'file:googleDrive.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on Google Drive',
 		defaults: {
@@ -74,6 +74,7 @@ export class GoogleDrive implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Drive',
@@ -89,7 +90,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 
 
@@ -100,6 +100,7 @@ export class GoogleDrive implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -112,46 +113,53 @@ export class GoogleDrive implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a file',
+						action: 'Copy a file',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a file',
+						action: 'Delete a file',
 					},
 					{
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file',
+						action: 'Download a file',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List files and folders',
+						action: 'List a file',
 					},
 					{
 						name: 'Share',
 						value: 'share',
 						description: 'Share a file',
+						action: 'Share a file',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a file',
+						action: 'Update a file',
 					},
 					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
+						action: 'Upload a file',
 					},
 				],
 				default: 'upload',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -164,20 +172,22 @@ export class GoogleDrive implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a folder',
+						action: 'Create a folder',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a folder',
+						action: 'Delete a folder',
 					},
 					{
 						name: 'Share',
 						value: 'share',
 						description: 'Share a folder',
+						action: 'Share a folder',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 
@@ -307,20 +317,20 @@ export class GoogleDrive implements INodeType {
 										type: 'options',
 										options: [
 											{
-												name: 'To MS Word',
-												value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+												name: 'To HTML',
+												value: 'text/html',
 											},
 											{
-												name: 'To PDF',
-												value: 'application/pdf',
+												name: 'To MS Word',
+												value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 											},
 											{
 												name: 'To OpenOffice Doc',
 												value: 'application/vnd.oasis.opendocument.text',
 											},
 											{
-												name: 'To HTML',
-												value: 'text/html',
+												name: 'To PDF',
+												value: 'application/pdf',
 											},
 											{
 												name: 'To Rich Text',
@@ -434,7 +444,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'If a query string should be used to filter results',
+				description: 'Whether a query string should be used to filter results',
 			},
 			{
 				displayName: 'Query String',
@@ -475,7 +485,7 @@ export class GoogleDrive implements INodeType {
 					minValue: 1,
 					maxValue: 1000,
 				},
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 			},
 			{
@@ -510,6 +520,7 @@ export class GoogleDrive implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: [
 									{
 										name: 'Contains',
@@ -526,7 +537,6 @@ export class GoogleDrive implements INodeType {
 
 								],
 								default: 'contains',
-								description: 'Operation to perform.',
 							},
 							{
 								displayName: 'Value',
@@ -546,18 +556,17 @@ export class GoogleDrive implements INodeType {
 								name: 'mimeType',
 								type: 'options',
 								options: [
-
 									{
-										name: 'Custom Mime Type',
-										value: 'custom',
-									},
-									{
-										name: '	3rd party shortcut',
+										name: '3rd Party Shortcut',
 										value: 'application/vnd.google-apps.drive-sdk',
 									},
 									{
 										name: 'Audio',
 										value: 'application/vnd.google-apps.audio',
+									},
+									{
+										name: 'Custom Mime Type',
+										value: 'custom',
 									},
 									{
 										name: 'Google Apps Scripts',
@@ -572,11 +581,11 @@ export class GoogleDrive implements INodeType {
 										value: 'application/vnd.google-apps.drawing',
 									},
 									{
-										name: 'Google Drive file',
+										name: 'Google Drive File',
 										value: 'application/vnd.google-apps.file',
 									},
 									{
-										name: 'Google Drive folder',
+										name: 'Google Drive Folder',
 										value: 'application/vnd.google-apps.folder',
 									},
 									{
@@ -615,7 +624,6 @@ export class GoogleDrive implements INodeType {
 										name: 'Video',
 										value: 'application/vnd.google-apps.video',
 									},
-
 								],
 								default: 'application/vnd.google-apps.file',
 								description: 'The Mime-Type of the files to return',
@@ -692,28 +700,28 @@ export class GoogleDrive implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'Owner',
-										value: 'owner',
-									},
-									{
-										name: 'Organizer',
-										value: 'organizer',
+										name: 'Commenter',
+										value: 'commenter',
 									},
 									{
 										name: 'File Organizer',
 										value: 'fileOrganizer',
 									},
 									{
-										name: 'Writer',
-										value: 'writer',
+										name: 'Organizer',
+										value: 'organizer',
 									},
 									{
-										name: 'Commenter',
-										value: 'commenter',
+										name: 'Owner',
+										value: 'owner',
 									},
 									{
 										name: 'Reader',
 										value: 'reader',
+									},
+									{
+										name: 'Writer',
+										value: 'writer',
 									},
 								],
 								default: '',
@@ -807,7 +815,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				description: 'If the data to upload should be taken from binary field',
+				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
 				displayName: 'File Content',
@@ -908,6 +916,13 @@ export class GoogleDrive implements INodeType {
 						description: 'Whether to set the \'keepForever\' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.',
 					},
 					{
+						displayName: 'Move to Trash',
+						name: 'trashed',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to move a file to the trash. Only the owner may trash a file.',
+					},
+					{
 						displayName: 'OCR Language',
 						name: 'ocrLanguage',
 						type: 'string',
@@ -953,7 +968,7 @@ export class GoogleDrive implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All fields',
 							},
@@ -966,43 +981,43 @@ export class GoogleDrive implements INodeType {
 								value: 'exportLinks',
 							},
 							{
-								name: 'iconLink',
-								value: 'iconLink',
-							},
-							{
 								name: 'hasThumbnail',
 								value: 'hasThumbnail',
 							},
 							{
-								name: 'id',
+								name: 'iconLink',
+								value: 'iconLink',
+							},
+							{
+								name: 'ID',
 								value: 'id',
 							},
 							{
-								name: 'kind',
+								name: 'Kind',
 								value: 'kind',
-							},
-							{
-								name: 'name',
-								value: 'name',
 							},
 							{
 								name: 'mimeType',
 								value: 'mimeType',
 							},
 							{
-								name: 'permissions',
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'Permissions',
 								value: 'permissions',
 							},
 							{
-								name: 'shared',
+								name: 'Shared',
 								value: 'shared',
 							},
 							{
-								name: 'spaces',
+								name: 'Spaces',
 								value: 'spaces',
 							},
 							{
-								name: 'starred',
+								name: 'Starred',
 								value: 'starred',
 							},
 							{
@@ -1010,11 +1025,11 @@ export class GoogleDrive implements INodeType {
 								value: 'thumbnailLink',
 							},
 							{
-								name: 'trashed',
+								name: 'Trashed',
 								value: 'trashed',
 							},
 							{
-								name: 'version',
+								name: 'Version',
 								value: 'version',
 							},
 							{
@@ -1022,7 +1037,6 @@ export class GoogleDrive implements INodeType {
 								value: 'webViewLink',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The fields to return',
 					},
@@ -1066,6 +1080,7 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the response only contain the ID of the file. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
@@ -1170,7 +1185,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Set to true to opt in to API behavior that aims for all items to have exactly one parent. This parameter only takes effect if the item is not in a shared drive.',
+						description: 'Whether to opt in to API behavior that aims for all items to have exactly one parent. This parameter only takes effect if the item is not in a shared drive.',
 					},
 					{
 						displayName: 'Fields',
@@ -1199,43 +1214,43 @@ export class GoogleDrive implements INodeType {
 								value: 'exportLinks',
 							},
 							{
-								name: 'iconLink',
-								value: 'iconLink',
-							},
-							{
 								name: 'hasThumbnail',
 								value: 'hasThumbnail',
 							},
 							{
-								name: 'id',
+								name: 'iconLink',
+								value: 'iconLink',
+							},
+							{
+								name: 'ID',
 								value: 'id',
 							},
 							{
-								name: 'kind',
+								name: 'Kind',
 								value: 'kind',
-							},
-							{
-								name: 'name',
-								value: 'name',
 							},
 							{
 								name: 'mimeType',
 								value: 'mimeType',
 							},
 							{
-								name: 'permissions',
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'Permissions',
 								value: 'permissions',
 							},
 							{
-								name: 'shared',
+								name: 'Shared',
 								value: 'shared',
 							},
 							{
-								name: 'spaces',
+								name: 'Spaces',
 								value: 'spaces',
 							},
 							{
-								name: 'starred',
+								name: 'Starred',
 								value: 'starred',
 							},
 							{
@@ -1243,11 +1258,11 @@ export class GoogleDrive implements INodeType {
 								value: 'thumbnailLink',
 							},
 							{
-								name: 'trashed',
+								name: 'Trashed',
 								value: 'trashed',
 							},
 							{
-								name: 'version',
+								name: 'Version',
 								value: 'version',
 							},
 							{
@@ -1255,7 +1270,6 @@ export class GoogleDrive implements INodeType {
 								value: 'webViewLink',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The fields to return',
 					},
@@ -1275,6 +1289,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: '<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner\'s My Drive root folder and all prior parents removed.</p>',
 					},
 					{
@@ -1347,7 +1362,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
+						description: 'Whether to perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
 					},
 
 					{
@@ -1406,7 +1421,7 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All spaces',
 							},
@@ -1415,15 +1430,14 @@ export class GoogleDrive implements INodeType {
 								value: 'appDataFolder',
 							},
 							{
-								name: 'drive',
+								name: 'Drive',
 								value: 'drive',
 							},
 							{
-								name: 'photos',
+								name: 'Photos',
 								value: 'photos',
 							},
 						],
-						required: true,
 						default: [],
 						description: 'The spaces to operate on',
 					},
@@ -1443,17 +1457,17 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: 'user',
+								name: 'User',
 								value: 'user',
 								description: 'All files in "My Drive" and "Shared with me"',
 							},
 							{
-								name: 'domain',
+								name: 'Domain',
 								value: 'domain',
 								description: 'All files shared to the user\'s domain that are searchable',
 							},
 							{
-								name: 'drive',
+								name: 'Drive',
 								value: 'drive',
 								description: 'All files contained in a single shared drive',
 							},
@@ -1463,7 +1477,6 @@ export class GoogleDrive implements INodeType {
 								description: 'All drives',
 							},
 						],
-						required: true,
 						default: '',
 						description: 'The corpora to operate on',
 					},
@@ -1496,6 +1509,7 @@ export class GoogleDrive implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -1508,30 +1522,34 @@ export class GoogleDrive implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a drive',
+						action: 'Create a drive',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a drive',
+						action: 'Delete a drive',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a drive',
+						action: 'Get a drive',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List all drives',
+						action: 'List all drives',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a drive',
+						action: 'Update a drive',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         drive:create
@@ -1827,7 +1845,7 @@ export class GoogleDrive implements INodeType {
 						name: 'useDomainAdminAccess',
 						type: 'boolean',
 						default: false,
-						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
+						description: 'Whether to issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
 					},
 				],
 			},
@@ -1904,7 +1922,7 @@ export class GoogleDrive implements INodeType {
 						name: 'useDomainAdminAccess',
 						type: 'boolean',
 						default: false,
-						description: 'Issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
+						description: 'Whether to issue the request as a domain administrator; if set to true, then the requester will be granted access if they are an administrator of the domain to which the shared drive belongs. (Default: false).',
 					},
 				],
 			},
@@ -2272,6 +2290,7 @@ export class GoogleDrive implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
+							// @ts-ignore
 							Object.assign(newItem.binary, items[i].binary);
 						}
 
@@ -2369,7 +2388,13 @@ export class GoogleDrive implements INodeType {
 
 						const files = response!.files;
 
-						return [this.helpers.returnJsonArray(files as IDataObject[])];
+						const version = this.getNode().typeVersion;
+
+						if (version === 1) {
+							return [this.helpers.returnJsonArray(files as IDataObject[])];
+						} else {
+							returnData.push(...files);
+						}
 
 					} else if (operation === 'upload') {
 						// ----------------------------------
@@ -2385,13 +2410,13 @@ export class GoogleDrive implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
 							}
 
 							if (item.binary[propertyNameUpload].mimeType) {
@@ -2478,6 +2503,10 @@ export class GoogleDrive implements INodeType {
 
 						if (updateFields.fileName) {
 							body.name = updateFields.fileName;
+						}
+
+						if (updateFields.hasOwnProperty('trashed')) {
+							body.trashed = updateFields.trashed;
 						}
 
 						if (updateFields.parentId && updateFields.parentId !== '') {

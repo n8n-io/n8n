@@ -7,6 +7,7 @@ export const linkedResourceOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,26 +19,30 @@ export const linkedResourceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a linked resource',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a linked resource',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a linked resource',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all linked resources',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a linked resource',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -46,9 +51,10 @@ export const linkedResourceFields: INodeProperties[] = [
 	/*                       linkedResource:ALL                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task List ID',
+		displayName: 'Task List Name or ID',
 		name: 'taskListId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTaskLists',
 		},

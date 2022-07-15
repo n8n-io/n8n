@@ -7,6 +7,7 @@ export const fileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,45 +20,52 @@ export const fileOperations: INodeProperties[] = [
 				name: 'Copy',
 				value: 'copy',
 				description: 'Copy a file',
+				action: 'Copy a file',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a file',
+				action: 'Delete a file',
 			},
 			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download a file',
+				action: 'Download a file',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a file',
+				action: 'Get a file',
 			},
 			{
 				name: 'Rename',
 				value: 'rename',
 				description: 'Rename a file',
+				action: 'Rename a file',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search a file',
+				action: 'Search a file',
 			},
 			{
 				name: 'Share',
 				value: 'share',
 				description: 'Share a file',
+				action: 'Share a file',
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file up to 4MB in size',
+				action: 'Upload a file',
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -449,7 +457,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field',
+		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',

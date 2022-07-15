@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const databaseOperations = [
+export const databaseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -22,16 +23,19 @@ export const databaseOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database',
+				action: 'Get a database',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all databases',
+				action: 'Get all databases',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'search databases using text search',
+				description: 'Search databases using text search',
+				action: 'Search a database',
 			},
 		],
 		default: 'get',
@@ -40,6 +44,7 @@ export const databaseOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -55,18 +60,20 @@ export const databaseOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database',
+				action: 'Get a database',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all databases',
+				action: 'Get all databases',
 			},
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const databaseFields = [
+export const databaseFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
@@ -134,7 +141,7 @@ export const databaseFields = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -216,7 +223,7 @@ export const databaseFields = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -299,4 +306,4 @@ export const databaseFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

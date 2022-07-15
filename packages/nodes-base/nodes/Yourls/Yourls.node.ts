@@ -22,6 +22,7 @@ export class Yourls implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Yourls',
 		name: 'yourls',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:yourls.png',
 		group: ['input'],
 		version: 1,
@@ -43,6 +44,7 @@ export class Yourls implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'URL',
@@ -50,7 +52,6 @@ export class Yourls implements INodeType {
 					},
 				],
 				default: 'url',
-				description: 'The resource to operate on.',
 			},
 			...urlOperations,
 			...urlFields,

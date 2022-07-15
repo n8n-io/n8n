@@ -7,12 +7,13 @@ export const campaignOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'getAll',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all campaigns',
 			},
 		],
 		displayOptions: {

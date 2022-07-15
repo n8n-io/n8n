@@ -7,28 +7,33 @@ export const transferOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a transfer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a transfer',
 			},
 			{
 				name: 'Execute',
 				value: 'execute',
+				action: 'Execute a transfer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a transfer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all transfers',
 			},
 		],
 		displayOptions: {
@@ -46,7 +51,7 @@ export const transferFields: INodeProperties[] = [
 	//         transfer: create
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -57,7 +62,7 @@ export const transferFields: INodeProperties[] = [
 				'profileId',
 			],
 		},
-		description: 'ID of the user profile to retrieve the balance of',
+		description: 'ID of the user profile to retrieve the balance of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -88,7 +93,7 @@ export const transferFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Account ID',
+		displayName: 'Target Account Name or ID',
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
@@ -96,7 +101,7 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},
-		description: 'ID of the account that will receive the funds',
+		description: 'ID of the account that will receive the funds. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -161,7 +166,7 @@ export const transferFields: INodeProperties[] = [
 	//        transfer: execute
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -169,7 +174,7 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to execute the transfer under',
+		description: 'ID of the user profile to execute the transfer under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -227,7 +232,7 @@ export const transferFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the transfer receipt as a PDF file. Only for executed transfers, having status \'Outgoing Payment Sent\'.',
+		description: 'Whether to download the transfer receipt as a PDF file. Only for executed transfers, having status \'Outgoing Payment Sent\'.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -287,7 +292,7 @@ export const transferFields: INodeProperties[] = [
 	//        transfer: getAll
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -295,7 +300,7 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to retrieve',
+		description: 'ID of the user profile to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -419,10 +424,6 @@ export const transferFields: INodeProperties[] = [
 						value: 'charged_back',
 					},
 					{
-						name: 'Outgoing Payment Sent',
-						value: 'outgoing_payment_sent',
-					},
-					{
 						name: 'Funds Converted',
 						value: 'funds_converted',
 					},
@@ -433,6 +434,10 @@ export const transferFields: INodeProperties[] = [
 					{
 						name: 'Incoming Payment Waiting',
 						value: 'incoming_payment_waiting',
+					},
+					{
+						name: 'Outgoing Payment Sent',
+						value: 'outgoing_payment_sent',
 					},
 					{
 						name: 'Processing',

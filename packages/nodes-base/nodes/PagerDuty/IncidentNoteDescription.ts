@@ -7,6 +7,7 @@ export const incidentNoteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const incidentNoteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a incident note',
+				action: 'Create an incident note',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all incident\'s notes',
+				action: 'Get all incident notes',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -79,6 +81,7 @@ export const incidentNoteFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {

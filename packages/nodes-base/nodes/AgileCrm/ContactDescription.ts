@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts',
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update contact properties',
+				action: 'Update a contact',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -93,6 +98,9 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -146,7 +154,7 @@ export const contactFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Any filter',
+				name: 'Any Filter',
 				value: 'anyFilter',
 			},
 			{
@@ -170,7 +178,7 @@ export const contactFields: INodeProperties[] = [
 		default: 'anyFilter',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -185,7 +193,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
-		description: 'Return a simplified version of the response instead of the raw data',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Filters',
@@ -227,32 +235,32 @@ export const contactFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Equals',
-								value: 'EQUALS',
-							},
-							{
-								name: 'Not Equal',
-								value: 'NOTEQUALS',
-							},
-							{
-								name: 'Last',
-								value: 'LAST',
-							},
-							{
-								name: 'Between',
-								value: 'BETWEEN',
-							},
-							{
-								name: 'On',
-								value: 'ON',
+								name: 'After',
+								value: 'AFTER',
 							},
 							{
 								name: 'Before',
 								value: 'BEFORE',
 							},
 							{
-								name: 'After',
-								value: 'AFTER',
+								name: 'Between',
+								value: 'BETWEEN',
+							},
+							{
+								name: 'Equals',
+								value: 'EQUALS',
+							},
+							{
+								name: 'Last',
+								value: 'LAST',
+							},
+							{
+								name: 'Not Equal',
+								value: 'NOTEQUALS',
+							},
+							{
+								name: 'On',
+								value: 'ON',
 							},
 						],
 						default: 'EQUALS',
@@ -401,7 +409,7 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -536,6 +544,7 @@ export const contactFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 							},
@@ -611,7 +620,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Phone properties',
+						displayName: 'Phone Properties',
 						name: 'phoneProperties',
 						values: [
 							{
@@ -643,12 +652,12 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
-									},
-									{
 										name: 'Work',
 										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
 									},
 								],
 							},
@@ -693,7 +702,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{
@@ -864,7 +873,7 @@ export const contactFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -997,6 +1006,7 @@ export const contactFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 							},
@@ -1072,7 +1082,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Phone properties',
+						displayName: 'Phone Properties',
 						name: 'phoneProperties',
 						values: [
 							{
@@ -1104,12 +1114,12 @@ export const contactFields: INodeProperties[] = [
 										value: 'other',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
-									},
-									{
 										name: 'Work',
 										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
 									},
 								],
 							},
@@ -1154,7 +1164,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{

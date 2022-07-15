@@ -8,10 +8,13 @@ import {
 
 export const caseOperations: INodeProperties[] = [
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Operation',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
@@ -211,6 +214,7 @@ export const caseFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'Flag of the case default=false',
 	},
 	{
@@ -268,9 +272,10 @@ export const caseFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {
@@ -352,9 +357,10 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -455,9 +461,10 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -507,6 +514,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Flag of the case default=false',
 			},
 			{
@@ -557,24 +565,24 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
+						value: 'Duplicated',
+						name: 'Duplicated',
 					},
 					{
 						value: 'FalsePositive',
 						name: 'False Positive',
 					},
 					{
-						value: 'TruePositive',
-						name: 'True Positive',
+						value: 'Indeterminate',
+						name: 'Indeterminate',
 					},
 					{
 						value: 'Other',
 						name: 'Other',
 					},
 					{
-						value: 'Duplicated',
-						name: 'Duplicated',
+						value: 'TruePositive',
+						name: 'True Positive',
 					},
 				],
 				description: 'Resolution status of the case',
@@ -736,9 +744,10 @@ export const caseFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadCustomFields',
 								},
@@ -774,6 +783,7 @@ export const caseFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Flag of the case default=false',
 			},
 			{
@@ -809,24 +819,24 @@ export const caseFields: INodeProperties[] = [
 				default: '',
 				options: [
 					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
+						value: 'Duplicated',
+						name: 'Duplicated',
 					},
 					{
 						value: 'False Positive',
 						name: 'FalsePositive',
 					},
 					{
-						value: 'True Positive',
-						name: 'TruePositive',
+						value: 'Indeterminate',
+						name: 'Indeterminate',
 					},
 					{
 						value: 'Other',
 						name: 'Other',
 					},
 					{
-						value: 'Duplicated',
-						name: 'Duplicated',
+						value: 'True Positive',
+						name: 'TruePositive',
 					},
 				],
 			},

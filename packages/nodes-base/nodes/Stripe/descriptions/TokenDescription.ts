@@ -7,13 +7,14 @@ export const tokenOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a token',
+				action: 'Create a token',
 			},
 		],
 		displayOptions: {

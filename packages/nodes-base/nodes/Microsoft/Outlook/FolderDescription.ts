@@ -7,6 +7,7 @@ export const folderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const folderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new mail folder in the root folder of the user\'s mailbox',
+				action: 'Create a folder',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a folder',
+				action: 'Delete a folder',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single folder details',
+				action: 'Get a folder',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all folders under the root folder of the signed-in user',
+				action: 'Get all folders',
 			},
 			{
 				name: 'Get Children',
 				value: 'getChildren',
 				description: 'Lists all child folders under the folder',
+				action: 'Get items in a folder',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -158,7 +163,7 @@ export const folderFields: INodeProperties[] = [
 	{
 		displayName: 'Include Nested Folders',
 		name: 'includeNestedFolders',
-		description: 'Include child folders in the search',
+		description: 'Whether to include child folders in the search',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -290,7 +295,7 @@ export const folderFields: INodeProperties[] = [
 			{
 				displayName: 'Include Nested Folders',
 				name: 'includeNestedFolders',
-				description: 'Include child folders in the search. Only for search folders.',
+				description: 'Whether to include child folders in the search. Only for search folders.',
 				type: 'boolean',
 				default: false,
 			},

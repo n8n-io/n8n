@@ -1,6 +1,8 @@
 <template>
-	<div class="paramter-input-list-wrapper">
-		<div v-for="parameter in filteredParameters" :key="parameter.name" :class="{indent}">
+	<div class="parameter-input-list-wrapper">
+		<div v-for="(parameter, index) in filteredParameters" :key="parameter.name" :class="{indent}">
+			<slot v-if="indexToShowSlotAt === index" />
+
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
@@ -18,8 +20,7 @@
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-				:truncate="parameter.typeOptions && parameter.typeOptions.truncate"
-				:truncate-at="parameter.typeOptions && parameter.typeOptions.truncateAt"
+				@action="onNoticeAction"
 			/>
 
 			<div
@@ -80,6 +81,12 @@
 				/>
 			</div>
 		</div>
+		<div
+			:class="{indent}"
+			v-if="filteredParameters.length === 0"
+		>
+			<slot/>
+		</div>
 	</div>
 </template>
 
@@ -88,6 +95,8 @@
 import {
 	INodeParameters,
 	INodeProperties,
+	INodeType,
+	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -131,8 +140,35 @@ export default mixins(
 			node (): INodeUi {
 				return this.$store.getters.activeNode;
 			},
+			indexToShowSlotAt (): number {
+				let index = 0;
+				const credentialsDependencies = this.getCredentialsDependencies();
+
+				this.filteredParameters.forEach((prop, propIndex) => {
+					if (credentialsDependencies.has(prop.name)) {
+						index = propIndex + 1;
+					}
+				});
+
+				return index < this.filteredParameters.length ?
+					index : this.filteredParameters.length - 1;
+			},
 		},
 		methods: {
+			getCredentialsDependencies() {
+				const dependencies = new Set();
+				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+
+				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
+				if(nodeType && nodeType.credentials) {
+					for(const cred of nodeType.credentials) {
+						if(cred.displayOptions && cred.displayOptions.show) {
+							Object.keys(cred.displayOptions.show).forEach(fieldName => dependencies.add(fieldName));
+						}
+					}
+				}
+				return dependencies;
+			},
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;
@@ -166,8 +202,24 @@ export default mixins(
 
 				this.$emit('valueChanged', parameterData);
 			},
+
+			mustHideDuringCustomApiCall (parameter: INodeProperties, nodeValues: INodeParameters): boolean {
+				if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+
+				const MUST_REMAIN_VISIBLE = ['authentication', 'resource', 'operation', ...Object.keys(nodeValues)];
+
+				return !MUST_REMAIN_VISIBLE.includes(parameter.name);
+			},
+
 			displayNodeParameter (parameter: INodeProperties): boolean {
 				if (parameter.type === 'hidden') {
+					return false;
+				}
+
+				if (
+					this.isCustomApiCallSelected(this.nodeValues) &&
+					this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
+				) {
 					return false;
 				}
 
@@ -231,6 +283,11 @@ export default mixins(
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
 			},
+			onNoticeAction(action: string) {
+				if (action === 'activate') {
+					this.$emit('activate');
+				}
+			},
 		},
 		watch: {
 			filteredParameterNames(newValue, oldValue) {
@@ -262,7 +319,7 @@ export default mixins(
 </script>
 
 <style lang="scss">
-.paramter-input-list-wrapper {
+.parameter-input-list-wrapper {
 	.delete-option {
 		display: none;
 		position: absolute;
