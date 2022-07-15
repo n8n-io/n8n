@@ -270,7 +270,7 @@ $disabled-border-base: var(--disabled-border, var(--border-color-base));
 
 /* Icon
 -------------------------- */
-$icon-color: #666;
+$icon-color: var(--color-text-base);
 $icon-color-base: var(--color-info);
 
 /* Checkbox
@@ -407,7 +407,7 @@ $select-font-size: $font-size-base;
 $select-close-hover-color: var(--color-text-light);
 
 $select-input-color: var(--color-text-lighter);
-$select-multiple-input-color: #666;
+$select-multiple-input-color: var(--color-text-base);
 /// color||Color|0
 $select-input-focus-border-color: var(--color-secondary);
 /// fontSize||Font|1

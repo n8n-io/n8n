@@ -711,7 +711,7 @@ export default mixins(
 
 	.el-menu-item {
 		a {
-			color: #666;
+			color: var(--color-text-base);
 
 			&.primary-item {
 				color: $--color-primary;

@@ -3203,7 +3203,7 @@ export default mixins(
 	background: var(--color-foreground-xlight);
 	width: 40px;
 	height: 40px;
-	color: #666;
+	color: var(--color-text-base);
 	cursor: pointer;
 
 	&:hover {

@@ -44,7 +44,7 @@
 	@include mixins.e(expand-icon) {
 		position: relative;
 		cursor: pointer;
-		color: #666;
+		var(--color-text-base);
 		font-size: 12px;
 		transition: transform 0.2s ease-in-out;
 		height: 20px;
