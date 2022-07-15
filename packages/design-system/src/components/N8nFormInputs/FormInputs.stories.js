@@ -68,6 +68,15 @@ FormInputs.args = {
 				],
 			},
 		},
+		{
+			name: 'agree',
+			properties: {
+			  type: 'checkbox',
+			  label: 'Signup for newsletter Signup for newsletter Signup for newsletter vSignup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter v vSignup for newsletter Signup for newsletter Signup for newsletter Signup for newsletter',
+			  labelSize: 'small',
+			  tooltipText: 'Check this if you agree to be contacted by our marketing team Check this if you agree to be contacted by our marketing team Check this if you agree to be contacted by our marketing team Check this if you agree to be contacted by our marketing team'
+			}
+		  }
 	],
 };
 

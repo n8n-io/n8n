@@ -401,7 +401,7 @@ export class GoogleChat implements INodeType {
 								if (validateJSON(messageJson as string) !== undefined) {
 									message = JSON.parse(messageJson as string) as IMessage;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json');
+									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json', { itemIndex: i });
 								}
 							}
 
@@ -410,7 +410,7 @@ export class GoogleChat implements INodeType {
 							if (messageUi.text && messageUi.text !== '') {
 								message.text = messageUi.text;
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Message Text must be provided.');
+								throw new NodeOperationError(this.getNode(), 'Message Text must be provided.', { itemIndex: i });
 							}
 							// 	// TODO: get cards from the UI
 							// if (messageUi?.cards?.metadataValues && messageUi?.cards?.metadataValues.length !== 0) {
@@ -485,7 +485,7 @@ export class GoogleChat implements INodeType {
 								if (validateJSON(updateFieldsJson as string) !== undefined) {
 									message = JSON.parse(updateFieldsJson as string) as IMessage;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Update Fields (JSON) must be a valid json');
+									throw new NodeOperationError(this.getNode(), 'Update Fields (JSON) must be a valid json', { itemIndex: i });
 								}
 							}
 
@@ -570,7 +570,7 @@ export class GoogleChat implements INodeType {
 								if (validateJSON(messageJson as string) !== undefined) {
 									message = JSON.parse(messageJson as string) as IMessage;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json');
+									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json', { itemIndex: i });
 								}
 							}
 
@@ -579,7 +579,7 @@ export class GoogleChat implements INodeType {
 							if (messageUi.text && messageUi.text !== '') {
 								message.text = messageUi.text;
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Message Text must be provided.');
+								throw new NodeOperationError(this.getNode(), 'Message Text must be provided.', { itemIndex: i });
 							}
 						}
 

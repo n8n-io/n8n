@@ -20,6 +20,7 @@ export const mediaOperations: INodeProperties[] = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Send media to a chat room',
+				action: 'Upload media to a chatroom',
 			},
 		],
 		default: 'upload',
@@ -49,7 +50,7 @@ export const mediaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{

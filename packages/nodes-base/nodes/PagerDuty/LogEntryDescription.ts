@@ -20,11 +20,13 @@ export const logEntryOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a log entry',
+				action: 'Get a log entry',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all log entries',
+				action: 'Get all log entries',
 			},
 		],
 		default: 'get',
@@ -161,7 +163,7 @@ export const logEntryFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Until',

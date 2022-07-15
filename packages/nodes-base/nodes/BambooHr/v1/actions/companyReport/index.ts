@@ -26,6 +26,7 @@ export const descriptions: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a company report',
+				action: 'Get a company report',
 			},
 		],
 		default: 'get',

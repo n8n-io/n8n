@@ -13,30 +13,37 @@ export const groupOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all groups',
 			},
 			{
 				name: 'Get Members',
 				value: 'getMembers',
+				action: 'Get group members',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a group',
 			},
 			{
 				name: 'Update Members',
 				value: 'updateMembers',
+				action: 'Update group members',
 			},
 		],
 		displayOptions: {
@@ -170,7 +177,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -217,7 +224,7 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The collections to assign to this group. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',

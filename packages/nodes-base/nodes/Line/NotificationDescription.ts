@@ -20,6 +20,7 @@ export const notificationOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Sends notifications to users or groups',
+				action: 'Send a notification',
 			},
 		],
 		default: 'send',
