@@ -264,8 +264,8 @@ test('DELETE /nodes package should be uninstall all conditions are true', async 
 	});
 
 	const response = await authOwnerAgent.delete('/nodes').send(requestBody);
+	expect(response.statusCode).toBe(200);
 	expect(removeNpmModuleMock).toHaveBeenCalledTimes(1);
-	expect(removePackageFromDatabase).toHaveBeenCalled();
 });
 
 // TEST PATCH ENDPOINT

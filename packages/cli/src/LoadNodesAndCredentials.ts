@@ -34,11 +34,15 @@ import path from 'path';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
 import config from '../config';
-import { Db, NodeTypes } from '.';
+import { NodeTypes } from '.';
 import { InstalledPackages } from './databases/entities/InstalledPackages';
 import { InstalledNodes } from './databases/entities/InstalledNodes';
 import { executeCommand } from './CommunityNodes/helpers';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import {
+	persistInstalledPackageData,
+	removePackageFromDatabase,
+} from './CommunityNodes/packageModel';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -64,6 +68,24 @@ class LoadNodesAndCredentialsClass {
 		// @ts-ignore
 		module.constructor._initPaths();
 
+		this.nodeModulesPath = await this.getNodeModulesFolderLocation();
+
+		this.excludeNodes = config.getEnv('nodes.exclude');
+		this.includeNodes = config.getEnv('nodes.include');
+
+		// Get all the installed packages which contain n8n nodes
+		const nodePackages = await this.getN8nNodePackages(this.nodeModulesPath);
+
+		for (const packagePath of nodePackages) {
+			await this.loadDataFromPackage(packagePath);
+		}
+
+		await this.loadNodesFromDownloadedPackages();
+
+		await this.loadNodesFromCustomFolders();
+	}
+
+	async getNodeModulesFolderLocation(): Promise<string> {
 		// Get the path to the node-modules folder to be later able
 		// to load the credentials and nodes
 		const checkPaths = [
@@ -77,25 +99,18 @@ class LoadNodesAndCredentialsClass {
 			try {
 				await fsAccess(checkPath);
 				// Folder exists, so use it.
-				this.nodeModulesPath = path.dirname(checkPath);
-				break;
+				return path.dirname(checkPath);
 			} catch (error) {
 				// Folder does not exist so get next one
 				// eslint-disable-next-line no-continue
 				continue;
 			}
 		}
+		throw new Error('Could not find "node_modules" folder!');
+	}
 
-		if (this.nodeModulesPath === '') {
-			throw new Error('Could not find "node_modules" folder!');
-		}
-
-		this.excludeNodes = config.getEnv('nodes.exclude');
-		this.includeNodes = config.getEnv('nodes.include');
-
-		// Get all the installed packages which contain n8n nodes
-		const nodePackages = await this.getN8nNodePackages(this.nodeModulesPath);
-
+	async loadNodesFromDownloadedPackages(): Promise<void> {
+		const nodePackages = [];
 		try {
 			// Read downloaded nodes and credentials
 			const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
@@ -107,9 +122,14 @@ class LoadNodesAndCredentialsClass {
 		} catch (error) {}
 
 		for (const packagePath of nodePackages) {
-			await this.loadDataFromPackage(packagePath);
+			try {
+				await this.loadDataFromPackage(packagePath);
+				// eslint-disable-next-line no-empty
+			} catch (error) {}
 		}
+	}
 
+	async loadNodesFromCustomFolders(): Promise<void> {
 		// Read nodes and credentials from custom directories
 		const customDirectories = [];
 
@@ -224,49 +244,18 @@ class LoadNodesAndCredentialsClass {
 
 		if (loadedNodes.length > 0) {
 			const packageFile = await this.readPackageJson(finalNodeUnpackedPath);
-			let installedPackage: InstalledPackages;
-
-			const nodeTypes = NodeTypes();
-
 			// Save info to DB
 			try {
-				await Db.transaction(async (transactionManager) => {
-					const promises = [];
-
-					const installedPackagePayload = Object.assign(new InstalledPackages(), {
-						packageName,
-						installedVersion: packageFile.version,
-						authorName: packageFile.author?.name,
-						authorEmail: packageFile.author?.email,
-					});
-					installedPackage = await transactionManager.save<InstalledPackages>(
-						installedPackagePayload,
-					);
-					installedPackage.installedNodes = [];
-
-					promises.push(
-						...loadedNodes.map(async (loadedNode) => {
-							nodeTypes.attachNodeType(
-								loadedNode.name,
-								this.nodeTypes[loadedNode.name].type,
-								this.nodeTypes[loadedNode.name].sourcePath,
-							);
-
-							const installedNodePayload = Object.assign(new InstalledNodes(), {
-								name: this.nodeTypes[loadedNode.name].type.description.displayName,
-								type: loadedNode.name,
-								latestVersion: loadedNode.version,
-								package: packageName,
-							});
-							installedPackage.installedNodes.push(installedNodePayload);
-							return transactionManager.save<InstalledNodes>(installedNodePayload);
-						}),
-					);
-
-					return promises;
-				});
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				return installedPackage!;
+				const installedPackage = await persistInstalledPackageData(
+					packageFile.name,
+					packageFile.version,
+					loadedNodes,
+					this.nodeTypes,
+					packageFile.author?.name,
+					packageFile.author?.email,
+				);
+				this.attachNodesToNodeTypes(installedPackage.installedNodes);
+				return installedPackage;
 			} catch (error) {
 				LoggerProxy.error('Failed to save installed packages and nodes', { error, packageName });
 				throw error;
@@ -284,22 +273,19 @@ class LoadNodesAndCredentialsClass {
 		}
 	}
 
-	async removeNpmModule(packageName: string, installedNodes: InstalledNodes[]): Promise<void> {
+	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
 		const command = `npm remove ${packageName}`;
 
 		await executeCommand(command);
 
-		const nodeTypes = NodeTypes();
+		void (await removePackageFromDatabase(installedPackage));
 
-		installedNodes.forEach((installedNode) => {
-			nodeTypes.removeNodeType(installedNode.type);
-			delete this.nodeTypes[installedNode.type];
-		});
+		this.unloadNodes(installedPackage.installedNodes);
 	}
 
 	async updateNpmModule(
 		packageName: string,
-		installedNodes: InstalledNodes[],
+		installedPackage: InstalledPackages,
 	): Promise<InstalledPackages> {
 		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
 
@@ -313,16 +299,10 @@ class LoadNodesAndCredentialsClass {
 			}
 			throw error;
 		}
-		const nodeTypes = NodeTypes();
 
-		installedNodes.forEach((installedNode) => {
-			nodeTypes.removeNodeType(installedNode.type);
-			delete this.nodeTypes[installedNode.type];
-		});
+		this.unloadNodes(installedPackage.installedNodes);
 
-		const folderName = packageName.includes('@') ? packageName.split('@')[0] : packageName;
-
-		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', folderName);
+		const finalNodeUnpackedPath = path.join(downloadFolder, 'node_modules', packageName);
 
 		const loadedNodes = await this.loadDataFromPackage(finalNodeUnpackedPath);
 
@@ -331,48 +311,20 @@ class LoadNodesAndCredentialsClass {
 
 			// Save info to DB
 			try {
-				let returnedPackage: InstalledPackages;
-				await Db.transaction(async (transactionManager) => {
-					const promises = [];
+				await removePackageFromDatabase(installedPackage);
 
-					const previousVersionPackage = Object.assign(new InstalledPackages(), {
-						packageName,
-					});
+				const newlyInstalledPackage = await persistInstalledPackageData(
+					packageFile.name,
+					packageFile.version,
+					loadedNodes,
+					this.nodeTypes,
+					packageFile.author?.name,
+					packageFile.author?.email,
+				);
 
-					await transactionManager.remove(previousVersionPackage);
+				attachNodesToNodeTypes(newlyInstalledPackage.installedNodes);
 
-					const installedPackage = Object.assign(new InstalledPackages(), {
-						packageName,
-						installedVersion: packageFile.version,
-						authorName: packageFile.author?.name,
-						authorEmail: packageFile.author?.email,
-					});
-					returnedPackage = await transactionManager.save<InstalledPackages>(installedPackage);
-					returnedPackage.installedNodes = [];
-
-					promises.push(
-						...loadedNodes.map(async (loadedNode) => {
-							nodeTypes.attachNodeType(
-								loadedNode.name,
-								this.nodeTypes[loadedNode.name].type,
-								this.nodeTypes[loadedNode.name].sourcePath,
-							);
-
-							const installedNode = Object.assign(new InstalledNodes(), {
-								name: this.nodeTypes[loadedNode.name].type.description.displayName,
-								type: loadedNode.name,
-								latestVersion: loadedNode.version,
-								package: packageName,
-							});
-							returnedPackage.installedNodes.push(installedNode);
-							return transactionManager.save<InstalledNodes>(installedNode);
-						}),
-					);
-
-					await Promise.all(promises);
-				});
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				return returnedPackage!;
+				return newlyInstalledPackage;
 			} catch (error) {
 				LoggerProxy.error('Failed to save installed packages and nodes', { error, packageName });
 				throw error;
@@ -414,12 +366,7 @@ class LoadNodesAndCredentialsClass {
 		} catch (error) {
 			// eslint-disable-next-line no-console, @typescript-eslint/restrict-template-expressions
 			console.error(`Error loading node "${nodeName}" from: "${filePath}" - ${error.message}`);
-			if (packageName === 'n8n-nodes-base') {
-				// This is our core node package - throw the error
-				// For community packages, we simply warn.
-				throw error;
-			}
-			return;
+			throw error;
 		}
 
 		// eslint-disable-next-line prefer-const
@@ -635,6 +582,25 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		return returnData;
+	}
+
+	unloadNodes(installedNodes: InstalledNodes[]): void {
+		const nodeTypes = NodeTypes();
+		installedNodes.forEach((installedNode) => {
+			nodeTypes.removeNodeType(installedNode.type);
+			delete this.nodeTypes[installedNode.type];
+		});
+	}
+
+	attachNodesToNodeTypes(installedNodes: InstalledNodes[]): void {
+		const nodeTypes = NodeTypes();
+		installedNodes.forEach((installedNode) => {
+			nodeTypes.attachNodeType(
+				installedNode.type,
+				this.nodeTypes[installedNode.type].type,
+				this.nodeTypes[installedNode.type].sourcePath,
+			);
+		});
 	}
 }
 

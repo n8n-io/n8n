@@ -24,6 +24,12 @@ export const parsePackageName = (originalString: string | undefined): ParsedNpmP
 		throw new Error('Package name was not provided');
 	}
 
+	if (new RegExp(/[^0-9a-z@\-./]/).test(originalString)) {
+		// Prevent any strings that are not valid npm package names or
+		// could indicate malicous commands
+		throw new Error('Package name must be a single word');
+	}
+
 	const scope = originalString.includes('/') ? originalString.split('/')[0] : undefined;
 
 	const packageNameWithoutScope = scope ? originalString.replace(`${scope}/`, '') : originalString;

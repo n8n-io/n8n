@@ -15,11 +15,7 @@ import {
 	removePackageFromMissingList,
 	parsePackageName,
 } from '../CommunityNodes/helpers';
-import {
-	getAllInstalledPackages,
-	removePackageFromDatabase,
-	searchInstalledPackage,
-} from '../CommunityNodes/packageModel';
+import { getAllInstalledPackages, searchInstalledPackage } from '../CommunityNodes/packageModel';
 import { isAuthenticatedRequest } from '../UserManagement/UserManagementHelper';
 import config = require('../../config');
 import { NpmUpdatesAvailable } from '../Interfaces';
@@ -199,6 +195,8 @@ nodesController.delete(
 				400,
 			);
 		}
+		// This function also sanitizes the package name by throwing errors.
+		parsePackageName(name);
 
 		const installedPackage = await searchInstalledPackage(name);
 
@@ -211,7 +209,7 @@ nodesController.delete(
 		}
 
 		try {
-			void (await LoadNodesAndCredentials().removeNpmModule(name, installedPackage.installedNodes));
+			void (await LoadNodesAndCredentials().removeNpmModule(name, installedPackage));
 
 			// Inform the connected frontends that the node list has been updated
 			installedPackage.installedNodes.forEach((installedNode) => {
@@ -238,8 +236,6 @@ nodesController.delete(
 				500,
 			);
 		}
-
-		void (await removePackageFromDatabase(installedPackage));
 	}),
 );
 
@@ -255,6 +251,8 @@ nodesController.patch(
 				400,
 			);
 		}
+
+		const parsedPackageData = parsePackageName(name);
 		const packagePreviouslyInstalled = await searchInstalledPackage(name);
 
 		if (!packagePreviouslyInstalled) {
@@ -267,13 +265,14 @@ nodesController.patch(
 
 		try {
 			const newInstalledPackage = await LoadNodesAndCredentials().updateNpmModule(
-				name,
-				packagePreviouslyInstalled.installedNodes,
+				parsedPackageData.packageName,
+				packagePreviouslyInstalled,
 			);
+
+			const pushInstance = Push.getInstance();
 
 			// Inform the connected frontends that new nodes are available
 			packagePreviouslyInstalled.installedNodes.forEach((installedNode) => {
-				const pushInstance = Push.getInstance();
 				pushInstance.send('removeNodeType', {
 					name: installedNode.type,
 					version: installedNode.latestVersion,
@@ -281,7 +280,6 @@ nodesController.patch(
 			});
 
 			newInstalledPackage.installedNodes.forEach((nodeData) => {
-				const pushInstance = Push.getInstance();
 				pushInstance.send('reloadNodeType', {
 					name: nodeData.name,
 					version: nodeData.latestVersion,
