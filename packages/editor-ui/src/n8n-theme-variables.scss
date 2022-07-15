@@ -2,7 +2,7 @@
 $--color-primary: var(--color-primary);
 
 // Dialog
-$--custom-dialog-text-color: var(--color-text-base);
+$--custom-dialog-text-color: var(--color-text-dark);
 $--custom-dialog-background: var(--color-background-xlight);
 
 $--custom-font-black: var(--color-text-dark);
@@ -27,7 +27,7 @@ $--warning-tooltip-color: var(--color-danger);
 // Table
 $--custom-table-background-main: hsla(var(--color-background-dark-h), var(--color-background-dark-s), var(--color-background-dark-l), .8);
 $--custom-table-background-stripe-color: var(--color-foreground-light);
-$--custom-table-background-hover-color: var(--color-foreground-base);
+$--custom-table-background-hover-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), .4);;
 
 $--header-height: 65px;
 
