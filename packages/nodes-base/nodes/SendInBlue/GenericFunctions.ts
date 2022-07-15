@@ -99,7 +99,12 @@ export async function validateAttachmentsData(
 			} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
 
 			const itemIndex = this.getItemIndex();
-			const name = getFileName(itemIndex, mimeType, fileExtension, fileName);
+			const name = getFileName(
+				itemIndex,
+				mimeType,
+				fileExtension,
+				fileName || item.binary!.data.fileName,
+			);
 
 			attachment.push({ content, name });
 		}
