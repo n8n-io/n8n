@@ -149,11 +149,13 @@ export class Mandrill implements INodeType {
 						name: 'Send Template',
 						value: 'sendTemplate',
 						description: 'Send message based on template',
+						action: 'Send a message based on a template',
 					},
 					{
 						name: 'Send HTML',
 						value: 'sendHtml',
 						description: 'Send message based on HTML',
+						action: 'Send a message based on HTML',
 					},
 				],
 				default: 'sendTemplate',
@@ -175,7 +177,7 @@ export class Mandrill implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The template you want to send. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'From Email',

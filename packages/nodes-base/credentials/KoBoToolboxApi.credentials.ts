@@ -1,4 +1,6 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	NodePropertyTypes,
 } from 'n8n-workflow';
@@ -23,4 +25,20 @@ export class KoBoToolboxApi implements ICredentialType {
 			hint: 'You can get your API token at https://[api-root]/token/?format=json (for a logged in user)',
 		},
 	];
+	authenticate = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Token {{$credentials.token}}',
+			},
+		},
+	} as IAuthenticateGeneric;
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.URL}}',
+			url: '/api/v2/assets/',
+			method: 'GET',
+		},
+	};
 }

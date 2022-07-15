@@ -25,26 +25,31 @@ export const productOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a product',
+				action: 'Create a product',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a product',
+				action: 'Delete a product',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a product',
+				action: 'Get a product',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all producs',
+				action: 'Get all products',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a product',
+				action: 'Update a product',
 			},
 		],
 		default: 'create',
@@ -96,7 +101,7 @@ export const productFields: INodeProperties[] = [
 		displayName: 'Attribute Set Name or ID',
 		name: 'attributeSetId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [

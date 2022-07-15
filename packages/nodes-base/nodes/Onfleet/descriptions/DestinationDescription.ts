@@ -20,11 +20,13 @@ export const destinationOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new destination',
+				action: 'Create a destination',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific destination',
+				action: 'Get a destination',
 			},
 
 		],

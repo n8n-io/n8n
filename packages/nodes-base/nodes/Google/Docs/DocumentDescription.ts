@@ -19,14 +19,17 @@ export const documentOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a document',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a document',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a document',
 			},
 		],
 		default: 'create',
@@ -41,7 +44,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Drive Name or ID',
 		name: 'driveId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDrives',
 		},
@@ -62,7 +65,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Folder Name or ID',
 		name: 'folderId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'driveId',

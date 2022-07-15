@@ -20,11 +20,13 @@ export const caseTagOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a tag to a case',
+				action: 'Add a tag to a case',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a tag from a case',
+				action: 'Remove a tag from a case',
 			},
 		],
 		default: 'add',
@@ -56,7 +58,7 @@ export const caseTagFields: INodeProperties[] = [
 		displayName: 'Tag Name or ID',
 		name: 'tag',
 		type: 'options',
-		description: 'Tag to attach to the case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Tag to attach to the case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -98,7 +100,7 @@ export const caseTagFields: INodeProperties[] = [
 		displayName: 'Tag Name or ID',
 		name: 'tag',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {

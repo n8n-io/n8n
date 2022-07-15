@@ -13,6 +13,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a user',
 			},
 		],
 		displayOptions: {

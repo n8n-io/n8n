@@ -20,11 +20,13 @@ export const messageLabelOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a label to a message',
+				action: 'Add a label to a message',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a label from a message',
+				action: 'Remove a label from a message',
 			},
 		],
 		default: 'add',
@@ -72,6 +74,6 @@ export const messageLabelFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the label. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the label. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

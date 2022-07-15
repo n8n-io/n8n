@@ -18,12 +18,8 @@ export async function urlScanIoApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey } = await this.getCredentials('urlScanIoApi') as { apiKey: string };
 
 	const options: OptionsWithUri = {
-		headers: {
-			'API-KEY': apiKey,
-		},
 		method,
 		body,
 		qs,

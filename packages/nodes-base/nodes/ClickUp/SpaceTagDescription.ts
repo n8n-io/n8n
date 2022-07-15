@@ -20,21 +20,25 @@ export const spaceTagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a space tag',
+				action: 'Create a space tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a space tag',
+				action: 'Delete a space tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all space tags',
+				action: 'Get all space tags',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a space tag',
+				action: 'Update a space tag',
 			},
 		],
 		default: 'create',
@@ -86,7 +90,7 @@ export const spaceTagFields: INodeProperties[] = [
 		displayName: 'Name or ID',
 		name: 'name',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'space',

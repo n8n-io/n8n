@@ -853,6 +853,17 @@ export default mixins(
 				};
 
 				this.$emit('valueChanged', parameterData);
+
+				if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
+					this.$telemetry.track('User set node operation or mode', {
+						workflow_id: this.$store.getters.workflowId,
+						node_type: this.node && this.node.type,
+						resource: this.node && this.node.parameters.resource,
+						is_custom: value === CUSTOM_API_CALL_KEY,
+						session_id: this.$store.getters['ui/ndvSessionId'],
+						parameter: this.parameter.name,
+					});
+				}
 			},
 			optionSelected (command: string) {
 				if (command === 'resetValue') {

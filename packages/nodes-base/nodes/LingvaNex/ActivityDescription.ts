@@ -20,11 +20,13 @@ export const activityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an activity for a member',
+				action: 'Create an activity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all activities',
+				action: 'Get all activities',
 			},
 		],
 		default: 'create',
@@ -40,7 +42,7 @@ export const activityFields: INodeProperties[] = [
 		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -116,7 +118,7 @@ export const activityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getActivityTypes',
 				},
 				default: '',
-				description: 'A user-defined way to group activities of the same nature. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'A user-defined way to group activities of the same nature. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -163,7 +165,7 @@ export const activityFields: INodeProperties[] = [
 		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},

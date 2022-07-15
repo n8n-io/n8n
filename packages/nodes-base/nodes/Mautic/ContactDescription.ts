@@ -20,41 +20,49 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Edit Contact Points',
 				value: 'editContactPoint',
 				description: 'Edit contact\'s points',
+				action: 'Edit a contact\'s points',
 			},
 			{
 				name: 'Edit Do Not Contact List',
 				value: 'editDoNotContactList',
 				description: 'Add/remove contacts from/to the do not contact list',
+				action: 'Add/remove contacts from/to the do not contact list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a contact',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all contacts',
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Send Email',
 				value: 'sendEmail',
 				description: 'Send email to contact',
+				action: 'Send email to a contact',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
@@ -145,7 +153,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Primary Company Name or ID',
 		name: 'company',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCompanies',
 		},
@@ -338,7 +346,7 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -422,7 +430,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStages',
 				},
@@ -432,6 +440,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
@@ -686,7 +695,7 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -852,7 +861,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Primary Company Name or ID',
 				name: 'company',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
@@ -905,7 +914,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Stage Name or ID',
 				name: 'stage',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -922,6 +931,7 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [
@@ -1075,10 +1085,12 @@ export const contactFields: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a contact',
 			},
 		],
 		default: 'add',
@@ -1193,10 +1205,12 @@ export const contactFields: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a contact',
 			},
 		],
 		default: 'add',
@@ -1438,7 +1452,7 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Campaign Email Name or ID',
 		name: 'campaignEmailId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {

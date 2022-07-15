@@ -19,22 +19,27 @@ export const taskOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a task',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a task',
 			},
 		],
 		default: 'get',
@@ -64,7 +69,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The identifier of the list, unique in the user\'s mailbox. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Subject',
@@ -194,7 +199,7 @@ export const taskFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The identifier of the list, unique in the user\'s mailbox. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The identifier of the list, unique in the user\'s mailbox. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Task ID',

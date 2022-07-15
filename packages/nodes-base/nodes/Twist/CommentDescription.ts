@@ -20,26 +20,31 @@ export const commentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new comment to a thread',
+				action: 'Create a comment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a comment',
+				action: 'Delete a comment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get information about a comment',
+				action: 'Get a comment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all comments',
+				action: 'Get all comments',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a comment',
+				action: 'Update a comment',
 			},
 		],
 		default: 'create',
@@ -199,7 +204,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mentions Name or ID',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -209,7 +214,7 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Mark Thread Position',
@@ -229,7 +234,7 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that will attached to the comment. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The users that will attached to the comment. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Temporary ID',
@@ -556,7 +561,7 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
