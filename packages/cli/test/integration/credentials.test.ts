@@ -63,14 +63,14 @@ test('POST /credentials should create cred', async () => {
 
 	expect(name).toBe(payload.name);
 	expect(type).toBe(payload.type);
-	expect(nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
+	expect(nodesAccess[0].nodeType).toBe(payload.nodesAccess![0].nodeType);
 	expect(encryptedData).not.toBe(payload.data);
 
 	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(payload.name);
 	expect(credential.type).toBe(payload.type);
-	expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
+	expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess![0].nodeType);
 	expect(credential.data).not.toBe(payload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -220,14 +220,14 @@ test('PATCH /credentials/:id should update owned cred for owner', async () => {
 
 	expect(name).toBe(patchPayload.name);
 	expect(type).toBe(patchPayload.type);
-	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
 	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
-	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -254,14 +254,14 @@ test('PATCH /credentials/:id should update non-owned cred for owner', async () =
 
 	expect(name).toBe(patchPayload.name);
 	expect(type).toBe(patchPayload.type);
-	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
 	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
-	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -287,14 +287,14 @@ test('PATCH /credentials/:id should update owned cred for member', async () => {
 
 	expect(name).toBe(patchPayload.name);
 	expect(type).toBe(patchPayload.type);
-	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(encryptedData).not.toBe(patchPayload.data);
 
 	const credential = await Db.collections.Credentials.findOneOrFail(id);
 
 	expect(credential.name).toBe(patchPayload.name);
 	expect(credential.type).toBe(patchPayload.type);
-	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+	expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
 	expect(credential.data).not.toBe(patchPayload.data);
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
