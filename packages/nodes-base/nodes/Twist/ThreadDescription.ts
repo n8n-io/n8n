@@ -20,26 +20,31 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new thread in a channel',
+				action: 'Create a thread',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a thread',
+				action: 'Delete a thread',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get information about a thread',
+				action: 'Get a thread',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all threads',
+				action: 'Get all threads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a thread',
+				action: 'Update a thread',
 			},
 		],
 		default: 'create',
@@ -227,7 +232,7 @@ export const threadFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recipient Names or IDs',
@@ -240,7 +245,7 @@ export const threadFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that will attached to the thread. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The users that will attached to the thread. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Send as Integration',
@@ -555,7 +560,7 @@ export const threadFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Title',

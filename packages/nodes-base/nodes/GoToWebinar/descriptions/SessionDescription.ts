@@ -13,14 +13,17 @@ export const sessionOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a session',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all sessions',
 			},
 			{
 				name: 'Get Details',
 				value: 'getDetails',
+				action: 'Get details on a session',
 			},
 		],
 		displayOptions: {
@@ -133,7 +136,7 @@ export const sessionFields: INodeProperties[] = [
 					loadOptionsMethod: 'getWebinars',
 				},
 				default: {},
-				description: 'Webinar by which to filter the sessions to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Webinar by which to filter the sessions to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -150,7 +153,7 @@ export const sessionFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar to which the session belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Key of the webinar to which the session belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

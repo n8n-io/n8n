@@ -20,26 +20,31 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Deletes a message',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Get Permalink',
 				value: 'getPermalink',
 				description: 'Get Permanent Link of a message',
+				action: 'Get a message permalink',
 			},
 			{
 				name: 'Post',
 				value: 'post',
 				description: 'Post a message into a channel',
+				action: 'Post a message',
 			},
 			{
 				name: 'Post (Ephemeral)',
 				value: 'postEphemeral',
 				description: 'Post an ephemeral message to a user in channel',
+				action: 'Post an ephemeral message',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Updates a message',
+				action: 'Update a message',
 			},
 		],
 		default: 'post',
@@ -70,7 +75,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Channel containing the message. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Channel containing the message. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Timestamp',
@@ -481,7 +486,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Channel containing the message to be updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Channel containing the message to be updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Text',
@@ -1751,7 +1756,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Channel containing the message to be deleted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Channel containing the message to be deleted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Timestamp',
