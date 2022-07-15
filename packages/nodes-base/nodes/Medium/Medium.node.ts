@@ -153,7 +153,7 @@ export class Medium implements INodeType {
 					loadOptionsMethod: 'getPublications',
 				},
 				default: '',
-				description: 'Publication IDs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Publication IDs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Title',
