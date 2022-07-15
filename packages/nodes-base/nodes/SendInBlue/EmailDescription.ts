@@ -341,6 +341,38 @@ const sendHtmlEmailFields: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				default: {},
+				description: 'Add tags to your emails to find them more easily',
+				displayName: 'Email Tags',
+				name: 'emailTags',
+				options: [
+					{
+						displayName: 'Tags',
+						name: 'tags',
+						values: [
+							{
+								default: '',
+								displayName: 'Tag',
+								name: 'tag',
+								type: 'string',
+								routing: {
+									send: {
+										property: '=tags[{{$index}}]',
+										type: 'body',
+									},
+								},
+								description: "Tag for email you're sending",
+							},
+						],
+					},
+				],
+				placeholder: 'Add Email Tags',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+			},
 		],
 	},
 ];
@@ -451,8 +483,10 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 	},
 	{
 		type: 'collection',
-		name: 'templateParams',
+		name: 'additionalFields',
+		description: 'Additional fields to add',
 		displayName: 'Additional Fields',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -461,6 +495,69 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Attachments',
+				name: 'emailAttachments',
+				placeholder: 'Add Attachment',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'attachment',
+						displayName: 'Attachment Data',
+						values: [
+							{
+								default: '',
+								displayName: 'Input Data Field Name',
+								name: 'binaryPropertyName',
+								type: 'string',
+								description:
+									'The name of the incoming field containing the binary file data to be processed',
+							},
+						],
+					},
+				],
+				routing: {
+					send: {
+						preSend: [validateAttachmentsData],
+					},
+				},
+			},
+			{
+				default: {},
+				description: 'Add tags to your emails to find them more easily',
+				displayName: 'Email Tags',
+				name: 'emailTags',
+				options: [
+					{
+						displayName: 'Tags',
+						name: 'tags',
+						values: [
+							{
+								default: '',
+								displayName: 'Tag',
+								name: 'tag',
+								type: 'string',
+								routing: {
+									send: {
+										property: '=tags[{{$index}}]',
+										type: 'body',
+									},
+								},
+								description: "Tag for email you're sending",
+							},
+						],
+					},
+				],
+				placeholder: 'Add Email Tags',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+			},
 			{
 				displayName: 'Template Parameters',
 				name: 'templateParameters',
