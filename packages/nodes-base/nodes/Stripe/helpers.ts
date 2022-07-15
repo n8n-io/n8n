@@ -36,13 +36,9 @@ export async function stripeApiRequest(
 	body: object,
 	query?: object,
 ) {
-	const credentials = await this.getCredentials('stripeApi');
 
 	const options = {
 		method,
-		auth: {
-			user: credentials.secretKey as string,
-		},
 		form: body,
 		qs: query,
 		uri: `https://api.stripe.com/v1${endpoint}`,
@@ -54,7 +50,7 @@ export async function stripeApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!.call(this, options);
+		return await this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

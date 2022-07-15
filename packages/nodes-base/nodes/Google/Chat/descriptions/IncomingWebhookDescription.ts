@@ -20,6 +20,7 @@ export const incomingWebhookOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Creates a message through incoming webhook (no chat bot needed)',
+				action: 'Create an incoming webhook',
 			},
 		],
 		default: 'create',

@@ -20,26 +20,31 @@ export const releaseOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a release',
+				action: 'Create a release',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a release',
+				action: 'Delete a release',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get release by version identifier',
+				action: 'Get a release by version ID',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all releases',
+				action: 'Get all releases',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a release',
+				action: 'Update a release',
 			},
 		],
 		default: 'get',
@@ -69,7 +74,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the releases belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the releases belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -162,7 +167,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -206,7 +211,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Version',
@@ -263,7 +268,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'A list of project slugs that are involved in this release. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'A list of project slugs that are involved in this release. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -463,7 +468,7 @@ export const releaseFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the release belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Version',

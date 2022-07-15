@@ -86,7 +86,7 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Names or IDs',
@@ -105,7 +105,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Repository Name or ID',
@@ -126,7 +126,7 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Names or IDs',
@@ -145,7 +145,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 

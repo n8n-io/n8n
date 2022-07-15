@@ -20,16 +20,19 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get an event',
+				action: 'Get an event',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all events',
+				action: 'Get all events',
 			},
 			{
 				name: 'Register',
 				value: 'register',
 				description: 'Register someone to an event',
+				action: 'Register an event',
 			},
 		],
 		default: 'get',
@@ -183,7 +186,7 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Event Name or ID',
 		name: 'eventId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getEvents',
 		},
@@ -331,7 +334,7 @@ export const eventFields: INodeProperties[] = [
 					],
 				},
 				default: '',
-				description: 'Event Session ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Event Session ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Website',

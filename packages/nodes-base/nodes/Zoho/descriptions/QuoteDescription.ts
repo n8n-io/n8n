@@ -29,31 +29,37 @@ export const quoteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a quote',
+				action: 'Create a quote',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a quote',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a quote',
+				action: 'Delete a quote',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a quote',
+				action: 'Get a quote',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all quotes',
+				action: 'Get all quotes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a quote',
+				action: 'Update a quote',
 			},
 		],
 		default: 'create',
@@ -209,7 +215,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			shippingAddress,
 			{
@@ -403,7 +409,7 @@ export const quoteFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getQuoteStage',
 				},
-				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Stage of the quote. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			shippingAddress,
 			{

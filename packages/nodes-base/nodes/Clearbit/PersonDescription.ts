@@ -18,6 +18,7 @@ export const personOperations: INodeProperties[] = [
 				name: 'Enrich',
 				value: 'enrich',
 				description: 'Look up a person and company data based on an email or domain',
+				action: 'Enrich a person',
 			},
 		],
 		default: 'enrich',

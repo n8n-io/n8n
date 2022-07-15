@@ -20,26 +20,31 @@ export const taskOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Add a task to tasklist',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a task',
+				action: 'Get a task',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all tasks from a tasklist',
+				action: 'Get all tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
+				action: 'Update a task',
 			},
 		],
 		default: 'create',
@@ -54,7 +59,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -174,7 +179,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -215,7 +220,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -256,7 +261,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
@@ -397,7 +402,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'TaskList Name or ID',
 		name: 'task',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTasks',
 		},
