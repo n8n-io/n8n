@@ -69,6 +69,7 @@ export class MessageBird implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send text messages (SMS)',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',
@@ -90,6 +91,7 @@ export class MessageBird implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get the balance',
+						action: 'Get the current balance',
 					},
 				],
 				default: 'get',
@@ -380,7 +382,7 @@ export class MessageBird implements INodeType {
 						});
 					}
 					else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'balance') {
@@ -388,7 +390,7 @@ export class MessageBird implements INodeType {
 					requestPath = '/balance';
 				}
 				else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
 				const responseData = await messageBirdApiRequest.call(

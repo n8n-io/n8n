@@ -18,6 +18,7 @@ export const smsOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Send a sms',
+				action: 'Send an SMS',
 			},
 		],
 		default: 'send',

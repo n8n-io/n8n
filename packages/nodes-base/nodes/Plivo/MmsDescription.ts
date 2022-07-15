@@ -20,6 +20,7 @@ export const mmsOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Send an MMS message (US/Canada only)',
+				action: 'Send an MMS',
 			},
 		],
 		default: 'send',

@@ -180,7 +180,7 @@ export class GooglePerspective implements INodeType {
 							loadOptionsMethod: 'getLanguages',
 						},
 						default: '',
-						description: 'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -241,7 +241,7 @@ export class GooglePerspective implements INodeType {
 					if (!attributes.length) {
 						throw new NodeOperationError(
 							this.getNode(),
-							'Please enter at least one attribute to analyze.',
+							'Please enter at least one attribute to analyze.', { itemIndex: i },
 						);
 					}
 

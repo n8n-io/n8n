@@ -23,36 +23,43 @@ export const labelOperations: INodeProperties[] = [
 				name: 'Add to Card',
 				value: 'addLabel',
 				description: 'Add a label to a card',
+				action: 'Add a label to a card',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new label',
+				action: 'Create a label',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a label',
+				action: 'Delete a label',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a label',
+				action: 'Get a label',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Returns all labels for the board',
+				action: 'Get all labels',
 			},
 			{
 				name: 'Remove From Card',
 				value: 'removeLabel',
 				description: 'Remove a label from a card',
+				action: 'Remove a label from a card',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a label',
+				action: 'Update a label',
 			},
 
 		],

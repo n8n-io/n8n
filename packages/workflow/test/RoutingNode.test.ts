@@ -72,6 +72,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'fixedValue',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -104,6 +105,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'TEST@TEST.COM',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -146,6 +148,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'fixedValue',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -527,6 +530,7 @@ describe('RoutingNode', () => {
 								},
 							],
 						},
+						headers: {},
 					},
 					preSend: [preSendFunction1, preSendFunction1],
 					postReceive: [
@@ -732,6 +736,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/test-url',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'fixedValue',
@@ -780,6 +785,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/test-url',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'fixedValue',
@@ -834,6 +840,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/overwritten',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'TEST@TEST.COM',
@@ -888,6 +895,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/custom-overwritten',
+									headers: {},
 									qs: {},
 									body: {
 										theProperty: 'custom-overwritten',
@@ -944,6 +952,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									qs: {},
+									headers: {},
 									body: {
 										toEmail: 'fixedValue',
 										limit: 10,
@@ -1462,6 +1471,7 @@ describe('RoutingNode', () => {
 										headers: {},
 										statusCode: 200,
 										requestOptions: {
+											headers: {},
 											qs: {},
 											body: {
 												jsonData: {

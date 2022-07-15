@@ -72,6 +72,7 @@ export class ApiTemplateIo implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
+						action: 'Create an image',
 					},
 				],
 				displayOptions: {
@@ -94,6 +95,7 @@ export class ApiTemplateIo implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
+						action: 'Get an account',
 					},
 				],
 				displayOptions: {
@@ -110,7 +112,7 @@ export class ApiTemplateIo implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
@@ -131,7 +133,7 @@ export class ApiTemplateIo implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},
@@ -478,7 +480,7 @@ export class ApiTemplateIo implements INodeType {
 							if (overrideJson !== '') {
 								const data = validateJSON(overrideJson);
 								if (data === undefined) {
-									throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.');
+									throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', { itemIndex: i });
 								}
 								body.overrides = data;
 							}
@@ -546,14 +548,14 @@ export class ApiTemplateIo implements INodeType {
 						if (jsonParameters === false) {
 							const properties = (this.getNodeParameter('propertiesUi', i) as IDataObject || {}).propertyValues as IDataObject[] || [];
 							if (properties.length === 0) {
-								throw new NodeOperationError(this.getNode(), 'The parameter properties cannot be empty');
+								throw new NodeOperationError(this.getNode(), 'The parameter properties cannot be empty', { itemIndex: i });
 							}
 							data = properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {});
 						} else {
 							const propertiesJson = this.getNodeParameter('propertiesJson', i) as string;
 							data = validateJSON(propertiesJson);
 							if (data === undefined) {
-								throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.');
+								throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', { itemIndex: i });
 							}
 						}
 

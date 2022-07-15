@@ -114,26 +114,31 @@ export class Dropbox implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a file',
+						action: 'Copy a file',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a file',
+						action: 'Delete a file',
 					},
 					{
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file',
+						action: 'Download a file',
 					},
 					{
 						name: 'Move',
 						value: 'move',
 						description: 'Move a file',
+						action: 'Move a file',
 					},
 					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
+						action: 'Upload a file',
 					},
 				],
 				default: 'upload',
@@ -156,26 +161,31 @@ export class Dropbox implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a folder',
+						action: 'Copy a folder',
 					},
 					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a folder',
+						action: 'Create a folder',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a folder',
+						action: 'Delete a folder',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'Return the files and folders in a given folder',
+						action: 'List a folder',
 					},
 					{
 						name: 'Move',
 						value: 'move',
 						description: 'Move a folder',
+						action: 'Move a folder',
 					},
 				],
 				default: 'create',
@@ -197,6 +207,7 @@ export class Dropbox implements INodeType {
 					{
 						name: 'Query',
 						value: 'query',
+						action: 'Query',
 					},
 				],
 				default: 'query',
@@ -859,13 +870,13 @@ export class Dropbox implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
 							}
 
 							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
@@ -990,7 +1001,7 @@ export class Dropbox implements INodeType {
 						endpoint = 'https://api.dropboxapi.com/2/files/move_v2';
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
 				if (resource === 'file' && operation === 'download') {

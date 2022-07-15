@@ -1,4 +1,6 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -16,4 +18,19 @@ export class UrlScanIoApi implements ICredentialType {
 			required: true,
 		},
 	];
+	authenticate = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'API-KEY': '={{$credentials.apiKey}}',
+			},
+		},
+	} as IAuthenticateGeneric;
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://urlscan.io',
+			url: '/user/quotas',
+		},
+	};
 }

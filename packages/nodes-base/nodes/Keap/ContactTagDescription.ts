@@ -20,16 +20,19 @@ export const contactTagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Add a list of tags to a contact',
+				action: 'Create a contact tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact\'s tag',
+				action: 'Delete a contact tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all contact\'s tags',
+				action: 'Get all contact tags',
 			},
 		],
 		default: 'create',
@@ -62,6 +65,7 @@ export const contactTagFields: INodeProperties[] = [
 		displayName: 'Tag Names or IDs',
 		name: 'tagIds',
 		type: 'multiOptions',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
