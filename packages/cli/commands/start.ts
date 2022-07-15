@@ -269,6 +269,7 @@ export class Start extends Command {
 						if (error.toString().includes('ECONNREFUSED') === true) {
 							logger.warn('Redis unavailable - trying to reconnect...');
 						} else {
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							logger.warn('Error with Redis: ', error);
 						}
 					});

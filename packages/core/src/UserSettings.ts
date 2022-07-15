@@ -214,6 +214,7 @@ export async function getUserSettings(
 	const settingsFile = await fsReadFile(settingsPath, 'utf8');
 
 	try {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		settingsCache = JSON.parse(settingsFile);
 	} catch (error) {
 		throw new Error(
