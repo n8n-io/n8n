@@ -782,7 +782,7 @@ export default mixins(
 	top: -3px;
 	left: 5px;
 	font-weight: bold;
-	color: #fff;
+	color: var(--color-foreground-xlight);
 	text-decoration: none;
 }
 

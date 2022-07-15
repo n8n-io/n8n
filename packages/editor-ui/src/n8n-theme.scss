@@ -34,7 +34,7 @@
 			position: absolute;
 			top: 0;
 			right: -50px;
-			color: #fff;
+			color: var(--color-foreground-xlight);
 			background-color: $--custom-table-background-main;
 			border-radius: 0 18px 18px 0;
 			z-index: 110;
@@ -44,7 +44,7 @@
 			height: 50px;
 			width: 50px;
 			.el-dialog__close {
-				color: #fff;
+				color: var(--color-foreground-xlight);
 				font-weight: 400;
 			}
 			.el-dialog__close:hover {
@@ -83,7 +83,7 @@
 // Table
 .el-table {
 	thead th {
-		color: #fff;
+		color: var(--color-foreground-xlight);
 		background-color: $--custom-table-background-main;
 	}
 	tr {

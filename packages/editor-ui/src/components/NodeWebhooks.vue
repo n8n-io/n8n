@@ -139,7 +139,7 @@ export default mixins(
 	border-radius: 2px;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: #fff;
+	color: var(--color-foreground-xlight);
 }
 
 .minimize-icon {

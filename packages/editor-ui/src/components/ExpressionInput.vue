@@ -315,7 +315,7 @@ export default mixins(
 	left: -3px;
 	top: -8px;
 	display: none;
-	color: #fff;
+	color: var(--color-foreground-xlight);
 	font-weight: bold;
 	padding: 2px 4px;
 }

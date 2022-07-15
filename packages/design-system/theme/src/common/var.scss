@@ -17,8 +17,8 @@ $color-transition-base: color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 /* Color
 -------------------------- */
-$color-white: #ffffff;
-$color-black: #000000;
+$color-white: var(--color-foreground-xlight);
+$color-black: var(--color-foreground-dark);
 
 $color-primary-light-1: function.lightness(
 	--color-primary-h,
@@ -962,7 +962,7 @@ $datepicker-inrange-hover-background-color: var(--border-color-light);
 $datepicker-active-color: var(--color-primary);
 /// color||Color|0
 $datepicker-hover-font-color: var(--color-primary);
-$datepicker-cell-hover-color: #fff;
+$datepicker-cell-hover-color: var(--color-foreground-xlight);
 
 /* Loading
 --------------------------*/
@@ -1104,7 +1104,7 @@ $form-label-font-size: $font-size-base;
 /* Avatar
 --------------------------*/
 /// color||Color|0
-$avatar-font-color: #fff;
+$avatar-font-color: var(--color-text-xlight);
 /// color||Color|0
 $avatar-background-color: #c0c4cc;
 /// fontSize||Font Size|1

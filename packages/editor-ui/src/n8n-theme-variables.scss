@@ -51,7 +51,7 @@ $--sidebar-active-color: $--color-primary;
 // gifts notification
 $--gift-notification-active-color: $--color-primary;
 $--gift-notification-inner-color: $--color-primary;
-$--gift-notification-outer-color: #fff;
+$--gift-notification-outer-color: var(--color-foreground-xlight);
 
 // based on element.io breakpoints
 $--breakpoint-2xs: 600px;
@@ -76,7 +76,7 @@ $--node-creator-border-color: #dbdfe7;
 $--node-creator-item-hover-border-color: #8d939c;
 $--node-creator-arrow-color: #8d939c;
 $--node-creator-no-results-background-color: #f8f9fb;
-$--node-creator-close-button-color: #fff;
+$--node-creator-close-button-color: var(--color-foreground-xlight);
 $--node-creator-search-clear-background-color: #8d939c;
 $--node-creator-search-clear-background-color-hover: #3d3f46;
 $--node-creator-search-placeholder-color: #909399;
