@@ -1,20 +1,23 @@
 import express from 'express';
 
+import type { SuperAgentTest } from 'supertest';
 import request from 'supertest';
+import type { Role } from '../../src/databases/entities/Role';
+import type { User } from '../../src/databases/entities/User';
 import {
 	REST_PATH_SEGMENT,
-	ROUTES_REQUIRING_AUTHORIZATION,
 	ROUTES_REQUIRING_AUTHENTICATION,
+	ROUTES_REQUIRING_AUTHORIZATION,
 } from './shared/constants';
-import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import type { Role } from '../../src/databases/entities/Role';
+import * as utils from './shared/utils';
 
 jest.mock('../../src/telemetry');
 
 let app: express.Application;
 let testDbName = '';
 let globalMemberRole: Role;
+let authAgent: (user: User) => SuperAgentTest;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -25,6 +28,8 @@ beforeAll(async () => {
 	testDbName = initResult.testDbName;
 
 	globalMemberRole = await testDb.getGlobalMemberRole();
+
+	authAgent = utils.createAuthAgent(app);
 
 	utils.initTestLogger();
 	utils.initTestTelemetry();
@@ -49,8 +54,7 @@ ROUTES_REQUIRING_AUTHORIZATION.forEach(async (route) => {
 
 	test(`${route} should return 403 Forbidden for member`, async () => {
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const authMemberAgent = utils.createAgent(app, { auth: true, user: member });
-		const response = await authMemberAgent[method](endpoint);
+		const response = await authAgent(member)[method](endpoint);
 
 		expect(response.statusCode).toBe(403);
 	});
