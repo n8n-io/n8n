@@ -127,7 +127,7 @@
 
 // Loading Indicator
 .el-loading-mask {
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	opacity: 0.8;
 }
 

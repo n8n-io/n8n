@@ -202,7 +202,7 @@ export default mixins(
 	line-height: 1.5;
 	position: relative;
 	margin-top: var(--spacing-xs);
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	border-radius: 3px;
 }
 </style>

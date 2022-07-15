@@ -70,8 +70,8 @@ $--tag-close-background-hover-color: #3d3f46;
 $--node-creator-width: 385px;
 $--node-creator-text-color: #555;
 $--node-creator-select-background-color: #f2f4f8;
-$--node-creator-background-color: #fff;
-$--node-creator-search-background-color: #fff;
+$--node-creator-background-color: var(--color-background-xlight);
+$--node-creator-search-background-color: var(--color-foreground-xlight);
 $--node-creator-border-color: #dbdfe7;
 $--node-creator-item-hover-border-color: #8d939c;
 $--node-creator-arrow-color: #8d939c;
@@ -85,10 +85,10 @@ $--node-creator-description-color: #7d7d87;
 
 // trigger icon
 $--trigger-icon-border-color: #dcdfe6;
-$--trigger-icon-background-color: #fff;
+$--trigger-icon-background-color: var(--color-foreground-xlight);
 
 // drawer
-$--drawer-background-color: #fff;
+$--drawer-background-color: var(--color-background-xlight);
 
 // updates-panel
 $--updates-panel-info-url-color: $--color-primary;
@@ -99,7 +99,7 @@ $--updates-panel-text-color: #555;
 
 // versions card
 $--version-card-name-text-color: #666;
-$--version-card-background-color: #fff;
+$--version-card-background-color: var(--color-background-xlight);
 $--version-card-border: 1px #dbdfe7 solid;
 $--version-card-description-text-color: #7d7d87;
 $--version-card-release-date-text-color: #909399;
