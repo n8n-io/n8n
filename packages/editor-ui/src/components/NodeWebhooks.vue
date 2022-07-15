@@ -113,7 +113,7 @@ export default mixins(
 .webhoooks {
 	padding-bottom: var(--spacing-xs);
 	margin: var(--spacing-xs) 0;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid var(--color-text-light);
 
 	.headline {
 		color: $--color-primary;

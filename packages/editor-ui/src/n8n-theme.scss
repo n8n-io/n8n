@@ -141,7 +141,7 @@
 }
 .el-pagination button:disabled {
 	background: none;
-	color: $--custom-input-background-disabled;
+	color: var(--color-text-lighter);
 }
 .el-pager li.btn-quicknext,
 .el-pager li.btn-quickprev {

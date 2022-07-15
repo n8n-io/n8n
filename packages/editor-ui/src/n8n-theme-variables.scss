@@ -34,7 +34,7 @@ $--custom-table-background-stripe-color: #f6f6f6;
 $--custom-table-background-hover-color: #e9f0f4;
 
 $--custom-input-background: #f0f0f0;
-$--custom-input-background-disabled: #ccc;
+$--custom-input-background-disabled: var(--color-text-light);
 $--custom-input-font: #333;
 $--custom-input-border-color: #dcdfe6;
 $--custom-input-font-disabled: #555;

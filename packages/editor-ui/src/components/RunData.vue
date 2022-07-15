@@ -1034,7 +1034,7 @@ export default mixins(
 	font-size: 1.2em;
 	padding-bottom: 0.5em;
 	margin-bottom: 0.5em;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid var(--color-text-light);
 }
 
 .binaryButtonContainer {
