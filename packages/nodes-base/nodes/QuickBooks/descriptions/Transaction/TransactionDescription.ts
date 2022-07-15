@@ -112,7 +112,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'customer',
 				type: 'multiOptions',
 				default: [],
-				description: 'Customer to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Customer to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomers',
 				},
@@ -270,7 +270,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'department',
 				type: 'multiOptions',
 				default: [],
-				description: 'Department to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Department to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -295,7 +295,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'memo',
 				type: 'multiOptions',
 				default: [],
-				description: 'Memo to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Memo to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getMemos',
 				},
@@ -360,7 +360,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'term',
 				type: 'multiOptions',
 				default: [],
-				description: 'Term to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Term to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getTerms',
 				},
@@ -388,7 +388,7 @@ export const transactionFields: INodeProperties[] = [
 				name: 'vendor',
 				type: 'multiOptions',
 				default: [],
-				description: 'Vendor to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Vendor to filter results by. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getVendors',
 				},

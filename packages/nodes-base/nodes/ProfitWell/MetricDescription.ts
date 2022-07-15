@@ -126,7 +126,7 @@ export const metricFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPlanIds',
 				},
 				default: '',
-				description: 'Only return the metric for this Plan ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Only return the metric for this Plan ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Metrics',

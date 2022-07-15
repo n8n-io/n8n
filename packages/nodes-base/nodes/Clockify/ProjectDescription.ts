@@ -107,7 +107,7 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -288,7 +288,7 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'Client Names or IDs',
 				name: 'clients',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -381,7 +381,7 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'User Name or ID',
 				name: 'users',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
@@ -463,7 +463,7 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: [
 						'workspaceId',
