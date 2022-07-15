@@ -16,10 +16,12 @@ export const emailOperations: INodeProperties[] = [
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send a transactional email',
 			},
 			{
 				name: 'Send Template',
 				value: 'sendTemplate',
+				action: 'Send an email with an existing Template',
 			},
 		],
 		routing: {
@@ -362,7 +364,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 										type: 'body',
 									},
 								},
-								description: "Tag for email you're sending",
+								description: 'Tag for email you are sending',
 							},
 						],
 					},
@@ -547,7 +549,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 										type: 'body',
 									},
 								},
-								description: "Tag for email you're sending",
+								description: 'Tag for email you are sending',
 							},
 						],
 					},
