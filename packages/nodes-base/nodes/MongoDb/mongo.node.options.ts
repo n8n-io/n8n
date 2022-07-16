@@ -1,4 +1,4 @@
-/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -35,26 +35,31 @@ export const nodeDescription: INodeTypeDescription = {
 					name: 'Aggregate',
 					value: 'aggregate',
 					description: 'Aggregate documents',
+					action: 'Aggregate documents',
 				},
 				{
 					name: 'Delete',
 					value: 'delete',
 					description: 'Delete documents',
+					action: 'Delete documents',
 				},
 				{
 					name: 'Find',
 					value: 'find',
 					description: 'Find documents',
+					action: 'Find documents',
 				},
 				{
 					name: 'Insert',
 					value: 'insert',
 					description: 'Insert documents',
+					action: 'Insert documents',
 				},
 				{
 					name: 'Update',
 					value: 'update',
 					description: 'Update documents',
+					action: 'Update documents',
 				},
 			],
 			default: 'find',
@@ -159,7 +164,6 @@ export const nodeDescription: INodeTypeDescription = {
 					},
 					default: '{}',
 					placeholder: '{ "field": -1 }',
-					required: true,
 					description: 'A JSON that defines the sort order of the result set',
 				},
 			],

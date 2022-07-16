@@ -38,12 +38,17 @@ export interface IBinaryData {
 	id?: string;
 }
 
+// All properties in this interface except for
+// "includeCredentialsOnRefreshOnBody" will get
+// removed once we add the OAuth2 hooks to the
+// credentials file.
 export interface IOAuth2Options {
 	includeCredentialsOnRefreshOnBody?: boolean;
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
 	tokenExpiredStatusCode?: number;
+	keyToIncludeInAccessTokenHeader?: string;
 }
 
 export interface IConnection {
@@ -150,6 +155,17 @@ export interface IRequestOptionsSimplified {
 	qs: IDataObject;
 }
 
+export interface IRequestOptionsSimplifiedAuth {
+	auth?: {
+		username: string;
+		password: string;
+	};
+	body?: IDataObject;
+	headers?: IDataObject;
+	qs?: IDataObject;
+	skipSslCertificateValidation?: boolean | string;
+}
+
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
 
@@ -191,40 +207,16 @@ export abstract class ICredentialsHelper {
 
 export interface IAuthenticateBase {
 	type: string;
-	properties: {
-		[key: string]: string;
-	};
+	properties:
+		| {
+				[key: string]: string;
+		  }
+		| IRequestOptionsSimplifiedAuth;
 }
 
-export interface IAuthenticateBasicAuth extends IAuthenticateBase {
-	type: 'basicAuth';
-	properties: {
-		userPropertyName?: string;
-		passwordPropertyName?: string;
-	};
-}
-
-export interface IAuthenticateBearer extends IAuthenticateBase {
-	type: 'bearer';
-	properties: {
-		tokenPropertyName?: string;
-	};
-}
-
-export interface IAuthenticateHeaderAuth extends IAuthenticateBase {
-	type: 'headerAuth';
-	properties: {
-		name: string;
-		value: string;
-	};
-}
-
-export interface IAuthenticateQueryAuth extends IAuthenticateBase {
-	type: 'queryAuth';
-	properties: {
-		key: string;
-		value: string;
-	};
+export interface IAuthenticateGeneric extends IAuthenticateBase {
+	type: 'generic';
+	properties: IRequestOptionsSimplifiedAuth;
 }
 
 export type IAuthenticate =
@@ -232,10 +224,7 @@ export type IAuthenticate =
 			credentials: ICredentialDataDecryptedObject,
 			requestOptions: IHttpRequestOptions,
 	  ) => Promise<IHttpRequestOptions>)
-	| IAuthenticateBasicAuth
-	| IAuthenticateBearer
-	| IAuthenticateHeaderAuth
-	| IAuthenticateQueryAuth;
+	| IAuthenticateGeneric;
 
 export interface IAuthenticateRuleBase {
 	type: string;
@@ -566,6 +555,7 @@ export interface IExecuteSingleFunctions {
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getItemIndex(): number;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter(
@@ -938,6 +928,7 @@ export interface INodeProperties {
 export interface INodePropertyOptions {
 	name: string;
 	value: string | number | boolean;
+	action?: string;
 	description?: string;
 	routing?: INodePropertyRouting;
 }
@@ -1491,6 +1482,11 @@ export type PropertiesOf<M extends { resource: string; operation: string }> = Ar
 
 // Telemetry
 
+export interface ITelemetryTrackProperties {
+	user_id?: string;
+	[key: string]: GenericValue;
+}
+
 export interface INodesGraph {
 	node_types: string[];
 	node_connections: IDataObject[];
@@ -1534,6 +1530,7 @@ export interface INodeNameIndex {
 export interface INodesGraphResult {
 	nodeGraph: INodesGraph;
 	nameIndices: INodeNameIndex;
+	webhookNodeNames: string[];
 }
 
 export interface ITelemetryClientConfig {

@@ -22,6 +22,7 @@ import * as config from '../../../config';
 import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
+import { objectRetriever } from '../utils/transformers';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');
@@ -95,6 +96,7 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column({
 		type: resolveDataType('json') as ColumnOptions['type'],
 		nullable: true,
+		transformer: objectRetriever,
 	})
 	staticData?: IDataObject;
 

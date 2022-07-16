@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IOAuth2Options,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -992,19 +993,19 @@ export class HttpRequest implements INodeType {
 							if (!contentTypesAllowed.includes(options.bodyContentType as string)) {
 								// As n8n-workflow.NodeHelpers.getParamterResolveOrder can not be changed
 								// easily to handle parameters in dot.notation simply error for now.
-								throw new NodeOperationError(this.getNode(), 'Sending binary data is only supported when option "Body Content Type" is set to "RAW/CUSTOM" or "FORM-DATA/MULTIPART"!');
+								throw new NodeOperationError(this.getNode(), 'Sending binary data is only supported when option "Body Content Type" is set to "RAW/CUSTOM" or "FORM-DATA/MULTIPART"!', { itemIndex });
 							}
 
 							const item = items[itemIndex];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex });
 							}
 
 							if (options.bodyContentType === 'raw') {
 								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
 								if (item.binary[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex });
 								}
 
 								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
@@ -1022,7 +1023,7 @@ export class HttpRequest implements INodeType {
 										propertyName = propertyDataParts[0];
 										binaryPropertyName = propertyDataParts[1];
 									} else if (binaryPropertyNames.length > 1) {
-										throw new NodeOperationError(this.getNode(), 'If more than one property should be send it is needed to define the in the format:<code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2"</code>');
+										throw new NodeOperationError(this.getNode(), 'If more than one property should be send it is needed to define the in the format:<code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2"</code>', { itemIndex });
 									}
 
 									if (item.binary[binaryPropertyName] === undefined) {
@@ -1060,7 +1061,7 @@ export class HttpRequest implements INodeType {
 							// @ts-ignore
 							requestOptions[optionData.name] = JSON.parse(requestOptions[optionData.name]);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), `The data in "${optionData.displayName}" is no valid JSON. Set Body Content Type to "RAW/Custom" for XML or other types of payloads`);
+							throw new NodeOperationError(this.getNode(), `The data in "${optionData.displayName}" is no valid JSON. Set Body Content Type to "RAW/Custom" for XML or other types of payloads`, { itemIndex });
 						}
 					}
 				}
@@ -1202,9 +1203,35 @@ export class HttpRequest implements INodeType {
 					);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
+
+				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
+					clickUpOAuth2Api: {
+						keepBearer: false,
+						tokenType: 'Bearer',
+					},
+					slackOAuth2Api: {
+						tokenType: 'Bearer',
+						property: 'authed_user.access_token',
+					},
+					boxOAuth2Api: {
+						includeCredentialsOnRefreshOnBody: true,
+					},
+					shopifyOAuth2Api: {
+						tokenType: 'Bearer',
+						keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
+					},
+				};
+
+				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
+
 				// service-specific cred: OAuth1, OAuth2, plain
 				requestPromises.push(
-					this.helpers.requestWithAuthentication.call(this, nodeCredentialType, requestOptions),
+					this.helpers.requestWithAuthentication.call(
+						this,
+						nodeCredentialType,
+						requestOptions,
+						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+					),
 				);
 			}
 		}
@@ -1326,7 +1353,7 @@ export class HttpRequest implements INodeType {
 						try {
 							returnItem.body = JSON.parse(returnItem.body);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
+							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"', { itemIndex });
 						}
 					}
 
@@ -1341,7 +1368,7 @@ export class HttpRequest implements INodeType {
 						try {
 							response = JSON.parse(response);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
+							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"', { itemIndex });
 						}
 					}
 

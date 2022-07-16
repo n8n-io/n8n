@@ -1,5 +1,7 @@
 import {
+	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
@@ -24,8 +26,18 @@ export class MattermostApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-		return requestOptions;
-	}
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.accessToken}}',
+			},
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}/api/v4',
+			url: '/users',
+		},
+	};
 }

@@ -99,6 +99,7 @@ export class Rocketchat implements INodeType {
 						name: 'Post Message',
 						value: 'postMessage',
 						description: 'Post a message to a channel or a direct message',
+						action: 'Post a message',
 					},
 				],
 				default: 'postMessage',

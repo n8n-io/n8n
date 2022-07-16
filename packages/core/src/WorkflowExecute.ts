@@ -945,21 +945,33 @@ export class WorkflowExecute {
 									if (outputData === null) {
 										continue;
 									}
-									for (const item of outputData) {
+									for (const [index, item] of outputData.entries()) {
 										if (!item.pairedItem) {
-											// The pairedItem is missing so check if it can get automatically fixed
+											// The pairedItem data is missing, so check if it can get automatically fixed
 											if (
-												executionData.data.main.length !== 1 ||
-												executionData.data.main[0]?.length !== 1
+												executionData.data.main.length === 1 &&
+												executionData.data.main[0]?.length === 1
 											) {
-												// Automatically fixing is only possible if there is only one
-												// input and one input item
+												// The node has one input and one incoming item, so we know
+												// that all items must originate from that single
+												item.pairedItem = {
+													item: 0,
+												};
+											} else if (
+												nodeSuccessData.length === 1 &&
+												executionData.data.main.length === 1 &&
+												executionData.data.main[0]?.length === nodeSuccessData[0].length
+											) {
+												// The node has one input and one output. The number of items on both is
+												// identical so we can make the resonable asumption that each of the input
+												// items is the origin of the corresponding output items
+												item.pairedItem = {
+													item: index,
+												};
+											} else {
+												// In all other cases is autofixing not possible
 												break checkOutputData;
 											}
-
-											item.pairedItem = {
-												item: 0,
-											};
 										}
 									}
 								}

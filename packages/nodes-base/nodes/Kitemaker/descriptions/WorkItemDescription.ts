@@ -13,18 +13,22 @@ export const workItemOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a work item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a work item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all work items',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a work item',
 			},
 		],
 		displayOptions: {
@@ -68,7 +72,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -90,7 +94,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the status to set on the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the status to set on the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -179,7 +183,7 @@ export const workItemFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'ID of the label to set on the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the label to set on the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Member Names or IDs',
@@ -189,7 +193,7 @@ export const workItemFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'ID of the user to assign to the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to assign to the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -228,7 +232,7 @@ export const workItemFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -380,7 +384,7 @@ export const workItemFields: INodeProperties[] = [
 					loadOptionsMethod: 'getStatuses',
 				},
 				default: [],
-				description: 'ID of the status to set on the item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the status to set on the item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Title',

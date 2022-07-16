@@ -9,7 +9,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/smtp"
+				"url": "https://docs.n8n.io/integrations/credentials/sendemail/"
 			}
 		],
 		"primaryDocumentation": [
