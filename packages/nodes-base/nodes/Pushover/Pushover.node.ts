@@ -68,6 +68,7 @@ export class Pushover implements INodeType {
 					{
 						name: 'Push',
 						value: 'push',
+						action: 'Push a message',
 					},
 				],
 				default: 'push',
@@ -263,7 +264,7 @@ export class Pushover implements INodeType {
 							loadOptionsMethod: 'getSounds',
 						},
 						default: '',
-						description: 'The name of one of the sounds supported by device clients to override the user\'s default sound choice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The name of one of the sounds supported by device clients to override the user\'s default sound choice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Timestamp',
@@ -367,7 +368,7 @@ export class Pushover implements INodeType {
 								const binaryPropertyName = attachment.binaryPropertyName as string;
 
 								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 
 								const item = items[i].binary as IBinaryKeyData;
@@ -375,7 +376,7 @@ export class Pushover implements INodeType {
 								const binaryData = item[binaryPropertyName] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);

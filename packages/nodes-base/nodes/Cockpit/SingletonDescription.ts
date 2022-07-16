@@ -18,6 +18,7 @@ export const singletonOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a singleton',
+				action: 'Get a singleton',
 			},
 		],
 		default: 'get',
@@ -41,6 +42,6 @@ export const singletonFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Name of the singleton to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Name of the singleton to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

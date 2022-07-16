@@ -6,8 +6,6 @@ import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 import bodyParser from 'body-parser';
-import util from 'util';
-import { createTestAccount } from 'nodemailer';
 import { set } from 'lodash';
 import { CronJob } from 'cron';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
@@ -45,17 +43,9 @@ import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
-import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
 import type { User } from '../../../src/databases/entities/User';
-import type {
-	ApiPath,
-	EndpointGroup,
-	PostgresSchemaSection,
-	SmtpTestAccount,
-	TriggerTime,
-} from './types';
+import type { ApiPath, EndpointGroup, PostgresSchemaSection, TriggerTime } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-
 
 /**
  * Initialize a test server.
@@ -858,45 +848,6 @@ export async function isInstanceOwnerSetUp() {
 	});
 
 	return Boolean(value);
-}
-
-// ----------------------------------
-//              SMTP
-// ----------------------------------
-
-/**
- * Get an SMTP test account from https://ethereal.email to test sending emails.
- */
-const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
-
-export async function configureSmtp() {
-	const {
-		user,
-		pass,
-		smtp: { host, port, secure },
-	} = await getSmtpTestAccount();
-
-	config.set('userManagement.emails.mode', 'smtp');
-	config.set('userManagement.emails.smtp.host', host);
-	config.set('userManagement.emails.smtp.port', port);
-	config.set('userManagement.emails.smtp.secure', secure);
-	config.set('userManagement.emails.smtp.auth.user', user);
-	config.set('userManagement.emails.smtp.auth.pass', pass);
-}
-
-export async function isTestSmtpServiceAvailable() {
-	try {
-		await configureSmtp();
-		await UserManagementMailer.getInstance();
-		return true;
-	} catch (_) {
-		return false;
-	}
-}
-
-export function skipSmtpTest(expect: jest.Expect) {
-	console.warn(`SMTP service unavailable - Skipping test ${expect.getState().currentTestName}`);
-	return;
 }
 
 // ----------------------------------

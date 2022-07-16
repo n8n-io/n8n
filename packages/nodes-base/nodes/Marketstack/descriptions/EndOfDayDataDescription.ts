@@ -12,6 +12,7 @@ export const endOfDayDataOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all EoD data',
 			},
 		],
 		default: 'getAll',

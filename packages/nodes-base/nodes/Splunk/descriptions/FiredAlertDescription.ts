@@ -20,6 +20,7 @@ export const firedAlertOperations: INodeProperties[] = [
 				name: 'Get Report',
 				value: 'getReport',
 				description: 'Retrieve a fired alerts report',
+				action: 'Get a fired alerts report',
 			},
 		],
 		default: 'getReport',

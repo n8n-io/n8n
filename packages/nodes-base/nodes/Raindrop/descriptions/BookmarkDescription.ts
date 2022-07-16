@@ -13,22 +13,27 @@ export const bookmarkOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a bookmark',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a bookmark',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a bookmark',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all bookmarks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a bookmark',
 			},
 		],
 		displayOptions: {
@@ -49,7 +54,7 @@ export const bookmarkFields: INodeProperties[] = [
 		displayName: 'Collection Name or ID',
 		name: 'collectionId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: [
@@ -194,7 +199,7 @@ export const bookmarkFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the collection from which to retrieve all bookmarks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the collection from which to retrieve all bookmarks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -290,7 +295,7 @@ export const bookmarkFields: INodeProperties[] = [
 				displayName: 'Collection Name or ID',
 				name: 'collectionId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
 				},

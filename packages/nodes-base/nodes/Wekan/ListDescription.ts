@@ -23,21 +23,25 @@ export const listOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new list',
+				action: 'Create a list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a list',
+				action: 'Delete a list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a list',
+				action: 'Get a list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all board lists',
+				action: 'Get all lists',
 			},
 		],
 		default: 'create',
@@ -67,7 +71,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board the list should be created in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the board the list should be created in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Title',
@@ -111,7 +115,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List Name or ID',
@@ -135,7 +139,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the list to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -160,7 +164,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List ID',
@@ -203,7 +207,7 @@ export const listFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the board where the lists are in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the board where the lists are in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

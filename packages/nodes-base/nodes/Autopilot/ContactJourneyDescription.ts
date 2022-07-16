@@ -20,6 +20,7 @@ export const contactJourneyOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to list',
+				action: 'Add a contact journey',
 			},
 		],
 		default: 'add',
@@ -50,7 +51,7 @@ export const contactJourneyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'List ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'List ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',

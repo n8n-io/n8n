@@ -53,11 +53,13 @@ export class Rundeck implements INodeType {
 						name: 'Execute',
 						value: 'execute',
 						description: 'Execute a job',
+						action: 'Execute a job',
 					},
 					{
 						name: 'Get Metadata',
 						value: 'getMetadata',
 						description: 'Get metadata of a job',
+						action: 'Get metadata of a job',
 					},
 				],
 				default: 'execute',
@@ -188,10 +190,10 @@ export class Rundeck implements INodeType {
 
 					returnData.push(response);
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`, { itemIndex: i });
 				}
 			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported!`, { itemIndex: i });
 			}
 		}
 
