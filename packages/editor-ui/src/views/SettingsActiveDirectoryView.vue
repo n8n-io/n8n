@@ -159,7 +159,7 @@ export default mixins(
 				},
 				syncronization: {
 					enabled: form.syncronizationEnabled === 'true' ? true : false,
-					interval: parseInt(form.syncronizationInterval, 10),
+					interval: parseInt(form.syncronizationInterval || '60', 10),
 				},
 			};
 

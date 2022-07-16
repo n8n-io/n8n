@@ -10,3 +10,8 @@ export enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
 }
+
+export enum RunningMode {
+	DRY = 'dry',
+	LIVE = 'live',
+}

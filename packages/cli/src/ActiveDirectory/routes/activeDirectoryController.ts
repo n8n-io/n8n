@@ -50,14 +50,12 @@ activeDirectoryController.put(
  */
 activeDirectoryController.post(
 	'/sync',
-	async (req: ActiveDirectoryConfig.Update, res: express.Response) => {
-		await updateActiveDirectoryConfig(req.body);
+	async (req: ActiveDirectoryConfig.Sync, res: express.Response) => {
+		const runType = req.body.type;
 
-		const { data } = await getActiveDirectoryConfig();
+		await ActiveDirectoryManager.getInstance().sync.run(runType);
 
-		ActiveDirectoryManager.config(data);
-
-		return res.status(200).json(data);
+		return res.status(200).json({});
 	},
 );
 

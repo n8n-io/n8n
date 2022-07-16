@@ -6,8 +6,10 @@ import { Entry } from 'ldapts';
 import { UserSettings } from 'n8n-core';
 import { Db, IFeatureConfigDb } from '..';
 import config from '../../config';
+import { Role } from '../databases/entities/Role';
 import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
+import { usersNamespace } from '../UserManagement/routes/users';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { ActiveDirectoryManager } from './ActiveDirectoryManager';
 import { ACTIVE_DIRECTORY_DISABLED, ACTIVE_DIRECTORY_FEATURE_NAME, SignInType } from './constants';
@@ -25,6 +27,10 @@ const isFirstRunAfterFeatureEnabled = (databaseSettings: Settings[]) => {
 
 const randonPassword = () => {
 	return Math.random().toString(36).slice(-8);
+};
+
+export const getAdUserRole = async (): Promise<Role> => {
+	return Db.collections.Role.findOneOrFail({ scope: 'global', name: 'member' });
 };
 
 const encryptPassword = async (password: string) => {
@@ -164,10 +170,10 @@ const getUserByUsername = async (usernameAttributeValue: string) => {
 	);
 };
 
-const mapAttributesToLocalDb = (
+export const mapAttributesToLocalDb = (
 	user: Entry,
 	attributes: ActiveDirectoryConfig['attributeMapping'],
-): Partial<User> => {
+): Partial<{ email: string; firstName: string; lastName: string; username: string }> => {
 	return {
 		email: user[attributes.email] as string,
 		firstName: user[attributes.firstName] as string,
@@ -201,8 +207,7 @@ export const handleActiveDirectoryLogin = async (
 	const localUser = await getUserByUsername(usernameAttributeValue);
 
 	if (!localUser) {
-		// move this to it's own function
-		const role = await Db.collections.Role.findOne({ scope: 'global', name: 'member' });
+		const role = await getAdUserRole();
 
 		await Db.collections.User.save({
 			password: randonPassword(),
@@ -226,7 +231,43 @@ export const handleActiveDirectoryLogin = async (
 	return updatedUser;
 };
 
-// const syncActiveDirectoryUsers = () => {
-// 	// query all users in the active directory server;
-// 	//
-// };
+export const getActiveDirectoryUserUsernames = async (): Promise<string[]> => {
+	const users = await Db.collections.User.find({
+		where: { signInType: SignInType.LDAP },
+		select: ['username'],
+	});
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	return users.map((user) => user.username) as string[];
+};
+
+export const mapToLocalDbUser = (
+	adUser: Entry,
+	attributes: ActiveDirectoryConfig['attributeMapping'],
+	role?: Role,
+): User => {
+	return Object.assign(new User(), {
+		...(role && { password: randonPassword() }),
+		...(role && { signInType: SignInType.LDAP }),
+		...(role && { globalRole: role }),
+		...mapAttributesToLocalDb(adUser, attributes),
+	});
+};
+
+export const processUsers = async (
+	toCreateUsers: User[],
+	toUpdateUsers: User[],
+	// toInactiveUsers: string[],
+): Promise<void> => {
+	await Db.transaction(async (transactionManager) => {
+		return Promise.all([
+			...toCreateUsers.map(async (user) => transactionManager.save<User>(user)),
+			...toUpdateUsers.map(async (user) =>
+				transactionManager.update<User>(
+					'User',
+					{ username: user.username as string },
+					{ email: user.email, firstName: user.firstName, lastName: user.lastName },
+				),
+			),
+		]);
+	});
+};
