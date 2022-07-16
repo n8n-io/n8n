@@ -9,7 +9,6 @@ import config from '../../config';
 import { Role } from '../databases/entities/Role';
 import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
-import { usersNamespace } from '../UserManagement/routes/users';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { ActiveDirectoryManager } from './ActiveDirectoryManager';
 import { ACTIVE_DIRECTORY_DISABLED, ACTIVE_DIRECTORY_FEATURE_NAME, SignInType } from './constants';
@@ -206,6 +205,8 @@ export const handleActiveDirectoryLogin = async (
 
 	const localUser = await getUserByUsername(usernameAttributeValue);
 
+	if (localUser?.disabled) return undefined;
+
 	if (!localUser) {
 		const role = await getAdUserRole();
 
@@ -231,7 +232,7 @@ export const handleActiveDirectoryLogin = async (
 	return updatedUser;
 };
 
-export const getActiveDirectoryUserUsernames = async (): Promise<string[]> => {
+export const getActiveDirectoryUsersInLocalDb = async (): Promise<string[]> => {
 	const users = await Db.collections.User.find({
 		where: { signInType: SignInType.LDAP },
 		select: ['username'],
@@ -256,7 +257,7 @@ export const mapToLocalDbUser = (
 export const processUsers = async (
 	toCreateUsers: User[],
 	toUpdateUsers: User[],
-	// toInactiveUsers: string[],
+	toDisableUsers: string[],
 ): Promise<void> => {
 	await Db.transaction(async (transactionManager) => {
 		return Promise.all([
@@ -267,6 +268,9 @@ export const processUsers = async (
 					{ username: user.username as string },
 					{ email: user.email, firstName: user.firstName, lastName: user.lastName },
 				),
+			),
+			...toDisableUsers.map(async (username) =>
+				transactionManager.update<User>('User', { username }, { disabled: true }),
 			),
 		]);
 	});

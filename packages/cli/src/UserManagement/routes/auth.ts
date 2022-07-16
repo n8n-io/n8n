@@ -88,9 +88,13 @@ export function authenticationMethods(this: N8nApp): void {
 				try {
 					user = await resolveJwt(cookieContents);
 
-					// if (user.disabled === true) {
-					// 	res.clearCookie(AUTH_COOKIE_NAME);
-					// }
+					if (user.disabled === true) {
+						res.clearCookie(AUTH_COOKIE_NAME);
+						const error = new Error('User disabled cannot log in');
+						// @ts-ignore
+						error.httpStatusCode = 401;
+						throw error;
+					}
 
 					if (!config.get('userManagement.isInstanceOwnerSetUp')) {
 						res.cookie(AUTH_COOKIE_NAME, cookieContents);

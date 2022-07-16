@@ -28,6 +28,7 @@ export class CreateFeatureConfig1655579796123 implements MigrationInterface {
 				"globalRoleId" integer NOT NULL,
 				"settings" text,
 				"apiKey" varchar DEFAULT NULL,
+				"disabled" boolean DEFAULT false,
 				CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
 		);
 		await queryRunner.query(

@@ -148,6 +148,9 @@ export class User {
 	@Index({ unique: true })
 	username?: string | null;
 
+	@Column({ type: Boolean, default: false })
+	disabled?: boolean;
+
 	/**
 	 * Whether the user is pending setup completion.
 	 */

@@ -124,6 +124,8 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		createdAt,
 		updatedAt,
 		apiKey,
+		username,
+		disabled,
 		...sanitizedUser
 	} = user;
 	if (withoutKeys) {

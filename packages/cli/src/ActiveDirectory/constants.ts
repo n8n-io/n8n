@@ -15,3 +15,5 @@ export enum RunningMode {
 	DRY = 'dry',
 	LIVE = 'live',
 }
+
+export const AD_LOG_PREPEND_MESSAGE = 'Activery Directory -';
