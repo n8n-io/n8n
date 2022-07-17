@@ -2,6 +2,7 @@ import {
 	ICheckProcessedContextData,
 	ICheckProcessedOutput,
 	IProcessedDataConfig,
+	IProcessedDataContext,
 	IProcessedDataManagers,
 } from './Interfaces';
 
@@ -36,7 +37,7 @@ export class ProcessedDataManager {
 
 	async checkProcessed(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): Promise<ICheckProcessedOutput> {
 		if (this.managers[this.mode]) {
@@ -48,7 +49,7 @@ export class ProcessedDataManager {
 
 	async checkProcessedAndRecord(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): Promise<ICheckProcessedOutput> {
 		if (this.managers[this.mode]) {
@@ -60,7 +61,7 @@ export class ProcessedDataManager {
 
 	async removeProcessed(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): Promise<void> {
 		if (this.managers[this.mode]) {

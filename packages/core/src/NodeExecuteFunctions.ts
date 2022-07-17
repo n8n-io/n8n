@@ -93,9 +93,10 @@ import {
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IProcessedDataContext,
 	IResponseError,
-	ProcessedDataManager,
 	IWorkflowSettings,
+	ProcessedDataManager,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 } from '.';
 
@@ -809,7 +810,7 @@ export async function getBinaryDataBuffer(
 
 export async function checkProcessed(
 	items: string[],
-	context: 'node' | 'workflow',
+	context: IProcessedDataContext,
 	contextData: ICheckProcessedContextData,
 ): Promise<ICheckProcessedOutput> {
 	return ProcessedDataManager.getInstance().checkProcessed(items, context, contextData);
@@ -817,7 +818,7 @@ export async function checkProcessed(
 
 export async function checkProcessedAndRecord(
 	items: string[],
-	context: 'node' | 'workflow',
+	context: IProcessedDataContext,
 	contextData: ICheckProcessedContextData,
 ): Promise<ICheckProcessedOutput> {
 	return ProcessedDataManager.getInstance().checkProcessedAndRecord(items, context, contextData);
@@ -825,7 +826,7 @@ export async function checkProcessedAndRecord(
 
 export async function removeProcessed(
 	items: string[],
-	context: 'node' | 'workflow',
+	context: IProcessedDataContext,
 	contextData: ICheckProcessedContextData,
 ): Promise<void> {
 	return ProcessedDataManager.getInstance().removeProcessed(items, context, contextData);
@@ -2291,17 +2292,17 @@ export function getExecuteFunctions(
 				},
 				async checkProcessed(
 					items: string[],
-					context: 'node' | 'workflow',
+					context: IProcessedDataContext,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessed(items, context, { node, workflow });
 				},
 				async checkProcessedAndRecord(
 					items: string[],
-					context: 'node' | 'workflow',
+					context: IProcessedDataContext,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessedAndRecord(items, context, { node, workflow });
 				},
-				async removeProcessed(items: string[], context: 'node' | 'workflow'): Promise<void> {
+				async removeProcessed(items: string[], context: IProcessedDataContext): Promise<void> {
 					return removeProcessed(items, context, { node, workflow });
 				},
 				request: proxyRequestToAxios,
@@ -2541,17 +2542,17 @@ export function getExecuteSingleFunctions(
 				},
 				async checkProcessed(
 					items: string[],
-					context: 'node' | 'workflow',
+					context: IProcessedDataContext,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessed(items, context, { node, workflow });
 				},
 				async checkProcessedAndRecord(
 					items: string[],
-					context: 'node' | 'workflow',
+					context: IProcessedDataContext,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessedAndRecord(items, context, { node, workflow });
 				},
-				async removeProcessed(items: string[], context: 'node' | 'workflow'): Promise<void> {
+				async removeProcessed(items: string[], context: IProcessedDataContext): Promise<void> {
 					return removeProcessed(items, context, { node, workflow });
 				},
 				request: proxyRequestToAxios,

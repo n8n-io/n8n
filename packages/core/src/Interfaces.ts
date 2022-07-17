@@ -38,12 +38,12 @@ export interface IProcessMessage {
 
 export interface IExecuteFunctions extends IExecuteFunctionsBase {
 	helpers: {
-		checkProcessed(items: string[], context: 'node' | 'workflow'): Promise<ICheckProcessedOutput>;
+		checkProcessed(items: string[], context: IProcessedDataContext): Promise<ICheckProcessedOutput>;
 		checkProcessedAndRecord(
 			items: string[],
-			context: 'node' | 'workflow',
+			context: IProcessedDataContext,
 		): Promise<ICheckProcessedOutput>;
-		removeProcessed(items: string[], context: 'node' | 'workflow'): Promise<void>;
+		removeProcessed(items: string[], context: IProcessedDataContext): Promise<void>;
 		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
 		prepareBinaryData(
 			binaryData: Buffer,
@@ -343,6 +343,8 @@ export interface IBinaryDataManager {
 	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
 }
 
+export type IProcessedDataContext = 'node' | 'workflow';
+
 export interface IProcessedDataConfig {
 	availableModes: string;
 	mode: string;
@@ -352,19 +354,19 @@ export interface IProcessedDataManager {
 	init(): Promise<void>;
 	checkProcessed(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): Promise<ICheckProcessedOutput>;
 
 	checkProcessedAndRecord(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): Promise<ICheckProcessedOutput>;
 
 	removeProcessed(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): Promise<void>;
 }

@@ -1,23 +1,28 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { ICheckProcessedContextData, ICheckProcessedOutput, IProcessedDataManager } from 'n8n-core';
+import {
+	ICheckProcessedContextData,
+	ICheckProcessedOutput,
+	IProcessedDataContext,
+	IProcessedDataManager,
+} from 'n8n-core';
 import { getConnection, In } from 'typeorm';
 import { createHash } from 'crypto';
 
 // eslint-disable-next-line import/no-cycle
 import { DatabaseType, Db, GenericHelpers } from '..';
 
-export class ItemProcessedDatabase implements IProcessedDataManager {
+export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager {
 	private static dbType: string;
 
 	async init(): Promise<void> {
-		ItemProcessedDatabase.dbType = (await GenericHelpers.getConfigValue(
+		ProcessedDataManagerNativeDatabase.dbType = (await GenericHelpers.getConfigValue(
 			'database.type',
 		)) as DatabaseType;
 	}
 
 	private static createContext(
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): string {
 		if (context === 'node') {
@@ -38,7 +43,7 @@ export class ItemProcessedDatabase implements IProcessedDataManager {
 
 	async checkProcessed(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): Promise<ICheckProcessedOutput> {
 		const returnData: ICheckProcessedOutput = {
@@ -46,13 +51,15 @@ export class ItemProcessedDatabase implements IProcessedDataManager {
 			processed: [],
 		};
 
-		const hashedItems = items.map((item) => ItemProcessedDatabase.createValueHash(item));
+		const hashedItems = items.map((item) =>
+			ProcessedDataManagerNativeDatabase.createValueHash(item),
+		);
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const processedData = await Db.collections.ProcessedData.find({
 			where: {
 				workflowId: contextData.workflow.id as string,
-				context: ItemProcessedDatabase.createContext(context, contextData),
+				context: ProcessedDataManagerNativeDatabase.createContext(context, contextData),
 				value: In(hashedItems),
 			},
 		});
@@ -70,13 +77,13 @@ export class ItemProcessedDatabase implements IProcessedDataManager {
 
 	async checkProcessedAndRecord(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 		// maxRecords: number,
 	): Promise<ICheckProcessedOutput> {
-		const dbContext = ItemProcessedDatabase.createContext(context, contextData);
+		const dbContext = ProcessedDataManagerNativeDatabase.createContext(context, contextData);
 
-		if (ItemProcessedDatabase.dbType === 'sqlite') {
+		if (ProcessedDataManagerNativeDatabase.dbType === 'sqlite') {
 			// SQLite is used as database
 			// In SQLite we sadly have to check each of the items one by one instead of in bulk.
 			// Because if bulk insert gets used, there is no way to tell it to continue on conflict
@@ -89,7 +96,7 @@ export class ItemProcessedDatabase implements IProcessedDataManager {
 					Db.collections.ProcessedData.insert({
 						workflowId: contextData.workflow.id as string,
 						context: dbContext,
-						value: ItemProcessedDatabase.createValueHash(item),
+						value: ProcessedDataManagerNativeDatabase.createValueHash(item),
 					}),
 				);
 			}
@@ -122,7 +129,7 @@ export class ItemProcessedDatabase implements IProcessedDataManager {
 			return {
 				workflowId: contextData.workflow.id as string,
 				context: dbContext,
-				value: ItemProcessedDatabase.createValueHash(item),
+				value: ProcessedDataManagerNativeDatabase.createValueHash(item),
 			};
 		});
 
@@ -159,14 +166,16 @@ export class ItemProcessedDatabase implements IProcessedDataManager {
 
 	async removeProcessed(
 		items: string[],
-		context: 'node' | 'workflow',
+		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): Promise<void> {
-		const hashedItems = items.map((item) => ItemProcessedDatabase.createValueHash(item));
+		const hashedItems = items.map((item) =>
+			ProcessedDataManagerNativeDatabase.createValueHash(item),
+		);
 
 		await Db.collections.ProcessedData.delete({
 			workflowId: contextData.workflow.id as string,
-			context: ItemProcessedDatabase.createContext(context, contextData),
+			context: ProcessedDataManagerNativeDatabase.createContext(context, contextData),
 			value: In(hashedItems),
 		});
 	}
