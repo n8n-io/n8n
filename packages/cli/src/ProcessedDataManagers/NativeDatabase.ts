@@ -79,9 +79,12 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		items: string[],
 		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
-		// maxRecords: number,
 	): Promise<ICheckProcessedOutput> {
 		const dbContext = ProcessedDataManagerNativeDatabase.createContext(context, contextData);
+
+		if (!contextData.workflow.id) {
+			throw new Error('Workflow has to have an ID set!');
+		}
 
 		if (ProcessedDataManagerNativeDatabase.dbType === 'sqlite') {
 			// SQLite is used as database
@@ -94,7 +97,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			for (const item of items) {
 				upsertPromises.push(
 					Db.collections.ProcessedData.insert({
-						workflowId: contextData.workflow.id as string,
+						workflowId: contextData.workflow.id,
 						context: dbContext,
 						value: ProcessedDataManagerNativeDatabase.createValueHash(item),
 					}),
@@ -108,6 +111,14 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			promiseResults.forEach((result) => {
 				item = items.shift() as string;
 				if (result.status === 'rejected') {
+					if (result.reason.code !== 'SQLITE_CONSTRAINT') {
+						// We expect constraint issues, as that means that they value got already processed
+						// before but all other ones are actual errors which have to be thrown.
+
+						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+						throw new Error(`Problem inserting ProcessedData: '${result.reason.toString()}'`);
+					}
+
 					// Got already processed
 					processedItems.push(item);
 				} else {
