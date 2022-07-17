@@ -687,62 +687,6 @@ export const schema = {
 			default: false,
 			env: 'N8N_ACTIVE_DIRECTORY_DISABLED',
 		},
-		loginLabel: {
-			format: String,
-			default: '',
-			env: 'N8N_ACTIVE_DIRECTORY_LOGIN_LABEL',
-		},
-		connection: {
-			url: {
-				format: String,
-				default: 'ldaps://ldap.jumpcloud.com',
-				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_URL',
-			},
-		},
-		binding: {
-			baseDn: {
-				format: String,
-				default: 'o=62a26f26f43d6576142ab04c,dc=jumpcloud,dc=com',
-				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_BASE_DN',
-			},
-			adminDn: {
-				format: String,
-				default: 'uid=robertocarrero,ou=Users,o=62a26f26f43d6576142ab04c,dc=jumpcloud,dc=com',
-				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_ADMIN_DN',
-			},
-			adminPassword: {
-				format: String,
-				default: 'Ricardo_123',
-				env: 'N8N_ACTIVE_DIRECTORY_CONNECTION_ADMIN_PASSWORD',
-			},
-		},
-		attributeMapping: {
-			email: {
-				format: String,
-				default: 'mail',
-				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_EMAIL',
-			},
-			firstName: {
-				format: String,
-				default: '',
-				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_FIRSTNAME',
-			},
-			lastName: {
-				format: String,
-				default: '',
-				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_LASTNAME',
-			},
-			loginId: {
-				format: String,
-				default: 'uid',
-				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_LOGINID',
-			},
-			username: {
-				format: String,
-				default: '',
-				env: 'N8N_ACTIVE_DIRECTORY_ATTRIBUTE_MAPPING_USERNAME',
-			},
-		},
 	},
 
 	externalHookFiles: {

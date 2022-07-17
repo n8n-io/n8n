@@ -506,6 +506,7 @@ export interface IN8nUISettings {
 	activeDirectory: {
 		enabled: boolean;
 		loginLabel: string;
+		loginEnabled: boolean;
 	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;

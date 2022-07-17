@@ -6,14 +6,6 @@
 					{{ $locale.baseText('settings.ad') }}
 				</n8n-heading>
 			</div>
-			<!-- <div :class="$style.enableFeatureContainer">
-				<span>Enable Feature</span>
-				<el-switch
-					v-model="adConfig.activeDirectoryLoginEnabled"
-					active-color="#13ce66"
-					@change="valueChanged"
-				/>
-			</div> -->
 			<div>
 				<n8n-form-inputs
 					v-if="formInputs"
@@ -392,6 +384,9 @@ export default mixins(
 							label: 'Syncronization Info',
 							type: 'info',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === 'true';
+						},
 					},
 					{
 						name: 'syncronizationEnabled',
@@ -410,6 +405,9 @@ export default mixins(
 									value: 'false',
 								},
 							],
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === 'true';
 						},
 					},
 					{

@@ -165,7 +165,11 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
-import { getActiveDirectoryLoginLabel, isActiveDirectoryEnabled } from './ActiveDirectory/helpers';
+import {
+	getActiveDirectoryLoginLabel,
+	isActiveDirectoryEnabled,
+	isActiveDirectoryLoginEnabled,
+} from './ActiveDirectory/helpers';
 import { activeDirectoryController } from './ActiveDirectory/routes/activeDirectoryController';
 
 require('body-parser-xml')(bodyParser);
@@ -321,6 +325,7 @@ class App {
 			activeDirectory: {
 				enabled: isActiveDirectoryEnabled(),
 				loginLabel: getActiveDirectoryLoginLabel(),
+				loginEnabled: isActiveDirectoryLoginEnabled(),
 			},
 			publicApi: {
 				enabled: config.getEnv('publicApi.disabled') === false,
@@ -360,6 +365,11 @@ class App {
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 		});
 
+		Object.assign(this.frontendSettings.activeDirectory, {
+			enabled: isActiveDirectoryEnabled(),
+			loginLabel: getActiveDirectoryLoginLabel(),
+			loginEnabled: isActiveDirectoryLoginEnabled(),
+		});
 		return this.frontendSettings;
 	}
 

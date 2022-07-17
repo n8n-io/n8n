@@ -14,6 +14,7 @@ import { ActiveDirectoryManager } from './ActiveDirectoryManager';
 import {
 	ACTIVE_DIRECTORY_DISABLED,
 	ACTIVE_DIRECTORY_FEATURE_NAME,
+	ACTIVE_DIRECTORY_LOGIN_ENABLED,
 	ACTIVE_DIRECTORY_LOGIN_LABEL,
 	SignInType,
 } from './constants';
@@ -25,8 +26,13 @@ export const isActiveDirectoryEnabled = (): boolean => !config.getEnv(ACTIVE_DIR
 
 const setAdLoginLabel = (value: string) => config.set(ACTIVE_DIRECTORY_LOGIN_LABEL, value);
 
+const setAdLoginEnabled = (value: boolean) => config.set(ACTIVE_DIRECTORY_LOGIN_ENABLED, value);
+
 export const getActiveDirectoryLoginLabel = (): string =>
 	config.getEnv(ACTIVE_DIRECTORY_LOGIN_LABEL);
+
+export const isActiveDirectoryLoginEnabled = (): boolean =>
+	config.getEnv(ACTIVE_DIRECTORY_LOGIN_ENABLED);
 
 const isFirstRunAfterFeatureEnabled = (databaseSettings: Settings[]) => {
 	const dbSetting = databaseSettings.find((setting) => setting.key === ACTIVE_DIRECTORY_DISABLED);
@@ -68,20 +74,20 @@ const saveFeatureConfiguration = async () => {
 				label: '',
 			},
 			connection: {
-				url: config.getEnv('activeDirectory.connection.url'),
+				url: '',
 				useSsl: true,
 			},
 			binding: {
-				baseDn: config.getEnv('activeDirectory.binding.baseDn'),
-				adminDn: config.getEnv('activeDirectory.binding.adminDn'),
-				adminPassword: config.getEnv('activeDirectory.binding.adminPassword'),
+				baseDn: '',
+				adminDn: '',
+				adminPassword: '',
 			},
 			attributeMapping: {
-				firstName: config.getEnv('activeDirectory.attributeMapping.firstName'),
-				lastName: config.getEnv('activeDirectory.attributeMapping.lastName'),
-				email: config.getEnv('activeDirectory.attributeMapping.email'),
-				loginId: config.getEnv('activeDirectory.attributeMapping.loginId'),
-				username: config.getEnv('activeDirectory.attributeMapping.username'),
+				firstName: '',
+				lastName: '',
+				email: '',
+				loginId: '',
+				username: '',
 			},
 			syncronization: {
 				enabled: false,
@@ -114,13 +120,23 @@ export const getActiveDirectoryConfig = async (): Promise<{
 	};
 };
 
+const setGlobalADConfigVariables = (config: ActiveDirectoryConfig): void => {
+	setAdLoginEnabled(config.login.enabled);
+	setAdLoginLabel(config.login.label);
+};
+
 export const updateActiveDirectoryConfig = async (config: ActiveDirectoryConfig): Promise<void> => {
 	config.binding.adminPassword = await encryptPassword(config.binding.adminPassword);
+
+	if (!config.login.enabled) {
+		config.syncronization.enabled = false;
+	}
+
 	await Db.collections.FeatureConfig.update(
 		{ name: ACTIVE_DIRECTORY_FEATURE_NAME },
 		{ data: config },
 	);
-	setAdLoginLabel(config.login.label);
+	setGlobalADConfigVariables(config);
 };
 
 // rename to handle ad first init
@@ -137,7 +153,7 @@ export const handleActiveDirectoryFirstInit = async (
 
 	const adConfig = await getActiveDirectoryConfig();
 
-	setAdLoginLabel(adConfig.data.login.label);
+	setGlobalADConfigVariables(adConfig.data);
 
 	ActiveDirectoryManager.init(adConfig.data);
 };

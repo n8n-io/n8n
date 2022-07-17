@@ -672,6 +672,7 @@ export interface IN8nUISettings {
 	activeDirectory: {
 		enabled: boolean;
 		loginLabel: string;
+		loginEnabled: boolean;
 	};
 }
 
@@ -896,6 +897,7 @@ export interface ISettingsState {
 	ad: {
 		enabled: boolean;
 		loginLabel: string;
+		loginEnabled: boolean;
 	};
 }
 

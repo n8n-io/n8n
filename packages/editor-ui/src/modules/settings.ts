@@ -35,6 +35,7 @@ const module: Module<ISettingsState, IRootState> = {
 		ad: {
 			enabled: false,
 			loginLabel: '',
+			loginEnabled: false,
 		},
 	},
 	getters: {
@@ -55,6 +56,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		isADEnabled(state: ISettingsState): boolean {
 			return state.ad.enabled;
+		},
+		isADLoginEnabled(state: ISettingsState): boolean {
+			return state.ad.loginEnabled;
 		},
 		getADLoginLabel(state: ISettingsState): string {
 			return state.ad.loginLabel;
@@ -107,6 +111,7 @@ const module: Module<ISettingsState, IRootState> = {
 			state.api.path = settings.publicApi.path;
 			state.ad.enabled = settings.activeDirectory.enabled;
 			state.ad.loginLabel = settings.activeDirectory.loginLabel;
+			state.ad.loginEnabled = settings.activeDirectory.loginEnabled;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);

@@ -79,6 +79,8 @@ type ExceptionPaths = {
 	'nodes.include': undefined;
 	'userManagement.isInstanceOwnerSetUp': boolean;
 	'userManagement.skipInstanceOwnerSetup': boolean;
+	'activeDirectory.loginLabel': string;
+	'activeDirectory.loginEnabled': boolean;
 };
 
 // -----------------------------------
