@@ -505,6 +505,7 @@ export interface IN8nUISettings {
 	userManagement: IUserManagementSettings;
 	activeDirectory: {
 		enabled: boolean;
+		loginLabel: string;
 	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;

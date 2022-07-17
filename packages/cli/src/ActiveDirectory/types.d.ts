@@ -4,7 +4,11 @@ import type { User } from '../databases/entities/User';
 import { RunningMode } from './constants';
 
 export interface ActiveDirectoryConfig {
-	activeDirectoryLoginEnabled: boolean;
+	// activeDirectoryLoginEnabled: boolean;
+	login: {
+		enabled: boolean;
+		label: string;
+	};
 	connection: {
 		url: string;
 		useSsl: boolean;

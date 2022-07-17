@@ -671,6 +671,7 @@ export interface IN8nUISettings {
 	};
 	activeDirectory: {
 		enabled: boolean;
+		loginLabel: string;
 	};
 }
 
@@ -894,6 +895,7 @@ export interface ISettingsState {
 	};
 	ad: {
 		enabled: boolean;
+		loginLabel: string;
 	};
 }
 
@@ -967,7 +969,11 @@ export interface ITab {
 }
 
 export interface IActiveDirectoryConfig {
-		activeDirectoryLoginEnabled: boolean;
+		// activeDirectoryLoginEnabled: boolean;
+		login: {
+			enabled: boolean;
+			label: string;
+		};
 		attributeMapping: {
 			email: string;
 			firstName: string;

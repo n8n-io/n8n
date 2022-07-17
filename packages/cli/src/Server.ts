@@ -165,7 +165,7 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
-import { isActiveDirectoryEnabled } from './ActiveDirectory/helpers';
+import { getActiveDirectoryLoginLabel, isActiveDirectoryEnabled } from './ActiveDirectory/helpers';
 import { activeDirectoryController } from './ActiveDirectory/routes/activeDirectoryController';
 
 require('body-parser-xml')(bodyParser);
@@ -320,6 +320,7 @@ class App {
 			},
 			activeDirectory: {
 				enabled: isActiveDirectoryEnabled(),
+				loginLabel: getActiveDirectoryLoginLabel(),
 			},
 			publicApi: {
 				enabled: config.getEnv('publicApi.disabled') === false,

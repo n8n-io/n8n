@@ -22,6 +22,18 @@ export default mixins(
 		AuthView,
 	},
 	data() {
+		let emailLabel = this.$locale.baseText('auth.email');
+		const adLoginLabel = this.$store.getters['settings/getADLoginLabel'];
+		const isAdEnabled = this.$store.getters['settings/isADEnabled'];
+
+		if (isAdEnabled && adLoginLabel) {
+			emailLabel = adLoginLabel;
+		}
+		console.log(isAdEnabled);
+		console.log(adLoginLabel);
+		console.log('before form');
+		console.log(emailLabel);
+
 		const FORM_CONFIG: IFormBoxConfig = {
 			title: this.$locale.baseText('auth.signin'),
 			buttonText: this.$locale.baseText('auth.signin'),
@@ -31,7 +43,7 @@ export default mixins(
 				{
 					name: 'email',
 					properties: {
-						label: this.$locale.baseText('auth.email'),
+						label: emailLabel,
 						type: 'email',
 						required: true,
 						validationRules: [{ name: 'VALID_EMAIL' }],

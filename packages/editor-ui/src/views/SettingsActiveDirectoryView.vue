@@ -120,7 +120,8 @@ export default mixins(
 			this.readyToSubmit = ready;
 		},
 		async onSubmit(form: {
-				loginEnaled: string,
+				loginEnabled: string,
+				loginLabel: string,
 				serverAddress: string,
 				baseDn: string,
 				bindingType: string,
@@ -140,7 +141,10 @@ export default mixins(
 			}
 
 			const newConfiguration = {
-				activeDirectoryLoginEnabled: form.loginEnaled === 'true' ? true : false,
+				login: {
+					enabled: form.loginEnabled === 'true' ? true : false,
+					label: form.loginLabel,
+				},
 				connection: {
 					url: form.serverAddress,
 					useSsl: form.useSsl === 'true' ? true : false,
@@ -203,8 +207,8 @@ export default mixins(
 				this.adConfig = await this.$store.dispatch('settings/getADConfig');
 				this.formInputs = [
 					{
-						name: 'loginEnaled',
-						initialValue: this.adConfig.activeDirectoryLoginEnabled.toString(),
+						name: 'loginEnabled',
+						initialValue: this.adConfig.login.enabled.toString(),
 						properties: {
 							type: 'select',
 							label: 'Enabled Active Directory Login',
@@ -219,6 +223,15 @@ export default mixins(
 									value: 'false',
 								},
 							],
+						},
+					},
+					{
+						name: 'loginLabel',
+						initialValue: this.adConfig.login.label,
+						properties: {
+							label: 'Login Label',
+							required: false,
+							placeholder: 'Active Directory Username or Email',
 						},
 					},
 					{

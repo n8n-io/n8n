@@ -6,6 +6,8 @@ export const ACTIVE_DIRECTORY_FEATURE_NAME = 'activeDirectory';
 
 export const ACTIVE_DIRECTORY_DISABLED = 'activeDirectory.disabled';
 
+export const ACTIVE_DIRECTORY_LOGIN_LABEL = 'activeDirectory.loginLabel';
+
 export enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',

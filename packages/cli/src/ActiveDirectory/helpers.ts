@@ -11,12 +11,22 @@ import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { ActiveDirectoryManager } from './ActiveDirectoryManager';
-import { ACTIVE_DIRECTORY_DISABLED, ACTIVE_DIRECTORY_FEATURE_NAME, SignInType } from './constants';
+import {
+	ACTIVE_DIRECTORY_DISABLED,
+	ACTIVE_DIRECTORY_FEATURE_NAME,
+	ACTIVE_DIRECTORY_LOGIN_LABEL,
+	SignInType,
+} from './constants';
 import type { ActiveDirectoryConfig } from './types';
 
 const isActiveDirectoryDisabled = (): boolean => config.getEnv(ACTIVE_DIRECTORY_DISABLED);
 
 export const isActiveDirectoryEnabled = (): boolean => !config.getEnv(ACTIVE_DIRECTORY_DISABLED);
+
+const setAdLoginLabel = (value: string) => config.set(ACTIVE_DIRECTORY_LOGIN_LABEL, value);
+
+export const getActiveDirectoryLoginLabel = (): string =>
+	config.getEnv(ACTIVE_DIRECTORY_LOGIN_LABEL);
 
 const isFirstRunAfterFeatureEnabled = (databaseSettings: Settings[]) => {
 	const dbSetting = databaseSettings.find((setting) => setting.key === ACTIVE_DIRECTORY_DISABLED);
@@ -53,7 +63,10 @@ const saveFeatureConfiguration = async () => {
 	const featureConfig: IFeatureConfigDb = {
 		name: 'activeDirectory',
 		data: {
-			activeDirectoryLoginEnabled: false,
+			login: {
+				enabled: false,
+				label: '',
+			},
 			connection: {
 				url: config.getEnv('activeDirectory.connection.url'),
 				useSsl: true,
@@ -107,6 +120,7 @@ export const updateActiveDirectoryConfig = async (config: ActiveDirectoryConfig)
 		{ name: ACTIVE_DIRECTORY_FEATURE_NAME },
 		{ data: config },
 	);
+	setAdLoginLabel(config.login.label);
 };
 
 // rename to handle ad first init
@@ -122,6 +136,8 @@ export const handleActiveDirectoryFirstInit = async (
 	}
 
 	const adConfig = await getActiveDirectoryConfig();
+
+	setAdLoginLabel(adConfig.data.login.label);
 
 	ActiveDirectoryManager.init(adConfig.data);
 };
@@ -189,7 +205,7 @@ export const handleActiveDirectoryLogin = async (
 
 	const adConfig = await getActiveDirectoryConfig();
 
-	if (!adConfig.data.activeDirectoryLoginEnabled) return undefined;
+	if (!adConfig.data.login.enabled) return undefined;
 
 	const {
 		data: { attributeMapping },

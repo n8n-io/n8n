@@ -687,6 +687,11 @@ export const schema = {
 			default: false,
 			env: 'N8N_ACTIVE_DIRECTORY_DISABLED',
 		},
+		loginLabel: {
+			format: String,
+			default: '',
+			env: 'N8N_ACTIVE_DIRECTORY_LOGIN_LABEL',
+		},
 		connection: {
 			url: {
 				format: String,
