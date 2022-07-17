@@ -309,7 +309,7 @@ const createAttributeOperations: INodeProperties[] = [
 
 const updateAttributeOperations: INodeProperties[] = [
 	{
-		default: '',
+		default: 'calculated',
 		description: 'Category of the attribute',
 		displayName: 'Category',
 		displayOptions: {
@@ -321,12 +321,12 @@ const updateAttributeOperations: INodeProperties[] = [
 		name: 'updateAttributeCategory',
 		options: [
 			{
-				name: 'Category',
-				value: 'category',
-			},
-			{
 				name: 'Calculated',
 				value: 'calculated',
+			},
+			{
+				name: 'Category',
+				value: 'category',
 			},
 			{
 				name: 'Global',
@@ -356,7 +356,9 @@ const updateAttributeOperations: INodeProperties[] = [
 			show: {
 				resource: ['attribute'],
 				operation: ['updateAttribute'],
-				attributeCategory: ['global', 'calculated'],
+			},
+			hide: {
+				updateAttributeCategory: ['category'],
 			},
 		},
 		name: 'updateAttributeValue',
