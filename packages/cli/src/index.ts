@@ -17,6 +17,7 @@ import * as ActiveExecutions from './ActiveExecutions';
 import * as ActiveWorkflowRunner from './ActiveWorkflowRunner';
 import * as Db from './Db';
 import * as GenericHelpers from './GenericHelpers';
+import * as ProcessedDataManagers from './ProcessedDataManagers';
 import * as Push from './Push';
 import * as ResponseHelper from './ResponseHelper';
 import * as Server from './Server';
@@ -31,6 +32,7 @@ export {
 	ActiveWorkflowRunner,
 	Db,
 	GenericHelpers,
+	ProcessedDataManagers,
 	Push,
 	ResponseHelper,
 	Server,

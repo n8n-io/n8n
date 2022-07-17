@@ -813,6 +813,20 @@ export const schema = {
 		},
 	},
 
+	processedDataManager: {
+		availableModes: {
+			format: String,
+			default: 'database',
+			env: 'N8N_AVAILABLE_PROCESSED_DATA_MODES',
+			doc: 'Available modes of processed data storage, as comma separated strings',
+		},
+		mode: {
+			format: ['database'] as const,
+			default: 'database',
+			env: 'N8N_DEFAULT_PROCESSED_DATA_MODE',
+			doc: 'Storage mode for processed data',
+		},
+	},
 	binaryDataManager: {
 		availableModes: {
 			format: String,

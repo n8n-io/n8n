@@ -11,6 +11,7 @@ import {
 	IHookFunctions as IHookFunctionsBase,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
+	INode,
 	INodeExecutionData,
 	INodeType,
 	IOAuth2Options,
@@ -20,6 +21,7 @@ import {
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	Workflow,
 } from 'n8n-workflow';
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -36,6 +38,12 @@ export interface IProcessMessage {
 
 export interface IExecuteFunctions extends IExecuteFunctionsBase {
 	helpers: {
+		checkProcessed(items: string[], context: 'node' | 'workflow'): Promise<ICheckProcessedOutput>;
+		checkProcessedAndRecord(
+			items: string[],
+			context: 'node' | 'workflow',
+		): Promise<ICheckProcessedOutput>;
+		removeProcessed(items: string[], context: 'node' | 'workflow'): Promise<void>;
 		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
 		prepareBinaryData(
 			binaryData: Buffer,
@@ -333,4 +341,44 @@ export interface IBinaryDataManager {
 	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
 	deleteBinaryDataByExecutionId(executionId: string): Promise<void>;
 	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
+}
+
+export interface IProcessedDataConfig {
+	availableModes: string;
+	mode: string;
+}
+
+export interface IProcessedDataManager {
+	init(): Promise<void>;
+	checkProcessed(
+		items: string[],
+		context: 'node' | 'workflow',
+		contextData: ICheckProcessedContextData,
+	): Promise<ICheckProcessedOutput>;
+
+	checkProcessedAndRecord(
+		items: string[],
+		context: 'node' | 'workflow',
+		contextData: ICheckProcessedContextData,
+	): Promise<ICheckProcessedOutput>;
+
+	removeProcessed(
+		items: string[],
+		context: 'node' | 'workflow',
+		contextData: ICheckProcessedContextData,
+	): Promise<void>;
+}
+
+export interface IProcessedDataManagers {
+	[key: string]: IProcessedDataManager;
+}
+
+export interface ICheckProcessedOutput {
+	new: string[];
+	processed: string[];
+}
+
+export interface ICheckProcessedContextData {
+	node?: INode;
+	workflow: Workflow;
 }

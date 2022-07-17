@@ -16,5 +16,6 @@ export * from './Credentials';
 export * from './Interfaces';
 export * from './LoadNodeParameterOptions';
 export * from './NodeExecuteFunctions';
+export * from './ProcessedDataManager';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions, UserSettings };

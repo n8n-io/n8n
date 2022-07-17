@@ -7,7 +7,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import localtunnel from 'localtunnel';
-import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
+import {
+	BinaryDataManager,
+	ProcessedDataManager,
+	TUNNEL_SUBDOMAIN_ENV,
+	UserSettings,
+} from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
@@ -33,6 +38,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { getProcessedDataManagers } from '../src/ProcessedDataManagers';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -334,6 +340,10 @@ export class Start extends Command {
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig, true);
+
+				const processedDataConfig = config.getEnv('processedDataManager');
+				const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+				await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 
 				await Server.start();
 

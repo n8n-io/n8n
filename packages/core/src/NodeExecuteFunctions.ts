@@ -88,10 +88,13 @@ import url, { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {
+	ICheckProcessedContextData,
+	ICheckProcessedOutput,
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
+	ProcessedDataManager,
 	IWorkflowSettings,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 } from '.';
@@ -802,6 +805,30 @@ export async function getBinaryDataBuffer(
 ): Promise<Buffer> {
 	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
 	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
+}
+
+export async function checkProcessed(
+	items: string[],
+	context: 'node' | 'workflow',
+	contextData: ICheckProcessedContextData,
+): Promise<ICheckProcessedOutput> {
+	return ProcessedDataManager.getInstance().checkProcessed(items, context, contextData);
+}
+
+export async function checkProcessedAndRecord(
+	items: string[],
+	context: 'node' | 'workflow',
+	contextData: ICheckProcessedContextData,
+): Promise<ICheckProcessedOutput> {
+	return ProcessedDataManager.getInstance().checkProcessedAndRecord(items, context, contextData);
+}
+
+export async function removeProcessed(
+	items: string[],
+	context: 'node' | 'workflow',
+	contextData: ICheckProcessedContextData,
+): Promise<void> {
+	return ProcessedDataManager.getInstance().removeProcessed(items, context, contextData);
 }
 
 /**
@@ -2262,6 +2289,21 @@ export function getExecuteFunctions(
 				): Promise<Buffer> {
 					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
 				},
+				async checkProcessed(
+					items: string[],
+					context: 'node' | 'workflow',
+				): Promise<ICheckProcessedOutput> {
+					return checkProcessed(items, context, { node, workflow });
+				},
+				async checkProcessedAndRecord(
+					items: string[],
+					context: 'node' | 'workflow',
+				): Promise<ICheckProcessedOutput> {
+					return checkProcessedAndRecord(items, context, { node, workflow });
+				},
+				async removeProcessed(items: string[], context: 'node' | 'workflow'): Promise<void> {
+					return removeProcessed(items, context, { node, workflow });
+				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
@@ -2496,6 +2538,21 @@ export function getExecuteSingleFunctions(
 						filePath,
 						mimeType,
 					);
+				},
+				async checkProcessed(
+					items: string[],
+					context: 'node' | 'workflow',
+				): Promise<ICheckProcessedOutput> {
+					return checkProcessed(items, context, { node, workflow });
+				},
+				async checkProcessedAndRecord(
+					items: string[],
+					context: 'node' | 'workflow',
+				): Promise<ICheckProcessedOutput> {
+					return checkProcessedAndRecord(items, context, { node, workflow });
+				},
+				async removeProcessed(items: string[], context: 'node' | 'workflow'): Promise<void> {
+					return removeProcessed(items, context, { node, workflow });
 				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(

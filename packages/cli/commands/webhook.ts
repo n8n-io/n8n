@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { BinaryDataManager, UserSettings } from 'n8n-core';
+import { BinaryDataManager, ProcessedDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
@@ -25,6 +25,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { getProcessedDataManagers } from '../src/ProcessedDataManagers';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
@@ -154,6 +155,10 @@ export class Webhook extends Command {
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);
+
+				const processedDataConfig = config.getEnv('processedDataManager');
+				const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+				await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');

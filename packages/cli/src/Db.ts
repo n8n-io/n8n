@@ -185,6 +185,7 @@ export async function init(
 
 	collections.Credentials = linkRepository(entities.CredentialsEntity);
 	collections.Execution = linkRepository(entities.ExecutionEntity);
+	collections.ProcessedData = linkRepository(entities.ProcessedData);
 	collections.Workflow = linkRepository(entities.WorkflowEntity);
 	collections.Webhook = linkRepository(entities.WebhookEntity);
 	collections.Tag = linkRepository(entities.TagEntity);

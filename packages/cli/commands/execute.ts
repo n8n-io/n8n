@@ -2,7 +2,12 @@
 /* eslint-disable no-console */
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
-import { BinaryDataManager, UserSettings, PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
+import {
+	BinaryDataManager,
+	UserSettings,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	ProcessedDataManager,
+} from 'n8n-core';
 import { INode, LoggerProxy } from 'n8n-workflow';
 
 import {
@@ -24,6 +29,7 @@ import {
 import { getLogger } from '../src/Logger';
 import config from '../config';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
+import { getProcessedDataManagers } from '../src/ProcessedDataManagers';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -49,6 +55,11 @@ export class Execute extends Command {
 		LoggerProxy.init(logger);
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
+
+		const processedDataConfig = config.getEnv('processedDataManager');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+		await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Execute);

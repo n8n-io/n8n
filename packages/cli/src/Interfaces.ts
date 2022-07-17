@@ -75,6 +75,7 @@ export interface ICredentialsOverwrite {
 export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb>;
 	Execution: Repository<IExecutionFlattedDb>;
+	ProcessedData: Repository<IProcessedDataDb>;
 	Workflow: Repository<WorkflowEntity>;
 	Webhook: Repository<IWebhookDb>;
 	Tag: Repository<TagEntity>;
@@ -92,6 +93,17 @@ export interface IWebhookDb {
 	node: string;
 	webhookId?: string;
 	pathLength?: number;
+}
+
+// ----------------------------------
+//               ProcessedData
+// ----------------------------------
+
+export interface IProcessedDataDb {
+	createdAt: Date;
+	context: string;
+	value: string;
+	workflowId: string;
 }
 
 // ----------------------------------

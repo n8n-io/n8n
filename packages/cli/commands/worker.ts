@@ -12,7 +12,7 @@ import http from 'http';
 import PCancelable from 'p-cancelable';
 
 import { Command, flags } from '@oclif/command';
-import { BinaryDataManager, IBinaryDataConfig, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, ProcessedDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
 
@@ -45,6 +45,7 @@ import {
 	checkPermissionsForExecution,
 	getWorkflowOwner,
 } from '../src/UserManagement/UserManagementHelper';
+import { getProcessedDataManagers } from '../src/ProcessedDataManagers';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -306,6 +307,11 @@ export class Worker extends Command {
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);
+
+				const processedDataConfig = config.getEnv('processedDataManager');
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+				await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 
 				console.info('\nn8n worker is now ready');
 				console.info(` * Version: ${versions.cli}`);

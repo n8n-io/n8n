@@ -9,7 +9,7 @@
 import fs from 'fs';
 import { Command, flags } from '@oclif/command';
 
-import { BinaryDataManager, UserSettings } from 'n8n-core';
+import { BinaryDataManager, ProcessedDataManager, UserSettings } from 'n8n-core';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
@@ -39,6 +39,7 @@ import {
 import config from '../config';
 import { User } from '../src/databases/entities/User';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
+import { getProcessedDataManagers } from '../src/ProcessedDataManagers';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -198,6 +199,11 @@ export class ExecuteBatch extends Command {
 		LoggerProxy.init(logger);
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
+
+		const processedDataConfig = config.getEnv('processedDataManager');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+		await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);

@@ -249,6 +249,7 @@ function toTableName(sourceName: CollectionName | MappingName) {
 
 	return {
 		Credentials: 'credentials_entity',
+		ProcessedData: 'processed_data',
 		Workflow: 'workflow_entity',
 		Execution: 'execution_entity',
 		Tag: 'tag_entity',

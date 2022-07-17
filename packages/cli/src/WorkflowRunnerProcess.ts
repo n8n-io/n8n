@@ -5,7 +5,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
+import {
+	BinaryDataManager,
+	IProcessMessage,
+	ProcessedDataManager,
+	UserSettings,
+	WorkflowExecute,
+} from 'n8n-core';
 
 import {
 	ExecutionError,
@@ -47,6 +53,7 @@ import { getLogger } from './Logger';
 import config from '../config';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
+import { getProcessedDataManagers } from './ProcessedDataManagers';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -184,6 +191,10 @@ export class WorkflowRunnerProcess {
 			}
 		});
 
+		// TODO: With ProcessedData it would always have to initialize the database, at least
+		//       if a manager gets used which uses it. So this part has to get cleaned up.
+		shouldInitializaDb = true;
+
 		// This code has been split into 4 ifs just to make it easier to understand
 		// Can be made smaller but in the end it will make it impossible to read.
 		if (shouldInitializaDb) {
@@ -209,6 +220,10 @@ export class WorkflowRunnerProcess {
 			// Workflow settings not saying anything about saving but default settings says so
 			await Db.init();
 		}
+
+		const processedDataConfig = config.getEnv('processedDataManager');
+		const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+		await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 
 		// Start timeout for the execution
 		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default

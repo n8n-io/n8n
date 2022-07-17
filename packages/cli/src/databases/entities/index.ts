@@ -4,6 +4,7 @@ import { CredentialsEntity } from './CredentialsEntity';
 import { ExecutionEntity } from './ExecutionEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 import { WebhookEntity } from './WebhookEntity';
+import { ProcessedData } from './ProcessedData';
 import { TagEntity } from './TagEntity';
 import { User } from './User';
 import { Role } from './Role';
@@ -16,6 +17,7 @@ export const entities = {
 	ExecutionEntity,
 	WorkflowEntity,
 	WebhookEntity,
+	ProcessedData,
 	TagEntity,
 	User,
 	Role,
