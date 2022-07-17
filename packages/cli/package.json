@@ -93,11 +93,12 @@
     "typescript": "~4.6.0"
   },
   "dependencies": {
-    "@oclif/core": "^1.9.3",
     "@apidevtools/swagger-cli": "4.0.0",
     "@oclif/command": "^1.5.18",
+    "@oclif/core": "^1.9.3",
     "@oclif/errors": "^1.2.2",
     "@rudderstack/rudder-sdk-node": "1.0.6",
+    "@types/humanize-duration": "^3.27.1",
     "@types/json-diff": "^0.5.1",
     "@types/jsonwebtoken": "^8.5.2",
     "@types/shelljs": "^0.8.11",
@@ -124,6 +125,7 @@
     "fast-glob": "^3.2.5",
     "flatted": "^3.2.4",
     "google-timezones-json": "^1.0.2",
+    "humanize-duration": "^3.27.2",
     "inquirer": "^7.0.1",
     "json-diff": "^0.5.4",
     "jsonschema": "^1.4.1",

@@ -1,19 +1,20 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-underscore-dangle */
 import type { Entry } from 'ldapts';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { IDataObject, LoggerProxy as Logger } from 'n8n-workflow';
 import { ActiveDirectoryService } from './ActiveDirectoryService';
 import type { ActiveDirectoryConfig } from './types';
-import { AD_LOG_PREPEND_MESSAGE, RunningMode } from './constants';
+import { AD_LOG_PREPEND_MESSAGE, RunningMode, SyncStatus } from './constants';
 import {
 	getActiveDirectoryUsersInLocalDb,
 	getAdUserRole,
 	mapToLocalDbUser,
 	processUsers,
+	saveSyncronization,
 } from './helpers';
 import type { User } from '../databases/entities/User';
 import type { Role } from '../databases/entities/Role';
-import chalk from 'chalk';
+import { ActiveDirectorySync as ADSync } from '../databases/entities/ActiveDirectorySync';
 
 export class ActiveDirectorySync {
 	private intervalId: NodeJS.Timeout | undefined = undefined;
@@ -60,7 +61,7 @@ export class ActiveDirectorySync {
 			`(&(${this._config.attributeMapping.loginId}=*)(!(mail=teresa.zeron1@gmail.com)))`,
 		);
 
-		const startedAt = new Date().getTime();
+		const startedAt = new Date();
 
 		const localAdUsers = await getActiveDirectoryUsersInLocalDb();
 
@@ -72,40 +73,34 @@ export class ActiveDirectorySync {
 			role,
 		);
 
-		const endedAt = new Date().getTime();
-
-		console.log('se esta llamando');
-		Logger.debug(chalk.red('TESTING'));
-
-		// // @ts-ignore
-		// console.log('AD USERS');
-		// console.log(adUsers.map((user) => user.mail));
-		// console.log(adUsers);
-
-		// console.log('LOcal USERS');
-		// console.log(localAdUsers);
-
-		// console.log('To Create USERS');
-		// console.log(usersToCreate.map((user) => user.email));
-		// console.log('To Update USERS');
-		// console.log(usersToUpdate.map((user) => user.email));
+		const endedAt = new Date();
+		let status = SyncStatus.SUCCESS;
+		let errorMessage = '';
 
 		try {
 			if (mode === RunningMode.LIVE) {
 				await processUsers(usersToCreate, usersToUpdate, usersToDisable);
 			}
-			// save to database;
-		} catch (error) {
-			console.log(error);
+		} catch (exception) {
+			const error = exception as IDataObject;
+			status = SyncStatus.ERROR;
+			errorMessage = error?.message as string;
 		}
 
-		// console.log(localAdUsers);
+		const syncronization = new ADSync();
+		Object.assign(syncronization, {
+			startedAt,
+			endedAt,
+			created: usersToCreate.length,
+			updated: usersToUpdate.length,
+			disabled: usersToDisable.length,
+			scanned: adUsers.length,
+			runMode: mode,
+			status,
+			error: errorMessage,
+		});
 
-		// if (type === RunningMode.LIVE) {
-		// 	console.log('live');
-		// } else {
-		// 	console.log('dry');
-		// }
+		await saveSyncronization(syncronization);
 	}
 
 	stop(): void {

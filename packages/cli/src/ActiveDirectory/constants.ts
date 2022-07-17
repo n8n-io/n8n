@@ -20,4 +20,9 @@ export enum RunningMode {
 	LIVE = 'live',
 }
 
+export enum SyncStatus {
+	SUCCESS = 'success',
+	ERROR = 'error',
+}
+
 export const AD_LOG_PREPEND_MESSAGE = 'Activery Directory -';

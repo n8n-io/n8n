@@ -36,6 +36,7 @@ import { SharedCredentials } from './databases/entities/SharedCredentials';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { Settings } from './databases/entities/Settings';
 import { FeatureConfig } from './databases/entities/FeatureConfig';
+import { ActiveDirectorySync } from './databases/entities/ActiveDirectorySync';
 import type { ActiveDirectoryConfig } from './ActiveDirectory/types';
 
 export interface IActivationError {
@@ -86,6 +87,7 @@ export interface IDatabaseCollections {
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;
 	FeatureConfig: Repository<FeatureConfig>;
+	ActiveDirectorySync: Repository<ActiveDirectorySync>;
 }
 
 export interface IWebhookDb {

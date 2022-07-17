@@ -75,6 +75,22 @@ export class CreateFeatureConfig1655579796123 implements MigrationInterface {
 			);`
 		);
 
+		await queryRunner.query(
+			`CREATE TABLE IF NOT EXISTS "${tablePrefix}ad_sync" (
+				"id"	INTEGER,
+				"startedAt"	datetime NOT NULL,
+				"endedAt"	datetime NOT NULL,
+				"created"	INTEGER NOT NULL,
+				"updated"	INTEGER NOT NULL,
+				"disabled"	INTEGER NOT NULL,
+				"scanned"	INTEGER NOT NULL,
+				"status"	TEXT NOT NULL,
+				"runMode" TEXT NOT NULL,
+				"error" TEXT,
+				PRIMARY KEY("id" AUTOINCREMENT)
+			);`
+		);
+
 		logMigrationEnd(this.name);
 	}
 

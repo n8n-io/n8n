@@ -258,7 +258,8 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		SharedCredentials: 'shared_credentials',
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
-		FeatureConfig: 'feature_config'
+		FeatureConfig: 'feature_config',
+		ActiveDirectorySync: 'ad_sync',
 	}[sourceName];
 }
 

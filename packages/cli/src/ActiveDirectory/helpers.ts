@@ -2,10 +2,12 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable import/no-cycle */
 import { AES, enc } from 'crypto-js';
+import humanizeDuration from 'humanize-duration';
 import { Entry } from 'ldapts';
 import { UserSettings } from 'n8n-core';
 import { Db, IFeatureConfigDb } from '..';
 import config from '../../config';
+import { ActiveDirectorySync } from '../databases/entities/ActiveDirectorySync';
 import { Role } from '../databases/entities/Role';
 import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
@@ -18,7 +20,7 @@ import {
 	ACTIVE_DIRECTORY_LOGIN_LABEL,
 	SignInType,
 } from './constants';
-import type { ActiveDirectoryConfig } from './types';
+import type { ActiveDirectoryConfig, SyncronizationList } from './types';
 
 const isActiveDirectoryDisabled = (): boolean => config.getEnv(ACTIVE_DIRECTORY_DISABLED);
 
@@ -306,4 +308,30 @@ export const processUsers = async (
 			),
 		]);
 	});
+};
+
+export const saveSyncronization = async (sync: ActiveDirectorySync): Promise<void> => {
+	await Db.collections.ActiveDirectorySync.save<ActiveDirectorySync>(sync);
+};
+
+export const listADSyncronizations = async (): Promise<SyncronizationList[]> => {
+	const data = await Db.collections.ActiveDirectorySync.find({
+		order: {
+			id: 'DESC',
+		},
+	});
+
+	const responseMapper = (sync: ActiveDirectorySync): SyncronizationList => {
+		const runTimeInMinutes = sync.endedAt.getTime() - sync.startedAt.getTime();
+		return {
+			id: sync.id,
+			runTime: humanizeDuration(runTimeInMinutes),
+			scanned: sync.scanned,
+			status: sync.status,
+			startedAt: sync.startedAt.toUTCString(),
+			errorMessage: sync.error,
+		};
+	};
+
+	return data.map(responseMapper);
 };

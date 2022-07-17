@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import express from 'express';
 import type { User } from '../databases/entities/User';
-import { RunningMode } from './constants';
+import { RunningMode, SyncStatus } from './constants';
 
 export interface ActiveDirectoryConfig {
 	// activeDirectoryLoginEnabled: boolean;
@@ -43,4 +43,13 @@ export type AuthenticatedRequest<
 export declare namespace ActiveDirectoryConfig {
 	type Update = AuthenticatedRequest<{}, {}, ActiveDirectoryConfig, {}>;
 	type Sync = AuthenticatedRequest<{}, {}, { type: RunningMode }, {}>;
+}
+
+export interface SyncronizationList {
+	id: number;
+	runTime: string;
+	scanned: number;
+	status: SyncStatus;
+	startedAt: string;
+	errorMessage: string;
 }

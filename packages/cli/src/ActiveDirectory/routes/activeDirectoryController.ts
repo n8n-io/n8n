@@ -1,7 +1,11 @@
 /* eslint-disable import/no-cycle */
 import express from 'express';
 import { ActiveDirectoryManager } from '../ActiveDirectoryManager';
-import { getActiveDirectoryConfig, updateActiveDirectoryConfig } from '../helpers';
+import {
+	getActiveDirectoryConfig,
+	listADSyncronizations,
+	updateActiveDirectoryConfig,
+} from '../helpers';
 import type { ActiveDirectoryConfig } from '../types';
 
 export const activeDirectoryController = express.Router();
@@ -59,20 +63,11 @@ activeDirectoryController.post(
 	},
 );
 
-// const aja = {
-// 	activeDirectoryLoginEnabled: true,
-// 	connection: {
-// 		url: 'ldaps://ldap.jumpcloud.com',
-// 	},
-// 	binding: {
-// 		baseDn: 'o=62a26f26f43d6576142ab04c,dc=jumpcloud,dc=com',
-// 		adminDn: 'uid=robertocarrero,ou=Users,o=62a26f26f43d6576142ab04c,dc=jumpcloud,dc=com',
-// 		adminPassword: 'Ricardo_12',
-// 	},
-// 	attributeMapping: {
-// 		firstName: 'givenName',
-// 		lastName: 'sn',
-// 		email: 'mail',
-// 		login: 'mail',
-// 	},
-// };
+/**
+ * GET /active-directory/sync
+ */
+activeDirectoryController.get('/sync', async (req: express.Request, res: express.Response) => {
+	const list = await listADSyncronizations();
+
+	return res.status(200).json(list);
+});
