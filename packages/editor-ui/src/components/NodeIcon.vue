@@ -1,34 +1,38 @@
 <template>
-	<div class="node-icon-wrapper" :style="iconStyleData">
-		<div v-if="nodeIconData !== null" class="icon">
-			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" :style="imageStyleData" />
-			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" :style="fontStyleData" />
-		</div>
-		<div v-else class="node-icon-placeholder">
-			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
-		</div>
-	</div>
+	<n8n-node-icon
+		:type="nodeIconData.type"
+		:path="nodeIconData.path || nodeIconData.icon || nodeIconData.fileBuffer"
+		:color="nodeIconData.color"
+		:disabled="disabled"
+		:size="size"
+		:circle="circle"
+		:nodeTypeName="nodeType.displayName"
+		:showTooltip="showTooltip"
+	></n8n-node-icon>
 </template>
 
 <script lang="ts">
-
 import { IVersionNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
+import N8nNodeIcon from '../../../design-system/src/components/N8nNodeIcon/NodeIcon.vue';
 import Vue from 'vue';
-
 interface NodeIconData {
 	type: string;
 	path?: string;
 	fileExtension?: string;
 	fileBuffer?: string;
+	color?: string;
 }
-
 export default Vue.extend({
 	name: 'NodeIcon',
+	components: {
+		N8nNodeIcon,
+	},
 	props: {
 		nodeType: {},
 		size: {
 			type: Number,
+			required: false,
 		},
 		disabled: {
 			type: Boolean,
@@ -38,106 +42,49 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		showTooltip: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	computed: {
-		iconStyleData (): object {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
-			if (!this.size) {
-				return {color};
-			}
-
-			return {
-				color,
-				width: this.size + 'px',
-				height: this.size + 'px',
-				'font-size': this.size + 'px',
-				'line-height': this.size + 'px',
-				'border-radius': this.circle ? '50%': '2px',
-				...(this.disabled && {
-					color: '#ccc',
-					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-					'filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-				}),
-			};
-		},
-		fontStyleData (): object {
-			return {
-				'max-width': this.size + 'px',
-			};
-		},
-		imageStyleData (): object {
-			return {
-				width: '100%',
-				'max-width': '100%',
-				'max-height': '100%',
-			};
-		},
-		isSvgIcon (): boolean {
-			if (this.nodeIconData && this.nodeIconData.type === 'file' && this.nodeIconData.fileExtension === 'svg') {
-				return true;
-			}
-			return false;
-		},
 		nodeIconData (): null | NodeIconData {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
 			if (nodeType === null) {
 				return null;
 			}
-
 			if ((nodeType as IVersionNode).iconData) {
-				return (nodeType as IVersionNode).iconData;
+				return {
+					...(nodeType as IVersionNode).iconData,
+					color: color ? color.toString() : '',
+				};
 			}
-
 			const restUrl = this.$store.getters.getRestUrl;
-
 			if (nodeType.icon) {
 				let type, path;
 				[type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,
 					path,
+					color: color ? color.toString() : '',
 				};
-
 				if (type === 'file') {
 					returnData.path = restUrl + '/node-icon/' + nodeType.name;
 					returnData.fileExtension = path.split('.').slice(-1).join();
+				}else {
+					returnData.type = 'icon';
 				}
-
 				return returnData;
 			}
-			return null;
+			return {
+				type: 'unknown',
+				color: color ? color.toString() : '',
+			};
 		},
 	},
 });
 </script>
 
 <style lang="scss">
-
-.node-icon-wrapper {
-	width: 26px;
-	height: 26px;
-	border-radius: 2px;
-	color: #444;
-	line-height: 26px;
-	font-size: 1.1em;
-	overflow: hidden;
-	text-align: center;
-	font-weight: bold;
-	font-size: 20px;
-
-	.icon {
-		height: 100%;
-		width: 100%;
-
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	.node-icon-placeholder {
-		text-align: center;
-	}
-}
-
 </style>

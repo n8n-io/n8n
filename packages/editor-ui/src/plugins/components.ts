@@ -62,6 +62,7 @@ import {
 	N8nMarkdown,
 	N8nMenu,
 	N8nMenuItem,
+	N8nNodeIcon,
 	N8nNotice,
 	N8nOption,
 	N8nRadioButtons,
@@ -103,6 +104,7 @@ Vue.use(N8nLink);
 Vue.component('n8n-markdown', N8nMarkdown);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
+Vue.use('n8n-node-icon', N8nNodeIcon);
 Vue.component('n8n-notice', N8nNotice);
 Vue.use(N8nOption);
 Vue.use(N8nPulse);
