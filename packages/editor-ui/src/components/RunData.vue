@@ -624,7 +624,7 @@ export default mixins(
 			inputData (): INodeExecutionData[] {
 				let inputData = this.rawInputData;
 
-				if (this.node && this.pinData) {
+				if (this.paneType === 'output' && this.node && this.pinData) {
 					inputData = Array.isArray(this.pinData)
 						? this.pinData.map((value) => ({
 							json: value,
