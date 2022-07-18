@@ -146,7 +146,7 @@ export default mixins(
 
 						this.$store.commit('ui/setMappingTelemetry', {
 							dest_node_type: this.node.type,
-							dest_parameter: this.parameter.name,
+							dest_parameter: this.path,
 							dest_parameter_mode: typeof prevValue === 'string' && prevValue.startsWith('=')? 'expression': 'fixed',
 							dest_parameter_empty: prevValue === '' || prevValue === undefined,
 							dest_parameter_had_mapping: typeof prevValue === 'string' && prevValue.startsWith('=') && hasExpressionMapping(prevValue),
