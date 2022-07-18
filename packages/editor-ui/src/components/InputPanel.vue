@@ -214,9 +214,12 @@ export default mixins(
 		},
 	},
 	watch: {
-		showDraggableHint(curr: boolean) {
-			if (curr) {
+		showDraggableHint(curr: boolean, prev: boolean) {
+			if (curr && !prev) {
 				setTimeout(() => {
+					if (this.draggableHintShown) {
+						return;
+					}
 					this.showDraggableHintWithDelay = this.showDraggableHint;
 					if (this.showDraggableHintWithDelay) {
 						this.draggableHintShown = true;
@@ -225,7 +228,7 @@ export default mixins(
 					}
 				}, 1000);
 			}
-			else {
+			else if (!curr) {
 				this.showDraggableHintWithDelay = false;
 			}
 		},
