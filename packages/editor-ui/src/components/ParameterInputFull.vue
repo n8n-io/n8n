@@ -92,9 +92,7 @@ export default mixins(
 			onFocus() {
 				this.focused = true;
 				if (!this.parameter.noDataExpression) {
-					setTimeout(() => {
-						this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
-					}, 300);
+					this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
 				}
 			},
 			onBlur() {

@@ -13,7 +13,7 @@
 		<table :class="$style.table" v-else>
 			<tr>
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
-					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || (showDraggables && actuallyShowDraggables)" :open-delay="1000">
+					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || (showHint && actuallyShowHint)" :open-delay="1000">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
 						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled">
 							<template v-slot:preview="{ canDrop }">
@@ -26,12 +26,12 @@
 									:class="{
 										[$style.header]: true,
 										[$style.draggableHeader]: mappingEnabled,
-										[$style.activeHeader]: (i === activeColumn || focusedMappableInput) && mappingEnabled,
+										[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
 										[$style.draggingHeader]: isDragging,
 									}"
 								>
 									<span>{{ column || "&nbsp;" }}</span>
-									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showDraggables && actuallyShowDraggables">
+									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHint && actuallyShowHint">
 										<div slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
@@ -85,14 +85,15 @@ export default Vue.extend({
 	data() {
 		return {
 			activeColumn: -1,
-			actuallyShowDraggables: false,
+			actuallyShowHint: false,
+			forceShowGrip: false,
 		};
 	},
 	computed: {
 		focusedMappableInput(): string {
 			return this.$store.getters['ui/focusedMappableInput'];
 		},
-		showDraggables(): boolean {
+		showHint (): boolean {
 			return !!this.focusedMappableInput && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 		},
 	},
@@ -125,14 +126,19 @@ export default Vue.extend({
 		},
 	},
 	watch: {
-		showDraggables(curr: boolean, prev: boolean) {
+		focusedMappableInput (curr: boolean) {
+			setTimeout(() => {
+				this.forceShowGrip = !!this.focusedMappableInput;
+			}, curr? 300: 150);
+		},
+		showHint (curr: boolean, prev: boolean) {
 			if (curr) {
 				setTimeout(() => {
-					this.actuallyShowDraggables = this.showDraggables;
+					this.actuallyShowHint= this.showHint ;
 				}, 1000);
 			}
 			else {
-				this.actuallyShowDraggables = false;
+				this.actuallyShowHint= false;
 			}
 		},
 	},
