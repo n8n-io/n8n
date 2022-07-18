@@ -200,6 +200,8 @@ class App {
 
 	saveManualExecutions: boolean;
 
+	defaultErrorWorkflow: string;
+
 	executionTimeout: number;
 
 	maxExecutionTimeout: number;
@@ -239,6 +241,7 @@ class App {
 
 		this.defaultWorkflowName = config.getEnv('workflows.defaultName');
 		this.defaultCredentialsName = config.getEnv('credentials.defaultName');
+		this.defaultErrorWorkflow = config.getEnv('workflows.defaultErrorWorkflow');
 
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError');
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess');
@@ -761,6 +764,13 @@ class App {
 				delete req.body.id; // delete if sent
 
 				const newWorkflow = new WorkflowEntity();
+				const currentlySavedErrorWorkflow = newWorkflow.settings?.errorWorkflow ?? "";
+				if (currentlySavedErrorWorkflow === "" && this.defaultErrorWorkflow !== "") {
+					if (newWorkflow.settings === undefined) {
+						 newWorkflow.settings = {};
+					}
+					newWorkflow.settings.errorWorkflow = this.defaultErrorWorkflow;
+				}
 
 				Object.assign(newWorkflow, req.body);
 

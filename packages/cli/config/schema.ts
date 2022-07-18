@@ -185,6 +185,12 @@ export const schema = {
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
 		},
+		defaultErrorWorkflow: {
+			doc: 'Default error workflow for new created workflows',
+			format: String,
+			default: "",
+			env: 'WORKFLOWS_DEFAULT_ERROR_WORKFLOW',
+		},
 	},
 
 	executions: {
@@ -253,7 +259,6 @@ export const schema = {
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
 		},
-
 		// If the executions of workflows which got started via the editor
 		// should be saved. By default they will not be saved as this runs
 		// are normally only for testing and debugging. This setting can
