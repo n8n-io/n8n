@@ -18,7 +18,7 @@
 			/>
 		</template>
 		<template>
-			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly" @drop="onDrop">
+			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly" :sticky="true" :stickyOffset="4" @drop="onDrop">
 				<template v-slot="{ droppable, activeDrop }">
 					<parameter-input
 						ref="param"

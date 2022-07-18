@@ -19,6 +19,7 @@
 </template>
 
 <script lang="ts">
+import { XYPosition } from '@/Interface';
 import Vue from 'vue';
 
 // @ts-ignore
@@ -58,6 +59,9 @@ export default Vue.extend({
 		canDrop(): boolean {
 			return this.$store.getters['ui/canDraggableDrop'];
 		},
+		stickyPosition(): XYPosition | null {
+			return this.$store.getters['ui/draggableStickyPos'];
+		},
 	},
 	methods: {
 		onDragStart(e: DragEvent) {
@@ -86,8 +90,14 @@ export default Vue.extend({
 			e.preventDefault();
 			e.stopPropagation();
 
-			this.draggablePosition = { x: e.pageX, y: e.pageY };
-			this.$emit('drag', {x: e.pageX, y: e.pageY});
+			if (this.canDrop && this.stickyPosition) {
+				this.draggablePosition = { x: this.stickyPosition[0], y: this.stickyPosition[1]};
+			}
+			else {
+				this.draggablePosition = { x: e.pageX, y: e.pageY };
+			}
+
+			this.$emit('drag', this.draggablePosition);
 		},
 		onDragEnd(e: MouseEvent) {
 			if (this.disabled) {

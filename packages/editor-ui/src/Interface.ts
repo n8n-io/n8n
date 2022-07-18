@@ -878,6 +878,7 @@ export interface IUiState {
 		type: string;
 		data: string;
 		canDrop: boolean;
+		stickyPosition: null | XYPosition;
 	};
 }
 

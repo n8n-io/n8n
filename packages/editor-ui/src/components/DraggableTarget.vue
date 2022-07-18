@@ -15,6 +15,13 @@ export default Vue.extend({
 		disabled: {
 			type: Boolean,
 		},
+		sticky: {
+			type: Boolean,
+		},
+		stickyOffset: {
+			type: Number,
+			default: 0,
+		},
 	},
 	data() {
 		return {
@@ -51,6 +58,10 @@ export default Vue.extend({
 				const dim = target.getBoundingClientRect();
 
 				this.hovering = e.clientX >= dim.left && e.clientX <= dim.right && e.clientY >= dim.top && e.clientY <= dim.bottom;
+
+				if (this.sticky && this.hovering) {
+					this.$store.commit('ui/setDraggableStickyPos', [dim.left + this.stickyOffset, dim.top + this.stickyOffset]);
+				}
 			}
 		},
 		onMouseUp(e: MouseEvent) {

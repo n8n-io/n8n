@@ -24,6 +24,7 @@ import {
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
+	XYPosition,
 } from '../Interface';
 
 const module: Module<IUiState, IRootState> = {
@@ -105,6 +106,7 @@ const module: Module<IUiState, IRootState> = {
 			type: '',
 			data: '',
 			canDrop: false,
+			stickyPosition: null,
 		},
 	},
 	getters: {
@@ -139,6 +141,7 @@ const module: Module<IUiState, IRootState> = {
 		draggableType: (state: IUiState) => state.draggable.type,
 		draggableData: (state: IUiState) => state.draggable.data,
 		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
+		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -194,6 +197,7 @@ const module: Module<IUiState, IRootState> = {
 				type,
 				data,
 				canDrop: false,
+				stickyPosition: null,
 			};
 		},
 		draggableStopDragging(state: IUiState) {
@@ -202,7 +206,11 @@ const module: Module<IUiState, IRootState> = {
 				type: '',
 				data: '',
 				canDrop: false,
+				stickyPosition: null,
 			};
+		},
+		setDraggableStickyPos(state: IUiState, position: XYPosition | null) {
+			Vue.set(state.draggable, 'stickyPosition', position);
 		},
 		setDraggableCanDrop(state: IUiState, canDrop: boolean) {
 			Vue.set(state.draggable, 'canDrop', canDrop);
