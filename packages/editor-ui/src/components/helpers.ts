@@ -69,7 +69,7 @@ export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
 }
 
-export function stringSizeInBytes(input: string | IDataObject | undefined): number {
+export function stringSizeInBytes(input: string | IDataObject | IDataObject[] | undefined): number {
 	if (input === undefined) return 0;
 
 	return new Blob([typeof input === 'string' ? input : JSON.stringify(input)]).size;
