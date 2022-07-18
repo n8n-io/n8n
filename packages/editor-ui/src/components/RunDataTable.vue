@@ -13,9 +13,9 @@
 		<table :class="$style.table" v-else>
 			<tr>
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
-					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || (showHint && actuallyShowHint)" :open-delay="1000">
+					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled">
+						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart">
 							<template v-slot:preview="{ canDrop }">
 								<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
 									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: shorten(column) } }) }}
@@ -31,7 +31,7 @@
 									}"
 								>
 									<span>{{ column || "&nbsp;" }}</span>
-									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHint && actuallyShowHint">
+									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHintWithDelay">
 										<div slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
@@ -81,20 +81,31 @@ export default Vue.extend({
 		isParentNode: {
 			type: Boolean,
 		},
+		showMappingHint: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
 			activeColumn: -1,
-			actuallyShowHint: false,
+			showHintWithDelay: false,
 			forceShowGrip: false,
+			draggedColumn: false,
 		};
+	},
+	mounted() {
+		if (this.showMappingHint && this.showHint) {
+			setTimeout(() => {
+				this.showHintWithDelay = this.showHint;
+			}, 500);
+		}
 	},
 	computed: {
 		focusedMappableInput(): string {
 			return this.$store.getters['ui/focusedMappableInput'];
 		},
 		showHint (): boolean {
-			return !!this.focusedMappableInput && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+			return !this.draggedColumn && (this.showMappingHint || (!!this.focusedMappableInput && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'));
 		},
 	},
 	methods: {
@@ -124,6 +135,9 @@ export default Vue.extend({
 
 			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
 		},
+		onDragStart() {
+			this.draggedColumn = true;
+		},
 	},
 	watch: {
 		focusedMappableInput (curr: boolean) {
@@ -134,11 +148,11 @@ export default Vue.extend({
 		showHint (curr: boolean, prev: boolean) {
 			if (curr) {
 				setTimeout(() => {
-					this.actuallyShowHint= this.showHint ;
+					this.showHintWithDelay= this.showHint;
 				}, 1000);
 			}
 			else {
-				this.actuallyShowHint= false;
+				this.showHintWithDelay= false;
 			}
 		},
 	},

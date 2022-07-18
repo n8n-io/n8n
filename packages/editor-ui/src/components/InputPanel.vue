@@ -11,6 +11,7 @@
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
 		:mappingEnabled="!readOnly"
+		:showMappingHint="draggableHintShown"
 		:isParentNode="currentNodeDepth === 1"
 		paneType="input"
 		@linkRun="onLinkRun"
@@ -102,6 +103,7 @@ export default mixins(
 	data() {
 		return {
 			showDraggableHintWithDelay: false,
+			draggableHintShown: false,
 		};
 	},
 	computed: {
@@ -216,6 +218,9 @@ export default mixins(
 			if (curr) {
 				setTimeout(() => {
 					this.showDraggableHintWithDelay = this.showDraggableHint;
+					if (this.showDraggableHintWithDelay) {
+						this.draggableHintShown = true;
+					}
 				}, 1000);
 			}
 			else {
