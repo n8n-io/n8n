@@ -709,19 +709,6 @@ export function getConditions() {
 	return elements;
 }
 
-export function validateCredentials(this: ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject) {
-	const options: OptionsWithUri = {
-		headers: {
-			'Authorization': `Bearer ${credentials.apiKey}`,
-			'Notion-Version': apiVersion[2],
-		},
-		method: 'GET',
-		uri: `https://api.notion.com/v1/users/me`,
-		json: true,
-	};
-	return this.helpers.request!(options);
-}
-
 // tslint:disable-next-line: no-any
 export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.184.0",
+  "version": "0.184.1",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -260,6 +260,8 @@
       "dist/credentials/ServiceNowBasicApi.credentials.js",
       "dist/credentials/Sftp.credentials.js",
       "dist/credentials/ShopifyApi.credentials.js",
+      "dist/credentials/ShopifyAccessTokenApi.credentials.js",
+      "dist/credentials/ShopifyOAuth2Api.credentials.js",
       "dist/credentials/Signl4Api.credentials.js",
       "dist/credentials/SlackApi.credentials.js",
       "dist/credentials/SlackOAuth2Api.credentials.js",

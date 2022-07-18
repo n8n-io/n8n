@@ -120,7 +120,7 @@ export class GetResponseTrigger implements INodeType {
 				displayName: 'List Names or IDs',
 				name: 'listIds',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
 				},
