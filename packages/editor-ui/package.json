@@ -97,7 +97,6 @@
     "lodash.set": "^4.3.2",
     "n8n-workflow": "~0.108.0",
     "monaco-editor-webpack-plugin": "^5.0.0",
-    "n8n-workflow": "~0.99.0",
     "sass": "^1.26.5",
     "sass-loader": "^8.0.2",
     "string-template-parser": "^1.2.6",
