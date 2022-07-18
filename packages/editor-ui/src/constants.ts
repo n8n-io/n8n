@@ -63,6 +63,7 @@ export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
+export const INTERVAL_NODE_TYPE = 'n8n-nodes-base.interval';
 export const ITEM_LISTS_NODE_TYPE = 'n8n-nodes-base.itemLists';
 export const JIRA_NODE_TYPE = 'n8n-nodes-base.jira';
 export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';

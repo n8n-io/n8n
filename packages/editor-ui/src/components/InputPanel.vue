@@ -70,7 +70,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
+import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, START_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	workflowHelpers,
@@ -112,6 +112,11 @@ export default mixins(
 			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
 		},
 		showDraggableHint(): boolean {
+			const toIgnore = [START_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
+			if (toIgnore.includes(this.currentNode.type)) {
+				return false;
+			}
+
 			return !!this.focusedMappableInput && !this.isUserOnboarded;
 		},
 		isExecutingPrevious(): boolean {
