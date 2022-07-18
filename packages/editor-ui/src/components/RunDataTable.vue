@@ -15,7 +15,7 @@
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
 					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
 						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
-						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart">
+						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
 							<template v-slot:preview="{ canDrop }">
 								<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
 									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: shorten(column) } }) }}
@@ -70,7 +70,7 @@ export default Vue.extend({
 	components: { Draggable },
 	props: {
 		node: {
-			type: Object as () => INodeUi | null,
+			type: Object as () => INodeUi,
 		},
 		tableData: {
 			type: Object as () => ITableData,
@@ -78,11 +78,17 @@ export default Vue.extend({
 		mappingEnabled: {
 			type: Boolean,
 		},
-		isParentNode: {
-			type: Boolean,
+		distanceFromActive: {
+			type: Number,
 		},
 		showMappingHint: {
 			type: Boolean,
+		},
+		runIndex: {
+			type: Number,
+		},
+		totalRuns: {
+			type: Number,
 		},
 	},
 	data() {
@@ -129,7 +135,7 @@ export default Vue.extend({
 				return '';
 			}
 
-			if (this.isParentNode) {
+			if (this.distanceFromActive === 1) {
 				return `{{ $json["${column}"] }}`;
 			}
 
@@ -137,6 +143,24 @@ export default Vue.extend({
 		},
 		onDragStart() {
 			this.draggedColumn = true;
+
+			this.$store.commit('ui/resetMappingTelemetry');
+		},
+		onDragEnd(column: string) {
+			setTimeout(() => {
+				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
+				this.$telemetry.track('User dragged data for mapping', {
+					src_node_type: this.node.type,
+					src_field_name: column,
+					src_nodes_back: this.distanceFromActive,
+					src_run_index: this.runIndex,
+					src_runs_total: this.totalRuns,
+					src_view: 'table',
+					src_element: 'column',
+					success: false,
+					...mappingTelemetry,
+				});
+			}, 1000); // ensure dest data gets set if drop
 		},
 	},
 	watch: {

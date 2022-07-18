@@ -103,7 +103,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :tableData="tableData" :mappingEnabled="mappingEnabled" :isParentNode="isParentNode" :showMappingHint="showMappingHint" />
+				<RunDataTable :node="node" :tableData="tableData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" />
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
@@ -297,8 +297,8 @@ export default mixins(
 			mappingEnabled: {
 				type: Boolean,
 			},
-			isParentNode: {
-				type: Boolean,
+			distanceFromActive: {
+				type: Number,
 			},
 			showMappingHint: {
 				type: Boolean,

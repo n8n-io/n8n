@@ -12,7 +12,7 @@
 		:overrideOutputs="connectedCurrentNodeOutputs"
 		:mappingEnabled="!readOnly"
 		:showMappingHint="draggableHintShown"
-		:isParentNode="currentNodeDepth === 1"
+		:distanceFromActive="currentNodeDepth"
 		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"

@@ -99,6 +99,7 @@ const module: Module<IUiState, IRootState> = {
 				displayMode: 'table',
 			},
 			focusedMappableInput: '',
+			mappingTelemetry: {},
 		},
 		mainPanelPosition: 0.5,
 		draggable: {
@@ -142,6 +143,7 @@ const module: Module<IUiState, IRootState> = {
 		draggableData: (state: IUiState) => state.draggable.data,
 		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
 		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
+		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -214,6 +216,12 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setDraggableCanDrop(state: IUiState, canDrop: boolean) {
 			Vue.set(state.draggable, 'canDrop', canDrop);
+		},
+		setMappingTelemetry(state: IUiState, telemetery: {[key: string]: string | number | boolean}) {
+			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetery};
+		},
+		resetMappingTelemetry(state: IUiState) {
+			state.ndv.mappingTelemetry = {};
 		},
 	},
 	actions: {

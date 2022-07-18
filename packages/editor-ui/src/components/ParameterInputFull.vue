@@ -55,7 +55,7 @@ import ParameterOptions from './ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
+import { LOCAL_STORAGE_MAPPING_FLAG, MAPPING_PARAMS } from '@/constants';
 
 export default mixins(
 	showMessage,
@@ -142,6 +142,15 @@ export default mixins(
 
 							window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
 						}
+
+						this.$store.commit('ui/setMappingTelemetry', {
+							dest_node_type: this.node.type,
+							dest_parameter: this.parameter.name,
+							dest_parameter_mode: typeof prevValue === 'string' && prevValue.startsWith('=')? 'expression': 'fixed',
+							dest_parameter_empty: prevValue === '',
+							dest_parameter_had_mapping: typeof prevValue === 'string' && prevValue.startsWith('=') && !!MAPPING_PARAMS.find((param) => prevValue.includes(param)),
+							success: true,
+						});
 					}
 					this.forceShowExpression= false;
 				}, 200);

@@ -871,6 +871,7 @@ export interface IUiState {
 			displayMode: IRunDataDisplayMode;
 		};
 		focusedMappableInput: string;
+		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
 	draggable: {

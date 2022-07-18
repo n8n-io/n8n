@@ -244,3 +244,5 @@ export enum VIEWS {
 	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",
 }
+
+export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`];
