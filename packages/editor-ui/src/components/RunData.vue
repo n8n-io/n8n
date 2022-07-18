@@ -728,7 +728,7 @@ export default mixins(
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
-				const inputData = this.pinData ? this.pinData as PinData : this.convertToJson(this.rawInputData);
+				const inputData = this.pinData ? this.pinData : this.convertToJson(this.rawInputData);
 				const data = inputData.length > 0
 					? inputData
 					: TEST_PIN_DATA;
