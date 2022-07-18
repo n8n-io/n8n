@@ -78,6 +78,11 @@ describe('Expression', () => {
 			expect(evaluate('={{unescape}}')).toEqual({});
 		});
 
+		it('should resolve extensions', () => {
+			expect(evaluate('={{ "abc".sayHi() }}')).toEqual("hi abc");
+			expect(evaluate('={{ (123).toDecimal(3) }}')).toEqual("123.000");
+		});
+
 		it('should be able to use global built-ins from allowlist', () => {
 			expect(evaluate('={{new Date()}}')).toBeInstanceOf(Date);
 			expect(evaluate('={{DateTime.now().toLocaleString()}}')).toEqual(DateTime.now().toLocaleString());
