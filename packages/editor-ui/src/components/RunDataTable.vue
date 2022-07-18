@@ -32,7 +32,8 @@
 								>
 									<span>{{ column || "&nbsp;" }}</span>
 									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHintWithDelay">
-										<div slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
+										<div v-if="focusedMappableInput" slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
+										<div v-else slot="content" v-html="$locale.baseText('runData.dragHint')"></div>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
