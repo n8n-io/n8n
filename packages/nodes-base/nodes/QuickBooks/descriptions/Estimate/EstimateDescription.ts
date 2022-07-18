@@ -17,26 +17,32 @@ export const estimateOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an estimate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an estimate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an estimate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all estimates',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send an estimate',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an estimate',
 			},
 		],
 		displayOptions: {
@@ -58,7 +64,7 @@ export const estimateFields: INodeProperties[] = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -128,7 +134,7 @@ export const estimateFields: INodeProperties[] = [
 				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
@@ -145,7 +151,7 @@ export const estimateFields: INodeProperties[] = [
 				displayName: 'Tax Code Ref Name or ID',
 				name: 'TaxCodeRef',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTaxCodeRefs',

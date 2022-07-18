@@ -20,16 +20,19 @@ export const emailOperations: INodeProperties[] = [
 				name: 'Create Record',
 				value: 'createRecord',
 				description: 'Create a record of an email sent to a contact',
+				action: 'Create a record of an email sent',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all sent emails',
+				action: 'Get all emails',
 			},
 			{
 				name: 'Send',
 				value: 'send',
 				description: 'Send Email',
+				action: 'Send an email',
 			},
 		],
 		default: 'createRecord',
@@ -325,7 +328,7 @@ export const emailFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The infusionsoft user to send the email on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The infusionsoft user to send the email on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Contact IDs',

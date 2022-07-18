@@ -13,7 +13,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleFirebaseRealtimeDatabase/"
+				"url": "https://docs.n8n.io/integrations/nodes/n8n-nodes-base.googlecloudrealtimedatabase/"
 			}
 		],
 		"generic": [

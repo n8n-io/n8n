@@ -103,6 +103,7 @@ export class Twake implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send a message',
+						action: 'Send a message',
 					},
 				],
 				default: 'send',
@@ -122,7 +123,7 @@ export class Twake implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Channel\'s ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Channel\'s ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Content',

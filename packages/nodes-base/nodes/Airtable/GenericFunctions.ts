@@ -1,7 +1,6 @@
 import {
 	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
+	IPollFunctions,
 } from 'n8n-core';
 
 import {
@@ -11,10 +10,9 @@ import {
 import {
 	IBinaryKeyData,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
-	IPollFunctions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -39,7 +37,7 @@ export interface IRecord {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('airtableApi');
 
 	query = query || {};
@@ -47,7 +45,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	// For some reason for some endpoints the bearer auth does not work
 	// and it returns 404 like for the /meta request. So we always send
 	// it as query string.
-	query.api_key = credentials.apiKey;
+	// query.api_key = credentials.apiKey;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -69,7 +67,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'airtableApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -81,14 +79,14 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * and return all results
  *
  * @export
- * @param {(IHookFunctions | IExecuteFunctions)} this
+ * @param {(IExecuteFunctions | IExecuteFunctions)} this
  * @param {string} method
  * @param {string} endpoint
  * @param {IDataObject} body
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 
 	if (query === undefined) {
 		query = {};

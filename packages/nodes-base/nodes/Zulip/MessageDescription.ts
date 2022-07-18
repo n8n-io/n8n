@@ -18,30 +18,36 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a message',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a message',
+				action: 'Get a message',
 			},
 			{
 				name: 'Send Private',
 				value: 'sendPrivate',
 				description: 'Send a private message',
+				action: 'Send a private message',
 			},
 			{
 				name: 'Send to Stream',
 				value: 'sendStream',
 				description: 'Send a message to stream',
+				action: 'Send a message to a stream',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a message',
+				action: 'Update a message',
 			},
 			{
 				name: 'Upload a File',
 				value: 'updateFile',
+				action: 'Upload a file',
 			},
 		],
 		default: 'sendPrivate',
@@ -73,7 +79,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -118,7 +124,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Topic Name or ID',
@@ -142,7 +148,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The topic of the message. Only required if type is stream, ignored otherwise. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The topic of the message. Only required if type is stream, ignored otherwise. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Content',

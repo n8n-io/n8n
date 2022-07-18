@@ -28,26 +28,31 @@ export const storyManagementOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a story',
+				action: 'Delete a story',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a story',
+				action: 'Get a story',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all stories',
+				action: 'Get all stories',
 			},
 			{
 				name: 'Publish',
 				value: 'publish',
 				description: 'Publish a story',
+				action: 'Publish a story',
 			},
 			{
 				name: 'Unpublish',
 				value: 'unpublish',
 				description: 'Unpublish a story',
+				action: 'Unpublish a story',
 			},
 		],
 		default: 'get',
@@ -334,7 +339,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -383,7 +388,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -432,7 +437,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -536,7 +541,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',
@@ -621,7 +626,7 @@ export const storyManagementFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the space. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Story ID',

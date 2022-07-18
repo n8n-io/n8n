@@ -18,21 +18,25 @@ export const expenseOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new expense',
+				action: 'Create an expense',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an expense',
+				action: 'Delete an expense',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an expense',
+				action: 'Get an expense',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all expenses',
+				action: 'Get all expenses',
 			},
 		],
 		default: 'create',
@@ -76,7 +80,7 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -98,7 +102,7 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getExpenseCategories',
 				},
@@ -304,7 +308,7 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Vendor Name or ID',
 				name: 'vendor',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getVendors',
 				},
