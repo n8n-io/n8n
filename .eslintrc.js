@@ -238,7 +238,7 @@ module.exports = {
 					},
 					{
 						selector: ['method', 'function'],
-						format: ['camelCase'],
+						format: ['camelCase', 'PascalCase'],
 						leadingUnderscore: 'allowSingleOrDouble',
 					},
 				],
