@@ -7,6 +7,7 @@ export const ticketOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,35 +20,40 @@ export const ticketOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a ticket',
+				action: 'Create a ticket',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a ticket',
+				action: 'Delete a ticket',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a ticket',
+				action: 'Get a ticket',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all tickets',
+				action: 'Get all tickets',
 			},
 			{
 				name: 'Recover',
 				value: 'recover',
 				description: 'Recover a suspended ticket',
+				action: 'Recover a ticket',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a ticket',
+				action: 'Update a ticket',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -82,7 +88,6 @@ export const ticketFields: INodeProperties[] = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -129,21 +134,21 @@ export const ticketFields: INodeProperties[] = [
 						name: 'customFieldsValues',
 						values: [
 							{
-								displayName: 'ID',
+								displayName: 'Name or ID',
 								name: 'id',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'Custom field ID',
+								description: 'Custom field ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Custom field Value.',
+								description: 'Custom field Value',
 							},
 						],
 					},
@@ -154,17 +159,17 @@ export const ticketFields: INodeProperties[] = [
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				description: 'An id you can use to link Zendesk Support tickets to local records',
+				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
 				default: '',
-				description: 'The group this ticket is assigned to',
+				description: 'The group this ticket is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Recipient',
@@ -187,7 +192,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-hold',
+						name: 'On-Hold',
 						value: 'hold',
 					},
 					{
@@ -214,14 +219,14 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The value of the subject field for this ticket',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this ticket',
+				description: 'The array of tags applied to this ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Type',
@@ -251,7 +256,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -271,7 +276,7 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.`,
+		description: 'Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -293,14 +298,12 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -354,21 +357,21 @@ export const ticketFields: INodeProperties[] = [
 						name: 'customFieldsValues',
 						values: [
 							{
-								displayName: 'ID',
+								displayName: 'Name or ID',
 								name: 'id',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'Custom field ID',
+								description: 'Custom field ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Custom field Value.',
+								description: 'Custom field Value',
 							},
 						],
 					},
@@ -379,17 +382,17 @@ export const ticketFields: INodeProperties[] = [
 				name: 'externalId',
 				type: 'string',
 				default: '',
-				description: 'An id you can use to link Zendesk Support tickets to local records',
+				description: 'An ID you can use to link Zendesk Support tickets to local records',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
 				default: '',
-				description: 'The group this ticket is assigned to',
+				description: 'The group this ticket is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Internal Note',
@@ -426,7 +429,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-hold',
+						name: 'On-Hold',
 						value: 'hold',
 					},
 					{
@@ -453,14 +456,14 @@ export const ticketFields: INodeProperties[] = [
 				description: 'The value of the subject field for this ticket',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this ticket',
+				description: 'The array of tags applied to this ticket. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Type',
@@ -490,7 +493,7 @@ export const ticketFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: ' Update Fields',
+		displayName: 'Update Fields',
 		name: 'updateFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -510,7 +513,7 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>.`,
+		description: 'Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets">here</a>',
 	},
 	{
 		displayName: 'Ticket Type',
@@ -563,7 +566,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'Suspended Ticket ID',
@@ -604,7 +606,7 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -628,7 +630,7 @@ export const ticketFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -648,7 +650,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Group',
+				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
 				typeOptions: {
@@ -662,7 +664,7 @@ export const ticketFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'The group to search',
+				description: 'The group to search. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',
@@ -684,10 +686,6 @@ export const ticketFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Updated At',
-						value: 'updated_at',
-					},
-					{
 						name: 'Created At',
 						value: 'created_at',
 					},
@@ -702,6 +700,10 @@ export const ticketFields: INodeProperties[] = [
 					{
 						name: 'Ticket Type',
 						value: 'ticket_type',
+					},
+					{
+						name: 'Updated At',
+						value: 'updated_at',
 					},
 				],
 				default: 'updated_at',
@@ -722,7 +724,6 @@ export const ticketFields: INodeProperties[] = [
 					},
 				],
 				default: 'asc',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Status',
@@ -745,7 +746,7 @@ export const ticketFields: INodeProperties[] = [
 						value: 'new',
 					},
 					{
-						name: 'On-hold',
+						name: 'On-Hold',
 						value: 'hold',
 					},
 					{
@@ -789,7 +790,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Ticket ID',
 	},
 	{
 		displayName: 'Suspended Ticket ID',

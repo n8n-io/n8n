@@ -59,7 +59,7 @@ export class StravaTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 					},
 					{
@@ -79,11 +79,11 @@ export class StravaTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: '*',
+						name: '[All]',
 						value: '*',
 					},
 					{
-						name: 'created',
+						name: 'Created',
 						value: 'create',
 					},
 					{
@@ -102,6 +102,7 @@ export class StravaTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default the webhook-data only contain the Object ID. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
@@ -116,7 +117,8 @@ export class StravaTrigger implements INodeType {
 						name: 'deleteIfExist',
 						type: 'boolean',
 						default: false,
-						description: `Strava allows just one subscription at all times. If you want to delete the current subscription to make room for a new subcription with the current parameters, set this parameter to true. Keep in mind this is a destructive operation.`,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'Strava allows just one subscription at all times. If you want to delete the current subscription to make room for a new subcription with the current parameters, set this parameter to true. Keep in mind this is a destructive operation.',
 					},
 				],
 			},

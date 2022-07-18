@@ -2,14 +2,15 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
 import { createHash, randomBytes } from 'crypto';
 // eslint-disable-next-line import/no-cycle
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
 	IUserSettings,
+	RESPONSE_ERROR_MESSAGES,
 	USER_FOLDER_ENV_OVERWRITE,
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
@@ -73,19 +74,15 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
  * @returns
  */
 
-export async function getEncryptionKey(): Promise<string | undefined> {
+export async function getEncryptionKey(): Promise<string> {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
-		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];
+		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE] as string;
 	}
 
 	const userSettings = await getUserSettings();
 
-	if (userSettings === undefined) {
-		return undefined;
-	}
-
-	if (userSettings.encryptionKey === undefined) {
-		return undefined;
+	if (userSettings === undefined || userSettings.encryptionKey === undefined) {
+		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 	}
 
 	return userSettings.encryptionKey;

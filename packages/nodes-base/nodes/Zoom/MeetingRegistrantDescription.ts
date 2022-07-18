@@ -7,6 +7,7 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,21 +20,23 @@ export const meetingRegistrantOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create Meeting Registrants',
+				action: 'Create a meeting registrant',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update Meeting Registrant Status',
+				action: 'Update a meeting registrant',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all Meeting Registrants',
+				action: 'Get all meeting registrants',
 			},
 
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -42,7 +45,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 	/*                                 meetingRegistrant:create                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -57,12 +60,12 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -75,7 +78,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Valid Email-ID.',
+		description: 'Valid Email-ID',
 	},
 	{
 		displayName: 'First Name',
@@ -93,7 +96,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'First Name.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -118,92 +120,92 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'Valid address of registrant.',
+				description: 'Valid address of registrant',
 			},
 			{
 				displayName: 'City',
 				name: 'city',
 				type: 'string',
 				default: '',
-				description: 'Valid city of registrant.',
+				description: 'Valid city of registrant',
 			},
 			{
 				displayName: 'Comments',
 				name: 'comments',
 				type: 'string',
 				default: '',
-				description: 'Allows registrants to provide any questions they have.',
+				description: 'Allows registrants to provide any questions they have',
 			},
 			{
 				displayName: 'Country',
 				name: 'country',
 				type: 'string',
 				default: '',
-				description: 'Valid country of registrant.',
+				description: 'Valid country of registrant',
 			},
 			{
 				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
-				description: 'Job title of registrant.',
+				description: 'Job title of registrant',
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Last Name.',
 			},
 			{
 				displayName: 'Occurrence IDs',
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Occurrence IDs separated by comma.',
+				description: 'Occurrence IDs separated by comma',
 			},
 			{
 				displayName: 'Organization',
 				name: 'org',
 				type: 'string',
 				default: '',
-				description: 'Organization of registrant.',
+				description: 'Organization of registrant',
 			},
 			{
 				displayName: 'Phone Number',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Valid phone number of registrant.',
+				description: 'Valid phone number of registrant',
 			},
 			{
 				displayName: 'Purchasing Time Frame',
 				name: 'purchasingTimeFrame',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
-						name: 'Within a month',
+						name: 'Within a Month',
 						value: 'Within a month',
 					},
 					{
-						name: '1-3 months',
+						name: '1-3 Months',
 						value: '1-3 months',
 					},
 					{
-						name: '4-6 months',
+						name: '4-6 Months',
 						value: '4-6 months',
 					},
 					{
-						name: 'More than 6 months',
+						name: 'More than 6 Months',
 						value: 'More than 6 months',
 					},
 					{
-						name: 'No timeframe',
+						name: 'No Timeframe',
 						value: 'No timeframe',
 					},
 				],
 				default: '',
-				description: 'Meeting type.',
+				description: 'Meeting type',
 			},
 			{
 				displayName: 'Role in Purchase Process',
@@ -229,21 +231,20 @@ export const meetingRegistrantFields: INodeProperties[] = [
 
 				],
 				default: '',
-				description: 'Role in purchase process.',
 			},
 			{
 				displayName: 'State',
 				name: 'state',
 				type: 'string',
 				default: '',
-				description: 'Valid state of registrant.',
+				description: 'Valid state of registrant',
 			},
 			{
 				displayName: 'Zip Code',
 				name: 'zip',
 				type: 'string',
 				default: '',
-				description: 'Valid zip-code of registrant.',
+				description: 'Valid zip-code of registrant',
 			},
 
 		],
@@ -267,7 +268,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Return All',
@@ -284,7 +284,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -308,7 +308,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 			maxValue: 300,
 		},
 		default: 30,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -333,7 +333,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: `Occurrence ID.`,
 			},
 			{
 				displayName: 'Status',
@@ -354,7 +353,7 @@ export const meetingRegistrantFields: INodeProperties[] = [
 					},
 				],
 				default: 'approved',
-				description: `Registrant Status.`,
+				description: 'Registrant Status',
 			},
 
 		],
@@ -378,7 +377,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Meeting ID.',
 	},
 	{
 		displayName: 'Action',
@@ -399,18 +397,21 @@ export const meetingRegistrantFields: INodeProperties[] = [
 			{
 				name: 'Cancel',
 				value: 'cancel',
+				action: 'Cancel a meeting registrant',
 			},
 			{
 				name: 'Approved',
 				value: 'approve',
+				action: 'Approved a meeting registrant',
 			},
 			{
 				name: 'Deny',
 				value: 'deny',
+				action: 'Deny a meeting registrant',
 			},
 		],
 		default: '',
-		description: `Registrant Status.`,
+		description: 'Registrant Status',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -434,7 +435,6 @@ export const meetingRegistrantFields: INodeProperties[] = [
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Occurrence ID.',
 			},
 
 		],

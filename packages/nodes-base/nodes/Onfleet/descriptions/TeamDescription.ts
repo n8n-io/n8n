@@ -7,6 +7,7 @@ export const teamOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,36 +20,43 @@ export const teamOperations: INodeProperties[] = [
 				name: 'Auto-Dispatch',
 				value: 'autoDispatch',
 				description: 'Automatically dispatch tasks assigned to a team to on-duty drivers',
+				action: 'Auto-dispatch a team',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet team',
+				action: 'Create a team',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet team',
+				action: 'Delete a team',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific Onfleet team',
+				action: 'Get a team',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all Onfleet teams',
+				action: 'Get all teams',
 			},
 			{
 				name: 'Get Time Estimates',
 				value: 'getTimeEstimates',
 				description: 'Get estimated times for upcoming tasks for a team, returns a selected driver',
+				action: 'Get time estimates for a team',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet team',
+				action: 'Update a team',
 			},
 		],
 		default: 'getAll',
@@ -64,36 +72,36 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Workers Names/IDs',
+	displayName: 'Worker Names or IDs',
 	name: 'workers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getWorkers',
 	},
 	default: [],
-	description: 'A list of workers',
+	description: 'A list of workers. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrators Names/IDs',
+	displayName: 'Administrator Names or IDs',
 	name: 'managers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getAdmins',
 	},
 	default: [],
-	description: 'A list of managing administrators',
+	description: 'A list of managing administrators. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const hubField = {
-	displayName: 'Hub Name/ID',
+	displayName: 'Hub Name or ID',
 	name: 'hub',
 	type: 'options',
 	typeOptions: {
 		loadOptionsMethod: 'getHubs',
 	},
 	default: '',
-	description: 'The team\'s hub',
+	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {
@@ -354,7 +362,7 @@ export const teamFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -378,7 +386,7 @@ export const teamFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Update Fields',

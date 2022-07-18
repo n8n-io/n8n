@@ -147,10 +147,6 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('telegramApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	query = query || {};
 
 	const options: OptionsWithUri = {

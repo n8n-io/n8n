@@ -87,6 +87,7 @@ export const userCreateDescription: UserProperties = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		displayOptions: {
 			show: {
@@ -123,7 +124,7 @@ export const userCreateDescription: UserProperties = [
 			},
 		},
 		default: '',
-		description: 'The password used for email authentication.',
+		description: 'The password used for email authentication',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -185,7 +186,7 @@ export const userCreateDescription: UserProperties = [
 								name: 'channel',
 								type: 'boolean',
 								default: true,
-								description: `Set to "true" to enable channel-wide notifications (@channel, @all, etc.), "false" to disable. Defaults to "true".`,
+								description: 'Whether to enable channel-wide notifications (@channel, @all, etc.), "false" to disable. Defaults to "true".',
 							},
 							{
 								displayName: 'Desktop',
@@ -215,28 +216,28 @@ export const userCreateDescription: UserProperties = [
 								name: 'desktop_sound',
 								type: 'boolean',
 								default: true,
-								description: `Set to "true" to enable sound on desktop notifications, "false" to disable. Defaults to "true".`,
+								description: 'Whether to enable sound on desktop notifications, "false" to disable. Defaults to "true".',
 							},
 							{
 								displayName: 'Email',
 								name: 'email',
 								type: 'boolean',
 								default: false,
-								description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`,
+								description: 'Whether to enable email notifications, "false" to disable. Defaults to "false".',
 							},
 							{
 								displayName: 'First Name',
 								name: 'first_name',
 								type: 'boolean',
 								default: false,
-								description: `Set to "true" to enable mentions for first name. Defaults to "true" if a first name is set, "false" otherwise.`,
+								description: 'Whether to enable mentions for first name. Defaults to "true" if a first name is set, "false" otherwise.',
 							},
 							{
 								displayName: 'Mention Keys',
 								name: 'mention_keys',
 								type: 'string',
 								default: '',
-								description: `A comma-separated list of words to count as mentions. Defaults to username and @username.`,
+								description: 'A comma-separated list of words to count as mentions. Defaults to username and @username.',
 							},
 							{
 								displayName: 'Push',

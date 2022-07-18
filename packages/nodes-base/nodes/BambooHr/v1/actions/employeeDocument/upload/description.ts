@@ -54,7 +54,7 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 			},
 		},
 		required: true,
-		description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG',
+		description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 	},
 	{
 		displayName: 'Options',

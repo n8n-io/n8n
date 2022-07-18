@@ -27,11 +27,11 @@ export class ERPNextApi implements ICredentialType {
 			default: 'cloudHosted',
 			options: [
 				{
-					name: 'Cloud-hosted',
+					name: 'Cloud-Hosted',
 					value: 'cloudHosted',
 				},
 				{
-					name: 'Self-hosted',
+					name: 'Self-Hosted',
 					value: 'selfHosted',
 				},
 			],
@@ -57,7 +57,7 @@ export class ERPNextApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'https://www.mydomain.com',
-			description: 'Fully qualified domain name of self-hosted ERPNext instance.',
+			description: 'Fully qualified domain name of self-hosted ERPNext instance',
 			displayOptions: {
 				show: {
 					environment: [

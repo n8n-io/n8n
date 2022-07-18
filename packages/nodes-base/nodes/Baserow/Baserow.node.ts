@@ -56,6 +56,7 @@ export class Baserow implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -63,12 +64,12 @@ export class Baserow implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'Operation to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -81,30 +82,34 @@ export class Baserow implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a row',
+						action: 'Create a row',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a row',
+						action: 'Delete a row',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a row',
+						action: 'Get a row',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Retrieve all rows',
+						action: 'Get all rows',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a row',
+						action: 'Update a row',
 					},
 				],
 				default: 'getAll',
-				description: 'Operation to perform',
 			},
 			...operationFields,
 		],
@@ -124,7 +129,7 @@ export class Baserow implements INodeType {
 				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const databaseId = this.getNodeParameter('databaseId', 0) as string;
-				const endpoint = `/api/database/tables/database/${databaseId}`;
+				const endpoint = `/api/database/tables/database/${databaseId}/`;
 				const tables = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
 				return toOptions(tables);
 			},

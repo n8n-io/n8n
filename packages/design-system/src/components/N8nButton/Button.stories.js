@@ -13,7 +13,7 @@ export default {
 		},
 		type: {
 			control: 'select',
-			options: ['primary', 'outline', 'light', 'text'],
+			options: ['primary', 'outline', 'light', 'text', 'tertiary'],
 		},
 		size: {
 			control: {
@@ -93,6 +93,12 @@ Primary.args = {
 export const Outline = ManyTemplate.bind({});
 Outline.args = {
 	type: 'outline',
+	label: 'Button',
+};
+
+export const Tertiary = ManyTemplate.bind({});
+Tertiary.args = {
+	type: 'tertiary',
 	label: 'Button',
 };
 

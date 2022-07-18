@@ -12,20 +12,13 @@ import {
 	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
-import * as moment from 'moment';
+import moment from 'moment';
 import { Eq } from './QueryFunctions';
 
 export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('theHiveApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
-	const headerWithAuthentication = Object.assign({}, { Authorization: `Bearer ${credentials.ApiKey}` });
-
 	let options: OptionsWithUri = {
-		headers: headerWithAuthentication,
 		method,
 		qs: query,
 		uri: uri || `${credentials.url}/api${resource}`,
@@ -46,7 +39,7 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 		delete options.qs;
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -113,9 +106,6 @@ export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctio
 	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive
 		const credentials = await this.getCredentials('theHiveApi');
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'Credentials could not be obtained');
-		}
 		const version = credentials.apiVersion;
 		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
 

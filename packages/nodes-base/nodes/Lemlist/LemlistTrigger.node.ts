@@ -63,21 +63,21 @@ export class LemlistTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Campaing ID',
+						displayName: 'Campaing Name or ID',
 						name: 'campaignId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getCampaigns',
 						},
 						default: '',
-						description: ` We'll call this hook only for this campaignId.`,
+						description: 'We\'ll call this hook only for this campaignId. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Is First',
 						name: 'isFirst',
 						type: 'boolean',
 						default: false,
-						description: `We'll call this hook only the first time this activity happened.`,
+						description: 'Whether to call this hook only the first time this activity happened',
 					},
 				],
 			},

@@ -7,6 +7,7 @@ export const conversationMessageOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,11 +20,13 @@ export const conversationMessageOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a message to a conversation',
+				action: 'Add a message to a conversation',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a message in a conversation',
+				action: 'Update a message in a conversation',
 			},
 		],
 		default: 'add',
@@ -199,7 +202,6 @@ export const conversationMessageFields: INodeProperties[] = [
 				name: 'written_by_me',
 				description: 'Author of the message',
 				type: 'options',
-				required: true,
 				default: true,
 				options: [
 					{

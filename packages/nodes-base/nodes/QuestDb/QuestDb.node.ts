@@ -7,7 +7,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as pgPromise from 'pg-promise';
+import pgPromise from 'pg-promise';
 
 import {
 	pgInsert,
@@ -18,6 +18,7 @@ export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'QuestDB',
 		name: 'questDb',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:questdb.png',
 		group: ['input'],
 		version: 1,
@@ -38,20 +39,22 @@ export class QuestDb implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
-						description: 'Executes a SQL query.',
+						description: 'Executes a SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
-						description: 'Insert rows in database.',
+						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -107,7 +110,7 @@ export class QuestDb implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to insert data to.',
+				description: 'Name of the table in which to insert data to',
 			},
 			{
 				displayName: 'Columns',
@@ -120,8 +123,7 @@ export class QuestDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 			{
 				displayName: 'Return Fields',
@@ -133,7 +135,7 @@ export class QuestDb implements INodeType {
 					},
 				},
 				default: '*',
-				description: 'Comma separated list of the fields that the operation will return',
+				description: 'Comma-separated list of the fields that the operation will return',
 			},
 			// ----------------------------------
 			//         additional fields
@@ -184,7 +186,7 @@ export class QuestDb implements INodeType {
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma separated list of properties which should be used as query parameters.',
+						description: 'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},
@@ -206,10 +208,6 @@ export class QuestDb implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('questDb');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const pgp = pgPromise();
 

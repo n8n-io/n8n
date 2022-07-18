@@ -1,13 +1,15 @@
 import { ITriggerFunctions } from 'n8n-core';
 import {
+	createDeferredPromise,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
+	IDeferredPromise,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	LoggerProxy,
+	LoggerProxy as Logger,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -23,11 +25,7 @@ import {
 	Source as ParserSource,
 } from 'mailparser';
 
-import * as lodash from 'lodash';
-
-import {
-	LoggerProxy as Logger
-} from 'n8n-workflow';
+import _ from 'lodash';
 
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
@@ -63,7 +61,7 @@ export class EmailReadImap implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Mark as read',
+						name: 'Mark as Read',
 						value: 'read',
 					},
 					{
@@ -86,7 +84,7 @@ export class EmailReadImap implements INodeType {
 						],
 					},
 				},
-				description: 'If attachments of emails should be downloaded. Only set if needed as it increases processing.',
+				description: 'Whether attachments of emails should be downloaded. Only set if needed as it increases processing.',
 			},
 			{
 				displayName: 'Format',
@@ -96,17 +94,17 @@ export class EmailReadImap implements INodeType {
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data.',
+						description: 'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 					{
 						name: 'Simple',
 						value: 'simple',
-						description: 'Returns the full email; do not use if you wish to gather inline attachments.',
+						description: 'Returns the full email; do not use if you wish to gather inline attachments',
 					},
 				],
 				default: 'simple',
@@ -151,25 +149,25 @@ export class EmailReadImap implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Custom email rules',
+						displayName: 'Custom Email Rules',
 						name: 'customEmailConfig',
 						type: 'string',
 						default: '["UNSEEN"]',
-						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details',
+						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details.',
 					},
 					{
 						displayName: 'Ignore SSL Issues',
 						name: 'allowUnauthorizedCerts',
 						type: 'boolean',
 						default: false,
-						description: 'Do connect even if SSL certificate validation is not possible.',
+						description: 'Whether to connect even if SSL certificate validation is not possible',
 					},
 					{
-						displayName: 'Force reconnect',
+						displayName: 'Force Reconnect',
 						name: 'forceReconnect',
 						type: 'number',
 						default: 60,
-						description: 'Sets an interval (in minutes) to force a reconnection.',
+						description: 'Sets an interval (in minutes) to force a reconnection',
 					},
 				],
 			},
@@ -181,16 +179,14 @@ export class EmailReadImap implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('imap');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		const staticData = this.getWorkflowStaticData('node');
 		Logger.debug('Loaded static data for node "EmailReadImap"', {staticData});
+
+		let connection: ImapSimple;
 
 		// Returns the email text
 		const getText = async (parts: any[], message: Message, subtype: string) => { // tslint:disable-line:no-any
@@ -288,10 +284,10 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = lodash.find(message.parts, { which: '' });
+					const part = _.find(message.parts, { which: '' });
 
 					if (part === undefined) {
-						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
+						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.',);
 					}
 					const parsedEmail = await parseRawEmail.call(this, part.body, dataPropertyAttachmentsPrefixName);
 
@@ -358,7 +354,7 @@ export class EmailReadImap implements INodeType {
 					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = lodash.find(message.parts, { which: 'TEXT' });
+					const part = _.find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -376,6 +372,8 @@ export class EmailReadImap implements INodeType {
 
 			return newEmails;
 		};
+
+		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise<void>();
 
 		const establishConnection = (): Promise<ImapSimple> => {
 
@@ -425,34 +423,55 @@ export class EmailReadImap implements INodeType {
 							}
 						} catch (error) {
 							Logger.error('Email Read Imap node encountered an error fetching new emails', { error });
-							throw error;
+							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
+							// if it receives an error before the workflow got activated
+							returnedPromise.promise().then(() => {
+								this.emitError(error as Error);
+							});
 						}
 					}
 				},
 			};
 
+			const tlsOptions: IDataObject = {};
+
 			if (options.allowUnauthorizedCerts === true) {
-				config.imap.tlsOptions = {
-					rejectUnauthorized: false,
-				};
+				tlsOptions.rejectUnauthorized = false;
+			}
+
+			if (credentials.secure) {
+				tlsOptions.servername = credentials.host as string;
+			}
+
+			if (!_.isEmpty(tlsOptions)) {
+				config.imap.tlsOptions = tlsOptions;
 			}
 
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
 			return imapConnect(config).then(async conn => {
-				conn.on('error', async err => {
-					if (err.code.toUpperCase() === 'ECONNRESET') {
-						Logger.verbose('IMAP connection was reset - reconnecting.');
-						connection = await establishConnection();
-						await connection.openBox(mailbox);
+				conn.on('error', async error => {
+					const errorCode = error.code.toUpperCase();
+					if (['ECONNRESET', 'EPIPE'].includes(errorCode)) {
+						Logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, { error });
+						try {
+							connection = await establishConnection();
+							await connection.openBox(mailbox);
+							return;
+						} catch (e) {
+							Logger.error('IMAP reconnect did fail', { error: e });
+							// If something goes wrong we want to run emitError
+						}
+					} else {
+						Logger.error('Email Read Imap node encountered a connection error', { error });
+						this.emitError(error);
 					}
-					throw err;
 				});
 				return conn;
 			});
 		};
 
-		let connection: ImapSimple = await establishConnection();
+		connection = await establishConnection();
 
 		await connection.openBox(mailbox);
 
@@ -475,10 +494,12 @@ export class EmailReadImap implements INodeType {
 			await connection.end();
 		}
 
+		// Resolve returned-promise so that waiting errors can be emitted
+		returnedPromise.resolve();
+
 		return {
 			closeFunction,
 		};
-
 	}
 }
 

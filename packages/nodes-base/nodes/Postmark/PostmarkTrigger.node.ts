@@ -19,6 +19,7 @@ export class PostmarkTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Postmark Trigger',
 		name: 'postmarkTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:postmark.png',
 		group: ['trigger'],
 		version: 1,
@@ -51,42 +52,43 @@ export class PostmarkTrigger implements INodeType {
 					{
 						name: 'Bounce',
 						value: 'bounce',
-						description: 'Trigger on bounce.',
+						description: 'Trigger on bounce',
 					},
 					{
 						name: 'Click',
 						value: 'click',
-						description: 'Trigger on click.',
+						description: 'Trigger on click',
 					},
 					{
 						name: 'Delivery',
 						value: 'delivery',
-						description: 'Trigger on delivery.',
+						description: 'Trigger on delivery',
 					},
 					{
 						name: 'Open',
 						value: 'open',
-						description: 'Trigger webhook on open.',
+						description: 'Trigger webhook on open',
 					},
 					{
 						name: 'Spam Complaint',
 						value: 'spamComplaint',
-						description: 'Trigger on spam complaint.',
+						description: 'Trigger on spam complaint',
 					},
 					{
 						name: 'Subscription Change',
 						value: 'subscriptionChange',
-						description: 'Trigger on subscription change.',
+						description: 'Trigger on subscription change',
 					},
 				],
 				default: [],
 				required: true,
-				description: 'Webhook events that will be enabled for that endpoint.',
+				description: 'Webhook events that will be enabled for that endpoint',
 			},
 			{
 				displayName: 'First Open',
 				name: 'firstOpen',
-				description: 'Only fires on first open for event "Open".',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Only fires on first open for event "Open"',
 				type: 'boolean',
 				default: false,
 				displayOptions: {
@@ -100,7 +102,7 @@ export class PostmarkTrigger implements INodeType {
 			{
 				displayName: 'Include Content',
 				name: 'includeContent',
-				description: 'Includes message content for events "Bounce" and "Spam Complaint".',
+				description: 'Whether to include message content for events "Bounce" and "Spam Complaint"',
 				type: 'boolean',
 				default: false,
 				displayOptions: {

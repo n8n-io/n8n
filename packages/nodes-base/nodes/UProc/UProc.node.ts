@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -26,6 +27,7 @@ export class UProc implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'uProc',
 		name: 'uproc',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:uproc.png',
 		group: ['output'],
 		version: 1,
@@ -85,7 +87,7 @@ export class UProc implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const group = this.getNodeParameter('group', 0) as string;
 		const tool = this.getNodeParameter('tool', 0) as string;

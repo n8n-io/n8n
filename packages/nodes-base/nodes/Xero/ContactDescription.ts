@@ -7,6 +7,7 @@ export const contactOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,26 +19,29 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'create a contact',
+				description: 'Create a contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts',
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -47,9 +51,10 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -115,7 +120,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Address',
 				options: [
 					{
@@ -257,7 +262,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Phone',
 				options: [
 					{
@@ -311,24 +316,24 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Purchase Default Account Code',
+				displayName: 'Purchase Default Account Code Name or ID',
 				name: 'purchasesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountCodes',
 				},
 				default: '',
-				description: 'The default purchases account code for contacts',
+				description: 'The default purchases account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sales Default Account Code',
+				displayName: 'Sales Default Account Code Name or ID',
 				name: 'salesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountCodes',
 				},
 				default: '',
-				description: 'The default sales account code for contacts',
+				description: 'The default sales account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Skype',
@@ -357,9 +362,10 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -397,9 +403,10 @@ export const contactFields: INodeProperties[] = [
 	/*                                   contact:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -431,7 +438,7 @@ export const contactFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -455,7 +462,7 @@ export const contactFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -479,7 +486,7 @@ export const contactFields: INodeProperties[] = [
 				name: 'includeArchived',
 				type: 'boolean',
 				default: false,
-				description: `Contacts with a status of ARCHIVED will be included in the response`,
+				description: 'Whether contacts with a status of ARCHIVED will be included in the response',
 			},
 			{
 				displayName: 'Order By',
@@ -504,7 +511,6 @@ export const contactFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Sort order',
 			},
 			{
 				displayName: 'Where',
@@ -515,7 +521,7 @@ export const contactFields: INodeProperties[] = [
 				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
-				description: `The where parameter allows you to filter on endpoints and elements that don't have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>`,
+				description: 'The where parameter allows you to filter on endpoints and elements that don\'t have explicit parameters. <a href="https://developer.xero.com/documentation/api/requests-and-responses#get-modified">Examples Here</a>.',
 			},
 		],
 	},
@@ -523,9 +529,10 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
+		displayName: 'Organization Name or ID',
 		name: 'organizationId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTenants',
 		},
@@ -590,7 +597,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Address',
 				options: [
 					{
@@ -739,7 +746,7 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				default: '',
+				default: {},
 				placeholder: 'Add Phone',
 				options: [
 					{
@@ -793,24 +800,24 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Purchase Default Account Code',
+				displayName: 'Purchase Default Account Code Name or ID',
 				name: 'purchasesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountCodes',
 				},
 				default: '',
-				description: 'The default purchases account code for contacts',
+				description: 'The default purchases account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sales Default Account Code',
+				displayName: 'Sales Default Account Code Name or ID',
 				name: 'salesDefaultAccountCode',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountCodes',
 				},
 				default: '',
-				description: 'The default sales account code for contacts',
+				description: 'The default sales account code for contacts. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Skype',

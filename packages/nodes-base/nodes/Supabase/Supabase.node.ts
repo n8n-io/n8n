@@ -125,7 +125,7 @@ export class Supabase implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -181,7 +181,7 @@ export class Supabase implements INodeType {
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (!keys.length) {
-							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined');
+							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
 						}
 
 						if (matchType === 'allFilters') {
@@ -224,7 +224,7 @@ export class Supabase implements INodeType {
 					let rows;
 
 					if (!keys.length) {
-						throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined');
+						throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
 					}
 
 					try {
@@ -296,7 +296,7 @@ export class Supabase implements INodeType {
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (!keys.length) {
-							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined');
+							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
 						}
 
 						if (matchType === 'allFilters') {

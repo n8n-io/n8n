@@ -7,6 +7,7 @@ export const customFieldOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const customFieldOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a field',
+				action: 'Create a custom field',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a field',
+				action: 'Delete a custom field',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all fields',
+				action: 'Get all custom fields',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a field',
+				action: 'Update a custom field',
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -59,7 +63,7 @@ export const customFieldFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of your custom field.',
+		description: 'The ID of your custom field',
 	},
 	{
 		displayName: 'Label',
@@ -78,7 +82,7 @@ export const customFieldFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The label of the custom field.',
+		description: 'The label of the custom field',
 	},
 	{
 		displayName: 'Return All',
@@ -95,7 +99,7 @@ export const customFieldFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -119,6 +123,6 @@ export const customFieldFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

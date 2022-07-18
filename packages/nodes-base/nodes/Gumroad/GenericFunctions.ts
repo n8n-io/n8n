@@ -10,9 +10,6 @@ import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 export async function gumroadApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('gumroadApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 	body = Object.assign({ access_token: credentials.accessToken }, body);
 
 	let options: OptionsWithUri = {

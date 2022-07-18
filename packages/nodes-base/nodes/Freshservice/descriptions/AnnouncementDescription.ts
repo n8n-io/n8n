@@ -7,6 +7,7 @@ export const announcementOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,26 +20,31 @@ export const announcementOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an announcement',
+				action: 'Create an announcement',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an announcement',
+				action: 'Delete an announcement',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an announcement',
+				action: 'Get an announcement',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all announcements',
+				action: 'Get all announcements',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an announcement',
+				action: 'Update an announcement',
 			},
 		],
 		default: 'create',
@@ -158,11 +164,11 @@ export const announcementFields: INodeProperties[] = [
 				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Department Names/IDs',
+				displayName: 'Department Names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -253,7 +259,7 @@ export const announcementFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -325,11 +331,11 @@ export const announcementFields: INodeProperties[] = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Department Names/IDs',
+				displayName: 'Department Names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},

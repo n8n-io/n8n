@@ -63,6 +63,7 @@ export class Xero implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -74,7 +75,6 @@ export class Xero implements INodeType {
 					},
 				],
 				default: 'invoice',
-				description: 'Resource to consume.',
 			},
 			// CONTACT
 			...contactOperations,
@@ -206,7 +206,7 @@ export class Xero implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {

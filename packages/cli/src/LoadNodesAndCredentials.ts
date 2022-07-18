@@ -26,10 +26,10 @@ import {
 	readFile as fsReadFile,
 	stat as fsStat,
 } from 'fs/promises';
-import * as glob from 'fast-glob';
-import * as path from 'path';
+import glob from 'fast-glob';
+import path from 'path';
 import { getLogger } from './Logger';
-import * as config from '../config';
+import config from '../config';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -38,9 +38,9 @@ class LoadNodesAndCredentialsClass {
 
 	credentialTypes: ICredentialTypeData = {};
 
-	excludeNodes: string[] | undefined = undefined;
+	excludeNodes: string | undefined = undefined;
 
-	includeNodes: string[] | undefined = undefined;
+	includeNodes: string | undefined = undefined;
 
 	nodeModulesPath = '';
 
@@ -76,8 +76,8 @@ class LoadNodesAndCredentialsClass {
 			throw new Error('Could not find "node_modules" folder!');
 		}
 
-		this.excludeNodes = config.get('nodes.exclude');
-		this.includeNodes = config.get('nodes.include');
+		this.excludeNodes = config.getEnv('nodes.exclude');
+		this.includeNodes = config.getEnv('nodes.include');
 
 		// Get all the installed packages which contain n8n nodes
 		const packages = await this.getN8nNodePackages();
@@ -150,6 +150,19 @@ class LoadNodesAndCredentialsClass {
 
 		let tempCredential: ICredentialType;
 		try {
+			// Add serializer method "toJSON" to the class so that authenticate method (if defined)
+			// gets mapped to the authenticate attribute before it is sent to the client.
+			// The authenticate property is used by the client to decide whether or not to
+			// include the credential type in the predifined credentials (HTTP node)
+			// eslint-disable-next-line func-names
+			tempModule[credentialName].prototype.toJSON = function () {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				return {
+					...this,
+					authenticate: typeof this.authenticate === 'function' ? {} : this.authenticate,
+				};
+			};
+
 			tempCredential = new tempModule[credentialName]() as ICredentialType;
 
 			if (tempCredential.icon && tempCredential.icon.startsWith('file:')) {

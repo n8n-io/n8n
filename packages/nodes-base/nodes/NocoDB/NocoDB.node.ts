@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -47,6 +48,7 @@ export class NocoDB implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Row',
@@ -54,12 +56,12 @@ export class NocoDB implements INodeType {
 					},
 				],
 				default: 'row',
-				description: 'The Resource to operate on',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						resource: [
@@ -72,30 +74,34 @@ export class NocoDB implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a row',
+						action: 'Create a row',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a row',
-					},
-					{
-						name: 'Get All',
-						value: 'getAll',
-						description: 'Retrieve all rows',
+						action: 'Delete a row',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a row',
+						action: 'Get a row',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve all rows',
+						action: 'Get all rows',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a row',
+						action: 'Update a row',
 					},
 				],
 				default: 'get',
-				description: 'The operation to perform',
 			},
 			...operationFields,
 		],
@@ -151,11 +157,11 @@ export class NocoDB implements INodeType {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
 								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 								const binaryPropertyName = field.binaryProperty;
 								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
+									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`, { itemIndex: i });
 								}
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
@@ -330,11 +336,11 @@ export class NocoDB implements INodeType {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
 								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 								}
 								const binaryPropertyName = field.binaryProperty;
 								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`);
+									throw new NodeOperationError(this.getNode(), `Binary property ${binaryPropertyName} does not exist on item!`, { itemIndex: i });
 								}
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);

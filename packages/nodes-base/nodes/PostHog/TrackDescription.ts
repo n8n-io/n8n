@@ -7,6 +7,7 @@ export const trackOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const trackOperations: INodeProperties[] = [
 				name: 'Page',
 				value: 'page',
 				description: 'Track a page',
+				action: 'Track a page',
 			},
 			{
 				name: 'Screen',
 				value: 'screen',
 				description: 'Track a screen',
+				action: 'Track a screen',
 			},
 		],
 		default: 'page',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -71,7 +73,7 @@ export const trackFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The user's distinct ID.`,
+		description: 'The user\'s distinct ID',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -168,7 +170,7 @@ export const trackFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: `If not set, it'll automatically be set to the current time.`,
+				description: 'If not set, it\'ll automatically be set to the current time',
 			},
 		],
 	},

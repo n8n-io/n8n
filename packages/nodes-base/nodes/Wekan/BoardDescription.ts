@@ -10,6 +10,7 @@ export const boardOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -22,25 +23,28 @@ export const boardOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new board',
+				action: 'Create a board',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a board',
+				action: 'Delete a board',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a board',
+				action: 'Get a board',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all user boards',
+				action: 'Get all boards',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -66,10 +70,10 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The title of the board.',
+		description: 'The title of the board',
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
 		typeOptions: {
@@ -87,7 +91,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The user ID in Wekan.',
+		description: 'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -111,14 +115,14 @@ export const boardFields: INodeProperties[] = [
 				name: 'isActive',
 				type: 'boolean',
 				default: false,
-				description: 'Set the board active.',
+				description: 'Whether to set the board active',
 			},
 			{
 				displayName: 'Admin',
 				name: 'isAdmin',
 				type: 'boolean',
 				default: false,
-				description: 'Set the owner an admin of the board.',
+				description: 'Whether to set the owner an admin of the board',
 			},
 			{
 				displayName: 'Color',
@@ -128,6 +132,10 @@ export const boardFields: INodeProperties[] = [
 					{
 						name: 'Belize',
 						value: 'belize',
+					},
+					{
+						name: 'Midnight',
+						value: 'midnight',
 					},
 					{
 						name: 'Nephritis',
@@ -145,27 +153,23 @@ export const boardFields: INodeProperties[] = [
 						name: 'Wisteria',
 						value: 'wisteria',
 					},
-					{
-						name: 'Midnight',
-						value: 'midnight',
-					},
 				],
 				default: '',
-				description: 'The color of the board.',
+				description: 'The color of the board',
 			},
 			{
-				displayName: 'Comment only',
+				displayName: 'Comment Only',
 				name: 'isCommentOnly',
 				type: 'boolean',
 				default: false,
-				description: 'Only enable comments.',
+				description: 'Whether to enable comments',
 			},
 			{
-				displayName: 'No comments',
+				displayName: 'No Comments',
 				name: 'isNoComments',
 				type: 'boolean',
 				default: false,
-				description: 'Disable comments.',
+				description: 'Whether to disable comments',
 			},
 			{
 				displayName: 'Permission',
@@ -182,14 +186,14 @@ export const boardFields: INodeProperties[] = [
 					},
 				],
 				default: 'private',
-				description: 'Set the board permission.',
+				description: 'Set the board permission',
 			},
 			{
 				displayName: 'Worker',
 				name: 'isWorker',
 				type: 'boolean',
 				default: false,
-				description: 'Only move cards, assign himself to card and comment.',
+				description: 'Whether to only move cards, assign himself to card and comment',
 			},
 		],
 	},
@@ -213,7 +217,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to delete.',
+		description: 'The ID of the board to delete',
 	},
 
 	// ----------------------------------
@@ -235,14 +239,14 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board to get.',
+		description: 'The ID of the board to get',
 	},
 
 	// ----------------------------------
 	//         board:getAll
 	// ----------------------------------
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'IdUser',
 		type: 'options',
 		typeOptions: {
@@ -260,7 +264,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the user that boards are attached.',
+		description: 'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -277,7 +281,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -301,7 +305,7 @@ export const boardFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 ];

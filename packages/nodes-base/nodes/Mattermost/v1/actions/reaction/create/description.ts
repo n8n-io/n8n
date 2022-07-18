@@ -4,7 +4,7 @@ import {
 
 export const reactionCreateDescription: ReactionProperties = [
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -23,7 +23,7 @@ export const reactionCreateDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'ID of the user sending the reaction.',
+		description: 'ID of the user sending the reaction. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Post ID',
@@ -60,6 +60,6 @@ export const reactionCreateDescription: ReactionProperties = [
 				],
 			},
 		},
-		description: 'Emoji to use for this reaction.',
+		description: 'Emoji to use for this reaction',
 	},
 ];

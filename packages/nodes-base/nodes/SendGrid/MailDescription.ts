@@ -7,6 +7,7 @@ export const mailOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,11 +19,11 @@ export const mailOperations: INodeProperties[] = [
 			{
 				name: 'Send',
 				value: 'send',
-				description: 'Send an email.',
+				description: 'Send an email',
+				action: 'Send an email',
 			},
 		],
 		default: 'send',
-		description: 'Operation to perform.',
 	},
 ];
 
@@ -36,7 +37,7 @@ export const mailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'sender@domain.com',
-		description: 'Email address of the sender of the email.',
+		description: 'Email address of the sender of the email',
 		displayOptions: {
 			show: {
 				resource: [
@@ -54,7 +55,7 @@ export const mailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'John Smith',
-		description: 'Name of the sender of the email.',
+		description: 'Name of the sender of the email',
 		displayOptions: {
 			show: {
 				resource: [
@@ -72,7 +73,7 @@ export const mailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'recipient@domain.com',
-		description: 'Comma-separated list of recipient email addresses.',
+		description: 'Comma-separated list of recipient email addresses',
 		displayOptions: {
 			show: {
 				resource: [
@@ -89,7 +90,7 @@ export const mailFields: INodeProperties[] = [
 		name: 'subject',
 		type: 'string',
 		default: '',
-		description: 'Subject of the email to send.',
+		description: 'Subject of the email to send',
 		displayOptions: {
 			show: {
 				resource: [
@@ -110,7 +111,7 @@ export const mailFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Whether this email will contain a dynamic template.',
+		description: 'Whether this email will contain a dynamic template',
 		displayOptions: {
 			show: {
 				resource: [
@@ -123,11 +124,11 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'MIME type',
+		displayName: 'MIME Type',
 		name: 'contentType',
 		type: 'options',
 		default: 'text/plain',
-		description: 'MIME type of the email to send.',
+		description: 'MIME type of the email to send',
 		options: [
 			{
 				name: 'Plain Text',
@@ -158,7 +159,7 @@ export const mailFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'Message body of the email to send.',
+		description: 'Message body of the email to send',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -177,9 +178,10 @@ export const mailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template ID',
+		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getTemplateIds',
@@ -230,7 +232,7 @@ export const mailFields: INodeProperties[] = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Key of the dynamic template field.',
+						description: 'Key of the dynamic template field',
 					},
 					{
 						displayName: 'Value',
@@ -272,7 +274,7 @@ export const mailFields: INodeProperties[] = [
 				name: 'bccEmail',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of emails of the recipients of a blind carbon copy of the email.',
+				description: 'Comma-separated list of emails of the recipients of a blind carbon copy of the email',
 			},
 			{
 				displayName: 'Categories',
@@ -286,21 +288,21 @@ export const mailFields: INodeProperties[] = [
 				name: 'ccEmail',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of emails of the recipients of a carbon copy of the email.',
+				description: 'Comma-separated list of emails of the recipients of a carbon copy of the email',
 			},
 			{
 				displayName: 'Enable Sandbox',
 				name: 'enableSandbox',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to use to the sandbox for testing out email-sending functionality.',
+				description: 'Whether to use to the sandbox for testing out email-sending functionality',
 			},
 			{
 				displayName: 'IP Pool Name',
 				name: 'ipPoolName',
 				type: 'string',
 				default: '',
-				description: 'The IP Pool that you would like to send this email from.',
+				description: 'The IP Pool that you would like to send this email from',
 			},
 			{
 				displayName: 'Headers',
@@ -321,14 +323,14 @@ export const mailFields: INodeProperties[] = [
 								name: 'key',
 								type: 'string',
 								default: '',
-								description: 'Key to set in the header object.',
+								description: 'Key to set in the header object',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to set in the header object.',
+								description: 'Value to set in the header object',
 							},
 						],
 					},

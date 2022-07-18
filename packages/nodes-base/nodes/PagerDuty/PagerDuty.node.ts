@@ -45,7 +45,7 @@ import {
 	snakeCase,
 } from 'change-case';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class PagerDuty implements INodeType {
 	description: INodeTypeDescription = {
@@ -106,6 +106,7 @@ export class PagerDuty implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Incident',
@@ -125,7 +126,6 @@ export class PagerDuty implements INodeType {
 					},
 				],
 				default: 'incident',
-				description: 'Resource to consume.',
 			},
 			// INCIDENT
 			...incidentOperations,
@@ -211,7 +211,7 @@ export class PagerDuty implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

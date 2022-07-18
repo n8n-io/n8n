@@ -19,7 +19,7 @@
 </template>
 
 <script lang="ts">
-import Card from '@/components/Card.vue';
+import Card from '@/components/WorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
 

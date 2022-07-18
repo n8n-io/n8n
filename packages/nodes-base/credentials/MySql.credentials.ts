@@ -47,7 +47,7 @@ export class MySql implements ICredentialType {
 			name: 'connectTimeout',
 			type: 'number',
 			default: 10000,
-			description: 'The milliseconds before a timeout occurs during the initial connection to the MySQL server.',
+			description: 'The milliseconds before a timeout occurs during the initial connection to the MySQL server',
 		},
 		{
 			displayName: 'SSL',

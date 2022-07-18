@@ -11,36 +11,43 @@ export const paymentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a payment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a payment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a payment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all payments',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send a payment',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a payment',
 			},
 			{
 				name: 'Void',
 				value: 'void',
+				action: 'Void a payment',
 			},
 		],
 		displayOptions: {
@@ -58,11 +65,11 @@ export const paymentFields: INodeProperties[] = [
 	//         payment: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer ID',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the payment is for.',
+		description: 'The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -81,7 +88,7 @@ export const paymentFields: INodeProperties[] = [
 	{
 		displayName: 'Total Amount',
 		name: 'TotalAmt',
-		description: 'Total amount of the transaction.',
+		description: 'Total amount of the transaction',
 		type: 'number',
 		default: 0,
 		displayOptions: {
@@ -123,7 +130,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to delete.',
+		description: 'The ID of the payment to delete',
 		displayOptions: {
 			show: {
 				resource: [
@@ -145,7 +152,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to retrieve.',
+		description: 'The ID of the payment to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -163,7 +170,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download estimate as PDF file',
+		description: 'Whether to download estimate as PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -181,7 +188,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to.',
+		description: 'Name of the binary property to which to write to',
 		displayOptions: {
 			show: {
 				resource: [
@@ -203,7 +210,7 @@ export const paymentFields: INodeProperties[] = [
 		required: true,
 		default: '',
 		placeholder: 'data.pdf',
-		description: 'Name of the file that will be downloaded.',
+		description: 'Name of the file that will be downloaded',
 		displayOptions: {
 			show: {
 				resource: [
@@ -227,7 +234,7 @@ export const paymentFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -243,8 +250,8 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -303,7 +310,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to send.',
+		description: 'The ID of the payment to send',
 		displayOptions: {
 			show: {
 				resource: [
@@ -319,9 +326,10 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
-		description: 'The email of the recipient of the payment.',
+		description: 'The email of the recipient of the payment',
 		displayOptions: {
 			show: {
 				resource: [
@@ -343,7 +351,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to void.',
+		description: 'The ID of the payment to void',
 		displayOptions: {
 			show: {
 				resource: [
@@ -365,7 +373,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to update.',
+		description: 'The ID of the payment to update',
 		displayOptions: {
 			show: {
 				resource: [

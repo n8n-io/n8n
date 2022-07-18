@@ -19,26 +19,32 @@ export const feedOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a feed',
 			},
 			{
 				name: 'Disable',
 				value: 'disable',
+				action: 'Disable a feed',
 			},
 			{
 				name: 'Enable',
 				value: 'enable',
+				action: 'Enable a feed',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a feed',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all feeds',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a feed',
 			},
 		],
 		default: 'create',
@@ -126,28 +132,28 @@ export const feedFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'Your Organization Only',
-						value: 0,
-					},
-					{
-						name: 'This Community Only',
-						value: 1,
+						name: 'All Communities',
+						value: 3,
 					},
 					{
 						name: 'Connected Communities',
 						value: 2,
 					},
 					{
-						name: 'All Communities',
-						value: 3,
+						name: 'Inherit Event',
+						value: 5,
 					},
 					{
 						name: 'Sharing Group',
 						value: 4,
 					},
 					{
-						name: 'Inherit Event',
-						value: 5,
+						name: 'This Community Only',
+						value: 1,
+					},
+					{
+						name: 'Your Organization Only',
+						value: 0,
 					},
 				],
 			},
@@ -313,28 +319,28 @@ export const feedFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'Your Organization Only',
-						value: 0,
-					},
-					{
-						name: 'This Community Only',
-						value: 1,
+						name: 'All Communities',
+						value: 3,
 					},
 					{
 						name: 'Connected Communities',
 						value: 2,
 					},
 					{
-						name: 'All Communities',
-						value: 3,
+						name: 'Inherit Event',
+						value: 5,
 					},
 					{
 						name: 'Sharing Group',
 						value: 4,
 					},
 					{
-						name: 'Inherit Event',
-						value: 5,
+						name: 'This Community Only',
+						value: 1,
+					},
+					{
+						name: 'Your Organization Only',
+						value: 0,
 					},
 				],
 			},

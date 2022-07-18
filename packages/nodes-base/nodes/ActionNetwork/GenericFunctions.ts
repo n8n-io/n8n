@@ -6,7 +6,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -35,16 +34,7 @@ export async function actionNetworkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('actionNetworkApi') as { apiKey: string } | undefined;
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const options: OptionsWithUri = {
-		headers: {
-			'OSDI-API-Token': credentials.apiKey,
-		},
 		method,
 		body,
 		qs,
@@ -61,7 +51,7 @@ export async function actionNetworkApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -95,12 +85,14 @@ export async function handleListing(
 			return returnData.slice(0, limit);
 		}
 
-		qs.page = responseData.page as number;
-	} while (responseData.total_pages && qs.page < responseData.total_pages);
+		if (responseData._links && responseData._links.next && responseData._links.next.href) {
+			const queryString = new URLSearchParams(responseData._links.next.href.split('?')[1]);
+			qs.page = queryString.get('page') as string;
+		}
+	} while (responseData._links && responseData._links.next);
 
 	return returnData;
 }
-
 
 // ----------------------------------------
 //              helpers

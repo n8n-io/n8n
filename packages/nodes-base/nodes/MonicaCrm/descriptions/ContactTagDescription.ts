@@ -7,6 +7,7 @@ export const contactTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,10 +19,12 @@ export const contactTagOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a tag to a contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a tag from a contact',
 			},
 		],
 		default: 'add',
@@ -51,9 +54,9 @@ export const contactTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tags',
+		displayName: 'Tag Names or IDs',
 		name: 'tagsToAdd',
-		description: 'Tags to add to the contact',
+		description: 'Tags to add to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'multiOptions',
 		typeOptions: {
 			loadOptionsMethod: 'getTagsToAdd',
@@ -94,9 +97,9 @@ export const contactTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tags',
+		displayName: 'Tag Names or IDs',
 		name: 'tagsToRemove',
-		description: 'Tags to remove from the contact',
+		description: 'Tags to remove from the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'multiOptions',
 		required: true,
 		typeOptions: {

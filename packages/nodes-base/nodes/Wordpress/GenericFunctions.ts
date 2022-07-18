@@ -14,19 +14,12 @@ import {
 
 export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('wordpressApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	let options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
 			'User-Agent': 'n8n',
-		},
-		auth: {
-			user: credentials!.username as string,
-			password: credentials!.password as string,
 		},
 		method,
 		qs,
@@ -39,7 +32,8 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request!(options);
+		const credentialType = 'wordpressApi';
+		return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

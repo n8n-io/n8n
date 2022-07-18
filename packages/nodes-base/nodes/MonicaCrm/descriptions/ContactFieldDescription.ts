@@ -7,6 +7,7 @@ export const contactFieldOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,16 +20,19 @@ export const contactFieldOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact field',
+				action: 'Create a contact field',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact field',
+				action: 'Delete a contact field',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a contact field',
+				action: 'Get a contact field',
 			},
 			// {
 			// 	name: 'Get All',
@@ -39,6 +43,7 @@ export const contactFieldOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact field',
+				action: 'Update a contact field',
 			},
 		],
 		default: 'create',
@@ -68,9 +73,10 @@ export const contactFieldFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field Type',
+		displayName: 'Contact Field Type Name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getContactFieldTypes',
@@ -193,7 +199,7 @@ export const contactFieldFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -252,9 +258,10 @@ export const contactFieldFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Contact Field Type ID',
+		displayName: 'Contact Field Type Name or ID',
 		name: 'contactFieldTypeId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getContactFieldTypes',
 		},

@@ -7,6 +7,7 @@ export const mediaOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,10 +20,10 @@ export const mediaOperations: INodeProperties[] = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Send media to a chat room',
+				action: 'Upload media to a chatroom',
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -32,7 +33,7 @@ export const mediaFields: INodeProperties[] = [
 	/*                               media:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -49,7 +50,7 @@ export const mediaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Room ID to post ',
+		description: 'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -70,7 +71,7 @@ export const mediaFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Media type',
+		displayName: 'Media Type',
 		name: 'mediaType',
 		type: 'options',
 		default: 'image',

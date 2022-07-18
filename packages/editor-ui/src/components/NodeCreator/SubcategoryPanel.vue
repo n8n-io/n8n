@@ -13,7 +13,9 @@
 			<ItemIterator
 				:elements="elements"
 				:activeIndex="activeIndex"
-				@selected="selected"
+				@selected="$emit('selected', $event)"
+				@dragstart="$emit('dragstart', $event)"
+				@dragend="$emit('dragend', $event)"
 			/>
 		</div>
 	</div>
@@ -38,9 +40,6 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		selected(element: INodeCreateElement) {
-			this.$emit('selected', element);
-		},
 		onBackArrowClick() {
 			this.$emit('close');
 		},

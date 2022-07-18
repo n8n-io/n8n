@@ -18,32 +18,22 @@ import {
 } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	let data; let domain;
 
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
-	let jiraCredentials: ICredentialDataDecryptedObject | undefined;
-	if (jiraVersion === 'server') {
-		jiraCredentials = await this.getCredentials('jiraSoftwareServerApi');
-	} else {
-		jiraCredentials = await this.getCredentials('jiraSoftwareCloudApi');
-	}
-
-	if (jiraCredentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
+	let domain = '';
+	let credentialType: string;
 
 	if (jiraVersion === 'server') {
-		domain = jiraCredentials!.domain;
-		data = Buffer.from(`${jiraCredentials!.email}:${jiraCredentials!.password}`).toString('base64');
+		domain = (await this.getCredentials('jiraSoftwareServerApi')).domain as string;
+		credentialType = 'jiraSoftwareServerApi';
 	} else {
-		domain = jiraCredentials!.domain;
-		data = Buffer.from(`${jiraCredentials!.email}:${jiraCredentials!.apiToken}`).toString('base64');
+		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
+		credentialType = 'jiraSoftwareCloudApi';
 	}
 
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: `Basic ${data}`,
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
 			'X-Atlassian-Token': 'no-check',
@@ -68,7 +58,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -120,7 +110,7 @@ export function getId(url: string) {
 	return url.split('/').pop();
 }
 
-export function simplifyIssueOutput(responseData: { 
+export function simplifyIssueOutput(responseData: {
 	names: { [key: string]: string },
 	fields: IDataObject,
 	id: string,

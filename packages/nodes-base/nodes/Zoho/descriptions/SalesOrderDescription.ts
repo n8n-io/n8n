@@ -16,6 +16,7 @@ export const salesOrderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,35 +29,40 @@ export const salesOrderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a sales order',
+				action: 'Create a sales order',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a sales order',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a sales order',
+				action: 'Delete a sales order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a sales order',
+				action: 'Get a sales order',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all sales orders',
+				action: 'Get all sales orders',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a sales order',
+				action: 'Update a sales order',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -65,10 +71,11 @@ export const salesOrderFields: INodeProperties[] = [
 	//       salesOrder: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Account ID',
+		displayName: 'Account Name or ID',
 		name: 'accountId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getAccounts',
@@ -92,7 +99,7 @@ export const salesOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the sales order.',
+		description: 'Subject or title of the sales order',
 		type: 'string',
 		required: true,
 		default: '',
@@ -182,7 +189,7 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Adjustment in the grand total, if any.',
+				description: 'Adjustment in the grand total, if any',
 			},
 			billingAddress,
 			{
@@ -190,12 +197,13 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'Carrier',
 				type: 'string',
 				default: '',
-				description: 'Name of the carrier.',
+				description: 'Name of the carrier',
 			},
 			{
-				displayName: 'Contact ID',
+				displayName: 'Contact Name or ID',
 				name: 'contactId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -206,14 +214,15 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getDeals',
@@ -249,7 +258,7 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Exchange rate of the default currency to the home currency.',
+				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
 				displayName: 'Grand Total',
@@ -259,14 +268,14 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product after deducting tax and discounts.',
+				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
 				displayName: 'Sales Order Number',
 				name: 'SO_Number',
 				type: 'string',
 				default: '',
-				description: 'ID of the sales order after creating a case.',
+				description: 'ID of the sales order after creating a case',
 			},
 			{
 				displayName: 'Sales Commission',
@@ -280,14 +289,14 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
-				description: 'Status of the sales order.',
+				description: 'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -297,7 +306,7 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product excluding tax.',
+				description: 'Total amount for the product excluding tax',
 			},
 			{
 				displayName: 'Tax',
@@ -307,14 +316,14 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Tax amount as the sum of sales tax and value-added tax.',
+				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
 				displayName: 'Terms and Conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
-				description: 'Terms and conditions associated with the purchase order.',
+				description: 'Terms and conditions associated with the purchase order',
 			},
 		],
 	},
@@ -325,7 +334,7 @@ export const salesOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Sales Order ID',
 		name: 'salesOrderId',
-		description: 'ID of the sales order to delete.',
+		description: 'ID of the sales order to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -347,7 +356,7 @@ export const salesOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Sales Order ID',
 		name: 'salesOrderId',
-		description: 'ID of the sales order to retrieve.',
+		description: 'ID of the sales order to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -374,7 +383,7 @@ export const salesOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Sales Order ID',
 		name: 'salesOrderId',
-		description: 'ID of the sales order to update.',
+		description: 'ID of the sales order to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -407,14 +416,14 @@ export const salesOrderFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account ID',
+				displayName: 'Account Name or ID',
 				name: 'accountId',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice.',
+				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -424,7 +433,7 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Adjustment in the grand total, if any.',
+				description: 'Adjustment in the grand total, if any',
 			},
 			billingAddress,
 			{
@@ -432,12 +441,13 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'Carrier',
 				type: 'string',
 				default: '',
-				description: 'Name of the carrier.',
+				description: 'Name of the carrier',
 			},
 			{
-				displayName: 'Contact ID',
+				displayName: 'Contact Name or ID',
 				name: 'contactId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -448,14 +458,15 @@ export const salesOrderFields: INodeProperties[] = [
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
-				displayName: 'Deal ID',
+				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getDeals',
@@ -490,7 +501,7 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Exchange rate of the default currency to the home currency.',
+				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
 				displayName: 'Grand Total',
@@ -500,14 +511,14 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product after deducting tax and discounts.',
+				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
 				displayName: 'Sales Order Number',
 				name: 'SO_Number',
 				type: 'string',
 				default: '',
-				description: 'ID of the sales order after creating a case.',
+				description: 'ID of the sales order after creating a case',
 			},
 			{
 				displayName: 'Sales Commission',
@@ -521,14 +532,14 @@ export const salesOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
-				description: 'Status of the sales order.',
+				description: 'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -538,14 +549,14 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product excluding tax.',
+				description: 'Total amount for the product excluding tax',
 			},
 			{
 				displayName: 'Subject',
 				name: 'Subject',
 				type: 'string',
 				default: '',
-				description: 'Subject or title of the sales order.',
+				description: 'Subject or title of the sales order',
 			},
 			{
 				displayName: 'Tax',
@@ -555,14 +566,14 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Tax amount as the sum of sales tax and value-added tax.',
+				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
 				displayName: 'Terms and Conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
-				description: 'Terms and conditions associated with the purchase order.',
+				description: 'Terms and conditions associated with the purchase order',
 			},
 		],
 	},

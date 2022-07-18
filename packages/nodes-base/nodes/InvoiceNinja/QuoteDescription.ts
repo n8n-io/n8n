@@ -5,6 +5,7 @@ export const quoteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,30 +18,34 @@ export const quoteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new quote',
+				action: 'Create a quote',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a quote',
+				action: 'Delete a quote',
 			},
 			{
 				name: 'Email',
 				value: 'email',
 				description: 'Email an quote',
+				action: 'Email a quote',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a quote',
+				action: 'Get a quote',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all quotes',
+				action: 'Get all quotes',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -66,9 +71,10 @@ export const quoteFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -114,6 +120,7 @@ export const quoteFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -418,7 +425,7 @@ export const quoteFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -442,7 +449,7 @@ export const quoteFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',

@@ -19,6 +19,12 @@ export class DropboxOAuth2Api implements ICredentialType {
 	documentationUrl = 'dropbox';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

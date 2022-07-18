@@ -26,6 +26,11 @@ import {
 } from './BoardDescription';
 
 import {
+	boardMemberFields,
+	boardMemberOperations,
+} from './BoardMemberDescription';
+
+import {
 	cardFields,
 	cardOperations,
 } from './CardDescription';
@@ -75,6 +80,7 @@ export class Trello implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Attachment',
@@ -83,6 +89,10 @@ export class Trello implements INodeType {
 					{
 						name: 'Board',
 						value: 'board',
+					},
+					{
+						name: 'Board Member',
+						value: 'boardMember',
 					},
 					{
 						name: 'Card',
@@ -106,7 +116,6 @@ export class Trello implements INodeType {
 					},
 				],
 				default: 'card',
-				description: 'The resource to operate on.',
 			},
 
 			// ----------------------------------
@@ -114,6 +123,7 @@ export class Trello implements INodeType {
 			// ----------------------------------
 			...attachmentOperations,
 			...boardOperations,
+			...boardMemberOperations,
 			...cardOperations,
 			...cardCommentOperations,
 			...checklistOperations,
@@ -125,6 +135,7 @@ export class Trello implements INodeType {
 			// ----------------------------------
 			...attachmentFields,
 			...boardFields,
+			...boardMemberFields,
 			...cardFields,
 			...cardCommentFields,
 			...checklistFields,
@@ -214,9 +225,70 @@ export class Trello implements INodeType {
 						Object.assign(qs, updateFields);
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
+				}	else if (resource === 'boardMember') {
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         getAll
+						// ----------------------------------
 
+						requestMethod = 'GET';
+
+						const id = this.getNodeParameter('id', i) as string;
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						if (returnAll === false) {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						endpoint = `boards/${id}/members`;
+
+					} else if (operation === 'add') {
+						// ----------------------------------
+						//               add
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const id = this.getNodeParameter('id', i) as string;
+						const idMember = this.getNodeParameter('idMember', i) as string;
+
+						endpoint = `boards/${id}/members/${idMember}`;
+
+						qs.type = this.getNodeParameter('type', i) as string;
+						qs.allowBillableGuest = this.getNodeParameter('additionalFields.allowBillableGuest', i, false) as boolean;
+
+					} else if (operation === 'invite') {
+						// ----------------------------------
+						//              invite
+						// ----------------------------------
+
+						requestMethod = 'PUT';
+
+						const id = this.getNodeParameter('id', i) as string;
+
+						endpoint = `boards/${id}/members`;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						qs.email = this.getNodeParameter('email', i) as string;
+						qs.type = additionalFields.type as string;
+						body.fullName = additionalFields.fullName as string;
+					} else if (operation === 'remove') {
+						// ----------------------------------
+						//              remove
+						// ----------------------------------
+
+						requestMethod = 'DELETE';
+
+						const id = this.getNodeParameter('id', i) as string;
+						const idMember = this.getNodeParameter('idMember', i) as string;
+
+							endpoint = `boards/${id}/members/${idMember}`;
+
+					} else {
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+					}
 				} else if (resource === 'card') {
 
 					if (operation === 'create') {
@@ -275,7 +347,7 @@ export class Trello implements INodeType {
 						Object.assign(qs, updateFields);
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'cardComment') {
@@ -323,7 +395,7 @@ export class Trello implements INodeType {
 						endpoint = `cards/${cardId}/actions/${commentId}/comments`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'list') {
@@ -424,7 +496,7 @@ export class Trello implements INodeType {
 						Object.assign(qs, updateFields);
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'attachment') {
@@ -489,7 +561,7 @@ export class Trello implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'checklist') {
@@ -623,7 +695,7 @@ export class Trello implements INodeType {
 						Object.assign(qs, additionalFields);
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else if (resource === 'label') {
 
@@ -726,10 +798,10 @@ export class Trello implements INodeType {
 						endpoint = `/cards/${cardId}/idLabels/${id}`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
 

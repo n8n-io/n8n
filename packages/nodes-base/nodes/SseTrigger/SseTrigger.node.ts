@@ -1,4 +1,4 @@
-import * as EventSource from 'eventsource';
+import EventSource from 'eventsource';
 import { ITriggerFunctions } from 'n8n-core';
 import {
 	INodeType,
@@ -30,7 +30,7 @@ export class SseTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'http://example.com',
-				description: 'The URL to receive the SSE from.',
+				description: 'The URL to receive the SSE from',
 				required: true,
 			},
 		],

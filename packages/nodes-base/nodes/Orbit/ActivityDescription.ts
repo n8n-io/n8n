@@ -7,6 +7,7 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const activityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an activity for a member',
+				action: 'Create an activity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all activities',
+				action: 'Get all activities',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -37,9 +39,10 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -108,14 +111,14 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Activity Type',
+				displayName: 'Activity Type Name or ID',
 				name: 'activityType',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getActivityTypes',
 				},
 				default: '',
-				description: 'A user-defined way to group activities of the same nature',
+				description: 'A user-defined way to group activities of the same nature. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
@@ -159,9 +162,10 @@ export const activityFields: INodeProperties[] = [
 	/*                                activity:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace',
+		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -193,7 +197,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -217,7 +221,7 @@ export const activityFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -241,7 +245,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'memberId',
 				type: 'string',
 				default: '',
-				description: 'When set the post will be filtered by the member id.',
+				description: 'When set the post will be filtered by the member ID',
 			},
 		],
 	},

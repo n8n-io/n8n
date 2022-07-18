@@ -7,6 +7,7 @@ export const organizationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const organizationOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an organization',
+				action: 'Create an organization',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an organization',
+				action: 'Delete an organization',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an organization',
+				action: 'Get an organization',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all organizations',
+				action: 'Get all organizations',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an organization',
+				action: 'Update an organization',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +72,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The name of the organization.',
+		description: 'The name of the organization',
 	},
 	{
 		displayName: 'Domain',
@@ -85,7 +90,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The domain name of the organization.',
+		description: 'The domain name of the organization',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -105,14 +110,14 @@ export const organizationFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Persons',
+				displayName: 'Person Names or IDs',
 				name: 'persons',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getPersons',
 				},
 				default: [],
-				description: 'Persons that the new organization will be associated with.',
+				description: 'Persons that the new organization will be associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -135,7 +140,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the organization.',
+		description: 'Unique identifier for the organization',
 	},
 	{
 		displayName: 'Update Fields',
@@ -159,24 +164,24 @@ export const organizationFields: INodeProperties[] = [
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the organization.',
+				description: 'The domain name of the organization',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the organization.',
+				description: 'The name of the organization',
 			},
 			{
-				displayName: 'Persons',
+				displayName: 'Person Names or IDs',
 				name: 'persons',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getPersons',
 				},
 				default: [],
-				description: 'Persons that the new organization will be associated with.',
+				description: 'Persons that the new organization will be associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -199,7 +204,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the organization.',
+		description: 'Unique identifier for the organization',
 	},
 	{
 		displayName: 'Options',
@@ -223,7 +228,7 @@ export const organizationFields: INodeProperties[] = [
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,
-				description: 'When true, interaction dates will be present on the returned resources.',
+				description: 'Whether interaction dates will be present on the returned resources',
 			},
 		],
 	},
@@ -245,7 +250,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -269,7 +274,7 @@ export const organizationFields: INodeProperties[] = [
 			maxValue: 10,
 		},
 		default: 5,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -300,7 +305,7 @@ export const organizationFields: INodeProperties[] = [
 				name: 'withInteractionDates',
 				type: 'boolean',
 				default: false,
-				description: 'When true, interaction dates will be present on the returned resources.',
+				description: 'Whether interaction dates will be present on the returned resources',
 			},
 		],
 	},
@@ -323,6 +328,6 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Unique identifier for the organization.',
+		description: 'Unique identifier for the organization',
 	},
 ];

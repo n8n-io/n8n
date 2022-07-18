@@ -30,6 +30,7 @@ export class WufooTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wufoo Trigger',
 		name: 'wufooTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:wufoo.png',
 		group: ['trigger'],
 		version: 1,
@@ -55,7 +56,7 @@ export class WufooTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Forms',
+				displayName: 'Forms Name or ID',
 				name: 'form',
 				type: 'options',
 				required: true,
@@ -63,14 +64,14 @@ export class WufooTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
-				description: 'The form upon which will trigger this node when a new entry is made.',
+				description: 'The form upon which will trigger this node when a new entry is made. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Only Answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data.',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 	};

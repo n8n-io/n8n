@@ -5,6 +5,7 @@ export const workbookOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -16,16 +17,17 @@ export const workbookOperations: INodeProperties[] = [
 			{
 				name: 'Add Worksheet',
 				value: 'addWorksheet',
-				description: 'Adds a new worksheet to the workbook.',
+				description: 'Adds a new worksheet to the workbook',
+				action: 'Add a worksheet to a workbook',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all workbooks',
+				action: 'Get all workbooks',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -35,9 +37,10 @@ export const workbookFields: INodeProperties[] = [
 /*                                 workbook:addWorksheet                      */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook',
+		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
@@ -76,7 +79,7 @@ export const workbookFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: `The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet.`,
+				description: 'The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet.',
 			},
 		],
 	},
@@ -98,7 +101,7 @@ export const workbookFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -122,7 +125,7 @@ export const workbookFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -146,7 +149,7 @@ export const workbookFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Fields the response will containt. Multiple can be added separated by ,.`,
+				description: 'Fields the response will containt. Multiple can be added separated by ,.',
 			},
 		],
 	},

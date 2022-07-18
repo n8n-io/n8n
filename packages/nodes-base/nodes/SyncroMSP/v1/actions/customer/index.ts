@@ -21,6 +21,7 @@ export const descriptions = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -33,30 +34,34 @@ export const descriptions = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create new customer',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete customer',
+				action: 'Delete a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve customer',
+				action: 'Get a customer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all customers',
+				action: 'Get all customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update customer',
+				action: 'Update a customer',
 			},
 		],
 		default: 'getAll',
-		description: '',
 	},
 	...getAll.description,
 	...get.description,

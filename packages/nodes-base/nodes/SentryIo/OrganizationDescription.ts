@@ -7,6 +7,7 @@ export const organizationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const organizationOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an organization',
+				action: 'Create an organization',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get organization by slug',
+				action: 'Get an organization',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all organizations',
+				action: 'Get all organizations',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an organization',
+				action: 'Update an organization',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -60,7 +64,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -84,7 +88,7 @@ export const organizationFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -108,14 +112,14 @@ export const organizationFields: INodeProperties[] = [
 				name: 'member',
 				type: 'boolean',
 				default: true,
-				description: 'Restrict results to organizations which you have membership.',
+				description: 'Whether to restrict results to organizations which you have membership',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'boolean',
 				default: true,
-				description: 'Restrict results to organizations which you are the owner.',
+				description: 'Whether to restrict results to organizations which you are the owner',
 			},
 		],
 	},
@@ -124,7 +128,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -142,7 +146,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team should be created for.',
+		description: 'The slug of the organization the team should be created for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -164,7 +168,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team should be created for.',
+		description: 'The slug of the organization the team should be created for',
 	},
 	{
 		displayName: 'Agree to Terms',
@@ -181,7 +185,7 @@ export const organizationFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Signaling you agree to the applicable terms of service and privacy policy of Sentry.io.',
+		description: 'Whether you agree to the applicable terms of service and privacy policy of Sentry.io',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -214,7 +218,7 @@ export const organizationFields: INodeProperties[] = [
 	/*                                organization:update                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Slug',
+		displayName: 'Slug Name or ID',
 		name: 'organization_slug',
 		type: 'options',
 		typeOptions: {
@@ -232,7 +236,7 @@ export const organizationFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization to update.',
+		description: 'The slug of the organization to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -256,14 +260,14 @@ export const organizationFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The new name of the organization.',
+				description: 'The new name of the organization',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'The new URL slug for this organization.',
+				description: 'The new URL slug for this organization',
 			},
 		],
 	},

@@ -7,6 +7,7 @@ export const documentOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,26 +20,31 @@ export const documentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a document',
+				action: 'Create a document',
 			},
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update a document',
+				description: 'Create a new document, or update the current one if it already exists (upsert)',
+				action: 'Create or update a document',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a document',
+				action: 'Delete a document',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a document',
+				action: 'Get a document',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all documents from a collection',
+				action: 'Get all documents',
 			},
 			// {
 			// 	name: 'Update',
@@ -49,10 +55,10 @@ export const documentOperations: INodeProperties[] = [
 				name: 'Query',
 				value: 'query',
 				description: 'Runs a query against your documents',
+				action: 'Query a document',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -61,7 +67,7 @@ export const documentFields: INodeProperties[] = [
 	/*                                document:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -78,7 +84,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL.',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -118,7 +124,7 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Columns / attributes',
+		displayName: 'Columns / Attributes',
 		name: 'columns',
 		type: 'string',
 		default: '',
@@ -137,7 +143,7 @@ export const documentFields: INodeProperties[] = [
 		placeholder: 'productId, modelName, description',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -151,14 +157,14 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                document:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -175,7 +181,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -229,11 +235,10 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Document ID',
 		required: true,
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -247,14 +252,14 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                              document:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -271,7 +276,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -325,7 +330,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 		required: true,
 	},
 	{
@@ -350,10 +355,10 @@ export const documentFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -367,14 +372,14 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                              document:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -391,7 +396,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -445,7 +450,6 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Document ID',
 		required: true,
 	},
 	// 	/* ---------------------------------------------------------------------- */
@@ -567,7 +571,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -584,7 +588,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -665,7 +669,7 @@ export const documentFields: INodeProperties[] = [
 	/*                              document:query                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project ID',
+		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
 		default: '',
@@ -682,7 +686,7 @@ export const documentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -726,7 +730,7 @@ export const documentFields: INodeProperties[] = [
 		placeholder: '{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": 28}}}, "from": [{"collectionId": "users-collection"}]}}',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -740,6 +744,6 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

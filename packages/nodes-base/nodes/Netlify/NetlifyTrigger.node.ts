@@ -51,7 +51,7 @@ export class NetlifyTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Site Name/ID',
+				displayName: 'Site Name or ID',
 				name: 'siteId',
 				required: true,
 				type: 'options',
@@ -59,7 +59,7 @@ export class NetlifyTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getSites',
 				},
-				description: 'Select the Site ID',
+				description: 'Select the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event',
@@ -87,7 +87,7 @@ export class NetlifyTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Form ID',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				required: true,
@@ -102,10 +102,10 @@ export class NetlifyTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getForms',
 				},
-				description: 'Select a form',
+				description: 'Select a form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {

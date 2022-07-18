@@ -2,11 +2,12 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const databaseOperations = [
+export const databaseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -22,16 +23,19 @@ export const databaseOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database',
+				action: 'Get a database',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all databases',
+				action: 'Get all databases',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'search databases using text search',
+				description: 'Search databases using text search',
+				action: 'Search a database',
 			},
 		],
 		default: 'get',
@@ -40,6 +44,7 @@ export const databaseOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				version: [
@@ -55,18 +60,20 @@ export const databaseOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database',
+				action: 'Get a database',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all databases',
+				action: 'Get all databases',
 			},
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const databaseFields = [
+export const databaseFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
@@ -87,7 +94,7 @@ export const databaseFields = [
 				],
 			},
 		},
-		description: `The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)`,
+		description: 'The Database URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
@@ -107,7 +114,7 @@ export const databaseFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -131,10 +138,10 @@ export const databaseFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -213,10 +220,10 @@ export const databaseFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -291,7 +298,7 @@ export const databaseFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against`,
+								description: 'The name of the timestamp to sort against',
 							},
 						],
 					},
@@ -299,4 +306,4 @@ export const databaseFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

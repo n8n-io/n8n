@@ -55,7 +55,6 @@ export class KoBoToolbox implements INodeType {
 			{
 				name: 'koBoToolboxApi',
 				required: true,
-				testedBy: 'koBoToolboxApiCredentialTest',
 			},
 		],
 		properties: [
@@ -63,6 +62,7 @@ export class KoBoToolbox implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Form',
@@ -90,41 +90,6 @@ export class KoBoToolbox implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			async koBoToolboxApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data;
-				try {
-					const response = await this.helpers.request({
-						url: `${credentials!.URL}/api/v2/assets/hash`,
-						headers: {
-							'Accept': 'application/json',
-							'Authorization': `Token ${credentials!.token}`,
-						},
-						json: true,
-					});
-
-					if (response.hash) {
-						return {
-							status: 'OK',
-							message: 'Connection successful!',
-						};
-					}
-					else {
-						return {
-							status: 'Error',
-							message: `Credentials are not valid. Response: ${response.detail}`,
-						};
-					}
-				}
-				catch (err) {
-					return {
-						status: 'Error',
-						message: `Credentials validation failed: ${(err as JsonObject).message}`,
-					};
-				}
-			},
-		},
-
 		loadOptions: {
 			loadForms,
 		},
@@ -194,13 +159,14 @@ export class KoBoToolbox implements INodeType {
 					// ----------------------------------
 
 					const submissionQueryOptions = this.getNodeParameter('options', i) as IDataObject;
+					const filterJson = this.getNodeParameter('filterJson', i, null) as string;
 
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${formId}/data/`,
 						qs: {
 							limit: this.getNodeParameter('limit', i, 1000) as number,
-							...(submissionQueryOptions.query && { query: submissionQueryOptions.query }),
-							//...(submissionQueryOptions.sort && { sort: submissionQueryOptions.sort }),
+							...(filterJson && { query: filterJson }),
+							...(submissionQueryOptions.sort && { sort: submissionQueryOptions.sort }),
 							...(submissionQueryOptions.fields && { fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string)) }),
 						},
 						scroll: this.getNodeParameter('returnAll', i) as boolean,

@@ -1,8 +1,4 @@
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
@@ -10,8 +6,11 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, JsonObject, NodeApiError,
+	IDataObject,
+	JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
+import { OptionsWithUri } from 'request';
 
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
@@ -30,20 +29,13 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		let returnData;
 
 		if (authenticationMethod === 'credentials') {
-			const credentials = await this.getCredentials('mauticApi') as IDataObject;
-
-			const base64Key = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
-
-			options.headers!.Authorization = `Basic ${base64Key}`;
-
-			options.uri = `${credentials.url}${options.uri}`;
-
 			//@ts-ignore
-			returnData = await this.helpers.request(options);
+			returnData = await this.helpers.httpRequestWithAuthentication.call(this, 'mauticApi', options);
 		} else {
-			const credentials = await this.getCredentials('mauticOAuth2Api') as IDataObject;
+			const credentials = await this.getCredentials('mauticOAuth2Api');
+			const baseUrl = credentials.url as string;
 
-			options.uri = `${credentials.url}${options.uri}`;
+			options.uri = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${options.uri}`;
 			//@ts-ignore
 			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
 		}

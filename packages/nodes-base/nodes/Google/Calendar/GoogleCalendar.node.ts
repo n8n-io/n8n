@@ -33,10 +33,9 @@ import {
 	IEvent,
 } from './EventInterface';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { v4 as uuid } from 'uuid';
-import { moveMessagePortToContext } from 'worker_threads';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,7 +74,6 @@ export class GoogleCalendar implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on',
 			},
 			...calendarOperations,
 			...calendarFields,
@@ -125,7 +123,7 @@ export class GoogleCalendar implements INodeType {
 				);
 				for (const calendar of calendars) {
 					const calendarName = calendar.summary;
-					const calendarId = calendar.id;
+					const calendarId = encodeURIComponent(calendar.id);
 					returnData.push({
 						name: calendarName,
 						value: calendarId,
@@ -176,7 +174,7 @@ export class GoogleCalendar implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -332,7 +330,7 @@ export class GoogleCalendar implements INodeType {
 								additionalFields.repeatUntil
 							) {
 								throw new NodeOperationError(this.getNode(),
-									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`, { itemIndex: i },
 								);
 							}
 							if (additionalFields.repeatFrecuency) {
@@ -579,7 +577,7 @@ export class GoogleCalendar implements INodeType {
 						} else {
 							if (updateFields.repeatHowManyTimes && updateFields.repeatUntil) {
 								throw new NodeOperationError(this.getNode(),
-									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`, { itemIndex: i },
 								);
 							}
 							if (updateFields.repeatFrecuency) {

@@ -1,7 +1,6 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
-	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
@@ -40,20 +39,10 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('gitlabApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			options.headers!['Private-Token'] = `${credentials.accessToken}`;
-
 			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
-
-			return await this.helpers.request(options);
+			return await this.helpers.requestWithAuthentication.call(this, 'gitlabApi', options);
 		} else {
 			const credentials = await this.getCredentials('gitlabOAuth2Api');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
 
 			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
 

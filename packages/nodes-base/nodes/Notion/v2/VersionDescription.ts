@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	databaseFields,
 	databaseOperations,
@@ -45,7 +46,6 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'notionApi',
 			required: true,
-			testedBy: 'notionApiCredentialTest',
 			// displayOptions: {
 			// 	show: {
 			// 		authentication: [
@@ -100,6 +100,7 @@ export const versionDescription: INodeTypeDescription = {
 			displayName: 'Resource',
 			name: 'resource',
 			type: 'options',
+			noDataExpression: true,
 			options: [
 				{
 					name: 'Block',

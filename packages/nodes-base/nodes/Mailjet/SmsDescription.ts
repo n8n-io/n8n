@@ -5,6 +5,7 @@ export const smsOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,10 +18,10 @@ export const smsOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Send a sms',
+				action: 'Send an SMS',
 			},
 		],
 		default: 'send',
-		description: 'The operation to perform.',
 	},
 ];
 

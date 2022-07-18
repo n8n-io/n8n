@@ -8,6 +8,7 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -20,45 +21,58 @@ export const activityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new activity',
+				action: 'Create an activity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an activity',
+				action: 'Get an activity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all activities',
+				action: 'Get all activities',
 			},
 			{
 				name: 'Get Comments',
 				value: 'getComments',
 				description: 'Get all activity comments',
+				action: 'Get all activity comments',
 			},
 			{
 				name: 'Get Kudos',
 				value: 'getKudos',
 				description: 'Get all activity kudos',
+				action: 'Get all activity kudos',
 			},
 			{
 				name: 'Get Laps',
 				value: 'getLaps',
 				description: 'Get all activity laps',
+				action: 'Get all activity laps',
+			},
+			{
+				name: 'Get Streams',
+				value: 'getStreams',
+				description: 'Get activity streams',
+				action: 'Get all activity streams',
 			},
 			{
 				name: 'Get Zones',
 				value: 'getZones',
 				description: 'Get all activity zones',
+				action: 'Get all activity zones',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an activity',
+				action: 'Update an activity',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -119,7 +133,7 @@ export const activityFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ISO 8601 formatted date time.',
+		description: 'ISO 8601 formatted date time',
 	},
 	{
 		displayName: 'Elapsed Time (Seconds)',
@@ -140,7 +154,7 @@ export const activityFields: INodeProperties[] = [
 			minValue: 0,
 		},
 		default: 0,
-		description: 'In seconds.',
+		description: 'In seconds',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -164,14 +178,14 @@ export const activityFields: INodeProperties[] = [
 				name: 'commute',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as commute.',
+				description: 'Whether to mark as commute',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the activity.',
+				description: 'Description of the activity',
 			},
 			{
 				displayName: 'Distance',
@@ -181,14 +195,14 @@ export const activityFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'In meters.',
+				description: 'In meters',
 			},
 			{
 				displayName: 'Trainer',
 				name: 'trainer',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as a trainer activity.',
+				description: 'Whether to mark as a trainer activity',
 			},
 		],
 	},
@@ -236,21 +250,21 @@ export const activityFields: INodeProperties[] = [
 				name: 'commute',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as commute.',
+				description: 'Whether to mark as commute',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the activity.',
+				description: 'Description of the activity',
 			},
 			{
 				displayName: 'Gear ID',
 				name: 'gear_id',
 				type: 'string',
 				default: '',
-				description: 'Identifier for the gear associated with the activity. ‘none’ clears gear from activity',
+				description: 'Identifier for the gear associated with the activity. ‘none’ clears gear from activity.',
 			},
 			{
 				displayName: 'Name',
@@ -271,7 +285,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'trainer',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as a trainer activity.',
+				description: 'Whether to mark as a trainer activity',
 			},
 		],
 	},
@@ -316,6 +330,7 @@ export const activityFields: INodeProperties[] = [
 					'getLaps',
 					'getKudos',
 					'getZones',
+					'getStreams',
 				],
 			},
 		},
@@ -340,7 +355,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -367,9 +382,72 @@ export const activityFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-
+	{
+		displayName: 'Keys',
+		name: 'keys',
+		type: 'multiOptions',
+		options: [
+			{
+				name: 'Altitude',
+				value: 'altitude',
+			},
+			{
+				name: 'Cadence',
+				value: 'cadence',
+			},
+			{
+				name: 'Distance',
+				value: 'distance',
+			},
+			{
+				name: 'Gradient',
+				value: 'grade_smooth',
+			},
+			{
+				name: 'Heartrate',
+				value: 'heartrate',
+			},
+			{
+				name: 'Latitude / Longitude',
+				value: 'latlng',
+			},
+			{
+				name: 'Moving',
+				value: 'moving',
+			},
+			{
+				name: 'Temperature',
+				value: 'temp',
+			},
+			{
+				name: 'Time',
+				value: 'time',
+			},
+			{
+				name: 'Velocity',
+				value: 'velocity_smooth',
+			},
+			{
+				name: 'Watts',
+				value: 'watts',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'activity',
+				],
+				operation: [
+					'getStreams',
+				],
+			},
+		},
+		required: true,
+		default: [],
+		description: 'Desired stream types to return',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  activity:getAll                           */
 	/* -------------------------------------------------------------------------- */
@@ -388,7 +466,7 @@ export const activityFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -412,6 +490,6 @@ export const activityFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

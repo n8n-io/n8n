@@ -7,31 +7,37 @@ export const rowOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a row',
+				action: 'Create a row',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a row',
+				action: 'Delete a row',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a row',
+				action: 'Get a row',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all rows',
+				action: 'Get all rows',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a row',
+				action: 'Update a row',
 			},
 		],
 		default: 'create',
@@ -45,7 +51,7 @@ export const rowFields: INodeProperties[] = [
 	// ----------------------------------
 
 	{
-		displayName: 'Table Name/ID',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
 		placeholder: 'Name of table',
@@ -61,10 +67,10 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of SeaTable table to access',
+		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Table Name/ID',
+		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		placeholder: 'Name of table',
@@ -80,7 +86,7 @@ export const rowFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The name of SeaTable table to access',
+		description: 'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -164,9 +170,10 @@ export const rowFields: INodeProperties[] = [
 				name: 'columnValues',
 				values: [
 					{
-						displayName: 'Column Name',
+						displayName: 'Column Name or ID',
 						name: 'columnName',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: [
 								'table',
@@ -268,7 +275,7 @@ export const rowFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -285,9 +292,10 @@ export const rowFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'View Name',
+				displayName: 'View Name or ID',
 				name: 'view_name',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getViews',
 				},
@@ -314,7 +322,7 @@ export const rowFields: INodeProperties[] = [
 				name: 'convert_link_id',
 				type: 'boolean',
 				default: false,
-				description: `Whether the link column in the returned row is the ID of the linked row or the name of the linked row`,
+				description: 'Whether the link column in the returned row is the ID of the linked row or the name of the linked row',
 			},
 			{
 				displayName: 'Direction',
@@ -331,9 +339,10 @@ export const rowFields: INodeProperties[] = [
 					},
 				],
 				default: 'asc',
-				description: `The direction of the sort, ascending (asc) or descending (desc)`,
+				description: 'The direction of the sort, ascending (asc) or descending (desc)',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Order By',
 				name: 'order_by',
 				type: 'options',
@@ -341,7 +350,7 @@ export const rowFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAllSortableColumns',
 				},
 				default: '',
-				description: `A column's name or ID, use this column to sort the rows`,
+				description: 'A column\'s name or ID, use this column to sort the rows. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

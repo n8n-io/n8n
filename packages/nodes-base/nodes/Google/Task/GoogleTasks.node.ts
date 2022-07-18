@@ -25,6 +25,7 @@ export class GoogleTasks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Tasks',
 		name: 'googleTasks',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googleTasks.png',
 		group: ['input'],
 		version: 1,
@@ -46,6 +47,7 @@ export class GoogleTasks implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
@@ -53,7 +55,6 @@ export class GoogleTasks implements INodeType {
 					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.',
 			},
 			...taskOperations,
 			...taskFields,
@@ -89,7 +90,7 @@ export class GoogleTasks implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -171,7 +172,7 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/list
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const taskListId = this.getNodeParameter('task', i) as string;
-						const options = this.getNodeParameter(
+						const { showCompleted = true, showDeleted = false, showHidden = false, ...options } = this.getNodeParameter(
 							'additionalFields',
 							i,
 						) as IDataObject;
@@ -187,15 +188,11 @@ export class GoogleTasks implements INodeType {
 						if (options.dueMax) {
 							qs.dueMax = options.dueMax as string;
 						}
-						if (options.showCompleted) {
-							qs.showCompleted = options.showCompleted as boolean;
-						}
-						if (options.showDeleted) {
-							qs.showDeleted = options.showDeleted as boolean;
-						}
-						if (options.showHidden) {
-							qs.showHidden = options.showHidden as boolean;
-						}
+
+						qs.showCompleted = showCompleted;
+						qs.showDeleted = showDeleted;
+						qs.showHidden = showHidden;
+
 						if (options.updatedMin) {
 							qs.updatedMin = options.updatedMin as string;
 						}

@@ -7,6 +7,7 @@ export const fileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const fileOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a file',
+				action: 'Delete a file',
 			},
 			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download a file',
+				action: 'Download a file',
 			},
 		],
 		default: 'download',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -52,7 +54,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table identifier.',
+		description: 'The table identifier',
 	},
 	{
 		displayName: 'Record ID',
@@ -71,7 +73,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the record.',
+		description: 'The unique identifier of the record',
 	},
 	{
 		displayName: 'Field ID',
@@ -90,7 +92,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the field.',
+		description: 'The unique identifier of the field',
 	},
 	{
 		displayName: 'Version Number',
@@ -109,7 +111,7 @@ export const fileFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The file attachment version number.',
+		description: 'The file attachment version number',
 	},
 	{
 		displayName: 'Binary Property',
@@ -126,7 +128,7 @@ export const fileFields: INodeProperties[] = [
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
-		description: 'Object property name which holds binary data.',
+		description: 'Object property name which holds binary data',
 		required: true,
 	},
 ];

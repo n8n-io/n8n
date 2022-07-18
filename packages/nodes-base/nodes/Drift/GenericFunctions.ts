@@ -37,10 +37,6 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('driftApi');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
 			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);

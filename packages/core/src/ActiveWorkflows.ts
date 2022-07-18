@@ -13,6 +13,7 @@ import {
 	LoggerProxy as Logger,
 	Workflow,
 	WorkflowActivateMode,
+	WorkflowActivationError,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -82,17 +83,26 @@ export class ActiveWorkflows {
 		let triggerResponse: ITriggerResponse | undefined;
 		this.workflowData[id].triggerResponses = [];
 		for (const triggerNode of triggerNodes) {
-			triggerResponse = await workflow.runTrigger(
-				triggerNode,
-				getTriggerFunctions,
-				additionalData,
-				mode,
-				activation,
-			);
-			if (triggerResponse !== undefined) {
-				// If a response was given save it
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				this.workflowData[id].triggerResponses!.push(triggerResponse);
+			try {
+				triggerResponse = await workflow.runTrigger(
+					triggerNode,
+					getTriggerFunctions,
+					additionalData,
+					mode,
+					activation,
+				);
+				if (triggerResponse !== undefined) {
+					// If a response was given save it
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					this.workflowData[id].triggerResponses!.push(triggerResponse);
+				}
+			} catch (error) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+				throw new WorkflowActivationError(
+					'There was a problem activating the workflow',
+					error,
+					triggerNode,
+				);
 			}
 		}
 
@@ -100,17 +110,26 @@ export class ActiveWorkflows {
 		if (pollNodes.length) {
 			this.workflowData[id].pollResponses = [];
 			for (const pollNode of pollNodes) {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				this.workflowData[id].pollResponses!.push(
-					await this.activatePolling(
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					this.workflowData[id].pollResponses!.push(
+						await this.activatePolling(
+							pollNode,
+							workflow,
+							additionalData,
+							getPollFunctions,
+							mode,
+							activation,
+						),
+					);
+				} catch (error) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+					throw new WorkflowActivationError(
+						'There was a problem activating the workflow',
+						error,
 						pollNode,
-						workflow,
-						additionalData,
-						getPollFunctions,
-						mode,
-						activation,
-					),
-				);
+					);
+				}
 			}
 		}
 	}

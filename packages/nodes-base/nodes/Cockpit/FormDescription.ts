@@ -5,6 +5,7 @@ export const formOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,11 +18,11 @@ export const formOperations: INodeProperties[] = [
 				name: 'Submit a Form',
 				value: 'submit',
 				description: 'Store data from a form submission',
+				action: 'Submit a form',
 			},
 
 		],
 		default: 'submit',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -39,12 +40,12 @@ export const formFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Name of the form to operate on.',
+		description: 'Name of the form to operate on',
 	},
 
 	// Form:submit
 	{
-		displayName: 'JSON Data fields',
+		displayName: 'JSON Data Fields',
 		name: 'jsonDataFields',
 		type: 'boolean',
 		default: false,
@@ -58,7 +59,7 @@ export const formFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If form fields should be set via the value-key pair UI or JSON.',
+		description: 'Whether form fields should be set via the value-key pair UI or JSON',
 	},
 	{
 		displayName: 'Form Data',
@@ -81,7 +82,7 @@ export const formFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Form data to send as JSON.',
+		description: 'Form data to send as JSON',
 	},
 	{
 		displayName: 'Form Data',
@@ -114,18 +115,18 @@ export const formFields: INodeProperties[] = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the field.',
+						description: 'Name of the field',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the field.',
+						description: 'Value of the field',
 					},
 				],
 			},
 		],
-		description: 'Form data to send.',
+		description: 'Form data to send',
 	},
 ];

@@ -7,6 +7,7 @@ export const locationOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,26 +20,31 @@ export const locationOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a location',
+				action: 'Create a location',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a location',
+				action: 'Delete a location',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a location',
+				action: 'Get a location',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all locations',
+				action: 'Get all locations',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a location',
+				action: 'Update a location',
 			},
 		],
 		default: 'create',
@@ -207,7 +213,7 @@ export const locationFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

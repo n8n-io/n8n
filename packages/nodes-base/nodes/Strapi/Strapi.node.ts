@@ -63,7 +63,6 @@ export class Strapi implements INodeType {
 					},
 				],
 				default: 'entry',
-				description: 'The resource to operate on',
 			},
 			...entryOperations,
 			...entryFields,
@@ -107,14 +106,14 @@ export class Strapi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const { apiVersion } = await this.getCredentials('strapiApi') as IDataObject;
+		const { apiVersion } = await this.getCredentials('strapiApi');
 		const { jwt } = await getToken.call(this);
 
 		headers.Authorization = `Bearer ${jwt}`;
@@ -171,7 +170,7 @@ export class Strapi implements INodeType {
 								if (query !== undefined) {
 									qs.filters = query;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON', { itemIndex: i });
 								}
 							}
 							// Publication Option
@@ -197,7 +196,7 @@ export class Strapi implements INodeType {
 								if (query !== undefined) {
 									qs._where = query;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON', { itemIndex: i });
 								}
 							}
 							// Publication Option

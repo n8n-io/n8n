@@ -7,6 +7,7 @@ export const categoryOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -21,16 +22,19 @@ export const categoryOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a category',
+				action: 'Create a category',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all categories',
+				action: 'Get all categories',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a category',
+				action: 'Update a category',
 			},
 		],
 		default: 'create',
@@ -57,7 +61,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the category.',
+		description: 'Name of the category',
 	},
 	{
 		displayName: 'Color',
@@ -75,7 +79,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '0000FF',
-		description: 'Color of the category.',
+		description: 'Color of the category',
 	},
 	{
 		displayName: 'Text Color',
@@ -93,7 +97,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '0000FF',
-		description: 'Text color of the category.',
+		description: 'Text color of the category',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -114,7 +118,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -138,7 +142,7 @@ export const categoryFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -160,7 +164,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the category.',
+		description: 'ID of the category',
 	},
 	{
 		displayName: 'Name',
@@ -178,7 +182,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'New name of the category.',
+		description: 'New name of the category',
 	},
 	{
 		displayName: 'Update Fields',

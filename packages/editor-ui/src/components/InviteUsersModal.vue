@@ -106,7 +106,10 @@ export default mixins(showMessage).extend({
 		},
 		buttonLabel(): string {
 			if (this.emailsCount > 1) {
-				return this.$locale.baseText('settings.users.inviteXUser', { interpolate: { count: this.emailsCount }});
+				return this.$locale.baseText(
+					'settings.users.inviteXUser',
+					{ interpolate: { count: this.emailsCount.toString() }},
+				);
 			}
 
 			return this.$locale.baseText('settings.users.inviteUser');

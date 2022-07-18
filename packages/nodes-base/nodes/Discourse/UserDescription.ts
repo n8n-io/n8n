@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -21,16 +22,19 @@ export const userOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user',
+				action: 'Get a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all users',
+				action: 'Get all users',
 			},
 		],
 		default: 'create',
@@ -57,12 +61,13 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the user to create.',
+		description: 'Name of the user to create',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
@@ -75,7 +80,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Email of the user to create.',
+		description: 'Email of the user to create',
 	},
 	{
 		displayName: 'Username',
@@ -93,7 +98,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The username of the user to create.`,
+		description: 'The username of the user to create',
 	},
 	{
 		displayName: 'Password',
@@ -114,7 +119,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The password of the user to create.`,
+		description: 'The password of the user to create',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -177,7 +182,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: 'username',
-		description: 'What to search by.',
+		description: 'What to search by',
 	},
 	{
 		displayName: 'Username',
@@ -198,7 +203,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The username of the user to return.`,
+		description: 'The username of the user to return',
 	},
 	{
 		displayName: 'SSO External ID',
@@ -219,7 +224,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Discourse SSO external ID.`,
+		description: 'Discourse SSO external ID',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -262,7 +267,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `User flags to search for.`,
+		description: 'User flags to search for',
 	},
 	{
 		displayName: 'Return All',
@@ -279,7 +284,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -303,6 +308,6 @@ export const userFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

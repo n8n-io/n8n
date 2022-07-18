@@ -7,6 +7,7 @@ export const personTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,14 +19,15 @@ export const personTagOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a person tag',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
+				action: 'Remove a person tag',
 			},
 		],
 		default: 'add',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -34,9 +36,9 @@ export const personTagFields: INodeProperties[] = [
 	//             personTag: add
 	// ----------------------------------------
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
-		description: 'ID of the tag to add.',
+		description: 'ID of the tag to add. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
@@ -57,7 +59,7 @@ export const personTagFields: INodeProperties[] = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to add the tag to.',
+		description: 'ID of the person to add the tag to',
 		type: 'string',
 		default: '',
 		required: true,
@@ -77,9 +79,9 @@ export const personTagFields: INodeProperties[] = [
 	//             personTag: remove
 	// ----------------------------------------
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
-		description: 'ID of the tag whose tagging to delete.',
+		description: 'ID of the tag whose tagging to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
@@ -98,9 +100,9 @@ export const personTagFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tagging ID',
+		displayName: 'Tagging Name or ID',
 		name: 'taggingId',
-		description: 'ID of the tagging to remove.',
+		description: 'ID of the tagging to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsDependsOn: [

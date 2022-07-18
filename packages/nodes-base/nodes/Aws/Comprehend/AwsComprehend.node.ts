@@ -38,6 +38,7 @@ export class AwsComprehend implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Text',
@@ -45,31 +46,34 @@ export class AwsComprehend implements INodeType {
 					},
 				],
 				default: 'text',
-				description: 'The resource to perform.',
+				description: 'The resource to perform',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Detect Dominant Language',
 						value: 'detectDominantLanguage',
 						description: 'Identify the dominant language',
+						action: 'Identify the dominant language',
 					},
 					{
 						name: 'Detect Entities',
 						value: 'detectEntities',
 						description: 'Inspects text for named entities, and returns information about them',
+						action: 'Inspect text for named entities, and returns information about them',
 					},
 					{
 						name: 'Detect Sentiment',
 						value: 'detectSentiment',
 						description: 'Analyse the sentiment of the text',
+						action: 'Analyze the sentiment of the text',
 					},
 				],
 				default: 'detectDominantLanguage',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Language Code',
@@ -137,7 +141,7 @@ export class AwsComprehend implements INodeType {
 						],
 					},
 				},
-				description: 'The language code for text.',
+				description: 'The language code for text',
 			},
 			{
 				displayName: 'Text',
@@ -154,10 +158,10 @@ export class AwsComprehend implements INodeType {
 						],
 					},
 				},
-				description: 'The text to send.',
+				description: 'The text to send',
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				displayOptions: {
@@ -171,7 +175,7 @@ export class AwsComprehend implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data.',
+				description: 'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -198,7 +202,7 @@ export class AwsComprehend implements INodeType {
 							alwaysOpenEditWindow: true,
 						},
 						default: '',
-						description: 'The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model.',
+						description: 'The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model',
 					},
 				],
 			},

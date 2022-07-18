@@ -6,7 +6,7 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Balance',
 		name: 'Balance',
-		description: 'The balance reflecting any payments made against the transaction.',
+		description: 'The balance reflecting any payments made against the transaction',
 		type: 'number',
 		default: 0,
 	},
@@ -64,7 +64,7 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Billing Email',
 		name: 'BillEmail',
-		description: 'E-mail address to which the invoice will be sent.',
+		description: 'E-mail address to which the invoice will be sent',
 		type: 'string',
 		default: '',
 	},
@@ -90,21 +90,21 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 				name: 'Field',
 				values: [
 					{
-						displayName: 'Field Definition ID',
+						displayName: 'Field Definition Name or ID',
 						name: 'DefinitionId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getCustomFields',
 						},
 						default: '',
-						description: 'ID of the field to set.',
+						description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',
 						name: 'StringValue',
 						type: 'string',
 						default: '',
-						description: 'Value of the field to set.',
+						description: 'Value of the field to set',
 					},
 				],
 			},
@@ -113,14 +113,14 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Document Number',
 		name: 'DocNumber',
-		description: 'Reference number for the transaction.',
+		description: 'Reference number for the transaction',
 		type: 'string',
 		default: '',
 	},
 	{
 		displayName: 'Due Date',
 		name: 'DueDate',
-		description: 'Date when the payment of the transaction is due.',
+		description: 'Date when the payment of the transaction is due',
 		type: 'dateTime',
 		default: '',
 	},
@@ -173,14 +173,14 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Total Amount',
 		name: 'TotalAmt',
-		description: 'Total amount of the transaction.',
+		description: 'Total amount of the transaction',
 		type: 'number',
 		default: 0,
 	},
 	{
 		displayName: 'Transaction Date',
 		name: 'TxnDate',
-		description: 'Date when the transaction occurred.',
+		description: 'Date when the transaction occurred',
 		type: 'dateTime',
 		default: '',
 	},

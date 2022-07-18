@@ -7,28 +7,32 @@ export const chargeOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a charge',
+				action: 'Create a charge',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a charge',
+				action: 'Get a charge',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all charges',
+				action: 'Get all charges',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a charge',
+				action: 'Update a charge',
 			},
 		],
 		displayOptions: {
@@ -86,7 +90,7 @@ export const chargeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Currency',
+		displayName: 'Currency Name or ID',
 		name: 'currency',
 		type: 'options',
 		typeOptions: {
@@ -94,7 +98,7 @@ export const chargeFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -281,7 +285,7 @@ export const chargeFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the charge to retrieve.',
+		description: 'ID of the charge to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -319,7 +323,7 @@ export const chargeFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,

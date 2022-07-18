@@ -7,6 +7,7 @@ export const activityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,26 +20,31 @@ export const activityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an activity',
+				action: 'Create an activity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an activity',
+				action: 'Delete an activity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an activity',
+				action: 'Get an activity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all activities',
+				action: 'Get all activities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an activity',
+				action: 'Update an activity',
 			},
 		],
 		default: 'create',
@@ -50,9 +56,10 @@ export const activityFields: INodeProperties[] = [
 	//             activity: create
 	// ----------------------------------------
 	{
-		displayName: 'Activity Type',
+		displayName: 'Activity Type Name or ID',
 		name: 'activityTypeId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -222,7 +229,7 @@ export const activityFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -280,9 +287,10 @@ export const activityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Activity Type',
+				displayName: 'Activity Type Name or ID',
 				name: 'activity_type_id',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getActivityTypes',

@@ -13,11 +13,17 @@ export class LinkedInOAuth2Api implements ICredentialType {
 	documentationUrl = 'linkedIn';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Organization Support',
 			name: 'organizationSupport',
 			type: 'boolean',
 			default: true,
-			description: 'Request permissions to post as an orgaization.',
+			description: 'Whether to request permissions to post as an organization',
 		},
 		{
 			displayName: 'Authorization URL',

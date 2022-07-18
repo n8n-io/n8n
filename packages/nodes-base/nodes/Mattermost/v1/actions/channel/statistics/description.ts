@@ -4,7 +4,7 @@ import {
 
 export const channelStatisticsDescription: ChannelProperties = [
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -23,7 +23,7 @@ export const channelStatisticsDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The ID of the channel to get the statistics from.',
+		description: 'The ID of the channel to get the statistics from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];
 

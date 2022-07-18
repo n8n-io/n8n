@@ -27,7 +27,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nUserInfo from '../N8nUserInfo';
-import { IUser } from '../../Interface';
+import { IUser } from '../../types';
 import ElSelect from 'element-ui/lib/select';
 import ElOption from 'element-ui/lib/option';
 import Locale from '../../mixins/locale';

@@ -7,6 +7,7 @@ export const contactTagOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,20 +20,22 @@ export const contactTagOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Add a list of tags to a contact',
+				action: 'Create a contact tag',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a contact's tag`,
+				description: 'Delete a contact\'s tag',
+				action: 'Delete a contact tag',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: `Retrieve all contact's tags`,
+				description: 'Retrieve all contact\'s tags',
+				action: 'Get all contact tags',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -59,9 +62,10 @@ export const contactTagFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Tag IDs',
+		displayName: 'Tag Names or IDs',
 		name: 'tagIds',
 		type: 'multiOptions',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
@@ -150,7 +154,7 @@ export const contactTagFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -174,6 +178,6 @@ export const contactTagFields: INodeProperties[] = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

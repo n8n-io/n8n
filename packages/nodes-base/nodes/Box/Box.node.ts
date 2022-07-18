@@ -26,7 +26,7 @@ import {
 	folderOperations,
 } from './FolderDescription';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import {
 	noCase,
@@ -36,6 +36,7 @@ export class Box implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box',
 		name: 'box',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['input'],
 		version: 1,
@@ -57,6 +58,7 @@ export class Box implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -68,7 +70,6 @@ export class Box implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 			...fileOperations,
 			...fileFields,
@@ -80,7 +81,7 @@ export class Box implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
@@ -267,11 +268,11 @@ export class Box implements INodeType {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -299,7 +300,7 @@ export class Box implements INodeType {
 							const content = this.getNodeParameter('fileContent', i) as string;
 
 							if (fileName === '') {
-								throw new NodeOperationError(this.getNode(), 'File name must be set!');
+								throw new NodeOperationError(this.getNode(), 'File name must be set!', { itemIndex: i });
 							}
 
 							attributes['name'] = fileName;

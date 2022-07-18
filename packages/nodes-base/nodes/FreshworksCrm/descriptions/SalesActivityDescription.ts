@@ -7,6 +7,7 @@ export const salesActivityOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -29,11 +30,13 @@ export const salesActivityOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a sales activity',
+				action: 'Get a sales activity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all sales activities',
+				action: 'Get all sales activities',
 			},
 			// {
 			// 	name: 'Update',
@@ -50,14 +53,14 @@ export const salesActivityFields: INodeProperties[] = [
 	//          salesActivity: create
 	// ----------------------------------------
 	{
-		displayName: 'Sales Activity Type ID',
+		displayName: 'Sales Activity Type Name or ID',
 		name: 'sales_activity_type_id',
 		type: 'options',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getSalesActivityTypes',
 		},
-		description: 'ID of a sales activity type for which the sales activity is created',
+		description: 'ID of a sales activity type for which the sales activity is created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -88,9 +91,9 @@ export const salesActivityFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Owner ID',
+		displayName: 'Owner Name or ID',
 		name: 'ownerId',
-		description: 'ID of the user who owns the sales activity',
+		description: 'ID of the user who owns the sales activity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		default: '',
 		typeOptions: {
@@ -212,14 +215,14 @@ export const salesActivityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user who created the sales activity',
+				description: 'ID of the user who created the sales activity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Latitude',
@@ -250,14 +253,14 @@ export const salesActivityFields: INodeProperties[] = [
 				description: 'Description about the sales activity',
 			},
 			{
-				displayName: 'Sales Activity Outcome ID',
+				displayName: 'Sales Activity Outcome Name or ID',
 				name: 'sales_activity_outcome_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getOutcomes',
 				},
-				description: 'ID of a sales activity\'s outcome',
+				description: 'ID of a sales activity\'s outcome. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -331,7 +334,7 @@ export const salesActivityFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -389,14 +392,14 @@ export const salesActivityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Creator ID',
+				displayName: 'Creator Name or ID',
 				name: 'creater_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user who created the sales activity',
+				description: 'ID of the user who created the sales activity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start Date',
@@ -434,34 +437,34 @@ export const salesActivityFields: INodeProperties[] = [
 				description: 'Description about the sales activity',
 			},
 			{
-				displayName: 'Owner ID',
+				displayName: 'Owner Name or ID',
 				name: 'owner_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user who owns the sales activity',
+				description: 'ID of the user who owns the sales activity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sales Activity Outcome ID',
+				displayName: 'Sales Activity Outcome Name or ID',
 				name: 'sales_activity_outcome_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getOutcomes',
 				},
-				description: 'ID of a sales activity\'s outcome',
+				description: 'ID of a sales activity\'s outcome. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Sales Activity Type ID',
+				displayName: 'Sales Activity Type Name or ID',
 				name: 'sales_activity_type_id',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getSalesActivityTypes',
 				},
-				description: 'ID of a sales activity type for which the sales activity is updated',
+				description: 'ID of a sales activity type for which the sales activity is updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start Date',

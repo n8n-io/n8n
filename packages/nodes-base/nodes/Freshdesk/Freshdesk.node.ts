@@ -82,6 +82,7 @@ export class Freshdesk implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Freshdesk',
 		name: 'freshdesk',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:freshdesk.png',
 		group: ['output'],
 		version: 1,
@@ -103,6 +104,7 @@ export class Freshdesk implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -115,12 +117,12 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'ticket',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
@@ -134,30 +136,34 @@ export class Freshdesk implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new ticket',
+						action: 'Create a ticket',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a ticket',
+						action: 'Delete a ticket',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a ticket',
+						action: 'Get a ticket',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all tickets',
+						action: 'Get all tickets',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a ticket',
+						action: 'Update a ticket',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Requester Identification',
@@ -178,36 +184,35 @@ export class Freshdesk implements INodeType {
 					{
 						name: 'Email',
 						value: 'email',
-						description: `Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.`,
+						description: 'Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.',
 					},
 					{
-						name: 'Facebook Id',
+						name: 'Facebook ID',
 						value: 'facebookId',
-						description: `Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.`,
+						description: 'Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.',
 					},
 					{
 						name: 'Phone',
 						value: 'phone',
-						description: `Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.`,
+						description: 'Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.',
 					},
 					{
-						name: 'Requester Id',
+						name: 'Requester ID',
 						value: 'requesterId',
-						description: `User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester's email.`,
+						description: 'User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester\'s email.',
 					},
 					{
-						name: 'Twitter Id',
+						name: 'Twitter ID',
 						value: 'twitterId',
-						description: `Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.`,
+						description: 'Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.',
 					},
 					{
-						name: 'Unique External Id',
+						name: 'Unique External ID',
 						value: 'uniqueExternalId',
-						description: `External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.`,
+						description: 'External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.',
 					},
 				],
 				default: 'requesterId',
-				description: 'Requester Identification',
 			},
 			{
 				displayName: 'Value',
@@ -225,7 +230,7 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: `Value of the identification selected `,
+				description: 'Value of the identification selected',
 			},
 			{
 				displayName: 'Status',
@@ -261,7 +266,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'pending',
-				description: 'Status',
 			},
 			{
 				displayName: 'Priority',
@@ -297,7 +301,6 @@ export class Freshdesk implements INodeType {
 					},
 				],
 				default: 'low',
-				description: 'Priority',
 			},
 			{
 				displayName: 'Source',
@@ -328,6 +331,14 @@ export class Freshdesk implements INodeType {
 						value: 'feedbackWidget',
 					},
 					{
+						name: 'Mobihelp',
+						value: 'mobileHelp',
+					},
+					{
+						name: 'Outbound Email',
+						value: 'OutboundEmail',
+					},
+					{
 						name: 'Phone',
 						value: 'phone',
 					},
@@ -335,18 +346,9 @@ export class Freshdesk implements INodeType {
 						name: 'Portal',
 						value: 'portal',
 					},
-					{
-						name: 'Mobihelp',
-						value: 'mobileHelp',
-					},
-
-					{
-						name: 'Outbound Email',
-						value: 'OutboundEmail',
-					},
 				],
 				default: 'portal',
-				description: 'The channel through which the ticket was created.',
+				description: 'The channel through which the ticket was created',
 			},
 			// {
 			// 	displayName: 'JSON Parameters',
@@ -383,31 +385,31 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Agent',
+						displayName: 'Agent Name or ID',
 						name: 'agent',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getAgents',
 						},
-						description: 'ID of the agent to whom the ticket has been assigned',
+						description: 'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'CC Emails',
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
-						description: `Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email`,
+						description: 'Separated by a comma (,) email addresses added in the \'cc\' field of the incoming ticket email',
 					},
 					{
-						displayName: 'Company',
+						displayName: 'Company Name or ID',
 						name: 'company',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getCompanies',
 						},
-						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
+						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Description',
@@ -418,39 +420,38 @@ export class Freshdesk implements INodeType {
 							rows: 5,
 							alwaysOpenEditWindow: true,
 						},
-						description: 'HTML content of the ticket.',
+						description: 'HTML content of the ticket',
 					},
 					{
 						displayName: 'Due By',
 						name: 'dueBy',
 						type: 'dateTime',
 						default: '',
-						description: `Timestamp that denotes when the ticket is due to be resolved`,
+						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email config Id',
+						displayName: 'Email Config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
-						description: `ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com)
-						If product_id is given and email_config_id is not given, product's primary email_config_id will be set`,
+						description: 'ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product\'s primary email_config_id will be set.',
 					},
 					{
 						displayName: 'FR Due By',
 						name: 'frDueBy',
 						type: 'dateTime',
 						default: '',
-						description: `Timestamp that denotes when the first response is due`,
+						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
-						displayName: 'Group',
+						displayName: 'Group Name or ID',
 						name: 'group',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
-						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
+						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Name',
@@ -461,15 +462,14 @@ export class Freshdesk implements INodeType {
 						description: 'Name of the requester',
 					},
 					{
-						displayName: 'Product',
+						displayName: 'Product Name or ID',
 						name: 'product',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getProducts',
 						},
-						description: `ID of the product to which the ticket is associated.
-						It will be ignored if the email_config_id attribute is set in the request.`,
+						description: 'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Subject',
@@ -477,21 +477,21 @@ export class Freshdesk implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'Subject of the ticket.',
+						description: 'Subject of the ticket',
 					},
 					{
 						displayName: 'Tags',
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by a comma (,) tags that have been associated with the ticket`,
+						description: 'Separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',
 						name: 'type',
 						type: 'options',
 						default: 'Question',
-						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with.',
+						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with',
 						options: [
 							{
 								name: 'Feature Request',
@@ -607,7 +607,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			{
 				displayName: 'Update Fields',
@@ -627,63 +626,62 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Agent',
+						displayName: 'Agent Name or ID',
 						name: 'agent',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getAgents',
 						},
-						description: 'ID of the agent to whom the ticket has been assigned',
+						description: 'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'CC Emails',
 						name: 'ccEmails',
 						type: 'string',
 						default: '',
-						description: `Separated by a comma (,) email addresses added in the 'cc' field of the incoming ticket email`,
+						description: 'Separated by a comma (,) email addresses added in the \'cc\' field of the incoming ticket email',
 					},
 					{
-						displayName: 'Company',
+						displayName: 'Company Name or ID',
 						name: 'company',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getCompanies',
 						},
-						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
+						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Due By',
 						name: 'dueBy',
 						type: 'dateTime',
 						default: '',
-						description: `Timestamp that denotes when the ticket is due to be resolved`,
+						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email config Id',
+						displayName: 'Email Config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
-						description: `ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com)
-						If product_id is given and email_config_id is not given, product's primary email_config_id will be set`,
+						description: 'ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com) If product_id is given and email_config_id is not given, product\'s primary email_config_id will be set.',
 					},
 					{
 						displayName: 'FR Due By',
 						name: 'frDueBy',
 						type: 'dateTime',
 						default: '',
-						description: `Timestamp that denotes when the first response is due`,
+						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
-						displayName: 'Group',
+						displayName: 'Group Name or ID',
 						name: 'group',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
-						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
+						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Name',
@@ -694,15 +692,14 @@ export class Freshdesk implements INodeType {
 						description: 'Name of the requester',
 					},
 					{
-						displayName: 'Product',
+						displayName: 'Product Name or ID',
 						name: 'product',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getProducts',
 						},
-						description: `ID of the product to which the ticket is associated.
-						It will be ignored if the email_config_id attribute is set in the request.`,
+						description: 'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Priority',
@@ -728,7 +725,6 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'low',
-						description: 'Priority',
 					},
 					{
 						displayName: 'Requester Identification',
@@ -738,43 +734,42 @@ export class Freshdesk implements INodeType {
 							{
 								name: 'Email',
 								value: 'email',
-								description: `Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.`,
+								description: 'Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.',
 							},
 							{
-								name: 'Facebook Id',
+								name: 'Facebook ID',
 								value: 'facebookId',
-								description: `Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.`,
+								description: 'Facebook ID of the requester. If no contact exists with this facebook_id, then a new contact will be created.',
 							},
 							{
 								name: 'Phone',
 								value: 'phone',
-								description: `Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.`,
+								description: 'Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.',
 							},
 							{
-								name: 'Requester Id',
+								name: 'Requester ID',
 								value: 'requesterId',
-								description: `User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester's email.`,
+								description: 'User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester\'s email.',
 							},
 							{
-								name: 'Twitter Id',
+								name: 'Twitter ID',
 								value: 'twitterId',
-								description: `Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.`,
+								description: 'Twitter handle of the requester. If no contact exists with this handle in Freshdesk, it will be added as a new contact.',
 							},
 							{
-								name: 'Unique External Id',
+								name: 'Unique External ID',
 								value: 'uniqueExternalId',
-								description: `External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.`,
+								description: 'External ID of the requester. If no contact exists with this external ID in Freshdesk, they will be added as a new contact.',
 							},
 						],
 						default: 'requesterId',
-						description: 'Requester Identification',
 					},
 					{
 						displayName: 'Requester Value',
 						name: 'requesterIdentificationValue',
 						type: 'string',
 						default: '',
-						description: `Value of the identification selected `,
+						description: 'Value of the identification selected',
 					},
 					{
 						displayName: 'Status',
@@ -800,13 +795,11 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'pending',
-						description: 'Status',
 					},
 					{
 						displayName: 'Source',
 						name: 'source',
 						type: 'options',
-						required: true,
 						options: [
 							{
 								name: 'Chat',
@@ -839,21 +832,21 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'portal',
-						description: 'The channel through which the ticket was created.',
+						description: 'The channel through which the ticket was created',
 					},
 					{
 						displayName: 'Tags',
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: `separated by a comma (,) tags that have been associated with the ticket`,
+						description: 'Separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',
 						name: 'type',
 						type: 'options',
 						default: 'Question',
-						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with.',
+						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with',
 						options: [
 							{
 								name: 'Feature Request',
@@ -895,7 +888,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			{
 				displayName: 'Return All',
@@ -912,7 +904,7 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -936,7 +928,7 @@ export class Freshdesk implements INodeType {
 					maxValue: 10,
 				},
 				default: 5,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Options',
@@ -1000,7 +992,7 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: 'desc',
-						description: 'Order sort attribute ascending or descending.',
+						description: 'Order sort attribute ascending or descending',
 					},
 					{
 						displayName: 'Order By',
@@ -1021,7 +1013,7 @@ export class Freshdesk implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Sort collection by object attribute.',
+						description: 'Sort collection by object attribute',
 					},
 					{
 						displayName: 'Requester Email',
@@ -1059,7 +1051,6 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Ticket ID',
 			},
 			// CONTACTS
 			...contactOperations,
@@ -1170,7 +1161,7 @@ export class Freshdesk implements INodeType {
 						if (requester === 'requesterId') {
 							// @ts-ignore
 							if (isNaN(value)) {
-								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', { itemIndex: i });
 							}
 							body.requester_id = parseInt(value, 10);
 						} else if (requester === 'email') {
@@ -1255,7 +1246,7 @@ export class Freshdesk implements INodeType {
 							if (updateFields.requester === 'requesterId') {
 								// @ts-ignore
 								if (isNaN(parseInt(value, 10))) {
-									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', { itemIndex: i });
 								}
 								body.requester_id = parseInt(value as string, 10);
 							} else if (updateFields.requester === 'email') {

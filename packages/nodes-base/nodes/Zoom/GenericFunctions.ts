@@ -36,14 +36,7 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('zoomApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-
-			//@ts-ignore
-			return await this.helpers.request(options);
+			return await this.helpers.requestWithAuthentication.call(this,'zoomApi',options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'zoomOAuth2Api', options);

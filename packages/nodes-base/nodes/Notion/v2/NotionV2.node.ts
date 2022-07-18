@@ -30,11 +30,10 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
-	validateCrendetials,
 	validateJSON,
 } from '../GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import {
 	versionDescription
@@ -195,29 +194,12 @@ export class NotionV2 implements INodeType {
 				return returnData;
 			},
 		},
-		credentialTest: {
-			async notionApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The security token included in the request is invalid',
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();

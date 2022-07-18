@@ -5,6 +5,7 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,30 +18,34 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new company',
+				action: 'Create a company',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a company',
+				action: 'Get a company',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all companies',
+				action: 'Get all companies',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a company',
+				action: 'Update a company',
 			},
 			{
 				name: 'Users',
 				value: 'users',
-				description: `List company's users`,
+				description: 'List company\'s users',
+				action: 'List users of a company',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -67,7 +72,7 @@ export const companyFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined id representing the company',
+				description: 'The Intercom defined ID representing the company',
 			},
 			{
 				name: 'Company ID',
@@ -76,7 +81,6 @@ export const companyFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'List by',
 	},
 	{
 		displayName: 'Value',
@@ -111,7 +115,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -135,7 +139,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -156,7 +160,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -180,7 +184,7 @@ export const companyFields: INodeProperties[] = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -242,7 +246,7 @@ export const companyFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined id representing the company',
+				description: 'The Intercom defined ID representing the company',
 			},
 			{
 				name: 'Name',
@@ -251,7 +255,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		],
 		default: '',
-		description: 'What property to use to query the company.',
+		description: 'What property to use to query the company',
 	},
 	{
 		displayName: 'Value',
@@ -276,7 +280,7 @@ export const companyFields: INodeProperties[] = [
 	/*                            company:create/update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Company Id',
+		displayName: 'Company ID',
 		name: 'companyId',
 		type: 'string',
 		default: '',
@@ -291,14 +295,13 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The company id you have defined for the company',
+		description: 'The company ID you have defined for the company',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				operation: [
@@ -371,7 +374,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'website',
 				type: 'string',
 				default: '',
-				description: `The URL for this company's website. Please note that the value specified here is not validated. Accepts any string.`,
+				description: 'The URL for this company\'s website. Please note that the value specified here is not validated. Accepts any string.',
 			},
 		],
 	},
@@ -379,7 +382,6 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Custom Attributes',
 		name: 'customAttributesJson',
 		type: 'json',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
@@ -398,18 +400,17 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
 		displayName: 'Custom Attributes',
 		name: 'customAttributesUi',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		placeholder: 'Add Attribute',
 		typeOptions: {
 			multipleValues: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -444,6 +445,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 ];

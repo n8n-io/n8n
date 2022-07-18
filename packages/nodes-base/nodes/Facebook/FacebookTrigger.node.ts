@@ -137,7 +137,7 @@ export class FacebookTrigger implements INodeType {
 			},
 			//https://developers.facebook.com/docs/graph-api/webhooks/reference/page
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -146,9 +146,8 @@ export class FacebookTrigger implements INodeType {
 						'object',
 					],
 				},
-				required: false,
 				default: [],
-				description: 'The set of fields in this object that are subscribed to',
+				description: 'The set of fields in this object that are subscribed to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Options',
@@ -158,11 +157,11 @@ export class FacebookTrigger implements INodeType {
 				placeholder: 'Add option',
 				options: [
 					{
-						displayName: 'Include values',
+						displayName: 'Include Values',
 						name: 'includeValues',
 						type: 'boolean',
 						default: true,
-						description: 'Indicates if change notifications should include the new values.',
+						description: 'Whether change notifications should include the new values',
 					},
 				],
 			},
@@ -247,7 +246,7 @@ export class FacebookTrigger implements INodeType {
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const credentials = await this.getCredentials('facebookGraphAppApi') as IDataObject;
+		const credentials = await this.getCredentials('facebookGraphAppApi');
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
 			if (query['hub.challenge']) {

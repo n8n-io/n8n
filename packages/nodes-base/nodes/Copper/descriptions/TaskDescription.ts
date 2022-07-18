@@ -7,6 +7,7 @@ export const taskOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,26 +19,30 @@ export const taskOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a task',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a task',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -84,14 +89,14 @@ export const taskFields: INodeProperties[] = [
 				name: 'assignee_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the user who will own the task to create.',
+				description: 'ID of the user who will own the task to create',
 			},
 			{
 				displayName: 'Details',
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description of the task to create.',
+				description: 'Description of the task to create',
 			},
 			{
 				displayName: 'Priority',
@@ -134,7 +139,7 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
-		description: 'ID of the task to delete.',
+		description: 'ID of the task to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -156,7 +161,7 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
-		description: 'ID of the task to retrieve.',
+		description: 'ID of the task to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -180,7 +185,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -197,7 +202,7 @@ export const taskFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -238,14 +243,14 @@ export const taskFields: INodeProperties[] = [
 				name: 'assignee_ids',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated IDs of assignee IDs to filter by.',
+				description: 'Comma-separated IDs of assignee IDs to filter by',
 			},
 			{
 				displayName: 'Project IDs',
 				name: 'project_ids',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated IDs of project IDs to filter by.',
+				description: 'Comma-separated IDs of project IDs to filter by',
 			},
 		],
 	},
@@ -256,7 +261,7 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
-		description: 'ID of the task to update.',
+		description: 'ID of the task to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -293,21 +298,21 @@ export const taskFields: INodeProperties[] = [
 				name: 'assignee_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the user who will own the task.',
+				description: 'ID of the user who will own the task',
 			},
 			{
 				displayName: 'Details',
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the task.',
+				description: 'Description to set for the task',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the task.',
+				description: 'Name to set for the task',
 			},
 			{
 				displayName: 'Priority',

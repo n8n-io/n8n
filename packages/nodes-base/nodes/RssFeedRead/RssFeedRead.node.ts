@@ -7,7 +7,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as Parser from 'rss-parser';
+import Parser from 'rss-parser';
 import { URL } from 'url';
 
 export class RssFeedRead implements INodeType {
@@ -31,7 +31,7 @@ export class RssFeedRead implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'URL of the RSS feed.',
+				description: 'URL of the RSS feed',
 			},
 		],
 	};

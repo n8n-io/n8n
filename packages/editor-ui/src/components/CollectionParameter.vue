@@ -10,6 +10,7 @@
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
 					v-if="parameter.options.length === 1"
+					type="tertiary"
 					fullWidth
 					@click="optionSelected(parameter.options[0].name)"
 					:label="getPlaceholderText"
@@ -32,6 +33,7 @@
 
 <script lang="ts">
 import {
+	INodeUi,
 	IUpdateInformation,
 } from '@/Interface';
 
@@ -87,6 +89,9 @@ export default mixins(
 					return this.displayNodeParameter(option as INodeProperties);
 				});
 			},
+			node (): INodeUi {
+				return this.$store.getters.activeNode;
+			},
 			// Returns all the options which did not get added already
 			parameterOptions (): Array<INodePropertyOptions | INodeProperties> {
 				return (this.filteredOptions as Array<INodePropertyOptions | INodeProperties>).filter((option) => {
@@ -127,7 +132,7 @@ export default mixins(
 					// If it is not defined no need to do a proper check
 					return true;
 				}
-				return this.displayParameter(this.nodeValues, parameter, this.path);
+				return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
 			},
 			optionSelected (optionName: string) {
 				const options = this.getOptionProperties(optionName);

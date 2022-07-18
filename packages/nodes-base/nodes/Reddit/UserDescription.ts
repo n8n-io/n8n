@@ -7,6 +7,7 @@ export const userOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,10 +19,10 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a user',
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -32,7 +33,7 @@ export const userFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Reddit ID of the user to retrieve.',
+		description: 'Reddit ID of the user to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
@@ -50,7 +51,7 @@ export const userFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		default: 'about',
-		description: 'Details of the user to retrieve.',
+		description: 'Details of the user to retrieve',
 		options: [
 			{
 				name: 'About',
@@ -89,7 +90,7 @@ export const userFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -112,7 +113,7 @@ export const userFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

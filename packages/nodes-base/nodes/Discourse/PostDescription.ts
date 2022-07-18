@@ -7,6 +7,7 @@ export const postOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
@@ -21,21 +22,25 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a post',
+				action: 'Create a post',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a post',
+				action: 'Get a post',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all posts',
+				action: 'Get all posts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a post',
+				action: 'Update a post',
 			},
 		],
 		default: 'create',
@@ -61,7 +66,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Title of the post.',
+		description: 'Title of the post',
 	},
 	{
 		displayName: 'Content',
@@ -82,7 +87,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Content of the post.',
+		description: 'Content of the post',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -102,14 +107,14 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Category ID',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: '',
-				description: 'ID of the category',
+				description: 'ID of the category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Reply To Post Number',
@@ -147,7 +152,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the post.',
+		description: 'ID of the post',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -168,7 +173,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -192,7 +197,7 @@ export const postFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                post:update                                 */
@@ -213,7 +218,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the post.',
+		description: 'ID of the post',
 	},
 	{
 		displayName: 'Content',

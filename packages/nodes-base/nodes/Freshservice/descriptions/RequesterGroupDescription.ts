@@ -7,6 +7,7 @@ export const requesterGroupOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,26 +20,31 @@ export const requesterGroupOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a requester group',
+				action: 'Create a requester group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a requester group',
+				action: 'Delete a requester group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a requester group',
+				action: 'Get a requester group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all requester groups',
+				action: 'Get all requester groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a requester group',
+				action: 'Update a requester group',
 			},
 		],
 		default: 'create',
@@ -161,7 +167,7 @@ export const requesterGroupFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},

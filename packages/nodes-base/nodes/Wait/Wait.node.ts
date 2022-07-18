@@ -5,6 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -14,15 +15,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
+import basicAuth from 'basic-auth';
 
 import { Response } from 'express';
 
-import * as fs from 'fs';
+import fs from 'fs';
 
-import * as formidable from 'formidable';
+import formidable from 'formidable';
 
-import * as isbot from 'isbot';
+import isbot from 'isbot';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -97,7 +98,7 @@ export class Wait implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Webhook authentication',
+				displayName: 'Webhook Authentication',
 				name: 'incomingAuthentication',
 				type: 'options',
 				displayOptions: {
@@ -122,7 +123,7 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security.',
+				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security',
 			},
 			{
 				displayName: 'Resume',
@@ -130,17 +131,17 @@ export class Wait implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'After time interval',
+						name: 'After Time Interval',
 						value: 'timeInterval',
 						description: 'Waits for a certain amount of time',
 					},
 					{
-						name: 'At specified time',
+						name: 'At Specified Time',
 						value: 'specificTime',
 						description: 'Waits until a specific date and time to continue',
 					},
 					{
-						name: 'On webhook call',
+						name: 'On Webhook Call',
 						value: 'webhook',
 						description: 'Waits for a webhook call before continuing',
 					},
@@ -314,12 +315,12 @@ export class Wait implements INodeType {
 						description: 'As soon as this node executes',
 					},
 					{
-						name: 'When last node finishes',
+						name: 'When Last Node Finishes',
 						value: 'lastNode',
 						description: 'Returns data of the last-executed node',
 					},
 					{
-						name: 'Using \'Respond to Webhook\' node',
+						name: 'Using \'Respond to Webhook\' Node',
 						value: 'responseNode',
 						description: 'Response defined in that node',
 					},
@@ -345,21 +346,21 @@ export class Wait implements INodeType {
 					{
 						name: 'All Entries',
 						value: 'allEntries',
-						description: 'Returns all the entries of the last node. Always returns an array',
+						description: 'Returns all the entries of the last node. Always returns an array.',
 					},
 					{
 						name: 'First Entry JSON',
 						value: 'firstEntryJson',
-						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object',
+						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
 					},
 					{
 						name: 'First Entry Binary',
 						value: 'firstEntryBinary',
-						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file',
+						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file.',
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return all the items as array or only the first item as object',
+				description: 'What data should be returned. If it should return all the items as array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',
@@ -380,12 +381,12 @@ export class Wait implements INodeType {
 				description: 'Name of the binary property to return',
 			},
 			{
-				displayName: 'Limit wait time',
+				displayName: 'Limit Wait Time',
 				name: 'limitWaitTime',
 				type: 'boolean',
 				default: false,
-				description: `If no webhook call is received, the workflow will automatically
-							 resume execution after the specified limit type`,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'If no webhook call is received, the workflow will automatically resume execution after the specified limit type',
 				displayOptions: {
 					show: {
 						resume: [
@@ -395,11 +396,11 @@ export class Wait implements INodeType {
 				},
 			},
 			{
-				displayName: 'Limit type',
+				displayName: 'Limit Type',
 				name: 'limitType',
 				type: 'options',
 				default: 'afterTimeInterval',
-				description: `Sets the condition for the execution to resume. Can be a specified date or after some time.`,
+				description: 'Sets the condition for the execution to resume. Can be a specified date or after some time.',
 				displayOptions: {
 					show: {
 						limitWaitTime: [
@@ -412,12 +413,12 @@ export class Wait implements INodeType {
 				},
 				options: [
 					{
-						name: 'After time interval',
+						name: 'After Time Interval',
 						description: 'Waits for a certain amount of time',
 						value: 'afterTimeInterval',
 					},
 					{
-						name: 'At specified time',
+						name: 'At Specified Time',
 						description: 'Waits until the set date and time to continue',
 						value: 'atSpecifiedTime',
 					},
@@ -533,14 +534,13 @@ export class Wait implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Set to true if webhook will receive binary data',
+						description: 'Whether the webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
-						required: true,
 						displayOptions: {
 							show: {
 								binaryData: [
@@ -548,16 +548,14 @@ export class Wait implements INodeType {
 								],
 							},
 						},
-						description: `Name of the binary property to which to write the data of
-									the received file. If the data gets received via "Form-Data Multipart"
-									it will be the prefix and a number starting with 0 will be attached to it.`,
+						description: 'Name of the binary property to which to write the data of the received file. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
 					},
 					{
 						displayName: 'Ignore Bots',
 						name: 'ignoreBots',
 						type: 'boolean',
 						default: false,
-						description: 'Set to true to ignore requests from bots like link previewers and web crawlers',
+						description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 					},
 					{
 						displayName: 'Response Data',
@@ -590,6 +588,7 @@ export class Wait implements INodeType {
 						},
 						default: '',
 						placeholder: 'application/xml',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{
@@ -686,7 +685,13 @@ export class Wait implements INodeType {
 
 		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -706,7 +711,13 @@ export class Wait implements INodeType {
 			}
 		} else if (incomingAuthentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
-			const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			let httpHeaderAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
 				// Data is not defined on node so can not authenticate

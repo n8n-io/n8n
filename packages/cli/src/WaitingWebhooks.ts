@@ -12,7 +12,7 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-import * as express from 'express';
+import express from 'express';
 
 import {
 	Db,
@@ -50,7 +50,7 @@ export class WaitingWebhooks {
 		const executionId = pathParts.shift();
 		const path = pathParts.join('/');
 
-		const execution = await Db.collections.Execution?.findOne(executionId);
+		const execution = await Db.collections.Execution.findOne(executionId);
 
 		if (execution === undefined) {
 			throw new ResponseHelper.ResponseError(

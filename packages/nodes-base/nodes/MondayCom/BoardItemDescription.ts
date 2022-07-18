@@ -7,6 +7,7 @@ export const boardItemOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,51 +19,59 @@ export const boardItemOperations: INodeProperties[] = [
 			{
 				name: 'Add Update',
 				value: 'addUpdate',
-				description: `Add an update to an item.`,
+				description: 'Add an update to an item',
+				action: 'Add an update to an item',
 			},
 			{
 				name: 'Change Column Value',
 				value: 'changeColumnValue',
 				description: 'Change a column value for a board item',
+				action: 'Change a column value for a board item',
 			},
 			{
 				name: 'Change Multiple Column Values',
 				value: 'changeMultipleColumnValues',
 				description: 'Change multiple column values for a board item',
+				action: 'Change multiple column values for a board item',
 			},
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create an item in a board's group`,
+				description: 'Create an item in a board\'s group',
+				action: 'Create an item in a board\'s group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete an item`,
+				description: 'Delete an item',
+				action: 'Delete an item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an item',
+				action: 'Get an item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all items',
+				action: 'Get all items',
 			},
 			{
 				name: 'Get By Column Value',
 				value: 'getByColumnValue',
 				description: 'Get items by column value',
+				action: 'Get items item by column value',
 			},
 			{
 				name: 'Move',
 				value: 'move',
 				description: 'Move item to group',
+				action: 'Move an item to a group',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -87,7 +96,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the item to add update to.',
+		description: 'The unique identifier of the item to add update to',
 	},
 	{
 		displayName: 'Update Text',
@@ -105,13 +114,13 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The update text to add.',
+		description: 'The update text to add',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:changeColumnValue                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -129,7 +138,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board.',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -147,10 +156,10 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the item to to change column of.',
+		description: 'The unique identifier of the item to to change column of',
 	},
 	{
-		displayName: 'Column ID',
+		displayName: 'Column Name or ID',
 		name: 'columnId',
 		type: 'options',
 		typeOptions: {
@@ -171,7 +180,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The column's unique identifier.`,
+		description: 'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Value',
@@ -195,7 +204,7 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:changeMultipleColumnValues       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -213,7 +222,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board.',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -231,7 +240,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Item's ID`,
+		description: 'Item\'s ID',
 	},
 	{
 		displayName: 'Column Values',
@@ -258,9 +267,10 @@ export const boardItemFields: INodeProperties[] = [
 	/*                                 boardItem:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
 		},
@@ -278,9 +288,10 @@ export const boardItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
@@ -316,7 +327,7 @@ export const boardItemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The new item's name.`,
+		description: 'The new item\'s name',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -366,7 +377,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Item's ID`,
+		description: 'Item\'s ID',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:get                              */
@@ -387,15 +398,16 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `Item's ID (Multiple can be added separated by comma)`,
+		description: 'Item\'s ID (Multiple can be added separated by comma)',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -413,10 +425,11 @@ export const boardItemFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		default: '',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 			loadOptionsDependsOn: [
@@ -450,7 +463,7 @@ export const boardItemFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -474,13 +487,13 @@ export const boardItemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:getByColumnValue                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		typeOptions: {
@@ -498,10 +511,10 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board.',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Column ID',
+		displayName: 'Column Name or ID',
 		name: 'columnId',
 		type: 'options',
 		typeOptions: {
@@ -522,7 +535,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The column's unique identifier.`,
+		description: 'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Column Value',
@@ -540,7 +553,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column value to search items by.',
+		description: 'The column value to search items by',
 	},
 	{
 		displayName: 'Return All',
@@ -557,7 +570,7 @@ export const boardItemFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -581,15 +594,16 @@ export const boardItemFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 boardItem:move                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
 		},
@@ -622,12 +636,13 @@ export const boardItemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The item's ID`,
+		description: 'The item\'s ID',
 	},
 	{
-		displayName: 'Group ID',
+		displayName: 'Group Name or ID',
 		name: 'groupId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',

@@ -1,15 +1,15 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-cycle */
 
-import { compare, genSaltSync, hashSync } from 'bcryptjs';
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
+import { randomBytes } from 'crypto';
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { validatePassword, sanitizeUser } from '../UserManagementHelper';
+import { validatePassword, sanitizeUser, compareHash, hashPassword } from '../UserManagementHelper';
 import type { AuthenticatedRequest, MeRequest } from '../../requests';
 import { validateEntity } from '../../GenericHelpers';
 import { User } from '../../databases/entities/User';
@@ -54,7 +54,7 @@ export function meNamespace(this: N8nApp): void {
 
 				await validateEntity(newUser);
 
-				const user = await Db.collections.User!.save(newUser);
+				const user = await Db.collections.User.save(newUser);
 
 				Logger.info('User updated successfully', { userId: user.id });
 
@@ -87,7 +87,7 @@ export function meNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Requesting user not set up.');
 			}
 
-			const isCurrentPwCorrect = await compare(currentPassword, req.user.password);
+			const isCurrentPwCorrect = await compareHash(currentPassword, req.user.password);
 			if (!isCurrentPwCorrect) {
 				throw new ResponseHelper.ResponseError(
 					'Provided current password is incorrect.',
@@ -98,9 +98,9 @@ export function meNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(newPassword);
 
-			req.user.password = hashSync(validPassword, genSaltSync(10));
+			req.user.password = await hashPassword(validPassword);
 
-			const user = await Db.collections.User!.save(req.user);
+			const user = await Db.collections.User.save(req.user);
 			Logger.info('Password updated successfully', { userId: user.id });
 
 			await issueCookie(res, user);
@@ -136,7 +136,7 @@ export function meNamespace(this: N8nApp): void {
 				);
 			}
 
-			await Db.collections.User!.save({
+			await Db.collections.User.save({
 				id: req.user.id,
 				personalizationAnswers,
 			});
@@ -149,6 +149,60 @@ export function meNamespace(this: N8nApp): void {
 			);
 
 			return { success: true };
+		}),
+	);
+
+	/**
+	 * Creates an API Key
+	 */
+	this.app.post(
+		`/${this.restEndpoint}/me/api-key`,
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
+
+			await Db.collections.User.update(req.user.id, {
+				apiKey,
+			});
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: false,
+			};
+
+			void InternalHooksManager.getInstance().onApiKeyCreated(telemetryData);
+
+			return { apiKey };
+		}),
+	);
+
+	/**
+	 * Deletes an API Key
+	 */
+	this.app.delete(
+		`/${this.restEndpoint}/me/api-key`,
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			await Db.collections.User.update(req.user.id, {
+				apiKey: null,
+			});
+
+			const telemetryData = {
+				user_id: req.user.id,
+				public_api: false,
+			};
+
+			void InternalHooksManager.getInstance().onApiKeyDeleted(telemetryData);
+
+			return { success: true };
+		}),
+	);
+
+	/**
+	 * Get an API Key
+	 */
+	this.app.get(
+		`/${this.restEndpoint}/me/api-key`,
+		ResponseHelper.send(async (req: AuthenticatedRequest) => {
+			return { apiKey: req.user.apiKey };
 		}),
 	);
 }

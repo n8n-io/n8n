@@ -15,6 +15,7 @@ export const descriptions: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -27,20 +28,22 @@ export const descriptions: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Soft delete a post, by marking the post as deleted in the database',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Post',
 				value: 'post',
 				description: 'Post a message into a channel',
+				action: 'Post a message',
 			},
 			{
 				name: 'Post Ephemeral',
 				value: 'postEphemeral',
 				description: 'Post an ephemeral message into a channel',
+				action: 'Post an ephemeral message',
 			},
 		],
 		default: 'post',
-		description: 'The operation to perform',
 	},
 	...del.description,
 	...post.description,

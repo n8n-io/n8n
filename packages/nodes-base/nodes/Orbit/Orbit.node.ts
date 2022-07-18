@@ -37,7 +37,7 @@ import {
 	postOperations,
 } from './PostDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Orbit implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,6 +64,7 @@ export class Orbit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -83,7 +84,6 @@ export class Orbit implements INodeType {
 					},
 				],
 				default: 'member',
-				description: 'Resource to consume.',
 			},
 			// ACTIVITY
 			...activityOperations,
@@ -142,7 +142,7 @@ export class Orbit implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;

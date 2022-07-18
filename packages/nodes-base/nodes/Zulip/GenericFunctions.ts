@@ -17,10 +17,6 @@ export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunction
 
 	const credentials = await this.getCredentials('zulipApi');
 
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const endpoint = `${credentials.url}/api/v1`;
 
 	let options: OptionsWithUri = {

@@ -52,6 +52,7 @@ export class MicrosoftOneDrive implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -63,7 +64,6 @@ export class MicrosoftOneDrive implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
 			...fileOperations,
 			...fileFields,
@@ -75,7 +75,7 @@ export class MicrosoftOneDrive implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -182,25 +182,35 @@ export class MicrosoftOneDrive implements INodeType {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							let encodedFilename;
 
-							responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName || binaryData.fileName}:/content`, body, {}, undefined, { 'Content-Type': binaryData.mimeType, 'Content-length': body.length }, {});
+							if(fileName !== '') {
+								encodedFilename = encodeURIComponent(fileName);
+							}
+
+							if (binaryData.fileName !== undefined) {
+								encodedFilename = encodeURIComponent(binaryData.fileName);
+							}
+
+							responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${encodedFilename}:/content`, body, {}, undefined, { 'Content-Type': binaryData.mimeType, 'Content-length': body.length }, {});
 
 							returnData.push(JSON.parse(responseData) as IDataObject);
 						} else {
 							const body = this.getNodeParameter('fileContent', i) as string;
 							if (fileName === '') {
-								throw new NodeOperationError(this.getNode(), 'File name must be set!');
+								throw new NodeOperationError(this.getNode(), 'File name must be set!', { itemIndex: i });
 							}
-							responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName}:/content`, body, {}, undefined, { 'Content-Type': 'text/plain' });
+							const encodedFilename = encodeURIComponent(fileName);
+							responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${encodedFilename}:/content`, body, {}, undefined, { 'Content-Type': 'text/plain' });
 							returnData.push(responseData as IDataObject);
 						}
 					}
@@ -259,6 +269,15 @@ export class MicrosoftOneDrive implements INodeType {
 						};
 						responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${folderId}/createLink`, body);
 						returnData.push(responseData);
+					}
+				}
+				if (resource === 'file' || resource === 'folder') {
+					if (operation === 'rename') {
+						const itemId = this.getNodeParameter('itemId', i) as string;
+						const newName = this.getNodeParameter('newName', i) as string;
+						const body = {name: newName};
+						responseData = await microsoftApiRequest.call(this, 'PATCH', `/drive/items/${itemId}`, body);
+						returnData.push(responseData as IDataObject);
 					}
 				}
 			} catch (error) {

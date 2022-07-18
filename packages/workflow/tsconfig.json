@@ -19,7 +19,8 @@
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2019",
-		"sourceMap": true
+		"sourceMap": true,
+		"useUnknownInCatchVariables": false,
 	},
 	"include": [
 		"**/*.d.ts",

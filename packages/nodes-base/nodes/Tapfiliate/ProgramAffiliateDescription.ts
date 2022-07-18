@@ -7,6 +7,7 @@ export const programAffiliateOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,30 +20,34 @@ export const programAffiliateOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add affiliate to program',
+				action: 'Add a program affiliate',
 			},
 			{
 				name: 'Approve',
 				value: 'approve',
 				description: 'Approve an affiliate for a program',
+				action: 'Approve a program affiliate',
 			},
 			{
 				name: 'Disapprove',
 				value: 'disapprove',
 				description: 'Disapprove an affiliate',
+				action: 'Disapprove a program affiliate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an affiliate in a program',
+				action: 'Get a program affiliate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all affiliates in program',
+				action: 'Get all program affiliates',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -51,7 +56,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 programAffiliate:add                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		required: true,
@@ -69,7 +74,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -87,7 +92,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -111,14 +116,15 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'approved',
 				type: 'boolean',
 				default: true,
-				description: `An optional approval status.`,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'An optional approval status',
 			},
 			{
 				displayName: 'Coupon',
 				name: 'coupon',
 				type: 'string',
 				default: '',
-				description: 'An optional coupon for this affiliate.',
+				description: 'An optional coupon for this affiliate',
 			},
 		],
 	},
@@ -127,7 +133,7 @@ export const programAffiliateFields: INodeProperties[] = [
 	/*                                 programAffiliate:approve                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {
@@ -144,7 +150,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -161,14 +167,14 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 programAffiliate:disapprove                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {
@@ -185,7 +191,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -202,14 +208,14 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 affiliate:get                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		required: true,
@@ -227,7 +233,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -245,14 +251,14 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                          programAffiliate:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Program ID',
+		displayName: 'Program Name or ID',
 		name: 'programId',
 		type: 'options',
 		typeOptions: {
@@ -270,7 +276,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -287,7 +293,7 @@ export const programAffiliateFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -311,7 +317,7 @@ export const programAffiliateFields: INodeProperties[] = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -335,28 +341,28 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'affiliate_group_id',
 				type: 'string',
 				default: '',
-				description: 'Retrieves affiliates for a certain affiliate group.',
+				description: 'Retrieves affiliates for a certain affiliate group',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'An email address.',
+				description: 'An email address',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Retrieves children for a certain parent affiliate.',
+				description: 'Retrieves children for a certain parent affiliate',
 			},
 			{
 				displayName: 'Source ID',
 				name: 'source_id',
 				type: 'string',
 				default: '',
-				description: 'Source ID.',
 			},
 		],
 	},

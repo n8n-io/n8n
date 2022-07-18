@@ -25,6 +25,7 @@ export class Flow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow',
 		name: 'flow',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:flow.png',
 		group: ['output'],
 		version: 1,
@@ -46,15 +47,15 @@ export class Flow implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
 						value: 'task',
-						description: `Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones`,
+						description: 'Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones.',
 					},
 				],
 				default: 'task',
-				description: 'Resource to consume.',
 			},
 			...taskOpeations,
 			...taskFields,
@@ -64,13 +65,9 @@ export class Flow implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('flowApi');
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;

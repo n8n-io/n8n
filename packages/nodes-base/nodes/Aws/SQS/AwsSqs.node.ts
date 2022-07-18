@@ -51,18 +51,19 @@ export class AwsSqs implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: 'Send message',
+						name: 'Send Message',
 						value: 'sendMessage',
-						description: 'Send a message to a queue.',
+						description: 'Send a message to a queue',
+						action: 'Send a message to a queue',
 					},
 				],
 				default: 'sendMessage',
-				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Queue',
+				displayName: 'Queue Name or ID',
 				name: 'queue',
 				type: 'options',
 				typeOptions: {
@@ -78,7 +79,7 @@ export class AwsSqs implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'Queue to send a message to.',
+				description: 'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',
@@ -88,23 +89,22 @@ export class AwsSqs implements INodeType {
 					{
 						name: 'FIFO',
 						value: 'fifo',
-						description: 'FIFO SQS queue.',
+						description: 'FIFO SQS queue',
 					},
 					{
 						name: 'Standard',
 						value: 'standard',
-						description: 'Standard SQS queue.',
+						description: 'Standard SQS queue',
 					},
 				],
 				default: 'standard',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the data the node receives as JSON to SQS.',
+				description: 'Whether to send the data the node receives as JSON to SQS',
 			},
 			{
 				displayName: 'Message',
@@ -125,7 +125,7 @@ export class AwsSqs implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Message to send to the queue.',
+				description: 'Message to send to the queue',
 			},
 			{
 				displayName: 'Message Group ID',
@@ -167,7 +167,7 @@ export class AwsSqs implements INodeType {
 								],
 							},
 						},
-						description: 'How long, in seconds, to delay a message for.',
+						description: 'How long, in seconds, to delay a message for',
 						default: 0,
 						typeOptions: {
 							minValue: 0,
@@ -182,7 +182,7 @@ export class AwsSqs implements INodeType {
 						typeOptions: {
 							multipleValues: true,
 						},
-						description: 'Attributes to set.',
+						description: 'Attributes to set',
 						default: {},
 						options: [
 							{
@@ -194,14 +194,14 @@ export class AwsSqs implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the attribute.',
+										description: 'Name of the attribute',
 									},
 									{
 										displayName: 'Property Name',
 										name: 'dataPropertyName',
 										type: 'string',
 										default: 'data',
-										description: 'Name of the binary property which contains the data for the message attribute.',
+										description: 'Name of the binary property which contains the data for the message attribute',
 									},
 								],
 							},
@@ -214,14 +214,14 @@ export class AwsSqs implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the attribute.',
+										description: 'Name of the attribute',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'number',
 										default: 0,
-										description: 'Number value of the attribute.',
+										description: 'Number value of the attribute',
 									},
 								],
 							},
@@ -234,14 +234,14 @@ export class AwsSqs implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the attribute.',
+										description: 'Name of the attribute',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'String value of attribute.',
+										description: 'String value of attribute',
 									},
 								],
 							},
@@ -363,11 +363,11 @@ export class AwsSqs implements INodeType {
 					const item = items[i];
 
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!');
+						throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!', { itemIndex: i });
 					}
 
 					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
+						throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`, { itemIndex: i });
 					}
 
 					const binaryData = item.binary[dataPropertyName].data;

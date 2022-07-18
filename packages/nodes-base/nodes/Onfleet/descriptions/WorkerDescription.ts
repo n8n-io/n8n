@@ -7,6 +7,7 @@ export const workerOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['worker'],
@@ -17,26 +18,31 @@ export const workerOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet worker',
+				action: 'Create a worker',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet worker',
+				action: 'Delete a worker',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific Onfleet worker',
+				action: 'Get a worker',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all Onfleet workers',
+				action: 'Get all workers',
 			},
 			{
 				name: 'Get Schedule',
 				value: 'getSchedule',
 				description: 'Get a specific Onfleet worker schedule',
+				action: 'Get the schedule for a worker',
 			},
 			// {
 			// 	name: 'Set Worker\'s Schedule',
@@ -47,6 +53,7 @@ export const workerOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet worker',
+				action: 'Update a worker',
 			},
 		],
 		default: 'get',
@@ -138,31 +145,32 @@ const vehicleLicensePlateField = {
 const vehicleColorField = {
 	displayName: 'Color',
 	name: 'color',
+	// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 	type: 'string',
 	default: '',
 	description: 'The vehicle\'s color',
 } as INodeProperties;
 
 const teamsField = {
-	displayName: 'Teams Names/IDs',
+	displayName: 'Team Names or IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'One or more teams of which the worker is a member',
+	description: 'One or more teams of which the worker is a member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const teamsFilterField = {
-	displayName: 'Teams ID/Name',
+	displayName: 'Team Names or IDs',
 	name: 'teams',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'A list of the teams that workers must be part of',
+	description: 'A list of the teams that workers must be part of. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const statesFilterField = {
@@ -332,14 +340,14 @@ const scheduleDateField = {
 } as INodeProperties;
 
 const scheduleTimezoneField = {
-	displayName: 'Timezone',
+	displayName: 'Timezone Name or ID',
 	name: 'timezone',
 	type: 'options',
 	typeOptions: {
 		loadOptionsMethod: 'getTimezones',
 	},
 	default: '',
-	description: 'A valid timezone',
+	description: 'A valid timezone. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const scheduleStartField = {
@@ -486,7 +494,7 @@ export const workerFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -510,7 +518,7 @@ export const workerFields: INodeProperties[] = [
 			maxValue: 64,
 		},
 		default: 64,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -677,7 +685,6 @@ export const workerFields: INodeProperties[] = [
 				name: 'analytics',
 				type: 'boolean',
 				default: true,
-				required: false,
 				description: 'Whether a more detailed response is needed, includes basic worker duty event, traveled distance (meters) and time analytics',
 			},
 			{

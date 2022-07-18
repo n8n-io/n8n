@@ -14,7 +14,7 @@ import {
 
 export async function yourlsApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, body: any = {}, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('yourlsApi') as IDataObject;
+	const credentials = await this.getCredentials('yourlsApi');
 
 	qs.signature = credentials.signature as string;
 	qs.format = 'json';

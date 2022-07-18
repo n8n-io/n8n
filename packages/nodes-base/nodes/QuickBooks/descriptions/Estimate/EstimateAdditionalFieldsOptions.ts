@@ -63,7 +63,7 @@ export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Billing Email',
 		name: 'BillEmail',
-		description: 'E-mail address to which the estimate will be sent.',
+		description: 'E-mail address to which the estimate will be sent',
 		type: 'string',
 		default: '',
 	},
@@ -82,21 +82,21 @@ export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 				name: 'Field',
 				values: [
 					{
-						displayName: 'Field Definition ID',
+						displayName: 'Field Definition Name or ID',
 						name: 'DefinitionId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getCustomFields',
 						},
 						default: '',
-						description: 'ID of the field to set.',
+						description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',
 						name: 'StringValue',
 						type: 'string',
 						default: '',
-						description: 'Value of the field to set.',
+						description: 'Value of the field to set',
 					},
 				],
 			},
@@ -112,7 +112,7 @@ export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Document Number',
 		name: 'DocNumber',
-		description: 'Reference number for the transaction.',
+		description: 'Reference number for the transaction',
 		type: 'string',
 		default: '',
 	},
@@ -210,21 +210,21 @@ export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Total Amount',
 		name: 'TotalAmt',
-		description: 'Total amount of the transaction.',
+		description: 'Total amount of the transaction',
 		type: 'number',
 		default: 0,
 	},
 	{
 		displayName: 'Transaction Date',
 		name: 'TxnDate',
-		description: 'Date when the transaction occurred.',
+		description: 'Date when the transaction occurred',
 		type: 'dateTime',
 		default: '',
 	},
 	{
 		displayName: 'Total Tax',
 		name: 'TotalTax',
-		description: 'Total amount of tax incurred.',
+		description: 'Total amount of tax incurred',
 		type: 'number',
 		default: 0,
 	},

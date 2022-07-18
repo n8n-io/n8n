@@ -7,6 +7,7 @@ export const issueOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const issueOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an issue',
+				action: 'Delete an issue',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get issue by ID',
+				action: 'Get an issue',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all issues',
+				action: 'Get all issues',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an issue',
+				action: 'Update an issue',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -63,14 +67,14 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'ID of issue to get.',
+		description: 'ID of issue to get',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                issue:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
+		displayName: 'Organization Slug Name or ID',
 		name: 'organizationSlug',
 		type: 'options',
 		typeOptions: {
@@ -88,10 +92,10 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the issues belong to.',
+		description: 'The slug of the organization the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Project Slug',
+		displayName: 'Project Slug Name or ID',
 		name: 'projectSlug',
 		type: 'options',
 		typeOptions: {
@@ -112,7 +116,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the issues belong to.',
+		description: 'The slug of the project the issues belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -129,7 +133,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -153,7 +157,7 @@ export const issueFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -184,7 +188,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'statsPeriod',
 				type: 'options',
 				default: '',
-				description: 'Time period of stats.',
+				description: 'Time period of stats',
 				options: [
 					{
 						name: '14 Days',
@@ -197,11 +201,11 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Short ID lookup',
+				displayName: 'Short ID Lookup',
 				name: 'shortIdLookUp',
 				type: 'boolean',
 				default: true,
-				description: 'If this is set to true then short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in.',
+				description: 'Whether short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in.',
 			},
 		],
 	},
@@ -226,7 +230,7 @@ export const issueFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'ID of issue to get.',
+		description: 'ID of issue to get',
 	},
 	{
 		displayName: 'Update Fields',
@@ -246,32 +250,32 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assigned to',
+				displayName: 'Assigned To',
 				name: 'assignedTo',
 				type: 'string',
 				default: '',
-				description: 'The actor ID (or username) of the user or team that should be assigned to this issue.',
+				description: 'The actor ID (or username) of the user or team that should be assigned to this issue',
 			},
 			{
 				displayName: 'Has Seen',
 				name: 'hasSeen',
 				type: 'boolean',
 				default: true,
-				description: 'In case this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event.',
+				description: 'Whether this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event',
 			},
 			{
 				displayName: 'Is Bookmarked',
 				name: 'isBookmarked',
 				type: 'boolean',
 				default: true,
-				description: 'In case this API call is invoked with a user context this allows changing of the bookmark flag.',
+				description: 'Whether this API call is invoked with a user context this allows changing of the bookmark flag',
 			},
 			{
 				displayName: 'Is Public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: true,
-				description: 'Sets the issue to public or private.',
+				description: 'Whether to set the issue to public or private',
 			},
 			{
 				displayName: 'Is Subscribed',
@@ -284,7 +288,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				default: '',
-				description: 'The new status for the issue.',
+				description: 'The new status for the issue',
 				options: [
 					{
 						name: 'Ignored',

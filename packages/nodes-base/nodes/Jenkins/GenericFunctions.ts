@@ -15,7 +15,7 @@ import {
 } from 'n8n-workflow';
 
 export async function jenkinsApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, uri: string, qs: IDataObject = {}, body: any = '', option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('jenkinsApi') as IDataObject;
+	const credentials = await this.getCredentials('jenkinsApi');
 	let options: OptionsWithUri = {
 		headers: {
 			'Accept': 'application/json',

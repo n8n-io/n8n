@@ -24,7 +24,7 @@ import {
 	beeminderApiRequest,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,6 +37,7 @@ export class Beeminder implements INodeType {
 		defaults: {
 			name: 'Beeminder',
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:beeminder.png',
 		inputs: ['main'],
 		outputs: ['main'],
@@ -51,6 +52,7 @@ export class Beeminder implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				options: [
 					{
@@ -59,40 +61,43 @@ export class Beeminder implements INodeType {
 					},
 				],
 				default: 'datapoint',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create datapoint for goal.',
+						description: 'Create datapoint for goal',
+						action: 'Create datapoint for goal',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a datapoint.',
+						description: 'Delete a datapoint',
+						action: 'Delete a datapoint',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all datapoints for a goal.',
+						description: 'Get all datapoints for a goal',
+						action: 'Get all datapoints for a goal',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update a datapoint.',
+						description: 'Update a datapoint',
+						action: 'Update a datapoint',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 				required: true,
 			},
 			{
-				displayName: 'Goal Name',
+				displayName: 'Goal Name or ID',
 				name: 'goalName',
 				type: 'options',
 				typeOptions: {
@@ -106,7 +111,7 @@ export class Beeminder implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The name of the goal.',
+				description: 'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				required: true,
 			},
 			{
@@ -124,7 +129,7 @@ export class Beeminder implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -148,7 +153,7 @@ export class Beeminder implements INodeType {
 					maxValue: 300,
 				},
 				default: 30,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Value',
@@ -156,7 +161,7 @@ export class Beeminder implements INodeType {
 				type: 'number',
 				default: 1,
 				placeholder: '',
-				description: 'Datapoint value to send.',
+				description: 'Datapoint value to send',
 				displayOptions: {
 					show: {
 						resource: [
@@ -174,7 +179,6 @@ export class Beeminder implements INodeType {
 				name: 'datapointId',
 				type: 'string',
 				default: '',
-				description: 'Datapoint id',
 				displayOptions: {
 					show: {
 						operation: [
@@ -207,7 +211,6 @@ export class Beeminder implements INodeType {
 						name: 'comment',
 						type: 'string',
 						default: '',
-						description: 'Comment',
 					},
 					{
 						displayName: 'Timestamp',
@@ -215,7 +218,7 @@ export class Beeminder implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: 'Defaults to "now" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created.',
+						description: 'Defaults to "now" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created',
 					},
 					{
 						displayName: 'Request ID',
@@ -223,7 +226,7 @@ export class Beeminder implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'String to uniquely identify a datapoint.',
+						description: 'String to uniquely identify a datapoint',
 					},
 				],
 			},
@@ -250,7 +253,7 @@ export class Beeminder implements INodeType {
 						type: 'string',
 						default: 'id',
 						placeholder: '',
-						description: 'Attribute to sort on.',
+						description: 'Attribute to sort on',
 					},
 				],
 			},
@@ -277,14 +280,13 @@ export class Beeminder implements INodeType {
 						type: 'number',
 						default: 1,
 						placeholder: '',
-						description: 'Datapoint value to send.',
+						description: 'Datapoint value to send',
 					},
 					{
 						displayName: 'Comment',
 						name: 'comment',
 						type: 'string',
 						default: '',
-						description: 'Comment',
 					},
 					{
 						displayName: 'Timestamp',
@@ -292,7 +294,7 @@ export class Beeminder implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: 'Defaults to "now" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created.',
+						description: 'Defaults to "now" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created',
 					},
 				],
 			},
@@ -306,10 +308,6 @@ export class Beeminder implements INodeType {
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 
 				const credentials = await this.getCredentials('beeminderApi');
-
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
 
 				const endpoint = `/users/${credentials.user}/goals.json`;
 
@@ -330,7 +328,7 @@ export class Beeminder implements INodeType {
 
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const timezone = this.getTimezone();
 
 		const resource = this.getNodeParameter('resource', 0) as string;

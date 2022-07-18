@@ -23,7 +23,7 @@ import {
 } from 'n8n-workflow';
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';
-import * as requestPromise from 'request-promise-native';
+import requestPromise from 'request-promise-native';
 
 interface Constructable<T> {
 	new (): T;
@@ -73,6 +73,7 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 
 export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 	helpers: {
+		getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
 		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
 		prepareBinaryData(
 			binaryData: Buffer,

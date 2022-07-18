@@ -7,6 +7,7 @@ export const boardOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,25 +20,28 @@ export const boardOperations: INodeProperties[] = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archive a board',
+				action: 'Archive a board',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new board',
+				action: 'Create a board',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a board',
+				action: 'Get a board',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all boards',
+				action: 'Get all boards',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -47,7 +51,7 @@ export const boardFields: INodeProperties[] = [
 /*                                 board:archive                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -65,7 +69,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Board unique identifiers.',
+		description: 'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 board:create                               */
@@ -86,7 +90,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The board's name`,
+		description: 'The board\'s name',
 	},
 	{
 		displayName: 'Kind',
@@ -118,7 +122,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `The board's kind (public / private / share)`,
+		description: 'The board\'s kind (public / private / share)',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -145,7 +149,7 @@ export const boardFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'Optional board template id',
+				description: 'Optional board template ID',
 			},
 		],
 	},
@@ -153,7 +157,7 @@ export const boardFields: INodeProperties[] = [
 /*                                  board:get                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -171,7 +175,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Board unique identifiers.',
+		description: 'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  board:getAll                              */
@@ -191,7 +195,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -215,6 +219,6 @@ export const boardFields: INodeProperties[] = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

@@ -7,6 +7,7 @@ export const taskDependencyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const taskDependencyOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a task dependency',
+				action: 'Create a task dependency',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task dependency',
+				action: 'Delete a task dependency',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 

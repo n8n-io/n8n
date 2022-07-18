@@ -40,7 +40,6 @@ export default {
 			default: false,
 		},
 		icon: {
-			type: String,
 			required: true,
 		},
 		theme: {

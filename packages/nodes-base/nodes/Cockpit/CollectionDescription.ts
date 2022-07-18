@@ -5,6 +5,7 @@ export const collectionOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -17,26 +18,29 @@ export const collectionOperations: INodeProperties[] = [
 				name: 'Create an Entry',
 				value: 'create',
 				description: 'Create a collection entry',
+				action: 'Create a collection entry',
 			},
 			{
-				name: 'Get all Entries',
+				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
+				name: 'Get All Entries',
 				value: 'getAll',
 				description: 'Get all collection entries',
+				action: 'Get all collection entries',
 			},
 			{
 				name: 'Update an Entry',
 				value: 'update',
 				description: 'Update a collection entry',
+				action: 'Update a collection entry',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const collectionFields: INodeProperties[] = [
 	{
-		displayName: 'Collection',
+		displayName: 'Collection Name or ID',
 		name: 'collection',
 		type: 'options',
 		default: '',
@@ -51,7 +55,7 @@ export const collectionFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Name of the collection to operate on.',
+		description: 'Name of the collection to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// Collection:entry:getAll
@@ -70,7 +74,7 @@ export const collectionFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -94,7 +98,7 @@ export const collectionFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -122,7 +126,7 @@ export const collectionFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				placeholder: '_id,name',
-				description: 'Comma separated list of fields to get.',
+				description: 'Comma-separated list of fields to get',
 			},
 			{
 				displayName: 'Filter Query',
@@ -133,36 +137,35 @@ export const collectionFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				placeholder: '{"name": "Jim"}',
-				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>.',
+				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'string',
 				default: '',
-				description: 'Return normalized language fields.',
+				description: 'Return normalized language fields',
 			},
 			{
 				displayName: 'Populate',
 				name: 'populate',
 				type: 'boolean',
-				required: true,
 				default: true,
-				description: 'Resolve linked collection items.',
+				description: 'Whether to resolve linked collection items',
 			},
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Skip',
 				name: 'skip',
 				type: 'number',
 				default: '',
-				description: 'Skip number of entries.',
+				description: 'Skip number of entries',
 			},
 			{
 				displayName: 'Sort Query',
@@ -170,7 +173,7 @@ export const collectionFields: INodeProperties[] = [
 				type: 'json',
 				default: '',
 				placeholder: '{"price": -1}',
-				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>.',
+				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html">Mongolite format</a>',
 			},
 		],
 	},
@@ -192,13 +195,12 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The entry ID.',
 	},
 
 	// Collection:entry:create
 	// Collection:entry:update
 	{
-		displayName: 'JSON Data fields',
+		displayName: 'JSON Data Fields',
 		name: 'jsonDataFields',
 		type: 'boolean',
 		default: false,
@@ -213,7 +215,7 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If new entry fields should be set via the value-key pair UI or JSON.',
+		description: 'Whether new entry fields should be set via the value-key pair UI or JSON',
 	},
 	{
 		displayName: 'Entry Data',
@@ -237,7 +239,7 @@ export const collectionFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Entry data to send as JSON.',
+		description: 'Entry data to send as JSON',
 	},
 	{
 		displayName: 'Entry Data',
@@ -271,18 +273,18 @@ export const collectionFields: INodeProperties[] = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the field.',
+						description: 'Name of the field',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the field.',
+						description: 'Value of the field',
 					},
 				],
 			},
 		],
-		description: 'Entry data to send.',
+		description: 'Entry data to send',
 	},
 ];

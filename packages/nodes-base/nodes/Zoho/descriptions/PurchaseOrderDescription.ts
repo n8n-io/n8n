@@ -16,6 +16,7 @@ export const purchaseOrderOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -28,35 +29,40 @@ export const purchaseOrderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a purchase order',
+				action: 'Create a purchase order',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a purchase order',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a purchase order',
+				action: 'Delete a purchase order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a purchase order',
+				action: 'Get a purchase order',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all purchase orders',
+				action: 'Get all purchase orders',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a purchase order',
+				action: 'Update a purchase order',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -67,7 +73,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the purchase order.',
+		description: 'Subject or title of the purchase order',
 		type: 'string',
 		required: true,
 		default: '',
@@ -109,14 +115,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 	//      purchaseOrder: create + upsert
 	// ----------------------------------------
 	{
-		displayName: 'Vendor ID',
+		displayName: 'Vendor Name or ID',
 		name: 'vendorId',
 		type: 'options',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
 		},
-		description: 'ID of the vendor associated with the purchase order.',
+		description: 'ID of the vendor associated with the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -178,7 +184,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Adjustment in the grand total, if any.',
+				description: 'Adjustment in the grand total, if any',
 			},
 			{
 				displayName: 'Billing Address',
@@ -230,14 +236,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 				name: 'Carrier',
 				type: 'string',
 				default: '',
-				description: 'Name of the carrier.',
+				description: 'Name of the carrier',
 			},
 			{
 				displayName: 'Currency',
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('purchaseOrder'),
@@ -271,7 +277,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Exchange rate of the default currency to the home currency.',
+				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
 				displayName: 'Grand Total',
@@ -281,21 +287,21 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product after deducting tax and discounts.',
+				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
 				displayName: 'PO Date',
 				name: 'PO_Date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date on which the purchase order was issued.',
+				description: 'Date on which the purchase order was issued',
 			},
 			{
 				displayName: 'PO Number',
 				name: 'PO_Number',
 				type: 'string',
 				default: '',
-				description: 'ID of the purchase order after creating a case.',
+				description: 'ID of the purchase order after creating a case',
 			},
 			{
 				displayName: 'Sales Commission',
@@ -309,14 +315,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},
-				description: 'Status of the purchase order.',
+				description: 'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -326,7 +332,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product excluding tax.',
+				description: 'Total amount for the product excluding tax',
 			},
 			{
 				displayName: 'Tax',
@@ -336,14 +342,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Tax amount as the sum of sales tax and value-added tax.',
+				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
 				displayName: 'Terms and Conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
-				description: 'Terms and conditions associated with the purchase order.',
+				description: 'Terms and conditions associated with the purchase order',
 			},
 			{
 				displayName: 'Tracking Number',
@@ -360,7 +366,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Purchase Order ID',
 		name: 'purchaseOrderId',
-		description: 'ID of the purchase order to delete.',
+		description: 'ID of the purchase order to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -382,7 +388,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Purchase Order ID',
 		name: 'purchaseOrderId',
-		description: 'ID of the purchase order to retrieve.',
+		description: 'ID of the purchase order to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -409,7 +415,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Purchase Order ID',
 		name: 'purchaseOrderId',
-		description: 'ID of the purchase order to update.',
+		description: 'ID of the purchase order to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -449,7 +455,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Adjustment in the grand total, if any.',
+				description: 'Adjustment in the grand total, if any',
 			},
 			billingAddress,
 			{
@@ -457,14 +463,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 				name: 'Carrier',
 				type: 'string',
 				default: '',
-				description: 'Name of the carrier.',
+				description: 'Name of the carrier',
 			},
 			{
 				displayName: 'Currency',
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('purchaseOrder'),
@@ -497,7 +503,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Exchange rate of the default currency to the home currency.',
+				description: 'Exchange rate of the default currency to the home currency',
 			},
 			{
 				displayName: 'Grand Total',
@@ -507,21 +513,21 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product after deducting tax and discounts.',
+				description: 'Total amount for the product after deducting tax and discounts',
 			},
 			{
 				displayName: 'PO Date',
 				name: 'PO_Date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date on which the purchase order was issued.',
+				description: 'Date on which the purchase order was issued',
 			},
 			{
 				displayName: 'PO Number',
 				name: 'PO_Number',
 				type: 'string',
 				default: '',
-				description: 'ID of the purchase order after creating a case.',
+				description: 'ID of the purchase order after creating a case',
 			},
 			// productDetails('purchaseOrder', 'update'),
 			{
@@ -536,14 +542,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 			},
 			shippingAddress,
 			{
-				displayName: 'Status',
+				displayName: 'Status Name or ID',
 				name: 'Status',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},
-				description: 'Status of the purchase order.',
+				description: 'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -553,14 +559,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Total amount for the product excluding tax.',
+				description: 'Total amount for the product excluding tax',
 			},
 			{
 				displayName: 'Subject',
 				name: 'Subject',
 				type: 'string',
 				default: '',
-				description: 'Subject or title of the purchase order.',
+				description: 'Subject or title of the purchase order',
 			},
 			{
 				displayName: 'Tax',
@@ -570,14 +576,14 @@ export const purchaseOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Tax amount as the sum of sales tax and value-added tax.',
+				description: 'Tax amount as the sum of sales tax and value-added tax',
 			},
 			{
 				displayName: 'Terms and Conditions',
 				name: 'Terms_and_Conditions',
 				type: 'string',
 				default: '',
-				description: 'Terms and conditions associated with the purchase order.',
+				description: 'Terms and conditions associated with the purchase order',
 			},
 			{
 				displayName: 'Tracking Number',

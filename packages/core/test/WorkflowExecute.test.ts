@@ -1169,6 +1169,145 @@ describe('WorkflowExecute', () => {
 					},
 				},
 			},
+
+			{
+				description:
+					'should display the correct parameters and so correct data when simplified node-versioning is used',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [240, 300],
+							},
+							{
+								parameters: {},
+								name: 'VersionTest1a',
+								type: 'n8n-nodes-base.versionTest',
+								typeVersion: 1,
+								position: [460, 300],
+							},
+							{
+								parameters: {
+									versionTest: 11,
+								},
+								name: 'VersionTest1b',
+								type: 'n8n-nodes-base.versionTest',
+								typeVersion: 1,
+								position: [680, 300],
+							},
+							{
+								parameters: {},
+								name: 'VersionTest2a',
+								type: 'n8n-nodes-base.versionTest',
+								typeVersion: 2,
+								position: [880, 300],
+							},
+							{
+								parameters: {
+									versionTest: 22,
+								},
+								name: 'VersionTest2b',
+								type: 'n8n-nodes-base.versionTest',
+								typeVersion: 2,
+								position: [1080, 300],
+							},
+						],
+						connections: {
+							Start: {
+								main: [
+									[
+										{
+											node: 'VersionTest1a',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							VersionTest1a: {
+								main: [
+									[
+										{
+											node: 'VersionTest1b',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							VersionTest1b: {
+								main: [
+									[
+										{
+											node: 'VersionTest2a',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							VersionTest2a: {
+								main: [
+									[
+										{
+											node: 'VersionTest2b',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: [
+						'Start',
+						'VersionTest1a',
+						'VersionTest1b',
+						'VersionTest2a',
+						'VersionTest2b',
+					],
+					nodeData: {
+						VersionTest1a: [
+							[
+								{
+									versionFromNode: 1,
+									versionFromParameter: 1,
+								},
+							],
+						],
+						VersionTest1b: [
+							[
+								{
+									versionFromNode: 1,
+									versionFromParameter: 11,
+								},
+							],
+						],
+						VersionTest2a: [
+							[
+								{
+									versionFromNode: 2,
+									versionFromParameter: 2,
+								},
+							],
+						],
+						VersionTest2b: [
+							[
+								{
+									versionFromNode: 2,
+									versionFromParameter: 22,
+								},
+							],
+						],
+					},
+				},
+			},
 		];
 
 		const fakeLogger = {

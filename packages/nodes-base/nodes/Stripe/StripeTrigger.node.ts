@@ -50,12 +50,12 @@ export class StripeTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description: 'The event to listen to.',
+				description: 'The event to listen to',
 				options: [
 					{
 						name: '*',
 						value: '*',
-						description: 'Any time any event is triggered (Wildcard Event).',
+						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
 						'name': 'Account Updated',

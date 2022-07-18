@@ -7,6 +7,7 @@ export const logOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,15 +20,16 @@ export const logOperations: INodeProperties[] = [
 				name: 'Get Error Logs',
 				value: 'getErroLogs',
 				description: 'Get a log for a specific entity',
+				action: 'Get a log for an entity',
 			},
 			{
 				name: 'Get Logbook Entries',
 				value: 'getLogbookEntries',
 				description: 'Get all logs',
+				action: 'Get all logs for an entity',
 			},
 		],
 		default: 'getErroLogs',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -57,21 +59,20 @@ export const logFields: INodeProperties[] = [
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the period.',
+				description: 'The end of the period',
 			},
 			{
 				displayName: 'Entity ID',
 				name: 'entityId',
 				type: 'string',
 				default: '',
-				description: 'The entity ID.',
 			},
 			{
 				displayName: 'Start Time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The beginning of the period.',
+				description: 'The beginning of the period',
 			},
 		],
 	},

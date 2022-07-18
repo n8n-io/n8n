@@ -52,14 +52,14 @@ export class TaigaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUserProjects',
 				},
 				default: '',
-				description: 'Project ID',
 				required: true,
 			},
 			{
@@ -175,7 +175,7 @@ export class TaigaTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = await this.getCredentials('taigaApi') as ICredentialDataDecryptedObject;
+				const credentials = await this.getCredentials('taigaApi');
 
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 

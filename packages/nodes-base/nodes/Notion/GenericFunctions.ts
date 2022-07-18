@@ -30,7 +30,7 @@ import {
 	filters,
 } from './Filters';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
 
@@ -55,13 +55,11 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			json: true,
 		};
 		options = Object.assign({}, options, option);
-		const credentials = await this.getCredentials('notionApi') as IDataObject;
-		if (!uri) {
-			//do not include the API Key when downloading files, else the request fails
-			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
+		}
+		if (!uri) {
+			return this.helpers.requestWithAuthentication.call(this,'notionApi', options );
 		}
 		return this.helpers.request!(options);
 
@@ -397,7 +395,7 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		} else if (key === 'phone_number') {
 			key = 'phone';
 		} else if (key === 'date' && !['is_empty', 'is_not_empty'].includes(value.condition as string)) {
-			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();		
+			valuePropertyName = (value.date === '') ? {} : moment.tz(value.date, timezone).utc().format();
 		} else if (key === 'boolean') {
 			key = 'checkbox';
 		}
@@ -662,7 +660,7 @@ export function getConditions() {
 				} as IDisplayOptions,
 				options: (typeConditions[types[type]] as string[]).map((type: string) => ({ name: capitalCase(type), value: type })),
 				default: '',
-				description: 'The value of the property to filter by.',
+				description: 'The value of the property to filter by',
 			} as INodeProperties,
 		);
 	}
@@ -703,25 +701,12 @@ export function getConditions() {
 				} as IDisplayOptions,
 				options: formula[key].map((key: string) => ({ name: capitalCase(key), value: key })),
 				default: '',
-				description: 'The value of the property to filter by.',
+				description: 'The value of the property to filter by',
 			} as INodeProperties,
 		);
 	}
 
 	return elements;
-}
-
-export function validateCrendetials(this: ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject) {
-	const options: OptionsWithUri = {
-		headers: {
-			'Authorization': `Bearer ${credentials.apiKey}`,
-			'Notion-Version': apiVersion[2],
-		},
-		method: 'GET',
-		uri: `https://api.notion.com/v1/users/me`,
-		json: true,
-	};
-	return this.helpers.request!(options);
 }
 
 // tslint:disable-next-line: no-any
@@ -874,7 +859,7 @@ export function getSearchFilters(resource: string) {
 					],
 				},
 			},
-			default: '',
+			default: {},
 			placeholder: 'Add Condition',
 			options: [
 				{
@@ -932,7 +917,6 @@ export function getSearchFilters(resource: string) {
 				},
 			},
 			default: '',
-			description: '',
 		},
 	];
 }

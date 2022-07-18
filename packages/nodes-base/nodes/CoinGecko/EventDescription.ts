@@ -7,6 +7,7 @@ export const eventOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -19,6 +20,7 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all events',
+				action: 'Get all events',
 			},
 		],
 		default: 'getAll',
@@ -41,7 +43,7 @@ export const eventFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -65,7 +67,7 @@ export const eventFields: INodeProperties[] = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -85,45 +87,46 @@ export const eventFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Country code',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Country Code',
 				name: 'country_code',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getEventCountryCodes',
 				},
 				default: '',
-				description: 'Country code of event.',
+				description: 'Country code of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'From date',
+				displayName: 'From Date',
 				name: 'from_date',
 				type: 'dateTime',
 				default: '',
-				description: 'Lists events after this date.',
+				description: 'Lists events after this date',
 			},
 			{
-				displayName: 'To date',
+				displayName: 'To Date',
 				name: 'to_date',
 				type: 'dateTime',
 				default: '',
-				description: 'Lists events before this date.',
+				description: 'Lists events before this date',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getEventTypes',
 				},
 				default: '',
-				description: 'Type of event.',
+				description: 'Type of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Upcoming events only',
+				displayName: 'Upcoming Events Only',
 				name: 'upcoming_events_only',
 				type: 'boolean',
 				default: true,
-				description: 'Lists only upcoming events.',
+				description: 'Whether to list only upcoming events',
 			},
 		],
 	},

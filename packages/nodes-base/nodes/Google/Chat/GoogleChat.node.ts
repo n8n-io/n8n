@@ -45,9 +45,9 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Chat',
@@ -104,7 +104,6 @@ export class GoogleChat implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on',
 			},
 			// ...attachmentOperations,
 			// ...attachmentFields,
@@ -216,7 +215,7 @@ export class GoogleChat implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -402,7 +401,7 @@ export class GoogleChat implements INodeType {
 								if (validateJSON(messageJson as string) !== undefined) {
 									message = JSON.parse(messageJson as string) as IMessage;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json');
+									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json', { itemIndex: i });
 								}
 							}
 
@@ -411,7 +410,7 @@ export class GoogleChat implements INodeType {
 							if (messageUi.text && messageUi.text !== '') {
 								message.text = messageUi.text;
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Message Text must be provided.');
+								throw new NodeOperationError(this.getNode(), 'Message Text must be provided.', { itemIndex: i });
 							}
 							// 	// TODO: get cards from the UI
 							// if (messageUi?.cards?.metadataValues && messageUi?.cards?.metadataValues.length !== 0) {
@@ -486,7 +485,7 @@ export class GoogleChat implements INodeType {
 								if (validateJSON(updateFieldsJson as string) !== undefined) {
 									message = JSON.parse(updateFieldsJson as string) as IMessage;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Update Fields (JSON) must be a valid json');
+									throw new NodeOperationError(this.getNode(), 'Update Fields (JSON) must be a valid json', { itemIndex: i });
 								}
 							}
 
@@ -571,7 +570,7 @@ export class GoogleChat implements INodeType {
 								if (validateJSON(messageJson as string) !== undefined) {
 									message = JSON.parse(messageJson as string) as IMessage;
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json');
+									throw new NodeOperationError(this.getNode(), 'Message (JSON) must be a valid json', { itemIndex: i });
 								}
 							}
 
@@ -580,7 +579,7 @@ export class GoogleChat implements INodeType {
 							if (messageUi.text && messageUi.text !== '') {
 								message.text = messageUi.text;
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Message Text must be provided.');
+								throw new NodeOperationError(this.getNode(), 'Message Text must be provided.', { itemIndex: i });
 							}
 						}
 

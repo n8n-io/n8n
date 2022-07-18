@@ -7,6 +7,7 @@ export const projectOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -18,26 +19,30 @@ export const projectOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a project',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a project',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a project',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all projects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a project',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -48,7 +53,7 @@ export const projectFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the project to create.',
+		description: 'Name of the project to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -85,14 +90,14 @@ export const projectFields: INodeProperties[] = [
 				name: 'assignee_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the user who will own the project to create.',
+				description: 'ID of the user who will own the project to create',
 			},
 			{
 				displayName: 'Details',
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description of the project to create.',
+				description: 'Description of the project to create',
 			},
 			{
 				displayName: 'Status',
@@ -119,7 +124,7 @@ export const projectFields: INodeProperties[] = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to delete.',
+		description: 'ID of the project to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -141,7 +146,7 @@ export const projectFields: INodeProperties[] = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to retrieve.',
+		description: 'ID of the project to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -165,7 +170,7 @@ export const projectFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -182,7 +187,7 @@ export const projectFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -223,7 +228,7 @@ export const projectFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the project to filter by.',
+				description: 'Name of the project to filter by',
 			},
 		],
 	},
@@ -234,7 +239,7 @@ export const projectFields: INodeProperties[] = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to update.',
+		description: 'ID of the project to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -271,21 +276,21 @@ export const projectFields: INodeProperties[] = [
 				name: 'assignee_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the user who will own the project.',
+				description: 'ID of the user who will own the project',
 			},
 			{
 				displayName: 'Details',
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the project.',
+				description: 'Description to set for the project',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the project.',
+				description: 'Name to set for the project',
 			},
 			{
 				displayName: 'Status',

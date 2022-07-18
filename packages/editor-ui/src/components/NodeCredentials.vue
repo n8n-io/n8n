@@ -1,5 +1,5 @@
 <template>
-	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
+	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="['node-credentials', $style.container]">
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
 			<n8n-input-label
 				:label="$locale.baseText(
@@ -11,15 +11,20 @@
 					}
 				)"
 				:bold="false"
-				size="small"
-
 				:set="issues = getIssues(credentialTypeDescription.name)"
+				size="small"
 			>
 				<div v-if="isReadOnly">
-					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
+					<n8n-input
+						:value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name"
+						disabled
+						size="small"
+					/>
 				</div>
-
-				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
+				<div
+					v-else
+					:class="issues.length ? $style.hasIssues : $style.input"
+				>
 					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
 						<n8n-option
 							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
@@ -82,6 +87,7 @@ export default mixins(
 	name: 'NodeCredentials',
 	props: [
 		'node', // INodeUi
+		'overrideCredType', // cred type
 	],
 	data () {
 		return {
@@ -92,6 +98,7 @@ export default mixins(
 	computed: {
 		...mapGetters('credentials', {
 			credentialOptions: 'allCredentialsByType',
+			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
@@ -105,6 +112,10 @@ export default mixins(
 		},
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
+
+			const credType = this.getCredentialTypeByName(this.overrideCredType);
+
+			if (credType) return [credType];
 
 			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
@@ -198,7 +209,15 @@ export default mixins(
 				return;
 			}
 
-			this.$telemetry.track('User selected credential from node modal', { credential_type: credentialType, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track(
+				'User selected credential from node modal',
+				{
+					credential_type: credentialType,
+					node_type: this.node.type,
+					...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
+					workflow_id: this.$store.getters.workflowId,
+				},
+			);
 
 			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
 			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
@@ -251,7 +270,7 @@ export default mixins(
 				// If it is not defined no need to do a proper check
 				return true;
 			}
-			return this.displayParameter(this.node.parameters, credentialTypeDescription, '');
+			return this.displayParameter(this.node.parameters, credentialTypeDescription, '', this.node);
 		},
 
 		getIssues (credentialTypeName: string): string[] {
@@ -295,10 +314,10 @@ export default mixins(
 
 <style lang="scss" module>
 .container {
-	margin: var(--spacing-xs) 0;
+	margin-top: var(--spacing-xs);
 
-	> * {
-		margin-bottom: var(--spacing-xs);
+	& > div:not(:first-child) {
+		margin-top: var(--spacing-xs);
 	}
 }
 

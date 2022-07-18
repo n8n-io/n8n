@@ -13,6 +13,7 @@ export const leadOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -24,26 +25,30 @@ export const leadOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a lead',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a lead',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all leads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a lead',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -54,7 +59,7 @@ export const leadFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the lead to create.',
+		description: 'Name of the lead to create',
 		type: 'string',
 		required: true,
 		default: '',
@@ -98,7 +103,7 @@ export const leadFields: INodeProperties[] = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to delete.',
+		description: 'ID of the lead to delete',
 		type: 'string',
 		required: true,
 		default: '',
@@ -120,7 +125,7 @@ export const leadFields: INodeProperties[] = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to retrieve.',
+		description: 'ID of the lead to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
@@ -144,7 +149,7 @@ export const leadFields: INodeProperties[] = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				resource: [
@@ -161,7 +166,7 @@ export const leadFields: INodeProperties[] = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -202,14 +207,14 @@ export const leadFields: INodeProperties[] = [
 				name: 'country',
 				type: 'string',
 				default: '',
-				description: 'Name of the country to filter by.',
+				description: 'Name of the country to filter by',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the lead to filter by.',
+				description: 'Name of the lead to filter by',
 			},
 		],
 	},
@@ -220,7 +225,7 @@ export const leadFields: INodeProperties[] = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to update.',
+		description: 'ID of the lead to update',
 		type: 'string',
 		required: true,
 		default: '',
@@ -258,7 +263,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the lead.',
+				description: 'Description to set for the lead',
 			},
 			emailFixedCollection,
 			{
@@ -266,7 +271,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the lead.',
+				description: 'Name to set for the lead',
 			},
 			phoneNumbersFixedCollection,
 		],

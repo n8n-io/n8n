@@ -15,7 +15,7 @@ import {
 	flatten,
 } from '../../utils/utilities';
 
-import * as mssql from 'mssql';
+import mssql from 'mssql';
 
 import {
 	ITables,
@@ -56,30 +56,34 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in database',
+						action: 'Update rows in database',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete rows in database',
+						action: 'Delete rows in database',
 					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -98,9 +102,10 @@ export class MicrosoftSql implements INodeType {
 					},
 				},
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute',
 			},
 
 			// ----------------------------------
@@ -117,7 +122,7 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to insert data to.',
+				description: 'Name of the table in which to insert data to',
 			},
 			{
 				displayName: 'Columns',
@@ -129,9 +134,9 @@ export class MicrosoftSql implements INodeType {
 					},
 				},
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id,name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 			// ----------------------------------
@@ -161,8 +166,8 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -175,8 +180,7 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 			// ----------------------------------
@@ -193,7 +197,7 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to delete data.',
+				description: 'Name of the table in which to delete data',
 			},
 			{
 				displayName: 'Delete Key',
@@ -206,18 +210,14 @@ export class MicrosoftSql implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description:
-					'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+				description: 'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('microsoftSql');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const config = {
 			server: credentials.server as string,
