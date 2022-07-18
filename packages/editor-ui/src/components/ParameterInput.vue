@@ -910,7 +910,7 @@ export default mixins(
 					setTimeout(() => {
 						this.expressionEditDialogVisible = true;
 						this.trackExpressionEditOpen();
-					}, 250);
+					}, 375);
 				} else if (command === 'removeExpression') {
 					let value = this.expressionValueComputed;
 
