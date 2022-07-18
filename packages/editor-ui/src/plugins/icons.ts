@@ -48,6 +48,7 @@ import {
 	faFolderOpen,
 	faGift,
 	faGraduationCap,
+	faGripVertical,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -137,6 +138,7 @@ addIcon(faCloudDownloadAlt);
 addIcon(faCopy);
 addIcon(faCut);
 addIcon(faDotCircle);
+addIcon(faGripVertical);
 addIcon(faEdit);
 addIcon(faEllipsisV);
 addIcon(faEnvelope);

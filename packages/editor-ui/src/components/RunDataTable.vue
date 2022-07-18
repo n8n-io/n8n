@@ -34,18 +34,7 @@
 									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showDraggables && actuallyShowDraggables">
 										<div slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
 										<div :class="$style.dragButton">
-											<div>
-												<div></div>
-												<div></div>
-											</div>
-											<div>
-												<div></div>
-												<div></div>
-											</div>
-											<div>
-												<div></div>
-												<div></div>
-											</div>
+											<font-awesome-icon icon="grip-vertical" />
 										</div>
 									</n8n-tooltip>
 								</div>
@@ -224,25 +213,6 @@ export default Vue.extend({
 .dragButton {
 	opacity: 0;
 	margin-left: var(--spacing-2xs);
-
-	> div {
-		display: flex;
-		&:not(:last-child) {
-			margin-bottom: 2px;
-		}
-
-		> div {
-			height: 3px;
-			width: 3px;
-			border-radius: 1px;
-			background-color: var(--color-foreground-xdark);
-			margin-right: 1px;
-
-			&:last-child {
-				margin-right: 0;
-			}
-		}
-	}
 }
 
 .dragPill {
