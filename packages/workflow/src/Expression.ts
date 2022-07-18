@@ -1,7 +1,15 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable id-denylist */
+import * as BabelCore from '@babel/core';
 // @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
+import {
+	ExpressionExtensionError,
+	expressionExtensionPlugin,
+	extend,
+	hasExpressionExtension,
+} from './ExpressionExtension';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -52,6 +60,22 @@ export class Expression {
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 		return `[${typeName}: ${JSON.stringify(value)}]`;
+	}
+
+	extendSyntax(bracketedExpression: string): string {
+		if (!hasExpressionExtension(bracketedExpression)) return bracketedExpression;
+
+		const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+
+		const output = BabelCore.transformSync(unbracketedExpression, {
+			plugins: [expressionExtensionPlugin],
+		});
+
+		if (!output?.code) {
+			throw new ExpressionExtensionError('Failed to extend syntax');
+		}
+
+		return `{{ ${output.code} }}`;
 	}
 
 	/**
@@ -253,12 +277,15 @@ export class Expression {
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 
+		// expression extensions
+		data.extend = extend;
+
 		// Execute the expression
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			returnValue = tmpl.tmpl(parameterValue, data);
+			returnValue = tmpl.tmpl(this.extendSyntax(parameterValue), data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
