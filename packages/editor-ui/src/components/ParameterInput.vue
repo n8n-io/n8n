@@ -295,6 +295,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
+import { hasExpressionMapping } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -895,6 +896,8 @@ export default mixins(
 				}
 			},
 			optionSelected (command: string) {
+				const prevValue = this.value;
+
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
 				} else if (command === 'openExpression') {
@@ -922,6 +925,18 @@ export default mixins(
 					this.valueChanged(typeof value !== 'undefined' ? value : null);
 				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();
+				}
+
+				if (this.node && (command === 'addExpression' || command === 'removeExpression')) {
+					this.$telemetry.track('User switched parameter mode', {
+						node_type: this.node.type,
+						parameter: this.path,
+						old_mode: command === 'addExpression' ? 'fixed': 'expression',
+						new_mode: command === 'removeExpression' ? 'fixed': 'expression',
+						was_parameter_empty: prevValue === '' || prevValue === undefined,
+						had_mapping: hasExpressionMapping(prevValue),
+						had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
+					});
 				}
 			},
 		},

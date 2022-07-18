@@ -55,7 +55,8 @@ import ParameterOptions from './ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
-import { LOCAL_STORAGE_MAPPING_FLAG, MAPPING_PARAMS } from '@/constants';
+import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
+import { hasExpressionMapping } from './helpers';
 
 export default mixins(
 	showMessage,
@@ -147,8 +148,8 @@ export default mixins(
 							dest_node_type: this.node.type,
 							dest_parameter: this.parameter.name,
 							dest_parameter_mode: typeof prevValue === 'string' && prevValue.startsWith('=')? 'expression': 'fixed',
-							dest_parameter_empty: prevValue === '',
-							dest_parameter_had_mapping: typeof prevValue === 'string' && prevValue.startsWith('=') && !!MAPPING_PARAMS.find((param) => prevValue.includes(param)),
+							dest_parameter_empty: prevValue === '' || prevValue === undefined,
+							dest_parameter_had_mapping: typeof prevValue === 'string' && prevValue.startsWith('=') && hasExpressionMapping(prevValue),
 							success: true,
 						});
 					}

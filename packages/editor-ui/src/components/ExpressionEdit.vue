@@ -50,7 +50,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { MAPPING_PARAMS } from '@/constants';
+import { hasExpressionMapping } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -173,7 +173,7 @@ export default mixins(
 					source: this.eventSource,
 					session_id: this.$store.getters['ui/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
-					has_mapping: !!MAPPING_PARAMS.find((param) => this.value.includes(param)),
+					has_mapping: hasExpressionMapping(this.value),
 				});
 			}
 		},
