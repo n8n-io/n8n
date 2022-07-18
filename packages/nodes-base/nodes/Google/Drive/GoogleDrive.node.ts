@@ -916,6 +916,13 @@ export class GoogleDrive implements INodeType {
 						description: 'Whether to set the \'keepForever\' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.',
 					},
 					{
+						displayName: 'Move to Trash',
+						name: 'trashed',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to move a file to the trash. Only the owner may trash a file.',
+					},
+					{
 						displayName: 'OCR Language',
 						name: 'ocrLanguage',
 						type: 'string',
@@ -2403,13 +2410,13 @@ export class GoogleDrive implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
 							}
 
 							if (item.binary[propertyNameUpload].mimeType) {
@@ -2496,6 +2503,10 @@ export class GoogleDrive implements INodeType {
 
 						if (updateFields.fileName) {
 							body.name = updateFields.fileName;
+						}
+
+						if (updateFields.hasOwnProperty('trashed')) {
+							body.trashed = updateFields.trashed;
 						}
 
 						if (updateFields.parentId && updateFields.parentId !== '') {

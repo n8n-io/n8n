@@ -201,7 +201,7 @@ export class DateTime implements INodeType {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
-						description: 'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'To Timezone Name or ID',
@@ -211,7 +211,7 @@ export class DateTime implements INodeType {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
-						description: 'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -416,7 +416,7 @@ export class DateTime implements INodeType {
 						continue;
 					}
 					if (options.fromFormat === undefined && !moment(currentDate as string | number).isValid()) {
-						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field');
+						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field', { itemIndex: i });
 					}
 
 					if (Number.isInteger(currentDate as unknown as number)) {

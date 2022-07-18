@@ -47,7 +47,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getProjects',
 				},
-				description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				required: true,
 			},
 			{

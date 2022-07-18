@@ -153,7 +153,7 @@ export class Bubble implements INodeType {
 						const filter = options.filtersJson as string;
 						const data = validateJSON(filter);
 						if (data === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Filters must be a valid JSON');
+							throw new NodeOperationError(this.getNode(), 'Filters must be a valid JSON', { itemIndex: i });
 						}
 						qs.constraints = JSON.stringify(data);
 					}

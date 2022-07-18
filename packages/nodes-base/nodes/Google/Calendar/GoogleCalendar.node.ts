@@ -330,7 +330,7 @@ export class GoogleCalendar implements INodeType {
 								additionalFields.repeatUntil
 							) {
 								throw new NodeOperationError(this.getNode(),
-									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`, { itemIndex: i },
 								);
 							}
 							if (additionalFields.repeatFrecuency) {
@@ -577,7 +577,7 @@ export class GoogleCalendar implements INodeType {
 						} else {
 							if (updateFields.repeatHowManyTimes && updateFields.repeatUntil) {
 								throw new NodeOperationError(this.getNode(),
-									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`, { itemIndex: i },
 								);
 							}
 							if (updateFields.repeatFrecuency) {

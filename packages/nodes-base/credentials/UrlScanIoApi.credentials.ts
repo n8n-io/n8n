@@ -18,7 +18,7 @@ export class UrlScanIoApi implements ICredentialType {
 			required: true,
 		},
 	];
-	authenticate = {
+	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
