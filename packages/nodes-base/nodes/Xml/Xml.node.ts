@@ -249,7 +249,7 @@ export class Xml implements INodeType {
 					const parser = new Parser(parserOptions);
 
 					if (item.json[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No json property "${dataPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No json property "${dataPropertyName}" does not exists on item!`, { itemIndex });
 					}
 
 					// @ts-ignore
@@ -267,7 +267,7 @@ export class Xml implements INodeType {
 						},
 					});
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`, { itemIndex });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

@@ -18,21 +18,25 @@ export const taskOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new task',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a task',
+				action: 'Get a task',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all tasks',
+				action: 'Get all tasks',
 			},
 		],
 		default: 'create',
@@ -64,7 +68,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -95,7 +99,7 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Project Name or ID',
 				name: 'project',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjects',
 				},

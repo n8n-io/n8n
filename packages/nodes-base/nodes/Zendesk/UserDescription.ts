@@ -20,41 +20,49 @@ export const userOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user',
+				action: 'Get a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all users',
+				action: 'Get all users',
 			},
 			{
 				name: 'Get Organizations',
 				value: 'getOrganizations',
 				description: 'Get a user\'s organizations',
+				action: 'Get a user\'s organizations',
 			},
 			{
 				name: 'Get Related Data',
 				value: 'getRelatedData',
 				description: 'Get data related to the user',
+				action: 'Get data related to a user',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search users',
+				action: 'Search a user',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
+				action: 'Update a user',
 			},
 		],
 		default: 'create',
@@ -146,7 +154,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLocales',
 				},
 				default: '',
-				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -177,7 +185,7 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -243,7 +251,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Restriction',
@@ -300,7 +308,7 @@ export const userFields: INodeProperties[] = [
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -404,7 +412,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLocales',
 				},
 				default: '',
-				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The user\'s locale. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Moderator',
@@ -442,7 +450,7 @@ export const userFields: INodeProperties[] = [
 				},
 				type: 'options',
 				default: '',
-				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The ID of the user\'s organization. If the user has more than one organization memberships, the ID of the user\'s default organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -508,7 +516,7 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The array of tags applied to this user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Ticket Restriction',
@@ -565,7 +573,7 @@ export const userFields: INodeProperties[] = [
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',

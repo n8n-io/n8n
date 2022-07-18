@@ -39,8 +39,7 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 		delete options.qs;
 	}
 	try {
-		const credentialType = 'theHiveApi';
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

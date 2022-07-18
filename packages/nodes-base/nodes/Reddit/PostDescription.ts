@@ -14,26 +14,31 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Submit a post to a subreddit',
+				action: 'Create a post',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a post from a subreddit',
+				action: 'Delete a post',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a post from a subreddit',
+				action: 'Get a post',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all posts from a subreddit',
+				action: 'Get all posts',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search posts in a subreddit or in all of Reddit',
+				action: 'Search for a post',
 			},
 		],
 		displayOptions: {

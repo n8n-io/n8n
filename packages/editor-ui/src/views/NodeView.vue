@@ -193,6 +193,9 @@ import {
 	IRun,
 	ITaskData,
 	INodeCredentialsDetails,
+	TelemetryHelpers,
+	ITelemetryTrackProperties,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -409,7 +412,13 @@ export default mixins(
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
-				this.$telemetry.track('User clicked execute workflow button', { workflow_id: this.$store.getters.workflowId });
+				this.getWorkflowDataToSave().then((workflowData) => {
+					this.$telemetry.track('User clicked execute workflow button', {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					});
+				});
+
 				this.runWorkflow();
 			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
@@ -1169,6 +1178,15 @@ export default mixins(
 					}
 				}
 				this.stopExecutionInProgress = false;
+
+				this.getWorkflowDataToSave().then((workflowData) => {
+					const trackProps = {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					};
+
+					this.$telemetry.track('User clicked stop workflow execution', trackProps);
+				});
 			},
 
 			async stopWaitingForWebhook () {
@@ -1501,11 +1519,17 @@ export default mixins(
 					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
 				} else {
 					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', {
+					const trackProperties: ITelemetryTrackProperties = {
 						node_type: nodeTypeName,
 						workflow_id: this.$store.getters.workflowId,
 						drag_and_drop: options.dragAndDrop,
-					} as IDataObject);
+					};
+
+					if (lastSelectedNode) {
+						trackProperties.input_node_type = lastSelectedNode.type;
+					}
+
+					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
 				}
 
 				// Automatically deselect all nodes and select the current one and also active

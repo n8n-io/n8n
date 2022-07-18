@@ -38,6 +38,7 @@ export const binOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Create a bin',
 			},
 			{
 				name: 'Get',
@@ -59,6 +60,7 @@ export const binOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get a bin',
 			},
 			{
 				name: 'Delete',
@@ -75,6 +77,7 @@ export const binOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Delete a bin',
 			},
 		],
 		default: 'create',

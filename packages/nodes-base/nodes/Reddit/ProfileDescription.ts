@@ -19,6 +19,7 @@ export const profileOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a profile',
 			},
 		],
 		default: 'get',

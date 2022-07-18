@@ -65,14 +65,17 @@ export class Gotify implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
+						action: 'Create a message',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
+						action: 'Delete a message',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
+						action: 'Get all messages',
 					},
 				],
 				default: 'create',

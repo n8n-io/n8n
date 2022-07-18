@@ -66,12 +66,12 @@ export class GoogleDriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Service Account',
-						value: 'serviceAccount',
+						name: 'OAuth2 (Recommended)',
+						value: 'oAuth2',
 					},
 					{
-						name: 'OAuth2',
-						value: 'oAuth2',
+						name: 'Service Account',
+						value: 'serviceAccount',
 					},
 				],
 				default: 'oAuth2',
@@ -224,7 +224,7 @@ export class GoogleDriveTrigger implements INodeType {
 				},
 				default: 'root',
 				required: true,
-				description: 'The drive to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The drive to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Watch For',
