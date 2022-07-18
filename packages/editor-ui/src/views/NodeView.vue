@@ -548,12 +548,14 @@ export default mixins(
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 				this.$store.commit('setWorkflowExecutionData', data);
+				this.$store.commit('setWorkflowPinData', data.workflowData.pinData);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', false);
 				});
+
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
@@ -609,6 +611,11 @@ export default mixins(
 				this.resetWorkspace();
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
+
+				if (data.workflow.pinData) {
+					this.$store.commit('setWorkflowPinData', data.workflow.pinData);
+				}
+
 				this.$nextTick(() => {
 					this.zoomToFit();
 				});
@@ -677,6 +684,7 @@ export default mixins(
 				this.$store.commit('setWorkflowId', workflowId);
 				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
+				this.$store.commit('setWorkflowPinData', data.pinData || {});
 
 				const tags = (data.tags || []) as ITag[];
 				this.$store.commit('tags/upsertTags', tags);
@@ -1310,6 +1318,10 @@ export default mixins(
 							this.nodeSelectedByName(node.name);
 						});
 					});
+
+					if (workflowData.pinData) {
+						this.$store.commit('setWorkflowPinData', workflowData.pinData);
+					}
 
 					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
 					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
@@ -2167,6 +2179,14 @@ export default mixins(
 
 				await this.addNodes([newNodeData]);
 
+				const pinData = this.$store.getters['pinDataByNodeName'](nodeName);
+				if (pinData) {
+					this.$store.commit('pinData', {
+						node: newNodeData,
+						data: pinData,
+					});
+				}
+
 				this.$store.commit('setStateDirty', true);
 
 				// Automatically deselect all nodes and select the current one and also active
@@ -2831,7 +2851,7 @@ export default mixins(
 				}
 
 				this.$store.commit('removeAllConnections', {setStateDirty: false});
-				this.$store.commit('removeAllNodes', {setStateDirty: false});
+				this.$store.commit('removeAllNodes', { setStateDirty: false, removePinData: true });
 
 				// Reset workflow execution data
 				this.$store.commit('setWorkflowExecutionData', null);

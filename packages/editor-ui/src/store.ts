@@ -2,7 +2,10 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/constants';
+import {
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	DEFAULT_NODETYPE_VERSION,
+} from '@/constants';
 
 import {
 	IConnection,
@@ -14,6 +17,7 @@ import {
 	IRunData,
 	ITaskData,
 	IWorkflowSettings,
+	PinData,
 } from 'n8n-workflow';
 
 import {
@@ -39,6 +43,7 @@ import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
+import {stringSizeInBytes} from "@/components/helpers";
 
 Vue.use(Vuex);
 
@@ -87,6 +92,7 @@ const state: IRootState = {
 		nodes: [],
 		settings: {},
 		tags: [],
+		pinData: {},
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
@@ -200,6 +206,23 @@ export const store = new Vuex.Store({
 		},
 		resetSelectedNodes (state) {
 			Vue.set(state, 'selectedNodes', []);
+		},
+
+		// Pin data
+		pinData(state, payload: { node: INodeUi, data: IDataObject }) {
+			if (state.workflow.pinData) {
+				Vue.set(state.workflow.pinData, payload.node.name, payload.data);
+			}
+
+			state.stateIsDirty = true;
+		},
+		unpinData(state, payload: { node: INodeUi }) {
+			if (state.workflow.pinData) {
+				Vue.set(state.workflow.pinData, payload.node.name, undefined);
+				delete state.workflow.pinData[payload.node.name];
+			}
+
+			state.stateIsDirty = true;
 		},
 
 		// Active
@@ -332,6 +355,11 @@ export const store = new Vuex.Store({
 
 			Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
 			Vue.delete(state.nodeMetadata, nameData.old);
+
+			if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(nameData.old)) {
+				Vue.set(state.workflow.pinData, nameData.new, state.workflow.pinData[nameData.old]);
+				Vue.delete(state.workflow.pinData, nameData.old);
+			}
 		},
 
 		resetAllNodesIssues (state) {
@@ -424,6 +452,10 @@ export const store = new Vuex.Store({
 		removeNode (state, node: INodeUi) {
 			Vue.delete(state.nodeMetadata, node.name);
 
+			if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(node.name)) {
+				Vue.delete(state.workflow.pinData, node.name);
+			}
+
 			for (let i = 0; i < state.workflow.nodes.length; i++) {
 				if (state.workflow.nodes[i].name === node.name) {
 					state.workflow.nodes.splice(i, 1);
@@ -436,6 +468,11 @@ export const store = new Vuex.Store({
 			if (data.setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
+
+			if (data.removePinData) {
+				state.workflow.pinData = {};
+			}
+
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
 			state.nodeMetadata = {};
 		},
@@ -605,6 +642,10 @@ export const store = new Vuex.Store({
 
 		setWorkflowSettings (state, workflowSettings: IWorkflowSettings) {
 			Vue.set(state.workflow, 'settings', workflowSettings);
+		},
+
+		setWorkflowPinData (state, pinData: Record<string, IDataObject>) {
+			Vue.set(state.workflow, 'pinData', pinData);
 		},
 
 		setWorkflowTagIds (state, tags: string[]) {
@@ -842,6 +883,27 @@ export const store = new Vuex.Store({
 		},
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
+		},
+
+		/**
+		 * Pin data
+		 */
+
+		pinData: (state): PinData | undefined => {
+			return state.workflow.pinData;
+		},
+		pinDataByNodeName: (state) => (nodeName: string) => {
+			return state.workflow.pinData && state.workflow.pinData[nodeName];
+		},
+		pinDataSize: (state) => {
+			return state.workflow.nodes
+				.reduce((acc, node) => {
+					if (typeof node.pinData !== 'undefined' && node.name !== state.activeNode) {
+						acc += stringSizeInBytes(node.pinData);
+					}
+
+					return acc;
+				}, 0);
 		},
 
 		/**

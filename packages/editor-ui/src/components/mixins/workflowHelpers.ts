@@ -328,6 +328,7 @@ export const workflowHelpers = mixins(
 				const data: IWorkflowData = {
 					name: this.$store.getters.workflowName,
 					nodes,
+					pinData: this.$store.getters.pinData,
 					connections: workflowConnections,
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,

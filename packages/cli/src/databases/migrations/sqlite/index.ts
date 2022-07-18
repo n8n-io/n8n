@@ -12,6 +12,7 @@ import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserMan
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
+import { IntroducePinData1654089251344 } from './1654089251344-IntroducePinData';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -28,6 +29,7 @@ const sqliteMigrations = [
 	LowerCaseUserEmail1648740597343,
 	AddUserSettings1652367743993,
 	AddAPIKeyColumn1652905585850,
+	IntroducePinData1654089251344,
 ];
 
 export { sqliteMigrations };

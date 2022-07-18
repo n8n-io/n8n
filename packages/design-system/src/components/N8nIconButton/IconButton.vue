@@ -1,5 +1,9 @@
 <template>
-	<n8n-button :class="`icon-button ${$style['icon-button']} ${$style[size]}`" v-bind="$props" v-on="$listeners"/>
+	<n8n-button
+		:class="`icon-button ${$style['icon-button']} ${$style[size]}`"
+		v-bind="$props"
+		v-on="$listeners"
+	/>
 </template>
 
 <script lang="ts">
@@ -23,19 +27,19 @@ export default {
 			type: Boolean,
 			default: false,
 		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		active: {
-			type: Boolean,
-			default: false,
-		},
 		outline: {
 			type: Boolean,
 			default: false,
 		},
 		text: {
+			type: Boolean,
+			default: false,
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
+		},
+		active: {
 			type: Boolean,
 			default: false,
 		},
@@ -48,16 +52,24 @@ export default {
 			validator: (value: string): boolean =>
 				['left', 'right'].includes(value),
 		},
+		circle: {
+			type: Boolean,
+			default: true,
+		},
+		circle: {
+			type: Boolean,
+			default: true,
+		},
 	},
 };
 </script>
 
 <style lang="scss" module>
 .icon-button {
-  padding: 0;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
+	padding: 0;
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .mini {

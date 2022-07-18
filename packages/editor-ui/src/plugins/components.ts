@@ -50,6 +50,7 @@ import {
 	N8nActionToggle,
 	N8nButton,
 	N8nElButton,
+	N8nCallout,
 	N8nCard,
 	N8nIcon,
 	N8nIconButton,
@@ -90,6 +91,7 @@ Vue.use(N8nActionToggle);
 Vue.use(N8nAvatar);
 Vue.component('n8n-button', N8nButton);
 Vue.component('el-button', N8nElButton);
+Vue.component('n8n-callout', N8nCallout);
 Vue.component('n8n-card', N8nCard);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
