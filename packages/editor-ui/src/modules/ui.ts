@@ -115,7 +115,7 @@ const module: Module<IUiState, IRootState> = {
 				infoText: 'fakeDoor.settings.environments.infoText',
 				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
 				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-				linkURL: 'http://www.google.com', // TODO: Replace this as soon as TypeForm link is ready
+				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
 				uiLocations: ['settings'],
 			},
 			{
@@ -125,7 +125,7 @@ const module: Module<IUiState, IRootState> = {
 				infoText: 'fakeDoor.settings.logging.infoText',
 				actionBoxTitle: 'fakeDoor.settings.logging.actionBox.title',
 				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
-				linkURL: 'http://www.google.com', // TODO: Replace this as soon as TypeForm link is ready
+				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
 				uiLocations: ['settings'],
 			},
 			{
@@ -133,7 +133,7 @@ const module: Module<IUiState, IRootState> = {
 				featureName: 'fakeDoor.credentialEdit.sharing.name',
 				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
 				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
-				linkURL: 'http://www.google.com', // TODO: Replace this as soon as TypeForm link is ready
+				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
 				uiLocations: ['credentialsModal'],
 			},
 		],

@@ -59,6 +59,13 @@ export default mixins(
 						capitalize: true,
 					},
 				},
+				{
+					name: 'agree',
+					properties: {
+						label: this.$locale.baseText('auth.agreement.label'),
+						type: 'checkbox',
+					},
+				},
 			],
 		};
 		return {

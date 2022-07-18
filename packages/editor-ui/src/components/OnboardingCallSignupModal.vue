@@ -24,17 +24,18 @@
 		<template slot="footer">
 			<div :class="$style.buttonsContainer">
 				<n8n-button
-					:disabled="email === ''"
-					:label="$locale.baseText('onboardingCallSignupModal.signupButton.label')"
-					size="large"
+					:label="$locale.baseText('onboardingCallSignupModal.cancelButton.label')"
+					size="medium"
 					float="right"
-					@click="onSignup"
+					type="outline"
+					@click="onCancel"
 				/>
 				<n8n-button
-					:label="$locale.baseText('onboardingCallSignupModal.cancelButton.label')"
-					size="large"
+					:disabled="email === ''"
+					:label="$locale.baseText('onboardingCallSignupModal.signupButton.label')"
+					size="medium"
 					float="right"
-					@click="onCancel"
+					@click="onSignup"
 				/>
 			</div>
 		</template>
@@ -67,7 +68,7 @@ export default mixins(
 			modalBus: new Vue(),
 			ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 			showError: false,
-			exitConfirmed: false,
+			okToClose: false,
 		};
 	},
 	computed: {
@@ -86,25 +87,17 @@ export default mixins(
 			this.$showMessage({
 				type: 'success',
 				title: this.$locale.baseText('onboardingCallSignupSucess.title'),
+				message: this.$locale.baseText('onboardingCallSignupSucess.message'),
 			});
-			this.exitConfirmed = true;
+			this.okToClose = true;
 			this.modalBus.$emit('close');
 		},
 		async onCancel() {
-			const deleteConfirmed = await this.confirmMessage(
-				'',
-				this.$locale.baseText('onboardingCallSignupModal.confirmExit.title'),
-				null,
-				this.$locale.baseText('generic.yes'),
-				this.$locale.baseText('generic.no'),
-			);
-			this.exitConfirmed = deleteConfirmed;
-			if (deleteConfirmed) {
-				this.modalBus.$emit('close');
-			}
+			this.okToClose = true;
+			this.modalBus.$emit('close');
 		},
 		onModalClose() {
-			return this.exitConfirmed;
+			return this.okToClose;
 		},
 	},
 });

@@ -228,7 +228,7 @@ interface AddNodeOptions {
 }
 
 const ONBOARDING_PROMPT_TIMEBOX = 14;
-const ONBOARDING_PROMPT_TIMEOUT = 30000;
+const FIRST_ONBOARDING_PROMPT_TIMEOUT = 300000;
 
 export default mixins(
 	copyPaste,
@@ -3002,6 +3002,9 @@ export default mixins(
 
 			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
 				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+				// TODO: Once testing is done, update to FIRST_ONBOARDING_PROMPT_TIMEOUT
+				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? 5000 : 1000;
+
 				if (onboardingResponse.title && onboardingResponse.description) {
 					setTimeout(async () => {
 						this.$showToast({
@@ -3020,7 +3023,7 @@ export default mixins(
 								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
 							},
 						});
-					}, 1000); // TODO: After testing set this back to ONBOARDING_PROMPT_TIMEOUT
+					}, promptTimeout);
 				}
 			}
 		},

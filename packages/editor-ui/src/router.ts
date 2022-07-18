@@ -325,6 +325,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'users',
+						};
+					},
 				},
 				permissions: {
 					allow: {
@@ -345,6 +350,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'personal',
+						};
+					},
 				},
 				permissions: {
 					allow: {
@@ -365,6 +375,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'api',
+						};
+					},
 				},
 				permissions: {
 					allow: {
@@ -384,6 +399,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: route.params['featureId'],
+						};
+					},
 				},
 				permissions: {
 					allow: {

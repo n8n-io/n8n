@@ -1,6 +1,6 @@
 <template>
 	<div v-if="this.featureInfo" :class="$style.container">
-			<div :class="[$style.headingContainer, 'mb-l']">
+			<div v-if="showHeading" :class="[$style.headingContainer, 'mb-l']">
 				<n8n-heading size="2xlarge">{{ $locale.baseText(featureInfo.featureName) }}</n8n-heading>
 			</div>
 			<div v-if="featureInfo.infoText" class="mt-3xl mb-2xl">
@@ -22,6 +22,7 @@
 </template>
 
 <script lang="ts">
+import { FAKE_DOOR_FEATURES } from '@/constants';
 import { IFakeDoor } from '@/Interface';
 import Vue from 'vue';
 
@@ -37,10 +38,20 @@ export default Vue.extend({
 		featureInfo(): IFakeDoor {
 			return this.$store.getters['ui/getFakeDoorById'](this.featureId);
 		},
+		showHeading(): boolean {
+			const featuresWithoutHeading = [
+				FAKE_DOOR_FEATURES.SHARING.toString(),
+			];
+			return !featuresWithoutHeading.includes(this.featureId);
+		},
 	},
 	methods: {
 		openLinkPage() {
-			window.open(this.featureInfo.linkURL, '_blank');
+			const userId = this.$store.getters['users/currentUserId'];
+			const version = this.$store.getters['settings/versionCli'];
+			window.open(`${this.featureInfo.linkURL}&u=${userId}&v=${version}`, '_blank');
+
+			this.$telemetry.track('user clicked feature waiting list button', { feature: this.featureId });
 		},
 	},
 });
