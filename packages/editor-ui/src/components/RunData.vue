@@ -362,7 +362,7 @@ import {
 	INodeExecutionData,
 	INodeTypeDescription,
 	IRunData,
-	IRunExecutionData,
+	IRunExecutionData, PinData,
 } from 'n8n-workflow';
 
 import {
@@ -727,8 +727,9 @@ export default mixins(
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
-				const data = this.rawInputData && this.rawInputData.length > 0
-					? this.convertToJson(this.rawInputData)
+				const inputData = this.pinData ? this.pinData as PinData : this.convertToJson(this.rawInputData);
+				const data = inputData.length > 0
+					? inputData
 					: TEST_PIN_DATA;
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
