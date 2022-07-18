@@ -651,7 +651,7 @@ export default mixins(
 				if (this.isValueExpression || this.forceShowExpression) {
 					classes['expression'] = true;
 				}
-				if (this.getIssues.length || this.errorHighlight) {
+				if (!this.droppable && !this.activeDrop && (this.getIssues.length || this.errorHighlight)) {
 					classes['has-issues'] = true;
 				}
 
