@@ -220,6 +220,8 @@ export default mixins(
 					this.showDraggableHintWithDelay = this.showDraggableHint;
 					if (this.showDraggableHintWithDelay) {
 						this.draggableHintShown = true;
+
+						this.$telemetry.track('User viewed data mapping tooltip', { type: 'unexecuted input pane' });
 					}
 				}, 1000);
 			}

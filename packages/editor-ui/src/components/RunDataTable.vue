@@ -148,11 +148,14 @@ export default Vue.extend({
 		showHint (curr: boolean, prev: boolean) {
 			if (curr) {
 				setTimeout(() => {
-					this.showHintWithDelay= this.showHint;
+					this.showHintWithDelay = this.showHint;
+					if (this.showHintWithDelay) {
+						this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
+					}
 				}, 1000);
 			}
 			else {
-				this.showHintWithDelay= false;
+				this.showHintWithDelay = false;
 			}
 		},
 	},
