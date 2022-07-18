@@ -362,7 +362,8 @@ import {
 	INodeExecutionData,
 	INodeTypeDescription,
 	IRunData,
-	IRunExecutionData, PinData,
+	IRunExecutionData,
+	PinData,
 } from 'n8n-workflow';
 
 import {
