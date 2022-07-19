@@ -406,7 +406,7 @@ export class TheHive implements INodeType {
 						if (customFields) {
 							Object.keys(customFields).forEach((key) => {
 								set(body, key, customFields[key]);
-							})
+							});
 						}
 
 						const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
@@ -1347,7 +1347,7 @@ export class TheHive implements INodeType {
 						if (customFields) {
 							Object.keys(customFields).forEach((key) => {
 								set(body, key, customFields[key]);
-							})
+							});
 						}
 
 
