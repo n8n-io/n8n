@@ -14,11 +14,11 @@
 			<tr>
 				<th v-for="(column, i) in tableData.columns || []" :key="column">
 					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
-						<div slot="content">{{ $locale.baseText('runData.dragHint') }}</div>
+						<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
 						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
 							<template v-slot:preview="{ canDrop }">
 								<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-									{{ $locale.baseText('runData.dragColumn', { interpolate: { name: shorten(column) } }) }}
+									{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(column) } }) }}
 								</div>
 							</template>
 							<template v-slot="{ isDragging }">
@@ -33,7 +33,7 @@
 									<span>{{ column || "&nbsp;" }}</span>
 									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHintWithDelay">
 										<div v-if="focusedMappableInput" slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
-										<div v-else slot="content" v-html="$locale.baseText('runData.dragHint')"></div>
+										<div v-else slot="content" v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"></div>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
