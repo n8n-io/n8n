@@ -82,7 +82,7 @@ export class WorkableTrigger implements INodeType {
 							loadOptionsMethod: 'getJobs',
 						},
 						default: '',
-						description: 'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Stage Name or ID',
@@ -92,7 +92,7 @@ export class WorkableTrigger implements INodeType {
 							loadOptionsMethod: 'getStages',
 						},
 						default: '',
-						description: 'Get notifications for specific stages. e.g. \'hired\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Get notifications for specific stages. e.g. \'hired\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},

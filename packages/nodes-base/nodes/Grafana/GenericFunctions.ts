@@ -25,7 +25,6 @@ export async function grafanaApiRequest(
 	qs: IDataObject = {},
 ) {
 	const {
-		apiKey,
 		baseUrl: rawBaseUrl,
 	} = await this.getCredentials('grafanaApi') as GrafanaCredentials;
 
@@ -33,7 +32,6 @@ export async function grafanaApiRequest(
 
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: `Bearer ${apiKey}`,
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -52,7 +50,7 @@ export async function grafanaApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'grafanaApi', options);
 	} catch (error) {
 		if (error?.response?.data?.message === 'Team member not found') {
 			error.response.data.message += '. Are you sure the user is a member of this team?';

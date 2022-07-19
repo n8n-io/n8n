@@ -129,7 +129,7 @@ export class Baserow implements INodeType {
 				const credentials = await this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 				const databaseId = this.getNodeParameter('databaseId', 0) as string;
-				const endpoint = `/api/database/tables/database/${databaseId}`;
+				const endpoint = `/api/database/tables/database/${databaseId}/`;
 				const tables = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
 				return toOptions(tables);
 			},

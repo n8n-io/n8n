@@ -27,7 +27,7 @@ export class GoogleTranslate implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googletranslate.png',
 		group: ['input', 'output'],
-		version: 1,
+		version: [1, 2],
 		description: 'Translate data using Google Translate',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
@@ -75,6 +75,36 @@ export class GoogleTranslate implements INodeType {
 					},
 				],
 				default: 'serviceAccount',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					}
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2 (Recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					}
+				},
 			},
 			{
 				displayName: 'Resource',
@@ -138,7 +168,7 @@ export class GoogleTranslate implements INodeType {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				required: true,
 				displayOptions: {
 					show: {

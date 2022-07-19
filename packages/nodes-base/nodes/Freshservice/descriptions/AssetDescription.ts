@@ -76,7 +76,7 @@ export const assetFields: INodeProperties[] = [
 		displayName: 'Asset Type Name or ID',
 		name: 'assetTypeId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -128,7 +128,7 @@ export const assetFields: INodeProperties[] = [
 							loadOptionsMethod: 'getAssetTypeFields',
 						},
 						default: '',
-						description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -250,7 +250,7 @@ export const assetFields: INodeProperties[] = [
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent by whom the asset is managed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the agent by whom the asset is managed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
@@ -267,7 +267,7 @@ export const assetFields: INodeProperties[] = [
 				name: 'asset_type_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the asset type to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the asset type to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAssetTypes',
 				},
@@ -277,7 +277,7 @@ export const assetFields: INodeProperties[] = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department to which the asset belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the department to which the asset belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -287,7 +287,7 @@ export const assetFields: INodeProperties[] = [
 				name: 'location_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the location to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the location to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLocations',
 				},
@@ -358,7 +358,7 @@ export const assetFields: INodeProperties[] = [
 							loadOptionsMethod: 'getAssetTypeFields',
 						},
 						default: '',
-						description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
