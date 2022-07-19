@@ -66,6 +66,7 @@ export const campaignOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get all campaigns',
 			},
 			{
 				name: 'Get',
@@ -114,6 +115,7 @@ export const campaignOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get a campaign',
 			},
 		],
 		default: 'getAll',

@@ -20,86 +20,103 @@ export const channelOperations: INodeProperties[] = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archives a conversation',
+				action: 'Archive a channel',
 			},
 			{
 				name: 'Close',
 				value: 'close',
 				description: 'Closes a direct message or multi-person direct message',
+				action: 'Close a channel',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Initiates a public or private channel-based conversation',
+				action: 'Create a channel',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get information about a channel',
+				action: 'Get a channel',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all channels in a Slack team',
+				action: 'Get all channels',
 			},
 			{
 				name: 'History',
 				value: 'history',
 				description: 'Get a conversation\'s history of messages and events',
+				action: 'Get the history of a channel',
 			},
 			{
 				name: 'Invite',
 				value: 'invite',
 				description: 'Invite a user to a channel',
+				action: 'Invite a user to a channel',
 			},
 			{
 				name: 'Join',
 				value: 'join',
 				description: 'Joins an existing conversation',
+				action: 'Join a channel',
 			},
 			{
 				name: 'Kick',
 				value: 'kick',
 				description: 'Removes a user from a channel',
+				action: 'Kick a user from a channel',
 			},
 			{
 				name: 'Leave',
 				value: 'leave',
 				description: 'Leaves a conversation',
+				action: 'Leave a channel',
 			},
 			{
 				name: 'Member',
 				value: 'member',
 				description: 'List members of a conversation',
+				action: 'Get members of a channel',
 			},
 			{
 				name: 'Open',
 				value: 'open',
 				description: 'Opens or resumes a direct message or multi-person direct message',
+				action: 'Open a channel',
 			},
 			{
 				name: 'Rename',
 				value: 'rename',
 				description: 'Renames a conversation',
+				action: 'Rename a channel',
 			},
 			{
 				name: 'Replies',
 				value: 'replies',
 				description: 'Get a thread of messages posted to a channel',
+				action: 'Get a thread of messages posted to a channel',
 			},
 			{
 				name: 'Set Purpose',
 				value: 'setPurpose',
 				description: 'Sets the purpose for a conversation',
+				action: 'Set the purpose of a channel',
 			},
 			{
 				name: 'Set Topic',
 				value: 'setTopic',
 				description: 'Sets the topic for a conversation',
+				action: 'Set the topic of a channel',
 			},
 			{
 				name: 'Unarchive',
 				value: 'unarchive',
 				description: 'Unarchives a conversation',
+				action: 'Unarchive a channel',
 			},
 		],
 		default: 'create',
@@ -130,7 +147,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the channel to archive. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the channel to archive. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -155,7 +172,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the channel to close. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the channel to close. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -229,7 +246,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the channel to invite user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the channel to invite user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'User Names or IDs',
@@ -250,7 +267,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The ID of the user to invite into channel. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the user to invite into channel. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -323,13 +340,13 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
@@ -353,7 +370,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -493,7 +510,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -599,7 +616,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the channel to leave. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the channel to leave. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -609,7 +626,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
@@ -727,7 +744,7 @@ export const channelFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -754,7 +771,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The name of the channel to rename. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the channel to rename. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Name',
@@ -798,7 +815,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'TS',
@@ -922,7 +939,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Conversation to set the purpose of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Conversation to set the purpose of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Purpose',
@@ -965,7 +982,7 @@ export const channelFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Conversation to set the topic of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Conversation to set the topic of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Topic',
@@ -1008,6 +1025,6 @@ export const channelFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'The ID of the channel to unarchive. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the channel to unarchive. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

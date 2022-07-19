@@ -23,21 +23,25 @@ export const boardOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new board',
+				action: 'Create a board',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a board',
+				action: 'Delete a board',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a board',
+				action: 'Get a board',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all user boards',
+				action: 'Get all boards',
 			},
 		],
 		default: 'create',
@@ -87,7 +91,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -260,7 +264,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

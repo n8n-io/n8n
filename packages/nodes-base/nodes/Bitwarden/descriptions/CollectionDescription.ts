@@ -13,18 +13,22 @@ export const collectionOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a collection',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a collection',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all collections',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a collection',
 			},
 		],
 		displayOptions: {
@@ -122,7 +126,7 @@ export const collectionFields: INodeProperties[] = [
 				displayName: 'Group Names or IDs',
 				name: 'groups',
 				type: 'multiOptions',
-				description: 'The group to assign this collection to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The group to assign this collection to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',

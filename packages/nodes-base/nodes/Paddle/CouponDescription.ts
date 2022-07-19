@@ -20,16 +20,19 @@ export const couponOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a coupon',
+				action: 'Create a coupon',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all coupons',
+				action: 'Get all coupons',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a coupon',
+				action: 'Update a coupon',
 			},
 		],
 		default: 'create',
@@ -94,7 +97,7 @@ export const couponFields: INodeProperties[] = [
 			},
 		},
 		default: [],
-		description: 'Comma-separated list of product IDs. Required if coupon_type is product. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Comma-separated list of product IDs. Required if coupon_type is product. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
