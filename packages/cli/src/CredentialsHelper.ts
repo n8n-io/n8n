@@ -158,11 +158,21 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return undefined;
 		}
 
+		// check if the node is the mockup node used for testing
+		// if so, it means this is a credential test and not normal node execution
+		const isTestingCredentials =
+			node?.parameters?.temp === '' && node?.type === 'n8n-nodes-base.noOp';
+
 		if (credentialType.preAuthentication) {
 			if (typeof credentialType.preAuthentication === 'function') {
 				// if the expirable property is empty in the credentials
 				// or are expired, call pre authentication method
-				if (credentials[expirableProperty?.name] === '' || credentialsExpired) {
+				// or the credentials are being tested
+				if (
+					credentials[expirableProperty?.name] === '' ||
+					credentialsExpired ||
+					isTestingCredentials
+				) {
 					const output = await credentialType.preAuthentication.call(helpers, credentials);
 
 					// if there is data in the output, make sure the returned

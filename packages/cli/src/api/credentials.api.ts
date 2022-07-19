@@ -135,22 +135,7 @@ credentialsController.post(
 			);
 		}
 
-		const mode: WorkflowExecuteMode = 'internal';
-		const timezone = config.getEnv('generic.timezone');
-		const credentialsHelper = new CredentialsHelper(encryptionKey);
-
-		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-			{ id: credentials.id.toString(), name: credentials.name },
-			credentials.type,
-			mode,
-			timezone,
-			true,
-		);
-
-		credentials.data = decryptedDataOriginal;
-
 		const helper = new CredentialsHelper(encryptionKey);
-
 		return helper.testCredentials(req.user, credentials.type, credentials, nodeToTestWith);
 	}),
 );
