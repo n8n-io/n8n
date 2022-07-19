@@ -8,7 +8,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/facebookGraphApp"
+				"url": "https://docs.n8n.io/integrations/credentials/facebookapp/"
 			}
 		],
 		"primaryDocumentation": [

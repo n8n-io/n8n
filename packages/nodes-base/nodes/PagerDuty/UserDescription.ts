@@ -20,6 +20,7 @@ export const userOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user',
+				action: 'Get a user',
 			},
 		],
 		default: 'get',

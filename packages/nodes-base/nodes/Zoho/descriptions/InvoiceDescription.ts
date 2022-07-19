@@ -29,31 +29,37 @@ export const invoiceOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an invoice',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or Update an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an invoice',
+				action: 'Delete an invoice',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an invoice',
+				action: 'Get an invoice',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all invoices',
+				action: 'Get all invoices',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an invoice',
+				action: 'Update an invoice',
 			},
 		],
 		default: 'create',
@@ -157,7 +163,7 @@ export const invoiceFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -347,7 +353,7 @@ export const invoiceFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',

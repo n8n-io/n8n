@@ -20,11 +20,13 @@ export const contactSegmentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to a segment',
+				action: 'Add a contact to a segment',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove contact from a segment',
+				action: 'Remove a contact from a segment',
 			},
 		],
 		default: 'add',
@@ -59,7 +61,7 @@ export const contactSegmentFields: INodeProperties[] = [
 		displayName: 'Segment Name or ID',
 		name: 'segmentId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {

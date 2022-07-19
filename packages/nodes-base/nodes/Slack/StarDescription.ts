@@ -18,16 +18,19 @@ export const starOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a star to an item',
+				action: 'Add a star',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a star from an item',
+				action: 'Delete a star',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all stars of autenticated user',
+				action: 'Get all stars',
 			},
 		],
 		default: 'add',
@@ -65,7 +68,7 @@ export const starFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				default: '',
-				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'File Comment',
@@ -120,7 +123,7 @@ export const starFields: INodeProperties[] = [
 					loadOptionsMethod: 'getChannels',
 				},
 				default: '',
-				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'File ID',

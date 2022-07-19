@@ -18,21 +18,25 @@ export const tableOperations: INodeProperties[] = [
 				name: 'Add Row',
 				value: 'addRow',
 				description: 'Adds rows to the end of the table',
+				action: 'Add a row',
 			},
 			{
 				name: 'Get Columns',
 				value: 'getColumns',
 				description: 'Retrieve a list of tablecolumns',
+				action: 'Get columns',
 			},
 			{
 				name: 'Get Rows',
 				value: 'getRows',
 				description: 'Retrieve a list of tablerows',
+				action: 'Get rows',
 			},
 			{
 				name: 'Lookup',
 				value: 'lookup',
 				description: 'Looks for a specific column value and then returns the matching row',
+				action: 'Look up a column',
 			},
 		],
 		default: 'addRow',
@@ -48,7 +52,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
@@ -68,7 +72,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -92,7 +96,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
@@ -148,7 +152,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
@@ -168,7 +172,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -192,7 +196,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
@@ -326,7 +330,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
@@ -346,7 +350,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -370,7 +374,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
@@ -504,7 +508,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
@@ -525,7 +529,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
@@ -549,7 +553,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',

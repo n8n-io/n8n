@@ -47,7 +47,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getProjects',
 				},
-				description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				required: true,
 			},
 			{
@@ -60,26 +60,31 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Write data to a database',
+						action: 'Write data to a database',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete data from a database',
+						action: 'Delete data from a database',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a record from a database',
+						action: 'Get a record from a database',
 					},
 					{
 						name: 'Push',
 						value: 'push',
 						description: 'Append to a list of data',
+						action: 'Append to a list of data',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update item on a database',
+						action: 'Update item in a database',
 					},
 				],
 				default: 'create',

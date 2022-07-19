@@ -20,26 +20,31 @@ export const orderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an order',
+				action: 'Create an order',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an order',
+				action: 'Delete an order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an order',
+				action: 'Get an order',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all orders',
+				action: 'Get all orders',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an order',
+				action: 'Update an order',
 			},
 		],
 		default: 'create',
@@ -271,7 +276,7 @@ export const orderFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLocations',
 				},
 				default: '',
-				description: 'The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Note',
@@ -430,7 +435,7 @@ export const orderFields: INodeProperties[] = [
 							loadOptionsMethod: 'getProducts',
 						},
 						default: '',
-						description: 'The ID of the product that the line item belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The ID of the product that the line item belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Variant ID',
@@ -842,7 +847,7 @@ export const orderFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLocations',
 				},
 				default: '',
-				description: 'The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The ID of the physical location where the order was processed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Note',

@@ -20,26 +20,31 @@ export const agentOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an agent by ID',
+				action: 'Delete an agent',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an agent by ID',
+				action: 'Get an agent',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all agents of the current user\'s organization',
+				action: 'Get all agents',
 			},
 			{
 				name: 'Get Output',
 				value: 'getOutput',
 				description: 'Get the output of the most recent container of an agent',
+				action: 'Get the output of an agent',
 			},
 			{
 				name: 'Launch',
 				value: 'launch',
 				description: 'Add an agent to the launch queue',
+				action: 'Add an agent to the launch queue',
 			},
 		],
 		default: 'launch',
@@ -55,7 +60,7 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
@@ -146,7 +151,7 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},
@@ -255,7 +260,7 @@ export const agentFields: INodeProperties[] = [
 		displayName: 'Agent Name or ID',
 		name: 'agentId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getAgents',
 		},

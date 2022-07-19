@@ -36,7 +36,7 @@ export class GoogleDocs implements INodeType {
 		name: 'googleDocs',
 		icon: 'file:googleDocs.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Docs API.',
 		defaults: {
@@ -84,6 +84,36 @@ export class GoogleDocs implements INodeType {
 					},
 				],
 				default: 'serviceAccount',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					}
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2 (Recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					}
+				},
 			},
 			{
 				displayName: 'Resource',

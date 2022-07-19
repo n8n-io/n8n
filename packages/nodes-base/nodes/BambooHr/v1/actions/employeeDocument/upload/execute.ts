@@ -23,13 +23,13 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	if (items[index].binary === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+		throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: index });
 	}
 
 	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index) as string;
 
 	if (items[index]!.binary![propertyNameUpload] === undefined) {
-		throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+		throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: index });
 	}
 
 	const item = items[index].binary as IBinaryKeyData;
