@@ -11,7 +11,7 @@ export const observableOperations: INodeProperties[] = [
 		displayName: 'Operation Name or ID',
 		name: 'operation',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		default: 'getAll',
@@ -136,7 +136,7 @@ export const observableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Data',
@@ -322,7 +322,7 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Analyzer Names or IDs',
 		name: 'analyzers',
 		type: 'multiOptions',
-		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -354,7 +354,7 @@ export const observableFields: INodeProperties[] = [
 		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -552,7 +552,7 @@ export const observableFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'loadObservableTypes',
 				},
-				description: 'Type of the observable. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Type of the observable. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Date Range',

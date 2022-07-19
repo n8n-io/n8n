@@ -293,7 +293,7 @@ export class Mocean implements INodeType {
 					}
 					endpoint = '/rest/2/sms';
 				} else {
-					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`);
+					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`, { itemIndex });
 				}
 
 				if (operation === 'send') {
@@ -305,7 +305,7 @@ export class Mocean implements INodeType {
 					}
 
 				} else {
-					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`);
+					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`, { itemIndex });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

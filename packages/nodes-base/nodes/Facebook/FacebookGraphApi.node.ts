@@ -374,7 +374,7 @@ export class FacebookGraphApi implements INodeType {
 			if (sendBinaryData) {
 				const item = items[itemIndex];
 				if (item.binary === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+					throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex });
 				}
 
 				const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
@@ -388,7 +388,7 @@ export class FacebookGraphApi implements INodeType {
 				}
 
 				if (item.binary[binaryPropertyName] === undefined) {
-					throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+					throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex });
 				}
 
 				const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
@@ -435,7 +435,7 @@ export class FacebookGraphApi implements INodeType {
 
 			if (typeof response === 'string') {
 				if (this.continueOnFail() === false) {
-					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.');
+					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', { itemIndex });
 				}
 
 				returnItems.push({ json: { message: response } });

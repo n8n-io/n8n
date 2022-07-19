@@ -696,12 +696,12 @@ return 0;`,
 						if (fieldToSplitOut.includes('.') && disableDotNotation === true) {
 							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`, { description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options` });
 						} else {
-							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`);
+							throw new NodeOperationError(this.getNode(), `Couldn't find the field '${fieldToSplitOut}' in the input data`, { itemIndex: i });
 						}
 					}
 
 					if (!Array.isArray(arrayToSplit)) {
-						throw new NodeOperationError(this.getNode(), `The provided field '${fieldToSplitOut}' is not an array`);
+						throw new NodeOperationError(this.getNode(), `The provided field '${fieldToSplitOut}' is not an array`, { itemIndex: i });
 					} else {
 
 						for (const element of arrayToSplit) {

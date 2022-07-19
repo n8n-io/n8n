@@ -36,6 +36,35 @@ export class ShopifyTrigger implements INodeType {
 			{
 				name: 'shopifyApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'shopifyAccessTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'shopifyOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -47,6 +76,26 @@ export class ShopifyTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+				],
+				default: 'apiKey',
+			},
 			{
 				displayName: 'Topic',
 				name: 'topic',
@@ -356,14 +405,33 @@ export class ShopifyTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
-		const credentials = await this.getCredentials('shopifyApi');
+		const authentication = this.getNodeParameter('authentication') as string;
+		let secret = '';
+		console.log('llego request');
+
+		if (authentication === 'apiKey') {
+			const credentials = await this.getCredentials('shopifyApi');
+			secret = credentials.sharedSecret as string;
+		}
+
+		if (authentication === 'accessToken') {
+			const credentials = await this.getCredentials('shopifyAccessTokenApi');
+			secret = credentials.appSecretKey as string;
+		}
+
+		if (authentication === 'oAuth2') {
+			const credentials = await this.getCredentials('shopifyOAuth2Api');
+			secret = credentials.clientSecret as string;
+		}
+
 		const topic = this.getNodeParameter('topic') as string;
 		if (headerData['x-shopify-topic'] !== undefined
 			&& headerData['x-shopify-hmac-sha256'] !== undefined
 			&& headerData['x-shopify-shop-domain'] !== undefined
 			&& headerData['x-shopify-api-version'] !== undefined) {
 			// @ts-ignore
-			const computedSignature = createHmac('sha256', credentials.sharedSecret as string).update(req.rawBody).digest('base64');
+			const computedSignature = createHmac('sha256', secret).update(req.rawBody).digest('base64');
+
 			if (headerData['x-shopify-hmac-sha256'] !== computedSignature) {
 				return {};
 			}
