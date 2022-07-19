@@ -1,5 +1,9 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -15,4 +19,17 @@ export class LemlistApi implements ICredentialType {
 			default: '',
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		const encodedApiKey = Buffer.from(':' + credentials.apiKey).toString('base64');
+		requestOptions.headers!['Authorization'] = `Basic ${encodedApiKey}`;
+		requestOptions.headers!['user-agent'] = 'n8n';
+		console.log(requestOptions);
+		return requestOptions;
+	}
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.lemlist.com/api',
+			url: '/campaigns',
+		},
+	};
 }
