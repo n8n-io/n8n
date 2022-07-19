@@ -120,6 +120,7 @@ import {
 	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
+	INode,
 	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
@@ -491,6 +492,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		onTabSelect(tab: string) {
 			this.activeTab = tab;
+			const tabName: string = tab.replaceAll('coming-soon/', '');
+			const credType: string = this.credentialType ? this.credentialType.name : '';
+			const activeNode: INode | null = this.$store.getters.activeNode;
+
+			this.$telemetry.track('User viewed credential tab', {
+				credential_type: credType,
+				node_type: activeNode ? activeNode.type : null,
+				tab: tabName,
+			});
 		},
 		onNodeAccessChange({name, value}: {name: string, value: boolean}) {
 			this.hasUnsavedChanges = true;

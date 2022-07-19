@@ -1,4 +1,4 @@
-import { fetchNextOnboardingPrompt } from '@/api/workflow-webhooks';
+import { applyForOnboardingCall, fetchNextOnboardingPrompt, submitEmailOnSignup } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
@@ -240,8 +240,18 @@ const module: Module<IUiState, IRootState> = {
 		},
 		getNextOnboardingPrompt: async (context: ActionContext<IUiState, IRootState>) => {
 			const instanceId = context.rootGetters.instanceId;
-			const currentUer = context.rootGetters['users/currentUser'];
-			return await fetchNextOnboardingPrompt(instanceId, currentUer);
+			const currentUser = context.rootGetters['users/currentUser'];
+			return await fetchNextOnboardingPrompt(instanceId, currentUser);
+		},
+		applyForOnboardingCall: async (context: ActionContext<IUiState, IRootState>, { email }) => {
+			const instanceId = context.rootGetters.instanceId;
+			const currentUser = context.rootGetters['users/currentUser'];
+			return await applyForOnboardingCall(instanceId, currentUser, email);
+		},
+		submitContactEmail: async (context: ActionContext<IUiState, IRootState>, { email, agree }) => {
+			const instanceId = context.rootGetters.instanceId;
+			const currentUser = context.rootGetters['users/currentUser'];
+			return await submitEmailOnSignup(instanceId, currentUser, email, agree);
 		},
 	},
 };

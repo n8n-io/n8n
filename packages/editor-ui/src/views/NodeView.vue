@@ -3015,10 +3015,10 @@ export default mixins(
 							customClass: 'clickable',
 							closeOnClick: true,
 							onClick: () => {
-								this.$telemetry.track('user_clicked_onboarding_session_toast_link', {
-									toast_sequence_num: onboardingResponse.toast_sequence_num,
+								this.$telemetry.track('user clicked onboarding toast', {
+									seq_num: onboardingResponse.toast_sequence_num,
 									title: onboardingResponse.title,
-									text: onboardingResponse.description,
+									description: onboardingResponse.description,
 								});
 								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
 							},

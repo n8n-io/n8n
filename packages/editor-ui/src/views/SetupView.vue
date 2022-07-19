@@ -147,6 +147,7 @@ export default mixins(
 				const forceRedirectedHere = this.$store.getters['settings/showSetupPage'];
 				this.loading = true;
 				await this.$store.dispatch('users/createOwner', values);
+				await this.$store.dispatch('ui/submitContactEmail', { email: values.email, agree: values.agree !== undefined });
 				if (forceRedirectedHere) {
 					await this.$router.push({ name: VIEWS.HOMEPAGE });
 				}

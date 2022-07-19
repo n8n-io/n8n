@@ -25,16 +25,18 @@
 			<div :class="$style.buttonsContainer">
 				<n8n-button
 					:label="$locale.baseText('onboardingCallSignupModal.cancelButton.label')"
+					:disabled="loading"
 					size="medium"
 					float="right"
 					type="outline"
 					@click="onCancel"
 				/>
 				<n8n-button
-					:disabled="email === ''"
+					:disabled="email === '' || loading"
 					:label="$locale.baseText('onboardingCallSignupModal.signupButton.label')"
 					size="medium"
 					float="right"
+					:loading="loading"
 					@click="onSignup"
 				/>
 			</div>
@@ -69,6 +71,7 @@ export default mixins(
 			ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 			showError: false,
 			okToClose: false,
+			loading: false,
 		};
 	},
 	computed: {
@@ -77,13 +80,17 @@ export default mixins(
 		},
 	},
 	methods: {
-		onSignup() {
+		async onSignup() {
 			if (!this.isEmailValid) {
 				this.showError = true;
 				return;
 			}
 			this.showError = false;
-			// TODO: Submit email here
+			this.loading = true;
+
+			await this.$store.dispatch('ui/applyForOnboardingCall', { email: this.email });
+
+			this.loading = false;
 			this.$showMessage({
 				type: 'success',
 				title: this.$locale.baseText('onboardingCallSignupSucess.title'),
