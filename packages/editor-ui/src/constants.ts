@@ -46,7 +46,6 @@ export const BREAKPOINT_MD = 992;
 export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
-
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
 
 // node types
@@ -250,3 +249,6 @@ export enum FAKE_DOOR_FEATURES {
 	LOGGING = 'logging',
 	SHARING = 'sharing',
 }
+
+export const ONBOARDING_PROMPT_TIMEBOX = 14;
+export const FIRST_ONBOARDING_PROMPT_TIMEOUT = 5000; // TODO: Once testing is done, update to 300000;

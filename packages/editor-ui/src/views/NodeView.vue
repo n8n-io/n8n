@@ -155,7 +155,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { CONTACT_PROMPT_MODAL_KEY, MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, ONBOARDING_CALL_SIGNUP_MODAL_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, FIRST_ONBOARDING_PROMPT_TIMEOUT, MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, ONBOARDING_CALL_SIGNUP_MODAL_KEY, ONBOARDING_PROMPT_TIMEBOX, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -215,20 +215,17 @@ import { mapGetters } from 'vuex';
 
 import {
 	addNodeTranslation,
-	addHeaders,
 } from '@/plugins/i18n';
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
+import { IUser } from 'n8n-design-system';
 
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
-
-const ONBOARDING_PROMPT_TIMEBOX = 14;
-const FIRST_ONBOARDING_PROMPT_TIMEOUT = 300000;
 
 export default mixins(
 	copyPaste,
@@ -3000,10 +2997,13 @@ export default mixins(
 
 			this.$externalHooks().run('nodeView.mount');
 
-			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
+			if (
+				this.currentUser.personalizationAnswers !== null &&
+				this.isOnboardingCallPromptFeatureEnabled &&
+				getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
+			) {
 				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
-				// TODO: Once testing is done, update to FIRST_ONBOARDING_PROMPT_TIMEOUT
-				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? 5000 : 1000;
+				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
 				if (onboardingResponse.title && onboardingResponse.description) {
 					setTimeout(async () => {
