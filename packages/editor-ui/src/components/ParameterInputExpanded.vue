@@ -19,6 +19,7 @@
 		<template>
 			<parameter-input
 				ref="param"
+				inputSize="large"
 				:parameter="parameter"
 				:value="value"
 				:path="parameter.name"
@@ -27,12 +28,11 @@
 				:documentationUrl="documentationUrl"
 				:errorHighlight="showRequiredErrors"
 				:isForCredential="true"
+				:eventSource="eventSource"
 				@focus="onFocus"
 				@blur="onBlur"
 				@textInput="valueChanged"
 				@valueChanged="valueChanged"
-				inputSize="large"
-				:eventSource="eventSource"
 			/>
 			<div :class="$style.errors" v-if="showRequiredErrors">
 				<n8n-text color="danger" size="small">
