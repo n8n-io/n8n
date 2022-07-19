@@ -101,6 +101,7 @@ export const emailsFixedCollection: INodeProperties = {
 					displayName: 'Email',
 					name: 'email',
 					type: 'string',
+					placeholder: 'name@email.com',
 					default: '',
 				},
 				{
@@ -130,6 +131,7 @@ export const emailFixedCollection: INodeProperties = {
 					displayName: 'Email',
 					name: 'email',
 					type: 'string',
+					placeholder: 'name@email.com',
 					default: '',
 				},
 				{

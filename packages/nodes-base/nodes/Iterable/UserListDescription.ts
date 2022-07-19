@@ -20,11 +20,13 @@ export const userListOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add user to list',
+				action: 'Add a user to a list',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a user from a list',
+				action: 'Remove a user from a list',
 			},
 		],
 		default: 'add',
@@ -37,7 +39,7 @@ export const userListFields: INodeProperties[] = [
 	/*                                userList:add                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -55,7 +57,7 @@ export const userListFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Identifier to be used',
+		description: 'Identifier to be used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Identifier',
@@ -107,7 +109,7 @@ export const userListFields: INodeProperties[] = [
 	/*                                userList:remove                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -125,7 +127,7 @@ export const userListFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Identifier to be used',
+		description: 'Identifier to be used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Identifier',
@@ -201,7 +203,7 @@ export const userListFields: INodeProperties[] = [
 				name: 'channelUnsubscribe',
 				type: 'boolean',
 				default: false,
-				description: 'Unsubscribe email from list\'s associated channel - essentially a global unsubscribe',
+				description: 'Whether to unsubscribe email from list\'s associated channel - essentially a global unsubscribe',
 			},
 		],
 	},

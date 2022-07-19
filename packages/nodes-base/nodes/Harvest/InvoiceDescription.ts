@@ -19,29 +19,34 @@ export const invoiceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get data of an invoice',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get data of all invoices',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an invoice',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update an invoice',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an invoice',
+				action: 'Delete an invoice',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of an invoice',
+				action: 'Get data of an invoice',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get data of all invoices',
+				action: 'Get data of all invoices',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an invoice',
+				action: 'Update an invoice',
 			},
 		],
 		default: 'getAll',
@@ -144,19 +149,19 @@ export const invoiceFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'draft',
+						name: 'Draft',
 						value: 'draft',
 					},
 					{
-						name: 'open',
+						name: 'Open',
 						value: 'open',
 					},
 					{
-						name: 'paid',
+						name: 'Paid',
 						value: 'paid',
 					},
 					{
-						name: 'closed',
+						name: 'Closed',
 						value: 'closed',
 					},
 				],
@@ -323,6 +328,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The ID of the retainer associated with this invoice',
 			},
 			{
@@ -458,6 +464,7 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'The ID of the retainer associated with this invoice',
 			},
 			{

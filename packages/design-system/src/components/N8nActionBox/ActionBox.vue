@@ -1,6 +1,6 @@
 <template functional>
 	<div :class="$style.container">
-		<div :class="$style.heading">
+		<div :class="$style.heading" v-if="props.heading">
 			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
 		</div>
 		<div :class="$style.description">

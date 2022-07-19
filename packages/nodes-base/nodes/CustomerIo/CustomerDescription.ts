@@ -15,14 +15,16 @@ export const customerOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new customer, or update the current one if it already exists (upsert)',
+				action: 'Create or update a customer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a customer',
+				action: 'Delete a customer',
 			},
 		],
 		default: 'upsert',
@@ -173,11 +175,12 @@ export const customerFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address of the user',
 			},
 			{
-				displayName: 'Created at',
+				displayName: 'Created At',
 				name: 'createdAt',
 				type: 'dateTime',
 				default: '',

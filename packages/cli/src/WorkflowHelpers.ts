@@ -189,6 +189,7 @@ export async function executeErrorWorkflow(
 					],
 				],
 			},
+			source: null,
 		});
 
 		const runExecutionData: IRunExecutionData = {
@@ -200,6 +201,7 @@ export async function executeErrorWorkflow(
 				contextData: {},
 				nodeExecutionStack,
 				waitingExecution: {},
+				waitingExecutionSource: {},
 			},
 		};
 

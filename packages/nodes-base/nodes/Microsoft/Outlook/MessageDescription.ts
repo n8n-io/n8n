@@ -20,41 +20,49 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a message',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single message',
+				action: 'Get a message',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all messages in the signed-in user\'s mailbox',
+				action: 'Get all messages',
 			},
 			{
 				name: 'Get MIME Content',
 				value: 'getMime',
 				description: 'Get MIME content of a message',
+				action: 'Get MIME Content of a message',
 			},
 			{
 				name: 'Move',
 				value: 'move',
 				description: 'Move a message',
+				action: 'Move a message',
 			},
 			{
 				name: 'Reply',
 				value: 'reply',
 				description: 'Create reply to a message',
+				action: 'Reply to a message',
 			},
 			{
 				name: 'Send',
 				value: 'send',
 				description: 'Send a message',
+				action: 'Send a message',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a message',
+				action: 'Update a message',
 			},
 		],
 		default: 'send',
@@ -135,7 +143,7 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Send',
 		name: 'send',
-		description: 'Send the reply message directly. If not set, it will be saved as draft.',
+		description: 'Whether to send the reply message directly. If not set, it will be saved as draft.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -296,7 +304,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},
@@ -490,9 +498,10 @@ export const messageFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
@@ -568,7 +577,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},
@@ -589,7 +598,7 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Save To Sent Items',
 				name: 'saveToSentItems',
-				description: 'Indicates whether to save the message in Sent Items',
+				description: 'Whether to save the message in Sent Items',
 				type: 'boolean',
 				default: true,
 			},

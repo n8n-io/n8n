@@ -22,9 +22,12 @@ import {
 	IRun,
 	IRunData,
 	IRunExecutionData,
+	ISourceData,
 	ITaskData,
 	ITaskDataConnections,
+	ITaskDataConnectionsSource,
 	IWaitingForExecution,
+	IWaitingForExecutionSource,
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
 	NodeApiError,
@@ -61,6 +64,7 @@ export class WorkflowExecute {
 				contextData: {},
 				nodeExecutionStack: [],
 				waitingExecution: {},
+				waitingExecutionSource: {},
 			},
 		};
 	}
@@ -106,6 +110,7 @@ export class WorkflowExecute {
 						],
 					],
 				},
+				source: null,
 			},
 		];
 
@@ -121,6 +126,7 @@ export class WorkflowExecute {
 				contextData: {},
 				nodeExecutionStack,
 				waitingExecution: {},
+				waitingExecutionSource: {},
 			},
 		};
 
@@ -157,10 +163,12 @@ export class WorkflowExecute {
 		// the data from runData
 		const nodeExecutionStack: IExecuteData[] = [];
 		const waitingExecution: IWaitingForExecution = {};
+		const waitingExecutionSource: IWaitingForExecutionSource = {};
 		for (const startNode of startNodes) {
 			incomingNodeConnections = workflow.connectionsByDestinationNode[startNode];
 
 			const incomingData: INodeExecutionData[][] = [];
+			let incomingSourceData: ITaskDataConnectionsSource | null = null;
 
 			if (incomingNodeConnections === undefined) {
 				// If it has no incoming data add the default empty data
@@ -171,6 +179,7 @@ export class WorkflowExecute {
 				]);
 			} else {
 				// Get the data of the incoming connections
+				incomingSourceData = { main: [] };
 				for (const connections of incomingNodeConnections.main) {
 					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
 						connection = connections[inputIndex];
@@ -178,6 +187,9 @@ export class WorkflowExecute {
 							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 							runData[connection.node][runIndex].data![connection.type][connection.index]!,
 						);
+						incomingSourceData.main.push({
+							previousNode: connection.node,
+						});
 					}
 				}
 			}
@@ -187,6 +199,7 @@ export class WorkflowExecute {
 				data: {
 					main: incomingData,
 				},
+				source: incomingSourceData,
 			};
 
 			nodeExecutionStack.push(executeData);
@@ -201,12 +214,15 @@ export class WorkflowExecute {
 
 						if (waitingExecution[destinationNode] === undefined) {
 							waitingExecution[destinationNode] = {};
+							waitingExecutionSource[destinationNode] = {};
 						}
 						if (waitingExecution[destinationNode][runIndex] === undefined) {
 							waitingExecution[destinationNode][runIndex] = {};
+							waitingExecutionSource[destinationNode][runIndex] = {};
 						}
 						if (waitingExecution[destinationNode][runIndex][connection.type] === undefined) {
 							waitingExecution[destinationNode][runIndex][connection.type] = [];
+							waitingExecutionSource[destinationNode][runIndex][connection.type] = [];
 						}
 
 						if (runData[connection.node] !== undefined) {
@@ -215,8 +231,14 @@ export class WorkflowExecute {
 							waitingExecution[destinationNode][runIndex][connection.type].push(
 								runData[connection.node][runIndex].data![connection.type][connection.index],
 							);
+							waitingExecutionSource[destinationNode][runIndex][connection.type].push({
+								previousNode: connection.node,
+								previousNodeOutput: connection.index || undefined,
+								previousNodeRun: runIndex || undefined,
+							} as ISourceData);
 						} else {
 							waitingExecution[destinationNode][runIndex][connection.type].push(null);
+							waitingExecutionSource[destinationNode][runIndex][connection.type].push(null);
 						}
 					}
 				}
@@ -241,6 +263,7 @@ export class WorkflowExecute {
 				contextData: {},
 				nodeExecutionStack,
 				waitingExecution,
+				waitingExecutionSource,
 			},
 		};
 
@@ -303,12 +326,17 @@ export class WorkflowExecute {
 			// Node has multiple inputs
 			let nodeWasWaiting = true;
 
+			if (!this.runExecutionData.executionData!.waitingExecutionSource) {
+				this.runExecutionData.executionData!.waitingExecutionSource = {};
+			}
+
 			// Check if there is already data for the node
 			if (
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node] === undefined
 			) {
 				// Node does not have data yet so create a new empty one
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node] = {};
+				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node] = {};
 				nodeWasWaiting = false;
 			}
 			if (
@@ -319,12 +347,20 @@ export class WorkflowExecute {
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex] = {
 					main: [],
 				};
+				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][runIndex] =
+					{
+						main: [],
+					};
 				for (
 					let i = 0;
 					i < workflow.connectionsByDestinationNode[connectionData.node].main.length;
 					i++
 				) {
 					this.runExecutionData.executionData!.waitingExecution[connectionData.node][
+						runIndex
+					].main.push(null);
+
+					this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
 						runIndex
 					].main.push(null);
 				}
@@ -335,10 +371,20 @@ export class WorkflowExecute {
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex].main[
 					connectionData.index
 				] = null;
+				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
+					runIndex
+				].main[connectionData.index] = null;
 			} else {
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex].main[
 					connectionData.index
 				] = nodeSuccessData[outputIndex];
+				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
+					runIndex
+				].main[connectionData.index] = {
+					previousNode: parentNodeName,
+					previousNodeOutput: outputIndex || undefined,
+					previousNodeRun: runIndex || undefined,
+				};
 			}
 
 			// Check if all data exists now
@@ -364,15 +410,35 @@ export class WorkflowExecute {
 			if (allDataFound) {
 				// All data exists for node to be executed
 				// So add it to the execution stack
-				this.runExecutionData.executionData!.nodeExecutionStack.push({
+
+				const executionStackItem = {
 					node: workflow.nodes[connectionData.node],
 					data: this.runExecutionData.executionData!.waitingExecution[connectionData.node][
 						runIndex
 					],
-				});
+					source:
+						this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
+							runIndex
+						],
+				} as IExecuteData;
+
+				if (
+					this.runExecutionData.executionData!.waitingExecutionSource !== null &&
+					this.runExecutionData.executionData!.waitingExecutionSource !== undefined
+				) {
+					executionStackItem.source =
+						this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
+							runIndex
+						];
+				}
+
+				this.runExecutionData.executionData!.nodeExecutionStack.push(executionStackItem);
 
 				// Remove the data from waiting
 				delete this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex];
+				delete this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
+					runIndex
+				];
 
 				if (
 					Object.keys(this.runExecutionData.executionData!.waitingExecution[connectionData.node])
@@ -380,6 +446,7 @@ export class WorkflowExecute {
 				) {
 					// No more data left for the node so also delete that one
 					delete this.runExecutionData.executionData!.waitingExecution[connectionData.node];
+					delete this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node];
 				}
 				return;
 			}
@@ -534,6 +601,15 @@ export class WorkflowExecute {
 										],
 									],
 								},
+								source: {
+									main: [
+										{
+											previousNode: parentNodeName,
+											previousNodeOutput: outputIndex || undefined,
+											previousNodeRun: runIndex || undefined,
+										},
+									],
+								},
 							});
 						}
 					}
@@ -570,6 +646,15 @@ export class WorkflowExecute {
 				node: workflow.nodes[connectionData.node],
 				data: {
 					main: connectionDataArray,
+				},
+				source: {
+					main: [
+						{
+							previousNode: parentNodeName,
+							previousNodeOutput: outputIndex || undefined,
+							previousNodeRun: runIndex || undefined,
+						},
+					],
 				},
 			});
 		}
@@ -627,6 +712,7 @@ export class WorkflowExecute {
 
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
+		let closeFunction: Promise<void> | undefined;
 
 		return new PCancelable(async (resolve, reject, onCancel) => {
 			let gotCancel = false;
@@ -659,6 +745,7 @@ export class WorkflowExecute {
 									data: {
 										main: executionData.data.main,
 									} as ITaskDataConnections,
+									source: [],
 								},
 							],
 						},
@@ -689,6 +776,29 @@ export class WorkflowExecute {
 					executionData =
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
+
+					// Update the pairedItem information on items
+					const newTaskDataConnections: ITaskDataConnections = {};
+					for (const inputName of Object.keys(executionData.data)) {
+						newTaskDataConnections[inputName] = executionData.data[inputName].map(
+							(input, inputIndex) => {
+								if (input === null) {
+									return input;
+								}
+
+								return input.map((item, itemIndex) => {
+									return {
+										...item,
+										pairedItem: {
+											item: itemIndex,
+											input: inputIndex || undefined,
+										},
+									};
+								});
+							},
+						);
+					}
+					executionData.data = newTaskDataConnections;
 
 					Logger.debug(`Start processing node "${executionNode.name}"`, {
 						node: executionNode.name,
@@ -766,9 +876,6 @@ export class WorkflowExecute {
 						}
 					}
 
-					// Clone input data that nodes can not mess up data of parallel nodes which receive the same data
-					// TODO: Should only clone if multiple nodes get the same data or when it gets returned to frontned
-					//       is very slow so only do if needed
 					startTime = new Date().getTime();
 
 					let maxTries = 1;
@@ -811,19 +918,64 @@ export class WorkflowExecute {
 								node: executionNode.name,
 								workflowId: workflow.id,
 							});
-							nodeSuccessData = await workflow.runNode(
-								executionData.node,
-								executionData.data,
+							const runNodeData = await workflow.runNode(
+								executionData,
 								this.runExecutionData,
 								runIndex,
 								this.additionalData,
 								NodeExecuteFunctions,
 								this.mode,
 							);
+							nodeSuccessData = runNodeData.data;
+
+							if (runNodeData.closeFunction) {
+								// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+								closeFunction = runNodeData.closeFunction();
+							}
+
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, {
 								node: executionNode.name,
 								workflowId: workflow.id,
 							});
+
+							if (nodeSuccessData) {
+								// Check if the output data contains pairedItem data
+								checkOutputData: for (const outputData of nodeSuccessData) {
+									if (outputData === null) {
+										continue;
+									}
+									for (const [index, item] of outputData.entries()) {
+										if (!item.pairedItem) {
+											// The pairedItem data is missing, so check if it can get automatically fixed
+											if (
+												executionData.data.main.length === 1 &&
+												executionData.data.main[0]?.length === 1
+											) {
+												// The node has one input and one incoming item, so we know
+												// that all items must originate from that single
+												item.pairedItem = {
+													item: 0,
+												};
+											} else if (
+												nodeSuccessData.length === 1 &&
+												executionData.data.main.length === 1 &&
+												executionData.data.main[0]?.length === nodeSuccessData[0].length
+											) {
+												// The node has one input and one output. The number of items on both is
+												// identical so we can make the resonable asumption that each of the input
+												// items is the origin of the corresponding output items
+												item.pairedItem = {
+													item: index,
+												};
+											} else {
+												// In all other cases is autofixing not possible
+												break checkOutputData;
+											}
+										}
+									}
+								}
+							}
 
 							if (nodeSuccessData === undefined) {
 								// Node did not get executed
@@ -873,9 +1025,11 @@ export class WorkflowExecute {
 					if (!this.runExecutionData.resultData.runData.hasOwnProperty(executionNode.name)) {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
+
 					taskData = {
 						startTime,
 						executionTime: new Date().getTime() - startTime,
+						source: !executionData.source ? [] : executionData.source.main,
 					};
 
 					if (executionError !== undefined) {
@@ -1033,9 +1187,10 @@ export class WorkflowExecute {
 							startedAt,
 							workflow,
 							new WorkflowOperationError('Workflow has been canceled or timed out!'),
+							closeFunction,
 						);
 					}
-					return this.processSuccessExecution(startedAt, workflow, executionError);
+					return this.processSuccessExecution(startedAt, workflow, executionError, closeFunction);
 				})
 				.catch(async (error) => {
 					const fullRunData = this.getFullRunData(startedAt);
@@ -1061,6 +1216,20 @@ export class WorkflowExecute {
 						},
 					);
 
+					if (closeFunction) {
+						try {
+							await closeFunction;
+						} catch (errorClose) {
+							Logger.error(
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+								`There was a problem deactivating trigger of workflow "${workflow.id}": "${errorClose.message}"`,
+								{
+									workflowId: workflow.id,
+								},
+							);
+						}
+					}
+
 					return fullRunData;
 				});
 
@@ -1072,6 +1241,7 @@ export class WorkflowExecute {
 		startedAt: Date,
 		workflow: Workflow,
 		executionError?: ExecutionError,
+		closeFunction?: Promise<void>,
 	): Promise<IRun> {
 		const fullRunData = this.getFullRunData(startedAt);
 
@@ -1105,6 +1275,20 @@ export class WorkflowExecute {
 		}
 
 		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+
+		if (closeFunction) {
+			try {
+				await closeFunction;
+			} catch (error) {
+				Logger.error(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+					`There was a problem deactivating trigger of workflow "${workflow.id}": "${error.message}"`,
+					{
+						workflowId: workflow.id,
+					},
+				);
+			}
+		}
 
 		return fullRunData;
 	}

@@ -4,10 +4,11 @@ import {
 
 export const taskOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation',
+		displayName: 'Operation Name or ID',
 		name: 'operation',
 		default: 'getAll',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
 		displayOptions: {
@@ -178,13 +179,14 @@ export const taskFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Flag of the task. Default=false.',
+		description: 'Whether to flag the task. Default=false.',
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -295,7 +297,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the task. Default=false.',
+				description: 'Whether to flag the task. Default=false.',
 			},
 			{
 				displayName: 'Owner',
@@ -413,7 +415,7 @@ export const taskFields: INodeProperties[] = [
 				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Flag of the task. Default=false.',
+				description: 'Whether to flag the task. Default=false.',
 			},
 			{
 				displayName: 'Owner',

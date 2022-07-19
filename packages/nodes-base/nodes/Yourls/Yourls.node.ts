@@ -22,6 +22,7 @@ export class Yourls implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Yourls',
 		name: 'yourls',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:yourls.png',
 		group: ['input'],
 		version: 1,

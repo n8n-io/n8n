@@ -163,6 +163,9 @@ return item;`,
 
 				const returnItem: INodeExecutionData = {
 					json: cleanupData(jsonData),
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 
 				if (item.binary) {
@@ -172,7 +175,14 @@ return item;`,
 				returnData.push(returnItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

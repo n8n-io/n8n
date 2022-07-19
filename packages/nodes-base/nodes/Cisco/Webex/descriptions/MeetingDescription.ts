@@ -19,22 +19,27 @@ export const meetingOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a meeting',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a meeting',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a meeting',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all meetings',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a meeting',
 			},
 		],
 		default: 'create',
@@ -211,6 +216,7 @@ export const meetingFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Email address of meeting invitee',
@@ -276,6 +282,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Required Registration Info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Require First Name',
@@ -348,6 +355,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Whether or not to send emails to host and invitees',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -355,7 +363,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site.',
+				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -563,7 +571,7 @@ export const meetingFields: INodeProperties[] = [
 				name: 'current',
 				type: 'boolean',
 				default: true,
-				description: 'For meeting series, whether to return just the current meeting or all meetings',
+				description: 'Whether to return just the current meeting or all meetings',
 			},
 			{
 				displayName: 'Meeting Number',
@@ -603,6 +611,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Email of a person that must be a meeting participant',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -610,7 +619,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the API lists meetings from',
+				description: 'URL of the Webex site which the API lists meetings from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -622,32 +631,32 @@ export const meetingFields: INodeProperties[] = [
 						value: 'active',
 					},
 					{
-						name: 'Scheduled',
-						value: 'scheduled',
+						name: 'Ended',
+						value: 'ended',
 					},
 					{
-						name: 'Ready',
-						value: 'ready',
-					},
-					{
-						name: 'Lobby',
-						value: 'lobby',
+						name: 'Expired',
+						value: 'expired',
 					},
 					{
 						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{
-						name: 'Ended',
-						value: 'ended',
+						name: 'Lobby',
+						value: 'lobby',
 					},
 					{
 						name: 'Missed',
 						value: 'missed',
 					},
 					{
-						name: 'Expired',
-						value: 'expired',
+						name: 'Ready',
+						value: 'ready',
+					},
+					{
+						name: 'Scheduled',
+						value: 'scheduled',
 					},
 				],
 				default: '',
@@ -796,6 +805,7 @@ export const meetingFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Email address of meeting invitee',
@@ -868,6 +878,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Required Registration Info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Require First Name',
@@ -940,6 +951,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -947,7 +959,7 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site.',
+				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start',

@@ -22,6 +22,7 @@ export class Twake implements INodeType {
 		name: 'twake',
 		group: ['transform'],
 		version: 1,
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:twake.png',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Twake API',
@@ -102,12 +103,13 @@ export class Twake implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send a message',
+						action: 'Send a message',
 					},
 				],
 				default: 'send',
 			},
 			{
-				displayName: 'Channel ID',
+				displayName: 'Channel Name or ID',
 				name: 'channelId',
 				type: 'options',
 				typeOptions: {
@@ -121,7 +123,7 @@ export class Twake implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Channel\'s ID',
+				description: 'Channel\'s ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Content',

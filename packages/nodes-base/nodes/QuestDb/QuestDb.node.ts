@@ -18,6 +18,7 @@ export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'QuestDB',
 		name: 'questDb',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:questdb.png',
 		group: ['input'],
 		version: 1,
@@ -44,11 +45,13 @@ export class QuestDb implements INodeType {
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Executes a SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 				],
 				default: 'insert',

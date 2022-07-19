@@ -184,16 +184,16 @@ export class SentryIo implements INodeType {
 						value: 'issue',
 					},
 					{
+						name: 'Organization',
+						value: 'organization',
+					},
+					{
 						name: 'Project',
 						value: 'project',
 					},
 					{
 						name: 'Release',
 						value: 'release',
-					},
-					{
-						name: 'Organization',
-						value: 'organization',
 					},
 					{
 						name: 'Team',

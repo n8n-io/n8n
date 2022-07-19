@@ -18,26 +18,31 @@ export const leadOpeations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new lead',
+				action: 'Create a lead',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a lead',
+				action: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a lead',
+				action: 'Get a lead',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all leads',
+				action: 'Get all leads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update new lead',
+				action: 'Update a lead',
 			},
 		],
 		default: 'create',
@@ -222,6 +227,7 @@ export const leadFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address of the lead',
 			},
@@ -293,6 +299,7 @@ export const leadFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -347,22 +354,23 @@ export const leadFields: INodeProperties[] = [
 				name: 'avatar',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
+				description: 'An avatar image URL. note: the image URL needs to be https.',
 			},
 			{
-				displayName: 'Companies',
+				displayName: 'Company Names or IDs',
 				name: 'companies',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Identifies the companies this user belongs to',
+				description: 'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				displayOptions: {
 					show: {
@@ -402,7 +410,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'updateLastRequestAt',
 				type: 'boolean',
 				default: false,
-				description: 'A boolean value, which if true, instructs Intercom to update the users last_request_at value to the current API service time in UTC. default value if not sent is false.',
+				description: 'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC. default value if not sent is false.',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -430,7 +438,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'utmSource',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
+				description: 'An avatar image URL. note: the image URL needs to be https.',
 			},
 			{
 				displayName: 'UTM Term',

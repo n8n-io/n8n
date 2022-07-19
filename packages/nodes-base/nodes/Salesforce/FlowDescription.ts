@@ -20,11 +20,13 @@ export const flowOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all flows',
+				action: 'Get all flows',
 			},
 			{
 				name: 'Invoke',
 				value: 'invoke',
 				description: 'Invoke a flow',
+				action: 'Invoke a flow',
 			},
 		],
 		default: 'invoke',
@@ -74,7 +76,7 @@ export const flowFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 
@@ -114,7 +116,7 @@ export const flowFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'If the input variables should be set via the value-key pair UI or JSON/RAW',
+		description: 'Whether the input variables should be set via the value-key pair UI or JSON/RAW',
 	},
 	{
 		displayName: 'Variables',

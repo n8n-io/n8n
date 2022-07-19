@@ -20,26 +20,31 @@ export const playlistOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a playlist',
+				action: 'Create a playlist',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a playlist',
+				action: 'Delete a playlist',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a playlist',
+				action: 'Get a playlist',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all playlists',
+				action: 'Get all playlists',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a playlist',
+				action: 'Update a playlist',
 			},
 		],
 		default: 'getAll',
@@ -121,14 +126,14 @@ export const playlistFields: INodeProperties[] = [
 				description: 'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 			{
-				displayName: 'Default Language',
+				displayName: 'Default Language Name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties',
+				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner Channel',
@@ -508,14 +513,14 @@ export const playlistFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Default Language',
+				displayName: 'Default Language Name or ID',
 				name: 'defaultLanguage',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties',
+				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',

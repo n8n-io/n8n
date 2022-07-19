@@ -17,18 +17,22 @@ export const vendorOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a vendor',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a vendor',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all vendors',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a vendor',
 			},
 		],
 		displayOptions: {
@@ -128,7 +132,7 @@ export const vendorFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

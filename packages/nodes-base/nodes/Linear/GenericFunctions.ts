@@ -69,7 +69,7 @@ export async function linearApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	return returnData;
 }
 
-export async function validateCrendetials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = decryptedCredentials;
 
 	const options: OptionsWithUri = {

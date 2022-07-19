@@ -20,16 +20,19 @@ export const tagSubscriberOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a tag to a subscriber',
+				action: 'Add a tag to a subscriber',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'List subscriptions to a tag including subscriber data',
+				action: 'Get all tag subscriptions',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a tag from a subscriber',
+				action: 'Delete a tag from a subscriber',
 			},
 		],
 		default: 'create',
@@ -38,9 +41,10 @@ export const tagSubscriberOperations: INodeProperties[] = [
 
 export const tagSubscriberFields: INodeProperties[] = [
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
@@ -63,6 +67,7 @@ export const tagSubscriberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {

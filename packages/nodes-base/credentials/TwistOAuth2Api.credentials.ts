@@ -21,6 +21,12 @@ export class TwistOAuth2Api implements ICredentialType {
 	documentationUrl = 'twist';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',

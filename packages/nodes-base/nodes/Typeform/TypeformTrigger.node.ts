@@ -88,7 +88,7 @@ export class TypeformTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Form',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
@@ -97,7 +97,7 @@ export class TypeformTrigger implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'Form which should trigger workflow on submission',
+				description: 'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
@@ -106,14 +106,14 @@ export class TypeformTrigger implements INodeType {
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
-				description: 'Converts the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
+				description: 'Whether to convert the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
 			},
 			{
 				displayName: 'Only Answers',
 				name: 'onlyAnswers',
 				type: 'boolean',
 				default: true,
-				description: 'Returns only the answers of the form and not any of the other data',
+				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
 	};

@@ -20,21 +20,25 @@ export const boardOperations: INodeProperties[] = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archive a board',
+				action: 'Archive a board',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new board',
+				action: 'Create a board',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a board',
+				action: 'Get a board',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all boards',
+				action: 'Get all boards',
 			},
 		],
 		default: 'create',
@@ -47,7 +51,7 @@ export const boardFields: INodeProperties[] = [
 /*                                 board:archive                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -65,7 +69,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Board unique identifiers',
+		description: 'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 board:create                               */
@@ -153,7 +157,7 @@ export const boardFields: INodeProperties[] = [
 /*                                  board:get                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
 		default: '',
@@ -171,7 +175,7 @@ export const boardFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Board unique identifiers',
+		description: 'Board unique identifiers. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  board:getAll                              */

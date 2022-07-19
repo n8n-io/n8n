@@ -20,6 +20,7 @@ export const eventOperations: INodeProperties[] = [
 				name: 'Track',
 				value: 'track',
 				description: 'Record the actions a user perform',
+				action: 'Track an event',
 			},
 		],
 		default: 'track',
@@ -116,6 +117,7 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Either email or userId must be passed in to identify the user. If both are passed in, email takes precedence.',
 			},
@@ -137,6 +139,7 @@ export const eventFields: INodeProperties[] = [
 				name: 'userId',
 				type: 'string',
 				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
 				description: 'userId that was passed into the updateUser call',
 			},
 		],

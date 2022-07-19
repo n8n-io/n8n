@@ -1,7 +1,6 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
-	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
@@ -40,12 +39,8 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('gitlabApi');
-
-			options.headers!['Private-Token'] = `${credentials.accessToken}`;
-
 			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
-
-			return await this.helpers.request(options);
+			return await this.helpers.requestWithAuthentication.call(this, 'gitlabApi', options);
 		} else {
 			const credentials = await this.getCredentials('gitlabOAuth2Api');
 

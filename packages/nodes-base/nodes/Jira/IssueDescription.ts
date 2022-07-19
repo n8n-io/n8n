@@ -20,41 +20,49 @@ export const issueOperations: INodeProperties[] = [
 				name: 'Changelog',
 				value: 'changelog',
 				description: 'Get issue changelog',
+				action: 'Get an issue changelog',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new issue',
+				action: 'Create an issue',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an issue',
+				action: 'Delete an issue',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an issue',
+				action: 'Get an issue',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all issues',
+				action: 'Get all issues',
 			},
 			{
 				name: 'Notify',
 				value: 'notify',
 				description: 'Create an email notification for an issue and add it to the mail queue',
+				action: 'Create an email notification for an issue',
 			},
 			{
 				name: 'Status',
 				value: 'transitions',
 				description: 'Return either all transitions or a transition that can be performed by the user on an issue, based on the issue\'s status',
+				action: 'Get the status of an issue',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an issue',
+				action: 'Update an issue',
 			},
 		],
 		default: 'create',
@@ -67,9 +75,10 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project',
+		displayName: 'Project Name or ID',
 		name: 'project',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -90,7 +99,7 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Issue Type',
+		displayName: 'Issue Type Name or ID',
 		name: 'issueType',
 		type: 'options',
 		default: '',
@@ -111,7 +120,7 @@ export const issueFields: INodeProperties[] = [
 				'project',
 			],
 		},
-		description: 'Issue Types',
+		description: 'Issue Types. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Summary',
@@ -148,9 +157,10 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -163,9 +173,10 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Components',
+				displayName: 'Component Names or IDs',
 				name: 'componentIds',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectComponents',
 					loadOptionsDependsOn: [
@@ -189,7 +200,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -198,7 +209,7 @@ export const issueFields: INodeProperties[] = [
 										'project',
 									],
 								},
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -213,9 +224,10 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
@@ -251,18 +263,20 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Reporter',
+				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -316,9 +330,10 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee',
+				displayName: 'Assignee Name or ID',
 				name: 'assignee',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -345,7 +360,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
@@ -354,7 +369,7 @@ export const issueFields: INodeProperties[] = [
 										'issueKey',
 									],
 								},
-								description: 'ID of the field to set',
+								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -376,9 +391,10 @@ export const issueFields: INodeProperties[] = [
 				description: 'Issue Types',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
@@ -414,18 +430,20 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority',
+				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Reporter',
+				displayName: 'Reporter Name or ID',
 				name: 'reporter',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -438,14 +456,14 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status ID',
+				displayName: 'Status Name or ID',
 				name: 'statusId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTransitions',
 				},
 				default: '',
-				description: 'The ID of the issue status',
+				description: 'The ID of the issue status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -522,7 +540,6 @@ export const issueFields: INodeProperties[] = [
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
@@ -571,7 +588,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
+				description: 'Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
 			},
 			{
 				displayName: 'Properties',
@@ -712,7 +729,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'fieldsByKey',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
+				description: 'Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field\'s key may differ from its ID.',
 			},
 			{
 				displayName: 'JQL',
@@ -901,7 +918,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'reporter',
 						type: 'boolean',
-						description: 'Indicates whether the notification should be sent to the issue\'s reporter',
+						description: 'Whether the notification should be sent to the issue\'s reporter',
 						default: false,
 					},
 					{
@@ -909,41 +926,41 @@ export const issueFields: INodeProperties[] = [
 						name: 'assignee',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates whether the notification should be sent to the issue\'s assignees',
+						description: 'Whether the notification should be sent to the issue\'s assignees',
 					},
 					{
 						displayName: 'Watchers',
 						name: 'watchers',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates whether the notification should be sent to the issue\'s assignees',
+						description: 'Whether the notification should be sent to the issue\'s assignees',
 					},
 					{
 						displayName: 'Voters',
 						name: 'voters',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates whether the notification should be sent to the issue\'s voters',
+						description: 'Whether the notification should be sent to the issue\'s voters',
 					},
 					{
-						displayName: 'Users',
+						displayName: 'User Names or IDs',
 						name: 'users',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: 'List of users to receive the notification',
+						description: 'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Groups',
+						displayName: 'Group Names or IDs',
 						name: 'groups',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: 'List of groups to receive the notification',
+						description: 'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 
@@ -1002,24 +1019,24 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Recipients Restrictions',
 				values: [
 					{
-						displayName: 'Users',
+						displayName: 'User Names or IDs',
 						name: 'users',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: 'List of users to receive the notification',
+						description: 'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Groups',
+						displayName: 'Group Names or IDs',
 						name: 'groups',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: 'List of groups to receive the notification',
+						description: 'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 
@@ -1106,7 +1123,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
 				default: false,
-				description: 'Indicates whether transitions with the condition Hide From User Condition are included in the response',
+				description: 'Whether transitions with the condition Hide From User Condition are included in the response',
 			},
 		],
 	},

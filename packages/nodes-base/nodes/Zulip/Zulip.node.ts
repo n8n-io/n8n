@@ -214,7 +214,7 @@ export class Zulip implements INodeType {
 						}
 						//@ts-ignore
 						if (items[i].binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
 						}
 
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
@@ -285,7 +285,7 @@ export class Zulip implements INodeType {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 								}
 							}
 
@@ -344,7 +344,7 @@ export class Zulip implements INodeType {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 								}
 							}
 

@@ -4,7 +4,7 @@ import {
 
 export const channelDeleteDescription: ChannelProperties = [
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -23,6 +23,6 @@ export const channelDeleteDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The ID of the channel to soft delete',
+		description: 'The ID of the channel to soft delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

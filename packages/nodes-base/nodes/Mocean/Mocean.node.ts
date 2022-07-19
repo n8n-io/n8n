@@ -49,7 +49,6 @@ export class Mocean implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
@@ -78,6 +77,7 @@ export class Mocean implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS/Voice message',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',
@@ -293,7 +293,7 @@ export class Mocean implements INodeType {
 					}
 					endpoint = '/rest/2/sms';
 				} else {
-					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`);
+					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`, { itemIndex });
 				}
 
 				if (operation === 'send') {
@@ -305,7 +305,7 @@ export class Mocean implements INodeType {
 					}
 
 				} else {
-					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`);
+					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`, { itemIndex });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

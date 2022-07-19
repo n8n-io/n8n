@@ -20,26 +20,31 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new company',
+				action: 'Create a company',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a company',
+				action: 'Delete a company',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a company',
+				action: 'Get a company',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all companies',
+				action: 'Get all companies',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update company properties',
+				action: 'Update a company',
 			},
 		],
 		default: 'get',
@@ -149,7 +154,7 @@ export const companyFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Any filter',
+				name: 'Any Filter',
 				value: 'anyFilter',
 			},
 			{
@@ -230,32 +235,32 @@ export const companyFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Equals',
-								value: 'EQUALS',
-							},
-							{
-								name: 'Not Equal',
-								value: 'NOTEQUALS',
-							},
-							{
-								name: 'Last',
-								value: 'LAST',
-							},
-							{
-								name: 'Between',
-								value: 'BETWEEN',
-							},
-							{
-								name: 'On',
-								value: 'ON',
+								name: 'After',
+								value: 'AFTER',
 							},
 							{
 								name: 'Before',
 								value: 'BEFORE',
 							},
 							{
-								name: 'After',
-								value: 'AFTER',
+								name: 'Between',
+								value: 'BETWEEN',
+							},
+							{
+								name: 'Equals',
+								value: 'EQUALS',
+							},
+							{
+								name: 'Last',
+								value: 'LAST',
+							},
+							{
+								name: 'Not Equal',
+								value: 'NOTEQUALS',
+							},
+							{
+								name: 'On',
+								value: 'ON',
 							},
 						],
 						default: 'EQUALS',
@@ -449,6 +454,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Address',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Company address',
 			},
@@ -456,6 +462,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Company email',
 			},
@@ -528,7 +535,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{
@@ -643,7 +650,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                  company:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'company ID',
+		displayName: 'Company ID',
 		name: 'companyId',
 		type: 'string',
 		required: true,
@@ -745,6 +752,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Address',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Company address',
 			},
@@ -752,6 +760,7 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Company email',
 			},
@@ -824,7 +833,7 @@ export const companyFields: INodeProperties[] = [
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{

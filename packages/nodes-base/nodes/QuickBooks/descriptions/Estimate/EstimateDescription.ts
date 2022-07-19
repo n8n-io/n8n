@@ -17,26 +17,32 @@ export const estimateOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an estimate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an estimate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an estimate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all estimates',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send an estimate',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an estimate',
 			},
 		],
 		displayOptions: {
@@ -54,11 +60,11 @@ export const estimateFields: INodeProperties[] = [
 	//         estimate: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the estimate is for',
+		description: 'The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -96,27 +102,6 @@ export const estimateFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Detail Type',
-				name: 'DetailType',
-				type: 'options',
-				default: 'SalesItemLineDetail',
-				options: [
-					{
-						name: 'Sales Item Line Detail',
-						value: 'SalesItemLineDetail',
-					},
-				],
-			},
-			{
-				displayName: 'Item',
-				name: 'itemId',
-				type: 'options',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getItems',
-				},
-			},
-			{
 				displayName: 'Amount',
 				name: 'Amount',
 				description: 'Monetary amount of the line item',
@@ -134,11 +119,43 @@ export const estimateFields: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Detail Type',
+				name: 'DetailType',
+				type: 'options',
+				default: 'SalesItemLineDetail',
+				options: [
+					{
+						name: 'Sales Item Line Detail',
+						value: 'SalesItemLineDetail',
+					},
+				],
+			},
+			{
+				displayName: 'Item Name or ID',
+				name: 'itemId',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getItems',
+				},
+			},
+			{
 				displayName: 'Position',
 				name: 'LineNum',
 				description: 'Position of the line item relative to others',
 				type: 'number',
 				default: 1,
+			},
+			{
+				displayName: 'Tax Code Ref Name or ID',
+				name: 'TaxCodeRef',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getTaxCodeRefs',
+				},
 			},
 		],
 	},
@@ -210,7 +227,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the estimate as a PDF file',
+		description: 'Whether to download the estimate as a PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -290,7 +307,7 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
@@ -366,6 +383,7 @@ export const estimateFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		description: 'The email of the recipient of the estimate',

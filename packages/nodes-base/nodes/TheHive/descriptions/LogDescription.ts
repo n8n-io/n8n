@@ -22,21 +22,25 @@ export const logOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create task log',
+				action: 'Create a log',
 			},
 			{
 				name: 'Execute Responder',
 				value: 'executeResponder',
 				description: 'Execute a responder on a selected log',
+				action: 'Execute a responder',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all task logs',
+				action: 'Get all logs',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single log',
+				action: 'Get a log',
 			},
 		],
 	},
@@ -188,9 +192,10 @@ export const logFields: INodeProperties[] = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responder ID',
+		displayName: 'Responder Name or ID',
 		name: 'responder',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {

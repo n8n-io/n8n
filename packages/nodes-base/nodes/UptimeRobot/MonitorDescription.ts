@@ -20,31 +20,37 @@ export const monitorOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a monitor',
+				action: 'Create a monitor',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a monitor',
+				action: 'Delete a monitor',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a monitor',
+				action: 'Get a monitor',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all monitors',
+				action: 'Get all monitors',
 			},
 			{
 				name: 'Reset',
 				value: 'reset',
 				description: 'Reset a monitor',
+				action: 'Reset a monitor',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a monitor',
+				action: 'Update a monitor',
 			},
 		],
 		default: 'getAll',
@@ -229,14 +235,14 @@ export const monitorFields: INodeProperties[] = [
 				name: 'logs',
 				type: 'boolean',
 				default: false,
-				description: 'If the logs of each monitor will be returned',
+				description: 'Whether the logs of each monitor will be returned',
 			},
 			{
 				displayName: 'Maintenance Window',
 				name: 'mwindow',
 				type: 'boolean',
 				default: false,
-				description: 'If the maintenance windows for the monitors to be returned',
+				description: 'Whether to return the maintenance windows for the monitors',
 			},
 			{
 				displayName: 'Monitor IDs',
@@ -257,13 +263,14 @@ export const monitorFields: INodeProperties[] = [
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'A keyword to be matched against url and friendly name',
+				description: 'A keyword to be matched against URL and friendly name',
 			},
 			{
 				displayName: 'Statuses',
 				name: 'statuses',
 				type: 'multiOptions',
 				default: [],
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Paused',
@@ -464,7 +471,7 @@ export const monitorFields: INodeProperties[] = [
 				description: 'Select monitor statuses',
 			},
 			{
-				displayName: 'Sub type',
+				displayName: 'Sub Type',
 				name: 'sub_type',
 				type: 'options',
 				default: '',

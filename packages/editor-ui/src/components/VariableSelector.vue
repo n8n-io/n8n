@@ -374,13 +374,19 @@ export default mixins(
 				return returnData;
 			},
 			getNodeContext (workflow: Workflow, runExecutionData: IRunExecutionData | null, parentNode: string[], nodeName: string, filterText: string): IVariableSelectorOption[] | null {
-				const inputIndex = 0;
 				const itemIndex = 0;
 				const inputName = 'main';
 				const runIndex = 0;
 				const returnData: IVariableSelectorOption[] = [];
 
-				const connectionInputData = this.connectionInputData(parentNode, inputName, runIndex, inputIndex);
+				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+
+				if (activeNode === null) {
+					return returnData;
+				}
+
+				const nodeConnection = this.workflow.getNodeConnectionIndexes(activeNode.name, parentNode[0], 'main');
+				const connectionInputData = this.connectionInputData(parentNode, nodeName, inputName, runIndex, nodeConnection);
 
 				if (connectionInputData === null) {
 					return returnData;
@@ -493,7 +499,8 @@ export default mixins(
 					// Check from which output to read the data.
 					// Depends on how the nodes are connected.
 					// (example "IF" node. If node is connected to "true" or to "false" output)
-					const outputIndex = this.workflow.getNodeConnectionOutputIndex(activeNode.name, parentNode[0], 'main');
+					const nodeConnection = this.workflow.getNodeConnectionIndexes(activeNode.name, parentNode[0], 'main');
+					const outputIndex = nodeConnection === undefined ? 0: nodeConnection.sourceIndex;
 
 					tempOutputData = this.getNodeOutputData(runData, parentNode[0], filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
 
