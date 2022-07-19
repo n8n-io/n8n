@@ -1056,6 +1056,10 @@ export default mixins(
 	--input-border-color: var(--color-success);
 	--input-background-color: var(--color-success-tint-2);
 	--input-border-style: solid;
+
+	textarea, input {
+		cursor: grabbing !important;
+	}
 }
 
 .has-issues {
