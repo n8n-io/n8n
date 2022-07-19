@@ -59,7 +59,7 @@ export class Squarespace implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'squarespaceOAuth2Api',
+				name: 'squarespaceApi',
 				required: true,
 			},
 		],
