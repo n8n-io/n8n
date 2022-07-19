@@ -19,13 +19,11 @@ export const threadLabelOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add a label to a thread',
 				action: 'Add a thread label',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: 'Remove a label from a thread',
 				action: 'Remove a thread label',
 			},
 		],

@@ -17,7 +17,6 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {

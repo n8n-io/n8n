@@ -19,25 +19,21 @@ export const draftOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new email draft',
 				action: 'Create a draft',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a draft',
 				action: 'Delete a draft',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a draft',
 				action: 'Get a draft',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all drafts',
 				action: 'Get all drafts',
 			},
 		],
@@ -64,7 +60,6 @@ export const draftFields: INodeProperties[] = [
 			},
 		},
 		placeholder: 'r-3254521568507167962',
-		description: 'The ID of the draft to operate on',
 	},
 	{
 		displayName: 'Subject',
@@ -83,7 +78,6 @@ export const draftFields: INodeProperties[] = [
 			},
 		},
 		placeholder: 'Hello World!',
-		description: 'The message subject',
 	},
 	{
 		displayName: 'HTML',
@@ -196,9 +190,9 @@ export const draftFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Attachments',
+				displayName: 'Attachment',
 				name: 'attachmentsUi',
-				placeholder: 'Add Attachments',
+				placeholder: 'Add Attachment',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -206,14 +200,14 @@ export const draftFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'attachmentsBinary',
-						displayName: 'Attachments Binary',
+						displayName: 'Attachment Binary',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Attachment Field Name (in Input)',
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.',
+								description: 'Add the field name from the input node. Multiple properties can be set separated by comma.',
 							},
 						],
 					},
@@ -241,7 +235,7 @@ export const draftFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachments Prefix',
+				displayName: 'Attachment Prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -255,7 +249,7 @@ export const draftFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Format',
@@ -356,7 +350,7 @@ export const draftFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attachments Prefix',
+				displayName: 'Attachment Prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -413,7 +407,7 @@ export const draftFields: INodeProperties[] = [
 				description: 'The format to return the message in',
 			},
 			{
-				displayName: 'Include Spam Trash',
+				displayName: 'Include Spam and Trash',
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,

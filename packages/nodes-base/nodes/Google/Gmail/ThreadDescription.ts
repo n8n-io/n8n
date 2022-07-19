@@ -19,7 +19,6 @@ export const threadOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Permanently deletes the specified thread',
 				action: 'Delete a thread',
 			},
 			{
@@ -37,13 +36,11 @@ export const threadOperations: INodeProperties[] = [
 			{
 				name: 'Trash',
 				value: 'trash',
-				description: 'Moves the specified thread to the trash',
 				action: 'Trash a thread',
 			},
 			{
 				name: 'Untrash',
 				value: 'untrash',
-				description: 'Removes the specified thread to the trash',
 				action: 'Untrash a thread',
 			},
 		],
@@ -71,7 +68,6 @@ export const threadFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the thread you are operating on',
 	},
 	{
 		displayName: 'Options',
@@ -185,7 +181,7 @@ export const threadFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Spam Trash',
+				displayName: 'Include Spam and Trash',
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,

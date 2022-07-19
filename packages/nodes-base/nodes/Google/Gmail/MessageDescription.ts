@@ -19,31 +19,26 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a message',
 				action: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a message',
 				action: 'Get a message',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all messages',
 				action: 'Get all messages',
 			},
 			{
 				name: 'Reply',
 				value: 'reply',
-				description: 'Reply to an email',
 				action: 'Reply to a message',
 			},
 			{
 				name: 'Send',
 				value: 'send',
-				description: 'Send an email',
 				action: 'Send a message',
 			},
 		],
@@ -70,7 +65,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
-		description: 'The ID of the message you are operating on',
 	},
 	{
 		displayName: 'Thread ID',
@@ -89,7 +83,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
-		description: 'The ID of the thread you are replying to',
 	},
 	{
 		displayName: 'Message ID',
@@ -108,7 +101,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: 'CAHNQoFsC6JMMbOBJgtjsqN0eEc+gDg2a=SQj-tWUebQeHMDgqQ@mail.gmail.com',
-		description: 'The ID of the message you are replying to',
 	},
 	{
 		displayName: 'Subject',
@@ -127,7 +119,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		placeholder: 'Hello World!',
-		description: 'The message subject',
 	},
 	{
 		displayName: 'HTML',
@@ -231,9 +222,9 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Attachments',
+				displayName: 'Attachment',
 				name: 'attachmentsUi',
-				placeholder: 'Add Attachments',
+				placeholder: 'Add Attachment',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -241,14 +232,14 @@ export const messageFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'attachmentsBinary',
-						displayName: 'Attachments Binary',
+						displayName: 'Attachment Binary',
 						values: [
 							{
-								displayName: 'Property',
+								displayName: 'Attachment Field Name (in Input)',
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary property containing the data to be added to the email as an attachment. Multiple properties can be set separated by comma.',
+								description: 'Add the field name from the input node. Multiple properties can be set separated by comma.',
 							},
 						],
 					},
@@ -342,7 +333,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'The format to return the message in',
 			},
 			{
-				displayName: 'Attachments Prefix',
+				displayName: 'Attachment Prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -356,7 +347,7 @@ export const messageFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 		],
 	},
@@ -423,7 +414,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attachments Prefix',
+				displayName: 'Attachment Prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
@@ -438,7 +429,7 @@ export const messageFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Format',
@@ -480,7 +471,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'The format to return the message in',
 			},
 			{
-				displayName: 'Include Spam Trash',
+				displayName: 'Include Spam and Trash',
 				name: 'includeSpamTrash',
 				type: 'boolean',
 				default: false,
