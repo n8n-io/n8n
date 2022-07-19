@@ -148,6 +148,7 @@ export class TheHiveTrigger implements INodeType {
 
 		// While TheHive uses "deleted" for the other objects, a task is not deleted but is updated with the status "Cancel"
 		if (
+			events.includes('case_task_delete') === true &&
 			bodyData.operation === 'update' &&
 			bodyData.objectType === 'case_task' &&
 			(bodyData.details as IDataObject)?.status === 'Cancel'
