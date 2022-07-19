@@ -38,7 +38,7 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
 		const filter = req.query.filter ? (JSON.parse(req.query.filter) as Record<string, string>) : {};
 
-		const credentials = await CredentialsService.getFilteredCredentials(req.user, filter);
+		const credentials = await CredentialsService.getFiltered(req.user, filter);
 
 		return credentials.map((credential) => {
 			// eslint-disable-next-line no-param-reassign
@@ -78,7 +78,7 @@ credentialsController.post(
 		const { credentials, nodeToTestWith } = req.body;
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
-		return CredentialsService.testCredentials(req.user, encryptionKey, credentials, nodeToTestWith);
+		return CredentialsService.test(req.user, encryptionKey, credentials, nodeToTestWith);
 	}),
 );
 
@@ -88,19 +88,15 @@ credentialsController.post(
 credentialsController.post(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.Create) => {
-		const newCredential = await CredentialsService.prepareCredentialsCreateData(req.body);
+		const newCredential = await CredentialsService.prepareCreateData(req.body);
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
-		const encryptedData = CredentialsService.createEncryptedCredentialsData(
+		const encryptedData = CredentialsService.createEncryptedData(
 			encryptionKey,
 			null,
 			newCredential,
 		);
-		const { id, ...rest } = await CredentialsService.saveCredentials(
-			newCredential,
-			encryptedData,
-			req.user,
-		);
+		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
 
 		return { id: id.toString(), ...rest };
 	}),
@@ -114,9 +110,7 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await CredentialsService.getSharedCredentials(req.user, credentialId, [
-			'credentials',
-		]);
+		const shared = await CredentialsService.getShared(req.user, credentialId);
 
 		if (!shared) {
 			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
@@ -130,7 +124,7 @@ credentialsController.delete(
 			);
 		}
 
-		await CredentialsService.deleteCredentials(shared.credentials);
+		await CredentialsService.delete(shared.credentials);
 
 		return true;
 	}),
@@ -144,9 +138,7 @@ credentialsController.patch(
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
 		const { id: credentialId } = req.params;
 
-		const shared = await CredentialsService.getSharedCredentials(req.user, credentialId, [
-			'credentials',
-		]);
+		const shared = await CredentialsService.getShared(req.user, credentialId);
 
 		if (!shared) {
 			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
@@ -163,21 +155,18 @@ credentialsController.patch(
 		const { credentials: credential } = shared;
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
-		const decryptedData = await CredentialsService.decryptCredential(encryptionKey, credential);
-		const preparedCredentialData = await CredentialsService.prepareCredentialsUpdateData(
+		const decryptedData = await CredentialsService.decrypt(encryptionKey, credential);
+		const preparedCredentialData = await CredentialsService.prepareUpdateData(
 			req.body,
 			decryptedData,
 		);
-		const newCredentialData = CredentialsService.createEncryptedCredentialsData(
+		const newCredentialData = CredentialsService.createEncryptedData(
 			encryptionKey,
 			credentialId,
 			preparedCredentialData,
 		);
 
-		const responseData = await CredentialsService.updateCredentials(
-			credentialId,
-			newCredentialData,
-		);
+		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === undefined) {
 			throw new ResponseHelper.ResponseError(
@@ -207,9 +196,7 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await CredentialsService.getSharedCredentials(req.user, credentialId, [
-			'credentials',
-		]);
+		const shared = await CredentialsService.getShared(req.user, credentialId, ['credentials']);
 
 		if (!shared) {
 			throw new ResponseHelper.ResponseError(
@@ -233,7 +220,7 @@ credentialsController.get(
 		const { data, id, ...rest } = credential;
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
-		const decryptedData = await CredentialsService.decryptCredential(encryptionKey, credential);
+		const decryptedData = await CredentialsService.decrypt(encryptionKey, credential);
 
 		return {
 			id: id.toString(),

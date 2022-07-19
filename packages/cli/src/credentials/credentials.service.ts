@@ -27,11 +27,11 @@ import { CredentialRequest } from '../requests';
 import { externalHooks } from '../Server';
 
 export class CredentialsService {
-	static async getSharedCredentials(
+	static async getShared(
 		user: User,
 		credentialId: number | string,
-		relations?: string[],
-		allowGlobalOwner = true,
+		relations: string[] | undefined = ['credentials'],
+		{ allowGlobalOwner }: { allowGlobalOwner: boolean } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
 		const options: FindOneOptions = {
 			where: {
@@ -39,22 +39,22 @@ export class CredentialsService {
 			},
 		};
 
+		// Omit user from where if the requesting user is the global
+		// owner. This allows the global owner to view and delete
+		// credentials they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			options.where.user = { id: user.id };
 		}
 
-		if (relations) {
+		if (relations?.length) {
 			options.relations = relations;
 		}
 
 		return Db.collections.SharedCredentials.findOne(options);
 	}
 
-	static async getFilteredCredentials(
-		user: User,
-		filter: Record<string, string>,
-	): Promise<ICredentialsDb[]> {
+	static async getFiltered(user: User, filter: Record<string, string>): Promise<ICredentialsDb[]> {
 		try {
 			if (user.globalRole.name === 'owner') {
 				return await Db.collections.Credentials.find({
@@ -97,10 +97,11 @@ export class CredentialsService {
 		return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
 	}
 
-	static async prepareCredentialsCreateData(
+	static async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
-		// Make a copy so we can delete the provided ID
+		// Make a copy so we can delete the provided ID and
+		// so we can modify nodesAccess
 		const dataCopy = clone(data);
 		delete dataCopy.id;
 
@@ -117,7 +118,7 @@ export class CredentialsService {
 		return newCredentials;
 	}
 
-	static async prepareCredentialsUpdateData(
+	static async prepareUpdateData(
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
@@ -142,7 +143,7 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	static createEncryptedCredentialsData(
+	static createEncryptedData(
 		encryptionKey: string,
 		credentialsId: string | null,
 		data: CredentialsEntity,
@@ -164,9 +165,8 @@ export class CredentialsService {
 	}
 
 	static async getEncryptionKey(): Promise<string> {
-		let encryptionKey: string;
 		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
+			return await UserSettings.getEncryptionKey();
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
@@ -174,10 +174,9 @@ export class CredentialsService {
 				500,
 			);
 		}
-		return encryptionKey;
 	}
 
-	static async decryptCredential(
+	static async decrypt(
 		encryptionKey: string,
 		credential: CredentialsEntity,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -185,7 +184,7 @@ export class CredentialsService {
 		return coreCredential.getData(encryptionKey);
 	}
 
-	static async updateCredentials(
+	static async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
 	): Promise<ICredentialsDb | undefined> {
@@ -199,16 +198,14 @@ export class CredentialsService {
 		return Db.collections.Credentials.findOne(credentialId);
 	}
 
-	static async saveCredentials(
+	static async save(
 		credential: CredentialsEntity,
 		encryptedData: ICredentialsDb,
 		user: User,
 	): Promise<CredentialsEntity> {
 		// To avoid side effects
 		const newCredential = new CredentialsEntity();
-		Object.assign(newCredential, credential);
-
-		Object.assign(newCredential, encryptedData);
+		Object.assign(newCredential, credential, encryptedData);
 
 		await externalHooks.run('credentials.create', [encryptedData]);
 
@@ -241,13 +238,13 @@ export class CredentialsService {
 		return result;
 	}
 
-	static async deleteCredentials(credentials: CredentialsEntity): Promise<void> {
+	static async delete(credentials: CredentialsEntity): Promise<void> {
 		await externalHooks.run('credentials.delete', [credentials.id]);
 
 		await Db.collections.Credentials.remove(credentials);
 	}
 
-	static async testCredentials(
+	static async test(
 		user: User,
 		encryptionKey: string,
 		credentials: ICredentialsDecrypted,
