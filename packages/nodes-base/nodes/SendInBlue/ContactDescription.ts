@@ -1,4 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	GenericValue,
+	IExecuteSingleFunctions,
+	IHttpRequestOptions,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -15,13 +21,18 @@ export const contactOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a contact',
 				routing: {
 					request: {
 						method: 'POST',
 						url: '/v3/contacts',
 					},
 				},
-				action: 'Create a contact',
+			},
+			{
+				name: 'Create or Update',
+				value: 'upsert',
+				action: 'Upsert a contact',
 			},
 			{
 				name: 'Delete',
@@ -494,6 +505,128 @@ const updateOperations: INodeProperties[] = [
 	},
 ];
 
+const upsertOperations: INodeProperties[] = [
+	{
+		default: '',
+		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
+		displayName: 'Contact Identifier',
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['update'],
+			},
+		},
+		name: 'identifier',
+		type: 'string',
+		required: true,
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateAdditionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['upsert'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Attributes',
+				name: 'updateAttributes',
+				placeholder: 'Add Attribute',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'updateAttributesValues',
+						displayName: 'Attribute',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'options',
+								typeOptions: {
+									loadOptions: {
+										routing: {
+											request: {
+												method: 'GET',
+												url: '/v3/contacts/attributes',
+											},
+											output: {
+												postReceive: [
+													{
+														type: 'rootProperty',
+														properties: {
+															property: 'attributes',
+														},
+													},
+													{
+														type: 'setKeyValue',
+														properties: {
+															name: '={{$responseItem.name}} - ({{$responseItem.category}})',
+															value: '={{$responseItem.name}}',
+														},
+													},
+													{
+														type: 'sort',
+														properties: {
+															key: 'name',
+														},
+													},
+												],
+											},
+										},
+									},
+								},
+								default: '',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										value: '={{$value}}',
+										property: '=attributes.{{$parent.fieldName}}',
+										type: 'body',
+									},
+								},
+							},
+						],
+					},
+				],
+				default: {},
+				description: 'Array of attributes to be updated',
+			},
+		],
+		routing: {
+			send: {
+				preSend: [
+					async function (
+						this: IExecuteSingleFunctions,
+						requestOptions: IHttpRequestOptions,
+					): Promise<IHttpRequestOptions> {
+						const { body } = requestOptions as GenericValue as JsonObject;
+						Object.assign(body!, { updateEnabled: true });
+						return requestOptions;
+					},
+				],
+			},
+			request: {
+				method: 'PUT',
+				url: '=/v3/contacts/{{$parameter.identifier}}',
+			},
+		},
+	},
+];
+
 export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create                              */
@@ -519,4 +652,9 @@ export const contactFields: INodeProperties[] = [
 	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	...updateOperations,
+
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:update                              */
+	/* -------------------------------------------------------------------------- */
+	...upsertOperations,
 ];
