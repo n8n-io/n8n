@@ -121,7 +121,6 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		password,
 		resetPasswordToken,
 		resetPasswordTokenExpiration,
-		createdAt,
 		updatedAt,
 		apiKey,
 		...sanitizedUser
