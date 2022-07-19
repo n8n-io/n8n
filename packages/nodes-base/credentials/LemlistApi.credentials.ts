@@ -23,7 +23,6 @@ export class LemlistApi implements ICredentialType {
 		const encodedApiKey = Buffer.from(':' + credentials.apiKey).toString('base64');
 		requestOptions.headers!['Authorization'] = `Basic ${encodedApiKey}`;
 		requestOptions.headers!['user-agent'] = 'n8n';
-		console.log(requestOptions);
 		return requestOptions;
 	}
 	test: ICredentialTestRequest = {
