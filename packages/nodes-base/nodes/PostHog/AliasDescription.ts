@@ -20,6 +20,7 @@ export const aliasOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an alias',
+				action: 'Create an alias',
 			},
 		],
 		default: 'create',

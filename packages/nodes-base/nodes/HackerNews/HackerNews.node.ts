@@ -77,6 +77,7 @@ export class HackerNews implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all items',
+						action: 'Get all items',
 					},
 				],
 				default: 'getAll',
@@ -98,6 +99,7 @@ export class HackerNews implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a Hacker News article',
+						action: 'Get an article',
 					},
 				],
 				default: 'get',
@@ -119,6 +121,7 @@ export class HackerNews implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a Hacker News user',
+						action: 'Get a user',
 					},
 				],
 				default: 'get',
@@ -332,7 +335,7 @@ export class HackerNews implements INodeType {
 						endpoint = 'search?';
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 				} else if (resource === 'article') {
 
@@ -343,7 +346,7 @@ export class HackerNews implements INodeType {
 						includeComments = additionalFields.includeComments as boolean;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'user') {
@@ -352,11 +355,11 @@ export class HackerNews implements INodeType {
 						endpoint = `users/${this.getNodeParameter('username', i)}`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource '${resource}' is unknown!`);
+					throw new NodeOperationError(this.getNode(), `The resource '${resource}' is unknown!`, { itemIndex: i });
 				}
 
 

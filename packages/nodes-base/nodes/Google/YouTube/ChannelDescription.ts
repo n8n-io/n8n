@@ -20,21 +20,25 @@ export const channelOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a channel',
+				action: 'Get a channel',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all channels',
+				action: 'Get all channels',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a channel',
+				action: 'Update a channel',
 			},
 			{
 				name: 'Upload Banner',
 				value: 'uploadBanner',
 				description: 'Upload a channel banner',
+				action: 'Upload a channel banner',
 			},
 		],
 		default: 'getAll',
@@ -219,7 +223,7 @@ export const channelFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner',
@@ -438,6 +442,7 @@ export const channelFields: INodeProperties[] = [
 									{
 										displayName: 'Profile Color',
 										name: 'profileColor',
+										// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
 										type: 'string',
 										default: '',
 										description: 'A prominent color that complements the channel\'s content',

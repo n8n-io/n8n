@@ -18,16 +18,19 @@ export const linkOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a link',
+				action: 'Create a link',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a link',
+				action: 'Get a link',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a link',
+				action: 'Update a link',
 			},
 		],
 		default: 'create',
@@ -84,7 +87,7 @@ export const linkFields: INodeProperties[] = [
 				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
@@ -94,6 +97,7 @@ export const linkFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
@@ -210,7 +214,7 @@ export const linkFields: INodeProperties[] = [
 				displayName: 'Group Name or ID',
 				name: 'group',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
@@ -226,6 +230,7 @@ export const linkFields: INodeProperties[] = [
 				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',

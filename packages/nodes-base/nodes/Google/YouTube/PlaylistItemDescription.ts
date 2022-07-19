@@ -20,21 +20,25 @@ export const playlistItemOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add an item to a playlist',
+				action: 'Add a playlist item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a item from a playlist',
+				action: 'Delete a playlist item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a playlist\'s item',
+				action: 'Get a playlist item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all playlist items',
+				action: 'Get all playlist items',
 			},
 		],
 		default: 'add',
@@ -49,7 +53,7 @@ export const playlistItemFields: INodeProperties[] = [
 		displayName: 'Playlist Name or ID',
 		name: 'playlistId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getPlaylists',
 		},
@@ -279,7 +283,7 @@ export const playlistItemFields: INodeProperties[] = [
 		displayName: 'Playlist Name or ID',
 		name: 'playlistId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getPlaylists',
 		},

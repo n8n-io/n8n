@@ -133,7 +133,7 @@ export class CustomerIo implements INodeType {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 								}
 							}
 						} else {
@@ -177,7 +177,7 @@ export class CustomerIo implements INodeType {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 								}
 							}
 						} else {
@@ -240,7 +240,7 @@ export class CustomerIo implements INodeType {
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 								}
 							}
 						} else {
@@ -285,7 +285,7 @@ export class CustomerIo implements INodeType {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
+									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
 								}
 							}
 						} else {

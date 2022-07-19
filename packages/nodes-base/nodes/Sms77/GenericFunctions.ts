@@ -23,12 +23,9 @@ import {
  * @returns {Promise<any>}
  */
 export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('sms77Api');
-
 	const options: OptionsWithUri = {
 		headers: {
 			SentWith: 'n8n',
-			'X-Api-Key': credentials.apiKey,
 		},
 		qs,
 		uri: `https://gateway.sms77.io/api${endpoint}`,
@@ -41,7 +38,7 @@ export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 		body.json = 1;
 	}
 
-	const response = await this.helpers.request(options);
+	const response = await this.helpers.requestWithAuthentication.call(this, 'sms77Api', options);
 
 	if (response.success !== '100') {
 		throw new NodeApiError(this.getNode(), response, { message: 'Invalid sms77 credentials or API error!' });

@@ -541,7 +541,6 @@ export class Wait implements INodeType {
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
-						required: true,
 						displayOptions: {
 							show: {
 								binaryData: [

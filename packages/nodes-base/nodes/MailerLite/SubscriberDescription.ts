@@ -20,21 +20,25 @@ export const subscriberOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new subscriber',
+				action: 'Create a subscriber',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an subscriber',
+				action: 'Get a subscriber',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all subscribers',
+				action: 'Get all subscribers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an subscriber',
+				action: 'Update a subscriber',
 			},
 		],
 		default: 'create',
@@ -117,7 +121,7 @@ export const subscriberFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -239,7 +243,7 @@ export const subscriberFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',

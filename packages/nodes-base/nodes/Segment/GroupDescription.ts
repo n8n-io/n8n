@@ -20,6 +20,7 @@ export const groupOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a user to a group',
+				action: 'Add a user to a group',
 			},
 		],
 		default: 'add',
