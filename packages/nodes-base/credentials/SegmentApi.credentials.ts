@@ -1,5 +1,8 @@
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -15,4 +18,9 @@ export class SegmentApi implements ICredentialType {
 			default: '',
 		},
 	];
+	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+		const base64Key =  Buffer.from(`${credentials.writekey}:`).toString('base64');
+		requestOptions.headers!['Authorization'] = `Basic ${base64Key}`;
+		return requestOptions;
+	}
 }
