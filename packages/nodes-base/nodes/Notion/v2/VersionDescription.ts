@@ -46,7 +46,6 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'notionApi',
 			required: true,
-			testedBy: 'notionApiCredentialTest',
 			// displayOptions: {
 			// 	show: {
 			// 		authentication: [

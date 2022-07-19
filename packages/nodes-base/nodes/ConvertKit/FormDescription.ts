@@ -20,16 +20,19 @@ export const formOperations: INodeProperties[] = [
 				name: 'Add Subscriber',
 				value: 'addSubscriber',
 				description: 'Add a subscriber',
+				action: 'Add a subscriber',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all forms',
+				action: 'Get all forms',
 			},
 			{
 				name: 'Get Subscriptions',
 				value: 'getSubscriptions',
 				description: 'List subscriptions to a form including subscriber data',
+				action: 'Get all subscriptions',
 			},
 		],
 		default: 'addSubscriber',
@@ -42,7 +45,7 @@ export const formFields: INodeProperties[] = [
 		displayName: 'Form Name or ID',
 		name: 'id',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getForms',
 		},

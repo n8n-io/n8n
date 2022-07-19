@@ -1,6 +1,13 @@
 /* eslint-disable import/no-cycle */
+import { get as pslGet } from 'psl';
 import { BinaryDataManager } from 'n8n-core';
-import { IDataObject, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
+import {
+	INodesGraphResult,
+	INodeTypes,
+	IRun,
+	ITelemetryTrackProperties,
+	TelemetryHelpers,
+} from 'n8n-workflow';
 import { snakeCase } from 'change-case';
 import {
 	IDiagnosticInfo,
@@ -10,6 +17,7 @@ import {
 	IWorkflowDb,
 } from '.';
 import { Telemetry } from './telemetry';
+import { IExecutionTrackProperties } from './Interfaces';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -48,6 +56,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 		]);
 	}
 
+	async onFrontendSettingsAPI(sessionId?: string): Promise<void> {
+		return this.telemetry.track('Session started', { session_id: sessionId });
+	}
+
 	async onPersonalizationSurveySubmitted(
 		userId: string,
 		answers: Record<string, string>,
@@ -73,7 +85,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User created workflow', {
 			user_id: userId,
 			workflow_id: workflow.id,
-			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
 			public_api: publicApi,
 		});
@@ -98,7 +109,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User saved workflow', {
 			user_id: userId,
 			workflow_id: workflow.id,
-			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
 			notes_count_overlapping: overlappingCount,
 			notes_count_non_overlapping: notesCount - overlappingCount,
@@ -115,10 +125,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		userId?: string,
 	): Promise<void> {
 		const promises = [Promise.resolve()];
-		const properties: IDataObject = {
-			workflow_id: workflow.id,
+
+		if (!workflow.id) {
+			return Promise.resolve();
+		}
+
+		const properties: IExecutionTrackProperties = {
+			workflow_id: workflow.id.toString(),
 			is_manual: false,
 			version_cli: this.versionCli,
+			success: false,
 		};
 
 		if (userId) {
@@ -130,7 +146,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 			properties.success = !!runData.finished;
 			properties.is_manual = runData.mode === 'manual';
 
-			let nodeGraphResult;
+			let nodeGraphResult: INodesGraphResult | null = null;
 
 			if (!properties.success && runData?.data.resultData.error) {
 				properties.error_message = runData?.data.resultData.error.message;
@@ -165,22 +181,19 @@ export class InternalHooksClass implements IInternalHooksClass {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 				}
 
-				const manualExecEventProperties = {
-					workflow_id: workflow.id,
+				const manualExecEventProperties: ITelemetryTrackProperties = {
+					workflow_id: workflow.id.toString(),
 					status: properties.success ? 'success' : 'failed',
-					error_message: properties.error_message,
+					error_message: properties.error_message as string,
 					error_node_type: properties.error_node_type,
-					node_graph: properties.node_graph,
-					node_graph_string: properties.node_graph_string,
-					error_node_id: properties.error_node_id,
+					node_graph_string: properties.node_graph_string as string,
+					error_node_id: properties.error_node_id as string,
+					webhook_domain: null,
 				};
 
-				if (!manualExecEventProperties.node_graph) {
+				if (!manualExecEventProperties.node_graph_string) {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-					manualExecEventProperties.node_graph = nodeGraphResult.nodeGraph;
-					manualExecEventProperties.node_graph_string = JSON.stringify(
-						manualExecEventProperties.node_graph,
-					);
+					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
 
 				if (runData.data.startData?.destinationNode) {
@@ -195,6 +208,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 						}),
 					);
 				} else {
+					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
+						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
+							?.json as { headers?: { origin?: string } };
+						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
+							manualExecEventProperties.webhook_domain = pslGet(
+								execJson.headers.origin.replace(/^https?:\/\//, ''),
+							);
+						}
+					});
+
 					promises.push(
 						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
 					);

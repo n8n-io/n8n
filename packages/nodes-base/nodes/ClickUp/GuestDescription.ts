@@ -20,21 +20,25 @@ export const guestOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a guest',
+				action: 'Create a guest',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a guest',
+				action: 'Delete a guest',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a guest',
+				action: 'Get a guest',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a guest',
+				action: 'Update a guest',
 			},
 		],
 		default: 'create',
@@ -50,7 +54,7 @@ export const guestFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -129,7 +133,7 @@ export const guestFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -171,7 +175,7 @@ export const guestFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -213,7 +217,7 @@ export const guestFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
