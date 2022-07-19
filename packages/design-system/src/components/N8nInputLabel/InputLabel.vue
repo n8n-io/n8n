@@ -159,7 +159,7 @@ export default {
 }
 
 .small {
-	margin-bottom: var(--spacing-4xs);
+	margin-bottom: var(--spacing-5xs);
 }
 
 .medium {
