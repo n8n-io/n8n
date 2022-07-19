@@ -16,7 +16,6 @@ import {
 
 import {
 	dropcontactApiRequest,
-	validateCredentials,
 } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
@@ -37,7 +36,6 @@ export class Dropcontact implements INodeType {
 			{
 				name: 'dropcontactApi',
 				required: true,
-				testedBy: 'dropcontactApiCredentialTest',
 			},
 		],
 		properties: [
