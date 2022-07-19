@@ -14,11 +14,8 @@ import {
 
 export async function phantombusterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = await this.getCredentials('phantombusterApi');
-
 	const options: OptionsWithUri = {
 		headers: {
-			'X-Phantombuster-Key': credentials.apiKey,
 		},
 		method,
 		body,
@@ -31,7 +28,7 @@ export async function phantombusterApiRequest(this: IExecuteFunctions | IExecute
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.requestWithAuthentication.call(this, 'phantombusterApi',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
