@@ -88,6 +88,7 @@ export class ERPNextApi implements ICredentialType {
 		request: {
 			baseURL: '={{$credentials.environment === "cloudHosted" ? "https://" + $credentials.subdomain + ".erpnext.com" : $credentials.domain}}',
 			url: '/api/resource/Doctype',
+			skipSslCertificateValidation: '={{ $credentials.allowUnauthorizedCerts }}',
 		},
 	};
 }

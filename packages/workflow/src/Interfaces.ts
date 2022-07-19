@@ -250,8 +250,15 @@ export interface IAuthenticateRuleResponseSuccessBody extends IAuthenticateRuleB
 		value: any;
 	};
 }
+
+export type IHttpRequestOptionsFromProperties = Omit<
+	IHttpRequestOptions,
+	'skipSslCertificateValidation'
+> & {
+	skipSslCertificateValidation?: string | boolean;
+};
 export interface ICredentialTestRequest {
-	request: IHttpRequestOptions;
+	request: IHttpRequestOptionsFromProperties;
 	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
@@ -1131,8 +1138,10 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export interface IHttpRequestOptionsFromParameters extends Partial<IHttpRequestOptions> {
+export interface IHttpRequestOptionsFromParameters
+	extends Partial<IHttpRequestOptionsFromProperties> {
 	url?: string;
+	skipSslCertificateValidation?: boolean | string;
 }
 
 export interface IRequestOptionsFromParameters {
