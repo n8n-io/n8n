@@ -25,16 +25,6 @@ export const productOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/commerce/products',
 					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'product',
-								},
-							},
-						],
-					},
 				},
 			},
 			{
@@ -112,6 +102,112 @@ export const productOperations: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+	},
+];
+
+const createOperations: Array<INodeProperties> = [
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'hidden',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['product'],
+				operation: ['create']
+			},
+		},
+		routing: {
+			send: { type: 'body', property: 'type' }
+		},
+		default: 'PHYSICAL',
+	},
+	{
+		displayName: 'Store Page ID',
+		name: 'storePageId',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['product'],
+				operation: ['create']
+			},
+		},
+		routing: {
+			send: { type: 'body', property: 'storePageId' }
+		},
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						url: '/commerce/store_pages',
+						method: 'GET',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'storePages',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.title}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Variants',
+		name: 'variants',
+		placeholder: 'Add Variant',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'product',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: null,
+		options: [
+			{
+				displayName: 'Variant',
+				name: 'variantValues',
+				values: [
+					{
+						displayName: 'SKU',
+						name: 'sku',
+						type: 'string',
+						default: '',
+						description: 'Merchant-defined code that identifies the product variant',
+						routing: {
+							send: { type: 'body', property: '=variants[{{$index}}].sku' }
+						},
+					},
+				],
+			},
+		],
 	},
 ];
 
@@ -242,6 +338,7 @@ const getAllOperations: Array<INodeProperties> = [
 ];
 
 export const productFields: INodeProperties[] = [
+	...createOperations,
 	...deleteOperations,
 	...getOperations,
 	...getAllOperations,
