@@ -114,7 +114,7 @@ export default mixins(
 				this.$emit('valueChanged', parameterData);
 			},
 			onDrop(data: string) {
-				this.forceShowExpression= true;
+				this.forceShowExpression = true;
 				setTimeout(() => {
 					if (this.node) {
 						const prevValue = this.value;
@@ -153,7 +153,7 @@ export default mixins(
 							success: true,
 						});
 					}
-					this.forceShowExpression= false;
+					this.forceShowExpression = false;
 				}, 200);
 			},
 		},
