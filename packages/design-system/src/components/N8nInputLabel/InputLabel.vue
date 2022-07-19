@@ -155,7 +155,7 @@ export default {
 
 .label {
 	display: flex;
-	overflow: hidden;
+	overflow-x: hidden;
 }
 
 .small {
