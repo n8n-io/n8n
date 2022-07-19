@@ -20,11 +20,13 @@ export const threadLabelOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a label to a thread',
+				action: 'Add a thread label',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a label from a thread',
+				action: 'Remove a thread label',
 			},
 		],
 		default: 'add',
@@ -51,9 +53,10 @@ export const threadLabelFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Label IDs',
+		displayName: 'Label ID Names or IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getLabels',
 		},

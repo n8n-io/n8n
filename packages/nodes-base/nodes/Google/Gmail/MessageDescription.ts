@@ -46,11 +46,6 @@ export const messageOperations: INodeProperties[] = [
 				description: 'Send an email',
 				action: 'Send a message',
 			},
-			{
-				name: 'Send',
-				value: 'send',
-				description: 'Send an email',
-			},
 		],
 		default: 'send',
 	},

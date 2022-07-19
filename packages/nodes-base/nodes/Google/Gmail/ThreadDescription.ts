@@ -20,26 +20,31 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Permanently deletes the specified thread',
+				action: 'Delete a thread',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a thread',
+				action: 'Get a thread',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all threads',
+				action: 'Get all threads',
 			},
 			{
 				name: 'Trash',
 				value: 'trash',
 				description: 'Moves the specified thread to the trash',
+				action: 'Trash a thread',
 			},
 			{
 				name: 'Untrash',
 				value: 'untrash',
 				description: 'Removes the specified thread to the trash',
+				action: 'Untrash a thread',
 			},
 		],
 		default: 'get',
@@ -187,14 +192,14 @@ export const threadFields: INodeProperties[] = [
 				description: 'Whether to include threads from SPAM and TRASH in the results',
 			},
 			{
-				displayName: 'Label IDs',
+				displayName: 'Label ID Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Only return threads with labels that match all of the specified label IDs',
+				description: 'Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',
