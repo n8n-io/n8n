@@ -81,6 +81,11 @@ describe('Expression', () => {
 		it('should resolve extensions', () => {
 			expect(evaluate('={{ "abc".sayHi() }}')).toEqual("hi abc");
 			expect(evaluate('={{ (123).toDecimal(3) }}')).toEqual("123.000");
+			expect(
+				evaluate('={{ "michael".length > 5 ? "michael".getOnlyFirstCharacters(5) : "michael" }}'),
+			).toEqual("micha");
+			expect(evaluate('={{ "michael".getOnlyFirstCharacters(5).length >= "mi".length }}')).toEqual(true);
+			expect(evaluate('={{ "test".gimmeFive() === 5 }}')).toEqual(true);
 		});
 
 		it('should be able to use global built-ins from allowlist', () => {

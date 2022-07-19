@@ -7,7 +7,7 @@ import { ExpressionError } from './ExpressionError';
 
 const EXPRESSION_EXTENDER = 'extend';
 
-const EXPRESSION_EXTENSION_METHODS = ['sayHi', 'toDecimal'];
+const EXPRESSION_EXTENSION_METHODS = ['sayHi', 'toDecimal', 'getOnlyFirstCharacters', 'gimmeFive'];
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
@@ -67,7 +67,7 @@ export class ExpressionExtensionError extends ExpressionError {
 export function extend(
 	mainArg: unknown,
 	...extraArgs: unknown[]
-): { [methodName: string]: () => string } {
+): { [methodName: string]: () => string | number } {
 	return {
 		sayHi() {
 			if (typeof mainArg !== 'string') {
@@ -96,6 +96,28 @@ export function extend(
 			}
 
 			return mainArg.toFixed(extraArg);
+		},
+		getOnlyFirstCharacters() {
+			if (typeof mainArg !== 'string') {
+				throw new ExpressionExtensionError(
+					'getOnlyFirstCharacters() requires a string-type main arg',
+				);
+			}
+
+			if (!extraArgs || extraArgs.length > 1) {
+				throw new ExpressionExtensionError('getOnlyFirstCharacters() requires a single extra arg');
+			}
+
+			const [extraArg] = extraArgs;
+
+			if (typeof extraArg !== 'number') {
+				throw new ExpressionExtensionError('toDecimal() requires a number-type extra arg');
+			}
+
+			return mainArg.slice(0, extraArg);
+		},
+		gimmeFive() {
+			return 5;
 		},
 	};
 }
