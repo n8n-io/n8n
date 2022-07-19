@@ -269,7 +269,6 @@ export default Vue.extend({
 	color: var(--color-text-xlight);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
-	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
 	border-radius: var(--border-radius-base);
 	white-space: nowrap;
 }
@@ -281,5 +280,6 @@ export default Vue.extend({
 .defaultPill {
 	background-color: var(--color-primary);
 	transform: translate(-50%, -100%);
+	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
 }
 </style>
