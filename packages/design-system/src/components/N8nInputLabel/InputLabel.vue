@@ -156,6 +156,7 @@ export default {
 .label {
 	display: flex;
 	overflow-x: hidden;
+	overflow-y: clip;
 }
 
 .small {
