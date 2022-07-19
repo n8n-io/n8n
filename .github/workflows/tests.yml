@@ -19,7 +19,6 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-        cache: false
     - name: npm install, build, and test
       run: |
         npm install
