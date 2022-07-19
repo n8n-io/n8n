@@ -118,6 +118,13 @@ export class KafkaTrigger implements INodeType {
 						hint: 'The value must be set lower than Session Timeout',
 					},
 					{
+						displayName: 'Max Number of Requests',
+						name: 'maxInFlightRequests',
+						type: 'number',
+						default: 0,
+						description: 'Max number of requests that may be in progress at any time. If falsey then no limit.',
+					},
+					{
 						displayName: 'Read Messages From Beginning',
 						name: 'fromBeginning',
 						type: 'boolean',
@@ -201,6 +208,7 @@ export class KafkaTrigger implements INodeType {
 
 		const consumer = kafka.consumer({
 			groupId,
+			maxInFlightRequests: this.getNodeParameter('options.maxInFlightRequests', 0) as number,
 			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		 });
