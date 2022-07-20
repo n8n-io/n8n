@@ -10,6 +10,9 @@
 		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
+		:mappingEnabled="!readOnly"
+		:showMappingHint="draggableHintShown"
+		:distanceFromActive="currentNodeDepth"
 		paneType="input"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
@@ -32,8 +35,11 @@
 		<template v-slot:node-not-run>
 			<div :class="$style.noOutputData" v-if="parentNodes.length">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
-				<NodeExecuteButton v-if="!readOnly" type="outline" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
-				<n8n-text  v-if="!readOnly" tag="div" size="small">
+				<n8n-tooltip v-if="!readOnly" :manual="true" :value="showDraggableHint && showDraggableHintWithDelay">
+					<div slot="content" v-html="$locale.baseText('dataMapping.dragFromPreviousHint',  { interpolate: { name: focusedMappableInput } })"></div>
+					<NodeExecuteButton type="outline" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
+				</n8n-tooltip>
+				<n8n-text v-if="!readOnly" tag="div" size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
 				</n8n-text>
 			</div>
@@ -65,6 +71,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
+import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, START_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	workflowHelpers,
@@ -93,7 +100,27 @@ export default mixins(
 			type: Boolean,
 		},
 	},
+	data() {
+		return {
+			showDraggableHintWithDelay: false,
+			draggableHintShown: false,
+		};
+	},
 	computed: {
+		focusedMappableInput(): string {
+			return this.$store.getters['ui/focusedMappableInput'];
+		},
+		isUserOnboarded(): boolean {
+			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
+		},
+		showDraggableHint(): boolean {
+			const toIgnore = [START_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
+			if (toIgnore.includes(this.currentNode.type)) {
+				return false;
+			}
+
+			return !!this.focusedMappableInput && !this.isUserOnboarded;
+		},
 		isExecutingPrevious(): boolean {
 			if (!this.workflowRunning) {
 				return false;
@@ -135,6 +162,10 @@ export default mixins(
 			const nodes: IConnectedNode[] = (this.workflow as Workflow).getParentNodesByDepth(this.activeNode.name);
 
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
+		},
+		currentNodeDepth (): number {
+			const node = this.parentNodes.find((node) => node.name === this.currentNode.name);
+			return node ? node.depth: -1;
 		},
 	},
 	methods: {
@@ -180,6 +211,26 @@ export default mixins(
 				return `${truncated}...`;
 			}
 			return truncated;
+		},
+	},
+	watch: {
+		showDraggableHint(curr: boolean, prev: boolean) {
+			if (curr && !prev) {
+				setTimeout(() => {
+					if (this.draggableHintShown) {
+						return;
+					}
+					this.showDraggableHintWithDelay = this.showDraggableHint;
+					if (this.showDraggableHintWithDelay) {
+						this.draggableHintShown = true;
+
+						this.$telemetry.track('User viewed data mapping tooltip', { type: 'unexecuted input pane' });
+					}
+				}, 1000);
+			}
+			else if (!curr) {
+				this.showDraggableHintWithDelay = false;
+			}
 		},
 	},
 });

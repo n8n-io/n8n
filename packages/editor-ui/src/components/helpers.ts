@@ -1,4 +1,4 @@
-import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
+import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
 import { INodeTypeDescription } from 'n8n-workflow';
@@ -67,4 +67,19 @@ export function isString(value: unknown): value is string {
 
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
+}
+
+export function shorten(s: string, limit: number, keep: number) {
+	if (s.length <= limit) {
+		return s;
+	}
+
+	const first = s.slice(0, limit - keep);
+	const last = s.slice(s.length - keep, s.length);
+
+	return `${first}...${last}`;
+}
+
+export function hasExpressionMapping(value: unknown) {
+	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
 }
