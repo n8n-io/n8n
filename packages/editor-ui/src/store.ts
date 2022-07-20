@@ -9,7 +9,7 @@ import {
 import {
 	IConnection,
 	IConnections,
-	IDataObject, IExecuteData,
+	IDataObject,
 	INodeConnections,
 	INodeIssueData,
 	INodeTypeDescription,

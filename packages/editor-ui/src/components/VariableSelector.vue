@@ -19,10 +19,12 @@ import {
 import {
 	GenericValue,
 	IContextObject,
-	IDataObject, INodeExecutionData,
+	IDataObject,
+	INodeExecutionData,
 	IRunData,
 	IRunExecutionData,
-	IWorkflowDataProxyAdditionalKeys, PinData,
+	IWorkflowDataProxyAdditionalKeys,
+	PinData,
 	Workflow,
 	WorkflowDataProxy,
 } from 'n8n-workflow';
@@ -415,8 +417,6 @@ export default mixins(
 				const nodeConnection = this.workflow.getNodeConnectionIndexes(activeNode.name, parentNode[0], 'main');
 				const connectionInputData = this.connectionInputData(parentNode, nodeName, inputName, runIndex, nodeConnection);
 
-				console.log('getNodeContext', {activeNode, connectionInputData});
-
 				if (connectionInputData === null) {
 					return returnData;
 				}
@@ -444,8 +444,6 @@ export default mixins(
 						value: nodeContext[key],
 					});
 				}
-
-				console.log('getNodeContext', returnData);
 
 				return returnData;
 			},

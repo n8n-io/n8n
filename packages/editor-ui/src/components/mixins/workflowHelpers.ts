@@ -42,7 +42,7 @@ import {
 	IWorkflowDataUpdate,
 	XYPosition,
 	ITag,
-	IUpdateInformation, IVariableSelectorOption,
+	IUpdateInformation,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
