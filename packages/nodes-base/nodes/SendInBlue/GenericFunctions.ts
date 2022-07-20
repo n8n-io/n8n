@@ -1,10 +1,12 @@
 import {
-	IBinaryData,
 	IExecuteSingleFunctions,
+	IHookFunctions,
 	IHttpRequestOptions,
+	IWebhookFunctions,
 	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { OptionsWithUri } from 'request';
 
 export interface EmailAttachment {
 	content?: string;
@@ -115,4 +117,27 @@ export async function validateAttachmentsData(
 	} catch (err) {
 		throw new NodeOperationError(this.getNode(), `${err}`);
 	}
+}
+
+export namespace sendInBlueWebhookApi {
+	interface WebhookDetails {
+		url: string;
+		id: number;
+		description: string;
+		events: string[];
+		type: string;
+		createdAt: string;
+		modifiedAt: string;
+	}
+
+	interface WebhookId {
+		id: string;
+	}
+
+	interface Webhooks {
+		webhooks: WebhookDetails[];
+	}
+
+	const credentialsName = 'sendinblueApi';
+	const baseURL = 'https://api.sendinblue.com/v3';
 }
