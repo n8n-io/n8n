@@ -29,7 +29,7 @@
 			<slot name="run-info"></slot>
 		</div>
 
-		<div v-if="maxOutputIndex > 0" :class="{[$style.tabs]: displayMode === 'table'}">
+		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="{[$style.tabs]: displayMode === 'table'}">
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
