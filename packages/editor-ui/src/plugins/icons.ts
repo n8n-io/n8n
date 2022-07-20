@@ -28,6 +28,7 @@ import {
 	faCloud,
 	faCloudDownloadAlt,
 	faCopy,
+	faCube,
 	faCut,
 	faDotCircle,
 	faEdit,
@@ -92,6 +93,7 @@ import {
 	faTerminal,
 	faThLarge,
 	faTimes,
+	faTimesCircle,
 	faTrash,
 	faUndo,
 	faUnlink,
@@ -136,6 +138,7 @@ addIcon(faClone);
 addIcon(faCloud);
 addIcon(faCloudDownloadAlt);
 addIcon(faCopy);
+addIcon(faCube);
 addIcon(faCut);
 addIcon(faDotCircle);
 addIcon(faGripVertical);
@@ -202,6 +205,7 @@ addIcon(faTasks);
 addIcon(faTerminal);
 addIcon(faThLarge);
 addIcon(faTimes);
+addIcon(faTimesCircle);
 addIcon(faTrash);
 addIcon(faUndo);
 addIcon(faUnlink);

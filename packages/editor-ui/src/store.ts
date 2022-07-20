@@ -29,6 +29,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
+	ICommunityNodesState,
 } from './Interface';
 
 import credentials from './modules/credentials';
@@ -39,6 +40,8 @@ import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
+import communityNodes from './modules/communityNodes';
+import { isCommunityPackageName } from './components/helpers';
 
 Vue.use(Vuex);
 
@@ -102,6 +105,7 @@ const modules = {
 	versions,
 	users,
 	ui,
+	communityNodes,
 };
 
 export const store = new Vuex.Store({
@@ -503,11 +507,9 @@ export const store = new Vuex.Store({
 			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
-		// Node-Types
 		setNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
 			Vue.set(state, 'nodeTypes', nodeTypes);
 		},
-
 		// Active Execution
 		setExecutingNode (state, executingNode: string) {
 			state.executingNode = executingNode;
@@ -652,8 +654,16 @@ export const store = new Vuex.Store({
 		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
 			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
 			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
+
 			Vue.set(state, 'nodeTypes', newNodesState);
 			state.nodeTypes = newNodesState;
+		},
+
+		removeNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+			console.log('Store will remove nodes: ', nodeTypes); // eslint-disable-line no-console
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			Vue.set(state, 'nodeTypes', oldNodesToKeep);
+			state.nodeTypes = oldNodesToKeep;
 		},
 
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
@@ -843,7 +853,6 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */
