@@ -8,15 +8,21 @@ export class NodeMailer implements UserManagementMailerImplementation {
 	private transport: Transporter;
 
 	constructor() {
-		this.transport = createTransport({
+		const transportConfig: any = {
 			host: config.getEnv('userManagement.emails.smtp.host'),
 			port: config.getEnv('userManagement.emails.smtp.port'),
 			secure: config.getEnv('userManagement.emails.smtp.secure'),
-			auth: {
+		};
+		if (
+			config.getEnv('userManagement.emails.smtp.auth.user') &&
+			config.getEnv('userManagement.emails.smtp.auth.pass')
+		) {
+			transportConfig.auth = {
 				user: config.getEnv('userManagement.emails.smtp.auth.user'),
 				pass: config.getEnv('userManagement.emails.smtp.auth.pass'),
-			},
-		});
+			};
+		}
+		this.transport = createTransport(transportConfig);
 	}
 
 	async verifyConnection(): Promise<void> {
