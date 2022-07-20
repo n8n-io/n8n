@@ -24,7 +24,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	DeclarativaRestApiSettings,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
@@ -127,7 +127,7 @@ export class RoutingNode {
 					executeData,
 					this.mode,
 				);
-				const requestData: DeclarativaRestApiSettings.ResultOptions = {
+				const requestData: DeclarativeRestApiSettings.ResultOptions = {
 					options: {
 						qs: {},
 						body: {},
@@ -214,8 +214,8 @@ export class RoutingNode {
 	}
 
 	mergeOptions(
-		destinationOptions: DeclarativaRestApiSettings.ResultOptions,
-		sourceOptions?: DeclarativaRestApiSettings.ResultOptions,
+		destinationOptions: DeclarativeRestApiSettings.ResultOptions,
+		sourceOptions?: DeclarativeRestApiSettings.ResultOptions,
 	): void {
 		if (sourceOptions) {
 			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
@@ -375,7 +375,7 @@ export class RoutingNode {
 
 	async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
-		requestData: DeclarativaRestApiSettings.ResultOptions,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
 		credentialType?: string,
@@ -434,7 +434,7 @@ export class RoutingNode {
 	}
 
 	async makeRoutingRequest(
-		requestData: DeclarativaRestApiSettings.ResultOptions,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
 		itemIndex: number,
 		runIndex: number,
@@ -452,7 +452,7 @@ export class RoutingNode {
 
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: DeclarativaRestApiSettings.ResultOptions) => {
+			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
 				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
@@ -591,8 +591,8 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): DeclarativaRestApiSettings.ResultOptions | undefined {
-		const returnData: DeclarativaRestApiSettings.ResultOptions = {
+	): DeclarativeRestApiSettings.ResultOptions | undefined {
+		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
 				qs: {},
 				body: {},

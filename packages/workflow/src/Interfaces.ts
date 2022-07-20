@@ -253,7 +253,7 @@ export interface IAuthenticateRuleResponseSuccessBody extends IAuthenticateRuleB
 
 type Override<A extends object, B extends object> = Omit<A, keyof B> & B;
 
-export namespace DeclarativaRestApiSettings {
+export namespace DeclarativeRestApiSettings {
 	// The type below might be extended
 	// with new options that need to be parsed as expressions
 	export type HttpRequestOptions = Override<
@@ -277,7 +277,7 @@ export namespace DeclarativaRestApiSettings {
 }
 
 export interface ICredentialTestRequest {
-	request: DeclarativaRestApiSettings.HttpRequestOptions;
+	request: DeclarativeRestApiSettings.HttpRequestOptions;
 	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
@@ -498,7 +498,7 @@ export interface IN8nRequestOperations {
 		| IN8nRequestOperationPaginationOffset
 		| ((
 				this: IExecutePaginationFunctions,
-				requestOptions: DeclarativaRestApiSettings.ResultOptions,
+				requestOptions: DeclarativeRestApiSettings.ResultOptions,
 		  ) => Promise<INodeExecutionData[]>);
 }
 
@@ -611,7 +611,7 @@ export interface IExecuteSingleFunctions {
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
 		this: IAllExecuteFunctions,
-		requestOptions: DeclarativaRestApiSettings.ResultOptions,
+		requestOptions: DeclarativeRestApiSettings.ResultOptions,
 	): Promise<INodeExecutionData[]>;
 }
 export interface IExecuteWorkflowInfo {
@@ -900,7 +900,7 @@ export interface ILoadOptions {
 	routing?: {
 		operations?: IN8nRequestOperations;
 		output?: INodeRequestOutput;
-		request?: DeclarativaRestApiSettings.HttpRequestOptions;
+		request?: DeclarativeRestApiSettings.HttpRequestOptions;
 	};
 }
 
@@ -1079,7 +1079,7 @@ export interface INodeTypeBaseDescription {
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
 	output?: INodeRequestOutput;
-	request?: DeclarativaRestApiSettings.HttpRequestOptions;
+	request?: DeclarativeRestApiSettings.HttpRequestOptions;
 	send?: INodeRequestSend;
 }
 
@@ -1170,7 +1170,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
-	requestDefaults?: DeclarativaRestApiSettings.HttpRequestOptions;
+	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;

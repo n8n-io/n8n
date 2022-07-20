@@ -2,7 +2,7 @@ import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	DeclarativaRestApiSettings,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	RoutingNode,
 	Workflow,
@@ -46,7 +46,7 @@ describe('RoutingNode', () => {
 				nodeParameters: INodeParameters;
 				nodeTypeProperties: INodeProperties;
 			};
-			output: DeclarativaRestApiSettings.ResultOptions | undefined;
+			output: DeclarativeRestApiSettings.ResultOptions | undefined;
 		}> = [
 			{
 				description: 'single parameter, only send defined, fixed value',
