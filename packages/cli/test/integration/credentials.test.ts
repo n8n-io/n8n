@@ -1,14 +1,12 @@
 import express from 'express';
 import { UserSettings } from 'n8n-core';
-import type { SuperAgentTest } from 'supertest';
 import { Db } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { SaveCredentialFunction } from './shared/types';
+import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
 jest.mock('../../src/telemetry');
@@ -18,7 +16,7 @@ let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let saveCredential: SaveCredentialFunction;
-let authAgent: (user: User) => SuperAgentTest;
+let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({

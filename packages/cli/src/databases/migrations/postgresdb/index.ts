@@ -1,8 +1,8 @@
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
-import { AddWebhookId1611144599516 } from './1611144599516-AddWebhookId';
 import { MakeStoppedAtNullable1607431743768 } from './1607431743768-MakeStoppedAtNullable';
+import { AddWebhookId1611144599516 } from './1611144599516-AddWebhookId';
 import { CreateTagEntity1617270242566 } from './1617270242566-CreateTagEntity';
 import { UniqueWorkflowNames1620824779533 } from './1620824779533-UniqueWorkflowNames';
 import { AddwaitTill1626176912946 } from './1626176912946-AddwaitTill';
@@ -13,6 +13,7 @@ import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserMan
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
+import { CreateCredentialsEditorRole1657062385367 } from './1657062385367-CreateCredentialsEditorRole';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -30,4 +31,5 @@ export const postgresMigrations = [
 	LowerCaseUserEmail1648740597343,
 	AddUserSettings1652367743993,
 	AddAPIKeyColumn1652905585850,
+	CreateCredentialsEditorRole1657062385367,
 ];

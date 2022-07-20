@@ -2,7 +2,6 @@ import express from 'express';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
-import type { SuperAgentTest } from 'supertest';
 import config from '../../config';
 import { Db } from '../../src';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
@@ -18,6 +17,7 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
+import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 jest.mock('../../src/telemetry');
@@ -29,7 +29,7 @@ let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
-let authAgent: (user: User) => SuperAgentTest;
+let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });

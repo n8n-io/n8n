@@ -1,12 +1,10 @@
 import express from 'express';
-import type { SuperAgentTest } from 'supertest';
 import { IsNull } from 'typeorm';
 import validator from 'validator';
 
 import config from '../../config';
 import { Db } from '../../src';
 import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomApiKey,
@@ -16,6 +14,7 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
+import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 jest.mock('../../src/telemetry');
@@ -24,7 +23,7 @@ let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
-let authAgent: (user: User) => SuperAgentTest;
+let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
