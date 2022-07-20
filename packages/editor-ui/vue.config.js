@@ -1,3 +1,4 @@
+const path = require('path');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 module.exports = {
@@ -27,6 +28,12 @@ module.exports = {
 		plugins: [
 			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
 		],
+		resolve: {
+			alias: {
+				'element-ui/packages/button': path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.vue'),
+				'element-ui/lib/button': path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.vue'),
+			},
+		},
 	},
 	css: {
 		loaderOptions: {

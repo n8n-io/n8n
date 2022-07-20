@@ -1,10 +1,12 @@
 import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
-import { INodeTypeDescription } from 'n8n-workflow';
+import {IDataObject, INodeTypeDescription} from 'n8n-workflow';
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
+
+const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
 export function abbreviateNumber(num: number) {
 	const tier = (Math.log10(Math.abs(num)) / 3) | 0;
@@ -67,6 +69,20 @@ export function isString(value: unknown): value is string {
 
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
+}
+
+export function stringSizeInBytes(input: string | IDataObject | IDataObject[] | undefined): number {
+	if (input === undefined) return 0;
+
+	return new Blob([typeof input === 'string' ? input : JSON.stringify(input)]).size;
+}
+
+export function isCommunityPackageName(packageName: string): boolean {
+	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
+	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
+	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
+
+	return !!nameMatch;
 }
 
 export function shorten(s: string, limit: number, keep: number) {

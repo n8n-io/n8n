@@ -1,4 +1,9 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class ERPNextApi implements ICredentialType {
 	name = 'erpNextApi';
@@ -60,5 +65,27 @@ export class ERPNextApi implements ICredentialType {
 				},
 			},
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			default: false,
+		},
 	];
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=token {{$credentials.apiKey}}:{{$credentials.apiSecret}}',
+			},
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.environment === "cloudHosted" ? "https://" + $credentials.subdomain + ".erpnext.com" : $credentials.domain}}',
+			url: '/api/resource/Doctype',
+			skipSslCertificateValidation: '={{ $credentials.allowUnauthorizedCerts }}',
+		},
+	};
 }

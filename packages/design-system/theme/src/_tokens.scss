@@ -1,3 +1,5 @@
+@use 'sass:math';
+
 @mixin theme {
 	--color-primary-h: 6.9;
 	--color-primary-s: 100%;
@@ -86,6 +88,14 @@
 		var(--color-secondary-tint-2-l)
 	);
 
+	--color-secondary-tint-3-h: 247;
+	--color-secondary-tint-3-s: 49%;
+	--color-secondary-tint-3-l: 95%;
+	--color-secondary-tint-3: hsl(
+		var(--color-secondary-tint-3-h),
+		var(--color-secondary-tint-3-s),
+		var(--color-secondary-tint-3-l)
+	);
 
 	--color-success-h: 150.4;
 	--color-success-s: 60%;
@@ -129,7 +139,7 @@
 	);
 
 	--color-warning-tint-1-h: 35;
-	--color-warning-tint-1-s: 78%;
+	--color-warning-tint-1-s: 77%;
 	--color-warning-tint-1-l: 84%;
 	--color-warning-tint-1: hsl(
 		var(--color-warning-h),
@@ -146,9 +156,9 @@
 		var(--color-warning-tint-2-l)
 	);
 
-	--color-danger-h: 0;
-	--color-danger-s: 87.6%;
-	--color-danger-l: 65.3%;
+	--color-danger-h: 355;
+	--color-danger-s: 83%;
+	--color-danger-l: 52%;
 	--color-danger: hsl(
 		var(--color-danger-h),
 		var(--color-danger-s),
@@ -189,6 +199,33 @@
 		var(--color-info-s),
 		var(--color-info-tint-2-l)
 	);
+
+	--color-grey-h: 228;
+	--color-grey-s: 10%;
+	--color-grey-l: 80%;
+	--color-grey: hsl(
+		var(--color-grey-h),
+		var(--color-grey-s),
+		var(--color-grey-l)
+  );
+
+	--color-light-grey-h: 220;
+	--color-light-grey-s: 20%;
+	--color-light-grey-l: 88%;
+	--color-light-grey: hsl(
+		var(--color-light-grey-h),
+		var(--color-light-grey-s),
+		var(--color-light-grey-l)
+  );
+
+	--color-neutral-h: 228;
+	--color-neutral-s: 10%;
+	--color-neutral-l: 50%;
+	--color-neutral: hsl(
+		var(--color-neutral-h),
+		var(--color-neutral-s),
+		var(--color-neutral-l)
+  );
 
 	--color-text-dark-h: 0;
 	--color-text-dark-s: 0%;
@@ -372,6 +409,19 @@
 		var(--color-sticky-default-border-l)
 	);
 
+	// Generated Color Shades from 50 to 950
+	// Not yet used in design system
+	@each $color in ('neutral', 'success', 'warning', 'danger') {
+		@each $shade in (50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950) {
+			--color-#{$color}-#{$shade}-l: #{math.div($shade, 10)}#{'%'};
+			--color-#{$color}-#{$shade}: hsl(
+				var(--color-#{$color}-h),
+				var(--color-#{$color}-s),
+				var(--color-#{$color}-#{$shade}-l)
+			);
+		}
+	}
+
 	--border-radius-xlarge: 12px;
 	--border-radius-large: 8px;
 	--border-radius-base: 4px;
@@ -418,5 +468,5 @@
 }
 
 :root {
-	@include theme;
+  @include theme;
 }

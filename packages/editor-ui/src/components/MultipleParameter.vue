@@ -134,9 +134,10 @@ export default mixins(genericHelpers)
 </script>
 
 <style scoped lang="scss">
-
-.duplicate-parameter-item ~.add-item-wrapper {
-	margin-top: var(--spacing-xs);
+.duplicate-parameter-item {
+	~ .add-item-wrapper {
+		margin-top: var(--spacing-xs);
+	}
 }
 
 .delete-item {
@@ -154,25 +155,31 @@ export default mixins(genericHelpers)
 	}
 }
 
-::v-deep .duplicate-parameter-item {
-	position: relative;
+::v-deep {
+	.button {
+		--button-background-color: var(--color-background-base);
+		--button-border-color: var(--color-foreground-base);
+	}
 
-	.multi > .delete-item{
-		top: 0.1em;
+	.duplicate-parameter-item {
+		position: relative;
+
+		.multi > .delete-item{
+			top: 0.1em;
+		}
+	}
+
+	.duplicate-parameter-input-item {
+		margin: 0.5em 0 0.25em 2em;
+	}
+
+	.duplicate-parameter-item + .duplicate-parameter-item {
+		.collection-parameter-wrapper {
+			border-top: 1px dashed #999;
+			margin-top: var(--spacing-xs);
+		}
 	}
 }
-
-::v-deep .duplicate-parameter-input-item {
-	margin: 0.5em 0 0.25em 2em;
-}
-
-::v-deep .duplicate-parameter-item + .duplicate-parameter-item {
-	.collection-parameter-wrapper {
-		border-top: 1px dashed #999;
-		margin-top: var(--spacing-xs);
-	}
-}
-
 .no-items-exist {
 	margin: var(--spacing-xs) 0;
 }
