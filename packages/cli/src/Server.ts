@@ -90,6 +90,7 @@ import querystring from 'querystring';
 import promClient, { Registry } from 'prom-client';
 import * as Queue from './Queue';
 import {
+	LoadNodesAndCredentials,
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
@@ -159,6 +160,7 @@ import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { nodesController } from './api/nodes.api';
 import { oauth2CredentialController } from './api/oauth2Credential.api';
 import {
 	getInstanceBaseUrl,
@@ -329,6 +331,8 @@ class App {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
 			},
+			executionMode: config.getEnv('executions.mode'),
+			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 		};
 	}
 
@@ -354,6 +358,10 @@ class App {
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 		});
+
+		if (config.get('nodes.packagesMissing').length > 0) {
+			this.frontendSettings.missingPackages = true;
+		}
 
 		return this.frontendSettings;
 	}
@@ -705,6 +713,13 @@ class App {
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
+
+		// ----------------------------------------
+		// Packages and nodes management
+		// ----------------------------------------
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
+		}
 
 		// ----------------------------------------
 		// Healthcheck

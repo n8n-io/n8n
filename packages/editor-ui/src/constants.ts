@@ -38,6 +38,14 @@ export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
 export const EXECUTIONS_MODAL_KEY = 'executions';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
+export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
+export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
+
+export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
+	UNINSTALL: 'uninstall',
+	UPDATE: 'update',
+	VIEW_DOCS: 'view-documentation',
+};
 
 // breakpoints
 export const BREAKPOINT_SM = 768;
@@ -47,6 +55,14 @@ export const BREAKPOINT_XL = 1920;
 
 
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
+export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
+export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
+export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=keywords%3An8n-community-node-package`;
+export const N8N_QUEUE_MODE_DOCS_URL = `https://docs.n8n.io/hosting/scaling/queue-mode/`;
+export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/installation/`;
+export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
+export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
+export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -243,6 +259,7 @@ export enum VIEWS {
 	PERSONAL_SETTINGS = "PersonalSettings",
 	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",
+	COMMUNITY_NODES = "CommunityNodes",
 }
 
 export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`, '$parameter'];

@@ -290,3 +290,17 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 export declare namespace TagsRequest {
 	type Delete = AuthenticatedRequest<{ id: string }>;
 }
+
+export declare namespace NodeRequest {
+	type RequestBody = {
+		name: string;
+	};
+
+	type GetAll = AuthenticatedRequest;
+
+	type Post = AuthenticatedRequest<{}, {}, RequestBody>;
+
+	type Delete = Post;
+
+	type Update = Post;
+}
