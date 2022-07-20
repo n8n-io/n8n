@@ -526,18 +526,27 @@ export const workflowHelpers = mixins(
 					const pinData: PinData[string] = this.$store.getters['pinDataByNodeName'](parentNodeName);
 
 					if (pinData) {
-						runExecutionData.resultData.runData[parentNodeName] = [
-							{
-								startTime: new Date().valueOf(),
-								executionTime: 0,
-								source: [],
-								data: {
-									main: [
-										pinData.map((data) => ({ json: data })),
+						runExecutionData = {
+							...runExecutionData,
+							resultData: {
+								...runExecutionData.resultData,
+								runData: {
+									...runExecutionData.resultData.runData,
+									[parentNodeName]: [
+										{
+											startTime: new Date().valueOf(),
+											executionTime: 0,
+											source: [],
+											data: {
+												main: [
+													pinData.map((data) => ({json: data})),
+												],
+											},
+										},
 									],
 								},
 							},
-						];
+						};
 					}
 				});
 
