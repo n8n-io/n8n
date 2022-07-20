@@ -115,6 +115,26 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'CAHNQoFsC6JMMbOBJgtjsqN0eEc+gDg2a=SQj-tWUebQeHMDgqQ@mail.gmail.com',
 	},
 	{
+		displayName: 'Send To',
+		name: 'sendTo',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'reply',
+					'send',
+				],
+			},
+		},
+		placeholder: 'info@example.com',
+		description: 'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+	},
+	{
 		displayName: 'Subject',
 		name: 'subject',
 		type: 'string',
@@ -179,30 +199,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		hint: 'Get better Text and Expressions writing experience by using the expression editor',
-	},
-	{
-		displayName: 'To Email',
-		name: 'toList',
-		type: 'string',
-		default: [''], //empty string inside array needed to show one input field expanded
-		required: true,
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add To Email',
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-					'send',
-				],
-			},
-		},
-		placeholder: 'info@example.com',
-		description: 'The email addresses of the recipients',
 	},
 	{
 		displayName: 'Additional Fields',

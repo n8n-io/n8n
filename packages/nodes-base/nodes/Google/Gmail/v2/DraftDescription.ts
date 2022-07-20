@@ -143,16 +143,12 @@ export const draftFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'To Email',
-				name: 'toList',
+				displayName: 'Send To',
+				name: 'sendTo',
 				type: 'string',
-				default: [],
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add To Email',
-				},
+				default: '',
 				placeholder: 'info@example.com',
-				description: 'The email addresses of the recipients',
+				description: 'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 			},
 			{
 				displayName: 'CC Email',

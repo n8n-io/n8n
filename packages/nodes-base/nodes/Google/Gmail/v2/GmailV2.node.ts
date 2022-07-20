@@ -12,6 +12,7 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -325,9 +326,15 @@ export class GmailV2 implements INodeType {
 						let bccStr = '';
 						let attachmentsList: IDataObject[] = [];
 
-						const toList = this.getNodeParameter('toList', i) as IDataObject[];
+						const sendTo = this.getNodeParameter('sendTo', i) as string;
 
-						toList.forEach((email) => {
+						sendTo.split(',').forEach(entry => {
+							const email = entry.trim();
+
+							if (email.indexOf('@') === -1) {
+								throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Send To" input field is not valid`, { itemIndex: i });
+							}
+
 							toStr += `<${email}>, `;
 						});
 
@@ -427,9 +434,15 @@ export class GmailV2 implements INodeType {
 						let bccStr = '';
 						let attachmentsList: IDataObject[] = [];
 
-						const toList = this.getNodeParameter('toList', i) as IDataObject[];
+						const sendTo = this.getNodeParameter('sendTo', i) as string;
 
-						toList.forEach((email) => {
+						sendTo.split(',').forEach(entry => {
+							const email = entry.trim();
+
+							if (email.indexOf('@') === -1) {
+								throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Send To" input field is not valid`, { itemIndex: i });
+							}
+
 							toStr += `<${email}>, `;
 						});
 
@@ -692,10 +705,14 @@ export class GmailV2 implements INodeType {
 						let bccStr = '';
 						let attachmentsList: IDataObject[] = [];
 
-						if (additionalFields.toList) {
-							const toList = additionalFields.toList as IDataObject[];
+						if (additionalFields.sendTo) {
+							(additionalFields.sendTo as string).split(',').forEach(entry => {
+								const email = entry.trim();
 
-							toList.forEach((email) => {
+								if (email.indexOf('@') === -1) {
+									throw new NodeOperationError(this.getNode(), `Email address ${email} is not valid`, { itemIndex: i });
+								}
+
 								toStr += `<${email}>, `;
 							});
 						}
