@@ -909,7 +909,7 @@ export class Workflow {
 
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
-			if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
+			if (nodeType && (nodeType.trigger !== undefined || nodeType.poll !== undefined)) {
 				if (node.disabled === true) {
 					continue;
 				}

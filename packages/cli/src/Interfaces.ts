@@ -35,6 +35,8 @@ import { User } from './databases/entities/User';
 import { SharedCredentials } from './databases/entities/SharedCredentials';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { Settings } from './databases/entities/Settings';
+import { InstalledPackages } from './databases/entities/InstalledPackages';
+import { InstalledNodes } from './databases/entities/InstalledNodes';
 
 export interface IActivationError {
 	time: number;
@@ -83,6 +85,8 @@ export interface IDatabaseCollections {
 	SharedCredentials: Repository<SharedCredentials>;
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;
+	InstalledPackages: Repository<InstalledPackages>;
+	InstalledNodes: Repository<InstalledNodes>;
 }
 
 export interface IWebhookDb {
@@ -461,6 +465,19 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
+export interface IN8nNodePackageJson {
+	name: string;
+	version: string;
+	n8n?: {
+		credentials?: string[];
+		nodes?: string[];
+	};
+	author?: {
+		name?: string;
+		email?: string;
+	};
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -494,6 +511,9 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	missingPackages?: boolean;
+	executionMode: 'regular' | 'queue';
+	communityNodesEnabled: boolean;
 }
 
 export interface IPersonalizationSurveyAnswers {
@@ -532,6 +552,8 @@ export type IPushData =
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
+	| PushDataReloadNodeType
+	| PushDataRemoveNodeType
 	| PushDataTestWebhook;
 
 type PushDataExecutionFinished = {
@@ -557,6 +579,16 @@ type PushDataExecuteBefore = {
 type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataReloadNodeType = {
+	data: IPushDataReloadNodeType;
+	type: 'reloadNodeType';
+};
+
+type PushDataRemoveNodeType = {
+	data: IPushDataRemoveNodeType;
+	type: 'removeNodeType';
 };
 
 type PushDataTestWebhook = {
@@ -588,6 +620,16 @@ export interface IPushDataNodeExecuteAfter {
 export interface IPushDataNodeExecuteBefore {
 	executionId: string;
 	nodeName: string;
+}
+
+export interface IPushDataReloadNodeType {
+	name: string;
+	version: number;
+}
+
+export interface IPushDataRemoveNodeType {
+	name: string;
+	version: number;
 }
 
 export interface IPushDataTestWebhook {
@@ -668,6 +710,31 @@ export interface IWorkflowExecuteProcess {
 }
 
 export type WhereClause = Record<string, { id: string }>;
+
+/** ********************************
+ * Commuinity nodes
+ ******************************** */
+
+export type ParsedNpmPackageName = {
+	packageName: string;
+	originalString: string;
+	scope?: string;
+	version?: string;
+};
+
+export type NpmUpdatesAvailable = {
+	[packageName: string]: {
+		current: string;
+		wanted: string;
+		latest: string;
+		location: string;
+	};
+};
+
+export type NpmPackageStatusCheck = {
+	status: 'OK' | 'Banned';
+	reason?: string;
+};
 
 // ----------------------------------
 //               telemetry

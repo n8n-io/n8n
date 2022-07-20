@@ -15,9 +15,19 @@
 						})
 					}}
 				</span>
-				<span :class="$style['trigger-icon']">
-					<TriggerIcon v-if="isTrigger" />
+				<span v-if="isTrigger" :class="$style['trigger-icon']">
+					<TriggerIcon />
 				</span>
+				<n8n-tooltip v-if="isCommunityNode" placement="top">
+					<div
+						:class="$style['community-node-icon']"
+						slot="content"
+						v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+						@click="onCommunityNodeTooltipClick"
+					>
+					</div>
+					<n8n-icon icon="cube" />
+				</n8n-tooltip>
 			</div>
 			<div :class="$style.description">
 				{{ $locale.headerText({
@@ -50,6 +60,9 @@ import Vue from 'vue';
 import NodeIcon from '../NodeIcon.vue';
 import TriggerIcon from '../TriggerIcon.vue';
 
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../../constants';
+import { isCommunityPackageName } from '../helpers';
+
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TriggerIcon', TriggerIcon);
 
@@ -68,6 +81,7 @@ export default Vue.extend({
 				x: -100,
 				y: -100,
 			},
+			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 		};
 	},
 	computed: {
@@ -82,6 +96,9 @@ export default Vue.extend({
 				top: `${this.draggablePosition.y}px`,
 				left: `${this.draggablePosition.x}px`,
 			};
+		},
+		isCommunityNode(): boolean {
+			return isCommunityPackageName(this.nodeType.name);
 		},
 	},
 	mounted() {
@@ -128,6 +145,11 @@ export default Vue.extend({
 				this.draggablePosition = { x: -100, y: -100 };
 			}, 300);
 		},
+		onCommunityNodeTooltipClick(event: MouseEvent) {
+			if ((event.target as Element).localName === 'a') {
+				this.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
+			}
+		},
 	},
 });
 </script>
@@ -145,7 +167,6 @@ export default Vue.extend({
 }
 
 .details {
-	display: flex;
 	align-items: center;
 }
 
@@ -162,6 +183,10 @@ export default Vue.extend({
 	margin-right: 5px;
 }
 
+.packageName {
+	margin-right: 5px;
+}
+
 .description {
 	margin-top: 2px;
 	font-size: 11px;
@@ -173,7 +198,13 @@ export default Vue.extend({
 .trigger-icon {
 	height: 16px;
 	width: 16px;
-	display: flex;
+	display: inline-block;
+	margin-right: var(--spacing-3xs);
+	vertical-align: middle;
+}
+
+.community-node-icon {
+	vertical-align: top;
 }
 
 .draggable {
@@ -210,5 +241,9 @@ export default Vue.extend({
 		opacity: 0;
 		transform: scale(0);
 	}
+}
+
+.el-tooltip svg {
+	color: var(--color-foreground-xdark);
 }
 </style>

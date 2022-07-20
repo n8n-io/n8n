@@ -129,7 +129,7 @@
 	);
 
 	--color-warning-tint-1-h: 35;
-	--color-warning-tint-1-s: 78%;
+	--color-warning-tint-1-s: 77%;
 	--color-warning-tint-1-l: 84%;
 	--color-warning-tint-1: hsl(
 		var(--color-warning-h),
@@ -146,9 +146,9 @@
 		var(--color-warning-tint-2-l)
 	);
 
-	--color-danger-h: 0;
-	--color-danger-s: 87.6%;
-	--color-danger-l: 65.3%;
+	--color-danger-h: 355;
+	--color-danger-s: 83%;
+	--color-danger-l: 52%;
 	--color-danger: hsl(
 		var(--color-danger-h),
 		var(--color-danger-s),
