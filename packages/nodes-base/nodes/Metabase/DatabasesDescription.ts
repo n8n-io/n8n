@@ -70,6 +70,7 @@ export const databasesOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get all databases',
 			},
 			{
 				name: 'Get Fields',
@@ -81,6 +82,7 @@ export const databasesOperations: INodeProperties[] = [
 						url: '={{"/api/database/" + $parameter.databaseId + "/fields"}}',
 					},
 				},
+				action: 'Get Fields a databases',
 			},
 			{
 				name: 'Add',
@@ -92,6 +94,7 @@ export const databasesOperations: INodeProperties[] = [
 						url: '/api/database',
 					},
 				},
+				action: 'Add a databases',
 				},
 		],
 		default: 'getAll',
@@ -125,6 +128,18 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: 'PostgreSQL',
 		options: [
 			{
+				name: 'H2',
+				value: 'h2',
+			},
+			{
+				name: 'MongoDB',
+				value: 'mongo',
+			},
+			{
+				name: 'Mysql',
+				value: 'mysql',
+			},
+			{
 				name: 'PostgreSQL',
 				value: 'postgres',
 			},
@@ -133,21 +148,9 @@ export const databasesFields: INodeProperties[] = [
 				value: 'redshift',
 			},
 			{
-				name: 'Mysql',
-				value: 'mysql',
-			},
-			{
 				name: 'Sqlite',
 				value: 'sqlite',
 			},
-			{
-				name: 'MongoDB',
-				value: 'mongo',
-			},
-			{
-				name: 'H2',
-				value: 'h2',
-			}
 		],
 		default: 'postgres',
 		displayOptions: {
@@ -312,7 +315,7 @@ export const databasesFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Database name',
+		displayName: 'Database Name',
 		name: 'dbName',
 		type: 'string',
 		placeholder: 'Users',
@@ -341,7 +344,7 @@ export const databasesFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'File path',
+		displayName: 'File Path',
 		name: 'filePath',
 		type: 'string',
 		required: true,
@@ -369,7 +372,7 @@ export const databasesFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Full sync',
+		displayName: 'Full Sync',
 		name: 'fullSync',
 		type: 'boolean',
 		required: true,

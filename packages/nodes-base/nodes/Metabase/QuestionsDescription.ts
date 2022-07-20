@@ -49,6 +49,7 @@ export const questionsOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get all questions',
 			},
 			{
 				name: 'Get',
@@ -81,6 +82,7 @@ export const questionsOperations: INodeProperties[] = [
 						],
 					},
 					},
+				action: 'Get a questions',
 			},
 			{
 				name: 'Result Data',
@@ -118,7 +120,7 @@ export const questionsOperations: INodeProperties[] = [
 									console.log(items[i].json);
 									delete items[i].binary;
 								}else{
-									items[i].binary!['data'] = await this.helpers.prepareBinaryData(response.body as Buffer, 'data', response.headers['content-type'])
+									items[i].binary!['data'] = await this.helpers.prepareBinaryData(response.body as Buffer, 'data', response.headers['content-type']);
 								}
 								result.push(items[i]);
 							}
@@ -127,6 +129,7 @@ export const questionsOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Result Data a questions',
 			},
 		],
 		default: 'getAll',
