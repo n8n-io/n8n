@@ -315,6 +315,10 @@ export default mixins(
 <style lang="scss" module>
 .container {
 	margin-top: var(--spacing-xs);
+
+	& > div:not(:first-child) {
+		margin-top: var(--spacing-xs);
+	}
 }
 
 .warning {

@@ -354,6 +354,7 @@ export class Worker extends Command {
 						process.exit(2);
 					} else {
 						logger.error('Error from queue: ', error);
+						throw error;
 					}
 				});
 

@@ -561,6 +561,12 @@ export class WorkflowRunner {
 			},
 		);
 
+		workflowExecution.catch(() => {
+			// We `reject` this promise if the execution fails
+			// but the error is handled already by processError
+			// So we're just preventing crashes here.
+		});
+
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 		return executionId;
 	}

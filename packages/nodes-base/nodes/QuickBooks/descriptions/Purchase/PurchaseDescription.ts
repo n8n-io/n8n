@@ -13,10 +13,12 @@ export const purchaseOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a purchase',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all purchases',
 			},
 		],
 		displayOptions: {
@@ -76,7 +78,7 @@ export const purchaseFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

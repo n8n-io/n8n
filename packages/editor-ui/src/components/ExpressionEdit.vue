@@ -50,8 +50,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-
-const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`];
+import { hasExpressionMapping } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -92,9 +91,11 @@ export default mixins(
 		},
 
 		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('valueChanged', this.latestValue);
+			if (this.latestValue !== this.value) {
+				// Handle the close externally as the visible parameter is an external prop
+				// and is so not allowed to be changed here.
+				this.$emit('valueChanged', this.latestValue);
+			}
 			this.$emit('closeDialog');
 			return false;
 		},
@@ -102,6 +103,59 @@ export default mixins(
 		itemSelected (eventData: IVariableItemSelected) {
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
 			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
+
+			const trackProperties: {
+				event_version: string;
+				node_type_dest: string;
+				node_type_source?: string;
+				parameter_name_dest: string;
+				parameter_name_source?: string;
+				variable_type?: string;
+				is_immediate_input: boolean;
+				variable_expression: string;
+				node_name: string;
+			} = {
+				event_version: '2',
+				node_type_dest: this.$store.getters.activeNode.type,
+				parameter_name_dest: this.parameter.displayName,
+				is_immediate_input: false,
+				variable_expression: eventData.variable,
+				node_name: this.$store.getters.activeNode.name,
+			};
+
+			if (eventData.variable) {
+				let splitVar = eventData.variable.split('.');
+
+				if (eventData.variable.startsWith('Object.keys')) {
+					splitVar = eventData.variable.split('(')[1].split(')')[0].split('.');
+					trackProperties.variable_type = 'Keys';
+				} else if (eventData.variable.startsWith('Object.values')) {
+					splitVar = eventData.variable.split('(')[1].split(')')[0].split('.');
+					trackProperties.variable_type = 'Values';
+				} else {
+					trackProperties.variable_type = 'Raw value';
+				}
+
+				if (splitVar[0].startsWith('$node')) {
+					const sourceNodeName = splitVar[0].split('"')[1];
+					trackProperties.node_type_source = this.$store.getters.getNodeByName(sourceNodeName).type;
+					const nodeConnections: Array<Array<{ node: string }>> = this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName).main;
+					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.$store.getters.activeNode.name)) ? true : false;
+
+					if (splitVar[1].startsWith('parameter')) {
+						trackProperties.parameter_name_source = splitVar[1].split('"')[1];
+					}
+
+				} else {
+					trackProperties.is_immediate_input = true;
+
+					if(splitVar[0].startsWith('$parameter')) {
+						trackProperties.parameter_name_source = splitVar[0].split('"')[1];
+					}
+				}
+			}
+
+			this.$telemetry.track('User inserted item from Expression Editor variable selector', trackProperties);
 		},
 	},
 	watch: {
@@ -119,7 +173,7 @@ export default mixins(
 					source: this.eventSource,
 					session_id: this.$store.getters['ui/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
-					has_mapping: !!MAPPING_PARAMS.find((param) => this.value.includes(param)),
+					has_mapping: hasExpressionMapping(this.value),
 				});
 			}
 		},

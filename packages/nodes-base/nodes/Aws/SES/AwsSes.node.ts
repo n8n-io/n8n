@@ -82,31 +82,37 @@ export class AwsSes implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new custom verification email template',
+						action: 'Create a custom verification email',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete an existing custom verification email template',
+						action: 'Delete a custom verification email',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get the custom email verification template',
+						action: 'Get a custom verification email',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all the existing custom verification email templates for your account',
+						action: 'Get all custom verifications',
 					},
 					{
 						name: 'Send',
 						value: 'send',
 						description: 'Add an email address to the list of identities',
+						action: 'Send a custom verification email',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update an existing custom verification email template',
+						action: 'Update a custom verification email',
 					},
 				],
 				default: 'create',
@@ -226,6 +232,7 @@ export class AwsSes implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
 						resource: [
@@ -417,10 +424,12 @@ export class AwsSes implements INodeType {
 					{
 						name: 'Send',
 						value: 'send',
+						action: 'Send an email',
 					},
 					{
 						name: 'Send Template',
 						value: 'sendTemplate',
+						action: 'Send an email based on a template',
 					},
 				],
 				default: 'send',
@@ -440,7 +449,7 @@ export class AwsSes implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If body is HTML or simple text',
+				description: 'Whether body is HTML or simple text',
 			},
 			{
 				displayName: 'Subject',
@@ -522,7 +531,7 @@ export class AwsSes implements INodeType {
 				default: [],
 			},
 			{
-				displayName: 'Template Name',
+				displayName: 'Template Name or ID',
 				name: 'templateName',
 				type: 'options',
 				typeOptions: {
@@ -539,7 +548,7 @@ export class AwsSes implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The ARN of the template to use when sending this email',
+				description: 'The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'From Email',
@@ -721,26 +730,31 @@ export class AwsSes implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a template',
+						action: 'Create a template',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a template',
+						action: 'Delete a template',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a template',
+						action: 'Get a template',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all templates',
+						action: 'Get all templates',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a template',
+						action: 'Update a template',
 					},
 				],
 				default: 'create',
@@ -1107,7 +1121,7 @@ export class AwsSes implements INodeType {
 						if (toAddresses.length) {
 							setParameter(params, 'Destination.ToAddresses.member', toAddresses);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!');
+							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!', { itemIndex: i });
 						}
 
 						if (additionalFields.configurationSetName) {
@@ -1160,7 +1174,7 @@ export class AwsSes implements INodeType {
 						if (toAddresses.length) {
 							setParameter(params, 'Destination.ToAddresses.member', toAddresses);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!');
+							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!', { itemIndex: i });
 						}
 
 						if (additionalFields.configurationSetName) {

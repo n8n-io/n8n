@@ -18,6 +18,7 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new post',
+				action: 'Create a post',
 			},
 		],
 		default: 'create',
@@ -32,7 +33,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Post As',
 		name: 'postAs',
 		type: 'options',
-		default: '',
+		default: 'person',
 		description: 'If to post on behalf of a user or an organization',
 		options: [
 			{
@@ -46,7 +47,7 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Person',
+		displayName: 'Person Name or ID',
 		name: 'person',
 		type: 'options',
 		typeOptions: {
@@ -54,7 +55,7 @@ export const postFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Person as which the post should be posted as',
+		description: 'Person as which the post should be posted as. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				operation: [

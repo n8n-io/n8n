@@ -10,8 +10,6 @@ import express from 'express';
 import { readFileSync } from 'fs';
 import { getConnectionManager } from 'typeorm';
 import bodyParser from 'body-parser';
-// eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-unused-vars
-import _ from 'lodash';
 
 import compression from 'compression';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -67,6 +65,8 @@ export function registerProductionWebhooks() {
 					ResponseHelper.sendErrorResponse(res, error);
 					return;
 				}
+
+				res.header('Access-Control-Allow-Origin', '*');
 
 				ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 				return;

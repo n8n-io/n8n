@@ -1,6 +1,7 @@
-import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, TEMPLATES_NODES_FILTER } from '@/constants';
+import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
@@ -34,8 +35,8 @@ export function getStyleTokenValue(name: string): string {
 	return style.getPropertyValue(name);
 }
 
-export function getTriggerNodeServiceName(nodeName: string) {
-	return nodeName.replace(/ trigger/i, '');
+export function getTriggerNodeServiceName(nodeType: INodeTypeDescription): string {
+	return nodeType.displayName.replace(/ trigger/i, '');
 }
 
 export function getActivatableTriggerNodes(nodes: INodeUi[]) {
@@ -66,4 +67,19 @@ export function isString(value: unknown): value is string {
 
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
+}
+
+export function shorten(s: string, limit: number, keep: number) {
+	if (s.length <= limit) {
+		return s;
+	}
+
+	const first = s.slice(0, limit - keep);
+	const last = s.slice(s.length - keep, s.length);
+
+	return `${first}...${last}`;
+}
+
+export function hasExpressionMapping(value: unknown) {
+	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
 }

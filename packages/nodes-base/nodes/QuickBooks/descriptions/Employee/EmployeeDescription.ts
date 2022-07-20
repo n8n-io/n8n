@@ -17,18 +17,22 @@ export const employeeOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an employee',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an employee',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all employees',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an employee',
 			},
 		],
 		displayOptions: {
@@ -142,7 +146,7 @@ export const employeeFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

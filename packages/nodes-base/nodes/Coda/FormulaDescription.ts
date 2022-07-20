@@ -18,11 +18,13 @@ export const formulaOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a formula',
+				action: 'Get a formula',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all formulas',
+				action: 'Get all formulas',
 			},
 		],
 		default: 'get',
@@ -35,7 +37,7 @@ export const formulaFields: INodeProperties[] = [
 /*                                   formula:get                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -53,7 +55,7 @@ export const formulaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Formula ID',
@@ -77,7 +79,7 @@ export const formulaFields: INodeProperties[] = [
 /*                                   formula:getAll                           */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Doc',
+		displayName: 'Doc Name or ID',
 		name: 'docId',
 		type: 'options',
 		required: true,
@@ -95,7 +97,7 @@ export const formulaFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

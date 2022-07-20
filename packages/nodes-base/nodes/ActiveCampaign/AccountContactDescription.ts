@@ -20,16 +20,19 @@ export const accountContactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an association',
+				action: 'Create an account contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an association',
+				action: 'Delete an account contact',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an association',
+				action: 'Update an account contact',
 			},
 		],
 		default: 'create',
@@ -92,7 +95,7 @@ export const accountContactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
@@ -162,7 +165,7 @@ export const accountContactFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',

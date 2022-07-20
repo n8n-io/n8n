@@ -55,7 +55,7 @@ export class Cortex implements INodeType {
 		name: 'cortex',
 		icon: 'file:cortex.svg',
 		group: ['transform'],
-		subtitle: '={{$parameter["resource"]+ ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"]+ ": " + $parameter["resource"]}}',
 		version: 1,
 		description: 'Apply the Cortex analyzer/responder on the given entity',
 		defaults: {
@@ -112,7 +112,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'POST',
-					`/analyzer/_search`,
+					`/analyzer/_search?range=all`,
 				);
 
 				const returnData: INodePropertyOptions[] = [];
@@ -233,13 +233,13 @@ export class Cortex implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 							}
 
 							const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
@@ -388,13 +388,13 @@ export class Cortex implements INodeType {
 												const item = items[i];
 
 												if (item.binary === undefined) {
-													throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+													throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 												}
 
 												const binaryPropertyName = artifactvalue.binaryProperty as string;
 
 												if (item.binary[binaryPropertyName] === undefined) {
-													throw new NodeOperationError(this.getNode(), `No binary data property '${binaryPropertyName}' does not exists on item!`);
+													throw new NodeOperationError(this.getNode(), `No binary data property '${binaryPropertyName}' does not exists on item!`, { itemIndex: i });
 												}
 
 												const binaryData = item.binary[binaryPropertyName] as IBinaryData;
@@ -417,12 +417,12 @@ export class Cortex implements INodeType {
 									const item = items[i];
 
 									if (item.binary === undefined) {
-										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 									}
 
 									const binaryPropertyName = (body.data as IDataObject).binaryPropertyName as string;
 									if (item.binary[binaryPropertyName] === undefined) {
-										throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+										throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 									}
 
 									const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);

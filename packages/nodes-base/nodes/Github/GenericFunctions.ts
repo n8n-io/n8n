@@ -37,23 +37,23 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 
 	try {
 		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
+		let credentialType = '';
 
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('githubApi');
+			credentialType = 'githubApi';
 
 			const baseUrl = credentials!.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
-
-			options.headers!.Authorization = `token ${credentials.accessToken}`;
-			return await this.helpers.request(options);
 		} else {
 			const credentials = await this.getCredentials('githubOAuth2Api');
+			credentialType = 'githubOAuth2Api';
 
 			const baseUrl = credentials.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'githubOAuth2Api', options);
 		}
+
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

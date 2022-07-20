@@ -42,7 +42,6 @@ export class MessageBird implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'SMS',
 						value: 'sms',
 					},
@@ -70,6 +69,7 @@ export class MessageBird implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send text messages (SMS)',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',
@@ -91,6 +91,7 @@ export class MessageBird implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get the balance',
+						action: 'Get the current balance',
 					},
 				],
 				default: 'get',
@@ -173,7 +174,7 @@ export class MessageBird implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Created Date-time',
+						displayName: 'Created Date-Time',
 						name: 'createdDatetime',
 						type: 'dateTime',
 						default: '',
@@ -248,7 +249,7 @@ export class MessageBird implements INodeType {
 						description: 'The status report URL to be used on a per-message basis. Reference is required for a status report webhook to be sent.',
 					},
 					{
-						displayName: 'Scheduled Date-time',
+						displayName: 'Scheduled Date-Time',
 						name: 'scheduledDatetime',
 						type: 'dateTime',
 						default: '',
@@ -381,7 +382,7 @@ export class MessageBird implements INodeType {
 						});
 					}
 					else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'balance') {
@@ -389,7 +390,7 @@ export class MessageBird implements INodeType {
 					requestPath = '/balance';
 				}
 				else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
 				const responseData = await messageBirdApiRequest.call(

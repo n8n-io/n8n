@@ -20,9 +20,10 @@ export const fileUploadDescription: INodeProperties[] = [
 		description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 	},
 	{
-		displayName: 'Category Name/ID',
+		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCompanyFileCategories',
 		},

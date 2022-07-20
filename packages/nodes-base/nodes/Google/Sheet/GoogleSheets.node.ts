@@ -38,7 +38,7 @@ export class GoogleSheets implements INodeType {
 		name: 'googleSheets',
 		icon: 'file:googleSheets.svg',
 		group: ['input', 'output'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Read, update and write data to Google Sheets',
 		defaults: {
@@ -87,6 +87,36 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'serviceAccount',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2 (Recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Resource',
@@ -123,46 +153,55 @@ export class GoogleSheets implements INodeType {
 						name: 'Append',
 						value: 'append',
 						description: 'Append data to a sheet',
+						action: 'Append data to a sheet',
 					},
 					{
 						name: 'Clear',
 						value: 'clear',
 						description: 'Clear data from a sheet',
+						action: 'Clear a sheet',
 					},
 					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new sheet',
+						action: 'Create a sheet',
 					},
 					{
 						name: 'Create or Update',
 						value: 'upsert',
 						description: 'Create a new record, or update the current one if it already exists (upsert)',
+						action: 'Create or update a sheet',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete columns and rows from a sheet',
+						action: 'Delete a sheet',
 					},
 					{
 						name: 'Lookup',
 						value: 'lookup',
 						description: 'Look up a specific column value and return the matching row',
+						action: 'Look up a column value in a sheet',
 					},
 					{
 						name: 'Read',
 						value: 'read',
 						description: 'Read data from a sheet',
+						action: 'Read a sheet',
 					},
 					{
 						name: 'Remove',
 						value: 'remove',
 						description: 'Remove a sheet',
+						action: 'Remove a sheet',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in a sheet',
+						action: 'Update a sheet',
 					},
 				],
 				default: 'read',
@@ -238,7 +277,7 @@ export class GoogleSheets implements INodeType {
 						name: 'columns',
 						values: [
 							{
-								displayName: 'Sheet',
+								displayName: 'Sheet Name or ID',
 								name: 'sheetId',
 								type: 'options',
 								typeOptions: {
@@ -247,7 +286,7 @@ export class GoogleSheets implements INodeType {
 								options: [],
 								default: '',
 								required: true,
-								description: 'The sheet to delete columns from',
+								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Start Index',
@@ -276,7 +315,7 @@ export class GoogleSheets implements INodeType {
 						name: 'rows',
 						values: [
 							{
-								displayName: 'Sheet',
+								displayName: 'Sheet Name or ID',
 								name: 'sheetId',
 								type: 'options',
 								typeOptions: {
@@ -285,7 +324,7 @@ export class GoogleSheets implements INodeType {
 								options: [],
 								default: '',
 								required: true,
-								description: 'The sheet to delete columns from',
+								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Start Index',
@@ -331,7 +370,7 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If the data should be returned RAW instead of parsed into keys according to their header',
+				description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
 			},
 			{
 				displayName: 'Data Property',
@@ -373,7 +412,7 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: false,
-				description: 'If the data supplied is RAW instead of parsed into keys',
+				description: 'Whether the data supplied is RAW instead of parsed into keys',
 			},
 			{
 				displayName: 'Data Property',
@@ -563,6 +602,7 @@ export class GoogleSheets implements INodeType {
 								],
 							},
 						},
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'By default, the workflow stops executing if the lookup/read does not return values',
 					},
 					{
@@ -577,6 +617,7 @@ export class GoogleSheets implements INodeType {
 								],
 							},
 						},
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
 					},
 					{
@@ -591,7 +632,7 @@ export class GoogleSheets implements INodeType {
 								],
 							},
 						},
-						description: 'Enable if you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
+						description: 'Whether you want to match the headers as path, for example, the row header "category.name" will match the "category" object and get the field "name" from it. By default "category.name" will match with the field with exact name, not nested object.',
 					},
 					{
 						displayName: 'Value Input Mode',
@@ -708,6 +749,7 @@ export class GoogleSheets implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a spreadsheet',
+						action: 'Create a spreadsheet',
 					},
 				],
 				default: 'create',
@@ -768,7 +810,7 @@ export class GoogleSheets implements INodeType {
 										name: 'hidden',
 										type: 'boolean',
 										default: false,
-										description: 'If the Sheet should be hidden in the UI',
+										description: 'Whether the Sheet should be hidden in the UI',
 									},
 									{
 										displayName: 'Title',
@@ -901,7 +943,7 @@ export class GoogleSheets implements INodeType {
 								name: 'columnGroupControlAfter',
 								type: 'boolean',
 								default: false,
-								description: 'True if the column grouping control toggle is shown after the group',
+								description: 'Whether the column grouping control toggle is shown after the group',
 							},
 							{
 								displayName: 'Frozen Column Count',
@@ -922,7 +964,7 @@ export class GoogleSheets implements INodeType {
 								name: 'hideGridlines',
 								type: 'boolean',
 								default: false,
-								description: 'True if the grid isn\'t showing gridlines in the UI',
+								description: 'Whether the grid isn\'t showing gridlines in the UI',
 							},
 							{
 								displayName: 'Row Count',
@@ -936,7 +978,7 @@ export class GoogleSheets implements INodeType {
 								name: 'rowGroupControlAfter',
 								type: 'boolean',
 								default: false,
-								description: 'True if the row grouping control toggle is shown after the group',
+								description: 'Whether the row grouping control toggle is shown after the group',
 							},
 
 						],
@@ -947,14 +989,14 @@ export class GoogleSheets implements INodeType {
 						name: 'hidden',
 						type: 'boolean',
 						default: false,
-						description: 'True if the sheet is hidden in the UI, false if it\'s visible',
+						description: 'Whether the sheet is hidden in the UI, false if it\'s visible',
 					},
 					{
 						displayName: 'Right To Left',
 						name: 'rightToLeft',
 						type: 'boolean',
 						default: false,
-						description: 'True if the sheet is an RTL sheet instead of an LTR sheet',
+						description: 'Whether the sheet is an RTL sheet instead of an LTR sheet',
 					},
 					{
 						displayName: 'Sheet ID',

@@ -52,6 +52,8 @@ import {
 } from '.';
 // eslint-disable-next-line import/no-cycle
 import { User } from './databases/entities/User';
+// eslint-disable-next-line import/no-cycle
+import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -96,73 +98,41 @@ export class CredentialsHelper extends ICredentialsHelper {
 			if (typeof credentialType.authenticate === 'object') {
 				// Predefined authentication method
 
+				let keyResolved: string;
+				let valueResolved: string;
 				const { authenticate } = credentialType;
 				if (requestOptions.headers === undefined) {
 					requestOptions.headers = {};
 				}
 
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				if (authenticate.type === 'bearer') {
-					const tokenPropertyName: string =
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.tokenPropertyName ?? 'accessToken';
-					requestOptions.headers.Authorization = `Bearer ${
-						credentials[tokenPropertyName] as string
-					}`;
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				} else if (authenticate.type === 'basicAuth') {
-					const userPropertyName: string =
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.userPropertyName ?? 'user';
-					const passwordPropertyName: string =
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.passwordPropertyName ?? 'password';
+				if (authenticate.type === 'generic') {
+					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
+						Object.entries(outerValue).forEach(([key, value]) => {
+							keyResolved = this.resolveValue(
+								key,
+								{ $credentials: credentials },
+								workflow,
+								node,
+								defaultTimezone,
+							);
 
-					requestOptions.auth = {
-						username: credentials[userPropertyName] as string,
-						password: credentials[passwordPropertyName] as string,
-					};
-				} else if (authenticate.type === 'headerAuth') {
-					const key = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.name,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
+							valueResolved = this.resolveValue(
+								value as string,
+								{ $credentials: credentials },
+								workflow,
+								node,
+								defaultTimezone,
+							);
 
-					const value = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.value,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-					requestOptions.headers[key] = value;
-				} else if (authenticate.type === 'queryAuth') {
-					const key = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.key,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-
-					const value = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.value,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-					if (!requestOptions.qs) {
-						requestOptions.qs = {};
-					}
-					requestOptions.qs[key] = value;
+							// @ts-ignore
+							if (!requestOptions[outerKey]) {
+								// @ts-ignore
+								requestOptions[outerKey] = {};
+							}
+							// @ts-ignore
+							requestOptions[outerKey][keyResolved] = valueResolved;
+						});
+					});
 				}
 			}
 		}
@@ -175,43 +145,54 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		node: INode,
-		forcedRefresh: boolean,
-	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
+		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined> {
 		const credentialType = this.credentialTypes.getByName(typeName);
 
-		const propertyNames = credentialType.properties.map((property) => property.name);
+		const expirableProperty = credentialType.properties.find(
+			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
+		);
+
+		if (expirableProperty === undefined || expirableProperty.name === undefined) {
+			return undefined;
+		}
+
+		// check if the node is the mockup node used for testing
+		// if so, it means this is a credential test and not normal node execution
+		const isTestingCredentials =
+			node?.parameters?.temp === '' && node?.type === 'n8n-nodes-base.noOp';
 
 		if (credentialType.preAuthentication) {
 			if (typeof credentialType.preAuthentication === 'function') {
-				const output = await credentialType.preAuthentication.call(
-					helpers,
-					credentials,
-					forcedRefresh,
-				);
-				// if output empty, no need to update anything
-				if (!Object.keys(output).length) {
-					return { updatedCredentials: false, data: {} };
-				}
+				// if the expirable property is empty in the credentials
+				// or are expired, call pre authentication method
+				// or the credentials are being tested
+				if (
+					credentials[expirableProperty?.name] === '' ||
+					credentialsExpired ||
+					isTestingCredentials
+				) {
+					const output = await credentialType.preAuthentication.call(helpers, credentials);
 
-				// if there is data in the output, make sure the returned
-				// property exists in the credentials properties
-				// else the database will not get updated
+					// if there is data in the output, make sure the returned
+					// property is the expirable property
+					// else the database will not get updated
+					if (output[expirableProperty.name] === undefined) {
+						return undefined;
+					}
 
-				if (!propertyNames.includes(Object.keys(output)[0])) {
-					return { updatedCredentials: false, data: {} };
+					if (node.credentials) {
+						await this.updateCredentials(
+							node.credentials[credentialType.name],
+							credentialType.name,
+							Object.assign(credentials, output),
+						);
+						return Object.assign(credentials, output);
+					}
 				}
-
-				if (node.credentials) {
-					await this.updateCredentials(
-						node.credentials[credentialType.name],
-						credentialType.name,
-						Object.assign(credentials, output),
-					);
-				}
-				return { updatedCredentials: true, data: Object.assign(credentials, output) };
 			}
 		}
-		return { updatedCredentials: false, data: {} };
+		return undefined;
 	}
 
 	/**
@@ -234,6 +215,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			'internal',
 			defaultTimezone,
 			additionalKeys,
+			undefined,
 			'',
 		);
 
@@ -410,6 +392,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					mode,
 					timezone,
 					{},
+					undefined,
 					false,
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
@@ -441,6 +424,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				mode,
 				defaultTimezone,
 				{},
+				undefined,
 				undefined,
 				decryptedData,
 			) as ICredentialDataDecryptedObject;
@@ -691,6 +675,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				inputData,
 				runIndex,
 				nodeTypeCopy,
+				{ node, data: {}, source: null },
 				NodeExecuteFunctions,
 				credentialsDecrypted,
 			);
@@ -816,4 +801,15 @@ export async function getCredentialWithoutUser(
 ): Promise<ICredentialsDb | undefined> {
 	const credential = await Db.collections.Credentials.findOne(credentialId);
 	return credential;
+}
+
+export function createCredentiasFromCredentialsEntity(
+	credential: CredentialsEntity,
+	encrypt = false,
+): Credentials {
+	const { id, name, type, nodesAccess, data } = credential;
+	if (encrypt) {
+		return new Credentials({ id: null, name }, type, nodesAccess);
+	}
+	return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
 }

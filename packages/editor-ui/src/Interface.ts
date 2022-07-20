@@ -558,6 +558,7 @@ export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
 	um?: boolean;
+	api?: boolean;
 }
 
 export interface IPermissions {
@@ -660,6 +661,11 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	publicApi: {
+		enabled: boolean;
+		latestVersion: number;
+		path: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -733,6 +739,8 @@ export interface ITag {
 	id: string;
 	name: string;
 	usageCount?: number;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface ITagRow {
@@ -862,8 +870,17 @@ export interface IUiState {
 		output: {
 			displayMode: IRunDataDisplayMode;
 		};
+		focusedMappableInput: string;
+		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
+	draggable: {
+		isDragging: boolean;
+		type: string;
+		data: string;
+		canDrop: boolean;
+		stickyPosition: null | XYPosition;
+	};
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -873,6 +890,11 @@ export interface ISettingsState {
 	promptsData: IN8nPrompts;
 	userManagement: IUserManagementConfig;
 	templatesEndpointHealthy: boolean;
+	api: {
+		enabled: boolean;
+		latestVersion: number;
+		path: string;
+	};
 }
 
 export interface ITemplateState {

@@ -41,16 +41,19 @@ export class MySql implements INodeType {
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in database',
+						action: 'Update rows in database',
 					},
 				],
 				default: 'insert',
@@ -133,7 +136,7 @@ export class MySql implements INodeType {
 						name: 'ignore',
 						type: 'boolean',
 						default: true,
-						description: 'Ignore any ignorable errors that occur while executing the INSERT statement',
+						description: 'Whether to ignore any ignorable errors that occur while executing the INSERT statement',
 					},
 					{
 						displayName: 'Priority',

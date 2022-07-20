@@ -65,6 +65,9 @@ export class ReadBinaryFiles implements INodeType {
 					[dataPropertyName]: await this.helpers.prepareBinaryData(data, filePath),
 				},
 				json: {},
+				pairedItem: {
+					item: 0,
+				},
 			};
 
 			items.push(item);

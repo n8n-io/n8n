@@ -17,30 +17,37 @@ export const paymentOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a payment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a payment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a payment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all payments',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send a payment',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a payment',
 			},
 			{
 				name: 'Void',
 				value: 'void',
+				action: 'Void a payment',
 			},
 		],
 		displayOptions: {
@@ -58,11 +65,11 @@ export const paymentFields: INodeProperties[] = [
 	//         payment: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer ID',
+		displayName: 'For Customer Name or ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the payment is for',
+		description: 'The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -163,7 +170,7 @@ export const paymentFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download estimate as PDF file',
+		description: 'Whether to download estimate as PDF file',
 		displayOptions: {
 			show: {
 				resource: [
@@ -243,7 +250,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
@@ -319,6 +326,7 @@ export const paymentFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		description: 'The email of the recipient of the payment',

@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Db } from '../../src';
 import config from '../../config';
-import { SMTP_TEST_TIMEOUT, SUCCESS_RESPONSE_BODY } from './shared/constants';
+import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomEmail,
 	randomValidPassword,
@@ -20,6 +20,7 @@ import * as testDb from './shared/testDb';
 import { compareHash } from '../../src/UserManagement/UserManagementHelper';
 
 jest.mock('../../src/telemetry');
+jest.mock('../../src/UserManagement/email/NodeMailer');
 
 let app: express.Application;
 let testDbName = '';
@@ -27,10 +28,9 @@ let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
-let isSmtpAvailable = false;
 
 beforeAll(async () => {
-	app = utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -48,8 +48,6 @@ beforeAll(async () => {
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
-
-	isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
 });
 
 beforeEach(async () => {
@@ -92,6 +90,7 @@ test('GET /users should return all users', async () => {
 				password,
 				resetPasswordToken,
 				isPending,
+				apiKey,
 			} = user;
 
 			expect(validator.isUUID(id)).toBe(true);
@@ -103,6 +102,7 @@ test('GET /users should return all users', async () => {
 			expect(resetPasswordToken).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(globalRole).toBeDefined();
+			expect(apiKey).not.toBeDefined();
 		}),
 	);
 });
@@ -357,6 +357,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 		resetPasswordToken,
 		globalRole,
 		isPending,
+		apiKey,
 	} = response.body.data;
 
 	expect(validator.isUUID(id)).toBe(true);
@@ -368,6 +369,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 	expect(resetPasswordToken).toBeUndefined();
 	expect(isPending).toBe(false);
 	expect(globalRole).toBeDefined();
+	expect(apiKey).not.toBeDefined();
 
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
@@ -427,6 +429,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 			const storedUser = await Db.collections.User.findOneOrFail({
 				where: { email: memberShellEmail },
 			});
+
 			expect(storedUser.firstName).toBeNull();
 			expect(storedUser.lastName).toBeNull();
 			expect(storedUser.password).toBeNull();
@@ -482,114 +485,91 @@ test('POST /users should fail if user management is disabled', async () => {
 	expect(response.statusCode).toBe(500);
 });
 
-test(
-	'POST /users should email invites and create user shells but ignore existing',
-	async () => {
-		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
+test('POST /users should email invites and create user shells but ignore existing', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+	const memberShell = await testDb.createUserShell(globalMemberRole);
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const memberShell = await testDb.createUserShell(globalMemberRole);
-		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+	config.set('userManagement.emails.mode', 'smtp');
 
-		await utils.configureSmtp();
+	const testEmails = [randomEmail(), randomEmail().toUpperCase(), memberShell.email, member.email];
 
-		const testEmails = [
-			randomEmail(),
-			randomEmail().toUpperCase(),
-			memberShell.email,
-			member.email,
-		];
+	const payload = testEmails.map((e) => ({ email: e }));
 
-		const payload = testEmails.map((e) => ({ email: e }));
+	const response = await authOwnerAgent.post('/users').send(payload);
 
-		const response = await authOwnerAgent.post('/users').send(payload);
+	expect(response.statusCode).toBe(200);
 
-		expect(response.statusCode).toBe(200);
+	for (const {
+		user: { id, email: receivedEmail },
+		error,
+	} of response.body.data) {
+		expect(validator.isUUID(id)).toBe(true);
+		expect(id).not.toBe(member.id);
 
-		for (const {
-			user: { id, email: receivedEmail },
-			error,
-		} of response.body.data) {
-			expect(validator.isUUID(id)).toBe(true);
-			expect(id).not.toBe(member.id);
+		const lowerCasedEmail = receivedEmail.toLowerCase();
+		expect(receivedEmail).toBe(lowerCasedEmail);
+		expect(payload.some(({ email }) => email.toLowerCase() === lowerCasedEmail)).toBe(true);
 
-			const lowerCasedEmail = receivedEmail.toLowerCase();
-			expect(receivedEmail).toBe(lowerCasedEmail);
-			expect(payload.some(({ email }) => email.toLowerCase() === lowerCasedEmail)).toBe(true);
-
-			if (error) {
-				expect(error).toBe('Email could not be sent');
-			}
-
-			const storedUser = await Db.collections.User.findOneOrFail(id);
-			const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
-				storedUser;
-
-			expect(firstName).toBeNull();
-			expect(lastName).toBeNull();
-			expect(personalizationAnswers).toBeNull();
-			expect(password).toBeNull();
-			expect(resetPasswordToken).toBeNull();
+		if (error) {
+			expect(error).toBe('Email could not be sent');
 		}
-	},
-	SMTP_TEST_TIMEOUT,
-);
 
-test(
-	'POST /users should fail with invalid inputs',
-	async () => {
-		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
+		const storedUser = await Db.collections.User.findOneOrFail(id);
+		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
+			storedUser;
 
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+		expect(firstName).toBeNull();
+		expect(lastName).toBeNull();
+		expect(personalizationAnswers).toBeNull();
+		expect(password).toBeNull();
+		expect(resetPasswordToken).toBeNull();
+	}
+});
 
-		await utils.configureSmtp();
+test('POST /users should fail with invalid inputs', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-		const invalidPayloads = [
-			randomEmail(),
-			[randomEmail()],
-			{},
-			[{ name: randomName() }],
-			[{ email: randomName() }],
-		];
+	config.set('userManagement.emails.mode', 'smtp');
 
-		await Promise.all(
-			invalidPayloads.map(async (invalidPayload) => {
-				const response = await authOwnerAgent.post('/users').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
+	const invalidPayloads = [
+		randomEmail(),
+		[randomEmail()],
+		{},
+		[{ name: randomName() }],
+		[{ email: randomName() }],
+	];
 
-				const users = await Db.collections.User.find();
-				expect(users.length).toBe(1); // DB unaffected
-			}),
-		);
-	},
-	SMTP_TEST_TIMEOUT,
-);
+	await Promise.all(
+		invalidPayloads.map(async (invalidPayload) => {
+			const response = await authOwnerAgent.post('/users').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-test(
-	'POST /users should ignore an empty payload',
-	async () => {
-		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
+			const users = await Db.collections.User.find();
+			expect(users.length).toBe(1); // DB unaffected
+		}),
+	);
+});
 
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-		const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+test('POST /users should ignore an empty payload', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-		await utils.configureSmtp();
+	config.set('userManagement.emails.mode', 'smtp');
 
-		const response = await authOwnerAgent.post('/users').send([]);
+	const response = await authOwnerAgent.post('/users').send([]);
 
-		const { data } = response.body;
+	const { data } = response.body;
 
-		expect(response.statusCode).toBe(200);
-		expect(Array.isArray(data)).toBe(true);
-		expect(data.length).toBe(0);
+	expect(response.statusCode).toBe(200);
+	expect(Array.isArray(data)).toBe(true);
+	expect(data.length).toBe(0);
 
-		const users = await Db.collections.User.find();
-		expect(users.length).toBe(1);
-	},
-	SMTP_TEST_TIMEOUT,
-);
+	const users = await Db.collections.User.find();
+	expect(users.length).toBe(1);
+});
 
 // TODO: /users/:id/reinvite route tests missing
 

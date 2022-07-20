@@ -20,26 +20,31 @@ export const commentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new comment to a thread',
+				action: 'Create a comment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a comment',
+				action: 'Delete a comment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get information about a comment',
+				action: 'Get a comment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all comments',
+				action: 'Get all comments',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a comment',
+				action: 'Update a comment',
 			},
 		],
 		default: 'create',
@@ -199,7 +204,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -209,17 +214,17 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned',
+				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Mark thread position',
+				displayName: 'Mark Thread Position',
 				name: 'mark_thread_position',
 				type: 'boolean',
 				default: true,
-				description: 'By default, the position of the thread is marked',
+				description: 'Whether the position of the thread is marked',
 			},
 			{
-				displayName: 'Recipients',
+				displayName: 'Recipient Names or IDs',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {
@@ -229,7 +234,7 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that will attached to the comment',
+				description: 'The users that will attached to the comment. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Temporary ID',
@@ -239,11 +244,11 @@ export const commentFields: INodeProperties[] = [
 				description: 'The temporary ID of the comment',
 			},
 			{
-				displayName: 'Send as integration',
+				displayName: 'Send as Integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
-				description: 'Displays the integration as the comment creator',
+				description: 'Whether to display the integration as the comment creator',
 			},
 		],
 	},
@@ -355,7 +360,7 @@ export const commentFields: INodeProperties[] = [
 				name: 'as_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only the IDs of the comments are returned',
+				description: 'Whether only the IDs of the comments are returned',
 			},
 			{
 				displayName: 'Ending Object Index',
@@ -546,7 +551,7 @@ export const commentFields: INodeProperties[] = [
 				description: 'The content of the comment',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
@@ -556,7 +561,7 @@ export const commentFields: INodeProperties[] = [
 					],
 				},
 				default: [],
-				description: 'The users that are directly mentioned',
+				description: 'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

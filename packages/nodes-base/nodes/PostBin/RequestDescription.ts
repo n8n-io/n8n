@@ -13,6 +13,7 @@ export const requestOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -37,6 +38,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get a request',
 			},
 			{
 				name: 'Remove First',
@@ -54,6 +56,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Remove First a request',
 			},
 			{
 				name: 'Send',
@@ -80,6 +83,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Send a request',
 			},
 		],
 		default: 'get',

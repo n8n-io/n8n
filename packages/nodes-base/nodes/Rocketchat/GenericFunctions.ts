@@ -12,15 +12,8 @@ import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, method: string, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('rocketchatApi');
 
-	const headerWithAuthentication = Object.assign({}, headers,
-		{
-			'X-Auth-Token': credentials.authKey,
-			'X-User-Id': credentials.userId,
-		},
-	);
-
 	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+		headers,
 		method,
 		body,
 		uri: `${credentials.domain}/api/v1${resource}.${operation}`,

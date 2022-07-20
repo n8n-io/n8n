@@ -42,6 +42,7 @@ export class Salesmate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesmate',
 		name: 'salesmate',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:salesmate.png',
 		group: ['output'],
 		version: 1,
@@ -313,7 +314,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields) {
 						if ((options.fields as string).trim() === '') {
-							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field', { itemIndex: i });
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {
@@ -478,7 +479,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields) {
 						if ((options.fields as string).trim() === '') {
-							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field', { itemIndex: i });
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {
@@ -670,7 +671,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields !== undefined) {
 						if ((options.fields as string).trim() === '') {
-							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field', { itemIndex: i });
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {

@@ -13,30 +13,37 @@ export const memberOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a member',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a member',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a member',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all members',
 			},
 			{
 				name: 'Get Groups',
 				value: 'getGroups',
+				action: 'Get groups for a member',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a member',
 			},
 			{
 				name: 'Update Groups',
 				value: 'updateGroups',
+				action: 'Update groups for a member',
 			},
 		],
 		displayOptions: {
@@ -161,6 +168,7 @@ export const memberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'The email of the member to update',
 		displayOptions: {
@@ -198,10 +206,10 @@ export const memberFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this member',
+				description: 'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -261,10 +269,10 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this member',
+				description: 'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',

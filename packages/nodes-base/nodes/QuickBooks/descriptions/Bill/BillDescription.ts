@@ -17,22 +17,27 @@ export const billOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a bill',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a bill',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a bill',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all bills',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a bill',
 			},
 		],
 		displayOptions: {
@@ -50,11 +55,11 @@ export const billFields: INodeProperties[] = [
 	//         bill: create
 	// ----------------------------------
 	{
-		displayName: 'For Vendor',
+		displayName: 'For Vendor Name or ID',
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the vendor who the bill is for',
+		description: 'The ID of the vendor who the bill is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -92,31 +97,6 @@ export const billFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Detail Type',
-				name: 'DetailType',
-				type: 'options',
-				default: 'ItemBasedExpenseLineDetail',
-				options: [
-					{
-						name: 'Account-Based Expense Line Detail',
-						value: 'AccountBasedExpenseLineDetail',
-					},
-					{
-						name: 'Item-Based Expense Line Detail',
-						value: 'ItemBasedExpenseLineDetail',
-					},
-				],
-			},
-			{
-				displayName: 'Item',
-				name: 'itemId',
-				type: 'options',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getItems',
-				},
-			},
-			{
 				displayName: 'Account ID',
 				name: 'accountId',
 				type: 'string',
@@ -137,6 +117,32 @@ export const billFields: INodeProperties[] = [
 				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Detail Type',
+				name: 'DetailType',
+				type: 'options',
+				default: 'ItemBasedExpenseLineDetail',
+				options: [
+					{
+						name: 'Account-Based Expense Line Detail',
+						value: 'AccountBasedExpenseLineDetail',
+					},
+					{
+						name: 'Item-Based Expense Line Detail',
+						value: 'ItemBasedExpenseLineDetail',
+					},
+				],
+			},
+			{
+				displayName: 'Item Name or ID',
+				name: 'itemId',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getItems',
 				},
 			},
 			{
@@ -235,7 +241,7 @@ export const billFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

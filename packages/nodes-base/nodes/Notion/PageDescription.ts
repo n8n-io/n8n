@@ -6,7 +6,7 @@ import {
 	blocks,
 } from './Blocks';
 
-export const pageOperations = [
+export const pageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -27,16 +27,19 @@ export const pageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a page',
+				action: 'Create a page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a page',
+				action: 'Get a page',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Text search of pages',
+				action: 'Search a page',
 			},
 		],
 		default: 'create',
@@ -61,21 +64,24 @@ export const pageOperations = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archive a page',
+				action: 'Archive a page',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a page',
+				action: 'Create a page',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Text search of pages',
+				action: 'Search a page',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
 export const pageFields = [
 

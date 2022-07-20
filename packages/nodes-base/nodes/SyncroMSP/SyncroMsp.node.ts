@@ -12,6 +12,7 @@ export class SyncroMsp extends NodeVersionedType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'SyncroMSP',
 			name: 'syncroMsp',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 			icon: 'file:syncromsp.png',
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

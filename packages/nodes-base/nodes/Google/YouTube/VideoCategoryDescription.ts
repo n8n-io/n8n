@@ -21,6 +21,7 @@ export const videoCategoryOperations: INodeProperties[] = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all video categories',
+				action: 'Get all video categories',
 			},
 		],
 		default: 'getAll',
@@ -32,9 +33,11 @@ export const videoCategoryFields: INodeProperties[] = [
 	/*                                 videoCategory:getAll                       */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {

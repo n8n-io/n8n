@@ -17,18 +17,22 @@ export const customerOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a customer',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a customer',
 			},
 		],
 		displayOptions: {
@@ -128,7 +132,7 @@ export const customerFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,

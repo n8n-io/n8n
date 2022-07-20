@@ -20,26 +20,31 @@ export const issueCommentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add comment to issue',
+				action: 'Add a comment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a comment',
+				action: 'Get a comment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all comments',
+				action: 'Get all comments',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a comment',
+				action: 'Remove a comment',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a comment',
+				action: 'Update a comment',
 			},
 		],
 		default: 'add',
@@ -67,6 +72,7 @@ export const issueCommentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-lowercase-first-char
 		description: 'issueComment Key',
 	},
 	{

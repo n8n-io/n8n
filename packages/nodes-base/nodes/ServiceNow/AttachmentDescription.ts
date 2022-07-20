@@ -20,21 +20,25 @@ export const attachmentOperations: INodeProperties[] = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload an attachment to a specific table record',
+				action: 'Upload an attachment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an attachment',
+				action: 'Delete an attachment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an attachment',
+				action: 'Get an attachment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all attachments on a table',
+				action: 'Get all attachments',
 			},
 		],
 		default: 'upload',
@@ -48,9 +52,10 @@ export const attachmentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},

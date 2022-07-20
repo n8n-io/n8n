@@ -20,6 +20,7 @@ export const connectorOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a connector',
+				action: 'Create a connector',
 			},
 		],
 		default: 'create',
@@ -102,6 +103,7 @@ export const connectorFields: INodeProperties[] = [
 		name: 'email',
 		description: 'Jira-registered email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {

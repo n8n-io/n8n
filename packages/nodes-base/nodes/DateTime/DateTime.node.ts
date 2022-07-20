@@ -44,11 +44,13 @@ export class DateTime implements INodeType {
 						name: 'Calculate a Date',
 						description: 'Add or subtract time from a date',
 						value: 'calculate',
+						action: 'Add or subtract time from a date',
 					},
 					{
 						name: 'Format a Date',
 						description: 'Convert a date to a different format',
 						value: 'format',
+						action: 'Convert a date to a different format',
 					},
 				],
 				default: 'format',
@@ -95,7 +97,7 @@ export class DateTime implements INodeType {
 				},
 				type: 'boolean',
 				default: false,
-				description: 'If a predefined format should be selected or custom format entered',
+				description: 'Whether a predefined format should be selected or custom format entered',
 			},
 			{
 				displayName: 'To Format',
@@ -129,6 +131,7 @@ export class DateTime implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'MM/DD/YYYY',
@@ -191,24 +194,24 @@ export class DateTime implements INodeType {
 						description: 'In case the input format is not recognized you can provide the format',
 					},
 					{
-						displayName: 'From Timezone',
+						displayName: 'From Timezone Name or ID',
 						name: 'fromTimezone',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
-						description: 'The timezone to convert from',
+						description: 'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'To Timezone',
+						displayName: 'To Timezone Name or ID',
 						name: 'toTimezone',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
-						description: 'The timezone to convert to',
+						description: 'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -244,11 +247,13 @@ export class DateTime implements INodeType {
 						name: 'Add',
 						value: 'add',
 						description: 'Add time to Date Value',
+						action: 'Add time to Date Value',
 					},
 					{
 						name: 'Subtract',
 						value: 'subtract',
 						description: 'Subtract time from Date Value',
+						action: 'Subtract time from Date Value',
 					},
 				],
 				default: 'add',
@@ -284,6 +289,7 @@ export class DateTime implements INodeType {
 					},
 				},
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Quarters',
@@ -410,7 +416,7 @@ export class DateTime implements INodeType {
 						continue;
 					}
 					if (options.fromFormat === undefined && !moment(currentDate as string | number).isValid()) {
-						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field');
+						throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field', { itemIndex: i });
 					}
 
 					if (Number.isInteger(currentDate as unknown as number)) {
@@ -446,11 +452,17 @@ export class DateTime implements INodeType {
 						// Uses dot notation so copy all data
 						newItem = {
 							json: JSON.parse(JSON.stringify(item.json)),
+							pairedItem: {
+								item: i,
+							},
 						};
 					} else {
 						// Does not use dot notation so shallow copy is enough
 						newItem = {
 							json: { ...item.json },
+							pairedItem: {
+								item: i,
+							},
 						};
 					}
 
@@ -473,8 +485,8 @@ export class DateTime implements INodeType {
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
 
 					const newDate = fromFormat
-						? parseDateByFormat(dateValue, fromFormat)
-						: parseDateByDefault(dateValue);
+						? parseDateByFormat.call(this, dateValue, fromFormat)
+						: parseDateByDefault.call(this, dateValue);
 
 					operation === 'add'
 						? newDate.add(duration, timeUnit).utc().format()
@@ -485,11 +497,17 @@ export class DateTime implements INodeType {
 						// Uses dot notation so copy all data
 						newItem = {
 							json: JSON.parse(JSON.stringify(item.json)),
+							pairedItem: {
+								item: i,
+							},
 						};
 					} else {
 						// Does not use dot notation so shallow copy is enough
 						newItem = {
 							json: { ...item.json },
+							pairedItem: {
+								item: i,
+							},
 						};
 					}
 
@@ -504,7 +522,14 @@ export class DateTime implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;
@@ -515,24 +540,24 @@ export class DateTime implements INodeType {
 	}
 }
 
-function parseDateByFormat(value: string, fromFormat: string) {
+function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
 	const date = moment(value, fromFormat, true);
 	if (moment(date).isValid()) return date;
 
-	throw new Error('Date input cannot be parsed. Please recheck the value and the "From Format" field.');
+	throw new NodeOperationError(this.getNode(), 'Date input cannot be parsed. Please recheck the value and the "From Format" field.');
 }
 
-function parseDateByDefault(value: string) {
-	const isoValue = getIsoValue(value);
+function parseDateByDefault(this: IExecuteFunctions, value: string) {
+	const isoValue = getIsoValue.call(this, value);
 	if (moment(isoValue).isValid()) return moment(isoValue);
 
-	throw new Error('Unrecognized date input. Please specify a format in the "From Format" field.');
+	throw new NodeOperationError(this.getNode(), 'Unrecognized date input. Please specify a format in the "From Format" field.');
 }
 
-function getIsoValue(value: string) {
+function getIsoValue(this: IExecuteFunctions, value: string) {
 	try {
 		return new Date(value).toISOString(); // may throw due to unpredictable input
 	} catch (error) {
-		throw new Error('Unrecognized date input. Please specify a format in the "From Format" field.');
+		throw new NodeOperationError(this.getNode(), 'Unrecognized date input. Please specify a format in the "From Format" field.');
 	}
 }

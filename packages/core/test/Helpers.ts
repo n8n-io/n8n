@@ -40,9 +40,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		node: INode,
-		forcedRefresh: boolean,
-	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
-		return { updatedCredentials: false, data: {} }
+		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined> {
+		return undefined;
 	};
 
 

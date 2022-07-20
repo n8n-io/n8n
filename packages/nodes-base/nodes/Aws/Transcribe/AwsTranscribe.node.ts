@@ -58,21 +58,25 @@ export class AwsTranscribe implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a transcription job',
+						action: 'Create a transcription job',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a transcription job',
+						action: 'Delete a transcription job',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a transcription job',
+						action: 'Get a transcription job',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all transcription jobs',
+						action: 'Get all transcription jobs',
 					},
 				],
 				default: 'create',
@@ -128,7 +132,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Set this field to true to enable automatic language identification',
+				description: 'Whether to set this field to true to enable automatic language identification',
 			},
 			{
 				displayName: 'Language',
@@ -144,24 +148,24 @@ export class AwsTranscribe implements INodeType {
 						value: 'en-GB',
 					},
 					{
-						name: 'Irish English',
-						value: 'en-IE',
+						name: 'German',
+						value: 'de-DE',
 					},
 					{
 						name: 'Indian English',
 						value: 'en-IN',
 					},
 					{
-						name: 'Spanish',
-						value: 'es-ES',
-					},
-					{
-						name: 'German',
-						value: 'de-DE',
+						name: 'Irish English',
+						value: 'en-IE',
 					},
 					{
 						name: 'Russian',
 						value: 'ru-RU',
+					},
+					{
+						name: 'Spanish',
+						value: 'es-ES',
 					},
 				],
 				displayOptions: {
@@ -202,6 +206,7 @@ export class AwsTranscribe implements INodeType {
 						name: 'channelIdentification',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Instructs Amazon Transcribe to process each audiochannel separately and then merge the transcription output of each channel into a single transcription. You can\'t set both Max Speaker Labels and Channel Identification in the same request. If you set both, your request returns a BadRequestException.',
 					},
 					{
@@ -279,6 +284,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead.',
 			},
 			{

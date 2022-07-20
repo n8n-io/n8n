@@ -1243,6 +1243,7 @@ describe('Workflow', () => {
 										],
 									],
 								},
+								source: [],
 							},
 						],
 					},

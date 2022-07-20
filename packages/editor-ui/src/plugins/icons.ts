@@ -48,6 +48,7 @@ import {
 	faFolderOpen,
 	faGift,
 	faGraduationCap,
+	faGripVertical,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -66,6 +67,7 @@ import {
 	faPencilAlt,
 	faPlay,
 	faPlayCircle,
+	faPlug,
 	faPlus,
 	faPlusCircle,
 	faPlusSquare,
@@ -136,6 +138,7 @@ addIcon(faCloudDownloadAlt);
 addIcon(faCopy);
 addIcon(faCut);
 addIcon(faDotCircle);
+addIcon(faGripVertical);
 addIcon(faEdit);
 addIcon(faEllipsisV);
 addIcon(faEnvelope);
@@ -172,6 +175,7 @@ addIcon(faPen);
 addIcon(faPencilAlt);
 addIcon(faPlay);
 addIcon(faPlayCircle);
+addIcon(faPlug);
 addIcon(faPlus);
 addIcon(faPlusCircle);
 addIcon(faPlusSquare);

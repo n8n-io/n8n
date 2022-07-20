@@ -51,21 +51,25 @@ export class Crypto implements INodeType {
 						name: 'Generate',
 						description: 'Generate random string',
 						value: 'generate',
+						action: 'Generate random string',
 					},
 					{
 						name: 'Hash',
 						description: 'Hash a text in a specified format',
 						value: 'hash',
+						action: 'Hash a text in a specified format',
 					},
 					{
 						name: 'Hmac',
 						description: 'Hmac a text in a specified format',
 						value: 'hmac',
+						action: 'HMAC a text in a specified format',
 					},
 					{
 						name: 'Sign',
 						description: 'Sign a string using a private key',
 						value: 'sign',
+						action: 'Sign a string using a private key',
 					},
 				],
 				default: 'hash',
@@ -289,7 +293,7 @@ export class Crypto implements INodeType {
 				description: 'Name of the property to which to write the signed value',
 			},
 			{
-				displayName: 'Algorithm',
+				displayName: 'Algorithm Name or ID',
 				name: 'algorithm',
 				displayOptions: {
 					show: {
@@ -299,6 +303,7 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getHashes',
 				},
@@ -493,11 +498,17 @@ export class Crypto implements INodeType {
 					// Uses dot notation so copy all data
 					newItem = {
 						json: JSON.parse(JSON.stringify(item.json)),
+						pairedItem: {
+							item: i,
+						},
 					};
 				} else {
 					// Does not use dot notation so shallow copy is enough
 					newItem = {
 						json: { ...item.json },
+						pairedItem: {
+							item: i,
+						},
 					};
 				}
 
@@ -511,7 +522,14 @@ export class Crypto implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: (error as JsonObject).message } });
+					returnData.push({
+						json: {
+							error: (error as JsonObject).message,
+						},
+						pairedItem: {
+							item: i,
+						},
+					});
 					continue;
 				}
 				throw error;

@@ -43,6 +43,7 @@ export class Intercom implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Intercom',
 		name: 'intercom',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:intercom.png',
 		group: ['output'],
 		version: 1,
@@ -422,7 +423,7 @@ export class Intercom implements INodeType {
 						try {
 							responseData = await intercomApiRequest.call(this, `/users/${id}`, 'DELETE');
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
+							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`, { itemIndex: i });
 						}
 					}
 				}
@@ -472,7 +473,7 @@ export class Intercom implements INodeType {
 						try {
 							responseData = await intercomApiRequest.call(this, '/companies', 'POST', body, qs);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
+							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`, { itemIndex: i });
 						}
 					}
 					if (operation === 'get') {
@@ -491,7 +492,7 @@ export class Intercom implements INodeType {
 								responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 							}
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
+							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`, { itemIndex: i });
 						}
 					}
 					if (operation === 'getAll') {
@@ -508,7 +509,7 @@ export class Intercom implements INodeType {
 								responseData = responseData.companies;
 							}
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
+							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`, { itemIndex: i });
 						}
 					}
 					if (operation === 'users') {
@@ -542,7 +543,7 @@ export class Intercom implements INodeType {
 								}
 							}
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
+							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`, { itemIndex: i });
 						}
 					}
 				}

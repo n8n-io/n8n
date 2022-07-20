@@ -22,21 +22,25 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a post',
+				action: 'Create a post',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a post',
+				action: 'Get a post',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all posts',
+				action: 'Get all posts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a post',
+				action: 'Update a post',
 			},
 		],
 		default: 'create',
@@ -103,14 +107,14 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Category ID',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: '',
-				description: 'ID of the category',
+				description: 'ID of the category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Reply To Post Number',

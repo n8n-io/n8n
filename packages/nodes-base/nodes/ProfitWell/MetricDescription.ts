@@ -20,6 +20,7 @@ export const metricOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve financial metric broken down by day for either the current month or the last',
+				action: 'Get a metric',
 			},
 		],
 		default: 'get',
@@ -118,14 +119,14 @@ export const metricFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Plan ID',
+				displayName: 'Plan Name or ID',
 				name: 'plan_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getPlanIds',
 				},
 				default: '',
-				description: 'Only return the metric for this Plan ID',
+				description: 'Only return the metric for this Plan ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Metrics',
@@ -371,6 +372,16 @@ export const metricFields: INodeProperties[] = [
 						description: 'Number of new trialing customers',
 					},
 					{
+						name: 'Plan Changed Rate',
+						value: 'plan_change_rate',
+						description: 'Net change in revenue as a percentage of existing revenue',
+					},
+					{
+						name: 'Plan Changed Recurring Revenue',
+						value: 'plan_changed_recurring_revenue',
+						description: 'Net change in revenue for this plan',
+					},
+					{
 						name: 'Reactivated Customers',
 						value: 'reactivated_customers',
 						description: 'Number of customers who have reactivated',
@@ -419,16 +430,6 @@ export const metricFields: INodeProperties[] = [
 						name: 'Upgraded Recurring Revenue',
 						value: 'upgraded_recurring_revenue',
 						description: 'How much upgrades and plan length increases affect your MRR',
-					},
-					{
-						name: 'Plan Changed Rate',
-						value: 'plan_change_rate',
-						description: 'Net change in revenue as a percentage of existing revenue',
-					},
-					{
-						name: 'Plan Changed Recurring Revenue',
-						value: 'plan_changed_recurring_revenue',
-						description: 'Net change in revenue for this plan',
 					},
 				],
 				default: [],
