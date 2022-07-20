@@ -870,8 +870,17 @@ export interface IUiState {
 		output: {
 			displayMode: IRunDataDisplayMode;
 		};
+		focusedMappableInput: string;
+		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
+	draggable: {
+		isDragging: boolean;
+		type: string;
+		data: string;
+		canDrop: boolean;
+		stickyPosition: null | XYPosition;
+	};
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';

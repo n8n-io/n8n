@@ -1,9 +1,10 @@
 <template>
 	<span :class="$style.container">
-		<el-dropdown :placement="placement" trigger="click" @command="onCommand">
-			<span :class="$style.button">
+		<el-dropdown :placement="placement" :size="size" trigger="click" @command="onCommand" @visible-change="onVisibleChange">
+			<span :class="{[$style.button]: true, [$style[theme]]: !!theme}">
 				<component :is="$options.components.N8nIcon"
 					icon="ellipsis-v"
+					:size="iconSize"
 				/>
 			</span>
 			<el-dropdown-menu slot="dropdown">
@@ -11,6 +12,7 @@
 					v-for="action in actions"
 					:key="action.value"
 					:command="action.value"
+					:disabled="action.disabled"
 				>
 					{{action.label}}
 				</el-dropdown-item>
@@ -42,12 +44,30 @@ export default {
 			type: String,
 			default: 'bottom',
 			validator: (value: string): boolean =>
-				['top', 'bottom'].includes(value),
+				['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'].includes(value),
+		},
+		size: {
+			type: String,
+			default: 'medium',
+			validator: (value: string): boolean =>
+				['mini', 'small', 'medium'].includes(value),
+		},
+		iconSize: {
+			type: String,
+		},
+		theme: {
+			type: String,
+			default: 'default',
+			validator: (value: string): boolean =>
+				['default', 'dark'].includes(value),
 		},
 	},
 	methods: {
 		onCommand(value: string) {
-			this.$emit('action', value)	;
+			this.$emit('action', value);
+		},
+		onVisibleChange(value: boolean) {
+			this.$emit('visible-change', value);
 		},
 	},
 };
@@ -62,6 +82,18 @@ export default {
 	cursor: pointer;
 	padding: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
+
+	&:hover {
+		color: var(--color-primary);
+		cursor: pointer;
+	}
+
+	&:focus {
+		color: var(--color-primary);
+	}
+}
+
+.dark {
 	color: var(--color-text-dark);
 
 	&:focus {

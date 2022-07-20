@@ -10,73 +10,72 @@
 			class="fixed-collection-parameter-property"
 		>
 			<n8n-input-label
-				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $locale.nodeText().inputLabelDisplayName(property, path)"
+				v-if="property.displayName !== '' && (parameter.options && parameter.options.length !== 1)"
+				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
-				:labelHoverableOnly="true"
 				size="small"
-			>
-				<div v-if="multipleValues === true">
-					<div
-						v-for="(value, index) in values[property.name]"
-						:key="property.name + index"
-						class="parameter-item"
-					>
-						<div class="parameter-item-wrapper">
-							<div class="delete-option" v-if="!isReadOnly">
-								<font-awesome-icon
-									icon="trash"
-									class="reset-icon clickable"
-									:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
-									@click="deleteOption(property.name, index)"
-								/>
-								<div v-if="sortable" class="sort-icon">
-									<font-awesome-icon
-										v-if="index !== 0"
-										icon="angle-up"
-										class="clickable"
-										:title="$locale.baseText('fixedCollectionParameter.moveUp')"
-										@click="moveOptionUp(property.name, index)"
-									/>
-									<font-awesome-icon
-										v-if="index !== (values[property.name].length - 1)"
-										icon="angle-down"
-										class="clickable"
-										:title="$locale.baseText('fixedCollectionParameter.moveDown')"
-										@click="moveOptionDown(property.name, index)"
-									/>
-								</div>
-							</div>
-							<parameter-input-list
-								:parameters="property.values"
-								:nodeValues="nodeValues"
-								:path="getPropertyPath(property.name, index)"
-								:hideDelete="true"
-								@valueChanged="valueChanged"
-							/>
-						</div>
-					</div>
-				</div>
-				<div v-else class="parameter-item">
+			/>
+			<div v-if="multipleValues === true">
+				<div
+					v-for="(value, index) in values[property.name]"
+					:key="property.name + index"
+					class="parameter-item"
+				>
 					<div class="parameter-item-wrapper">
 						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon
 								icon="trash"
 								class="reset-icon clickable"
 								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
-								@click="deleteOption(property.name)"
+								@click="deleteOption(property.name, index)"
 							/>
+							<div v-if="sortable" class="sort-icon">
+								<font-awesome-icon
+									v-if="index !== 0"
+									icon="angle-up"
+									class="clickable"
+									:title="$locale.baseText('fixedCollectionParameter.moveUp')"
+									@click="moveOptionUp(property.name, index)"
+								/>
+								<font-awesome-icon
+									v-if="index !== (values[property.name].length - 1)"
+									icon="angle-down"
+									class="clickable"
+									:title="$locale.baseText('fixedCollectionParameter.moveDown')"
+									@click="moveOptionDown(property.name, index)"
+								/>
+							</div>
 						</div>
 						<parameter-input-list
 							:parameters="property.values"
 							:nodeValues="nodeValues"
-							:path="getPropertyPath(property.name)"
-							class="parameter-item"
-							@valueChanged="valueChanged"
+							:path="getPropertyPath(property.name, index)"
 							:hideDelete="true"
+							@valueChanged="valueChanged"
 						/>
 					</div>
 				</div>
-			</n8n-input-label>
+			</div>
+			<div v-else class="parameter-item">
+				<div class="parameter-item-wrapper">
+					<div class="delete-option" v-if="!isReadOnly">
+						<font-awesome-icon
+							icon="trash"
+							class="reset-icon clickable"
+							:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
+							@click="deleteOption(property.name)"
+						/>
+					</div>
+					<parameter-input-list
+						:parameters="property.values"
+						:nodeValues="nodeValues"
+						:path="getPropertyPath(property.name)"
+						class="parameter-item"
+						@valueChanged="valueChanged"
+						:hideDelete="true"
+					/>
+				</div>
+			</div>
 		</div>
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">

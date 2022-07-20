@@ -34,6 +34,7 @@
     "vue-fragment": "1.5.1",
     "vue-i18n": "^8.26.7",
     "vue2-boring-avatars": "0.3.4",
+    "vue2-teleport": "^1.0.1",
     "xss": "^1.0.10"
   },
   "devDependencies": {

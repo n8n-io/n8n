@@ -50,8 +50,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-
-const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`];
+import { hasExpressionMapping } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -92,9 +91,11 @@ export default mixins(
 		},
 
 		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('valueChanged', this.latestValue);
+			if (this.latestValue !== this.value) {
+				// Handle the close externally as the visible parameter is an external prop
+				// and is so not allowed to be changed here.
+				this.$emit('valueChanged', this.latestValue);
+			}
 			this.$emit('closeDialog');
 			return false;
 		},
@@ -172,7 +173,7 @@ export default mixins(
 					source: this.eventSource,
 					session_id: this.$store.getters['ui/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
-					has_mapping: !!MAPPING_PARAMS.find((param) => this.value.includes(param)),
+					has_mapping: hasExpressionMapping(this.value),
 				});
 			}
 		},
