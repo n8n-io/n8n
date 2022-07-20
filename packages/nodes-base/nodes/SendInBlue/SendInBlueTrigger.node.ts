@@ -6,6 +6,8 @@ import {
 	IHookFunctions,
 	IWebhookFunctions,
 	NodeOperationError,
+	IExecuteFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { sendInBlueWebhookApi } from './GenericFunctions';
 
@@ -35,6 +37,7 @@ export class SendInBlueTrigger implements INodeType {
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
 				path: 'webhooks',
+				responseData: 'allEntries',
 			},
 		],
 		properties: [
@@ -200,7 +203,7 @@ export class SendInBlueTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(bodyData)],
+			noWebhookResponse: true,
 		};
 	}
 }
