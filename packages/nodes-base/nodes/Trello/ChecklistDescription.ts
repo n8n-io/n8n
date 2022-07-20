@@ -20,49 +20,58 @@ export const checklistOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create Checklist Item',
-				value: 'createCheckItem',
-				description: 'Create a checklist item',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new checklist',
+				action: 'Create a checklist',
+			},
+			{
+				name: 'Create Checklist Item',
+				value: 'createCheckItem',
+				description: 'Create a checklist item',
+				action: 'Create checklist item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a checklist',
+				action: 'Delete a checklist',
 			},
 			{
 				name: 'Delete Checklist Item',
 				value: 'deleteCheckItem',
 				description: 'Delete a checklist item',
+				action: 'Delete a checklist item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a checklist',
+				action: 'Get a checklist',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Returns all checklists for the card',
+				action: 'Get all checklists',
 			},
 			{
 				name: 'Get Checklist Items',
 				value: 'getCheckItem',
 				description: 'Get a specific checklist on a card',
+				action: 'Get checklist items',
 			},
 			{
 				name: 'Get Completed Checklist Items',
 				value: 'completedCheckItems',
 				description: 'Get the completed checklist items on a card',
+				action: 'Get completed checklist items',
 			},
 			{
 				name: 'Update Checklist Item',
 				value: 'updateCheckItem',
 				description: 'Update an item in a checklist on a card',
+				action: 'Update a checklist item',
 			},
 		],
 		default: 'getAll',
@@ -342,7 +351,7 @@ export const checklistFields: INodeProperties[] = [
 				name: 'checked',
 				type: 'boolean',
 				default: false,
-				description: 'Determines whether the check item is already checked when created',
+				description: 'Whether the check item is already checked when created',
 			},
 			{
 				displayName: 'Position',
@@ -529,11 +538,11 @@ export const checklistFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'complete',
+						name: 'Complete',
 						value: 'complete',
 					},
 					{
-						name: 'incomplete',
+						name: 'Incomplete',
 						value: 'incomplete',
 					},
 				],

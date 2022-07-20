@@ -1,6 +1,13 @@
 /* eslint-disable import/no-cycle */
+import { get as pslGet } from 'psl';
 import { BinaryDataManager } from 'n8n-core';
-import { IDataObject, INodeTypes, IRun, TelemetryHelpers } from 'n8n-workflow';
+import {
+	INodesGraphResult,
+	INodeTypes,
+	IRun,
+	ITelemetryTrackProperties,
+	TelemetryHelpers,
+} from 'n8n-workflow';
 import { snakeCase } from 'change-case';
 import {
 	IDiagnosticInfo,
@@ -10,6 +17,7 @@ import {
 	IWorkflowDb,
 } from '.';
 import { Telemetry } from './telemetry';
+import { IExecutionTrackProperties } from './Interfaces';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -48,6 +56,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 		]);
 	}
 
+	async onFrontendSettingsAPI(sessionId?: string): Promise<void> {
+		return this.telemetry.track('Session started', { session_id: sessionId });
+	}
+
 	async onPersonalizationSurveySubmitted(
 		userId: string,
 		answers: Record<string, string>,
@@ -64,24 +76,29 @@ export class InternalHooksClass implements IInternalHooksClass {
 		);
 	}
 
-	async onWorkflowCreated(userId: string, workflow: IWorkflowBase): Promise<void> {
+	async onWorkflowCreated(
+		userId: string,
+		workflow: IWorkflowBase,
+		publicApi: boolean,
+	): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 		return this.telemetry.track('User created workflow', {
 			user_id: userId,
 			workflow_id: workflow.id,
-			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
+			public_api: publicApi,
 		});
 	}
 
-	async onWorkflowDeleted(userId: string, workflowId: string): Promise<void> {
+	async onWorkflowDeleted(userId: string, workflowId: string, publicApi: boolean): Promise<void> {
 		return this.telemetry.track('User deleted workflow', {
 			user_id: userId,
 			workflow_id: workflowId,
+			public_api: publicApi,
 		});
 	}
 
-	async onWorkflowSaved(userId: string, workflow: IWorkflowDb): Promise<void> {
+	async onWorkflowSaved(userId: string, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
 		const notesCount = Object.keys(nodeGraph.notes).length;
@@ -92,12 +109,12 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User saved workflow', {
 			user_id: userId,
 			workflow_id: workflow.id,
-			node_graph: nodeGraph,
 			node_graph_string: JSON.stringify(nodeGraph),
 			notes_count_overlapping: overlappingCount,
 			notes_count_non_overlapping: notesCount - overlappingCount,
 			version_cli: this.versionCli,
 			num_tags: workflow.tags?.length ?? 0,
+			public_api: publicApi,
 		});
 	}
 
@@ -108,10 +125,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		userId?: string,
 	): Promise<void> {
 		const promises = [Promise.resolve()];
-		const properties: IDataObject = {
-			workflow_id: workflow.id,
+
+		if (!workflow.id) {
+			return Promise.resolve();
+		}
+
+		const properties: IExecutionTrackProperties = {
+			workflow_id: workflow.id.toString(),
 			is_manual: false,
 			version_cli: this.versionCli,
+			success: false,
 		};
 
 		if (userId) {
@@ -123,7 +146,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 			properties.success = !!runData.finished;
 			properties.is_manual = runData.mode === 'manual';
 
-			let nodeGraphResult;
+			let nodeGraphResult: INodesGraphResult | null = null;
 
 			if (!properties.success && runData?.data.resultData.error) {
 				properties.error_message = runData?.data.resultData.error.message;
@@ -158,22 +181,19 @@ export class InternalHooksClass implements IInternalHooksClass {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 				}
 
-				const manualExecEventProperties = {
-					workflow_id: workflow.id,
+				const manualExecEventProperties: ITelemetryTrackProperties = {
+					workflow_id: workflow.id.toString(),
 					status: properties.success ? 'success' : 'failed',
-					error_message: properties.error_message,
+					error_message: properties.error_message as string,
 					error_node_type: properties.error_node_type,
-					node_graph: properties.node_graph,
-					node_graph_string: properties.node_graph_string,
-					error_node_id: properties.error_node_id,
+					node_graph_string: properties.node_graph_string as string,
+					error_node_id: properties.error_node_id as string,
+					webhook_domain: null,
 				};
 
-				if (!manualExecEventProperties.node_graph) {
+				if (!manualExecEventProperties.node_graph_string) {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-					manualExecEventProperties.node_graph = nodeGraphResult.nodeGraph;
-					manualExecEventProperties.node_graph_string = JSON.stringify(
-						manualExecEventProperties.node_graph,
-					);
+					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
 
 				if (runData.data.startData?.destinationNode) {
@@ -188,6 +208,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 						}),
 					);
 				} else {
+					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
+						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
+							?.json as { headers?: { origin?: string } };
+						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
+							manualExecEventProperties.webhook_domain = pslGet(
+								execJson.headers.origin.replace(/^https?:\/\//, ''),
+							);
+						}
+					});
+
 					promises.push(
 						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
 					);
@@ -215,19 +245,71 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onUserDeletion(
 		userId: string,
 		userDeletionData: ITelemetryUserDeletionData,
+		publicApi: boolean,
 	): Promise<void> {
-		return this.telemetry.track('User deleted user', { ...userDeletionData, user_id: userId });
+		return this.telemetry.track('User deleted user', {
+			...userDeletionData,
+			user_id: userId,
+			public_api: publicApi,
+		});
 	}
 
-	async onUserInvite(userInviteData: { user_id: string; target_user_id: string[] }): Promise<void> {
+	async onUserInvite(userInviteData: {
+		user_id: string;
+		target_user_id: string[];
+		public_api: boolean;
+	}): Promise<void> {
 		return this.telemetry.track('User invited new user', userInviteData);
 	}
 
 	async onUserReinvite(userReinviteData: {
 		user_id: string;
 		target_user_id: string;
+		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track('User resent new user invite email', userReinviteData);
+	}
+
+	async onUserRetrievedUser(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved user', userRetrievedData);
+	}
+
+	async onUserRetrievedAllUsers(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved all users', userRetrievedData);
+	}
+
+	async onUserRetrievedExecution(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved execution', userRetrievedData);
+	}
+
+	async onUserRetrievedAllExecutions(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved all executions', userRetrievedData);
+	}
+
+	async onUserRetrievedWorkflow(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved workflow', userRetrievedData);
+	}
+
+	async onUserRetrievedAllWorkflows(userRetrievedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User retrieved all workflows', userRetrievedData);
 	}
 
 	async onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void> {
@@ -248,11 +330,35 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onUserTransactionalEmail(userTransactionalEmailData: {
 		user_id: string;
 		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track(
-			'Instance sent transactional email to user',
+			'Instance sent transacptional email to user',
 			userTransactionalEmailData,
 		);
+	}
+
+	async onUserInvokedApi(userInvokedApiData: {
+		user_id: string;
+		path: string;
+		method: string;
+		api_version: string;
+	}): Promise<void> {
+		return this.telemetry.track('User invoked API', userInvokedApiData);
+	}
+
+	async onApiKeyDeleted(apiKeyDeletedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('API key deleted', apiKeyDeletedData);
+	}
+
+	async onApiKeyCreated(apiKeyCreatedData: {
+		user_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('API key created', apiKeyCreatedData);
 	}
 
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user_id: string }): Promise<void> {
@@ -273,6 +379,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onEmailFailed(failedEmailData: {
 		user_id: string;
 		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track(
 			'Instance failed to send transactional email to user',

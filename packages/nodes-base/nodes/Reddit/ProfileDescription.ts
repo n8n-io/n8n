@@ -19,6 +19,7 @@ export const profileOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a profile',
 			},
 		],
 		default: 'get',
@@ -36,11 +37,6 @@ export const profileFields: INodeProperties[] = [
 		description: 'Details of my account to retrieve',
 		options: [
 			{
-				name: 'Identity',
-				value: 'identity',
-				description: 'Return the identity of the logged-in user',
-			},
-			{
 				name: 'Blocked Users',
 				value: 'blockedUsers',
 				description: 'Return the blocked users of the logged-in user',
@@ -49,6 +45,11 @@ export const profileFields: INodeProperties[] = [
 				name: 'Friends',
 				value: 'friends',
 				description: 'Return the friends of the logged-in user',
+			},
+			{
+				name: 'Identity',
+				value: 'identity',
+				description: 'Return the identity of the logged-in user',
 			},
 			{
 				name: 'Karma',

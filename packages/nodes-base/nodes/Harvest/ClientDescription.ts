@@ -22,27 +22,32 @@ export const clientOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a client',
+				action: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a client',
+				action: 'Delete a client',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
+				action: 'Get data of a client',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all clients',
+				action: 'Get data of all clients',
 			},
 
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a client',
+				action: 'Update a client',
 			},
 		],
 		default: 'getAll',
@@ -113,7 +118,7 @@ export const clientFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active clients and false to return inactive clients',
+				description: 'Whether to only return active clients and false to return inactive clients',
 			},
 			{
 				displayName: 'Updated Since',

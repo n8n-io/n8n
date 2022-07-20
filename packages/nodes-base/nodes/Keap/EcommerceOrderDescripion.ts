@@ -20,21 +20,25 @@ export const ecommerceOrderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an ecommerce order',
+				action: 'Create an e-commerce order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an ecommerce order',
+				action: 'Get an e-commerce order',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an ecommerce order',
+				action: 'Delete an e-commerce order',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all ecommerce orders',
+				action: 'Get all e-commerce orders',
 			},
 		],
 		default: 'create',
@@ -199,9 +203,10 @@ export const ecommerceOrderFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountries',
 						},

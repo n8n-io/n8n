@@ -366,14 +366,18 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				try {
+					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
-				const returnValues: string[] = [];
-				for (const parameterPath of loadOptionsDependsOn) {
-					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+					const returnValues: string[] = [];
+					for (const parameterPath of loadOptionsDependsOn) {
+						returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+					}
+
+					return returnValues.join('|');
+				} catch (error) {
+					return null;
 				}
-
-				return returnValues.join('|');
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
@@ -549,7 +553,6 @@ export default mixins(
 					}
 
 					for (const checkValue of checkValues) {
-						if (checkValue !== undefined && checkValue.includes(CUSTOM_API_CALL_KEY)) continue;
 						if (checkValue === null || !validOptions.includes(checkValue)) {
 							if (issues.parameters === undefined) {
 								issues.parameters = {};
@@ -699,9 +702,9 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
+					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 
@@ -850,6 +853,17 @@ export default mixins(
 				};
 
 				this.$emit('valueChanged', parameterData);
+
+				if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
+					this.$telemetry.track('User set node operation or mode', {
+						workflow_id: this.$store.getters.workflowId,
+						node_type: this.node && this.node.type,
+						resource: this.node && this.node.parameters.resource,
+						is_custom: value === CUSTOM_API_CALL_KEY,
+						session_id: this.$store.getters['ui/ndvSessionId'],
+						parameter: this.parameter.name,
+					});
+				}
 			},
 			optionSelected (command: string) {
 				if (command === 'resetValue') {

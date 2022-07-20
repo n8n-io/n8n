@@ -176,7 +176,7 @@ export const store = new Vuex.Store({
 		setWorkflowInactive (state, workflowId: string) {
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
-				state.selectedNodes.splice(index, 1);
+				state.activeWorkflows.splice(index, 1);
 			}
 		},
 		// Set state condition dirty or not
@@ -609,6 +609,10 @@ export const store = new Vuex.Store({
 
 		setWorkflowTagIds (state, tags: string[]) {
 			Vue.set(state.workflow, 'tags', tags);
+		},
+
+		addWorkflowTagIds (state, tags: string[]) {
+			Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
 		},
 
 		removeWorkflowTagId (state, tagId: string) {

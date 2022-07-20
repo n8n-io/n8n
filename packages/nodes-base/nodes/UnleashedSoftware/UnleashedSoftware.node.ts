@@ -33,6 +33,7 @@ export class UnleashedSoftware implements INodeType {
 		name: 'unleashedSoftware',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:unleashedSoftware.png',
 		version: 1,
 		description: 'Consume Unleashed Software API',

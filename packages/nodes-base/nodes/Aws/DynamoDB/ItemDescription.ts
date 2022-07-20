@@ -20,21 +20,25 @@ export const itemOperations: INodeProperties[] = [
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update an item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an item',
+				action: 'Delete an item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an item',
+				action: 'Get an item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all items',
+				action: 'Get all items',
 			},
 		],
 		default: 'upsert',
@@ -46,9 +50,9 @@ export const itemFields: INodeProperties[] = [
 	//              all
 	// ----------------------------------
 	{
-		displayName: 'Table Name',
+		displayName: 'Table Name or ID',
 		name: 'tableName',
-		description: 'Table to operate on',
+		description: 'Table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		required: true,
 		displayOptions: {
@@ -73,7 +77,7 @@ export const itemFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-map Input Data to Columns',
+				name: 'Auto-Map Input Data to Columns',
 				value: 'autoMapInputData',
 				description: 'Use when node input properties match destination column names',
 			},
@@ -350,7 +354,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
+		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.',
 	},
 	{
 		displayName: 'Simplify',
@@ -593,7 +597,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key',
+		description: 'Item\'s primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -616,6 +620,7 @@ export const itemFields: INodeProperties[] = [
 				displayName: 'Attributes to Select',
 				name: 'projectionExpression',
 				type: 'string',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id, name',
 				default: '',
 			},
@@ -656,11 +661,11 @@ export const itemFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Strongly consistent read',
+						name: 'Strongly Consistent Read',
 						value: 'stronglyConsistentRead',
 					},
 					{
-						name: 'Eventually consistent read',
+						name: 'Eventually Consistent Read',
 						value: 'eventuallyConsistentRead',
 					},
 				],
@@ -694,7 +699,6 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Filter Expression',
 		name: 'filterExpression',
 		type: 'string',
-		required: true,
 		displayOptions: {
 			show: {
 				scan: [
@@ -703,12 +707,13 @@ export const itemFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded.',
+		description: 'A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded. Empty value will return all Scan results.',
 	},
 	{
 		displayName: 'Key Condition Expression',
 		name: 'keyConditionExpression',
 		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
+		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id = :id',
 		default: '',
 		type: 'string',
@@ -910,7 +915,7 @@ export const itemFields: INodeProperties[] = [
 				name: 'projectionExpression',
 				type: 'string',
 				default: '',
-				description: 'Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas',
+				description: 'Text that identifies one or more attributes to retrieve from the table. These attributes can include scalars, sets, or elements of a JSON document. The attributes in the expression must be separated by commas.',
 			},
 			{
 				displayName: 'Filter Expression',

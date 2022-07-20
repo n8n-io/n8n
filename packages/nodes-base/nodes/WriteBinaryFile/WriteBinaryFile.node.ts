@@ -67,15 +67,18 @@ export class WriteBinaryFile implements INodeType {
 				item = items[itemIndex];
 
 				if (item.binary === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!');
+					throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!', { itemIndex });
 				}
 
 				if (item.binary[dataPropertyName] === undefined) {
-					throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
+					throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`, { itemIndex });
 				}
 
 				const newItem: INodeExecutionData = {
 					json: {},
+					pairedItem: {
+						item: itemIndex,
+					},
 				};
 				Object.assign(newItem.json, item.json);
 
@@ -100,7 +103,14 @@ export class WriteBinaryFile implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 					continue;
 				}
 				throw error;

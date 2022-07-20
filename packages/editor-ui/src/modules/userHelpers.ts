@@ -42,10 +42,25 @@ export const PERMISSIONS: IUserPermissions = {
 	},
 };
 
-export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnabled}: {currentUser: IUser | null, isUMEnabled: boolean}): boolean => {
+interface IsAuthorizedOptions {
+	currentUser: IUser | null;
+	isUMEnabled?: boolean;
+	isPublicApiEnabled?: boolean;
+}
+
+export const isAuthorized = (permissions: IPermissions, {
+	currentUser,
+	isUMEnabled,
+	isPublicApiEnabled,
+}: IsAuthorizedOptions): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
+
 	if (permissions.deny) {
-		if (permissions.deny.um === isUMEnabled) {
+		if (permissions.deny.hasOwnProperty('um') && permissions.deny.um === isUMEnabled) {
+			return false;
+		}
+
+		if (permissions.deny.hasOwnProperty('api') && permissions.deny.api === isPublicApiEnabled) {
 			return false;
 		}
 
@@ -65,7 +80,11 @@ export const isAuthorized = (permissions: IPermissions, {currentUser, isUMEnable
 	}
 
 	if (permissions.allow) {
-		if (permissions.allow.um === isUMEnabled) {
+		if (permissions.allow.hasOwnProperty('um') && permissions.allow.um === isUMEnabled) {
+			return true;
+		}
+
+		if (permissions.allow.hasOwnProperty('api') && permissions.allow.api === isPublicApiEnabled) {
 			return true;
 		}
 

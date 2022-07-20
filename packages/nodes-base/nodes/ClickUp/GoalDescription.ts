@@ -20,26 +20,31 @@ export const goalOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a goal',
+				action: 'Create a goal',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a goal',
+				action: 'Delete a goal',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a goal',
+				action: 'Get a goal',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all goals',
+				action: 'Get all goals',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a goal',
+				action: 'Update a goal',
 			},
 		],
 		default: 'create',
@@ -52,9 +57,10 @@ export const goalFields: INodeProperties[] = [
 	/*                                goal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
@@ -187,9 +193,10 @@ export const goalFields: INodeProperties[] = [
 	/*                                goal:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {

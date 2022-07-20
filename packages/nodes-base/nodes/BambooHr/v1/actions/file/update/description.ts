@@ -39,14 +39,14 @@ export const fileUpdateDescription: FileProperties = [
 		},
 		options: [
 			{
-				displayName: 'Category Name/ID',
+				displayName: 'Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCompanyFileCategories',
 				},
 				default: '',
-				description: 'Move the file to a different category',
+				description: 'Move the file to a different category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Name',

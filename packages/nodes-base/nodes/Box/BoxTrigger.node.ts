@@ -18,6 +18,7 @@ export class BoxTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box Trigger',
 		name: 'boxTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['trigger'],
 		version: 1,

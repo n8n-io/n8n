@@ -503,8 +503,9 @@ export class GoogleSheet {
 		inputData.forEach((item) => {
 			rowData = [];
 			keyColumnOrder.forEach((key) => {
-				if (usePathForKeyRow && (get(item, key) !== undefined)) { //match by key path
-					rowData.push(get(item, key)!.toString());
+				const value = get(item, key) as string;
+				if (usePathForKeyRow && value !== undefined && value !== null) { //match by key path
+					rowData.push(value!.toString());
 				} else if (!usePathForKeyRow && item.hasOwnProperty(key) && item[key] !== null && item[key] !== undefined) { //match by exact key name
 					rowData.push(item[key]!.toString());
 				} else {

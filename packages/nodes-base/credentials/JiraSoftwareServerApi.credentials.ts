@@ -1,4 +1,6 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -12,6 +14,7 @@ export class JiraSoftwareServerApi implements ICredentialType {
 			displayName: 'Email',
 			name: 'email',
 			type: 'string',
+			placeholder: 'name@email.com',
 			default: '',
 		},
 		{
@@ -31,4 +34,19 @@ export class JiraSoftwareServerApi implements ICredentialType {
 			placeholder: 'https://example.com',
 		},
 	];
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth:{
+				username: '={{$credentials.email}}',
+				password: '={{$credentials.password}}',
+			},
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.domain}}',
+			url: '/rest/api/2/project',
+		},
+	};
 }

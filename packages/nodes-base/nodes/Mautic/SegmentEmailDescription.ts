@@ -19,6 +19,7 @@ export const segmentEmailOperations: INodeProperties[] = [
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send an email to a segment',
 			},
 		],
 		default: 'send',
@@ -31,9 +32,10 @@ export const segmentEmailFields: INodeProperties[] = [
 	/*                               segmentEmail:send                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Segment Email ID',
+		displayName: 'Segment Email Name or ID',
 		name: 'segmentEmailId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {

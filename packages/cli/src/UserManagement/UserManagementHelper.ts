@@ -123,6 +123,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		resetPasswordTokenExpiration,
 		createdAt,
 		updatedAt,
+		apiKey,
 		...sanitizedUser
 	} = user;
 	if (withoutKeys) {

@@ -20,21 +20,25 @@ export const subscriberOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new subscriber',
+				action: 'Create a subscriber',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an subscriber',
+				action: 'Get a subscriber',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all subscribers',
+				action: 'Get all subscribers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an subscriber',
+				action: 'Update a subscriber',
 			},
 		],
 		default: 'create',
@@ -50,6 +54,7 @@ export const subscriberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -109,14 +114,14 @@ export const subscriberFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -140,7 +145,7 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'resubscribe',
 				type: 'boolean',
 				default: false,
-				description: 'Reactivate subscriber if value is true',
+				description: 'Whether to reactivate subscriber',
 			},
 			{
 				displayName: 'Signup IP',
@@ -231,14 +236,14 @@ export const subscriberFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to',
+								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -262,7 +267,7 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'resend_autoresponders',
 				type: 'boolean',
 				default: false,
-				description: 'Defines if it is needed to resend autoresponders',
+				description: 'Whether it is needed to resend autoresponders',
 			},
 			{
 				displayName: 'Type',

@@ -20,26 +20,31 @@ export const hookOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single hook definition',
+				action: 'Get a hook',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'List all hooks on a form',
+				action: 'Get all hooks',
 			},
 			{
 				name: 'Logs',
 				value: 'getLogs',
 				description: 'Get hook logs',
+				action: 'Logs a hook',
 			},
 			{
 				name: 'Retry All',
 				value: 'retryAll',
 				description: 'Retry all failed attempts for a given hook',
+				action: 'Retry all hooks',
 			},
 			{
 				name: 'Retry One',
 				value: 'retryOne',
 				description: 'Retry a specific hook',
+				action: 'Retry one hook',
 			},
 		],
 		default: 'getAll',
@@ -52,7 +57,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -73,7 +78,7 @@ export const hookFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Hook ID',
@@ -100,7 +105,7 @@ export const hookFields: INodeProperties[] = [
 	/*                                hook:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
 		type: 'options',
 		typeOptions: {
@@ -118,7 +123,7 @@ export const hookFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Hook Log ID',

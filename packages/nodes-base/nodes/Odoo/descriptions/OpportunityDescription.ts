@@ -21,26 +21,31 @@ export const opportunityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new opportunity',
+				action: 'Create an opportunity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an opportunity',
+				action: 'Delete an opportunity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an opportunity',
+				action: 'Get an opportunity',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all opportunities',
+				action: 'Get all opportunities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an opportunity',
+				action: 'Update an opportunity',
 			},
 		],
 	},
@@ -234,9 +239,11 @@ export const opportunityDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Fields to Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',

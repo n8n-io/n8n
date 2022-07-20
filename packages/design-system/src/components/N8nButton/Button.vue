@@ -25,7 +25,11 @@
 				:size="props.size"
 			/>
 		</span>
-		<span v-if="props.label">{{ props.label }}</span>
+		<span v-if="props.label || $slots.default">
+			<slot>
+				{{ props.label }}
+			</slot>
+		</span>
 	</component>
 </template>
 

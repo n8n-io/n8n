@@ -19,6 +19,7 @@ export class HackerNews implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hacker News',
 		name: 'hackerNews',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:hackernews.png',
 		group: ['transform'],
 		version: 1,
@@ -76,6 +77,7 @@ export class HackerNews implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all items',
+						action: 'Get all items',
 					},
 				],
 				default: 'getAll',
@@ -97,6 +99,7 @@ export class HackerNews implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a Hacker News article',
+						action: 'Get an article',
 					},
 				],
 				default: 'get',
@@ -118,6 +121,7 @@ export class HackerNews implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a Hacker News user',
+						action: 'Get a user',
 					},
 				],
 				default: 'get',
@@ -219,7 +223,7 @@ export class HackerNews implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Include comments',
+						displayName: 'Include Comments',
 						name: 'includeComments',
 						type: 'boolean',
 						default: false,
@@ -257,14 +261,19 @@ export class HackerNews implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'Story',
-								value: 'story',
-								description: 'Returns query results filtered by story tag',
+								name: 'Ask HN',
+								value: 'ask_hn', // snake case per HN tags
+								description: 'Returns query results filtered by Ask HN tag',
 							},
 							{
 								name: 'Comment',
 								value: 'comment',
 								description: 'Returns query results filtered by comment tag',
+							},
+							{
+								name: 'Front Page',
+								value: 'front_page', // snake case per HN tags
+								description: 'Returns query results filtered by Front Page tag',
 							},
 							{
 								name: 'Poll',
@@ -277,14 +286,9 @@ export class HackerNews implements INodeType {
 								description: 'Returns query results filtered by Show HN tag',
 							},
 							{
-								name: 'Ask HN',
-								value: 'ask_hn', // snake case per HN tags
-								description: 'Returns query results filtered by Ask HN tag',
-							},
-							{
-								name: 'Front Page',
-								value: 'front_page', // snake case per HN tags
-								description: 'Returns query results filtered by Front Page tag',
+								name: 'Story',
+								value: 'story',
+								description: 'Returns query results filtered by story tag',
 							},
 						],
 						default: [],
@@ -331,7 +335,7 @@ export class HackerNews implements INodeType {
 						endpoint = 'search?';
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 				} else if (resource === 'article') {
 
@@ -342,7 +346,7 @@ export class HackerNews implements INodeType {
 						includeComments = additionalFields.includeComments as boolean;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 
 				} else if (resource === 'user') {
@@ -351,11 +355,11 @@ export class HackerNews implements INodeType {
 						endpoint = `users/${this.getNodeParameter('username', i)}`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource '${resource}' is unknown!`);
+					throw new NodeOperationError(this.getNode(), `The resource '${resource}' is unknown!`, { itemIndex: i });
 				}
 
 

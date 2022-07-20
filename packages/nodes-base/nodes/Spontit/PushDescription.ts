@@ -20,6 +20,7 @@ export const pushOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a push notification',
+				action: 'Create a push notification',
 			},
 		],
 		default: 'create',
@@ -97,7 +98,7 @@ export const pushFields: INodeProperties[] = [
 				name: 'openInHomeFeed',
 				type: 'boolean',
 				default: false,
-				description: 'Control whether the notification opens to the home feed or to a standalone page with the notification. The default (openInHomeFeed=False) is to open the notification on a standalone page.',
+				description: 'Whether the notification opens to the home feed or to a standalone page with the notification. The default (openInHomeFeed=False) is to open the notification on a standalone page.',
 			},
 			{
 				displayName: 'Open Link In App',

@@ -32,8 +32,8 @@
 		<template v-slot:node-not-run>
 			<div :class="$style.noOutputData" v-if="parentNodes.length">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
-				<NodeExecuteButton type="outline" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" />
-				<n8n-text tag="div" size="small">
+				<NodeExecuteButton v-if="!readOnly" type="outline" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
+				<n8n-text  v-if="!readOnly" tag="div" size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
 				</n8n-text>
 			</div>
@@ -89,9 +89,15 @@ export default mixins(
 		sessionId: {
 			type: String,
 		},
+		readOnly: {
+			type: Boolean,
+		},
 	},
 	computed: {
 		isExecutingPrevious(): boolean {
+			if (!this.workflowRunning) {
+				return false;
+			}
 			const triggeredNode = this.$store.getters.executedNode;
 			const executingNode = this.$store.getters.executingNode;
 			if (this.activeNode && triggeredNode === this.activeNode.name && this.activeNode.name !== executingNode) {
@@ -102,6 +108,9 @@ export default mixins(
 				return !!this.parentNodes.find((node) => node.name === executingNode || node.name === triggeredNode);
 			}
 			return false;
+		},
+		workflowRunning (): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
 		},
 		currentWorkflow(): Workflow {
 			return this.workflow as Workflow;

@@ -20,16 +20,19 @@ export const chatMessageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a message',
+				action: 'Create a chat message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a message',
+				action: 'Get a chat message',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all messages',
+				action: 'Get all chat messages',
 			},
 		],
 		default: 'create',
@@ -42,10 +45,11 @@ export const chatMessageFields: INodeProperties[] = [
 	/*                                 chatMessage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Chat ID',
+		displayName: 'Chat Name or ID',
 		name: 'chatId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChats',
 		},
@@ -136,10 +140,11 @@ export const chatMessageFields: INodeProperties[] = [
 	/*                                 chatMessage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Chat ID',
+		displayName: 'Chat Name or ID',
 		name: 'chatId',
 		required: true,
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChats',
 		},

@@ -18,26 +18,31 @@ export const productOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a product',
+				action: 'Create a product',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a product',
+				action: 'Delete a product',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a product',
+				action: 'Get a product',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all products',
+				action: 'Get all products',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a product',
+				action: 'Update a product',
 			},
 		],
 		default: 'create',
@@ -137,14 +142,14 @@ export const productFields: INodeProperties[] = [
 				default: 'visible',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories',
+				description: 'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
@@ -182,7 +187,7 @@ export const productFields: INodeProperties[] = [
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'if the product is downloadable',
+				description: 'Whether the product is downloadable',
 			},
 			{
 				displayName: 'External URL',
@@ -196,13 +201,14 @@ export const productFields: INodeProperties[] = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Featured product',
+				description: 'Whether the product is featured',
 			},
 			{
 				displayName: 'Manage Stock',
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Stock management at product level',
 			},
 			{
@@ -238,7 +244,7 @@ export const productFields: INodeProperties[] = [
 				name: 'reviewsAllowed',
 				type: 'boolean',
 				default: true,
-				description: 'Allow reviews',
+				description: 'Whether to allow reviews',
 			},
 			{
 				displayName: 'Sale Price',
@@ -280,7 +286,7 @@ export const productFields: INodeProperties[] = [
 				name: 'soldIndividually',
 				type: 'boolean',
 				default: false,
-				description: 'Allow one item to be bought in a single order',
+				description: 'Whether to allow one item to be bought in a single order',
 			},
 			{
 				displayName: 'Status',
@@ -335,14 +341,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags',
+				description: 'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -407,7 +413,7 @@ export const productFields: INodeProperties[] = [
 				name: 'virtual',
 				type: 'boolean',
 				default: false,
-				description: 'If the product is virtual',
+				description: 'Whether the product is virtual',
 			},
 			{
 				displayName: 'Weight',
@@ -650,14 +656,14 @@ export const productFields: INodeProperties[] = [
 				default: 'visible',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories',
+				description: 'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
@@ -695,7 +701,7 @@ export const productFields: INodeProperties[] = [
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'if the product is downloadable',
+				description: 'Whether the product is downloadable',
 			},
 			{
 				displayName: 'External URL',
@@ -709,13 +715,14 @@ export const productFields: INodeProperties[] = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Featured product',
+				description: 'Whether the product is featured',
 			},
 			{
 				displayName: 'Manage Stock',
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Stock management at product level',
 			},
 			{
@@ -758,7 +765,7 @@ export const productFields: INodeProperties[] = [
 				name: 'reviewsAllowed',
 				type: 'boolean',
 				default: true,
-				description: 'Allow reviews',
+				description: 'Whether to allow reviews',
 			},
 			{
 				displayName: 'Sale Price',
@@ -800,7 +807,7 @@ export const productFields: INodeProperties[] = [
 				name: 'soldIndividually',
 				type: 'boolean',
 				default: false,
-				description: 'Allow one item to be bought in a single order',
+				description: 'Whether to allow one item to be bought in a single order',
 			},
 			{
 				displayName: 'Status',
@@ -855,14 +862,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags',
+				description: 'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -927,7 +934,7 @@ export const productFields: INodeProperties[] = [
 				name: 'virtual',
 				type: 'boolean',
 				default: false,
-				description: 'If the product is virtual',
+				description: 'Whether the product is virtual',
 			},
 			{
 				displayName: 'Weight',
@@ -1176,14 +1183,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Limit response to resources published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to products assigned a specific category ID',
+				description: 'Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Context',
@@ -1211,7 +1218,7 @@ export const productFields: INodeProperties[] = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Limit result set to featured products',
+				description: 'Whether to limit the result set to featured products',
 			},
 			{
 				displayName: 'Max Price',
@@ -1300,6 +1307,10 @@ export const productFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
+						name: 'Any',
+						value: 'any',
+					},
+					{
 						name: 'Draft',
 						value: 'draft',
 					},
@@ -1314,10 +1325,6 @@ export const productFields: INodeProperties[] = [
 					{
 						name: 'Publish',
 						value: 'publish',
-					},
-					{
-						name: 'Any',
-						value: 'any',
 					},
 				],
 				default: 'any',
@@ -1345,14 +1352,14 @@ export const productFields: INodeProperties[] = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tag',
+				displayName: 'Tag Name or ID',
 				name: 'tag',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to products assigned a specific tag ID',
+				description: 'Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',

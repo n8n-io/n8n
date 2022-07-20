@@ -1,4 +1,6 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -31,5 +33,29 @@ export class ElasticsearchApi implements ICredentialType {
 			placeholder: 'https://mydeployment.es.us-central1.gcp.cloud.es.io:9243',
 			description: 'Referred to as Elasticsearch \'endpoint\' in the Elastic deployment dashboard',
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
+		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
+			},
+			skipSslCertificateValidation: '={{$credentials.ignoreSSLIssues}}',
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/_xpack?human=false',
+		},
+	};
 }

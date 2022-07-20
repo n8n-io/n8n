@@ -82,6 +82,7 @@ export class Freshdesk implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Freshdesk',
 		name: 'freshdesk',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:freshdesk.png',
 		group: ['output'],
 		version: 1,
@@ -135,26 +136,31 @@ export class Freshdesk implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new ticket',
+						action: 'Create a ticket',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a ticket',
+						action: 'Delete a ticket',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a ticket',
+						action: 'Get a ticket',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all tickets',
+						action: 'Get all tickets',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a ticket',
+						action: 'Update a ticket',
 					},
 				],
 				default: 'create',
@@ -325,21 +331,20 @@ export class Freshdesk implements INodeType {
 						value: 'feedbackWidget',
 					},
 					{
+						name: 'Mobihelp',
+						value: 'mobileHelp',
+					},
+					{
+						name: 'Outbound Email',
+						value: 'OutboundEmail',
+					},
+					{
 						name: 'Phone',
 						value: 'phone',
 					},
 					{
 						name: 'Portal',
 						value: 'portal',
-					},
-					{
-						name: 'Mobihelp',
-						value: 'mobileHelp',
-					},
-
-					{
-						name: 'Outbound Email',
-						value: 'OutboundEmail',
 					},
 				],
 				default: 'portal',
@@ -380,14 +385,14 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Agent',
+						displayName: 'Agent Name or ID',
 						name: 'agent',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getAgents',
 						},
-						description: 'ID of the agent to whom the ticket has been assigned',
+						description: 'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'CC Emails',
@@ -397,14 +402,14 @@ export class Freshdesk implements INodeType {
 						description: 'Separated by a comma (,) email addresses added in the \'cc\' field of the incoming ticket email',
 					},
 					{
-						displayName: 'Company',
+						displayName: 'Company Name or ID',
 						name: 'company',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getCompanies',
 						},
-						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
+						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Description',
@@ -425,7 +430,7 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email config ID',
+						displayName: 'Email Config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
@@ -439,14 +444,14 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
-						displayName: 'Group',
+						displayName: 'Group Name or ID',
 						name: 'group',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
-						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id.',
+						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Name',
@@ -457,14 +462,14 @@ export class Freshdesk implements INodeType {
 						description: 'Name of the requester',
 					},
 					{
-						displayName: 'Product',
+						displayName: 'Product Name or ID',
 						name: 'product',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getProducts',
 						},
-						description: 'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request.',
+						description: 'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Subject',
@@ -479,7 +484,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: 'separated by a comma (,) tags that have been associated with the ticket',
+						description: 'Separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',
@@ -621,14 +626,14 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Agent',
+						displayName: 'Agent Name or ID',
 						name: 'agent',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getAgents',
 						},
-						description: 'ID of the agent to whom the ticket has been assigned',
+						description: 'ID of the agent to whom the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'CC Emails',
@@ -638,14 +643,14 @@ export class Freshdesk implements INodeType {
 						description: 'Separated by a comma (,) email addresses added in the \'cc\' field of the incoming ticket email',
 					},
 					{
-						displayName: 'Company',
+						displayName: 'Company Name or ID',
 						name: 'company',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getCompanies',
 						},
-						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
+						description: 'Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Due By',
@@ -655,7 +660,7 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the ticket is due to be resolved',
 					},
 					{
-						displayName: 'Email config ID',
+						displayName: 'Email Config ID',
 						name: 'emailConfigId',
 						type: 'number',
 						default: '',
@@ -669,14 +674,14 @@ export class Freshdesk implements INodeType {
 						description: 'Timestamp that denotes when the first response is due',
 					},
 					{
-						displayName: 'Group',
+						displayName: 'Group Name or ID',
 						name: 'group',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
-						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id.',
+						description: 'ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Name',
@@ -687,14 +692,14 @@ export class Freshdesk implements INodeType {
 						description: 'Name of the requester',
 					},
 					{
-						displayName: 'Product',
+						displayName: 'Product Name or ID',
 						name: 'product',
 						type: 'options',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getProducts',
 						},
-						description: 'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request.',
+						description: 'ID of the product to which the ticket is associated. It will be ignored if the email_config_id attribute is set in the request. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Priority',
@@ -795,7 +800,6 @@ export class Freshdesk implements INodeType {
 						displayName: 'Source',
 						name: 'source',
 						type: 'options',
-						required: true,
 						options: [
 							{
 								name: 'Chat',
@@ -835,7 +839,7 @@ export class Freshdesk implements INodeType {
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: 'separated by a comma (,) tags that have been associated with the ticket',
+						description: 'Separated by a comma (,) tags that have been associated with the ticket',
 					},
 					{
 						displayName: 'Type',
@@ -1157,7 +1161,7 @@ export class Freshdesk implements INodeType {
 						if (requester === 'requesterId') {
 							// @ts-ignore
 							if (isNaN(value)) {
-								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', { itemIndex: i });
 							}
 							body.requester_id = parseInt(value, 10);
 						} else if (requester === 'email') {
@@ -1242,7 +1246,7 @@ export class Freshdesk implements INodeType {
 							if (updateFields.requester === 'requesterId') {
 								// @ts-ignore
 								if (isNaN(parseInt(value, 10))) {
-									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
+									throw new NodeOperationError(this.getNode(), 'Requester Id must be a number', { itemIndex: i });
 								}
 								body.requester_id = parseInt(value as string, 10);
 							} else if (updateFields.requester === 'email') {

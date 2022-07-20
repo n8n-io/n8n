@@ -22,6 +22,7 @@ export class EventbriteTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Eventbrite Trigger',
 		name: 'eventbriteTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:eventbrite.png',
 		group: ['trigger'],
 		version: 1,
@@ -82,7 +83,7 @@ export class EventbriteTrigger implements INodeType {
 				default: 'privateKey',
 			},
 			{
-				displayName: 'Organization',
+				displayName: 'Organization Name or ID',
 				name: 'organization',
 				type: 'options',
 				required: true,
@@ -90,10 +91,10 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
-				description: 'The Eventbrite Organization to work on',
+				description: 'The Eventbrite Organization to work on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Event',
+				displayName: 'Event Name or ID',
 				name: 'event',
 				type: 'options',
 				required: true,
@@ -104,7 +105,7 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
-				description: 'Limit the triggers to this event',
+				description: 'Limit the triggers to this event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Actions',
@@ -112,16 +113,16 @@ export class EventbriteTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'attendee.updated',
-						value: 'attendee.updated',
-					},
-					{
 						name: 'attendee.checked_in',
 						value: 'attendee.checked_in',
 					},
 					{
 						name: 'attendee.checked_out',
 						value: 'attendee.checked_out',
+					},
+					{
+						name: 'attendee.updated',
+						value: 'attendee.updated',
 					},
 					{
 						name: 'event.created',
@@ -181,6 +182,7 @@ export class EventbriteTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically.',
 			},
 		],

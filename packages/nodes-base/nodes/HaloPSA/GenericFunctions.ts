@@ -227,7 +227,7 @@ export function qsSetStatus(status: string) {
 
 // Validation -----------------------------------------------------------------------
 
-export async function validateCrendetials(
+export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
 ): Promise<IHaloPSATokens> {

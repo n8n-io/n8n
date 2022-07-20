@@ -6,7 +6,7 @@ import {
 	blocks,
 } from './Blocks';
 
-export const blockOperations = [
+export const blockOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -24,17 +24,19 @@ export const blockOperations = [
 				name: 'Append After',
 				value: 'append',
 				description: 'Append a block',
+				action: 'Append a block',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-get-all
 				name: 'Get Child Blocks',
 				value: 'getAll',
 				description: 'Get all children blocks',
+				action: 'Get all children blocks',
 			},
 		],
 		default: 'append',
 	},
-] as INodeProperties[];
+];
 
 export const blockFields = [
 

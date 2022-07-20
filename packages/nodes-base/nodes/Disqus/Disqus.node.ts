@@ -16,6 +16,7 @@ export class Disqus implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Disqus',
 		name: 'disqus',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:disqus.png',
 		group: ['input'],
 		version: 1,
@@ -67,21 +68,25 @@ export class Disqus implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Return forum details',
+						action: 'Get a forum',
 					},
 					{
 						name: 'Get All Categories',
 						value: 'getCategories',
 						description: 'Return a list of categories within a forum',
+						action: 'Get all categories in a forum',
 					},
 					{
 						name: 'Get All Threads',
 						value: 'getThreads',
 						description: 'Return a list of threads within a forum',
+						action: 'Get all threads in a forum',
 					},
 					{
 						name: 'Get All Posts',
 						value: 'getPosts',
 						description: 'Return a list of posts within a forum',
+						action: 'Get all posts in a forum',
 					},
 				],
 				default: 'get',
@@ -91,7 +96,7 @@ export class Disqus implements INodeType {
 			//         forum:get
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -131,7 +136,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'counters',
+								name: 'Counters',
 								value: 'counters',
 							},
 							{
@@ -189,7 +194,7 @@ export class Disqus implements INodeType {
 			//         forum:getPosts
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -290,16 +295,12 @@ export class Disqus implements INodeType {
 								value: 'Is_Anonymous',
 							},
 							{
-								name: 'Is_Flagged',
-								value: 'Is_Flagged',
-							},
-							{
-								name: 'No_Issue',
-								value: 'No_Issue',
-							},
-							{
 								name: 'Is_At_Flag_Limit',
 								value: 'Is_At_Flag_Limit',
+							},
+							{
+								name: 'Is_Flagged',
+								value: 'Is_Flagged',
 							},
 							{
 								name: 'Is_Toxic',
@@ -308,6 +309,10 @@ export class Disqus implements INodeType {
 							{
 								name: 'Modified_By_Rule',
 								value: 'Modified_By_Rule',
+							},
+							{
+								name: 'No_Issue',
+								value: 'No_Issue',
 							},
 							{
 								name: 'Shadow_Banned',
@@ -323,7 +328,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'approved',
+								name: 'Approved',
 								value: 'approved',
 							},
 						],
@@ -360,7 +365,7 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'thread',
+								name: 'Thread',
 								value: 'thread',
 							},
 						],
@@ -381,7 +386,7 @@ export class Disqus implements INodeType {
 			//         forum:getCategories
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -480,7 +485,7 @@ export class Disqus implements INodeType {
 			//         forum:getThreads
 			// ----------------------------------
 			{
-				displayName: 'Forum name',
+				displayName: 'Forum Name',
 				name: 'id',
 				type: 'string',
 				default: '',
@@ -565,7 +570,7 @@ export class Disqus implements INodeType {
 								value: 'author',
 							},
 							{
-								name: 'forum',
+								name: 'Forum',
 								value: 'forum',
 							},
 						],
@@ -578,15 +583,15 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'closed',
+								name: 'Closed',
 								value: 'closed',
 							},
 							{
-								name: 'open',
+								name: 'Open',
 								value: 'open',
 							},
 							{
-								name: 'killed',
+								name: 'Killed',
 								value: 'killed',
 							},
 						],
@@ -771,11 +776,11 @@ export class Disqus implements INodeType {
 						}
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 					}
 
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

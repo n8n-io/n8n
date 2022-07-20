@@ -13,10 +13,12 @@ export const quoteOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a quote',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a quote',
 			},
 		],
 		displayOptions: {
@@ -34,7 +36,7 @@ export const quoteFields: INodeProperties[] = [
 	//         quote: create
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -42,7 +44,7 @@ export const quoteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to create the quote under',
+		description: 'ID of the user profile to create the quote under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -55,7 +57,7 @@ export const quoteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Target Account ID',
+		displayName: 'Target Account Name or ID',
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
@@ -63,7 +65,7 @@ export const quoteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},
-		description: 'ID of the account that will receive the funds',
+		description: 'ID of the account that will receive the funds. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

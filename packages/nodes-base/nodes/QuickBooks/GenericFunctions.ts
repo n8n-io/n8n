@@ -138,7 +138,7 @@ export async function quickBooksApiRequestAllItems(
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
 		try {
 			const nonResource = originalQuery.split(' ')?.pop();
-			if (nonResource === 'CreditMemo' || nonResource === 'Term') {
+			if (nonResource === 'CreditMemo' || nonResource === 'Term' || nonResource === 'TaxCode') {
 				returnData.push(...responseData.QueryResponse[nonResource]);
 			} else {
 				returnData.push(...responseData.QueryResponse[capitalCase(resource)]);
@@ -334,9 +334,14 @@ export function processLines(
 					ItemRef: {
 						value: line.itemId,
 					},
+					TaxCodeRef : {
+						value: line.TaxCodeRef,
+					},
 				};
 				delete line.itemId;
+				delete line.TaxCodeRef;
 			}
+
 
 		} else if (resource === 'invoice') {
 			if (line.DetailType === 'SalesItemLineDetail') {
@@ -344,8 +349,12 @@ export function processLines(
 					ItemRef: {
 						value: line.itemId,
 					},
+					TaxCodeRef : {
+						value: line.TaxCodeRef,
+					},
 				};
 				delete line.itemId;
+				delete line.TaxCodeRef;
 			}
 		}
 

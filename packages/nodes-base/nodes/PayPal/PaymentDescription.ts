@@ -18,11 +18,13 @@ export const payoutOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a batch payout',
+				action: 'Create a payout',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Show batch payout details',
+				action: 'Get a payout',
 			},
 		],
 		default: 'create',
@@ -134,23 +136,23 @@ export const payoutFields: INodeProperties[] = [
 						type: 'options',
 						options: [
 							{
-								name: 'Australian dollar',
+								name: 'Australian Dollar',
 								value: 'AUD',
 							},
 							{
-								name: 'Brazilian real',
+								name: 'Brazilian Real',
 								value: 'BRL',
 							},
 							{
-								name: 'Canadian dollar',
+								name: 'Canadian Dollar',
 								value: 'CAD',
 							},
 							{
-								name: 'Czech koruna',
+								name: 'Czech Koruna',
 								value: 'CZK',
 							},
 							{
-								name: 'Danish krone',
+								name: 'Danish Krone',
 								value: 'DKK',
 							},
 							{
@@ -158,7 +160,7 @@ export const payoutFields: INodeProperties[] = [
 								value: 'EUR',
 							},
 							{
-								name: 'United States dollar',
+								name: 'United States Dollar',
 								value: 'USD',
 							},
 						],
@@ -357,11 +359,13 @@ export const payoutItemOperations: INodeProperties[] = [
 				name: 'Cancel',
 				value: 'cancel',
 				description: 'Cancels an unclaimed payout item',
+				action: 'Cancel a payout item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Show payout item details',
+				action: 'Get a payout item',
 			},
 		],
 		default: 'get',

@@ -134,7 +134,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					'node.waitingForYouToCreateAnEventIn',
 					{
 						interpolate: {
-							nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType.displayName) : '',
+							nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '',
 						},
 					},
 				);

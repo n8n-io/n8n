@@ -55,7 +55,7 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 		},
 		options: [
 			{
-				displayName: 'Employee Document Category Name/ID',
+				displayName: 'Employee Document Category Name or ID',
 				name: 'categoryId',
 				type: 'options',
 				typeOptions: {
@@ -65,7 +65,7 @@ export const employeeDocumentUpdateDescription: EmployeeDocumentProperties = [
 					],
 				},
 				default: '',
-				description: 'ID of the new category of the file',
+				description: 'ID of the new category of the file. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Name',
