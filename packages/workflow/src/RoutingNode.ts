@@ -24,7 +24,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	ParamBased,
+	DeclarativaRestApiSettings,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
@@ -127,7 +127,7 @@ export class RoutingNode {
 					executeData,
 					this.mode,
 				);
-				const requestData: ParamBased.RequestOptions = {
+				const requestData: DeclarativaRestApiSettings.ResultOptions = {
 					options: {
 						qs: {},
 						body: {},
@@ -214,8 +214,8 @@ export class RoutingNode {
 	}
 
 	mergeOptions(
-		destinationOptions: ParamBased.RequestOptions,
-		sourceOptions?: ParamBased.RequestOptions,
+		destinationOptions: DeclarativaRestApiSettings.ResultOptions,
+		sourceOptions?: DeclarativaRestApiSettings.ResultOptions,
 	): void {
 		if (sourceOptions) {
 			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
@@ -375,7 +375,7 @@ export class RoutingNode {
 
 	async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
-		requestData: ParamBased.RequestOptions,
+		requestData: DeclarativaRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
 		credentialType?: string,
@@ -434,7 +434,7 @@ export class RoutingNode {
 	}
 
 	async makeRoutingRequest(
-		requestData: ParamBased.RequestOptions,
+		requestData: DeclarativaRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
 		itemIndex: number,
 		runIndex: number,
@@ -452,7 +452,7 @@ export class RoutingNode {
 
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: ParamBased.RequestOptions) => {
+			makeRoutingRequest: async (requestOptions: DeclarativaRestApiSettings.ResultOptions) => {
 				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
@@ -591,8 +591,8 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): ParamBased.RequestOptions | undefined {
-		const returnData: ParamBased.RequestOptions = {
+	): DeclarativaRestApiSettings.ResultOptions | undefined {
+		const returnData: DeclarativaRestApiSettings.ResultOptions = {
 			options: {
 				qs: {},
 				body: {},

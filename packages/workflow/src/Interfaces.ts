@@ -253,13 +253,15 @@ export interface IAuthenticateRuleResponseSuccessBody extends IAuthenticateRuleB
 
 type Override<A extends object, B extends object> = Omit<A, keyof B> & B;
 
-export namespace ParamBased {
+export namespace DeclarativaRestApiSettings {
+	// The type below might be extended
+	// with new options that need to be parsed as expressions
 	export type HttpRequestOptions = Override<
 		IHttpRequestOptions,
 		{ skipSslCertificateValidation?: string | boolean; url?: string }
 	>;
 
-	export type RequestOptions = {
+	export type ResultOptions = {
 		maxResults?: number | string;
 		options: HttpRequestOptions;
 		paginate?: boolean | string;
@@ -275,7 +277,7 @@ export namespace ParamBased {
 }
 
 export interface ICredentialTestRequest {
-	request: ParamBased.HttpRequestOptions;
+	request: DeclarativaRestApiSettings.HttpRequestOptions;
 	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
@@ -496,7 +498,7 @@ export interface IN8nRequestOperations {
 		| IN8nRequestOperationPaginationOffset
 		| ((
 				this: IExecutePaginationFunctions,
-				requestOptions: ParamBased.RequestOptions,
+				requestOptions: DeclarativaRestApiSettings.ResultOptions,
 		  ) => Promise<INodeExecutionData[]>);
 }
 
@@ -609,7 +611,7 @@ export interface IExecuteSingleFunctions {
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
 		this: IAllExecuteFunctions,
-		requestOptions: ParamBased.RequestOptions,
+		requestOptions: DeclarativaRestApiSettings.ResultOptions,
 	): Promise<INodeExecutionData[]>;
 }
 export interface IExecuteWorkflowInfo {
@@ -898,7 +900,7 @@ export interface ILoadOptions {
 	routing?: {
 		operations?: IN8nRequestOperations;
 		output?: INodeRequestOutput;
-		request?: ParamBased.HttpRequestOptions;
+		request?: DeclarativaRestApiSettings.HttpRequestOptions;
 	};
 }
 
@@ -1077,7 +1079,7 @@ export interface INodeTypeBaseDescription {
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
 	output?: INodeRequestOutput;
-	request?: ParamBased.HttpRequestOptions;
+	request?: DeclarativaRestApiSettings.HttpRequestOptions;
 	send?: INodeRequestSend;
 }
 
@@ -1168,7 +1170,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
-	requestDefaults?: ParamBased.HttpRequestOptions;
+	requestDefaults?: DeclarativaRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;
