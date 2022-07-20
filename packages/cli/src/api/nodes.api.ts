@@ -100,7 +100,7 @@ nodesController.post(
 			installedPackage.installedNodes.forEach((nodeData) => {
 				const pushInstance = Push.getInstance();
 				pushInstance.send('reloadNodeType', {
-					name: nodeData.name,
+					name: nodeData.type,
 					version: nodeData.latestVersion,
 				});
 			});
