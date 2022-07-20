@@ -1,13 +1,12 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IHookFunctions,
+	INodeType,
+	INodeTypeDescription,
 	IWebhookFunctions,
+	IWebhookResponseData,
 	NodeOperationError,
-	IExecuteFunctions,
-	INodeExecutionData,
 } from 'n8n-workflow';
 import { sendInBlueWebhookApi } from './GenericFunctions';
 
