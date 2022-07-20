@@ -102,6 +102,7 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
+		console.log({ that });
 		return new Proxy(
 			{},
 			{

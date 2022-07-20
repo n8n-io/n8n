@@ -543,7 +543,7 @@ export default mixins(
 				return defaults;
 			},
 			hasNodeRun(): boolean {
-				return Boolean(!this.isExecuting && this.node && (this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name) || (this.paneType === 'output' && this.hasPinData)));
+				return Boolean(!this.isExecuting && this.node && (this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name) || this.hasPinData));
 			},
 			hasRunError(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
@@ -624,7 +624,7 @@ export default mixins(
 			inputData (): INodeExecutionData[] {
 				let inputData = this.rawInputData;
 
-				if (this.paneType === 'output' && this.node && this.pinData) {
+				if (this.node && this.pinData) {
 					inputData = Array.isArray(this.pinData)
 						? this.pinData.map((value) => ({
 							json: value,
@@ -767,7 +767,7 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: this.removeJsonKeys(value) });
+				this.$store.dispatch('pinData', { node: this.node, data: this.removeJsonKeys(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
@@ -862,7 +862,7 @@ export default mixins(
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
-				this.$store.commit('pinData', { node: this.node, data });
+				this.$store.dispatch('pinData', { node: this.node, data });
 
 				if (this.maxRunIndex > 0) {
 					this.$showToast({

@@ -548,7 +548,7 @@ export default mixins(
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 				this.$store.commit('setWorkflowExecutionData', data);
-				this.$store.commit('setWorkflowPinData', data.workflowData.pinData);
+				this.$store.dispatch('setWorkflowPinData', data.workflowData.pinData);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
 				this.$nextTick(() => {
@@ -613,7 +613,7 @@ export default mixins(
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 
 				if (data.workflow.pinData) {
-					this.$store.commit('setWorkflowPinData', data.workflow.pinData);
+					this.$store.dispatch('setWorkflowPinData', data.workflow.pinData);
 				}
 
 				this.$nextTick(() => {
@@ -684,7 +684,7 @@ export default mixins(
 				this.$store.commit('setWorkflowId', workflowId);
 				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
-				this.$store.commit('setWorkflowPinData', data.pinData || {});
+				this.$store.dispatch('setWorkflowPinData', data.pinData || {});
 
 				const tags = (data.tags || []) as ITag[];
 				this.$store.commit('tags/upsertTags', tags);
@@ -1320,7 +1320,7 @@ export default mixins(
 					});
 
 					if (workflowData.pinData) {
-						this.$store.commit('setWorkflowPinData', workflowData.pinData);
+						this.$store.dispatch('setWorkflowPinData', workflowData.pinData);
 					}
 
 					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
@@ -2181,7 +2181,7 @@ export default mixins(
 
 				const pinData = this.$store.getters['pinDataByNodeName'](nodeName);
 				if (pinData) {
-					this.$store.commit('pinData', {
+					this.$store.dispatch('pinData', {
 						node: newNodeData,
 						data: pinData,
 					});
