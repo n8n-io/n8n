@@ -1,4 +1,5 @@
 import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
+import type { SuperAgentTest } from 'supertest';
 import type { ICredentialsDb, IDatabaseCollections } from '../../../src';
 import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import type { User } from '../../../src/databases/entities/User';
@@ -9,6 +10,8 @@ export type CollectionName = keyof IDatabaseCollections;
 export type MappingName = keyof typeof MAPPING_TABLES;
 
 export type ApiPath = 'internal' | 'public';
+
+export type AuthAgent = (user: User) => SuperAgentTest;
 
 type EndpointGroup =
 	| 'me'
