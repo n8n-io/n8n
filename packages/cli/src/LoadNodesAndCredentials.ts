@@ -322,7 +322,7 @@ class LoadNodesAndCredentialsClass {
 					packageFile.author?.email,
 				);
 
-				attachNodesToNodeTypes(newlyInstalledPackage.installedNodes);
+				this.attachNodesToNodeTypes(newlyInstalledPackage.installedNodes);
 
 				return newlyInstalledPackage;
 			} catch (error) {

@@ -166,6 +166,9 @@ export interface IRequestOptionsSimplifiedAuth {
 	skipSslCertificateValidation?: boolean | string;
 }
 
+export interface IHttpRequestHelper {
+	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
+}
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
 
@@ -183,6 +186,14 @@ export abstract class ICredentialsHelper {
 		node: INode,
 		defaultTimezone: string,
 	): Promise<IHttpRequestOptions>;
+
+	abstract preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined>;
 
 	abstract getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
@@ -269,6 +280,10 @@ export interface ICredentialType {
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 	authenticate?: IAuthenticate;
+	preAuthentication?: (
+		this: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
 }
@@ -894,6 +909,7 @@ export interface INodePropertyTypeOptions {
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
+	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	[key: string]: any;
 }
 
