@@ -27,6 +27,7 @@ import {
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
+	XYPosition,
 } from '../Interface';
 
 const module: Module<IUiState, IRootState> = {
@@ -108,8 +109,17 @@ const module: Module<IUiState, IRootState> = {
 			output: {
 				displayMode: 'table',
 			},
+			focusedMappableInput: '',
+			mappingTelemetry: {},
 		},
 		mainPanelPosition: 0.5,
+		draggable: {
+			isDragging: false,
+			type: '',
+			data: '',
+			canDrop: false,
+			stickyPosition: null,
+		},
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -138,6 +148,13 @@ const module: Module<IUiState, IRootState> = {
 		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
+		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
+		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
+		draggableType: (state: IUiState) => state.draggable.type,
+		draggableData: (state: IUiState) => state.draggable.data,
+		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
+		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
+		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -184,7 +201,39 @@ const module: Module<IUiState, IRootState> = {
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
 		},
-
+		setMappableNDVInputFocus(state: IUiState, paramName: string) {
+			Vue.set(state.ndv, 'focusedMappableInput', paramName);
+		},
+		draggableStartDragging(state: IUiState, {type, data}: {type: string, data: string}) {
+			state.draggable = {
+				isDragging: true,
+				type,
+				data,
+				canDrop: false,
+				stickyPosition: null,
+			};
+		},
+		draggableStopDragging(state: IUiState) {
+			state.draggable = {
+				isDragging: false,
+				type: '',
+				data: '',
+				canDrop: false,
+				stickyPosition: null,
+			};
+		},
+		setDraggableStickyPos(state: IUiState, position: XYPosition | null) {
+			Vue.set(state.draggable, 'stickyPosition', position);
+		},
+		setDraggableCanDrop(state: IUiState, canDrop: boolean) {
+			Vue.set(state.draggable, 'canDrop', canDrop);
+		},
+		setMappingTelemetry(state: IUiState, telemetery: {[key: string]: string | number | boolean}) {
+			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetery};
+		},
+		resetMappingTelemetry(state: IUiState) {
+			state.ndv.mappingTelemetry = {};
+		},
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
