@@ -195,13 +195,13 @@ export namespace sendInBlueWebhookApi {
 			},
 		};
 
-		const webhookId = (await ref.helpers.requestWithAuthentication.call(
+		const webhookId = await ref.helpers.requestWithAuthentication.call(
 			ref,
 			credentialsName,
 			options,
-		)) as WebhookId;
+		);
 
-		return webhookId;
+		return JSON.parse(webhookId) as WebhookId;
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {
