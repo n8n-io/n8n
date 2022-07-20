@@ -555,6 +555,7 @@
       "dist/nodes/NextCloud/NextCloud.node.js",
       "dist/nodes/NocoDB/NocoDB.node.js",
       "dist/nodes/SendInBlue/SendInBlue.node.js",
+      "dist/nodes/SendInBlue/SendInBlueTrigger.node.js",
       "dist/nodes/StickyNote/StickyNote.node.js",
       "dist/nodes/NoOp/NoOp.node.js",
       "dist/nodes/Onfleet/Onfleet.node.js",
