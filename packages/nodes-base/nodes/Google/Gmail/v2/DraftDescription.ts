@@ -80,42 +80,32 @@ export const draftFields: INodeProperties[] = [
 		placeholder: 'Hello World!',
 	},
 	{
-		displayName: 'HTML',
-		name: 'includeHtml',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: false,
-		description: 'Whether the message should also be included as HTML',
-	},
-	{
-		displayName: 'HTML Message',
-		name: 'htmlMessage',
-		type: 'string',
-		default: '',
+		displayName: 'Email Type',
+		name: 'emailType',
+		type: 'options',
+		default: 'text',
 		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+			{
+				name: 'Text',
+				value: 'text',
+			},
+		],
 		displayOptions: {
 			show: {
-				includeHtml: [
-					true,
-				],
 				resource: [
 					'draft',
 				],
 				operation: [
 					'create',
 				],
-			},
-		},
-		description: 'The HTML message body',
+			}
+		}
 	},
 	{
 		displayName: 'Message',
@@ -133,8 +123,7 @@ export const draftFields: INodeProperties[] = [
 				],
 			},
 		},
-		placeholder: 'Hello World!',
-		description:  'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional Options" section.',
+		hint: 'Get better Text and Expressions writing experience by using the expression editor',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -329,7 +318,7 @@ export const draftFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 10,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{

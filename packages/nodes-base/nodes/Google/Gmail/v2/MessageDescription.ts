@@ -121,44 +121,33 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Hello World!',
 	},
 	{
-		displayName: 'HTML',
-		name: 'includeHtml',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-					'reply',
-				],
-			},
-		},
-		default: false,
-		description: 'Whether the message should also be included as HTML',
-	},
-	{
-		displayName: 'HTML Message',
-		name: 'htmlMessage',
-		type: 'string',
-		default: '',
+		displayName: 'Email Type',
+		name: 'emailType',
+		type: 'options',
+		default: 'text',
 		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+			{
+				name: 'Text',
+				value: 'text',
+			},
+		],
 		displayOptions: {
 			show: {
-				includeHtml: [
-					true,
-				],
 				resource: [
 					'message',
 				],
 				operation: [
-					'reply',
 					'send',
+					'reply',
 				],
-			},
-		},
-		description: 'The HTML message body',
+			}
+		}
 	},
 	{
 		displayName: 'Message',
@@ -177,13 +166,13 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Plain text message body',
+		hint: 'Get better Text and Expressions writing experience by using the expression editor',
 	},
 	{
 		displayName: 'To Email',
 		name: 'toList',
 		type: 'string',
-		default: [],
+		default: [''], //empty string inside array needed to show one input field expanded
 		required: true,
 		typeOptions: {
 			multipleValues: true,
@@ -275,9 +264,9 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Override Sender Name',
 				name: 'senderName',
 				type: 'string',
-				placeholder: 'Name <test@gmail.com>',
+				placeholder: '',
 				default: '',
-				description: 'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API.',
+				description: 'The name displayed in your contacts inboxes',
 			},
 		],
 	},
@@ -393,7 +382,7 @@ export const messageFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 10,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -488,14 +477,14 @@ export const messageFields: INodeProperties[] = [
 				description: 'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Query',
+				displayName: 'Matches Search Query',
 				name: 'q',
 				type: 'string',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope.',
+				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
 			},
 		],
 	},

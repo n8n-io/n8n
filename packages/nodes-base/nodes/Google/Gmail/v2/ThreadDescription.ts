@@ -160,7 +160,7 @@ export const threadFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 10,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -198,14 +198,14 @@ export const threadFields: INodeProperties[] = [
 				description: 'Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Query',
+				displayName: 'Matches Search Query',
 				name: 'q',
 				type: 'string',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Only return threads matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope .',
+				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
 			},
 		],
 	},
