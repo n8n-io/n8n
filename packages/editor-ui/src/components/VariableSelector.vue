@@ -533,7 +533,7 @@ export default mixins(
 
 					tempOutputData = this.getNodeRunDataOutput(parentNode[0], runData, filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
 
-					let pinDataOptions: IVariableSelectorOption[] = [
+					const pinDataOptions: IVariableSelectorOption[] = [
 						{
 							name: 'JSON',
 							options: [],
