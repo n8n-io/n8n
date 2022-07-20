@@ -489,7 +489,7 @@ export default mixins(
 						return;
 					}
 
-					this.$store.dispatch('pinData', { node: this.activeNode, data: JSON.parse(value) });
+					this.$store.commit('pinData', { node: this.activeNode, data: JSON.parse(value) });
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);

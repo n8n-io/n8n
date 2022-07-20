@@ -113,18 +113,6 @@ export const store = new Vuex.Store({
 	strict: process.env.NODE_ENV !== 'production',
 	modules,
 	state,
-	actions: {
-		pinData({commit, state}, payload: { node: INodeUi, data: PinData[string] }) {
-			commit('pinData', payload);
-			commit('setPinDataAsExecutionData', {
-				[payload.node.name]: payload.data,
-			});
-		},
-		setWorkflowPinData({commit, state}, payload: PinData) {
-			commit('setWorkflowPinData', payload);
-			commit('setPinDataAsExecutionData', payload);
-		},
-	},
 	mutations: {
 		// Active Actions
 		addActiveAction(state, action: string) {
@@ -234,55 +222,6 @@ export const store = new Vuex.Store({
 			}
 
 			state.stateIsDirty = true;
-		},
-		setPinDataAsExecutionData(state, payload: PinData) {
-			let executionData: IExecutionResponse | null = state.workflowExecutionData;
-
-			if (!executionData) {
-				executionData = {
-					id: '',
-					workflowData: state.workflow,
-					data: {
-						startData: {},
-						resultData: {
-							runData: {},
-							lastNodeExecuted: '',
-						},
-						executionData: {
-							contextData: {},
-							nodeExecutionStack: [],
-							waitingExecution: {},
-							waitingExecutionSource: {},
-						},
-					},
-					mode: "manual",
-					startedAt: new Date(),
-					stoppedAt: new Date(),
-					finished: true,
-				};
-			}
-
-			Object.keys(payload).forEach((nodeName) => {
-				executionData!.data!.resultData.runData[nodeName] = [
-					{
-						startTime: 0,
-						executionTime: 0,
-						source: [],
-						data: {
-							main: [
-								payload[nodeName].map((data, index) => ({
-									json: data,
-									pairedItem: { item: index },
-								})),
-							],
-						},
-					},
-				];
-
-				executionData!.data!.resultData.lastNodeExecuted = nodeName;
-			});
-
-			// Vue.set(state, 'workflowExecutionData', executionData);
 		},
 
 		// Active

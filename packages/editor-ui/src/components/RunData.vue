@@ -767,7 +767,7 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.dispatch('pinData', { node: this.node, data: this.removeJsonKeys(value) });
+				this.$store.commit('pinData', { node: this.node, data: this.removeJsonKeys(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
@@ -862,7 +862,7 @@ export default mixins(
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
-				this.$store.dispatch('pinData', { node: this.node, data });
+				this.$store.commit('pinData', { node: this.node, data });
 
 				if (this.maxRunIndex > 0) {
 					this.$showToast({
