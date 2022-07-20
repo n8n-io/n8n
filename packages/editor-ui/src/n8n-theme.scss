@@ -196,7 +196,7 @@
 		&,
 		&:hover,
 		&:focus {
-			border-radius: 20px;
+			border-radius: var(--border-radius-base);
 			color: var(--color-text-dark);
 			background-color: var(--color-background-base);
 			border-color: var(--color-foreground-base);

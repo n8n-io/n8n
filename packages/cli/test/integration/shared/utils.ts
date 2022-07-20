@@ -53,6 +53,7 @@ import type {
 	TriggerTime,
 } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import { workflowsController } from '../../../src/api/workflows.api';
 import { nodesController } from '../../../src/api/nodes.api';
 import { randomName } from './random';
 
@@ -96,17 +97,18 @@ export async function initTestServer({
 
 	if (routerEndpoints.length) {
 		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
-		const map: Record<string, express.Router | express.Router[]> = {
-			credentials: credentialsController,
-			nodes: nodesController,
-			publicApi: apiRouters,
+		const map: Record<string, express.Router | express.Router[] | any> = {
+			credentials: { controller: credentialsController, path: 'credentials' },
+			workflows: { controller: workflowsController, path: 'workflows' },
+			nodes: { controller: nodesController, path: 'nodes' },
+			publicApi: apiRouters
 		};
 
 		for (const group of routerEndpoints) {
 			if (group === 'publicApi') {
 				testServer.app.use(...(map[group] as express.Router[]));
 			} else {
-				testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+				testServer.app.use(`/${testServer.restEndpoint}/${map[group].path}`, map[group].controller);
 			}
 		}
 	}
@@ -145,8 +147,10 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
+	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
+
 	endpointGroups.forEach((group) =>
-		(['credentials', 'nodes', 'publicApi'].includes(group) ? routerEndpoints : functionEndpoints).push(group),
+		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];

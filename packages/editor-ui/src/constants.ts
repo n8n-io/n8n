@@ -1,3 +1,5 @@
+export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
+export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 export const NODE_NAME_PREFIX = 'node-';
@@ -55,6 +57,7 @@ export const BREAKPOINT_XL = 1920;
 
 
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
+export const DATA_PINNING_DOCS_URL = 'https://docs.n8n.io/data/data-pinning/';
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
 export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=keywords%3An8n-community-node-package`;
@@ -95,6 +98,7 @@ export const SET_NODE_TYPE = 'n8n-nodes-base.set';
 export const SERVICENOW_NODE_TYPE = 'n8n-nodes-base.serviceNow';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
+export const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
 export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
@@ -105,6 +109,16 @@ export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger'
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
+
+export const MULTIPLE_OUTPUT_NODE_TYPES = [
+	IF_NODE_TYPE,
+	SWITCH_NODE_TYPE,
+];
+
+export const PIN_DATA_NODE_TYPES_DENYLIST = [
+	...MULTIPLE_OUTPUT_NODE_TYPES,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+];
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -210,6 +224,8 @@ export const MODAL_CONFIRMED = 'confirmed';
 
 export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
+export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
+export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_FLAG = 'N8N_MAPPING_ONBOARDED';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
@@ -262,4 +278,14 @@ export enum VIEWS {
 	COMMUNITY_NODES = "CommunityNodes",
 }
 
+export const TEST_PIN_DATA = [
+	{
+		name: "First item",
+		code: 1,
+	},
+	{
+		name: "Second item",
+		code: 2,
+	},
+];
 export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`, '$parameter'];
