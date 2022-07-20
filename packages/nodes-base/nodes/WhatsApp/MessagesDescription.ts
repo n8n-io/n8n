@@ -136,22 +136,22 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: media
 	// ----------------------------------
 	{
-		displayName: 'Take Media From',
+		displayName: 'Take Audio From',
 		name: 'mediaPath',
 		type: 'options',
 		default: 'useMediaLink',
-		description: 'Use a link, an ID, or n8n to upload a media file',
+		description: 'Use a link, an ID, or n8n to upload an audio file',
 		options: [
 			{
 				name: 'Link',
 				value: 'useMediaLink',
 				description:
-					'When using a link, WhatsApp will download the media, saving you the step of uploading media yourself',
+					'When using a link, WhatsApp will download the audio, saving you the step of uploading audio yourself',
 			},
 			{
 				name: 'WhatsApp Media',
 				value: 'useMediaId',
-				description: 'You can use an ID if you have already uploaded the media to WhatsApp',
+				description: 'You can use an ID if you have already uploaded the audio to WhatsApp',
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -162,7 +162,100 @@ export const messageTypeFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: mediaTypes,
+				operation: ['audio'],
+			},
+		},
+	},
+	{
+		displayName: 'Take Document From',
+		name: 'mediaPath',
+		type: 'options',
+		default: 'useMediaLink',
+		description: 'Use a link, an ID, or n8n to upload a document',
+		options: [
+			{
+				name: 'Link',
+				value: 'useMediaLink',
+				description:
+					'When using a link, WhatsApp will download the document, saving you the step of uploading document yourself',
+			},
+			{
+				name: 'WhatsApp Media',
+				value: 'useMediaId',
+				description: 'You can use an ID if you have already uploaded the document to WhatsApp',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'n8n',
+				value: 'useMedian8n',
+				description: 'Upload a binary file on the item being processed in n8n',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['document'],
+			},
+		},
+	},
+	{
+		displayName: 'Take Image From',
+		name: 'mediaPath',
+		type: 'options',
+		default: 'useMediaLink',
+		description: 'Use a link, an ID, or n8n to upload an image',
+		options: [
+			{
+				name: 'Link',
+				value: 'useMediaLink',
+				description:
+					'When using a link, WhatsApp will download the image, saving you the step of uploading image yourself',
+			},
+			{
+				name: 'WhatsApp Media',
+				value: 'useMediaId',
+				description: 'You can use an ID if you have already uploaded the image to WhatsApp',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'n8n',
+				value: 'useMedian8n',
+				description: 'Upload a binary file on the item being processed in n8n',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['image'],
+			},
+		},
+	},
+	{
+		displayName: 'Take Video From',
+		name: 'mediaPath',
+		type: 'options',
+		default: 'useMediaLink',
+		description: 'Use a link, an ID, or n8n to upload a video',
+		options: [
+			{
+				name: 'Link',
+				value: 'useMediaLink',
+				description:
+					'When using a link, WhatsApp will download the video, saving you the step of uploading video yourself',
+			},
+			{
+				name: 'WhatsApp Media',
+				value: 'useMediaId',
+				description: 'You can use an ID if you have already uploaded the video to WhatsApp',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'n8n',
+				value: 'useMedian8n',
+				description: 'Upload a binary file on the item being processed in n8n',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['video'],
 			},
 		},
 	},
