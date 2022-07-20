@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.mindee",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Utility"
-	],
+	"categories": ["Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{
