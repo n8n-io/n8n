@@ -56,7 +56,7 @@ export class SeaTableApi implements ICredentialType {
 			name: 'timezone',
 			type: 'options',
 			default: '',
-			description: 'Seatable server\'s timezone',
+			description: "Seatable server's timezone",
 			options: [...timezones],
 		},
 	];
