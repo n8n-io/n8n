@@ -23,7 +23,7 @@ export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 		{
 			displayName: 'User Principal Name',
 			name: 'userPrincipalName',
-			description: "Target user's UPN or ID",
+			description: 'Target user\'s UPN or ID',
 			type: 'string',
 			default: '',
 			displayOptions: {
