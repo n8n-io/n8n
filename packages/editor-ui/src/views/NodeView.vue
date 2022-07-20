@@ -2981,9 +2981,7 @@ export default mixins(
 						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
 					}) as Connection[];
 
-					connections.forEach((connection) => {
-						CanvasHelpers.resetConnection(connection);
-					});
+					connections.forEach(CanvasHelpers.resetConnection);
 				});
 			},
 		},
@@ -3040,13 +3038,8 @@ export default mixins(
 
 			this.$externalHooks().run('nodeView.mount');
 
-			dataPinningEventBus.$on('pin-data', (pinData: PinData) => {
-				this.addPinDataConnections(pinData);
-			});
-
-			dataPinningEventBus.$on('unpin-data', (pinData: PinData) => {
-				this.removePinDataConnections(pinData);
-			});
+			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
+			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
 
 		destroyed () {
@@ -3056,6 +3049,9 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+
+			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
+			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 		},
 	});
 </script>
