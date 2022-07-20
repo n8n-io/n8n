@@ -55,10 +55,18 @@ export class CredentialsService {
 	}
 
 	static async getFiltered(user: User, filter: Record<string, string>): Promise<ICredentialsDb[]> {
+		const selectFields: Array<keyof ICredentialsDb> = [
+			'id',
+			'name',
+			'type',
+			'nodesAccess',
+			'createdAt',
+			'updatedAt',
+		];
 		try {
 			if (user.globalRole.name === 'owner') {
 				return await Db.collections.Credentials.find({
-					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+					select: selectFields,
 					where: filter,
 				});
 			}
@@ -72,7 +80,7 @@ export class CredentialsService {
 			if (!shared.length) return [];
 
 			return await Db.collections.Credentials.find({
-				select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
+				select: selectFields,
 				where: {
 					// The ordering is important here. If id is before the object spread then
 					// a user can control the id field
