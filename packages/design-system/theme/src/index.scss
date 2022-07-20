@@ -23,7 +23,6 @@
 @use "./switch.scss";
 @use "./select.scss";
 @use "./skeleton.scss";
-@use "./button.scss";
 // @use "./button-group.scss";
 @use "./table.scss";
 @use "./table-column.scss";
@@ -82,4 +81,4 @@
 // @use "./avatar.scss";
 @use "./drawer.scss";
 // @use "./popconfirm.scss";
-@use "./utilities.scss";
+@use "./utilities/index.scss";

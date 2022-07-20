@@ -21,6 +21,7 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
+	PinData,
 	PublicInstalledPackage,
 } from 'n8n-workflow';
 
@@ -150,6 +151,7 @@ export interface INodeUi extends INode {
 	notes?: string;
 	issues?: INodeIssues;
 	name: string;
+	pinData?: IDataObject;
 }
 
 export interface INodeTypesMaxCount {
@@ -216,6 +218,7 @@ export interface IStartRunData {
 	startNodes?: string[];
 	destinationNode?: string;
 	runData?: IRunData;
+	pinData?: PinData;
 }
 
 export interface IRunDataUi {
@@ -250,6 +253,7 @@ export interface IWorkflowData {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: string[];
+	pinData?: PinData;
 }
 
 export interface IWorkflowDataUpdate {
@@ -260,6 +264,7 @@ export interface IWorkflowDataUpdate {
 	settings?: IWorkflowSettings;
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: PinData;
 }
 
 export interface IWorkflowTemplate {
@@ -282,6 +287,7 @@ export interface IWorkflowDb {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: PinData;
 }
 
 // Identical to cli.Interfaces.ts
@@ -907,6 +913,10 @@ export interface IUiState {
 		};
 		output: {
 			displayMode: IRunDataDisplayMode;
+			editMode: {
+				enabled: boolean;
+				value: string;
+			};
 		};
 		focusedMappableInput: string;
 		mappingTelemetry: {[key: string]: string | number | boolean};

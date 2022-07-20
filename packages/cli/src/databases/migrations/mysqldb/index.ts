@@ -16,6 +16,7 @@ import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEm
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { CommunityNodes1652254514003 } from './1652254514003-CommunityNodes';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
+import { IntroducePinData1654090101303 } from './1654090101303-IntroducePinData';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -36,4 +37,5 @@ export const mysqlMigrations = [
 	AddUserSettings1652367743993,
 	CommunityNodes1652254514003,
 	AddAPIKeyColumn1652905585850,
+	IntroducePinData1654090101303,
 ];
