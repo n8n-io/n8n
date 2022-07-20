@@ -194,7 +194,8 @@ import {
 	INodeCredentialsDetails,
 	TelemetryHelpers,
 	ITelemetryTrackProperties,
-	IWorkflowBase, PinData,
+	IWorkflowBase,
+	PinData,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -220,7 +221,6 @@ import {
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
-import {addConnectionOutputSuccess} from "./canvasHelpers";
 
 interface AddNodeOptions {
 	position?: XYPosition;
