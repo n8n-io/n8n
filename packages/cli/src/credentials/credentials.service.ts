@@ -8,7 +8,6 @@ import {
 	LoggerProxy,
 } from 'n8n-workflow';
 import { FindOneOptions, In } from 'typeorm';
-import { clone } from 'lodash';
 
 import {
 	createCredentialsFromCredentialsEntity,
@@ -108,13 +107,14 @@ export class CredentialsService {
 	static async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
-		// Make a copy so we can delete the provided ID and
-		// so we can modify nodesAccess
-		const dataCopy = clone(data);
-		delete dataCopy.id;
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { id, ...rest } = data;
 
-		const newCredentials = new CredentialsEntity();
-		Object.assign(newCredentials, dataCopy);
+		// This saves us a merge but requires some type casting. These
+		// types are compatiable for this case.
+		const newCredentials = Db.collections.Credentials.create(
+			rest as ICredentialsDb,
+		) as CredentialsEntity;
 
 		await validateEntity(newCredentials);
 
@@ -130,8 +130,11 @@ export class CredentialsService {
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
-		const updateData = new CredentialsEntity();
-		Object.assign(updateData, data);
+		// This saves us a merge but requires some type casting. These
+		// types are compatiable for this case.
+		const updateData = Db.collections.Credentials.create(
+			data as ICredentialsDb,
+		) as CredentialsEntity;
 
 		await validateEntity(updateData);
 
