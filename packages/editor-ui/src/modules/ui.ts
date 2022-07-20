@@ -1,5 +1,7 @@
 import {
 	ABOUT_MODAL_KEY,
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -17,6 +19,7 @@ import {
 	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -84,6 +87,14 @@ const module: Module<IUiState, IRootState> = {
 			},
 			[WORKFLOW_ACTIVE_MODAL_KEY]: {
 				open: false,
+			},
+			[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: {
+				open: false,
+			},
+			[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: {
+				open: false,
+				mode: '',
+				activeId: null,
 			},
 		},
 		modalStack: [],
@@ -241,6 +252,16 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id: type });
 			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' });
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
+		},
+		async openCommunityPackageUninstallConfirmModal(context: ActionContext<IUiState, IRootState>, packageName: string) {
+			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});
+			context.commit('setMode', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, mode: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL });
+			context.commit('openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+		},
+		async openCommunityPackageUpdateConfirmModal(context: ActionContext<IUiState, IRootState>, packageName: string) {
+			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});
+			context.commit('setMode', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, mode: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE });
+			context.commit('openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 		},
 	},
 };

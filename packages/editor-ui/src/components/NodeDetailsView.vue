@@ -28,6 +28,8 @@
 		<div class="data-display" v-if="activeNode">
 			<div @click="close" :class="$style.modalBackground"></div>
 			<NDVDraggablePanels
+				:isTriggerNode="isTriggerNode"
+				:hideInputAndOutput="activeNodeType === null"
 				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
 				:isDraggable="!isTriggerNode"
 				@close="close"
