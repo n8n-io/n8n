@@ -1425,7 +1425,7 @@ export default mixins(
 				});
 			},
 
-			async addNodeDataWithDefaultCredential(nodeTypeData: INodeTypeDescription) {
+			async getNewNodeWithDefaultCredential(nodeTypeData: INodeTypeDescription) {
 				const newNodeData: INodeUi = {
 					name: nodeTypeData.defaults.name as string,
 					type: nodeTypeData.name,
@@ -1438,7 +1438,7 @@ export default mixins(
 
 				const credentialPerType = nodeTypeData.credentials && nodeTypeData.credentials
 					.map(type => this.$store.getters['credentials/getCredentialsByType'](type.name))
-					.filter(type => type.length === 1).map( item => item[0]);
+					.flat();
 
 				if (credentialPerType && credentialPerType.length === 1) {
 					const defaultCredential = credentialPerType[0];
@@ -1452,7 +1452,7 @@ export default mixins(
 
 					await this.loadNodesProperties([newNodeData].map(node => ({name: node.type, version: node.typeVersion})));
 					const nodeType = this.$store.getters.nodeType(newNodeData.type, newNodeData.typeVersion) as INodeTypeDescription;
-				 	const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, {}, true, false);
+				 	const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, {}, true, false, newNodeData);
 
 					if (nodeTypeData.credentials){
 						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
@@ -1503,7 +1503,7 @@ export default mixins(
 					return;
 				}
 
-				const newNodeData = await this.addNodeDataWithDefaultCredential(nodeTypeData);
+				const newNodeData = await this.getNewNodeWithDefaultCredential(nodeTypeData);
 
 				// when pulling new connection from node or injecting into a connection
 				const lastSelectedNode = this.lastSelectedNode;
