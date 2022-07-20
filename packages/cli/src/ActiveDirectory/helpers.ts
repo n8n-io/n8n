@@ -314,24 +314,24 @@ export const saveSyncronization = async (sync: ActiveDirectorySync): Promise<voi
 	await Db.collections.ActiveDirectorySync.save<ActiveDirectorySync>(sync);
 };
 
-export const listADSyncronizations = async (): Promise<SyncronizationList[]> => {
-	const data = await Db.collections.ActiveDirectorySync.find({
+export const listADSyncronizations = async (): Promise<ActiveDirectorySync[]> => {
+	return Db.collections.ActiveDirectorySync.find({
 		order: {
 			id: 'DESC',
 		},
 	});
 
-	const responseMapper = (sync: ActiveDirectorySync): SyncronizationList => {
-		const runTimeInMinutes = sync.endedAt.getTime() - sync.startedAt.getTime();
-		return {
-			id: sync.id,
-			runTime: humanizeDuration(runTimeInMinutes),
-			scanned: sync.scanned,
-			status: sync.status,
-			startedAt: sync.startedAt.toUTCString(),
-			errorMessage: sync.error,
-		};
-	};
+	// const responseMapper = (sync: ActiveDirectorySync): SyncronizationList => {
+	// 	const runTimeInMinutes = sync.endedAt.getTime() - sync.startedAt.getTime();
+	// 	return {
+	// 		id: sync.id,
+	// 		runTime: humanizeDuration(runTimeInMinutes),
+	// 		scanned: sync.scanned,
+	// 		status: sync.status,
+	// 		startedAt: sync.startedAt.toUTCString(),
+	// 		errorMessage: sync.error,
+	// 	};
+	// };
 
-	return data.map(responseMapper);
+	// return data.map(responseMapper);
 };

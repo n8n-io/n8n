@@ -20,20 +20,32 @@
 
 			<div>
 				<n8n-button float="right" :label="$locale.baseText('settings.ad.save')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
-				<n8n-button float="left" :label=" loadingTestConnection ? $locale.baseText('settings.ad.testingConnection') : $locale.baseText('settings.ad.testConnection')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="OnTestConnectionClick" />
+				<n8n-button float="left" :label=" loadingTestConnection ? $locale.baseText('settings.ad.testingConnection') : $locale.baseText('settings.ad.testConnection')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="onTestConnectionClick" />
 			</div>
 		</div>
 		<div :class="$style.syncTable">
 			<el-table
+			v-loading="loadingTable"
 			:border="true"
 			:stripe="true"
 			:data="dataTable"
+			:cell-style="cellClassStyle"
 			style="width: 100%"
 			height="250">
 			<el-table-column
 				prop="status"
 				label="Status"
 				>
+			</el-table-column>
+			<el-table-column
+				prop="endedAt"
+				label="Ended at"
+			>
+			</el-table-column>
+			<el-table-column
+				prop="runMode"
+				label="Run Mode"
+			>
 			</el-table-column>
 			<el-table-column
 				prop="runTime"
@@ -48,19 +60,21 @@
 		</el-table>
 		</div>
 		<div :class="$style.syncronizationActionButtons">
-			<n8n-button float="right" label="Dry Run" type="light" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="OnTestConnectionClick" />
-			<n8n-button float="left" label="Synchronize Now" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="OnTestConnectionClick" />
+			<n8n-button float="right" label="Dry Run" type="light" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingDryRun" @click="onDryRunClick" />
+			<n8n-button float="left" label="Synchronize Now" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingLiveRun" @click="onLiveRunClick" />
 		</div>
 	</SettingsView>
 </template>
 
 <script lang="ts">
+import { convertToDisplayDate } from '@/components/helpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { IActiveDirectoryConfig, IFormInputs, IUser } from '@/Interface';
+import { IActiveDirectoryConfig, IActiveDirectorySyncData, IActiveDirectorySyncTable, IFormInputs, IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
+import humanizeDuration from 'humanize-duration';
 
 export default mixins(
 	showMessage,
@@ -71,20 +85,12 @@ export default mixins(
 	},
 	data() {
 		return {
-			dataTable: [
-				// {
-				// 	status: "Succeeded",
-				// 	runTime: "2016-05-03",
-				// 	details: "Scanned 102 LDAP users",
-				// },
-				// {
-				// 	status: "Succeeded",
-				// 	runTime: "2016-05-03",
-				// 	details: "Scanned 102 LDAP users",
-				// },
-			],
+			dataTable: [] as IActiveDirectorySyncTable[],
 			adConfig: {} as IActiveDirectoryConfig,
 			loadingTestConnection: false,
+			loadingDryRun: false,
+			loadingLiveRun: false,
+			loadingTable: false,
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
 			formBus: new Vue(),
@@ -93,6 +99,7 @@ export default mixins(
 	},
 	async mounted() {
 		await this.getADConfig();
+		await this.getADSyncronizations();
 	},
 	computed: {
 		currentUser() {
@@ -100,6 +107,23 @@ export default mixins(
 		},
 	},
 	methods: {
+		// @ts-ignore
+		cellClassStyle({ row, column }) {
+			if (column.property === 'status') {
+				if (row.status === 'Success') {
+					return { color: 'green'};
+				} else if (row.status === 'Error') {
+					return { color: 'red'};
+				}
+			}
+			if (column.property === 'runMode') {
+				if (row.runMode === 'Dry') {
+					return { color: 'orange'};
+				} else if (row.runMode === 'Live') {
+					return { color: 'blue'};
+				}
+			}
+		},
 		onInput() {
 			this.hasAnyChanges = true;
 		},
@@ -170,7 +194,7 @@ export default mixins(
 		onSaveClick() {
 			this.formBus.$emit('submit');
 		},
-		async OnTestConnectionClick() {
+		async onTestConnectionClick() {
 			this.loadingTestConnection = true;
 			try {
 				await this.$store.dispatch('settings/testADConnection');
@@ -187,6 +211,36 @@ export default mixins(
 				});
 			} finally {
 				this.loadingTestConnection = false;
+			}
+		},
+		async onDryRunClick() {
+			this.loadingDryRun = true;
+			try {
+				this.adConfig = await this.$store.dispatch('settings/runADSync', { type: 'dry' });
+				this.$showToast({
+					title: this.$locale.baseText('settings.ad.runSync'),
+					message: 'Syncronization succeded',
+					type: 'success',
+				});
+			} catch (error) {
+			} finally {
+				this.loadingDryRun = false;
+				await this.getADSyncronizations();
+			}
+		},
+		async onLiveRunClick() {
+			this.loadingLiveRun = true;
+			try {
+				this.adConfig = await this.$store.dispatch('settings/runADSync', { type: 'live' });
+				this.$showToast({
+					title: this.$locale.baseText('settings.ad.runSync'),
+					message: 'Syncronization succeded',
+					type: 'success',
+				});
+			} catch (error) {
+			} finally {
+				this.loadingLiveRun = false;
+				await this.getADSyncronizations();
 			}
 		},
 		async getADConfig() {
@@ -422,6 +476,30 @@ export default mixins(
 				//this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			}
 		},
+		async getADSyncronizations() {
+			try {
+				this.loadingTable = true;
+				const data = await this.$store.dispatch('settings/getADSyncronizations') as IActiveDirectorySyncData[];
+
+				const syncDataMapper = (sync: IActiveDirectorySyncData): IActiveDirectorySyncTable => {
+					const startedAt = new Date(sync.startedAt);
+					const endedAt = new Date(sync.endedAt);
+					const runTimeInMinutes = endedAt.getTime() - startedAt.getTime();
+					return {
+						runTime: humanizeDuration(runTimeInMinutes),
+						runMode: sync.runMode.charAt(0).toLocaleUpperCase() + sync.runMode.slice(1),
+						status: sync.status.charAt(0).toLocaleUpperCase() + sync.status.slice(1),
+						endedAt: convertToDisplayDate(endedAt.getTime()),
+						details: `Users scanned: ${sync.scanned}`,
+					};
+				};
+
+				this.dataTable = data.map(syncDataMapper);
+				this.loadingTable = false;
+			} catch (error) {
+				//this.$showError(error, this.$locale.baseText('settings.api.view.error'));
+			}
+		},
 	},
 });
 </script>
@@ -471,5 +549,15 @@ export default mixins(
 .sectionHeader {
 	margin-bottom: var(--spacing-s);
 }
+
+// .el-table .success-row > .cell {
+// 	color: green !important;
+// 	background-color: black !important;
+// }
+
+// .el-table .error-row > .cell {
+// 	color: red !important;
+// }
+
 </style>
 

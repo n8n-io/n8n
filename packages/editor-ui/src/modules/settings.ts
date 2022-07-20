@@ -14,7 +14,7 @@ import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
 import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
-import { getADConfig, testADConnection, updateADConfig } from "@/api/active-directory";
+import { getADConfig, getADSyncronizations, runADSync, testADConnection, updateADConfig } from "@/api/active-directory";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -205,11 +205,18 @@ const module: Module<ISettingsState, IRootState> = {
 			const config = await getADConfig(context.rootGetters['getRestApiContext']);
 			return config;
 		},
+		async getADSyncronizations(context: ActionContext<ISettingsState, IRootState>) {
+			const syncronizations = await getADSyncronizations(context.rootGetters['getRestApiContext']);
+			return syncronizations;
+		},
 		async testADConnection(context: ActionContext<ISettingsState, IRootState>) {
 			return await testADConnection(context.rootGetters['getRestApiContext']);
 		},
 		async updateADConfig(context: ActionContext<ISettingsState, IRootState>, adConfig: IActiveDirectoryConfig) {
 			return await updateADConfig(context.rootGetters['getRestApiContext'], adConfig);
+		},
+		async runADSync(context: ActionContext<ISettingsState, IRootState>, data) {
+			return await runADSync(context.rootGetters['getRestApiContext'], data);
 		},
 	},
 };

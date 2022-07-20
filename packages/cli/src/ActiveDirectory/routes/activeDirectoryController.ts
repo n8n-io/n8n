@@ -67,7 +67,6 @@ activeDirectoryController.post(
  * GET /active-directory/sync
  */
 activeDirectoryController.get('/sync', async (req: express.Request, res: express.Response) => {
-	const list = await listADSyncronizations();
-
-	return res.status(200).json(list);
+	const data = await listADSyncronizations();
+	return res.status(200).json({ data });
 });

@@ -933,6 +933,7 @@
 	"settings.ad.save": "Save",
 	"settings.ad.connectionTestError": "Problem testing Active Directory connection",
 	"settings.ad.connectionTest": "Active Directory connection tested",
+	"settings.ad.runSync": "Active Directory Syncronization done",
 	"settings.ad.updateConfiguration": "Active Directory configuration updated",
 	"settings.ad.testingConnection": "Testing Connection",
 	"settings.ad.testConnection": "Test Connection"

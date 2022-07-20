@@ -970,6 +970,27 @@ export interface ITab {
 	align?: 'right';
 }
 
+
+export interface IActiveDirectorySyncData {
+	id: number;
+	startedAt: string;
+	endedAt: string;
+	created: number;
+	updated: number;
+	disabled: number;
+	scanned: number;
+	status: string;
+	error: string;
+	runMode: string;
+}
+
+export interface IActiveDirectorySyncTable {
+	status: string;
+	endedAt: string;
+	runTime: string;
+	runMode: string;
+	details: string;
+}
 export interface IActiveDirectoryConfig {
 		// activeDirectoryLoginEnabled: boolean;
 		login: {
