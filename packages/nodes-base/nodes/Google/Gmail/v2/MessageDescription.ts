@@ -32,6 +32,16 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get all messages',
 			},
 			{
+				name: 'Mark as Read',
+				value: 'markAsRead',
+				action: 'Mark a message as read',
+			},
+			{
+				name: 'Mark as Unread',
+				value: 'markAsUnread',
+				action: 'Mark a message as unread',
+			},
+			{
 				name: 'Reply',
 				value: 'reply',
 				action: 'Reply to a message',
@@ -42,7 +52,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Send a message',
 			},
 		],
-		default: 'send',
+		default: 'getAll',
 	},
 ];
 
@@ -61,6 +71,8 @@ export const messageFields: INodeProperties[] = [
 				operation: [
 					'get',
 					'delete',
+					'markAsRead',
+					'markAsUnread',
 				],
 			},
 		},

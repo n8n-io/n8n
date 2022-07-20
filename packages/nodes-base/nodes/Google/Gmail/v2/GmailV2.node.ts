@@ -653,6 +653,33 @@ export class GmailV2 implements INodeType {
 
 						responseData = { success: true };
 					}
+					if (operation === 'markAsRead') {
+						// https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
+						method = 'POST';
+						const id = this.getNodeParameter('messageId', i);
+
+						endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+
+						const body = {
+							removeLabelIds: ['UNREAD'],
+						};
+
+						responseData = await googleApiRequest.call(this, method, endpoint, body);
+					}
+
+					if (operation === 'markAsUnread') {
+						https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
+						method = 'POST';
+						const id = this.getNodeParameter('messageId', i);
+
+						endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+
+						const body = {
+							addLabelIds: ['UNREAD'],
+						};
+
+						responseData = await googleApiRequest.call(this, method, endpoint, body);
+					}
 				}
 				if (resource === 'draft') {
 					if (operation === 'create') {
