@@ -3016,7 +3016,7 @@ export default mixins(
 							closeOnClick: true,
 							onClick: () => {
 								this.$telemetry.track('user clicked onboarding toast', {
-									seq_num: onboardingResponse.toast_sequence_num,
+									seq_num: onboardingResponse.toast_sequence_number,
 									title: onboardingResponse.title,
 									description: onboardingResponse.description,
 								});

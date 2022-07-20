@@ -117,9 +117,8 @@ export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswersV
 }
 
 export function getAccountAge(currentUser: IUser): number {
-	// TODO: This needs to be updated when we have actual account creation date available from BE
-	if(currentUser.globalRole) {
-		const accountCreatedAt = new Date(currentUser.globalRole.createdAt);
+	if(currentUser.createdAt) {
+		const accountCreatedAt = new Date(currentUser.createdAt);
 		const today = new Date();
 
 		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000* 3600 * 24));

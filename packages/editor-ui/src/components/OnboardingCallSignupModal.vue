@@ -87,17 +87,26 @@ export default mixins(
 			}
 			this.showError = false;
 			this.loading = true;
+			this.okToClose = false;
 
-			await this.$store.dispatch('ui/applyForOnboardingCall', { email: this.email });
-
-			this.loading = false;
-			this.$showMessage({
-				type: 'success',
-				title: this.$locale.baseText('onboardingCallSignupSucess.title'),
-				message: this.$locale.baseText('onboardingCallSignupSucess.message'),
-			});
-			this.okToClose = true;
-			this.modalBus.$emit('close');
+			try {
+				await this.$store.dispatch('ui/applyForOnboardingCall', { email: this.email });
+				this.$showMessage({
+					type: 'success',
+					title: this.$locale.baseText('onboardingCallSignupSucess.title'),
+					message: this.$locale.baseText('onboardingCallSignupSucess.message'),
+				});
+				this.okToClose = true;
+				this.modalBus.$emit('close');
+			} catch (e) {
+				this.$showError(
+					e,
+					this.$locale.baseText('onboardingCallSignupFailed.title'),
+					this.$locale.baseText('onboardingCallSignupFailed.message'),
+				);
+				this.loading = false;
+				this.okToClose = true;
+			}
 		},
 		async onCancel() {
 			this.okToClose = true;

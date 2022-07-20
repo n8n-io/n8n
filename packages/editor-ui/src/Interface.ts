@@ -527,6 +527,7 @@ export interface IUser extends IUserResponse {
 	isPendingUser: boolean;
 	isOwner: boolean;
 	fullName?: string;
+	createdAt?: Date;
 }
 
 export interface IVersionNotificationSettings {

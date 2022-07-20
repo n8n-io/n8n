@@ -3,7 +3,7 @@
 			<div v-if="showHeading" :class="[$style.headingContainer, 'mb-l']">
 				<n8n-heading size="2xlarge">{{ $locale.baseText(featureInfo.featureName) }}</n8n-heading>
 			</div>
-			<div v-if="featureInfo.infoText" class="mt-3xl mb-2xl">
+			<div v-if="featureInfo.infoText" class="mt-3xl mb-l">
 				<n8n-info-tip theme="info" type="note">
 					<template>
 						<span v-html="$locale.baseText(featureInfo.infoText)"></span>
@@ -35,6 +35,15 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		userId(): string {
+			return this.$store.getters['users/currentUserId'];
+		},
+		versionCli(): string {
+			return this.$store.getters['settings/versionCli'];
+		},
+		instanceId(): string {
+			return this.$store.getters.instanceId;
+		},
 		featureInfo(): IFakeDoor {
 			return this.$store.getters['ui/getFakeDoorById'](this.featureId);
 		},
@@ -47,10 +56,7 @@ export default Vue.extend({
 	},
 	methods: {
 		openLinkPage() {
-			const userId = this.$store.getters['users/currentUserId'];
-			const version = this.$store.getters['settings/versionCli'];
-			window.open(`${this.featureInfo.linkURL}&u=${userId}&v=${version}`, '_blank');
-
+			window.open(`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.versionCli}`, '_blank');
 			this.$telemetry.track('user clicked feature waiting list button', { feature: this.featureId });
 		},
 	},
