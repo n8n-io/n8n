@@ -11,50 +11,54 @@
 			</tr>
 		</table>
 		<table :class="$style.table" v-else>
-			<tr>
-				<th v-for="(column, i) in tableData.columns || []" :key="column">
-					<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
-						<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
-						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
-							<template v-slot:preview="{ canDrop }">
-								<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-									{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(column, 16, 2) } }) }}
-								</div>
-							</template>
-							<template v-slot="{ isDragging }">
-								<div
-									:class="{
-										[$style.header]: true,
-										[$style.draggableHeader]: mappingEnabled,
-										[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
-										[$style.draggingHeader]: isDragging,
-									}"
-								>
-									<span>{{ column || "&nbsp;" }}</span>
-									<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHintWithDelay">
-										<div v-if="focusedMappableInput" slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
-										<div v-else slot="content" v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"></div>
-										<div :class="$style.dragButton">
-											<font-awesome-icon icon="grip-vertical" />
-										</div>
-									</n8n-tooltip>
-								</div>
-							</template>
-						</Draggable>
-					</n8n-tooltip>
-				</th>
-			</tr>
-			<tr v-for="(row, index1) in tableData.data" :key="index1">
-				<td
-					v-for="(data, index2) in row"
-					:key="index2"
-					:data-col="index2"
-					@mouseenter="onMouseEnterCell"
-					@mouseleave="onMouseLeaveCell"
-				>
-					{{ [null, undefined].includes(data) ? '&nbsp;' : data }}
-				</td>
-			</tr>
+			<thead>
+				<tr>
+					<th v-for="(column, i) in tableData.columns || []" :key="column">
+						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
+							<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
+							<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
+								<template v-slot:preview="{ canDrop }">
+									<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
+										{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(column, 16, 2) } }) }}
+									</div>
+								</template>
+								<template v-slot="{ isDragging }">
+									<div
+										:class="{
+											[$style.header]: true,
+											[$style.draggableHeader]: mappingEnabled,
+											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.draggingHeader]: isDragging,
+										}"
+									>
+										<span>{{ column || "&nbsp;" }}</span>
+										<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHintWithDelay">
+											<div v-if="focusedMappableInput" slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
+											<div v-else slot="content" v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"></div>
+											<div :class="$style.dragButton">
+												<font-awesome-icon icon="grip-vertical" />
+											</div>
+										</n8n-tooltip>
+									</div>
+								</template>
+							</Draggable>
+						</n8n-tooltip>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr v-for="(row, index1) in tableData.data" :key="index1">
+					<td
+						v-for="(data, index2) in row"
+						:key="index2"
+						:data-col="index2"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+					>
+						{{ [null, undefined].includes(data) ? '&nbsp;' : data }}
+					</td>
+				</tr>
+			</tbody>
 		</table>
 	</div>
 </template>
