@@ -28,6 +28,7 @@ export class NotionApi implements ICredentialType {
 		properties: {
 			headers: {
 				'Authorization': '=Bearer {{$credentials.apiKey}}',
+				'Notion-Version': '2021-05-13',
 			},
 		},
 	};
