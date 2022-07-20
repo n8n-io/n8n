@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ERPNextApi implements ICredentialType {
 	name = 'erpNextApi';
@@ -42,12 +39,11 @@ export class ERPNextApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'n8n',
-			description: 'Subdomain of cloud-hosted ERPNext instance. For example, "n8n" is the subdomain in: <code>https://n8n.erpnext.com</code>',
+			description:
+				'Subdomain of cloud-hosted ERPNext instance. For example, "n8n" is the subdomain in: <code>https://n8n.erpnext.com</code>',
 			displayOptions: {
 				show: {
-					environment: [
-						'cloudHosted',
-					],
+					environment: ['cloudHosted'],
 				},
 			},
 		},
@@ -60,9 +56,7 @@ export class ERPNextApi implements ICredentialType {
 			description: 'Fully qualified domain name of self-hosted ERPNext instance',
 			displayOptions: {
 				show: {
-					environment: [
-						'selfHosted',
-					],
+					environment: ['selfHosted'],
 				},
 			},
 		},

@@ -24,8 +24,11 @@ export class ActionNetworkApi implements ICredentialType {
 			url: '/events?per_page=1',
 		},
 	};
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.headers = { 'OSDI-API-Token': credentials.apiKey };
 		return requestOptions;
-	} 
+	}
 }

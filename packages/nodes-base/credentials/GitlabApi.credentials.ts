@@ -5,7 +5,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class GitlabApi implements ICredentialType {
 	name = 'gitlabApi';
 	displayName = 'GitLab API';
