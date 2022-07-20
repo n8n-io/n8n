@@ -2090,6 +2090,10 @@ export default mixins(
 					// so if we do not connect we have to save the connection manually
 					this.$store.commit('addConnection', connectionProperties);
 				}
+
+				setTimeout(() => {
+					this.addPinDataConnections(this.$store.getters.pinData);
+				});
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
 				if (removeVisualConnection === true) {
