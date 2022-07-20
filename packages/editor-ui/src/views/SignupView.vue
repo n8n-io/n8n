@@ -102,14 +102,18 @@ export default mixins(
 		},
 	},
 	methods: {
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit(values: {[key: string]: string | boolean}) {
 			try {
 				this.loading = true;
 				const inviterId = this.$route.query.inviterId;
 				const inviteeId = this.$route.query.inviteeId;
 				await this.$store.dispatch('users/signup', {...values, inviterId, inviteeId});
 
-				await this.$store.dispatch('ui/submitContactEmail', { email: values.email, agree: values.agree !== undefined });
+				if (values.agree === true) {
+					try {
+						await this.$store.dispatch('ui/submitContactEmail', { email: values.email, agree: values.agree });
+					} catch { }
+				}
 
 				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
