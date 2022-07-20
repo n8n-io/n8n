@@ -92,7 +92,7 @@ export class GoogleSheets implements INodeType {
 						'@version': [
 							1,
 						],
-					}
+					},
 				},
 			},
 			{
@@ -115,7 +115,7 @@ export class GoogleSheets implements INodeType {
 						'@version': [
 							2,
 						],
-					}
+					},
 				},
 			},
 			{
