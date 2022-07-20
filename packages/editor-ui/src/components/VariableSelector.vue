@@ -259,7 +259,7 @@ export default mixins(
 			 * @param {number} [runIndex=0] The index of the run
 			 * @param {string} [inputName='main'] The name of the input
 			 * @param {number} [outputIndex=0] The index of the output
-			 * @param {boolean} [useShort=false] Use short notation
+			 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
 			 * @returns
 			 * @memberof Workflow
 			 */
@@ -309,7 +309,7 @@ export default mixins(
 			 * @param {string} nodeName The name of the node to get the data of
 			 * @param {PinData[string]} pinData The node's pin data
 			 * @param {string} filterText Filter text for parameters
-			 * @param {boolean} [useShort=false] Use short notation
+			 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
 			 */
 			getNodePinDataOutput(nodeName: string, pinData: PinData[string], filterText: string, useShort = false): IVariableSelectorOption[] | null {
 				const outputData = pinData.map((data) => ({ json: data } as INodeExecutionData))[0];
@@ -520,7 +520,7 @@ export default mixins(
 					}
 				}
 
-				let tempOutputData: IVariableSelectorOption[] | null;
+				let tempOutputData: IVariableSelectorOption[] | null | undefined;
 
 				if (parentNode.length) {
 					// If the node has an input node add the input data
@@ -533,16 +533,25 @@ export default mixins(
 
 					tempOutputData = this.getNodeRunDataOutput(parentNode[0], runData, filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
 
-					let pinDataOptions: IVariableSelectorOption[] = [];
+					let pinDataOptions: IVariableSelectorOption[] = [
+						{
+							name: 'JSON',
+							options: [],
+						},
+					];
 					parentNode.forEach((parentNodeName) => {
 						const pinData = this.$store.getters['pinDataByNodeName'](parentNodeName);
 
 						if (pinData) {
-							pinDataOptions = pinDataOptions.concat(this.getNodePinDataOutput(parentNodeName, pinData, filterText, true) || []);
+							const output = this.getNodePinDataOutput(parentNodeName, pinData, filterText, true);
+
+							pinDataOptions[0].options = pinDataOptions[0].options!.concat(
+								output && output[0].options ? output[0].options : [],
+							);
 						}
 					});
 
-					if (pinDataOptions.length > 0) {
+					if (pinDataOptions[0].options!.length > 0) {
 						if (tempOutputData) {
 							const jsonTempOutputData = tempOutputData.find((tempData) => tempData.name === 'JSON');
 

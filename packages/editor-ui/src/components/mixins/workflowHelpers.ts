@@ -505,7 +505,10 @@ export const workflowHelpers = mixins(
 				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
 				let runIndexParent = 0;
 				if (workflowRunData !== null && parentNode.length) {
-					runIndexParent = workflowRunData[parentNode[0]].length -1;
+					const firstParentWithWorkflowRunData = parentNode.find((parentNodeName) => workflowRunData[parentNodeName]);
+					if (firstParentWithWorkflowRunData) {
+						runIndexParent = workflowRunData[firstParentWithWorkflowRunData].length - 1;
+					}
 				}
 
 				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
@@ -539,7 +542,7 @@ export const workflowHelpers = mixins(
 											source: [],
 											data: {
 												main: [
-													pinData.map((data) => ({json: data})),
+													pinData.map((data) => ({ json: data })),
 												],
 											},
 										},
@@ -569,7 +572,6 @@ export const workflowHelpers = mixins(
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
-
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,
