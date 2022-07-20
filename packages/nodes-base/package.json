@@ -19,8 +19,8 @@
     "build": "tsc && gulp build:icons && gulp build:translations",
     "build:translations": "gulp build:translations",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
-    "lint": "tslint -p tsconfig.json -c tslint.json; cd ../../ && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json; cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials --fix",
+    "lint": "tslint -p tsconfig.json -c tslint.json && cd ../../ && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials",
+    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials --fix",
     "watch": "tsc --watch",
     "test": "jest"
   },
