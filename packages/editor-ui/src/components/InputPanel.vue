@@ -165,7 +165,7 @@ export default mixins(
 		},
 		currentNodeDepth (): number {
 			const node = this.parentNodes.find((node) => node.name === this.currentNode.name);
-			return node? node.depth: -1;
+			return node ? node.depth: -1;
 		},
 	},
 	methods: {

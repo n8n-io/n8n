@@ -54,7 +54,7 @@ export default Vue.extend({
 
 			return false;
 		},
-		selectedView() {
+		selectedView () {
 			if (this.isValueExpression) {
 				return 'expression';
 			}
@@ -73,7 +73,7 @@ export default Vue.extend({
 		hasRemoteMethod (): boolean {
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
-		actions(): Array<{label: string, value: string, disabled?: boolean}> {
+		actions (): Array<{label: string, value: string, disabled?: boolean}> {
 			const actions = [
 				{
 					label: this.$locale.baseText('parameterInput.resetValue'),

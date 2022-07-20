@@ -18,7 +18,7 @@
 						<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
 							<template v-slot:preview="{ canDrop }">
 								<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-									{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(column) } }) }}
+									{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(column, 16, 2) } }) }}
 								</div>
 							</template>
 							<template v-slot="{ isDragging }">
@@ -109,7 +109,7 @@ export default Vue.extend({
 		}
 	},
 	computed: {
-		focusedMappableInput(): string {
+		focusedMappableInput (): string {
 			return this.$store.getters['ui/focusedMappableInput'];
 		},
 		showHint (): boolean {
@@ -117,9 +117,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		shorten(s: string) {
-			return shorten(s, 16, 2);
-		},
+		shorten,
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
 			if (target && this.mappingEnabled) {
