@@ -195,6 +195,7 @@ import {
 	TelemetryHelpers,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
+	PinData,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -219,6 +220,7 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2088,6 +2090,10 @@ export default mixins(
 					// so if we do not connect we have to save the connection manually
 					this.$store.commit('addConnection', connectionProperties);
 				}
+
+				setTimeout(() => {
+					this.addPinDataConnections(this.$store.getters.pinData);
+				});
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
 				if (removeVisualConnection === true) {
@@ -2290,6 +2296,7 @@ export default mixins(
 
 								if (connection) {
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
+
 									if (!output || !output.total) {
 										CanvasHelpers.resetConnection(connection);
 									}
@@ -2956,6 +2963,31 @@ export default mixins(
 					await this.importWorkflowData(workflowData);
 				}
 			},
+			addPinDataConnections(pinData: PinData) {
+				Object.keys(pinData).forEach((nodeName) => {
+					// @ts-ignore
+					const connections = this.instance.getConnections({
+						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+					}) as Connection[];
+
+					connections.forEach((connection) => {
+						CanvasHelpers.addConnectionOutputSuccess(connection, {
+							total: pinData[nodeName].length,
+							iterations: 0,
+						});
+					});
+				});
+			},
+			removePinDataConnections(pinData: PinData) {
+				Object.keys(pinData).forEach((nodeName) => {
+					// @ts-ignore
+					const connections = this.instance.getConnections({
+						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+					}) as Connection[];
+
+					connections.forEach(CanvasHelpers.resetConnection);
+				});
+			},
 		},
 
 		async mounted () {
@@ -3004,10 +3036,14 @@ export default mixins(
 				setTimeout(() => {
 					this.$store.dispatch('users/showPersonalizationSurvey');
 					this.checkForNewVersions();
+					this.addPinDataConnections(this.$store.getters.pinData);
 				}, 0);
 			});
 
 			this.$externalHooks().run('nodeView.mount');
+
+			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
+			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
 
 		destroyed () {
@@ -3017,6 +3053,9 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+
+			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
+			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 		},
 	});
 </script>
