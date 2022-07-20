@@ -639,9 +639,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
-
 					// Add the full data including defaults for testing
 					credentialDetails.data = this.credentialData;
+
+					credentialDetails.id = this.credentialId;
 
 					await this.testCredential(credentialDetails);
 					this.isTesting = false;

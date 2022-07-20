@@ -18,7 +18,8 @@ type EndpointGroup =
 	| 'passwordReset'
 	| 'credentials'
 	| 'workflows'
-	| 'publicApi';
+	| 'publicApi'
+	| 'nodes';
 
 export type CredentialPayload = {
 	name: string;
@@ -44,3 +45,16 @@ export interface TriggerTime {
 	weekeday: number;
 	[key: string]: string | number;
 }
+
+export type InstalledPackagePayload = {
+	packageName: string;
+	installedVersion: string;
+}
+
+export type InstalledNodePayload = {
+	name: string;
+	type: string;
+	latestVersion: string;
+	package: string;
+}
+

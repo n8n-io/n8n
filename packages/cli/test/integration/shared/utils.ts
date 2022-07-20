@@ -23,8 +23,8 @@ import {
 } from 'n8n-workflow';
 
 import config from '../../../config';
-import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from './constants';
-import { AUTH_COOKIE_NAME } from '../../../src/constants';
+import { AUTHLESS_ENDPOINTS, CURRENT_PACKAGE_VERSION, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from './constants';
+import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import {
 	ActiveWorkflowRunner,
@@ -44,9 +44,18 @@ import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
 import type { User } from '../../../src/databases/entities/User';
-import type { ApiPath, EndpointGroup, PostgresSchemaSection, TriggerTime } from './types';
+import type {
+	ApiPath,
+	EndpointGroup,
+	InstalledNodePayload,
+	InstalledPackagePayload,
+	PostgresSchemaSection,
+	TriggerTime,
+} from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import { workflowsController } from '../../../src/api/workflows.api';
+import { nodesController } from '../../../src/api/nodes.api';
+import { randomName } from './random';
 
 /**
  * Initialize a test server.
@@ -91,6 +100,7 @@ export async function initTestServer({
 		const map: Record<string, express.Router | express.Router[] | any> = {
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
+			nodes: { controller: nodesController, path: 'nodes' },
 			publicApi: apiRouters
 		};
 
@@ -137,7 +147,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi'];
+	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -880,4 +890,25 @@ export function getPostgresSchemaSection(
 	}
 
 	return null;
+}
+
+// ----------------------------------
+//              nodes
+// ----------------------------------
+
+export function installedPackagePayload(): InstalledPackagePayload {
+	return {
+		packageName: NODE_PACKAGE_PREFIX + randomName(),
+		installedVersion: CURRENT_PACKAGE_VERSION,
+	};
+}
+
+export function installedNodePayload(packageName: string): InstalledNodePayload {
+	const nodeName = randomName();
+	return {
+		name: nodeName,
+		type: nodeName,
+		latestVersion: CURRENT_PACKAGE_VERSION,
+		package: packageName,
+	};
 }

@@ -1,47 +1,50 @@
 <template>
 	<div :class="classes" role="alert">
-
-		<div :class="$style['message-section']">
-			<div :class="$style.icon">
-				<n8n-icon
-					:icon="getIcon"
-					:size="theme === 'secondary' ? 'medium' : 'large'"
-				/>
-			</div>
-			<slot />
+		<div :class="$style.icon">
+			<n8n-icon v-bind="$attrs" :icon="getIcon" size="large"/>
 		</div>
-
-		<slot name="trailingContent" />
+		<div :class="$style.message" >
+			<n8n-text size="small" v-bind="$attrs"><span v-html="message"></span></n8n-text>
+		</div>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
 import N8nIcon from '../N8nIcon';
-
-const CALLOUT_DEFAULT_ICONS = {
-	info: 'info-circle',
-	success: 'check-circle',
-	warning: 'exclamation-triangle',
-	danger: 'times-circle',
-};
+import N8nText from '../N8nText';
 
 export default Vue.extend({
 	name: 'n8n-callout',
 	components: {
 		N8nIcon,
+		N8nText
 	},
 	props: {
 		theme: {
 			type: String,
 			required: true,
 			validator: (value: string): boolean =>
-				['info', 'success', 'secondary', 'warning', 'danger', 'custom'].includes(value),
+				['info', 'success', 'warning', 'danger', 'custom'].includes(value),
+		},
+		message: {
+			type: String,
+			required: true
 		},
 		icon: {
 			type: String,
 			default: 'info-circle'
-		},
+		}
+	},
+	data() {
+		return {
+			defaultIcons: {
+				'info': 'info-circle',
+				'success': 'check-circle',
+				'warning': 'exclamation-triangle',
+				'danger': 'times-circle',
+			}
+		}
 	},
 	computed: {
 		classes(): string[] {
@@ -51,65 +54,50 @@ export default Vue.extend({
 			];
 		},
 		getIcon(): string {
-			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
-				return CALLOUT_DEFAULT_ICONS[this.theme];
+			if(this.theme === 'custom') {
+				return this.icon;
 			}
-
-			return this.icon;
+			return this.defaultIcons[this.theme];
 		},
 	}
 });
 </script>
 
 <style lang="scss" module>
-.callout {
-	display: flex;
-	justify-content: space-between;
-	font-size: var(--font-size-2xs);
-	padding: var(--spacing-xs);
-	border: var(--border-width-base) var(--border-style-base);
-	border-radius: var(--border-radius-base);
-	align-items: center;
-	line-height: var(--font-line-height-loose);
-}
+	.callout {
+		display: flex;
+		font-size: var(--font-size-2xs);
+		padding: var(--spacing-xs);
+		border: var(--border-width-base) var(--border-style-base);
+		border-radius: var(--border-radius-base);
+		align-items: center;
+	}
 
-.message-section {
-	display: flex;
-}
+	.info, .custom {
+		border-color: var(--color-foreground-base);
+		background-color: var(--color-background-light);
+		color: var(--color-info);
+	}
 
-.info, .custom {
-	border-color: var(--color-foreground-base);
-	background-color: var(--color-background-light);
-	color: var(--color-info);
-}
+	.warning {
+		border-color: var(--color-warning-tint-1);
+		background-color: var(--color-warning-tint-2);
+		color: var(--color-warning);
+	}
 
-.warning {
-	border-color: var(--color-warning-tint-1);
-	background-color: var(--color-warning-tint-2);
-	color: var(--color-warning);
-}
+	.success {
+		border-color: var(--color-success-tint-1);
+		background-color: var(--color-success-tint-2);
+		color: var(--color-success);
+	}
 
-.success {
-	border-color: var(--color-success-tint-1);
-	background-color: var(--color-success-tint-2);
-	color: var(--color-success);
-}
+	.danger {
+		border-color: var(--color-danger-tint-1);
+		background-color: var(--color-danger-tint-2);
+		color: var(--color-danger);
+	}
 
-.danger {
-	border-color: var(--color-danger-tint-1);
-	background-color: var(--color-danger-tint-2);
-	color: var(--color-danger);
-}
-
-.icon {
-	margin-right: var(--spacing-xs);
-}
-
-.secondary {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-secondary);
-	background-color: var(--color-secondary-tint-2);
-	border-color: var(--color-secondary-tint-1);
-}
+	.icon {
+		margin-right: var(--spacing-xs);
+	}
 </style>

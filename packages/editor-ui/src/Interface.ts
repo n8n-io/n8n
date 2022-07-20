@@ -22,7 +22,13 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PinData,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
+
+import {
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+} from './constants';
+
 
 export * from 'n8n-design-system/src/types';
 
@@ -139,7 +145,6 @@ export interface INodeUpdatePropertiesInformation {
 export type XYPosition = [number, number];
 
 export type MessageType = 'success' | 'warning' | 'info' | 'error';
-
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
@@ -417,6 +422,8 @@ export type IPushData =
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
+	| PushDataReloadNodeType
+	| PushDataRemoveNodeType
 	| PushDataTestWebhook;
 
 type PushDataExecutionFinished = {
@@ -442,6 +449,16 @@ type PushDataExecuteBefore = {
 type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataReloadNodeType = {
+	data: IPushDataReloadNodeType;
+	type: 'reloadNodeType';
+};
+
+type PushDataRemoveNodeType = {
+	data: IPushDataRemoveNodeType;
+	type: 'removeNodeType';
 };
 
 type PushDataTestWebhook = {
@@ -477,6 +494,15 @@ export interface IPushDataNodeExecuteAfter {
 export interface IPushDataNodeExecuteBefore {
 	executionId: string;
 	nodeName: string;
+}
+
+export interface IPushDataReloadNodeType {
+	name: string;
+	version: number;
+}
+export interface IPushDataRemoveNodeType {
+	name: string;
+	version: number;
 }
 
 export interface IPushDataTestWebhook {
@@ -563,13 +589,19 @@ export interface IUserManagementConfig {
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
-	um?: boolean;
-	api?: boolean;
+}
+
+export interface IPermissionAllowGroup extends IPermissionGroup {
+	shouldAllow?: () => boolean;
+}
+
+export interface IPermissionDenyGroup extends IPermissionGroup {
+	shouldDeny?: () => boolean;
 }
 
 export interface IPermissions {
-	allow?: IPermissionGroup;
-	deny?: IPermissionGroup;
+	allow?: IPermissionAllowGroup;
+	deny?: IPermissionDenyGroup;
 }
 
 export interface IUserPermissions {
@@ -667,6 +699,8 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	executionMode: string;
+	communityNodesEnabled: boolean;
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -832,6 +866,10 @@ export interface IRootState {
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
 }
 
+export interface ICommunityPackageMap {
+	[name: string]: PublicInstalledPackage;
+}
+
 export interface ICredentialTypeMap {
 	[name: string]: ICredentialType;
 }
@@ -880,8 +918,17 @@ export interface IUiState {
 				value: string;
 			};
 		};
+		focusedMappableInput: string;
+		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
+	draggable: {
+		isDragging: boolean;
+		type: string;
+		data: string;
+		canDrop: boolean;
+		stickyPosition: null | XYPosition;
+	};
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -932,6 +979,11 @@ export interface IUsersState {
 export interface IWorkflowsState {
 }
 
+export interface ICommunityNodesState {
+	availablePackageCount: number;
+	installedPackages: ICommunityPackageMap;
+}
+
 export interface IRestApiContext {
 	baseUrl: string;
 	sessionId: string;
@@ -965,4 +1017,5 @@ export interface ITab {
 	href?: string;
 	icon?: string;
 	align?: 'right';
+	tooltip?: string;
 }

@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<n8n-callout
+		<n8n-panel-callout
 			v-if="canPinData && hasPinData && !editMode.enabled"
 			theme="secondary"
 			icon="thumbtack"
@@ -30,7 +30,7 @@
 					{{ $locale.baseText('runData.pindata.learnMore') }}
 				</n8n-link>
 			</template>
-		</n8n-callout>
+		</n8n-panel-callout>
 
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
@@ -233,28 +233,8 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData && tableData.columns && tableData.columns.length === 0" :class="$style.dataDisplay">
-				<table :class="$style.table">
-					<tr>
-						<th :class="$style.emptyCell"></th>
-					</tr>
-					<tr v-for="(row, index1) in tableData.data" :key="index1">
-						<td>
-							<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
-						</td>
-					</tr>
-				</table>
-			</div>
-
 			<div v-else-if="hasNodeRun && displayMode === 'table' && tableData" :class="$style.dataDisplay">
-				<table :class="$style.table">
-					<tr>
-						<th v-for="column in (tableData.columns || [])" :key="column">{{column}}</th>
-					</tr>
-					<tr v-for="(row, index1) in tableData.data" :key="index1">
-						<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
-					</tr>
-				</table>
+				<RunDataTable :node="node" :tableData="tableData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" />
 			</div>
 
 			<div v-else-if="hasNodeRun && displayMode === 'json'" :class="$style.jsonDisplay">
@@ -400,6 +380,7 @@ import { saveAs } from 'file-saver';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { stringSizeInBytes } from './helpers';
+import RunDataTable from './RunDataTable.vue';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -423,6 +404,7 @@ export default mixins(
 			VueJsonPretty,
 			WarningTooltip,
 			CodeEditor,
+			RunDataTable,
 		},
 		props: {
 			nodeUi: {
@@ -456,6 +438,15 @@ export default mixins(
 			},
 			overrideOutputs: {
 				type: Array,
+			},
+			mappingEnabled: {
+				type: Boolean,
+			},
+			distanceFromActive: {
+				type: Number,
+			},
+			showMappingHint: {
+				type: Boolean,
 			},
 		},
 		data () {
@@ -1392,41 +1383,6 @@ export default mixins(
 
 .tabs {
 	margin-bottom: var(--spacing-s);
-}
-
-.table {
-	border-collapse: separate;
-	text-align: left;
-	width: calc(100% - var(--spacing-s));
-	margin-right: var(--spacing-s);
-	font-size: var(--font-size-s);
-
-	th {
-		padding: var(--spacing-2xs);
-		background-color: var(--color-background-base);
-		border-top: var(--border-base);
-		border-bottom: var(--border-base);
-		border-left: var(--border-base);
-		position: sticky;
-		top: 0;
-	}
-
-	td {
-		padding: var(--spacing-2xs);
-		border-bottom: var(--border-base);
-		border-left: var(--border-base);
-		overflow-wrap: break-word;
-		max-width: 300px;
-		white-space: pre-wrap;
-	}
-
-	th:last-child, td:last-child {
-		border-right: var(--border-base);
-	}
-}
-
-.emptyCell {
-	height: 32px;
 }
 
 .itemsCount {

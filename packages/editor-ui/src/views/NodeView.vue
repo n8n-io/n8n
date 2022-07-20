@@ -2892,10 +2892,13 @@ export default mixins(
 				this.$store.commit('setNodeTypes', nodeTypes);
 			},
 			async loadCredentialTypes (): Promise<void> {
-				await this.$store.dispatch('credentials/fetchCredentialTypes');
+				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
 			},
 			async loadCredentials (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
+			},
+			async loadCommunityNodes (): Promise<void> {
+				await this.$store.dispatch('communityNodes/fetchInstalledPackages');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
@@ -3004,6 +3007,7 @@ export default mixins(
 				this.loadCredentials(),
 				this.loadCredentialTypes(),
 				this.loadNodeTypes(),
+				this.loadCommunityNodes(),
 			];
 
 			try {

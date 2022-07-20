@@ -32,6 +32,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
+	ICommunityNodesState,
 } from './Interface';
 
 import credentials from './modules/credentials';
@@ -44,6 +45,8 @@ import versions from './modules/versions';
 import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
+import communityNodes from './modules/communityNodes';
+import { isCommunityPackageName } from './components/helpers';
 
 Vue.use(Vuex);
 
@@ -108,6 +111,7 @@ const modules = {
 	versions,
 	users,
 	ui,
+	communityNodes,
 };
 
 export const store = new Vuex.Store({
@@ -548,7 +552,6 @@ export const store = new Vuex.Store({
 		setNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
 			Vue.set(state, 'nodeTypes', nodeTypes);
 		},
-
 		// Active Execution
 		setExecutingNode(state, executingNode: string) {
 			state.executingNode = executingNode;
@@ -699,11 +702,19 @@ export const store = new Vuex.Store({
 		updateNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
 			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
 			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
+
 			Vue.set(state, 'nodeTypes', newNodesState);
 			state.nodeTypes = newNodesState;
 		},
 
-		addSidebarMenuItems(state, menuItems: IMenuItem[]) {
+		removeNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+			console.log('Store will remove nodes: ', nodeTypes); // eslint-disable-line no-console
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			Vue.set(state, 'nodeTypes', oldNodesToKeep);
+			state.nodeTypes = oldNodesToKeep;
+		},
+
+		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
 			const updated = state.sidebarMenuItems.concat(menuItems);
 			Vue.set(state, 'sidebarMenuItems', updated);
 		},
@@ -890,7 +901,6 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-
 		/**
 		 * Pin data
 		 */
