@@ -8,15 +8,12 @@
 		:before-close="closeDialog"
 	>
 		<div class="text-editor-wrapper ignore-key-press">
-			<div ref="code" class="text-editor" @keydown.stop></div>
+			<code-editor :value="value" :autocomplete="loadAutocompleteData" @input="$emit('valueChanged', $event)" />
 		</div>
 	</el-dialog>
 </template>
 
 <script lang="ts">
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import {DateTime} from 'luxon';
-
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
@@ -34,106 +31,19 @@ import {
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
+import { CodeEditor } from './forms';
 
 export default mixins(
 	genericHelpers,
 	workflowHelpers,
 ).extend({
 	name: 'CodeEdit',
+	components: {
+		CodeEditor,
+	},
 	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value'],
-	data() {
-		return {
-			monacoInstance: null as monaco.editor.IStandaloneCodeEditor | null,
-			monacoLibrary: null as monaco.IDisposable | null,
-		};
-	},
-	mounted() {
-		setTimeout(this.loadEditor);
-	},
-	destroyed() {
-		if (this.monacoLibrary) {
-			this.monacoLibrary.dispose();
-		}
-	},
 	methods: {
-		closeDialog() {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
-		},
-
-		createSimpleRepresentation(inputData: object | null | undefined | boolean | string | number | boolean[] | string[] | number[] | object[]): object | null | undefined | boolean | string | number | boolean[] | string[] | number[] | object[] {
-			if (inputData === null || inputData === undefined) {
-				return inputData;
-			} else if (typeof inputData === 'string') {
-				return '';
-			} else if (typeof inputData === 'boolean') {
-				return true;
-			} else if (typeof inputData === 'number') {
-				return 1;
-			} else if (Array.isArray(inputData)) {
-				return inputData.map(value => this.createSimpleRepresentation(value));
-			} else if (typeof inputData === 'object') {
-				const returnData: { [key: string]: object } = {};
-				Object.keys(inputData).forEach(key => {
-					// @ts-ignore
-					returnData[key] = this.createSimpleRepresentation(inputData[key]);
-				});
-				return returnData;
-			}
-			return inputData;
-		},
-
-		loadEditor() {
-			if (!this.$refs.code) return;
-
-			this.monacoInstance = monaco.editor.create(this.$refs.code as HTMLElement, {
-				automaticLayout: true,
-				value: this.value,
-				language: this.type === 'code' ? 'javascript' : 'json',
-				tabSize: 2,
-				wordBasedSuggestions: false,
-				readOnly: this.isReadOnly,
-				minimap: {
-					enabled: false,
-				},
-			});
-
-
-			this.monacoInstance.onDidChangeModelContent(() => {
-				const model = this.monacoInstance!.getModel();
-				if (model) {
-					this.$emit('valueChanged', model.getValue());
-				}
-			});
-
-			monaco.editor.defineTheme('n8nCustomTheme', {
-				base: 'vs',
-				inherit: true,
-				rules: [],
-				colors: {
-					'editor.background': '#f5f2f0',
-				},
-			});
-			monaco.editor.setTheme('n8nCustomTheme');
-
-			if (this.type === 'code') {
-				// As wordBasedSuggestions: false does not have any effect does it however seem
-				// to remove all all suggestions from the editor if I do this
-				monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-					allowNonTsExtensions: true,
-				});
-
-				this.loadAutocompleteData();
-			} else if (this.type === 'json') {
-				monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-					validate: true,
-				});
-			}
-		},
-
-		loadAutocompleteData(): void {
+		loadAutocompleteData(): string[] {
 			if (['function', 'functionItem'].includes(this.codeAutocomplete)) {
 				const itemIndex = 0;
 				const inputName = 'main';
@@ -148,8 +58,6 @@ export default mixins(
 					sourceIndex: 0,
 					destinationIndex: 0,
 				};
-
-				const autocompleteData: string[] = [];
 
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 
@@ -262,17 +170,44 @@ export default mixins(
 					}
 				}
 
-				this.monacoLibrary = monaco.languages.typescript.javascriptDefaults.addExtraLib(
-					autoCompleteItems.join('\n'),
-				);
+				return autoCompleteItems;
 			}
+
+			return [];
+		},
+		closeDialog() {
+			// Handle the close externally as the visible parameter is an external prop
+			// and is so not allowed to be changed here.
+			this.$emit('closeDialog');
+			return false;
+		},
+
+		createSimpleRepresentation(inputData: object | null | undefined | boolean | string | number | boolean[] | string[] | number[] | object[]): object | null | undefined | boolean | string | number | boolean[] | string[] | number[] | object[] {
+			if (inputData === null || inputData === undefined) {
+				return inputData;
+			} else if (typeof inputData === 'string') {
+				return '';
+			} else if (typeof inputData === 'boolean') {
+				return true;
+			} else if (typeof inputData === 'number') {
+				return 1;
+			} else if (Array.isArray(inputData)) {
+				return inputData.map(value => this.createSimpleRepresentation(value));
+			} else if (typeof inputData === 'object') {
+				const returnData: { [key: string]: object } = {};
+				Object.keys(inputData).forEach(key => {
+					// @ts-ignore
+					returnData[key] = this.createSimpleRepresentation(inputData[key]);
+				});
+				return returnData;
+			}
+			return inputData;
 		},
 	},
 });
 </script>
 
 <style scoped>
-
 .text-editor {
 	min-height: 30rem;
 }

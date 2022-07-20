@@ -17,6 +17,7 @@ type EndpointGroup =
 	| 'owner'
 	| 'passwordReset'
 	| 'credentials'
+	| 'workflows'
 	| 'publicApi'
 	| 'nodes';
 
