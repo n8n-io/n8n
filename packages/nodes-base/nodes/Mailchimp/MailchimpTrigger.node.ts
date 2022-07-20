@@ -91,7 +91,7 @@ export class MailchimpTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'The list that is gonna fire the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The list that is gonna fire the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
 				},

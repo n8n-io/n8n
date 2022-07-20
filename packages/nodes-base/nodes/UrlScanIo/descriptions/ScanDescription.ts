@@ -19,14 +19,17 @@ export const scanOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a scan',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all scans',
 			},
 			{
 				name: 'Perform',
 				value: 'perform',
+				action: 'Perform a scan',
 			},
 		],
 		default: 'perform',

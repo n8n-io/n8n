@@ -20,11 +20,13 @@ export const formOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a form',
+				action: 'Get a form',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all forms',
+				action: 'Get all forms',
 			},
 		],
 		default: 'get',

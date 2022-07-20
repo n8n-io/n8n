@@ -1,5 +1,5 @@
 import { FindManyOptions, In, UpdateResult } from 'typeorm';
-import { intersection } from 'lodash';
+import intersection from 'lodash.intersection';
 import type { INode } from 'n8n-workflow';
 
 import { Db } from '../../../..';

@@ -13,22 +13,27 @@ export const itemOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all items',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an item',
 			},
 		],
 		displayOptions: {
@@ -64,7 +69,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Collection Name or ID',
@@ -88,7 +93,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the collection to add an item to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the collection to add an item to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Live',
@@ -143,7 +148,7 @@ export const itemFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'Field to set for the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Field to set for the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',
@@ -180,7 +185,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the site containing the collection whose items to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the site containing the collection whose items to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Collection Name or ID',
@@ -205,7 +210,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the collection whose items to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the collection whose items to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -248,7 +253,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the site containing the collection whose items to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the site containing the collection whose items to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Collection Name or ID',
@@ -272,7 +277,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the collection whose items to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the collection whose items to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -345,7 +350,7 @@ export const itemFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'Field to set for the item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Field to set for the item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',
@@ -380,7 +385,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the site containing the collection whose items to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the site containing the collection whose items to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Collection Name or ID',
@@ -404,7 +409,7 @@ export const itemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the collection whose items to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the collection whose items to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

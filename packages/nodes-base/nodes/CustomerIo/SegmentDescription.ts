@@ -17,10 +17,12 @@ export const segmentOperations: INodeProperties[] = [
 			{
 				name: 'Add Customer',
 				value: 'add',
+				action: 'Add a customer to a segment',
 			},
 			{
 				name: 'Remove Customer',
 				value: 'remove',
+				action: 'Remove a customer from a segment',
 			},
 		],
 		default: 'add',

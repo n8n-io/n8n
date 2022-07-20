@@ -18,11 +18,13 @@ export const controlOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a control',
+				action: 'Get a control',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all controls',
+				action: 'Get all controls',
 			},
 		],
 		default: 'get',
@@ -53,7 +55,7 @@ export const controlFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Control ID',
@@ -95,7 +97,7 @@ export const controlFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
