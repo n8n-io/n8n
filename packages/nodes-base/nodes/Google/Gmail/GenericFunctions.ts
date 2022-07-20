@@ -19,10 +19,6 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	IEmail,
-} from './Gmail.node';
-
 import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
@@ -32,6 +28,25 @@ interface IGoogleAuthCredentials {
 	email: string;
 	inpersonate: boolean;
 	privateKey: string;
+}
+
+export interface IEmail {
+	from?: string;
+	to?: string;
+	cc?: string;
+	bcc?: string;
+	inReplyTo?: string;
+	reference?: string;
+	subject: string;
+	body: string;
+	htmlBody?: string;
+	attachments?: IDataObject[];
+}
+
+export interface IAttachments {
+	type: string;
+	name: string;
+	content: string;
 }
 
 const mailComposer = require('nodemailer/lib/mail-composer');

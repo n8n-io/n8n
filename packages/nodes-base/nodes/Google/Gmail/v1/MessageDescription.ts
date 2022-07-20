@@ -272,7 +272,7 @@ export const messageFields: INodeProperties[] = [
 				default: [],
 			},
 			{
-				displayName: 'Sender Name',
+				displayName: 'Override Sender Name',
 				name: 'senderName',
 				type: 'string',
 				placeholder: 'Name <test@gmail.com>',
