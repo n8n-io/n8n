@@ -251,14 +251,31 @@ export interface IAuthenticateRuleResponseSuccessBody extends IAuthenticateRuleB
 	};
 }
 
-export type IHttpRequestOptionsFromProperties = Omit<
-	IHttpRequestOptions,
-	'skipSslCertificateValidation'
-> & {
-	skipSslCertificateValidation?: string | boolean;
-};
+type Override<A extends object, B extends object> = Omit<A, keyof B> & B;
+
+export namespace ParamBased {
+	export type HttpRequestOptions = Override<
+		IHttpRequestOptions,
+		{ skipSslCertificateValidation?: string | boolean; url?: string }
+	>;
+
+	export type RequestOptions = {
+		maxResults?: number | string;
+		options: HttpRequestOptions;
+		paginate?: boolean | string;
+		preSend: PreSendAction[];
+		postReceive: Array<{
+			data: {
+				parameterValue: string | IDataObject | undefined;
+			};
+			actions: PostReceiveAction[];
+		}>;
+		requestOperations?: IN8nRequestOperations;
+	};
+}
+
 export interface ICredentialTestRequest {
-	request: IHttpRequestOptionsFromProperties;
+	request: ParamBased.HttpRequestOptions;
 	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
@@ -479,7 +496,7 @@ export interface IN8nRequestOperations {
 		| IN8nRequestOperationPaginationOffset
 		| ((
 				this: IExecutePaginationFunctions,
-				requestOptions: IRequestOptionsFromParameters,
+				requestOptions: ParamBased.RequestOptions,
 		  ) => Promise<INodeExecutionData[]>);
 }
 
@@ -592,7 +609,7 @@ export interface IExecuteSingleFunctions {
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
 		this: IAllExecuteFunctions,
-		requestOptions: IRequestOptionsFromParameters,
+		requestOptions: ParamBased.RequestOptions,
 	): Promise<INodeExecutionData[]>;
 }
 export interface IExecuteWorkflowInfo {
@@ -881,7 +898,7 @@ export interface ILoadOptions {
 	routing?: {
 		operations?: IN8nRequestOperations;
 		output?: INodeRequestOutput;
-		request?: IHttpRequestOptionsFromParameters;
+		request?: ParamBased.HttpRequestOptions;
 	};
 }
 
@@ -1060,7 +1077,7 @@ export interface INodeTypeBaseDescription {
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
 	output?: INodeRequestOutput;
-	request?: IHttpRequestOptionsFromParameters;
+	request?: ParamBased.HttpRequestOptions;
 	send?: INodeRequestSend;
 }
 
@@ -1138,26 +1155,6 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export interface IHttpRequestOptionsFromParameters
-	extends Partial<IHttpRequestOptionsFromProperties> {
-	url?: string;
-	skipSslCertificateValidation?: boolean | string;
-}
-
-export interface IRequestOptionsFromParameters {
-	maxResults?: number | string;
-	options: IHttpRequestOptionsFromParameters;
-	paginate?: boolean | string;
-	preSend: PreSendAction[];
-	postReceive: Array<{
-		data: {
-			parameterValue: string | IDataObject | undefined;
-		};
-		actions: PostReceiveAction[];
-	}>;
-	requestOperations?: IN8nRequestOperations;
-}
-
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
@@ -1171,7 +1168,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
-	requestDefaults?: IHttpRequestOptionsFromParameters;
+	requestDefaults?: ParamBased.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;

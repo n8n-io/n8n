@@ -24,7 +24,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	IRequestOptionsFromParameters,
+	ParamBased,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
@@ -127,7 +127,7 @@ export class RoutingNode {
 					executeData,
 					this.mode,
 				);
-				const requestData: IRequestOptionsFromParameters = {
+				const requestData: ParamBased.RequestOptions = {
 					options: {
 						qs: {},
 						body: {},
@@ -214,8 +214,8 @@ export class RoutingNode {
 	}
 
 	mergeOptions(
-		destinationOptions: IRequestOptionsFromParameters,
-		sourceOptions?: IRequestOptionsFromParameters,
+		destinationOptions: ParamBased.RequestOptions,
+		sourceOptions?: ParamBased.RequestOptions,
 	): void {
 		if (sourceOptions) {
 			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
@@ -375,7 +375,7 @@ export class RoutingNode {
 
 	async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
-		requestData: IRequestOptionsFromParameters,
+		requestData: ParamBased.RequestOptions,
 		itemIndex: number,
 		runIndex: number,
 		credentialType?: string,
@@ -434,7 +434,7 @@ export class RoutingNode {
 	}
 
 	async makeRoutingRequest(
-		requestData: IRequestOptionsFromParameters,
+		requestData: ParamBased.RequestOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
 		itemIndex: number,
 		runIndex: number,
@@ -452,7 +452,7 @@ export class RoutingNode {
 
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: IRequestOptionsFromParameters) => {
+			makeRoutingRequest: async (requestOptions: ParamBased.RequestOptions) => {
 				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
@@ -591,8 +591,8 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): IRequestOptionsFromParameters | undefined {
-		const returnData: IRequestOptionsFromParameters = {
+	): ParamBased.RequestOptions | undefined {
+		const returnData: ParamBased.RequestOptions = {
 			options: {
 				qs: {},
 				body: {},
