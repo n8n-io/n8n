@@ -32,6 +32,7 @@ import {
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
+	PinData,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
@@ -59,6 +60,7 @@ export class WorkflowExecute {
 			startData: {},
 			resultData: {
 				runData: {},
+				pinData: {},
 			},
 			executionData: {
 				contextData: {},
@@ -82,7 +84,12 @@ export class WorkflowExecute {
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
+	run(
+		workflow: Workflow,
+		startNode?: INode,
+		destinationNode?: string,
+		pinData?: PinData,
+	): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
@@ -121,6 +128,7 @@ export class WorkflowExecute {
 			},
 			resultData: {
 				runData: {},
+				pinData,
 			},
 			executionData: {
 				contextData: {},
@@ -152,6 +160,7 @@ export class WorkflowExecute {
 		runData: IRunData,
 		startNodes: string[],
 		destinationNode: string,
+		pinData?: PinData,
 		// @ts-ignore
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
@@ -258,6 +267,7 @@ export class WorkflowExecute {
 			},
 			resultData: {
 				runData,
+				pinData,
 			},
 			executionData: {
 				contextData: {},
@@ -683,7 +693,13 @@ export class WorkflowExecute {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
 
-		const workflowIssues = workflow.checkReadyForExecution({ startNode, destinationNode });
+		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
+
+		const workflowIssues = workflow.checkReadyForExecution({
+			startNode,
+			destinationNode,
+			pinDataNodeNames,
+		});
 		if (workflowIssues !== null) {
 			throw new Error(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',
@@ -914,24 +930,37 @@ export class WorkflowExecute {
 								}
 							}
 
-							Logger.debug(`Running node "${executionNode.name}" started`, {
-								node: executionNode.name,
-								workflowId: workflow.id,
-							});
-							const runNodeData = await workflow.runNode(
-								executionData,
-								this.runExecutionData,
-								runIndex,
-								this.additionalData,
-								NodeExecuteFunctions,
-								this.mode,
-							);
-							nodeSuccessData = runNodeData.data;
+							const { pinData } = this.runExecutionData.resultData;
 
-							if (runNodeData.closeFunction) {
-								// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-								closeFunction = runNodeData.closeFunction();
+							if (pinData && !executionNode.disabled && pinData[executionNode.name] !== undefined) {
+								let nodePinData = pinData[executionNode.name];
+
+								if (!Array.isArray(nodePinData)) nodePinData = [nodePinData];
+
+								const itemsPerRun = nodePinData.map((item, index) => {
+									return { json: item, pairedItem: { item: index } };
+								});
+								nodeSuccessData = [itemsPerRun]; // always zeroth runIndex
+							} else {
+								Logger.debug(`Running node "${executionNode.name}" started`, {
+									node: executionNode.name,
+									workflowId: workflow.id,
+								});
+								const runNodeData = await workflow.runNode(
+									executionData,
+									this.runExecutionData,
+									runIndex,
+									this.additionalData,
+									NodeExecuteFunctions,
+									this.mode,
+								);
+								nodeSuccessData = runNodeData.data;
+
+								if (runNodeData.closeFunction) {
+									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+									closeFunction = runNodeData.closeFunction();
+								}
 							}
 
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, {

@@ -6,7 +6,13 @@
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton v-if="node && nodeValid" :nodeName="node.name" @execute="onNodeExecute" size="small" telemetrySource="parameters"/>
+					<NodeExecuteButton
+						:nodeName="node.name"
+						:disabled="outputPanelEditMode.enabled"
+						size="small"
+						telemetrySource="parameters"
+						@execute="onNodeExecute"
+					/>
 				</div>
 			</div>
 			<NodeSettingsTabs v-if="node && nodeValid" v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
@@ -197,6 +203,9 @@ export default mixins(
 				}
 
 				return this.nodeType.properties;
+			},
+			outputPanelEditMode(): { enabled: boolean; value: string; } {
+				return this.$store.getters['ui/outputPanelEditMode'];
 			},
 			isCommunityNode(): boolean {
 				return isCommunityPackageName(this.node.type);
