@@ -43,6 +43,7 @@ import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
+import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 Vue.use(Vuex);
 
@@ -214,6 +215,8 @@ export const store = new Vuex.Store({
 			}
 
 			state.stateIsDirty = true;
+
+			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: payload.data });
 		},
 		unpinData(state, payload: { node: INodeUi }) {
 			if (state.workflow.pinData) {
@@ -222,6 +225,8 @@ export const store = new Vuex.Store({
 			}
 
 			state.stateIsDirty = true;
+
+			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
 		// Active
@@ -645,6 +650,8 @@ export const store = new Vuex.Store({
 
 		setWorkflowPinData(state, pinData: PinData) {
 			Vue.set(state.workflow, 'pinData', pinData);
+
+			dataPinningEventBus.$emit('pin-data', pinData);
 		},
 
 		setWorkflowTagIds(state, tags: string[]) {

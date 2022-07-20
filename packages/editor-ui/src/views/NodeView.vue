@@ -194,7 +194,7 @@ import {
 	INodeCredentialsDetails,
 	TelemetryHelpers,
 	ITelemetryTrackProperties,
-	IWorkflowBase,
+	IWorkflowBase, PinData,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -219,6 +219,8 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
+import {addConnectionOutputSuccess} from "./canvasHelpers";
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2290,6 +2292,7 @@ export default mixins(
 
 								if (connection) {
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
+
 									if (!output || !output.total) {
 										CanvasHelpers.resetConnection(connection);
 									}
@@ -2956,6 +2959,33 @@ export default mixins(
 					await this.importWorkflowData(workflowData);
 				}
 			},
+			addPinDataConnections(pinData: PinData) {
+				Object.keys(pinData).forEach((nodeName) => {
+					// @ts-ignore
+					const connections = this.instance.getConnections({
+						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+					}) as Connection[];
+
+					connections.forEach((connection) => {
+						CanvasHelpers.addConnectionOutputSuccess(connection, {
+							total: pinData[nodeName].length,
+							iterations: 0,
+						});
+					});
+				});
+			},
+			removePinDataConnections(pinData: PinData) {
+				Object.keys(pinData).forEach((nodeName) => {
+					// @ts-ignore
+					const connections = this.instance.getConnections({
+						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+					}) as Connection[];
+
+					connections.forEach((connection) => {
+						CanvasHelpers.resetConnection(connection);
+					});
+				});
+			},
 		},
 
 		async mounted () {
@@ -3004,10 +3034,19 @@ export default mixins(
 				setTimeout(() => {
 					this.$store.dispatch('users/showPersonalizationSurvey');
 					this.checkForNewVersions();
+					this.addPinDataConnections(this.$store.getters.pinData);
 				}, 0);
 			});
 
 			this.$externalHooks().run('nodeView.mount');
+
+			dataPinningEventBus.$on('pin-data', (pinData: PinData) => {
+				this.addPinDataConnections(pinData);
+			});
+
+			dataPinningEventBus.$on('unpin-data', (pinData: PinData) => {
+				this.removePinDataConnections(pinData);
+			});
 		},
 
 		destroyed () {
