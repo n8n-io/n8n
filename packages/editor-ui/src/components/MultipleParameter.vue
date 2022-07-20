@@ -4,34 +4,31 @@
 			:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
 			:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 			:underline="true"
-			:labelHoverableOnly="true"
 			size="small"
-		>
+		/>
 
-			<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
-				<div class="delete-item clickable" v-if="!isReadOnly">
-					<font-awesome-icon icon="trash" :title="$locale.baseText('multipleParameter.deleteItem')" @click="deleteItem(index)" />
-					<div v-if="sortable">
-						<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$locale.baseText('multipleParameter.moveUp')" @click="moveOptionUp(index)" />
-						<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" :title="$locale.baseText('multipleParameter.moveDown')" @click="moveOptionDown(index)" />
-					</div>
-				</div>
-				<div v-if="parameter.type === 'collection'">
-					<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
-				</div>
-				<div v-else>
-					<parameter-input class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
+		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
+			<div class="delete-item clickable" v-if="!isReadOnly">
+				<font-awesome-icon icon="trash" :title="$locale.baseText('multipleParameter.deleteItem')" @click="deleteItem(index)" />
+				<div v-if="sortable">
+					<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$locale.baseText('multipleParameter.moveUp')" @click="moveOptionUp(index)" />
+					<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" :title="$locale.baseText('multipleParameter.moveDown')" @click="moveOptionDown(index)" />
 				</div>
 			</div>
-
-			<div class="add-item-wrapper">
-				<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
-					<n8n-text size="small">{{ $locale.baseText('multipleParameter.currentlyNoItemsExist') }}</n8n-text>
-				</div>
-				<n8n-button v-if="!isReadOnly" type="tertiary" fullWidth @click="addItem()" :label="addButtonText" />
+			<div v-if="parameter.type === 'collection'">
+				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
 			</div>
+			<div v-else>
+				<parameter-input-full class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :hideLabel="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
+			</div>
+		</div>
 
-		</n8n-input-label>
+		<div class="add-item-wrapper">
+			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
+				<n8n-text size="small">{{ $locale.baseText('multipleParameter.currentlyNoItemsExist') }}</n8n-text>
+			</div>
+			<n8n-button v-if="!isReadOnly" type="tertiary" fullWidth @click="addItem()" :label="addButtonText" />
+		</div>
 	</div>
 </template>
 
@@ -41,7 +38,7 @@ import {
 } from '@/Interface';
 
 import CollectionParameter from '@/components/CollectionParameter.vue';
-import ParameterInput from '@/components/ParameterInput.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
 import { get } from 'lodash';
 
@@ -54,7 +51,7 @@ export default mixins(genericHelpers)
 		name: 'MultipleParameter',
 		components: {
 			CollectionParameter,
-			ParameterInput,
+			ParameterInputFull,
 		},
 		props: [
 			'nodeValues', // NodeParameters
