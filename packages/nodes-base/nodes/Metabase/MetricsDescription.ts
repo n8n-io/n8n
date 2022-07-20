@@ -29,6 +29,7 @@ export const metricsOperations: INodeProperties[] = [
 						url: '/api/metric/',
 					},
 				},
+				action: 'Get all metrics',
 			},
 			{
 				name: 'Get',
@@ -41,6 +42,7 @@ export const metricsOperations: INodeProperties[] = [
 						returnFullResponse: true,
 					},
 				},
+				action: 'Get a metric',
 			},
 		],
 		default: 'getAll',
