@@ -494,7 +494,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 
 			try {
-				await this.$store.dispatch('users/submitPersonalizationSurvey', {...values, version: SURVEY_VERSION});
+				const survey = { ...values, version: SURVEY_VERSION };
+
+				await this.$store.dispatch('users/submitPersonalizationSurvey', survey);
+
+				this.$telemetry.setMetaData(survey, { attachTo: 'user' });
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();

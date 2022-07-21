@@ -99,9 +99,24 @@ export class Telemetry {
 		const traits = { instance_id: instanceId };
 
 		if (userId) {
-			const fullId = [instanceId, userId].join('#');
-			if (this.rudderStack) this.rudderStack.identify(fullId, traits);
-			if (this.postHogInitialized) posthog.identify(fullId, traits);
+
+			if (this.rudderStack) {
+				const fullId = [instanceId, userId].join('#');
+				this.rudderStack.identify(fullId, traits);
+			}
+
+			if (this.postHogInitialized) {
+				const fullId = [instanceId, userId].join('_'); // @TODO: PostHog disallows # in ID
+				posthog.identify(fullId, traits);
+
+				if (this.store) {
+					this.setMetaData(
+						{ is_owner: this.store.getters['users/globalRoleName'] === 'owner' },
+						{ attachTo: 'user' },
+					);
+				}
+			};
+
 			return;
 		}
 
@@ -117,6 +132,11 @@ export class Telemetry {
 	}
 
 	track(event: string, properties?: ITelemetryTrackProperties) {
+		// @TODO
+		// capture(eventName: string, props: object) {
+		// 	posthog.capture(eventName, props);
+		// }
+
 		if (!this.rudderStack) return;
 
 		const updatedProperties = {
@@ -285,11 +305,19 @@ export class Telemetry {
 		});
 	}
 
-	capture(eventName: string, props: object) {
-		posthog.capture(eventName, props);
-	}
-
 	isFeatureFlagEnabled(featureFlagName: string) {
 		return posthog.isFeatureEnabled(featureFlagName);
+	}
+
+	/**
+	 * Attach metadata to a user, or to every event sent by a user.
+	 *
+	 * User: https://posthog.com/docs/integrate/client/js#sending-user-information
+	 * User events: https://posthog.com/docs/integrate/client/js#super-properties
+	 */
+	setMetaData(metadata: object, { attachTo }: { attachTo: 'user' | 'userEvents' }) {
+		if (attachTo === 'user') return posthog.people.set(metadata);
+
+		return posthog.register(metadata);
 	}
 }
