@@ -172,15 +172,6 @@ export default mixins(
 			const headers = await this.restApi().getNodeTranslationHeaders();
 			if (headers) addHeaders(headers, this.defaultLocale);
 		}
-
-		// @TODO: Move this call to telemetry class init(), see comment in method
-		try {
-			this.$telemetry.initPostHog({ disableSessionRecording: true });
-		} catch (error) {
-			console.error('Failed to init PostHog');
-			console.error(error);
-			// @TODO: Show in console? Track in RudderStack?
-		}
 	},
 	watch: {
 		$route(route) {

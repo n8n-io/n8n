@@ -68,22 +68,7 @@ export class Telemetry {
 
 		if (logLevel) this.logLevel = logLevel;
 
-		this.store = store; // @TODO: Look into removing store from class
-
-		if (!this.postHogInitialized) {
-
-			/**
-			 * @TODO: If initPostHog() is called here inside class/plugin,
-			 * self-capture events are not sent and feature flags are not checked,
-			 * so calling directly from App.vue for now
-			 *
-			 * @TODO: After completion, set `disableSessionRecording` to the following check:
-			 * `!['desktop_mac', 'desktop_win', 'cloud'].includes(this.deploymentType)`
-			 */
-			// this.initPostHog({ disableSessionRecording: true });
-
-			this.identify(instanceId, userId);
-		}
+		this.store = store;
 
 		if (!this.rudderStack && telemetrySettings.config) {
 			const logging = this.logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
@@ -279,18 +264,32 @@ export class Telemetry {
 		this.rudderStack.load(key, url, options);
 	}
 
-	// @TODO: After moving call to init(), set to private
-	initPostHog({ disableSessionRecording }: { disableSessionRecording: boolean }) {
-		posthog.init(POSTHOG_API_KEY, {
-			api_host: POSTHOG_API_HOST,
-			autocapture: false, // @TODO: Confirm later if needed for session recording, if so enable
-			disable_session_recording: disableSessionRecording,
+	initPostHog() {
+		if (this.postHogInitialized) return;
+
+		// @TODO_FINAL: Set to !['desktop_mac', 'desktop_win', 'cloud'].includes(this.store?.getters.deploymentType)
+		const disableSessionRecording = true;
+
+		return new Promise((resolve) => {
+			posthog.init(POSTHOG_API_KEY, {
+				api_host: POSTHOG_API_HOST,
+				autocapture: false, // @TODO_PART_3: Confirm if needed for session recording, if so enable
+				disable_session_recording: disableSessionRecording,
+			});
+
+			posthog.debug(); // @TODO_FINAL: Make conditional on `this.logLevel === 'debug'`
+
+			this.postHogInitialized = true;
+
+			posthog.onFeatureFlags(resolve);
 		});
+	}
 
-		// @TODO: After completion, make conditional on `this.logLevel === 'debug'`
-		// to prevent debug noise from Rudderstack
-		posthog.debug();
+	capture(eventName: string, props: object) {
+		posthog.capture(eventName, props);
+	}
 
-		this.postHogInitialized = true;
+	isFeatureFlagEnabled(featureFlagName: string) {
+		return posthog.isFeatureEnabled(featureFlagName);
 	}
 }

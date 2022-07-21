@@ -338,11 +338,10 @@ export default mixins(
 				return this.$store.getters.allNodes;
 			},
 			runButtonText (): string {
-				posthog.capture('this is a self-capture event', { property: 'testing 123' });
+				this.$telemetry.capture('This is a self-capture event', { property: 'testing 123' });
 
-				// check for test-1 feature flag
-				if (posthog.get_config('api_host') && posthog.isFeatureEnabled('test-1')) {
-					return 'Hello from my instance';
+				if (this.$telemetry.isFeatureFlagEnabled('test-1')) {
+					return 'Hello from my feature flag';
 				}
 
 				if (this.workflowRunning === false) {
@@ -2999,6 +2998,10 @@ export default mixins(
 					connections.forEach(CanvasHelpers.resetConnection);
 				});
 			},
+		},
+
+		async beforeMount() {
+			await this.$telemetry.initPostHog();
 		},
 
 		async mounted () {
