@@ -8,19 +8,18 @@ export type CollectionName = keyof IDatabaseCollections;
 
 export type MappingName = keyof typeof MAPPING_TABLES;
 
-export type SmtpTestAccount = {
-	user: string;
-	pass: string;
-	smtp: {
-		host: string;
-		port: number;
-		secure: boolean;
-	};
-};
-
 export type ApiPath = 'internal' | 'public';
 
-type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials' | 'publicApi';
+type EndpointGroup =
+	| 'me'
+	| 'users'
+	| 'auth'
+	| 'owner'
+	| 'passwordReset'
+	| 'credentials'
+	| 'workflows'
+	| 'publicApi'
+	| 'nodes';
 
 export type CredentialPayload = {
 	name: string;
@@ -46,3 +45,16 @@ export interface TriggerTime {
 	weekeday: number;
 	[key: string]: string | number;
 }
+
+export type InstalledPackagePayload = {
+	packageName: string;
+	installedVersion: string;
+}
+
+export type InstalledNodePayload = {
+	name: string;
+	type: string;
+	latestVersion: string;
+	package: string;
+}
+

@@ -44,7 +44,7 @@ export const quoteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to create the quote under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the user profile to create the quote under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,7 +65,7 @@ export const quoteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},
-		description: 'ID of the account that will receive the funds. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the account that will receive the funds. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

@@ -252,6 +252,7 @@ export class Workflow {
 	checkReadyForExecution(inputData: {
 		startNode?: string;
 		destinationNode?: string;
+		pinDataNodeNames?: string[];
 	}): IWorfklowIssues | null {
 		let node: INode;
 		let nodeType: INodeType | undefined;
@@ -287,7 +288,11 @@ export class Workflow {
 					typeUnknown: true,
 				};
 			} else {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties, node);
+				nodeIssues = NodeHelpers.getNodeParametersIssues(
+					nodeType.description.properties,
+					node,
+					inputData.pinDataNodeNames,
+				);
 			}
 
 			if (nodeIssues !== null) {
@@ -909,7 +914,7 @@ export class Workflow {
 
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
-			if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
+			if (nodeType && (nodeType.trigger !== undefined || nodeType.poll !== undefined)) {
 				if (node.disabled === true) {
 					continue;
 				}

@@ -138,7 +138,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -180,7 +180,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Value',
@@ -222,7 +222,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Item ID',
@@ -270,7 +270,7 @@ export const boardItemFields: INodeProperties[] = [
 		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
 		},
@@ -291,7 +291,7 @@ export const boardItemFields: INodeProperties[] = [
 		displayName: 'Group Name or ID',
 		name: 'groupId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
@@ -407,7 +407,7 @@ export const boardItemFields: INodeProperties[] = [
 		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -429,7 +429,7 @@ export const boardItemFields: INodeProperties[] = [
 		name: 'groupId',
 		default: '',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 			loadOptionsDependsOn: [
@@ -511,7 +511,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The unique identifier of the board. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Column Name or ID',
@@ -535,7 +535,7 @@ export const boardItemFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The column\'s unique identifier. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Column Value',
@@ -603,7 +603,7 @@ export const boardItemFields: INodeProperties[] = [
 		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
 		},
@@ -642,7 +642,7 @@ export const boardItemFields: INodeProperties[] = [
 		displayName: 'Group Name or ID',
 		name: 'groupId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',

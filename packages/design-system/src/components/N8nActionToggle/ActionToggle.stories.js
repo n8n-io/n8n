@@ -7,7 +7,11 @@ export default {
 	argTypes: {
 		placement: {
 			type: 'select',
-			options: ['top', 'bottom'],
+			options: ['top', 'top-start', 'top-end', 'bottom', 'bottom-end'],
+		},
+		size: {
+			type: 'select',
+			options: ['mini', 'small', 'medium'],
 		},
 	},
 	parameters: {

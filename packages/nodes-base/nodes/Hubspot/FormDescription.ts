@@ -57,7 +57,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the form you\'re sending data to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the form you\'re sending data to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -229,7 +229,7 @@ export const formFields: INodeProperties[] = [
 											loadOptionsMethod: 'getSubscriptionTypes',
 										},
 										default: '',
-										description: 'The ID of the specific subscription type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+										description: 'The ID of the specific subscription type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Value',
@@ -263,7 +263,7 @@ export const formFields: INodeProperties[] = [
 							loadOptionsMethod: 'getSubscriptionTypes',
 						},
 						default: '',
-						description: 'The ID of the specific subscription type that this forms indicates interest to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The ID of the specific subscription type that this forms indicates interest to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -324,6 +324,6 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];
