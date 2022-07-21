@@ -706,6 +706,9 @@ export interface IN8nUISettings {
 		latestVersion: number;
 		path: string;
 	};
+	deployment: {
+		type: string;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
