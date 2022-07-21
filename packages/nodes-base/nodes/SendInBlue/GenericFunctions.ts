@@ -119,7 +119,7 @@ export namespace SendInBlueNode {
 	}
 }
 
-export namespace sendInBlueWebhookApi {
+export namespace SendInBlueWebhookApi {
 	interface WebhookDetails {
 		url: string;
 		id: number;
