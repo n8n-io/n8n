@@ -11,13 +11,14 @@ export default Vue.extend({
 	name: 'Telemetry',
 	data() {
 		return {
-			initialised: false,
+			isTelemetryInitialized: false,
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['telemetry']),
+		...mapGetters('settings', ['telemetry', 'logLevel', 'deploymentType']),
 		...mapGetters('users', ['currentUserId']),
-		isTelemeteryEnabledOnRoute(): boolean {
+		...mapGetters(['instanceId']),
+		isTelemetryEnabledOnRoute(): boolean {
 			return this.$route.meta && this.$route.meta.telemetry ? !this.$route.meta.telemetry.disabled: true;
 		},
 	},
@@ -26,17 +27,24 @@ export default Vue.extend({
 	},
 	methods: {
 		init() {
-			if (this.initialised || !this.isTelemeteryEnabledOnRoute) {
-				return;
-			}
-			const opts = this.telemetry;
-			if (opts && opts.enabled) {
-				this.initialised = true;
-				const instanceId = this.$store.getters.instanceId;
-				const userId = this.$store.getters['users/currentUserId'];
-				const logLevel = this.$store.getters['settings/logLevel'];
-				this.$telemetry.init(opts, { instanceId, logLevel, userId, store: this.$store });
-			}
+			if (this.isTelemetryInitialized || !this.isTelemetryEnabledOnRoute) return;
+
+			const telemetrySettings = this.telemetry;
+
+			if (!telemetrySettings || !telemetrySettings.enabled) return;
+
+			this.$telemetry.init(
+				telemetrySettings,
+				{
+					instanceId: this.instanceId,
+					userId: this.currentUserId,
+					logLevel: this.logLevel,
+					store: this.$store,
+					deploymentType: this.deploymentType,
+				},
+			);
+
+			this.isTelemetryInitialized = true;
 		},
 	},
 	watch: {
@@ -44,10 +52,9 @@ export default Vue.extend({
 			this.init();
 		},
 		currentUserId(userId) {
-			const instanceId = this.$store.getters.instanceId;
-			this.$telemetry.identify(instanceId, userId);
+			this.$telemetry.identify(this.instanceId, userId);
 		},
-		isTelemeteryEnabledOnRoute(enabled) {
+		isTelemetryEnabledOnRoute(enabled) {
 			if (enabled) {
 				this.init();
 			}
