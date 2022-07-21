@@ -42,25 +42,19 @@ export const PERMISSIONS: IUserPermissions = {
 	},
 };
 
-interface IsAuthorizedOptions {
-	currentUser: IUser | null;
-	isUMEnabled?: boolean;
-	isPublicApiEnabled?: boolean;
-}
-
-export const isAuthorized = (permissions: IPermissions, {
-	currentUser,
-	isUMEnabled,
-	isPublicApiEnabled,
-}: IsAuthorizedOptions): boolean => {
+/**
+ * To be authorized, user must pass all deny rules and pass any of the allow rules.
+ *
+ * @param permissions
+ * @param currentUser
+ * @returns
+ */
+export const isAuthorized = (permissions: IPermissions, currentUser: IUser | null): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
-
+	// big AND block
+	// if any of these are false, block user
 	if (permissions.deny) {
-		if (permissions.deny.hasOwnProperty('um') && permissions.deny.um === isUMEnabled) {
-			return false;
-		}
-
-		if (permissions.deny.hasOwnProperty('api') && permissions.deny.api === isPublicApiEnabled) {
+		if (permissions.deny.shouldDeny && permissions.deny.shouldDeny()) {
 			return false;
 		}
 
@@ -69,7 +63,7 @@ export const isAuthorized = (permissions: IPermissions, {
 		}
 
 		if (currentUser && currentUser.globalRole) {
-			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
 			if (permissions.deny.role && permissions.deny.role.includes(role)) {
 				return false;
 			}
@@ -79,12 +73,10 @@ export const isAuthorized = (permissions: IPermissions, {
 		}
 	}
 
+	// big OR block
+	// if any of these are true, allow user
 	if (permissions.allow) {
-		if (permissions.allow.hasOwnProperty('um') && permissions.allow.um === isUMEnabled) {
-			return true;
-		}
-
-		if (permissions.allow.hasOwnProperty('api') && permissions.allow.api === isPublicApiEnabled) {
+		if (permissions.allow.shouldAllow && permissions.allow.shouldAllow()) {
 			return true;
 		}
 
@@ -93,7 +85,7 @@ export const isAuthorized = (permissions: IPermissions, {
 		}
 
 		if (currentUser && currentUser.globalRole) {
-			const role = currentUser.isDefaultUser ? ROLE.Default: currentUser.globalRole.name;
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
 			if (permissions.allow.role && permissions.allow.role.includes(role)) {
 				return true;
 			}
