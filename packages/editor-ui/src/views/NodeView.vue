@@ -149,6 +149,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import posthog from 'posthog-js';
 import {
 	Connection, Endpoint, N8nPlusEndpoint,
 } from 'jsplumb';
@@ -337,6 +338,13 @@ export default mixins(
 				return this.$store.getters.allNodes;
 			},
 			runButtonText (): string {
+				posthog.capture('this is a self-capture event', { property: 'testing 123' });
+
+				// check for test-1 feature flag
+				if (posthog.get_config('api_host') && posthog.isFeatureEnabled('test-1')) {
+					return 'Hello from my instance';
+				}
+
 				if (this.workflowRunning === false) {
 					return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
 				}
