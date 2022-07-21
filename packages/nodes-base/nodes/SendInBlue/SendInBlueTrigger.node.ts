@@ -42,69 +42,161 @@ export class SendInBlueTrigger implements INodeType {
 		properties: [
 			{
 				default: 'transactional',
-				displayName: 'Webhook Type',
+				displayName: 'Resource',
 				name: 'type',
-				options: [{ name: 'Transactional', value: 'transactional' }],
+				options: [
+					{ name: 'Transactional', value: 'transactional' },
+					{ name: 'Marketing', value: 'marketing' },
+					{ name: 'Inbound', value: 'inbound' },
+				],
 				required: true,
 				type: 'options',
 			},
 			{
 				default: [],
-				displayName: 'Webhook Events',
+				displayName: 'Trigger On',
+				displayOptions: {
+					show: {
+						type: ['transactional'],
+					},
+				},
 				name: 'events',
 				placeholder: 'Add Event',
 				options: [
 					{
-						name: 'Blocked',
+						name: 'Email Blocked',
 						value: 'blocked',
+						description: 'Triggers when transactional email is blocked',
 					},
 					{
-						name: 'Click',
+						name: 'Email Clicked',
 						value: 'click',
+						description: 'Triggers when transactional email is clicked',
 					},
 					{
-						name: 'Deferred',
+						name: 'Email Deferred',
 						value: 'deferred',
+						description: 'Triggers when transactional email is deferred',
 					},
 					{
-						name: 'Delivered',
+						name: 'Email Delivered',
 						value: 'delivered',
+						description: 'Triggers when transactional email is delivered',
 					},
 					{
-						name: 'Hard Bounce',
+						name: 'Email Hard Bounce',
 						value: 'hardBounce',
+						description: 'Triggers when transactional email is hard bounced',
 					},
 					{
-						name: 'Invalid',
+						name: 'Email Invalid',
 						value: 'invalid',
+						description: 'Triggers when transactional email is invalid',
 					},
 					{
-						name: 'Opened',
-						value: 'opened',
-					},
-					{
-						name: 'Request',
-						value: 'request',
-					},
-					{
-						name: 'Sent',
-						value: 'sent',
-					},
-					{
-						name: 'Soft Bounce',
-						value: 'softBounce',
-					},
-					{
-						name: 'Spam',
+						name: 'Email Marked Spam',
 						value: 'spam',
+						description: 'Triggers when transactional email is set to spam',
 					},
 					{
-						name: 'Unique Opened',
+						name: 'Email Opened',
+						value: 'opened',
+						description: 'Triggers when transactional email is opened',
+					},
+					{
+						name: 'Email Sent',
+						value: 'request',
+						description: 'Triggers when transactional email is sent',
+					},
+					{
+						name: 'Email Soft-Bounce',
+						value: 'softBounce',
+						description: 'Triggers when transactional email is soft bounced',
+					},
+					{
+						name: 'Email Unique Open',
 						value: 'uniqueOpened',
+						description: 'Triggers when transactional email is unique opened',
 					},
 					{
-						name: 'Unsubscribed',
+						name: 'Email Unsubscribed',
 						value: 'unsubscribed',
+						description: 'Triggers when transactional email is unsubscribed',
+					},
+				],
+				required: true,
+				type: 'multiOptions',
+			},
+			{
+				default: [],
+				displayName: 'Trigger On',
+				displayOptions: {
+					show: {
+						type: ['marketing'],
+					},
+				},
+				name: 'events',
+				placeholder: 'Add Event',
+				options: [
+					{
+						name: 'Marketing Email Clicked',
+						value: 'click',
+						description: 'Triggers when marketing email is clicked',
+					},
+					{
+						name: 'Marketing Email Delivered',
+						value: 'delivered',
+						description: 'Triggers when marketing email is delivered',
+					},
+					{
+						name: 'Marketing Email Hard Bounce',
+						value: 'hardBounce',
+						description: 'Triggers when marketing email is hard bounced',
+					},
+					{
+						name: 'Marketing Email List Addition',
+						value: 'listAddition',
+						description: 'Triggers when marketing email is clicked',
+					},
+					{
+						name: 'Marketing Email Opened',
+						value: 'opened',
+						description: 'Triggers when marketing email is opened',
+					},
+					{
+						name: 'Marketing Email Soft Bounce',
+						value: 'softBounce',
+						description: 'Triggers when marketing email is soft bounced',
+					},
+					{
+						name: 'Marketing Email Spam',
+						value: 'spam',
+						description: 'Triggers when marketing email is spam',
+					},
+					{
+						name: 'Marketing Email Unsubscribed',
+						value: 'unsubscribed',
+						description: 'Triggers when marketing email is unsubscribed',
+					},
+				],
+				required: true,
+				type: 'multiOptions',
+			},
+			{
+				default: [],
+				displayName: 'Trigger On',
+				displayOptions: {
+					show: {
+						type: ['inbound'],
+					},
+				},
+				name: 'events',
+				placeholder: 'Add Event',
+				options: [
+					{
+						name: 'Inbound Email Processed',
+						value: 'inboundEmailProcessed',
+						description: 'Triggers when inbound email is processed',
 					},
 				],
 				required: true,
@@ -202,7 +294,7 @@ export class SendInBlueTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		return {
-			noWebhookResponse: true,
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }
