@@ -8,10 +8,12 @@ import { RoleService } from '../role/role.service';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
-		userId: string,
+		user: User,
 		credentialId: string,
 	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
-		const sharing = await this.getSharing(userId, credentialId, ['credentials']);
+		const sharing = await this.getShared(user, credentialId, ['credentials'], {
+			allowGlobalOwner: false,
+		});
 
 		return sharing
 			? { ownsCredential: true, credential: sharing.credentials }

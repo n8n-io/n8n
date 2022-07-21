@@ -28,7 +28,7 @@ EECredentialsController.post('/:id/share', async (req: CredentialRequest.Share, 
 	const { id } = req.params;
 	const { shareeId } = req.body;
 
-	const isOwned = EECredentials.isOwned(req.user.id, id);
+	const isOwned = EECredentials.isOwned(req.user, id);
 	const getSharee = UserService.get({ id: shareeId });
 
 	// parallelize DB requests and destructure results
@@ -57,7 +57,7 @@ EECredentialsController.delete('/:id/share', async (req: CredentialRequest.Share
 	const { id } = req.params;
 	const { shareeId } = req.body;
 
-	const { ownsCredential } = await EECredentials.isOwned(req.user.id, id);
+	const { ownsCredential } = await EECredentials.isOwned(req.user, id);
 
 	if (!ownsCredential) {
 		return res.status(403).send();

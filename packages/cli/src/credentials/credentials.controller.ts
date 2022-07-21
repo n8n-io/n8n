@@ -4,29 +4,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import express from 'express';
-import { In } from 'typeorm';
-import { UserSettings, Credentials } from 'n8n-core';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
-import {
-	CredentialsHelper,
-	Db,
-	GenericHelpers,
-	ICredentialsDb,
-	ICredentialsResponse,
-	whereClause,
-	ResponseHelper,
-} from '..';
+import { GenericHelpers, ICredentialsResponse, ResponseHelper } from '..';
 
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { validateEntity } from '../GenericHelpers';
-import { createCredentialsFromCredentialsEntity } from '../CredentialsHelper';
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
-import { externalHooks } from '../Server';
 import { CredentialsService } from './credentials.service';
 import { EECredentialsController } from './credentials.controller.ee';
 
@@ -52,38 +36,9 @@ credentialsController.use('/', EECredentialsController);
 credentialsController.get(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
-		let credentials: ICredentialsDb[] = [];
-
 		const filter = req.query.filter ? (JSON.parse(req.query.filter) as Record<string, string>) : {};
 
-		try {
-			if (req.user.globalRole.name === 'owner') {
-				credentials = await Db.collections.Credentials.find({
-					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
-					where: filter,
-				});
-			} else {
-				const shared = await Db.collections.SharedCredentials.find({
-					where: whereClause({
-						user: req.user,
-						entityType: 'credentials',
-					}),
-				});
-
-				if (!shared.length) return [];
-
-				credentials = await Db.collections.Credentials.find({
-					select: ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'],
-					where: {
-						id: In(shared.map(({ credentialId }) => credentialId)),
-						...filter,
-					},
-				});
-			}
-		} catch (error) {
-			LoggerProxy.error('Request to list credentials failed', error);
-			throw error;
-		}
+		const credentials = await CredentialsService.getFiltered(req.user, filter);
 
 		return credentials.map((credential) => {
 			// eslint-disable-next-line no-param-reassign
@@ -122,20 +77,8 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials, nodeToTestWith } = req.body;
 
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
-		}
-
-		const helper = new CredentialsHelper(encryptionKey);
-
-		return helper.testCredentials(req.user, credentials.type, credentials, nodeToTestWith);
+		const encryptionKey = await CredentialsService.getEncryptionKey();
+		return CredentialsService.test(req.user, encryptionKey, credentials, nodeToTestWith);
 	}),
 );
 
@@ -145,68 +88,16 @@ credentialsController.post(
 credentialsController.post(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.Create) => {
-		delete req.body.id; // delete if sent
+		const newCredential = await CredentialsService.prepareCreateData(req.body);
 
-		const newCredential = new CredentialsEntity();
+		const encryptionKey = await CredentialsService.getEncryptionKey();
+		const encryptedData = CredentialsService.createEncryptedData(
+			encryptionKey,
+			null,
+			newCredential,
+		);
+		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
 
-		Object.assign(newCredential, req.body);
-
-		await validateEntity(newCredential);
-
-		// Add the added date for node access permissions
-		for (const nodeAccess of newCredential.nodesAccess) {
-			nodeAccess.date = new Date();
-		}
-
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
-		}
-
-		// Encrypt the data
-		const coreCredential = createCredentialsFromCredentialsEntity(newCredential, true);
-
-		// @ts-ignore
-		coreCredential.setData(newCredential.data, encryptionKey);
-
-		const encryptedData = coreCredential.getDataToSave() as ICredentialsDb;
-
-		Object.assign(newCredential, encryptedData);
-
-		await externalHooks.run('credentials.create', [encryptedData]);
-
-		const role = await Db.collections.Role.findOneOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
-
-		const { id, ...rest } = await Db.transaction(async (transactionManager) => {
-			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
-
-			savedCredential.data = newCredential.data;
-
-			const newSharedCredential = new SharedCredentials();
-
-			Object.assign(newSharedCredential, {
-				role,
-				user: req.user,
-				credentials: savedCredential,
-			});
-
-			await transactionManager.save<SharedCredentials>(newSharedCredential);
-
-			return savedCredential;
-		});
-		LoggerProxy.verbose('New credential created', {
-			credentialId: newCredential.id,
-			ownerId: req.user.id,
-		});
 		return { id: id.toString(), ...rest };
 	}),
 );
@@ -219,14 +110,7 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await Db.collections.SharedCredentials.findOne({
-			relations: ['credentials'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'credentials',
-				entityId: credentialId,
-			}),
-		});
+		const shared = await CredentialsService.getShared(req.user, credentialId);
 
 		if (!shared) {
 			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
@@ -240,9 +124,7 @@ credentialsController.delete(
 			);
 		}
 
-		await externalHooks.run('credentials.delete', [credentialId]);
-
-		await Db.collections.Credentials.remove(shared.credentials);
+		await CredentialsService.delete(shared.credentials);
 
 		return true;
 	}),
@@ -256,19 +138,7 @@ credentialsController.patch(
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
 		const { id: credentialId } = req.params;
 
-		const updateData = new CredentialsEntity();
-		Object.assign(updateData, req.body);
-
-		await validateEntity(updateData);
-
-		const shared = await Db.collections.SharedCredentials.findOne({
-			relations: ['credentials'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'credentials',
-				entityId: credentialId,
-			}),
-		});
+		const shared = await CredentialsService.getShared(req.user, credentialId);
 
 		if (!shared) {
 			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
@@ -284,58 +154,19 @@ credentialsController.patch(
 
 		const { credentials: credential } = shared;
 
-		// Add the date for newly added node access permissions
-		for (const nodeAccess of updateData.nodesAccess) {
-			if (!nodeAccess.date) {
-				nodeAccess.date = new Date();
-			}
-		}
-
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
-		}
-
-		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-
-		const decryptedData = coreCredential.getData(encryptionKey);
-
-		// Do not overwrite the oauth data else data like the access or refresh token would get lost
-		// everytime anybody changes anything on the credentials even if it is just the name.
-		if (decryptedData.oauthTokenData) {
-			// @ts-ignore
-			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
-		}
-
-		// Encrypt the data
-		const credentials = new Credentials(
-			{ id: credentialId, name: updateData.name },
-			updateData.type,
-			updateData.nodesAccess,
+		const encryptionKey = await CredentialsService.getEncryptionKey();
+		const decryptedData = await CredentialsService.decrypt(encryptionKey, credential);
+		const preparedCredentialData = await CredentialsService.prepareUpdateData(
+			req.body,
+			decryptedData,
+		);
+		const newCredentialData = CredentialsService.createEncryptedData(
+			encryptionKey,
+			credentialId,
+			preparedCredentialData,
 		);
 
-		// @ts-ignore
-		credentials.setData(updateData.data, encryptionKey);
-
-		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
-
-		// Add special database related data
-		newCredentialData.updatedAt = new Date();
-
-		await externalHooks.run('credentials.update', [newCredentialData]);
-
-		// Update the credentials in DB
-		await Db.collections.Credentials.update(credentialId, newCredentialData);
-
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the updated entry.
-		const responseData = await Db.collections.Credentials.findOne(credentialId);
+		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === undefined) {
 			throw new ResponseHelper.ResponseError(
@@ -365,7 +196,7 @@ credentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await CredentialsService.getSharing(req.user.id, credentialId, ['credentials']);
+		const shared = await CredentialsService.getShared(req.user, credentialId, ['credentials']);
 
 		if (!shared) {
 			throw new ResponseHelper.ResponseError(
@@ -388,22 +219,12 @@ credentialsController.get(
 
 		const { data, id, ...rest } = credential;
 
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
-		}
-
-		const coreCredential = CredentialsService.createCredentialsFromCredentialsEntity(credential);
+		const encryptionKey = await CredentialsService.getEncryptionKey();
+		const decryptedData = await CredentialsService.decrypt(encryptionKey, credential);
 
 		return {
 			id: id.toString(),
-			data: coreCredential.getData(encryptionKey),
+			data: decryptedData,
 			...rest,
 		};
 	}),
