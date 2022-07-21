@@ -192,21 +192,21 @@ export class NocoDB implements INodeType {
 					const requestMethod = 'GET';
 					const endpoint = '/api/v1/db/meta/projects/';
 					const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
-					return responseData.list.map((i: IDataObject) => ({ name: i.title, value: JSON.stringify(i) }));
+					return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 				} catch (e) {
 					throw new NodeOperationError(this.getNode(), `Error while fetching projects! (${e})`);
 				}
 
 			},
+			// This only supports using the Project ID
 			async getTables(this: ILoadOptionsFunctions) {
-				const project = JSON.parse(this.getNodeParameter('project', 0) as string || 'null') as IDataObject;
-				if (project) {
-					const projectId = project.id;
+				const projectId = this.getNodeParameter('projectId', 0) as string;
+				if (projectId) {
 					try {
 						const requestMethod = 'GET';
 						const endpoint = `/api/v1/db/meta/projects/${projectId}/tables`;
 						const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
-						return responseData.list.map((i: IDataObject) => ({ name: i.title, value: JSON.stringify(i) }));
+						return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 					} catch (e) {
 						throw new NodeOperationError(this.getNode(), `Error while fetching tables! (${e})`);
 					}
@@ -231,20 +231,10 @@ export class NocoDB implements INodeType {
 
 		let qs: IDataObject = {};
 
-		let projectId = '';
-		let table = '';
 		let endPoint = '';
 
-		if (version === 1) {
-			projectId = this.getNodeParameter('projectId', 0) as string;
-			table = this.getNodeParameter('table', 0) as string;
-		} else if (version === 2) {
-			const projectParam = JSON.parse(this.getNodeParameter('project', 0) as string || 'null') as IDataObject;
-			const tableParam = JSON.parse(this.getNodeParameter('table', 0) as string || 'null') as IDataObject;
-
-			projectId = projectParam.title as string;
-			table = tableParam.title as string;
-		}
+		const projectId = this.getNodeParameter('projectId', 0) as string;
+		const table = this.getNodeParameter('table', 0) as string;
 
 		if (resource === 'row') {
 			if (operation === 'create') {

@@ -23,7 +23,7 @@ export const operationFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Project Name or ID',
-		name: 'project',
+		name: 'projectId',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -55,7 +55,7 @@ export const operationFields: INodeProperties[] = [
 		description: 'The table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
 		typeOptions: {
 			loadOptionsDependsOn: [
-				'project',
+				'projectId',
 			],
 			loadOptionsMethod: 'getTables',
 		},
