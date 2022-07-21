@@ -89,6 +89,9 @@ const module: Module<ISettingsState, IRootState> = {
 		isQueueModeEnabled: (state): boolean => {
 			return state.settings.executionMode === 'queue';
 		},
+		deploymentType: (state): string  => {
+			return state.settings.deployment.type;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
