@@ -72,7 +72,7 @@
 				/>
 				<div
 					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
-					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
+					@click="addStickyNote"
 				>
 					<n8n-icon-button
 						size="medium"
@@ -226,6 +226,9 @@ interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
+
+const DEFAULT_STICKY_HEIGHT = 160;
+const DEFAULT_STICKY_WIDTH = 240;
 
 export default mixins(
 	copyPaste,
@@ -1370,12 +1373,25 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 
-			nodeTypeSelected (nodeTypeName: string) {
-				this.addNodeButton(nodeTypeName);
-				this.createNodeActive = false;
+			addStickyNote() {
 				if (document.activeElement) {
 					(document.activeElement as HTMLElement).blur();
 				}
+
+				const offset: [number, number] = [...(this.$store.getters.getNodeViewOffsetPosition as [number, number])];
+
+				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+				position[0] -= DEFAULT_STICKY_WIDTH / 2;
+				position[1] -= DEFAULT_STICKY_HEIGHT / 2;
+
+				this.addNodeButton(STICKY_NODE_TYPE, {
+					position,
+				});
+			},
+
+			nodeTypeSelected (nodeTypeName: string) {
+				this.addNodeButton(nodeTypeName);
+				this.createNodeActive = false;
 			},
 
 			onDragOver(event: DragEvent) {
