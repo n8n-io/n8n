@@ -1,5 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-import { validateAttachmentsData } from './GenericFunctions';
+import { SendInBlueNode } from './GenericFunctions';
 
 export const emailOperations: INodeProperties[] = [
 	{
@@ -249,7 +249,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [validateAttachmentsData],
+						preSend: [SendInBlueNode.validateAttachmentsData],
 					},
 				},
 			},
@@ -524,7 +524,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [validateAttachmentsData],
+						preSend: [SendInBlueNode.validateAttachmentsData],
 					},
 				},
 			},

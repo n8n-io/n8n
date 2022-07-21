@@ -1,4 +1,4 @@
-import { IDataObject, IExecuteSingleFunctions, IN8nHttpFullResponse, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { IExecuteSingleFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 export const senderOperations: INodeProperties[] = [
 	{
@@ -8,9 +8,7 @@ export const senderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'sender',
-				],
+				resource: ['sender'],
 			},
 		},
 		options: [
@@ -59,9 +57,12 @@ export const senderOperations: INodeProperties[] = [
 									property: 'senders',
 								},
 							},
-							async function (this: IExecuteSingleFunctions, items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
+							async function (
+								this: IExecuteSingleFunctions,
+								items: INodeExecutionData[],
+							): Promise<INodeExecutionData[]> {
 								const returnAll = this.getNodeParameter('returnAll') as boolean;
-								if(returnAll === false) {
+								if (returnAll === false) {
 									const limit = this.getNodeParameter('limit') as number;
 
 									items = items.slice(0, limit);
@@ -87,12 +88,8 @@ const senderCreateOperation: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'sender',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['sender'],
+				operation: ['create'],
 			},
 		},
 		routing: {
@@ -116,12 +113,8 @@ const senderCreateOperation: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'sender',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['sender'],
+				operation: ['create'],
 			},
 		},
 		routing: {
@@ -143,12 +136,8 @@ const senderDeleteOperation: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'sender',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['sender'],
+				operation: ['delete'],
 			},
 		},
 		description: 'ID of the sender to delete',
@@ -162,12 +151,8 @@ const senderGetAllOperation: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'sender',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['sender'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -179,15 +164,9 @@ const senderGetAllOperation: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'sender',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['sender'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -203,15 +182,15 @@ export const senderFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                sender:create                               */
 	/* -------------------------------------------------------------------------- */
-		...senderCreateOperation,
+	...senderCreateOperation,
 
 	/* -------------------------------------------------------------------------- */
 	/*                                sender:delete                               */
 	/* -------------------------------------------------------------------------- */
-		...senderDeleteOperation,
+	...senderDeleteOperation,
 
 	/* -------------------------------------------------------------------------- */
 	/*                                sender:getAll                               */
 	/* -------------------------------------------------------------------------- */
-		...senderGetAllOperation,
+	...senderGetAllOperation,
 ];
