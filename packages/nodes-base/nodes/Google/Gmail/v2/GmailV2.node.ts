@@ -58,6 +58,10 @@ import {
 	isEmpty,
 } from 'lodash';
 
+import {
+	DateTime,
+} from 'luxon';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
 	name: 'gmail',
@@ -605,6 +609,53 @@ export class GmailV2 implements INodeType {
 								qs.q = `from:${qs.sender}`;
 							}
 							delete qs.sender;
+						}
+
+						if (qs.readStatus) {
+							if (qs.q) {
+								qs.q += ` is:${qs.readStatus}`;
+							} else {
+								qs.q = `is:${qs.readStatus}`;
+							}
+							delete qs.readStatus;
+						}
+
+						if (qs.receivedAfter) {
+							let timestamp =	DateTime.fromISO(qs.receivedAfter as string).toSeconds();
+
+							if (!timestamp) {
+								timestamp = DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds();
+							}
+
+							if (!timestamp) {
+								throw new NodeOperationError(this.getNode(), `Datetime ${qs.receivedAfter} provided in "Received After" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`, { itemIndex: i });
+							}
+
+							if (qs.q) {
+								qs.q += ` after:${timestamp}`;
+							} else {
+								qs.q = `after:${timestamp}`;
+							}
+							delete qs.receivedAfter;
+						}
+
+						if (qs.receivedBefore) {
+							let timestamp =	DateTime.fromISO(qs.receivedBefore as string).toSeconds();
+
+							if (!timestamp) {
+								timestamp = DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds();
+							}
+
+							if (!timestamp) {
+								throw new NodeOperationError(this.getNode(), `Datetime ${qs.receivedBefore} provided in "Received Before" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`, { itemIndex: i });
+							}
+
+							if (qs.q) {
+								qs.q += ` before:${timestamp}`;
+							} else {
+								qs.q = `before:${timestamp}`;
+							}
+							delete qs.receivedBefore;
 						}
 
 						if (returnAll) {

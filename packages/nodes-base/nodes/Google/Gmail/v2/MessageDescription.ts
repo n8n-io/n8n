@@ -495,6 +495,37 @@ export const messageFields: INodeProperties[] = [
 				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
 			},
 			{
+				displayName: 'Read Status',
+				name: 'readStatus',
+				type: 'options',
+				default: 'unread',
+				description: 'Filter emails by their read status',
+				options: [
+					{
+						name: 'Only Read Emails',
+						value: 'read',
+					},
+					{
+						name: 'Only Unread Emails',
+						value: 'unread',
+					},
+				],
+			},
+			{
+				displayName: 'Received After',
+				name: 'receivedAfter',
+				type: 'dateTime',
+				default: '',
+				description: 'Get all emails received after the specified date, in an expression you can set date using string in ISO format or a timestamp in miliseconds',
+			},
+			{
+				displayName: 'Received Before',
+				name: 'receivedBefore',
+				type: 'dateTime',
+				default: '',
+				description: 'Get all emails received after the specified date, in an expression you can set date using string in ISO format or a timestamp in miliseconds',
+			},
+			{
 				displayName: 'Sender',
 				name: 'sender',
 				type: 'string',
