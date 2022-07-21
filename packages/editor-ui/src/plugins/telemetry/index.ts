@@ -73,14 +73,14 @@ export class Telemetry {
 		if (!this.postHogInitialized) {
 
 			/**
-			 * @TODO: If initPostHog() is called from inside class/plugin,
+			 * @TODO: If initPostHog() is called here inside class/plugin,
 			 * self-capture events are not sent and feature flags are not checked,
 			 * so calling directly from App.vue for now
 			 *
 			 * @TODO: After completion, set `disableSessionRecording` to the following check:
 			 * `!['desktop_mac', 'desktop_win', 'cloud'].includes(this.deploymentType)`
 			 */
-			this.initPostHog({ disableSessionRecording: true });
+			// this.initPostHog({ disableSessionRecording: true });
 
 			this.identify(instanceId, userId);
 		}

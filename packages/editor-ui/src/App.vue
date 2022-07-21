@@ -43,7 +43,16 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
+		...mapGetters(
+			'settings', [
+				'isHiringBannerEnabled',
+				'isTemplatesEnabled',
+				'isTemplatesEndpointReachable',
+				'isUserManagementEnabled',
+				'showSetupPage',
+				'deploymentType',
+			],
+		),
 		...mapGetters('users', ['currentUser']),
 		defaultLocale (): string {
 			return this.$store.getters.defaultLocale;
@@ -162,6 +171,15 @@ export default mixins(
 		if (this.defaultLocale !== 'en') {
 			const headers = await this.restApi().getNodeTranslationHeaders();
 			if (headers) addHeaders(headers, this.defaultLocale);
+		}
+
+		// @TODO: Move this call to telemetry class init(), see comment in method
+		try {
+			this.$telemetry.initPostHog({ disableSessionRecording: true });
+		} catch (error) {
+			console.error('Failed to init PostHog');
+			console.error(error);
+			// @TODO: Show in console? Track in RudderStack?
 		}
 	},
 	watch: {
