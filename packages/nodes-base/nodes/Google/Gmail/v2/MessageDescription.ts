@@ -42,7 +42,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Mark a message as unread',
 			},
 			{
-				name: 'Reply',
+				name: 'Reply to Sender',
 				value: 'reply',
 				action: 'Reply to a message',
 			},
@@ -79,8 +79,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: '172ce2c4a72cc243',
 	},
 	{
-		displayName: 'Thread ID',
-		name: 'threadId',
+		displayName: 'Message ID',
+		name: 'messageId',
 		type: 'string',
 		default: '',
 		required: true,
@@ -97,24 +97,6 @@ export const messageFields: INodeProperties[] = [
 		placeholder: '172ce2c4a72cc243',
 	},
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
-			},
-		},
-		placeholder: 'CAHNQoFsC6JMMbOBJgtjsqN0eEc+gDg2a=SQj-tWUebQeHMDgqQ@mail.gmail.com',
-	},
-	{
 		displayName: 'Send To',
 		name: 'sendTo',
 		type: 'string',
@@ -126,7 +108,6 @@ export const messageFields: INodeProperties[] = [
 					'message',
 				],
 				operation: [
-					'reply',
 					'send',
 				],
 			},
@@ -267,6 +248,21 @@ export const messageFields: INodeProperties[] = [
 				},
 				placeholder: 'info@example.com',
 				default: [],
+			},
+			{
+				displayName: 'Extra to Recipients',
+				name: 'sendTo',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'/operation': [
+							'reply',
+						],
+					},
+				},
+				placeholder: 'info@example.com',
+				description: 'These emails would be sent along with the original sender\'s email. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 			},
 			{
 				displayName: 'Override Sender Name',

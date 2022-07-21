@@ -143,7 +143,7 @@ export const draftFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Send To',
+				displayName: 'To Email',
 				name: 'sendTo',
 				type: 'string',
 				default: '',

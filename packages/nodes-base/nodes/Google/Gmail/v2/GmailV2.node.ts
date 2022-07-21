@@ -438,18 +438,6 @@ export class GmailV2 implements INodeType {
 						let bccStr = '';
 						let attachmentsList: IDataObject[] = [];
 
-						const sendTo = this.getNodeParameter('sendTo', i) as string;
-
-						sendTo.split(',').forEach(entry => {
-							const email = entry.trim();
-
-							if (email.indexOf('@') === -1) {
-								throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Send To" input field is not valid`, { itemIndex: i });
-							}
-
-							toStr += `<${email}>, `;
-						});
-
 						if (additionalFields.ccList) {
 							const ccList = additionalFields.ccList as IDataObject[];
 
@@ -501,7 +489,7 @@ export class GmailV2 implements INodeType {
 
 						qs.format = 'metadata';
 
-						const { payload } = await googleApiRequest.call(this, method, endpoint, body, qs);
+						const { payload, threadId } = await googleApiRequest.call(this, method, endpoint, body, qs);
 
 						if (toStr === '') {
 							for (const header of payload.headers as IDataObject[]) {
@@ -512,8 +500,24 @@ export class GmailV2 implements INodeType {
 							}
 						}
 
+
+						if (additionalFields.sendTo) {
+							const sendTo = additionalFields.sendTo as string;
+
+							sendTo.split(',').forEach(entry => {
+								const email = entry.trim();
+
+								if (email.indexOf('@') === -1) {
+									throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Send To" input field is not valid`, { itemIndex: i });
+								}
+
+								toStr += `<${email}>, `;
+							});
+						}
+
 						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0]?.value  || '';
 						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
+						const inReplyTo = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Message-Id')[0]?.value || '';
 
 						let from = '';
 						if (additionalFields.senderName) {
@@ -541,17 +545,18 @@ export class GmailV2 implements INodeType {
 							body: messageBody,
 							htmlBody: messageBodyHtml,
 							attachments: attachmentsList,
+							inReplyTo,
 						};
 
 						endpoint = '/gmail/v1/users/me/messages/send';
 						method = 'POST';
 
-						email.inReplyTo = id;
+						email.replyTo = id;
 						email.reference = references;
 
 						body = {
 							raw: await encodeEmail(email),
-							threadId: this.getNodeParameter('threadId', i) as string,
+							threadId,
 						};
 
 						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
