@@ -1,12 +1,10 @@
 import express from 'express';
-import type { SuperAgentTest } from 'supertest';
 import config from '../../config';
 import { Db } from '../../src';
 import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { SaveCredentialFunction } from './shared/types';
+import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
 jest.mock('../../src/telemetry');
@@ -17,7 +15,7 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
-let authAgent: (user: User) => SuperAgentTest;
+let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -159,7 +157,7 @@ test('POST /credentials/:id/share should respond 400 for non-existing sharee', a
 
 	const response = await authAgent(owner)
 		.post(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: 'abc' });
+		.send({ shareeId: 'bce38a11-5e45-4d1c-a9ee-36e4a20ab0fc' });
 
 	expect(response.statusCode).toBe(400);
 });
@@ -236,7 +234,7 @@ test('DELETE /credentials/:id/share should be idempotent', async () => {
 
 	const unshareNonExistent = await authAgent(owner)
 		.delete(`/credentials/${savedCredential.id}/share`)
-		.send({ shareeId: 'abc' });
+		.send({ shareeId: 'bce38a11-5e45-4d1c-a9ee-36e4a20ab0fc' });
 
 	expect(unshareNonExistent.statusCode).toBe(200);
 });

@@ -1,23 +1,25 @@
 import express from 'express';
 import validator from 'validator';
 
-import * as utils from './shared/utils';
-import * as testDb from './shared/testDb';
-import { Db } from '../../src';
 import config from '../../config';
+import { Db } from '../../src';
+import type { Role } from '../../src/databases/entities/Role';
 import {
 	randomEmail,
+	randomInvalidPassword,
 	randomName,
 	randomValidPassword,
-	randomInvalidPassword,
 } from './shared/random';
-import type { Role } from '../../src/databases/entities/Role';
+import * as testDb from './shared/testDb';
+import type { AuthAgent } from './shared/types';
+import * as utils from './shared/utils';
 
 jest.mock('../../src/telemetry');
 
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
+let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
@@ -25,6 +27,9 @@ beforeAll(async () => {
 	testDbName = initResult.testDbName;
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
+
+	authAgent = utils.createAuthAgent(app);
+
 	utils.initTestLogger();
 	utils.initTestTelemetry();
 });
@@ -43,7 +48,6 @@ afterAll(async () => {
 
 test('POST /owner should create owner and enable isInstanceOwnerSetUp', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const newOwnerData = {
 		email: randomEmail(),
@@ -52,7 +56,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 		password: randomValidPassword(),
 	};
 
-	const response = await authOwnerAgent.post('/owner').send(newOwnerData);
+	const response = await authAgent(ownerShell).post('/owner').send(newOwnerData);
 
 	expect(response.statusCode).toBe(200);
 
@@ -96,7 +100,6 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 
 test('POST /owner should create owner with lowercased email', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	const newOwnerData = {
 		email: randomEmail().toUpperCase(),
@@ -105,7 +108,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 		password: randomValidPassword(),
 	};
 
-	const response = await authOwnerAgent.post('/owner').send(newOwnerData);
+	const response = await authAgent(ownerShell).post('/owner').send(newOwnerData);
 
 	expect(response.statusCode).toBe(200);
 
@@ -120,7 +123,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 
 test('POST /owner should fail with invalid inputs', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+	const authOwnerAgent = authAgent(ownerShell);
 
 	await Promise.all(
 		INVALID_POST_OWNER_PAYLOADS.map(async (invalidPayload) => {
@@ -132,9 +135,8 @@ test('POST /owner should fail with invalid inputs', async () => {
 
 test('POST /owner/skip-setup should persist skipping setup to the DB', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
-	const response = await authOwnerAgent.post('/owner/skip-setup').send();
+	const response = await authAgent(ownerShell).post('/owner/skip-setup').send();
 
 	expect(response.statusCode).toBe(200);
 

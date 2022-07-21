@@ -58,7 +58,6 @@ export const MAPPING_TABLES_TO_CLEAR: Record<string, string[] | undefined> = {
 	Tag: ['workflows_tags'],
 };
 
-
 /**
  * Name of the connection used for creating and dropping a Postgres DB
  * for each suite test run.
