@@ -1373,6 +1373,9 @@ export default mixins(
 			nodeTypeSelected (nodeTypeName: string) {
 				this.addNodeButton(nodeTypeName);
 				this.createNodeActive = false;
+				if (document.activeElement) {
+					(document.activeElement as HTMLElement).blur();
+				}
 			},
 
 			onDragOver(event: DragEvent) {
