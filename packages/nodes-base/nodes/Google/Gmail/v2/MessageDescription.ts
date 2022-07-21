@@ -494,7 +494,13 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
 			},
+			{
+				displayName: 'Sender',
+				name: 'sender',
+				type: 'string',
+				default: '',
+				description: 'Sender name or email to filter by',
+			},
 		],
 	},
-
 ];

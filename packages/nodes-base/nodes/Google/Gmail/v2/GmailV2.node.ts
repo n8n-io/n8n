@@ -598,6 +598,15 @@ export class GmailV2 implements INodeType {
 							}
 						}
 
+						if (qs.sender) {
+							if (qs.q) {
+								qs.q += ` from:${qs.sender}`;
+							} else {
+								qs.q = `from:${qs.sender}`;
+							}
+							delete qs.sender;
+						}
+
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
