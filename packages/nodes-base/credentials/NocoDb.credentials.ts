@@ -29,14 +29,8 @@ export class NocoDb implements ICredentialType {
 		type:'generic',
 		properties: {
 			headers:{
-				'xc-auth': '={{credentials.apiToken}}',
+				'xc-auth': '={{$credentials.apiToken}}',
 			},
-		},
-	};
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: '={{$credentials.host}}',
-			url: '/lists',
 		},
 	};
 }
