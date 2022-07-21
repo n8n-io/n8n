@@ -259,7 +259,7 @@
 	"fakeDoor.settings.environments.actionBox.title": "We're working on this (as a paid feature)",
 	"fakeDoor.settings.environments.actionBox.description": "If you'd like to be the first to hear when it's ready, join the list.",
 	"fakeDoor.settings.logging.name": "Logging",
-	"fakeDoor.settings.logging.infoText": "You can write logs to a file or the console using environment variables. <a href=\"https://docs.n8n.io/hosting/logging/\" target=\"_blank\">More info</a>",
+	"fakeDoor.settings.logging.infoText": "You can already write logs to a file or the console using environment variables. <a href=\"https://docs.n8n.io/hosting/logging/\" target=\"_blank\">More info</a>",
 	"fakeDoor.settings.logging.actionBox.title": "We're working on advanced logging (as a paid feature)",
 	"fakeDoor.settings.logging.actionBox.description": "This also includes audit logging. If you'd like to be the first to hear when it's ready, join the list.",
 	"fakeDoor.actionBox.button.label": "Join the list",
