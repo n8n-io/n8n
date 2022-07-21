@@ -56,7 +56,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	}
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'nocodbApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'nocoDb', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
