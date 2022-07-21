@@ -178,8 +178,8 @@ export const messageFields: INodeProperties[] = [
 					'send',
 					'reply',
 				],
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Message',

@@ -104,8 +104,8 @@ export const draftFields: INodeProperties[] = [
 				operation: [
 					'create',
 				],
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Message',

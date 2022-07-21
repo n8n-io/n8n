@@ -385,7 +385,7 @@ export class GmailV2 implements INodeType {
 							}
 						}
 
-						let from = ''
+						let from = '';
 						if (additionalFields.senderName) {
 							const {emailAddress} = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
 							from = `${additionalFields.senderName as string} <${emailAddress}>`;
@@ -511,7 +511,7 @@ export class GmailV2 implements INodeType {
 						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0]?.value  || '';
 						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
 
-						let from = ''
+						let from = '';
 						if (additionalFields.senderName) {
 							const {emailAddress} = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
 							from = `${additionalFields.senderName as string} <${emailAddress}>`;
@@ -690,7 +690,7 @@ export class GmailV2 implements INodeType {
 					}
 
 					if (operation === 'markAsUnread') {
-						https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
+						// https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
 						method = 'POST';
 						const id = this.getNodeParameter('messageId', i);
 
