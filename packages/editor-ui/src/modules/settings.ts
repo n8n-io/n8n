@@ -87,6 +87,12 @@ const module: Module<ISettingsState, IRootState> = {
 		isOnboardingCallPromptFeatureEnabled: (state): boolean => {
 			return state.onboardingCallPromptEnabled;
 		},
+		isCommunityNodesFeatureEnabled: (state): boolean => {
+			return state.settings.communityNodesEnabled;
+		},
+		isQueueModeEnabled: (state): boolean => {
+			return state.settings.executionMode === 'queue';
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -107,6 +113,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setTemplatesEndpointHealthy(state: ISettingsState) {
 			state.templatesEndpointHealthy = true;
+		},
+		setCommunityNodesFeatureEnabled(state: ISettingsState, isEnabled: boolean) {
+			state.settings.communityNodesEnabled = isEnabled;
 		},
 	},
 	actions: {
@@ -130,6 +139,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
 			context.commit('setDefaultLocale', settings.defaultLocale, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
+			context.commit('setCommunityNodesFeatureEnabled', settings.communityNodesEnabled === true);
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			if (!context.getters.isTelemetryEnabled) {

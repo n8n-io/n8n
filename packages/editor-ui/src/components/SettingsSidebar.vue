@@ -36,6 +36,12 @@
 				</i>
 				<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
 			</n8n-menu-item>
+			<n8n-menu-item index="/settings/community-nodes" v-if="canAccessCommunityNodes()" :class="$style.tab">
+				<i :class="$style.icon">
+					<font-awesome-icon icon="cube" />
+				</i>
+				<span slot="title">{{ $locale.baseText('settings.communityNodes') }}</span>
+			</n8n-menu-item>
 		</n8n-menu>
 		<div :class="$style.versionContainer">
 			<n8n-link @click="onVersionClick" size="small">
@@ -68,6 +74,9 @@ export default mixins(
 		},
 		canAccessUsersSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
+		},
+		canAccessCommunityNodes(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.COMMUNITY_NODES);
 		},
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
@@ -117,9 +126,8 @@ export default mixins(
 }
 
 .icon {
-	width: 24px;
+	width: 16px;
 	display: inline-flex;
-	justify-content: center;
 	margin-right: 10px;
 }
 

@@ -1,6 +1,8 @@
 import { applyForOnboardingCall, fetchNextOnboardingPrompt, submitEmailOnSignup } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -20,6 +22,7 @@ import {
 	VIEWS,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -29,6 +32,7 @@ import {
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
+	XYPosition,
 } from '../Interface';
 
 const module: Module<IUiState, IRootState> = {
@@ -92,6 +96,14 @@ const module: Module<IUiState, IRootState> = {
 			[WORKFLOW_ACTIVE_MODAL_KEY]: {
 				open: false,
 			},
+			[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: {
+				open: false,
+			},
+			[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: {
+				open: false,
+				mode: '',
+				activeId: null,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -104,7 +116,13 @@ const module: Module<IUiState, IRootState> = {
 			},
 			output: {
 				displayMode: 'table',
+				editMode: {
+					enabled: false,
+					value: '',
+				},
 			},
+			focusedMappableInput: '',
+			mappingTelemetry: {},
 		},
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
@@ -137,6 +155,13 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['credentialsModal'],
 			},
 		],
+		draggable: {
+			isDragging: false,
+			type: '',
+			data: '',
+			canDrop: false,
+			stickyPosition: null,
+		},
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -164,6 +189,7 @@ const module: Module<IUiState, IRootState> = {
 		},
 		inputPanelDispalyMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDispalyMode: (state: IUiState) => state.ndv.output.displayMode,
+		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState) => state.fakeDoorFeatures,
 		getFakeDoorByLocation: (state: IUiState) => (location: IFakeDoorLocation) => {
@@ -172,6 +198,13 @@ const module: Module<IUiState, IRootState> = {
 		getFakeDoorById: (state: IUiState) => (id: string) => {
 			return state.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
 		},
+		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
+		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
+		draggableType: (state: IUiState) => state.draggable.type,
+		draggableData: (state: IUiState) => state.draggable.data,
+		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
+		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
+		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -215,10 +248,48 @@ const module: Module<IUiState, IRootState> = {
 		setPanelDisplayMode: (state: IUiState, params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}) => {
 			Vue.set(state.ndv[params.pane], 'displayMode', params.mode);
 		},
+		setOutputPanelEditModeEnabled: (state: IUiState, payload: boolean) => {
+			Vue.set(state.ndv.output.editMode, 'enabled', payload);
+		},
+		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
+			Vue.set(state.ndv.output.editMode, 'value', payload);
+		},
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
 		},
-
+		setMappableNDVInputFocus(state: IUiState, paramName: string) {
+			Vue.set(state.ndv, 'focusedMappableInput', paramName);
+		},
+		draggableStartDragging(state: IUiState, {type, data}: {type: string, data: string}) {
+			state.draggable = {
+				isDragging: true,
+				type,
+				data,
+				canDrop: false,
+				stickyPosition: null,
+			};
+		},
+		draggableStopDragging(state: IUiState) {
+			state.draggable = {
+				isDragging: false,
+				type: '',
+				data: '',
+				canDrop: false,
+				stickyPosition: null,
+			};
+		},
+		setDraggableStickyPos(state: IUiState, position: XYPosition | null) {
+			Vue.set(state.draggable, 'stickyPosition', position);
+		},
+		setDraggableCanDrop(state: IUiState, canDrop: boolean) {
+			Vue.set(state.draggable, 'canDrop', canDrop);
+		},
+		setMappingTelemetry(state: IUiState, telemetery: {[key: string]: string | number | boolean}) {
+			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetery};
+		},
+		resetMappingTelemetry(state: IUiState) {
+			state.ndv.mappingTelemetry = {};
+		},
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
@@ -252,6 +323,16 @@ const module: Module<IUiState, IRootState> = {
 			const instanceId = context.rootGetters.instanceId;
 			const currentUser = context.rootGetters['users/currentUser'];
 			return await submitEmailOnSignup(instanceId, currentUser, email, agree);
+		},
+		async openCommunityPackageUninstallConfirmModal(context: ActionContext<IUiState, IRootState>, packageName: string) {
+			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});
+			context.commit('setMode', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, mode: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL });
+			context.commit('openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+		},
+		async openCommunityPackageUpdateConfirmModal(context: ActionContext<IUiState, IRootState>, packageName: string) {
+			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});
+			context.commit('setMode', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, mode: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE });
+			context.commit('openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 		},
 	},
 };

@@ -1,6 +1,6 @@
 <template functional>
 	<component :is="$options.components.N8nRoute" :to="props.to" :newWindow="props.newWindow"
-		@click="listeners.click"
+			   @click="listeners.click"
 	>
 		<span
 			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
@@ -42,7 +42,7 @@ export default {
 			type: String,
 			default: 'primary',
 			validator: (value: string): boolean =>
-				['primary', 'danger', 'text'].includes(value),
+				['primary', 'danger', 'text', 'secondary'].includes(value),
 		},
 	},
 	components: {
@@ -60,10 +60,10 @@ export default {
 
 	&:active {
 		color: saturation(
-			--color-primary-h,
-			--color-primary-s,
-			--color-primary-l,
-			-(30%)
+				--color-primary-h,
+				--color-primary-s,
+				--color-primary-l,
+				-(30%)
 		);
 	}
 }
@@ -72,12 +72,7 @@ export default {
 	color: var(--color-text-base);
 
 	&:active {
-		color: saturation(
-			--color-primary-h,
-			--color-primary-s,
-			--color-primary-l,
-			-(30%)
-		);
+		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
 	}
 }
 
@@ -85,13 +80,21 @@ export default {
 	color: var(--color-danger);
 
 	&:active {
-		color: saturation(
-			--color-danger-h,
-			--color-danger-s,
-			--color-danger-l,
-			-(20%)
-		);
+		color: saturation(--color-danger-h, --color-danger-s, --color-danger-l, -(20%));
 	}
+}
+
+.secondary {
+	color: var(--color-secondary);
+
+	&:active {
+		color: saturation(--color-secondary-h, --color-secondary-s, --color-secondary-l, -(20%));
+	}
+}
+
+.secondary {
+	background-color: var(--color-secondary-tint-2);
+	color: var(--color-secondary);
 }
 
 .primary-underline {
@@ -104,5 +107,9 @@ export default {
 	text-decoration: underline;
 }
 
+.secondary-underline {
+	composes: secondary;
+	text-decoration: underline;
+}
 
 </style>

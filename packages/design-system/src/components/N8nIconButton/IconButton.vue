@@ -1,14 +1,8 @@
-<template functional>
-	<component :is="$options.components.N8nButton"
-		:type="props.type"
-		:disabled="props.disabled"
-		:size="props.size"
-		:loading="props.loading"
-		:title="props.title"
-		:icon="props.icon"
-		:theme="props.theme"
-		@click="(e) => listeners.click && listeners.click(e)"
-		circle
+<template>
+	<n8n-button
+		:class="`icon-button ${$style['icon-button']} ${$style[size]}`"
+		v-bind="$props"
+		v-on="$listeners"
 	/>
 </template>
 
@@ -23,9 +17,7 @@ export default {
 	props: {
 		type: {
 			type: String,
-		},
-		title: {
-			type: String,
+			default: 'primary',
 		},
 		size: {
 			type: String,
@@ -35,16 +27,73 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		outline: {
+			type: Boolean,
+			default: false,
+		},
+		text: {
+			type: Boolean,
+			default: false,
+		},
 		disabled: {
 			type: Boolean,
 			default: false,
 		},
+		active: {
+			type: Boolean,
+			default: false,
+		},
 		icon: {
+			type: [String, Array],
 			required: true,
 		},
-		theme: {
+		float: {
 			type: String,
+			validator: (value: string): boolean =>
+				['left', 'right'].includes(value),
+		},
+		circle: {
+			type: Boolean,
+			default: true,
+		},
+		circle: {
+			type: Boolean,
+			default: true,
 		},
 	},
 };
 </script>
+
+<style lang="scss" module>
+.icon-button {
+	padding: 0;
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.mini {
+	height: 22px;
+	width: 22px;
+}
+
+.small {
+	height: 26px;
+	width: 26px;
+}
+
+.medium {
+	height: 30px;
+	width: 30px;
+}
+
+.large {
+	height: 42px;
+	width: 42px;
+}
+
+.xlarge {
+	height: 46px;
+	width: 46px;
+}
+</style>

@@ -485,6 +485,10 @@ export async function executeWebhook(
 					return undefined;
 				}
 
+				if (workflowData.pinData) {
+					data.data.resultData.pinData = workflowData.pinData;
+				}
+
 				const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 				if (data.data.resultData.error || returnData?.error !== undefined) {
 					if (!didSendResponse) {
