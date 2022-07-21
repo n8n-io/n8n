@@ -119,7 +119,7 @@ export async function validateAttachmentsData(
 	}
 }
 
-export namespace sendInBlueWebhookApi {
+export namespace SendInBlueWebhookApi {
 	interface WebhookDetails {
 		url: string;
 		id: number;
