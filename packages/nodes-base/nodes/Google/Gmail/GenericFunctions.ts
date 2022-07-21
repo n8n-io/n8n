@@ -17,12 +17,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-import {
-	IEmail,
-} from './Gmail.node';
 
 import moment from 'moment-timezone';
 
@@ -33,6 +28,25 @@ interface IGoogleAuthCredentials {
 	email: string;
 	inpersonate: boolean;
 	privateKey: string;
+}
+
+export interface IEmail {
+	from?: string;
+	to?: string;
+	cc?: string;
+	bcc?: string;
+	inReplyTo?: string;
+	reference?: string;
+	subject: string;
+	body: string;
+	htmlBody?: string;
+	attachments?: IDataObject[];
+}
+
+export interface IAttachments {
+	type: string;
+	name: string;
+	content: string;
 }
 
 const mailComposer = require('nodemailer/lib/mail-composer');
@@ -202,8 +216,11 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 }
 
 export function extractEmail(s: string) {
-	const data = s.split('<')[1];
-	return data.substring(0, data.length - 1);
+	if (s.includes('<')) {
+		const data = s.split('<')[1];
+		return data.substring(0, data.length - 1);
+	}
+	return s;
 }
 
 function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
