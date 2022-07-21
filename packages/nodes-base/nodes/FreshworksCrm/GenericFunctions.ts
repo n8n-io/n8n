@@ -31,12 +31,9 @@ export async function freshworksCrmApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, domain } = await this.getCredentials('freshworksCrmApi') as FreshworksCrmApiCredentials;
+	const { domain } = await this.getCredentials('freshworksCrmApi') as FreshworksCrmApiCredentials;
 
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Token token=${apiKey}`,
-		},
 		method,
 		body,
 		qs,
@@ -52,7 +49,8 @@ export async function freshworksCrmApiRequest(
 		delete options.qs;
 	}
 	try {
-		return await this.helpers.request!(options);
+		const credentialsType = 'freshworksCrmApi';
+		return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

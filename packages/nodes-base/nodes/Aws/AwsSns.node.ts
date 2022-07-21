@@ -43,6 +43,7 @@ export class AwsSns implements INodeType {
 						name: 'Publish',
 						value: 'publish',
 						description: 'Publish a message to a topic',
+						action: 'Publish a message to a topic',
 					},
 				],
 				default: 'publish',
@@ -64,7 +65,7 @@ export class AwsSns implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'The topic you want to publish to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The topic you want to publish to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Subject',

@@ -20,26 +20,31 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts',
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
@@ -75,7 +80,7 @@ export const contactFields: INodeProperties[] = [
 		name: 'listId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
 		},
@@ -130,7 +135,7 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -182,7 +187,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to set to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The tags you want to set to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -239,7 +244,7 @@ export const contactFields: INodeProperties[] = [
 		name: 'listId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
 		},
@@ -392,7 +397,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to add to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The tags you want to add to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -416,7 +421,7 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The end user specified key of the user defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -439,7 +444,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to add to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The tags you want to add to the contact. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Status',
@@ -478,7 +483,7 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'The tags you want to set to the contact. Will replace all existing ones. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The tags you want to set to the contact. Will replace all existing ones. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

@@ -90,21 +90,25 @@ export class Jenkins implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a specific job',
+						action: 'Copy a job',
 					},
 					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new job',
+						action: 'Create a job',
 					},
 					{
 						name: 'Trigger',
 						value: 'trigger',
 						description: 'Trigger a specific job',
+						action: 'Trigger a job',
 					},
 					{
 						name: 'Trigger with Parameters',
 						value: 'triggerParams',
 						description: 'Trigger a specific job',
+						action: 'Trigger a job with parameters',
 					},
 				],
 				default: 'trigger',
@@ -148,7 +152,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 
 			// --------------------------------------------------------------------------------------------------------
@@ -183,7 +187,7 @@ export class Jenkins implements INodeType {
 								displayName: 'Name or ID',
 								name: 'name',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getJobParameters',
 									loadOptionsDependsOn: [
@@ -283,31 +287,37 @@ export class Jenkins implements INodeType {
 						name: 'Cancel Quiet Down',
 						value: 'cancelQuietDown',
 						description: 'Cancel quiet down state',
+						action: 'Cancel Quiet Down an instance',
 					},
 					{
 						name: 'Quiet Down',
 						value: 'quietDown',
 						description: 'Put Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
+						action: 'Quiet Down an instance',
 					},
 					{
 						name: 'Restart',
 						value: 'restart',
 						description: 'Restart Jenkins immediately on environments where it is possible',
+						action: 'Restart an instance',
 					},
 					{
 						name: 'Safely Restart',
 						value: 'safeRestart',
 						description: 'Restart Jenkins once no jobs are running on environments where it is possible',
+						action: 'Safely Restart an instance',
 					},
 					{
 						name: 'Safely Shutdown',
 						value: 'safeExit',
 						description: 'Shutdown once no jobs are running',
+						action: 'Safely Shutdown an instance',
 					},
 					{
 						name: 'Shutdown',
 						value: 'exit',
 						description: 'Shutdown Jenkins immediately',
+						action: 'Shutdown an instance',
 					},
 				],
 				default: 'safeRestart',
@@ -364,6 +374,7 @@ export class Jenkins implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'List Builds',
+						action: 'Get all builds',
 					},
 				],
 				default: 'getAll',
@@ -388,7 +399,7 @@ export class Jenkins implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Return All',

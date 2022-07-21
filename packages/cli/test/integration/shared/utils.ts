@@ -6,8 +6,6 @@ import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 import bodyParser from 'body-parser';
-import util from 'util';
-import { createTestAccount } from 'nodemailer';
 import { set } from 'lodash';
 import { CronJob } from 'cron';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
@@ -25,8 +23,8 @@ import {
 } from 'n8n-workflow';
 
 import config from '../../../config';
-import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from './constants';
-import { AUTH_COOKIE_NAME } from '../../../src/constants';
+import { AUTHLESS_ENDPOINTS, CURRENT_PACKAGE_VERSION, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from './constants';
+import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import {
 	ActiveWorkflowRunner,
@@ -45,17 +43,19 @@ import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/api/credentials.api';
 import { loadPublicApiVersions } from '../../../src/PublicApi/';
-import * as UserManagementMailer from '../../../src/UserManagement/email/UserManagementMailer';
 import type { User } from '../../../src/databases/entities/User';
 import type {
 	ApiPath,
 	EndpointGroup,
+	InstalledNodePayload,
+	InstalledPackagePayload,
 	PostgresSchemaSection,
-	SmtpTestAccount,
 	TriggerTime,
 } from './types';
 import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-
+import { workflowsController } from '../../../src/api/workflows.api';
+import { nodesController } from '../../../src/api/nodes.api';
+import { randomName } from './random';
 
 /**
  * Initialize a test server.
@@ -97,16 +97,18 @@ export async function initTestServer({
 
 	if (routerEndpoints.length) {
 		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
-		const map: Record<string, express.Router | express.Router[]> = {
-			credentials: credentialsController,
-			publicApi: apiRouters,
+		const map: Record<string, express.Router | express.Router[] | any> = {
+			credentials: { controller: credentialsController, path: 'credentials' },
+			workflows: { controller: workflowsController, path: 'workflows' },
+			nodes: { controller: nodesController, path: 'nodes' },
+			publicApi: apiRouters
 		};
 
 		for (const group of routerEndpoints) {
 			if (group === 'publicApi') {
 				testServer.app.use(...(map[group] as express.Router[]));
 			} else {
-				testServer.app.use(`/${testServer.restEndpoint}/${group}`, map[group]);
+				testServer.app.use(`/${testServer.restEndpoint}/${map[group].path}`, map[group].controller);
 			}
 		}
 	}
@@ -145,10 +147,10 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
+	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
+
 	endpointGroups.forEach((group) =>
-		(group === 'credentials' || group === 'publicApi' ? routerEndpoints : functionEndpoints).push(
-			group,
-		),
+		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
 	);
 
 	return [routerEndpoints, functionEndpoints];
@@ -861,45 +863,6 @@ export async function isInstanceOwnerSetUp() {
 }
 
 // ----------------------------------
-//              SMTP
-// ----------------------------------
-
-/**
- * Get an SMTP test account from https://ethereal.email to test sending emails.
- */
-const getSmtpTestAccount = util.promisify<SmtpTestAccount>(createTestAccount);
-
-export async function configureSmtp() {
-	const {
-		user,
-		pass,
-		smtp: { host, port, secure },
-	} = await getSmtpTestAccount();
-
-	config.set('userManagement.emails.mode', 'smtp');
-	config.set('userManagement.emails.smtp.host', host);
-	config.set('userManagement.emails.smtp.port', port);
-	config.set('userManagement.emails.smtp.secure', secure);
-	config.set('userManagement.emails.smtp.auth.user', user);
-	config.set('userManagement.emails.smtp.auth.pass', pass);
-}
-
-export async function isTestSmtpServiceAvailable() {
-	try {
-		await configureSmtp();
-		await UserManagementMailer.getInstance();
-		return true;
-	} catch (_) {
-		return false;
-	}
-}
-
-export function skipSmtpTest(expect: jest.Expect) {
-	console.warn(`SMTP service unavailable - Skipping test ${expect.getState().currentTestName}`);
-	return;
-}
-
-// ----------------------------------
 //              misc
 // ----------------------------------
 
@@ -927,4 +890,25 @@ export function getPostgresSchemaSection(
 	}
 
 	return null;
+}
+
+// ----------------------------------
+//              nodes
+// ----------------------------------
+
+export function installedPackagePayload(): InstalledPackagePayload {
+	return {
+		packageName: NODE_PACKAGE_PREFIX + randomName(),
+		installedVersion: CURRENT_PACKAGE_VERSION,
+	};
+}
+
+export function installedNodePayload(packageName: string): InstalledNodePayload {
+	const nodeName = randomName();
+	return {
+		name: nodeName,
+		type: nodeName,
+		latestVersion: CURRENT_PACKAGE_VERSION,
+		package: packageName,
+	};
 }

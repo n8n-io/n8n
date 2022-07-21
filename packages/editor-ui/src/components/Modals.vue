@@ -88,6 +88,20 @@
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
 			<ActivationModal />
 		</ModalRoot>
+
+		<ModalRoot :name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY">
+			<CommunityPackageInstallModal />
+		</ModalRoot>
+
+		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
+			<template v-slot="{ modalName, activeId, mode }">
+				<CommunityPackageManageConfirmModal
+					:modalName="modalName"
+					:activePackageName="activeId"
+					:mode="mode"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
@@ -96,6 +110,8 @@ import Vue from "vue";
 import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_LIST_MODAL_KEY,
@@ -114,6 +130,8 @@ import {
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
+import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
+import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from "./ChangePasswordModal.vue";
 import ContactPromptModal from './ContactPromptModal.vue';
 import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
@@ -137,6 +155,8 @@ export default Vue.extend({
 	components: {
 		AboutModal,
 		ActivationModal,
+		CommunityPackageInstallModal,
+		CommunityPackageManageConfirmModal,
 		ContactPromptModal,
 		ChangePasswordModal,
 		CredentialEdit,
@@ -155,6 +175,8 @@ export default Vue.extend({
 		WorkflowOpen,
 	},
 	data: () => ({
+		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_LIST_MODAL_KEY,

@@ -20,11 +20,13 @@ export const imageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an image',
+				action: 'Create an image',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an image',
+				action: 'Get an image',
 			},
 		],
 		default: 'create',
@@ -55,7 +57,7 @@ export const imageFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The template ID you want to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The template ID you want to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -150,7 +152,7 @@ export const imageFields: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The name of the item you want to change. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The name of the item you want to change. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Text',

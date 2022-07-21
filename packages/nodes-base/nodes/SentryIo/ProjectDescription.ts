@@ -20,26 +20,31 @@ export const projectOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new project',
+				action: 'Create a project',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a project',
+				action: 'Delete a project',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get project by ID',
+				action: 'Get a project',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all projects',
+				action: 'Get all projects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a project',
+				action: 'Update a project',
 			},
 		],
 		default: 'get',
@@ -70,7 +75,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the events belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -94,7 +99,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the project to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Team Slug Name or ID',
@@ -118,7 +123,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the team to create a new project for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the team to create a new project for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Name',
@@ -232,7 +237,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -256,7 +261,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the project to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -350,7 +355,7 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the organization the project belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Project Slug Name or ID',
@@ -374,6 +379,6 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The slug of the project to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

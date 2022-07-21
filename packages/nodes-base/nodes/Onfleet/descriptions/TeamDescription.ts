@@ -20,36 +20,43 @@ export const teamOperations: INodeProperties[] = [
 				name: 'Auto-Dispatch',
 				value: 'autoDispatch',
 				description: 'Automatically dispatch tasks assigned to a team to on-duty drivers',
+				action: 'Auto-dispatch a team',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet team',
+				action: 'Create a team',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet team',
+				action: 'Delete a team',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific Onfleet team',
+				action: 'Get a team',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all Onfleet teams',
+				action: 'Get all teams',
 			},
 			{
 				name: 'Get Time Estimates',
 				value: 'getTimeEstimates',
 				description: 'Get estimated times for upcoming tasks for a team, returns a selected driver',
+				action: 'Get time estimates for a team',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet team',
+				action: 'Update a team',
 			},
 		],
 		default: 'getAll',
@@ -72,7 +79,7 @@ const workersField = {
 		loadOptionsMethod: 'getWorkers',
 	},
 	default: [],
-	description: 'A list of workers. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A list of workers. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const managersField = {
@@ -83,7 +90,7 @@ const managersField = {
 		loadOptionsMethod: 'getAdmins',
 	},
 	default: [],
-	description: 'A list of managing administrators. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'A list of managing administrators. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const hubField = {
@@ -94,7 +101,7 @@ const hubField = {
 		loadOptionsMethod: 'getHubs',
 	},
 	default: '',
-	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {

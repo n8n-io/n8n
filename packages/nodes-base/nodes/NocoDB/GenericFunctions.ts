@@ -53,7 +53,6 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	query = query || {};
 
 	const options: OptionsWithUri = {
-		headers: {},
 		method,
 		body,
 		qs: query,

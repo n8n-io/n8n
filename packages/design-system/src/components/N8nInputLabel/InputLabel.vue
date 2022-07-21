@@ -1,16 +1,26 @@
-<template functional>
-	<div :class="{[$style.inputLabelContainer]: !props.labelHoverableOnly}">
-		<div :class="$options.methods.getLabelClass(props, $style)">
-			<component v-if="props.label" :is="$options.components.N8nText" :bold="props.bold" :size="props.size" :compact="!props.underline">
-				{{ props.label }}
-				<component :is="$options.components.N8nText" color="primary" :bold="props.bold" :size="props.size" v-if="props.required">*</component>
-			</component>
-			<span :class="[$style.infoIcon, props.showTooltip ? $style.showIcon: $style.hiddenIcon]" v-if="props.tooltipText">
-				<component :is="$options.components.N8nTooltip" placement="top" :popper-class="$style.tooltipPopper">
-					<component :is="$options.components.N8nIcon" icon="question-circle" size="small" />
-					<div slot="content" v-html="$options.methods.addTargetBlank(props.tooltipText)"></div>
-				</component>
+<template>
+	<div :class="$style.container">
+		<div :class="{
+				[this.$style.label]: !!this.label,
+				[this.$style.underline]: this.underline,
+				[this.$style[this.size]]: true,
+			}">
+			<div :class="$style.title" v-if="label">
+				<n8n-text :bold="bold" :size="size" :compact="!underline">
+					{{ label }}
+					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
+				</n8n-text>
+			</div>
+			<span :class="[$style.infoIcon, showTooltip ? $style.visible: $style.hidden]" v-if="tooltipText && label">
+				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+					<n8n-icon icon="question-circle" size="small" />
+					<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
+				</n8n-tooltip>
 			</span>
+			<div v-if="$slots.options && label" :class="{[$style.overlay]: true, [$style.visible]: showOptions}"><div></div></div>
+			<div v-if="$slots.options" :class="{[$style.options]: true, [$style.visible]: showOptions}">
+				<slot name="options"></slot>
+			</div>
 		</div>
 		<slot></slot>
 	</div>
@@ -56,89 +66,109 @@ export default {
 		showTooltip: {
 			type: Boolean,
 		},
-		labelHoverableOnly: {
+		showOptions: {
 			type: Boolean,
-			default: false,
 		},
 	},
 	methods: {
 		addTargetBlank,
-		getLabelClass(props: {label: string, size: string, underline: boolean}, $style: any) {
-			if (!props.label) {
-				return '';
-			}
-
-			const classes = [];
-			if (props.underline) {
-				classes.push($style[`label-${props.size}-underline`]);
-			}
-			else {
-				classes.push($style[`label-${props.size}`]);
-			}
-
-			if (props.labelHoverableOnly) {
-				classes.push($style.inputLabel);
-			}
-
-			return classes;
-		},
 	},
 };
 </script>
 
 <style lang="scss" module>
-.inputLabelContainer:hover {
-	> div > .infoIcon {
-		display: inline-block;
+.container {
+	display: flex;
+	flex-direction: column;
+}
+
+.container:hover,.inputLabel:hover {
+	.infoIcon {
+		opacity: 1;
+	}
+
+	.options {
+		opacity: 1;
+		transition: opacity 100ms ease-in; // transition on hover in
+	}
+
+	.overlay {
+		opacity: 1;
+		transition: opacity 100ms ease-in; // transition on hover in
 	}
 }
 
-.inputLabel:hover {
-	> .infoIcon {
-		display: inline-block;
+.title {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+
+	> * {
+		white-space: nowrap;
 	}
 }
 
 .infoIcon {
+	display: flex;
+	align-items: center;
 	color: var(--color-text-light);
+	padding-left: var(--spacing-4xs);
+	background-color: var(--color-background-xlight);
+	z-index: 1;
 }
 
-.showIcon {
-	display: inline-block;
-}
+.options {
+	opacity: 0;
+	background-color: var(--color-background-xlight);
+	transition: opacity 250ms cubic-bezier(.98,-0.06,.49,-0.2); // transition on hover out
 
-.hiddenIcon {
-	display: none;
-}
-
-.label {
-	* {
-		margin-right: var(--spacing-5xs);
+	> * {
+		float: right;
 	}
 }
 
-.label-small {
-	composes: label;
-	margin-bottom: var(--spacing-4xs);
+.overlay {
+	position: relative;
+	flex-grow: 1;
+	opacity: 0;
+	transition: opacity 250ms cubic-bezier(.98,-0.06,.49,-0.2); // transition on hover out
+
+	> div {
+		position: absolute;
+		width: 60px;
+		height: 19px;
+		top: 0;
+		right: 0;
+		z-index: 0;
+
+		background: linear-gradient(270deg, var(--color-foreground-xlight) 72.19%, rgba(255, 255, 255, 0) 107.45%);
+	}
 }
 
-.label-medium {
-	composes: label;
+.hidden {
+	opacity: 0;
+}
+
+.visible {
+	opacity: 1;
+}
+
+.label {
+	display: flex;
+	overflow-x: hidden;
+	overflow-y: clip;
+}
+
+.small {
+	margin-bottom: var(--spacing-5xs);
+}
+
+.medium {
 	margin-bottom: var(--spacing-2xs);
 }
 
 .underline {
 	border-bottom: var(--border-base);
-}
-
-.label-small-underline {
-	composes: label-small;
-	composes: underline;
-}
-
-.label-medium-underline {
-	composes: label-medium;
-	composes: underline;
 }
 
 .tooltipPopper {
@@ -148,4 +178,5 @@ export default {
 		margin-left: var(--spacing-s);
 	}
 }
+
 </style>

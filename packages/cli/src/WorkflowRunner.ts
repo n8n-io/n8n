@@ -310,7 +310,12 @@ export class WorkflowRunner {
 
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-				workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
+				workflowExecution = workflowExecute.run(
+					workflow,
+					undefined,
+					data.destinationNode,
+					data.pinData,
+				);
 			} else {
 				Logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 				// Execute only the nodes between start and destination nodes
@@ -320,6 +325,7 @@ export class WorkflowRunner {
 					data.runData,
 					data.startNodes,
 					data.destinationNode,
+					data.pinData,
 				);
 			}
 

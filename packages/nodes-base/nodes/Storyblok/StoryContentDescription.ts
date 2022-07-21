@@ -23,11 +23,13 @@ export const storyContentOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a story',
+				action: 'Get a story',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all stories',
+				action: 'Get all stories',
 			},
 		],
 		default: 'get',

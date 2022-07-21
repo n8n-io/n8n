@@ -23,21 +23,25 @@ export const checklistOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new checklist',
+				action: 'Create a checklist',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a checklist',
+				action: 'Delete a checklist',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a checklist',
+				action: 'Get a checklist',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Returns all checklists for the card',
+				action: 'Get all checklists',
 			},
 		],
 		default: 'getAll',
@@ -68,7 +72,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board where the card is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the board where the card is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List Name or ID',
@@ -92,7 +96,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Card Name or ID',
@@ -117,7 +121,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to add checklist to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the card to add checklist to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Title',
@@ -181,7 +185,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List Name or ID',
@@ -205,7 +209,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Card Name or ID',
@@ -230,7 +234,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card that checklist belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the card that checklist belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Checklist Name or ID',
@@ -255,7 +259,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the checklist to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the checklist to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -280,7 +284,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the board that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List Name or ID',
@@ -304,7 +308,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Card Name or ID',
@@ -329,7 +333,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card that checklist belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the card that checklist belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Checklist Name or ID',
@@ -354,7 +358,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the checklist to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the checklist to get. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 
 	// ----------------------------------
@@ -379,7 +383,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the board that list belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'List Name or ID',
@@ -403,7 +407,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the list that card belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Card Name or ID',
@@ -428,7 +432,7 @@ export const checklistFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the card to get checklists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the card to get checklists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

@@ -584,10 +584,10 @@ export class Slack implements INodeType {
 											for (const elementUi of elementsUi) {
 												const element: Element = {};
 												if (elementUi.actionId === '') {
-													throw new NodeOperationError(this.getNode(), 'Action ID must be set');
+													throw new NodeOperationError(this.getNode(), 'Action ID must be set', { itemIndex: i });
 												}
 												if (elementUi.text === '') {
-													throw new NodeOperationError(this.getNode(), 'Text must be set');
+													throw new NodeOperationError(this.getNode(), 'Text must be set', { itemIndex: i });
 												}
 												element.action_id = elementUi.actionId as string;
 												element.type = elementUi.type as string;
@@ -664,7 +664,7 @@ export class Slack implements INodeType {
 											text.text = textUi.text as string;
 											block.text = text;
 										} else {
-											throw new NodeOperationError(this.getNode(), 'Property text must be defined');
+											throw new NodeOperationError(this.getNode(), 'Property text must be defined', { itemIndex: i });
 										}
 										const fieldsUi = (blockUi.fieldsUi as IDataObject).fieldsValues as IDataObject[];
 										if (fieldsUi) {
@@ -759,10 +759,10 @@ export class Slack implements INodeType {
 							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
 							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
 							if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json');
+								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json', { itemIndex: i });
 							}
 							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json');
+								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json', { itemIndex: i });
 							}
 							if (attachmentsJson !== '') {
 								body.attachments = attachmentsJson;
@@ -811,7 +811,7 @@ export class Slack implements INodeType {
 							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
 
 							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json');
+								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json', { itemIndex: i });
 							}
 							if (blocksJson !== '') {
 								body.blocks = blocksJson;
@@ -820,7 +820,7 @@ export class Slack implements INodeType {
 							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
 
 							if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json');
+								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json', { itemIndex: i });
 							}
 
 							if (attachmentsJson !== '') {
@@ -960,7 +960,7 @@ export class Slack implements INodeType {
 							if (items[i].binary === undefined
 								//@ts-ignore
 								|| items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
 							}
 							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							body.file = {

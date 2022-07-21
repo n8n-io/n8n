@@ -1,4 +1,6 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -15,4 +17,18 @@ export class GetResponseApi implements ICredentialType {
 			default: '',
 		},
 	];
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'X-Auth-Token': '=api-key {{$credentials.apiKey}}',
+			},
+		},
+	};
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.getresponse.com/v3',
+			url: '/campaigns',
+		},
+	};
 }
