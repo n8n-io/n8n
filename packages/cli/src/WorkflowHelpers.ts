@@ -50,7 +50,7 @@ const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
  * @returns {(ITaskData | undefined)}
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData } = inputData.data.resultData;
+	const { runData, pinData = {} } = inputData.data.resultData;
 	const { lastNodeExecuted } = inputData.data.resultData;
 
 	if (lastNodeExecuted === undefined) {
@@ -61,7 +61,26 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 		return undefined;
 	}
 
-	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+
+	let lastNodePinData = pinData[lastNodeExecuted];
+
+	if (lastNodePinData) {
+		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
+
+		const itemsPerRun = lastNodePinData.map((item, index) => {
+			return { json: item, pairedItem: { item: index } };
+		});
+
+		return {
+			startTime: 0,
+			executionTime: 0,
+			data: { main: [itemsPerRun] },
+			source: lastNodeRunData.source,
+		};
+	}
+
+	return lastNodeRunData;
 }
 
 /**
