@@ -140,7 +140,6 @@ packages/nodes-base/nodes/Medium
 packages/nodes-base/nodes/Merge
 packages/nodes-base/nodes/MessageBird
 packages/nodes-base/nodes/Microsoft
-packages/nodes-base/nodes/Mindee
 packages/nodes-base/nodes/Misp
 packages/nodes-base/nodes/Mocean
 packages/nodes-base/nodes/MondayCom

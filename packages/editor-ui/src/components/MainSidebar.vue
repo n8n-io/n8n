@@ -259,11 +259,8 @@ export default mixins(
 				'isTemplatesEnabled',
 			]),
 			canUserAccessSettings(): boolean {
-				return [
-					VIEWS.PERSONAL_SETTINGS,
-					VIEWS.USERS_SETTINGS,
-					VIEWS.API_SETTINGS,
-				].some((route) => this.canUserAccessRouteByName(route));
+				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
+				return accessibleRoute !== null;
 			},
 			helpMenuItems (): object[] {
 				return [
@@ -616,18 +613,28 @@ export default mixins(
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (key === 'settings') {
-					if (this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS) || this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS)) {
-						if ((this.currentUser as IUser).isDefaultUser) {
-							this.$router.push('/settings/users');
-						}
-						else {
-							this.$router.push('/settings/personal');
-						}
-					}
-					else if (this.canUserAccessRouteByName(VIEWS.API_SETTINGS)) {
-						this.$router.push('/settings/api');
+					const defaultRoute = this.findFirstAccessibleSettingsRoute();
+					if (defaultRoute) {
+						const routeProps = this.$router.resolve({ name: defaultRoute });
+						this.$router.push(routeProps.route.path);
 					}
 				}
+			},
+			findFirstAccessibleSettingsRoute() {
+				// Get all settings rotes by filtering them by pageCategory property
+				const settingsRoutes = this.$router.getRoutes().filter(
+					category => category.meta.telemetry &&
+						category.meta.telemetry.pageCategory === 'settings',
+				).map(route => route.name || '');
+				let defaultSettingsRoute = null;
+
+				for (const route of settingsRoutes) {
+					if (this.canUserAccessRouteByName(route)) {
+						defaultSettingsRoute = route;
+						break;
+					}
+				}
+				return defaultSettingsRoute;
 			},
 		},
 	});

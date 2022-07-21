@@ -18,6 +18,22 @@ properties:
   typeVersion:
     type: number
     example: 1
+  executeOnce:
+    type: boolean
+    example: false
+  alwaysOutputData:
+    type: boolean
+    example: false
+  retryOnFail:
+    type: boolean
+    example: false
+  maxTries:
+    type: number
+  waitBetweenTries:
+    type: number
+  continueOnFail:
+    type: boolean
+    example: false
   position:
     type: array
     items:

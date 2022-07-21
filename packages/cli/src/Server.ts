@@ -74,6 +74,7 @@ import {
 	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
+	PinData,
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
@@ -90,6 +91,7 @@ import querystring from 'querystring';
 import promClient, { Registry } from 'prom-client';
 import * as Queue from './Queue';
 import {
+	LoadNodesAndCredentials,
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
@@ -129,6 +131,7 @@ import {
 	WorkflowRunner,
 	getCredentialForUser,
 	getCredentialWithoutUser,
+	IWorkflowDb,
 } from '.';
 
 import config from '../config';
@@ -156,9 +159,10 @@ import type {
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { workflowsController } from './api/workflows.api';
+import { nodesController } from './api/nodes.api';
 import { oauth2CredentialController } from './api/oauth2Credential.api';
 import {
 	getInstanceBaseUrl,
@@ -166,6 +170,7 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
+import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 
 require('body-parser-xml')(bodyParser);
 
@@ -329,6 +334,8 @@ class App {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
 			},
+			executionMode: config.getEnv('executions.mode'),
+			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 		};
 	}
 
@@ -354,6 +361,10 @@ class App {
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 		});
+
+		if (config.get('nodes.packagesMissing').length > 0) {
+			this.frontendSettings.missingPackages = true;
+		}
 
 		return this.frontendSettings;
 	}
@@ -707,6 +718,13 @@ class App {
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
 		// ----------------------------------------
+		// Packages and nodes management
+		// ----------------------------------------
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
+		}
+
+		// ----------------------------------------
 		// Healthcheck
 		// ----------------------------------------
 
@@ -753,74 +771,6 @@ class App {
 		// ----------------------------------------
 		// Workflow
 		// ----------------------------------------
-
-		// Creates a new workflow
-		this.app.post(
-			`/${this.restEndpoint}/workflows`,
-			ResponseHelper.send(async (req: WorkflowRequest.Create) => {
-				delete req.body.id; // delete if sent
-
-				const newWorkflow = new WorkflowEntity();
-
-				Object.assign(newWorkflow, req.body);
-
-				await validateEntity(newWorkflow);
-
-				await this.externalHooks.run('workflow.create', [newWorkflow]);
-
-				const { tags: tagIds } = req.body;
-
-				if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-					newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
-						select: ['id', 'name'],
-					});
-				}
-
-				await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
-
-				let savedWorkflow: undefined | WorkflowEntity;
-
-				await getConnection().transaction(async (transactionManager) => {
-					savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-					const role = await Db.collections.Role.findOneOrFail({
-						name: 'owner',
-						scope: 'workflow',
-					});
-
-					const newSharedWorkflow = new SharedWorkflow();
-
-					Object.assign(newSharedWorkflow, {
-						role,
-						user: req.user,
-						workflow: savedWorkflow,
-					});
-
-					await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-				});
-
-				if (!savedWorkflow) {
-					LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-					throw new ResponseHelper.ResponseError('Failed to save workflow');
-				}
-
-				if (tagIds && !config.getEnv('workflowTagsDisabled')) {
-					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
-						requestOrder: tagIds,
-					});
-				}
-
-				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
-
-				const { id, ...rest } = savedWorkflow;
-
-				return {
-					id: id.toString(),
-					...rest,
-				};
-			}),
-		);
 
 		// Reads and returns workflow data from an URL
 		this.app.get(
@@ -944,50 +894,6 @@ class App {
 					(await isBelowOnboardingThreshold(req.user));
 
 				return { name, onboardingFlowEnabled };
-			}),
-		);
-
-		// Returns a specific workflow
-		this.app.get(
-			`/${this.restEndpoint}/workflows/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
-				const { id: workflowId } = req.params;
-
-				let relations = ['workflow', 'workflow.tags'];
-
-				if (config.getEnv('workflowTagsDisabled')) {
-					relations = relations.filter((relation) => relation !== 'workflow.tags');
-				}
-
-				const shared = await Db.collections.SharedWorkflow.findOne({
-					relations,
-					where: whereClause({
-						user: req.user,
-						entityType: 'workflow',
-						entityId: workflowId,
-					}),
-				});
-
-				if (!shared) {
-					LoggerProxy.info('User attempted to access a workflow without permissions', {
-						workflowId,
-						userId: req.user.id,
-					});
-					throw new ResponseHelper.ResponseError(
-						`Workflow with ID "${workflowId}" could not be found.`,
-						undefined,
-						404,
-					);
-				}
-
-				const {
-					workflow: { id, ...rest },
-				} = shared;
-
-				return {
-					id: id.toString(),
-					...rest,
-				};
 			}),
 		);
 
@@ -1189,6 +1095,7 @@ class App {
 				): Promise<IExecutionPushResponse> => {
 					const { workflowData } = req.body;
 					const { runData } = req.body;
+					const { pinData } = req.body;
 					const { startNodes } = req.body;
 					const { destinationNode } = req.body;
 					const executionMode = 'manual';
@@ -1196,12 +1103,15 @@ class App {
 
 					const sessionId = GenericHelpers.getSessionId(req);
 
+					const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
+
 					// If webhooks nodes exist and are active we have to wait for till we receive a call
 					if (
-						runData === undefined ||
-						startNodes === undefined ||
-						startNodes.length === 0 ||
-						destinationNode === undefined
+						pinnedTrigger === undefined &&
+						(runData === undefined ||
+							startNodes === undefined ||
+							startNodes.length === 0 ||
+							destinationNode === undefined)
 					) {
 						const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 						const nodeTypes = NodeTypes();
@@ -1239,11 +1149,17 @@ class App {
 						destinationNode,
 						executionMode,
 						runData,
+						pinData,
 						sessionId,
 						startNodes,
 						workflowData,
 						userId: req.user.id,
 					};
+
+					if (pinnedTrigger) {
+						data.startNodes = [pinnedTrigger.name];
+					}
+
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
 
@@ -1253,6 +1169,8 @@ class App {
 				},
 			),
 		);
+
+		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// Retrieves all tags, with or without usage count
 		this.app.get(
@@ -2910,5 +2828,22 @@ function isOAuth(credType: ICredentialType) {
 		credType.extends.some((parentType) =>
 			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
 		)
+	);
+}
+
+const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
+
+const isTrigger = (str: string) =>
+	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
+
+function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: PinData) {
+	if (!pinData) return;
+
+	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
+
+	if (!firstPinnedTriggerName) return;
+
+	return workflow.nodes.find(
+		({ type, name }) => isTrigger(type) && name === firstPinnedTriggerName,
 	);
 }

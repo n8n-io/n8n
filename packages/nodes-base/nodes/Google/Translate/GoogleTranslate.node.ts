@@ -80,7 +80,7 @@ export class GoogleTranslate implements INodeType {
 						'@version': [
 							1,
 						],
-					}
+					},
 				},
 			},
 			{
@@ -103,7 +103,7 @@ export class GoogleTranslate implements INodeType {
 						'@version': [
 							2,
 						],
-					}
+					},
 				},
 			},
 			{
