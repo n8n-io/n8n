@@ -1,8 +1,10 @@
-
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/constants';
+import {
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	DEFAULT_NODETYPE_VERSION,
+} from '@/constants';
 
 import {
 	IConnection,
@@ -14,6 +16,7 @@ import {
 	IRunData,
 	ITaskData,
 	IWorkflowSettings,
+	PinData,
 } from 'n8n-workflow';
 
 import {
@@ -29,6 +32,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
+	ICommunityNodesState,
 } from './Interface';
 
 import credentials from './modules/credentials';
@@ -39,6 +43,10 @@ import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
+import {stringSizeInBytes} from "@/components/helpers";
+import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
+import communityNodes from './modules/communityNodes';
+import { isCommunityPackageName } from './components/helpers';
 
 Vue.use(Vuex);
 
@@ -87,6 +95,7 @@ const state: IRootState = {
 		nodes: [],
 		settings: {},
 		tags: [],
+		pinData: {},
 	},
 	sidebarMenuItems: [],
 	instanceId: '',
@@ -102,6 +111,7 @@ const modules = {
 	versions,
 	users,
 	ui,
+	communityNodes,
 };
 
 export const store = new Vuex.Store({
@@ -110,13 +120,13 @@ export const store = new Vuex.Store({
 	state,
 	mutations: {
 		// Active Actions
-		addActiveAction (state, action: string) {
+		addActiveAction(state, action: string) {
 			if (!state.activeActions.includes(action)) {
 				state.activeActions.push(action);
 			}
 		},
 
-		removeActiveAction (state, action: string) {
+		removeActiveAction(state, action: string) {
 			const actionIndex = state.activeActions.indexOf(action);
 			if (actionIndex !== -1) {
 				state.activeActions.splice(actionIndex, 1);
@@ -124,7 +134,7 @@ export const store = new Vuex.Store({
 		},
 
 		// Active Executions
-		addActiveExecution (state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
+		addActiveExecution(state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
 			// Check if the execution exists already
 			const activeExecution = state.activeExecutions.find(execution => {
 				return execution.id === newActiveExecution.id;
@@ -140,7 +150,7 @@ export const store = new Vuex.Store({
 
 			state.activeExecutions.unshift(newActiveExecution);
 		},
-		finishActiveExecution (state, finishedActiveExecution: IPushDataExecutionFinished) {
+		finishActiveExecution(state, finishedActiveExecution: IPushDataExecutionFinished) {
 			// Find the execution to set to finished
 			const activeExecution = state.activeExecutions.find(execution => {
 				return execution.id === finishedActiveExecution.executionId;
@@ -158,22 +168,22 @@ export const store = new Vuex.Store({
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
 		},
-		setActiveExecutions (state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
+		setActiveExecutions(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
 			Vue.set(state, 'activeExecutions', newActiveExecutions);
 		},
 
 		// Active Workflows
-		setActiveWorkflows (state, newActiveWorkflows: string[]) {
+		setActiveWorkflows(state, newActiveWorkflows: string[]) {
 			state.activeWorkflows = newActiveWorkflows;
 		},
-		setWorkflowActive (state, workflowId: string) {
+		setWorkflowActive(state, workflowId: string) {
 			state.stateIsDirty = false;
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index === -1) {
 				state.activeWorkflows.push(workflowId);
 			}
 		},
-		setWorkflowInactive (state, workflowId: string) {
+		setWorkflowInactive(state, workflowId: string) {
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
 				state.activeWorkflows.splice(index, 1);
@@ -181,15 +191,15 @@ export const store = new Vuex.Store({
 		},
 		// Set state condition dirty or not
 		// ** Dirty: if current workflow state has been synchronized with database AKA has it been saved
-		setStateDirty (state, dirty : boolean) {
+		setStateDirty(state, dirty: boolean) {
 			state.stateIsDirty = dirty;
 		},
 
 		// Selected Nodes
-		addSelectedNode (state, node: INodeUi) {
+		addSelectedNode(state, node: INodeUi) {
 			state.selectedNodes.push(node);
 		},
-		removeNodeFromSelection (state, node: INodeUi) {
+		removeNodeFromSelection(state, node: INodeUi) {
 			let index;
 			for (index in state.selectedNodes) {
 				if (state.selectedNodes[index].name === node.name) {
@@ -198,17 +208,38 @@ export const store = new Vuex.Store({
 				}
 			}
 		},
-		resetSelectedNodes (state) {
+		resetSelectedNodes(state) {
 			Vue.set(state, 'selectedNodes', []);
 		},
 
+		// Pin data
+		pinData(state, payload: { node: INodeUi, data: PinData[string] }) {
+			if (state.workflow.pinData) {
+				Vue.set(state.workflow.pinData, payload.node.name, payload.data);
+			}
+
+			state.stateIsDirty = true;
+
+			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: payload.data });
+		},
+		unpinData(state, payload: { node: INodeUi }) {
+			if (state.workflow.pinData) {
+				Vue.set(state.workflow.pinData, payload.node.name, undefined);
+				delete state.workflow.pinData[payload.node.name];
+			}
+
+			state.stateIsDirty = true;
+
+			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
+		},
+
 		// Active
-		setActive (state, newActive: boolean) {
+		setActive(state, newActive: boolean) {
 			state.workflow.active = newActive;
 		},
 
 		// Connections
-		addConnection (state, data) {
+		addConnection(state, data) {
 			if (data.connection.length !== 2) {
 				// All connections need two entries
 				// TODO: Check if there is an error or whatever that is supposed to be returned
@@ -256,7 +287,7 @@ export const store = new Vuex.Store({
 			}
 
 		},
-		removeConnection (state, data) {
+		removeConnection(state, data) {
 			const sourceData = data.connection[0];
 			const destinationData = data.connection[1];
 
@@ -281,13 +312,13 @@ export const store = new Vuex.Store({
 			}
 
 		},
-		removeAllConnections (state, data) {
+		removeAllConnections(state, data) {
 			if (data && data.setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
 			state.workflow.connections = {};
 		},
-		removeAllNodeConnection (state, node: INodeUi) {
+		removeAllNodeConnection(state, node: INodeUi) {
 			state.stateIsDirty = true;
 			// Remove all source connections
 			if (state.workflow.connections.hasOwnProperty(node.name)) {
@@ -316,7 +347,7 @@ export const store = new Vuex.Store({
 			}
 		},
 
-		renameNodeSelectedAndExecution (state, nameData) {
+		renameNodeSelectedAndExecution(state, nameData) {
 			state.stateIsDirty = true;
 			// If node has any WorkflowResultData rename also that one that the data
 			// does still get displayed also after node got renamed
@@ -332,9 +363,14 @@ export const store = new Vuex.Store({
 
 			Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
 			Vue.delete(state.nodeMetadata, nameData.old);
+
+			if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(nameData.old)) {
+				Vue.set(state.workflow.pinData, nameData.new, state.workflow.pinData[nameData.old]);
+				Vue.delete(state.workflow.pinData, nameData.old);
+			}
 		},
 
-		resetAllNodesIssues (state) {
+		resetAllNodesIssues(state) {
 			state.workflow.nodes.forEach((node) => {
 				node.issues = undefined;
 			});
@@ -342,7 +378,7 @@ export const store = new Vuex.Store({
 			return true;
 		},
 
-		setNodeIssue (state, nodeIssueData: INodeIssueData) {
+		setNodeIssue(state, nodeIssueData: INodeIssueData) {
 
 			const node = state.workflow.nodes.find(node => {
 				return node.name === nodeIssueData.node;
@@ -378,7 +414,7 @@ export const store = new Vuex.Store({
 		},
 
 		// Name
-		setWorkflowName (state, data) {
+		setWorkflowName(state, data) {
 			if (data.setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
@@ -386,7 +422,7 @@ export const store = new Vuex.Store({
 		},
 
 		// replace invalid credentials in workflow
-		replaceInvalidWorkflowCredentials(state, {credentials, invalid, type }) {
+		replaceInvalidWorkflowCredentials(state, {credentials, invalid, type}) {
 			state.workflow.nodes.forEach((node) => {
 				if (!node.credentials || !node.credentials[type]) {
 					return;
@@ -399,7 +435,7 @@ export const store = new Vuex.Store({
 				}
 
 				if (nodeCredentials.id === null) {
-					if (nodeCredentials.name === invalid.name){
+					if (nodeCredentials.name === invalid.name) {
 						node.credentials[type] = credentials;
 					}
 					return;
@@ -412,7 +448,7 @@ export const store = new Vuex.Store({
 		},
 
 		// Nodes
-		addNode (state, nodeData: INodeUi) {
+		addNode(state, nodeData: INodeUi) {
 			if (!nodeData.hasOwnProperty('name')) {
 				// All nodes have to have a name
 				// TODO: Check if there is an error or whatever that is supposed to be returned
@@ -421,8 +457,12 @@ export const store = new Vuex.Store({
 
 			state.workflow.nodes.push(nodeData);
 		},
-		removeNode (state, node: INodeUi) {
+		removeNode(state, node: INodeUi) {
 			Vue.delete(state.nodeMetadata, node.name);
+
+			if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(node.name)) {
+				Vue.delete(state.workflow.pinData, node.name);
+			}
 
 			for (let i = 0; i < state.workflow.nodes.length; i++) {
 				if (state.workflow.nodes[i].name === node.name) {
@@ -432,14 +472,19 @@ export const store = new Vuex.Store({
 				}
 			}
 		},
-		removeAllNodes (state, data) {
+		removeAllNodes(state, data) {
 			if (data.setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
+
+			if (data.removePinData) {
+				state.workflow.pinData = {};
+			}
+
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
 			state.nodeMetadata = {};
 		},
-		updateNodeProperties (state, updateInformation: INodeUpdatePropertiesInformation) {
+		updateNodeProperties(state, updateInformation: INodeUpdatePropertiesInformation) {
 			// Find the node that should be updated
 			const node = state.workflow.nodes.find(node => {
 				return node.name === updateInformation.name;
@@ -452,7 +497,7 @@ export const store = new Vuex.Store({
 				}
 			}
 		},
-		setNodeValue (state, updateInformation: IUpdateInformation) {
+		setNodeValue(state, updateInformation: IUpdateInformation) {
 			// Find the node that should be updated
 			const node = state.workflow.nodes.find(node => {
 				return node.name === updateInformation.name;
@@ -465,7 +510,7 @@ export const store = new Vuex.Store({
 			state.stateIsDirty = true;
 			Vue.set(node, updateInformation.key, updateInformation.value);
 		},
-		setNodeParameters (state, updateInformation: IUpdateInformation) {
+		setNodeParameters(state, updateInformation: IUpdateInformation) {
 			// Find the node that should be updated
 			const node = state.workflow.nodes.find(node => {
 				return node.name === updateInformation.name;
@@ -485,72 +530,71 @@ export const store = new Vuex.Store({
 		},
 
 		// Node-Index
-		addToNodeIndex (state, nodeName: string) {
+		addToNodeIndex(state, nodeName: string) {
 			state.nodeIndex.push(nodeName);
 		},
-		setNodeIndex (state, newData: { index: number, name: string | null}) {
+		setNodeIndex(state, newData: { index: number, name: string | null }) {
 			state.nodeIndex[newData.index] = newData.name;
 		},
-		resetNodeIndex (state) {
+		resetNodeIndex(state) {
 			Vue.set(state, 'nodeIndex', []);
 		},
 
 		// Node-View
-		setNodeViewMoveInProgress (state, value: boolean) {
+		setNodeViewMoveInProgress(state, value: boolean) {
 			state.nodeViewMoveInProgress = value;
 		},
-		setNodeViewOffsetPosition (state, data) {
+		setNodeViewOffsetPosition(state, data) {
 			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
 		// Node-Types
-		setNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+		setNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
 			Vue.set(state, 'nodeTypes', nodeTypes);
 		},
-
 		// Active Execution
-		setExecutingNode (state, executingNode: string) {
+		setExecutingNode(state, executingNode: string) {
 			state.executingNode = executingNode;
 		},
-		setExecutionWaitingForWebhook (state, newWaiting: boolean) {
+		setExecutionWaitingForWebhook(state, newWaiting: boolean) {
 			state.executionWaitingForWebhook = newWaiting;
 		},
-		setActiveExecutionId (state, executionId: string | null) {
+		setActiveExecutionId(state, executionId: string | null) {
 			state.executionId = executionId;
 		},
 
 		// Push Connection
-		setPushConnectionActive (state, newActive: boolean) {
+		setPushConnectionActive(state, newActive: boolean) {
 			state.pushConnectionActive = newActive;
 		},
 
 		// Webhooks
-		setUrlBaseWebhook (state, urlBaseWebhook: string) {
+		setUrlBaseWebhook(state, urlBaseWebhook: string) {
 			Vue.set(state, 'urlBaseWebhook', urlBaseWebhook);
 		},
-		setEndpointWebhook (state, endpointWebhook: string) {
+		setEndpointWebhook(state, endpointWebhook: string) {
 			Vue.set(state, 'endpointWebhook', endpointWebhook);
 		},
-		setEndpointWebhookTest (state, endpointWebhookTest: string) {
+		setEndpointWebhookTest(state, endpointWebhookTest: string) {
 			Vue.set(state, 'endpointWebhookTest', endpointWebhookTest);
 		},
 
-		setSaveDataErrorExecution (state, newValue: string) {
+		setSaveDataErrorExecution(state, newValue: string) {
 			Vue.set(state, 'saveDataErrorExecution', newValue);
 		},
-		setSaveDataSuccessExecution (state, newValue: string) {
+		setSaveDataSuccessExecution(state, newValue: string) {
 			Vue.set(state, 'saveDataSuccessExecution', newValue);
 		},
-		setSaveManualExecutions (state, saveManualExecutions: boolean) {
+		setSaveManualExecutions(state, saveManualExecutions: boolean) {
 			Vue.set(state, 'saveManualExecutions', saveManualExecutions);
 		},
-		setTimezone (state, timezone: string) {
+		setTimezone(state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
-		setExecutionTimeout (state, executionTimeout: number) {
+		setExecutionTimeout(state, executionTimeout: number) {
 			Vue.set(state, 'executionTimeout', executionTimeout);
 		},
-		setMaxExecutionTimeout (state, maxExecutionTimeout: number) {
+		setMaxExecutionTimeout(state, maxExecutionTimeout: number) {
 			Vue.set(state, 'maxExecutionTimeout', maxExecutionTimeout);
 		},
 		setVersionCli(state, version: string) {
@@ -568,25 +612,25 @@ export const store = new Vuex.Store({
 		setDefaultLocale(state, locale: string) {
 			Vue.set(state, 'defaultLocale', locale);
 		},
-		setActiveNode (state, nodeName: string) {
+		setActiveNode(state, nodeName: string) {
 			state.activeNode = nodeName;
 		},
-		setActiveCredentialType (state, activeCredentialType: string) {
+		setActiveCredentialType(state, activeCredentialType: string) {
 			state.activeCredentialType = activeCredentialType;
 		},
 
-		setLastSelectedNode (state, nodeName: string) {
+		setLastSelectedNode(state, nodeName: string) {
 			state.lastSelectedNode = nodeName;
 		},
 
-		setLastSelectedNodeOutputIndex (state, outputIndex: number | null) {
+		setLastSelectedNodeOutputIndex(state, outputIndex: number | null) {
 			state.lastSelectedNodeOutputIndex = outputIndex;
 		},
 
-		setWorkflowExecutionData (state, workflowResultData: IExecutionResponse | null) {
+		setWorkflowExecutionData(state, workflowResultData: IExecutionResponse | null) {
 			state.workflowExecutionData = workflowResultData;
 		},
-		addNodeExecutionData (state, pushData: IPushDataNodeExecuteAfter): void {
+		addNodeExecutionData(state, pushData: IPushDataNodeExecuteAfter): void {
 			if (state.workflowExecutionData === null) {
 				throw new Error('The "workflowExecutionData" is not initialized!');
 			}
@@ -595,7 +639,7 @@ export const store = new Vuex.Store({
 			}
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
 		},
-		clearNodeExecutionData (state, nodeName: string): void {
+		clearNodeExecutionData(state, nodeName: string): void {
 			if (state.workflowExecutionData === null) {
 				return;
 			}
@@ -603,19 +647,25 @@ export const store = new Vuex.Store({
 			Vue.delete(state.workflowExecutionData.data.resultData.runData, nodeName);
 		},
 
-		setWorkflowSettings (state, workflowSettings: IWorkflowSettings) {
+		setWorkflowSettings(state, workflowSettings: IWorkflowSettings) {
 			Vue.set(state.workflow, 'settings', workflowSettings);
 		},
 
-		setWorkflowTagIds (state, tags: string[]) {
+		setWorkflowPinData(state, pinData: PinData) {
+			Vue.set(state.workflow, 'pinData', pinData);
+
+			dataPinningEventBus.$emit('pin-data', pinData);
+		},
+
+		setWorkflowTagIds(state, tags: string[]) {
 			Vue.set(state.workflow, 'tags', tags);
 		},
 
-		addWorkflowTagIds (state, tags: string[]) {
+		addWorkflowTagIds(state, tags: string[]) {
 			Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
 		},
 
-		removeWorkflowTagId (state, tagId: string) {
+		removeWorkflowTagId(state, tagId: string) {
 			const tags = state.workflow.tags as string[];
 			const updated = tags.filter((id: string) => id !== tagId);
 
@@ -623,7 +673,7 @@ export const store = new Vuex.Store({
 		},
 
 		// Workflow
-		setWorkflow (state, workflow: IWorkflowDb) {
+		setWorkflow(state, workflow: IWorkflowDb) {
 			Vue.set(state, 'workflow', workflow);
 
 			if (!state.workflow.hasOwnProperty('active')) {
@@ -649,11 +699,19 @@ export const store = new Vuex.Store({
 			}
 		},
 
-		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+		updateNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
 			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
 			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
+
 			Vue.set(state, 'nodeTypes', newNodesState);
 			state.nodeTypes = newNodesState;
+		},
+
+		removeNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+			console.log('Store will remove nodes: ', nodeTypes); // eslint-disable-line no-console
+			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
+			Vue.set(state, 'nodeTypes', oldNodesToKeep);
+			state.nodeTypes = oldNodesToKeep;
 		},
 
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
@@ -663,7 +721,7 @@ export const store = new Vuex.Store({
 	},
 	getters: {
 		executedNode: (state): string | undefined => {
-			return state.workflowExecutionData? state.workflowExecutionData.executedNode: undefined;
+			return state.workflowExecutionData ? state.workflowExecutionData.executedNode : undefined;
 		},
 		activeCredentialType: (state): string | null => {
 			return state.activeCredentialType;
@@ -719,7 +777,7 @@ export const store = new Vuex.Store({
 			return `${state.urlBaseWebhook}${state.endpointWebhookTest}`;
 		},
 
-		getStateIsDirty: (state) : boolean => {
+		getStateIsDirty: (state): boolean => {
 			return state.stateIsDirty;
 		},
 
@@ -822,8 +880,8 @@ export const store = new Vuex.Store({
 		allNodes: (state): INodeUi[] => {
 			return state.workflow.nodes;
 		},
-		nodesByName: (state: IRootState): {[name: string]: INodeUi} => {
-			return state.workflow.nodes.reduce((accu: {[name: string]: INodeUi}, node) => {
+		nodesByName: (state: IRootState): { [name: string]: INodeUi } => {
+			return state.workflow.nodes.reduce((accu: { [name: string]: INodeUi }, node) => {
 				accu[node.name] = node;
 				return accu;
 			}, {});
@@ -843,12 +901,32 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
+		/**
+		 * Pin data
+		 */
+
+		pinData: (state): PinData | undefined => {
+			return state.workflow.pinData;
+		},
+		pinDataByNodeName: (state) => (nodeName: string) => {
+			return state.workflow.pinData && state.workflow.pinData[nodeName];
+		},
+		pinDataSize: (state) => {
+			return state.workflow.nodes
+				.reduce((acc, node) => {
+					if (typeof node.pinData !== 'undefined' && node.name !== state.activeNode) {
+						acc += stringSizeInBytes(node.pinData);
+					}
+
+					return acc;
+				}, 0);
+		},
 
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */
 		nativelyNumberSuffixedDefaults: (_, getters): string[] => {
-			const { allNodeTypes } = getters as {
+			const {allNodeTypes} = getters as {
 				allNodeTypes: Array<INodeTypeDescription & { defaults: { name: string } }>;
 			};
 
