@@ -285,19 +285,9 @@
 	  width: 28px;
 	}
 
-<<<<<<< HEAD
-	@include mixins.e(empty) {
-		font-size: 12px;
-		color: var(--color-text-light);
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate3d(-50%, -50%, 0);
-=======
 	.el-color-picker__mask {
 	  height: 26px;
 	  width: 26px;
->>>>>>> 13483497484e205975ef71091e3892f757f608e1
 	}
 
 	.el-color-picker__icon,
