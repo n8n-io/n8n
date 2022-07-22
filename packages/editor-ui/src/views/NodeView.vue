@@ -2999,11 +2999,6 @@ export default mixins(
 				});
 			},
 		},
-
-		async beforeMount() {
-			await this.$telemetry.initPostHog();
-		},
-
 		async mounted () {
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);

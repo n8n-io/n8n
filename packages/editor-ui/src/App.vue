@@ -157,6 +157,9 @@ export default mixins(
 			}
 		},
 	},
+	beforeMount() {
+		this.$telemetry.initPostHog();
+	},
 	async mounted() {
 		await this.initialize();
 		this.logHiringBanner();
