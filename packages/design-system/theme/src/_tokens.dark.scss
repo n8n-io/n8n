@@ -1,3 +1,5 @@
+@use 'sass:math';
+
 @mixin theme {
 	--color-primary-h: 7;
 	--color-primary-s: 100%;
@@ -300,8 +302,17 @@
 	--color-json-brackets-hover: #1890ff;
 	--color-json-line: #bfcbd9;
 	--color-json-highlight: hsl(226, 13%, 71%);
+
+  // Generated Color Shades from 50 to 950
+  // Not yet used in design system
+  @each $color in ('neutral', 'success', 'warning', 'danger') {
+		@each $shade in (50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950) {
+			--color-#{$color}-#{$shade}-l: #{math.div($shade, 10)}#{'%'};
+			--color-#{$color}-#{$shade}: hsl(var(--color-#{$color}-h), var(--color-#{$color}-s), var(--color-#{$color}-#{$shade}-l));
+		}
+	}
 }
 
 body.theme-dark {
-	@include theme;
+  @include theme;
 }

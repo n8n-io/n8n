@@ -7,7 +7,7 @@
 		@mouseleave="showTooltip = false"
 	>
 		<div :class="$style.tooltip">
-			<n8n-tooltip placement="top" :manual="true" :value="showTooltip">
+			<n8n-tooltip placement="top" manual :value="showTooltip">
 				<div slot="content" v-text="nodeType.displayName"></div>
 				<span />
 			</n8n-tooltip>

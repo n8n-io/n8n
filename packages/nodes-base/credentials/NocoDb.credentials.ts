@@ -1,4 +1,6 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -23,4 +25,12 @@ export class NocoDb implements ICredentialType {
 			placeholder: 'http(s)://localhost:8080',
 		},
 	];
+	authenticate: IAuthenticateGeneric = {
+		type:'generic',
+		properties: {
+			headers:{
+				'xc-auth': '={{$credentials.apiToken}}',
+			},
+		},
+	};
 }

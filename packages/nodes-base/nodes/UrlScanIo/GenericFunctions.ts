@@ -18,7 +18,6 @@ export async function urlScanIoApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-
 	const options: OptionsWithUri = {
 		method,
 		body,
@@ -36,7 +35,7 @@ export async function urlScanIoApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

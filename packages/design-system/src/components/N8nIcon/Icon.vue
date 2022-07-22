@@ -37,6 +37,7 @@ export default {
 			default: false,
 		},
 		color: {
+			type: String,
 		},
 	},
 };
@@ -58,5 +59,9 @@ export default {
 
 .small {
 	width: var(--font-size-2xs) !important;
+}
+
+.xsmall {
+	width: var(--font-size-3xs) !important;
 }
 </style>

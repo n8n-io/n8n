@@ -1,220 +1,262 @@
 <template>
 	<div @keydown.stop :class="parameterInputClasses">
-	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" :eventSource="eventSource || 'ndv'" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
-	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle" @click="openExpressionEdit">
-
-		<n8n-input
-			v-if="isValueExpression && showExpressionAsTextInput"
-			:size="inputSize"
-			:value="expressionDisplayValue"
-			:disabled="isReadOnly"
-			:title="displayTitle"
-			@keydown.stop
-		/>
-
-		<div v-else-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
-			<code-edit v-if="codeEditDialogVisible" :value="value" :parameter="parameter" :type="editorType" :codeAutocomplete="codeAutocomplete" :path="path" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
-			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
-
-			<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
-				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
-			</div>
-
+		<expression-edit
+			:dialogVisible="expressionEditDialogVisible"
+			:value="value"
+			:parameter="parameter"
+			:path="path"
+			:eventSource="eventSource || 'ndv'"
+			@closeDialog="closeExpressionEditDialog"
+			@valueChanged="expressionUpdated"
+		></expression-edit>
+		<div
+			class="parameter-input ignore-key-press"
+			:style="parameterInputWrapperStyle"
+			@click="openExpressionEdit"
+		>
 			<n8n-input
-				v-else
-				v-model="tempValue"
-				ref="inputField"
+				v-if="isValueExpression || droppable || forceShowExpression"
 				:size="inputSize"
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
-				:value="displayValue"
-				:disabled="isReadOnly"
-				@input="onTextInputChange"
-				@change="valueChanged"
-				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
+				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
 				:title="displayTitle"
-				:placeholder="isValueExpression ? '' : getPlaceholder()"
+				@keydown.stop
+			/>
+
+			<div
+				v-else-if="
+					['json', 'string'].includes(parameter.type) ||
+					remoteParameterOptionsLoadingIssues !== null
+				"
 			>
-				<div slot="suffix" class="expand-input-icon-container">
-					<font-awesome-icon v-if="!isValueExpression && !isReadOnly" icon="external-link-alt" class="edit-window-button clickable" :title="$locale.baseText('parameterInput.openEditWindow')" @click="displayEditDialog()" />
-				</div>
-			</n8n-input>
-		</div>
-
-		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-			<el-color-picker
-				size="small"
-				class="color-picker"
-				:value="displayValue"
-				:disabled="isReadOnly"
-				@focus="setFocus"
-				@blur="onBlur"
-				@change="valueChanged"
-				:title="displayTitle"
-				:show-alpha="getArgument('showAlpha')"
-			/>
-			<n8n-input
-				v-model="tempValue"
-				:size="inputSize"
-				type="text"
-				:value="tempValue"
-				:disabled="isReadOnly"
-				@change="valueChanged"
-				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
-				:title="displayTitle"
-			/>
-		</div>
-
-		<el-date-picker
-			v-else-if="parameter.type === 'dateTime'"
-			v-model="tempValue"
-			ref="inputField"
-			type="datetime"
-			:size="inputSize"
-			:value="displayValue"
-			:title="displayTitle"
-			:disabled="isReadOnly"
-			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.selectDateAndTime')"
-			:picker-options="dateTimePickerOptions"
-			@change="valueChanged"
-			@focus="setFocus"
-			@blur="onBlur"
-			@keydown.stop
-		/>
-
-		<n8n-input-number
-			v-else-if="parameter.type === 'number'"
-			ref="inputField" :size="inputSize"
-			:value="displayValue"
-			:controls="false"
-			:max="getArgument('maxValue')"
-			:min="getArgument('minValue')"
-			:precision="getArgument('numberPrecision')"
-			:disabled="isReadOnly"
-			@change="valueChanged"
-			@input="onTextInputChange"
-			@focus="setFocus"
-			@blur="onBlur"
-			@keydown.stop
-			:title="displayTitle"
-			:placeholder="parameter.placeholder"
-		/>
-
-		<credentials-select
-			v-else-if="parameter.type === 'credentialsSelect' || (parameter.name === 'genericAuthType')"
-			ref="inputField"
-			:parameter="parameter"
-			:node="node"
-			:activeCredentialType="activeCredentialType"
-			:inputSize="inputSize"
-			:displayValue="displayValue"
-			:isReadOnly="isReadOnly"
-			:displayTitle="displayTitle"
-			@credentialSelected="credentialSelected"
-			@valueChanged="valueChanged"
-			@setFocus="setFocus"
-			@onBlur="onBlur"
-		>
-			<template v-slot:issues-and-options>
-				<parameter-issues
-					:issues="getIssues"
-				/>
-				<parameter-options
-				 	v-if="displayOptionsComputed"
-					:displayOptionsComputed="displayOptionsComputed"
+				<code-edit
+					v-if="codeEditDialogVisible"
+					:value="value"
 					:parameter="parameter"
-					:isValueExpression="isValueExpression"
-					:isDefault="isDefault"
-					:hasRemoteMethod="hasRemoteMethod"
-					@optionSelected="optionSelected"
-				/>
-			</template>
-		</credentials-select>
+					:type="editorType"
+					:codeAutocomplete="codeAutocomplete"
+					:path="path"
+					@closeDialog="closeCodeEditDialog"
+					@valueChanged="expressionUpdated"
+				></code-edit>
+				<text-edit
+					:dialogVisible="textEditDialogVisible"
+					:value="value"
+					:parameter="parameter"
+					:path="path"
+					@closeDialog="closeTextEditDialog"
+					@valueChanged="expressionUpdated"
+				></text-edit>
 
-		<n8n-select
-			v-else-if="parameter.type === 'options'"
-			ref="inputField"
-			:size="inputSize"
-			filterable
-			:value="displayValue"
-			:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
-			:loading="remoteParameterOptionsLoading"
-			:disabled="isReadOnly || remoteParameterOptionsLoading"
-			:title="displayTitle"
-			@change="valueChanged"
-			@keydown.stop
-			@focus="setFocus"
-			@blur="onBlur"
-		>
-			<n8n-option
-				v-for="option in parameterOptions"
-				:value="option.value"
-				:key="option.value"
-				:label="getOptionsOptionDisplayName(option)"
-			>
-				<div class="list-option">
-					<div class="option-headline">
-						{{ getOptionsOptionDisplayName(option) }}
+				<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
+					<prism-editor
+						v-if="!codeEditDialogVisible"
+						:lineNumbers="true"
+						:readonly="true"
+						:code="displayValue"
+						language="js"
+					></prism-editor>
+				</div>
+
+				<n8n-input
+					v-else
+					v-model="tempValue"
+					ref="inputField"
+					:size="inputSize"
+					:type="getStringInputType"
+					:rows="getArgument('rows')"
+					:value="displayValue"
+					:disabled="isReadOnly"
+					@input="onTextInputChange"
+					@change="valueChanged"
+					@keydown.stop
+					@focus="setFocus"
+					@blur="onBlur"
+					:title="displayTitle"
+					:placeholder="getPlaceholder()"
+				>
+					<div slot="suffix" class="expand-input-icon-container">
+						<font-awesome-icon
+							v-if="!isReadOnly"
+							icon="external-link-alt"
+							class="edit-window-button clickable"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
 					</div>
-					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
-				</div>
-			</n8n-option>
-		</n8n-select>
+				</n8n-input>
+			</div>
 
-		<n8n-select
-			v-else-if="parameter.type === 'multiOptions'"
-			ref="inputField"
-			:size="inputSize"
-			filterable
-			multiple
-			:value="displayValue"
-			:loading="remoteParameterOptionsLoading"
-			:disabled="isReadOnly || remoteParameterOptionsLoading"
-			:title="displayTitle"
-			:placeholder="$locale.baseText('parameterInput.select')"
-			@change="valueChanged"
-			@keydown.stop
-			@focus="setFocus"
-			@blur="onBlur"
-		>
-			<n8n-option v-for="option in parameterOptions" :value="option.value" :key="option.value" :label="getOptionsOptionDisplayName(option)">
-				<div class="list-option">
-					<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
-					<div v-if="option.description" class="option-description" v-html="getOptionsOptionDescription(option)"></div>
-				</div>
-			</n8n-option>
-		</n8n-select>
+			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
+				<el-color-picker
+					size="small"
+					class="color-picker"
+					:value="displayValue"
+					:disabled="isReadOnly"
+					@focus="setFocus"
+					@blur="onBlur"
+					@change="valueChanged"
+					:title="displayTitle"
+					:show-alpha="getArgument('showAlpha')"
+				/>
+				<n8n-input
+					v-model="tempValue"
+					:size="inputSize"
+					type="text"
+					:value="tempValue"
+					:disabled="isReadOnly"
+					@change="valueChanged"
+					@keydown.stop
+					@focus="setFocus"
+					@blur="onBlur"
+					:title="displayTitle"
+				/>
+			</div>
 
-		<el-switch
-			v-else-if="parameter.type === 'boolean'"
-			class="switch-input"
-			ref="inputField"
-			active-color="#13ce66"
-			:value="displayValue"
-			:disabled="isReadOnly"
-			@change="valueChanged"
-		/>
-	</div>
+			<el-date-picker
+				v-else-if="parameter.type === 'dateTime'"
+				v-model="tempValue"
+				ref="inputField"
+				type="datetime"
+				:size="inputSize"
+				:value="displayValue"
+				:title="displayTitle"
+				:disabled="isReadOnly"
+				:placeholder="
+					parameter.placeholder
+						? getPlaceholder()
+						: $locale.baseText('parameterInput.selectDateAndTime')
+				"
+				:picker-options="dateTimePickerOptions"
+				@change="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+			/>
 
-	<parameter-issues
-		v-if="parameter.type !== 'credentialsSelect'"
-		:issues="getIssues"
-	/>
+			<n8n-input-number
+				v-else-if="parameter.type === 'number'"
+				ref="inputField"
+				:size="inputSize"
+				:value="displayValue"
+				:controls="false"
+				:max="getArgument('maxValue')"
+				:min="getArgument('minValue')"
+				:precision="getArgument('numberPrecision')"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+				@input="onTextInputChange"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+				:title="displayTitle"
+				:placeholder="parameter.placeholder"
+			/>
 
-	<parameter-options
-		v-if="displayOptionsComputed && parameter.type !== 'credentialsSelect'"
-		:displayOptionsComputed="displayOptionsComputed"
-		:parameter="parameter"
-		:isValueExpression="isValueExpression"
-		:isDefault="isDefault"
-		:hasRemoteMethod="hasRemoteMethod"
-		@optionSelected="optionSelected"
-	/>
+			<credentials-select
+				v-else-if="
+					parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'
+				"
+				ref="inputField"
+				:parameter="parameter"
+				:node="node"
+				:activeCredentialType="activeCredentialType"
+				:inputSize="inputSize"
+				:displayValue="displayValue"
+				:isReadOnly="isReadOnly"
+				:displayTitle="displayTitle"
+				@credentialSelected="credentialSelected"
+				@valueChanged="valueChanged"
+				@setFocus="setFocus"
+				@onBlur="onBlur"
+			>
+				<template v-slot:issues-and-options>
+					<parameter-issues :issues="getIssues" />
+				</template>
+			</credentials-select>
 
+			<n8n-select
+				v-else-if="parameter.type === 'options'"
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				:value="displayValue"
+				:placeholder="
+					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
+				"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="option in parameterOptions"
+					:value="option.value"
+					:key="option.value"
+					:label="getOptionsOptionDisplayName(option)"
+				>
+					<div class="list-option">
+						<div class="option-headline">
+							{{ getOptionsOptionDisplayName(option) }}
+						</div>
+						<div
+							v-if="option.description"
+							class="option-description"
+							v-html="getOptionsOptionDescription(option)"
+						></div>
+					</div>
+				</n8n-option>
+			</n8n-select>
+
+			<n8n-select
+				v-else-if="parameter.type === 'multiOptions'"
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				multiple
+				:value="displayValue"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				:placeholder="$locale.baseText('parameterInput.select')"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="option in parameterOptions"
+					:value="option.value"
+					:key="option.value"
+					:label="getOptionsOptionDisplayName(option)"
+				>
+					<div class="list-option">
+						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
+						<div
+							v-if="option.description"
+							class="option-description"
+							v-html="getOptionsOptionDescription(option)"
+						></div>
+					</div>
+				</n8n-option>
+			</n8n-select>
+
+			<el-switch
+				v-else-if="parameter.type === 'boolean'"
+				class="switch-input"
+				ref="inputField"
+				active-color="#13ce66"
+				:value="displayValue"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+			/>
+		</div>
+
+		<parameter-issues v-if="parameter.type !== 'credentialsSelect'" :issues="getIssues" />
 	</div>
 </template>
 
@@ -253,6 +295,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
+import { hasExpressionMapping } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -274,7 +317,6 @@ export default mixins(
 			TextEdit,
 		},
 		props: [
-			'displayOptions', // boolean
 			'inputSize',
 			'isReadOnly',
 			'documentationUrl',
@@ -285,6 +327,9 @@ export default mixins(
 			'errorHighlight',
 			'isForCredential', // boolean
 			'eventSource', // string
+			'activeDrop',
+			'droppable',
+			'forceShowExpression',
 		],
 		data () {
 			return {
@@ -351,11 +396,6 @@ export default mixins(
 			},
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
-			},
-			showExpressionAsTextInput(): boolean {
-				const types = ['number', 'boolean', 'dateTime', 'options', 'multiOptions'];
-
-				return types.includes(this.parameter.type);
 			},
 			dependentParametersValues (): string | null {
 				const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn') as string[] | undefined;
@@ -462,20 +502,6 @@ export default mixins(
 
 				return value;
 			},
-			displayOptionsComputed (): boolean {
-				if (this.isReadOnly === true) {
-					return false;
-				}
-				if (this.parameter.type === 'collection') {
-					return false;
-				}
-
-				if (this.displayOptions === true) {
-					return true;
-				}
-
-				return false;
-			},
 			expressionValueComputed (): NodeParameterValue | string[] | null {
 				if (this.areExpressionsDisabled) {
 					return this.value;
@@ -510,6 +536,10 @@ export default mixins(
 
 				const rows = this.getArgument('rows');
 				if (rows !== undefined && rows > 1) {
+					return 'textarea';
+				}
+
+				if (this.parameter.type === 'code') {
 					return 'textarea';
 				}
 
@@ -581,9 +611,6 @@ export default mixins(
 
 				return [];
 			},
-			isDefault (): boolean {
-				return this.parameter.default === this.value;
-			},
 			isEditor (): boolean {
 				return ['code', 'json'].includes(this.editorType);
 			},
@@ -609,20 +636,26 @@ export default mixins(
 				return this.remoteParameterOptions;
 			},
 			parameterInputClasses () {
-				const classes = [];
+				const classes: {[c: string]: boolean} = {
+					droppable: this.droppable,
+					activeDrop: this.activeDrop,
+				};
+
 				const rows = this.getArgument('rows');
 				const isTextarea = this.parameter.type === 'string' && rows !== undefined;
 				const isSwitch = this.parameter.type === 'boolean' && !this.isValueExpression;
 
 				if (!isTextarea && !isSwitch) {
-					classes.push('parameter-value-container');
+					classes['parameter-value-container'] = true;
 				}
-				if (this.isValueExpression) {
-					classes.push('expression');
+
+				if (this.isValueExpression || this.forceShowExpression) {
+					classes['expression'] = true;
 				}
-				if (this.getIssues.length || this.errorHighlight) {
-					classes.push('has-issues');
+				if (!this.droppable && !this.activeDrop && (this.getIssues.length || this.errorHighlight)) {
+					classes['has-issues'] = true;
 				}
+
 				return classes;
 			},
 			parameterInputWrapperStyle () {
@@ -632,9 +665,6 @@ export default mixins(
 				};
 				if (this.parameter.type === 'credentialsSelect') {
 					return styles;
-				}
-				if (this.displayOptionsComputed === true) {
-					deductWidth += 25;
 				}
 				if (this.getIssues.length) {
 					deductWidth += 20;
@@ -866,8 +896,12 @@ export default mixins(
 				}
 			},
 			optionSelected (command: string) {
+				const prevValue = this.value;
+
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
+				} else if (command === 'openExpression') {
+					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
 						this.valueChanged(`={{${this.value}}}`);
@@ -876,8 +910,10 @@ export default mixins(
 						this.valueChanged(`=${this.value}`);
 					}
 
-					this.expressionEditDialogVisible = true;
-					this.trackExpressionEditOpen();
+					setTimeout(() => {
+						this.expressionEditDialogVisible = true;
+						this.trackExpressionEditOpen();
+					}, 375);
 				} else if (command === 'removeExpression') {
 					let value = this.expressionValueComputed;
 
@@ -890,9 +926,23 @@ export default mixins(
 				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();
 				}
+
+				if (this.node && (command === 'addExpression' || command === 'removeExpression')) {
+					this.$telemetry.track('User switched parameter mode', {
+						node_type: this.node.type,
+						parameter: this.path,
+						old_mode: command === 'addExpression' ? 'fixed': 'expression',
+						new_mode: command === 'removeExpression' ? 'fixed': 'expression',
+						was_parameter_empty: prevValue === '' || prevValue === undefined,
+						had_mapping: hasExpressionMapping(prevValue),
+						had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
+					});
+				}
 			},
 		},
 		mounted () {
+			this.$on('optionSelected', this.optionSelected);
+
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {
 				this.nodeName = this.node.name;
@@ -986,18 +1036,30 @@ export default mixins(
 }
 
 .expression {
-	textarea[disabled], input[disabled] {
+	textarea, input {
 		cursor: pointer !important;
 	}
 
-	.el-switch__core {
-		border: 1px dashed $--custom-expression-text;
-	}
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-2);
+	--input-font-color: var(--color-secondary);
+}
 
-	--input-border-color: #{$--custom-expression-text};
+
+.droppable {
+	--input-border-color: var(--color-secondary-tint-1);
+	--input-background-color: var(--color-secondary-tint-2);
 	--input-border-style: dashed;
-	--input-background-color: #{$--custom-expression-background};
-	--disabled-border: #{$--custom-expression-text};
+}
+
+.activeDrop {
+	--input-border-color: var(--color-success);
+	--input-background-color: var(--color-success-tint-2);
+	--input-border-style: solid;
+
+	textarea, input {
+		cursor: grabbing !important;
+	}
 }
 
 .has-issues {

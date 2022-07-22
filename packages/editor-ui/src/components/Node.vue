@@ -16,6 +16,10 @@
 							<font-awesome-icon icon="clock" />
 						</n8n-tooltip>
 					</div>
+					<span v-else-if="hasPinData" class="node-pin-data-icon">
+						<font-awesome-icon icon="thumbtack" />
+						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+					</span>
 					<span v-else-if="workflowDataItems" class="data-count">
 						<font-awesome-icon icon="check" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
@@ -27,8 +31,20 @@
 				</div>
 
 				<div class="node-trigger-tooltip__wrapper">
-					<n8n-tooltip placement="top" :manual="true" :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+					<n8n-tooltip placement="top" manual :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
 						<div slot="content" v-text="getTriggerNodeTooltip"></div>
+						<span />
+					</n8n-tooltip>
+					<n8n-tooltip
+						v-if="isTriggerNode"
+						placement="top"
+						manual
+						:value="pinDataDiscoveryTooltipVisible"
+						popper-class="node-trigger-tooltip__wrapper--item"
+					>
+						<template #content>
+							{{ $locale.baseText('node.discovery.pinData.canvas') }}
+						</template>
 						<span />
 					</n8n-tooltip>
 				</div>
@@ -75,11 +91,12 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import { CUSTOM_API_CALL_KEY, WAIT_TIME_UNLIMITED } from '@/constants';
+import {CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED} from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { pinData } from '@/components/mixins/pinData';
 
 import {
 	INodeTypeDescription,
@@ -95,7 +112,13 @@ import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 
-export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
+export default mixins(
+	externalHooks,
+	nodeBase,
+	nodeHelpers,
+	workflowHelpers,
+	pinData,
+).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
@@ -105,6 +128,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
 		},
 		hasIssues (): boolean {
+			if (this.hasPinData) return false;
 			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}
@@ -257,11 +281,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
-				}
-				else if (this.waiting) {
+				} else if (this.waiting || this.hasPinData) {
 					borderColor = getStyleTokenValue('--color-secondary');
-				}
-				else if (this.workflowDataItems) {
+				} else if (this.workflowDataItems) {
 					borderColor = getStyleTokenValue('--color-success');
 				}
 			}
@@ -286,7 +308,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				!this.isPollingTypeNode &&
 				!this.isNodeDisabled &&
 				this.workflowRunning &&
-				this.workflowDataItems === 0  &&
+				this.workflowDataItems === 0 &&
 				this.isSingleActiveTriggerNode &&
 				!this.isTriggerNodeTooltipEmpty &&
 				!this.hasIssues &&
@@ -306,6 +328,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					this.showTriggerNodeTooltip = this.shouldShowTriggerTooltip;
 				}, 200);
 			}
+
+			if (this.pinDataDiscoveryTooltipVisible) {
+				this.pinDataDiscoveryTooltipVisible = false;
+				setTimeout(() => {
+					this.pinDataDiscoveryTooltipVisible = true;
+				}, 200);
+			}
 		},
 		shouldShowTriggerTooltip(shouldShowTriggerTooltip) {
 			if (shouldShowTriggerTooltip) {
@@ -320,6 +349,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.$emit('run', {name: this.data.name, data: newValue, waiting: !!this.waiting});
 		},
 	},
+	created() {
+		const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG);
+		if (!hasSeenPinDataTooltip) {
+			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
+				this.showPinDataDiscoveryTooltip(dataItemsCount);
+			});
+		}
+	},
 	mounted() {
 		this.setSubtitle();
 		setTimeout(() => {
@@ -331,10 +368,22 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			isTouchActive: false,
 			nodeSubtitle: '',
 			showTriggerNodeTooltip: false,
+			pinDataDiscoveryTooltipVisible: false,
 			dragging: false,
+			unwatchWorkflowDataItems: () => {},
 		};
 	},
 	methods: {
+		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
+			if (!this.isTriggerNode) { return; }
+
+			if (dataItemsCount > 0) {
+				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+
+				this.pinDataDiscoveryTooltipVisible = true;
+				this.unwatchWorkflowDataItems();
+			}
+		},
 		setSubtitle() {
 			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
 
@@ -368,6 +417,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
+			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart () {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
@@ -494,6 +544,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			.items-count {
 				font-size: var(--font-size-s);
+			}
+		}
+
+		.node-pin-data-icon {
+			color: var(--color-secondary);
+			margin-right: 2px;
+
+			svg {
+				height: 0.85rem;
 			}
 		}
 
