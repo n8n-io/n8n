@@ -192,6 +192,17 @@ export class Telemetry {
 		});
 	}
 
+	async isFeatureFlagEnabled(
+		featureFlagName: string,
+		{ user_id: userId }: ITelemetryTrackProperties = {},
+	): Promise<boolean> {
+		if (!this.postHog) return Promise.resolve(false);
+
+		const fullId = [this.instanceId, userId].join('_'); // PostHog disallows # in ID
+
+		return this.postHog.isFeatureEnabled(featureFlagName, fullId);
+	}
+
 	// test helpers
 
 	getCountsBuffer(): IExecutionsBuffer {
