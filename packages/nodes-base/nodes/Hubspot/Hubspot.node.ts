@@ -1300,7 +1300,11 @@ export class Hubspot implements INodeType {
 
 					if (operation === 'batchGet') {
 						const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+						let idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+
+						if (idProperty === 'objectId') {
+							idProperty = '';
+						}
 
 						const requestBody = {
 							properties: additionalFields.properties as string[] || [],
@@ -1320,7 +1324,11 @@ export class Hubspot implements INodeType {
 					}
 
 					if (operation === 'batchDelete') {
-						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+						let idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+
+						if (idProperty === 'objectId') {
+							idProperty = '';
+						}
 
 						// Resolve object ids, if a custom idPorperty is used
 						const idMap: Record<string, string | undefined> = {};
@@ -1332,6 +1340,7 @@ export class Hubspot implements INodeType {
 							const endpoint = `/crm/v3/objects/${objectType}/batch/read`;
 							const response = await hubspotApiRequest.call(this, 'POST', endpoint, requestBody);
 							response.results.forEach((result: { id: string, properties: Record<string, string> }) => {
+								// @ts-ignore
 								idMap[result.properties[idProperty]] = result.id;
 							});
 						} else {
@@ -1380,7 +1389,7 @@ export class Hubspot implements INodeType {
 
 
 						const getProperties = (index: number) => {
-							const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', index, {}) as IDataObject;
 							const objectId = this.getNodeParameter('objectId', index) as IDataObject;
 							const properties: Record<string, unknown> = idProperty ? {
 								[idProperty]: objectId,
@@ -1427,9 +1436,11 @@ export class Hubspot implements INodeType {
 							? await hubspotApiRequest.call(this, 'POST', updateEndpoint, updateBody)
 							: undefined;
 
+						console.log(createResponse);
+
 						const responseErrors = [
-							...(createResponse.errors ? createResponse.errors : []),
-							...(updateResponse.errors ? updateResponse.errors : []),
+							...(createResponse?.errors ? createResponse.errors : []),
+							...(updateResponse?.errors ? updateResponse.errors : []),
 						];
 						if (responseErrors.length && !this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), responseErrors as unknown as JsonObject);
@@ -2498,7 +2509,7 @@ export class Hubspot implements INodeType {
 							responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, { properties }, idProperty ? { idProperty } : {});
 						}
 						if (operation === 'upsert') {
-							const idProperty = this.getNodeParameter('idProperty', i) as string;
+							let idProperty = this.getNodeParameter('idProperty', i) as string;
 							const objectId = this.getNodeParameter('objectId', i) as string;
 							const customObjectProperties = this.getNodeParameter('customObjectProperties.values', i, []) as IDataObject[];
 							const properties: IDataObject = {};
@@ -2509,7 +2520,7 @@ export class Hubspot implements INodeType {
 								}
 							}
 
-							if (idProperty) {
+							if (idProperty !== 'objectId') {
 								properties[idProperty] = objectId;
 							}
 
@@ -2545,7 +2556,7 @@ export class Hubspot implements INodeType {
 							if (additionalFields.propertiesWithHistory) {
 								qs.propertiesWithHistory = additionalFields.propertiesWithHistory as string[];
 							}
-							if (idProperty) {
+							if (idProperty !== 'objectId') {
 								qs.idProperty = idProperty;
 							}
 							const endpoint = `/crm/v3/objects/${objectType}/${objectId}`;
@@ -2599,7 +2610,7 @@ export class Hubspot implements INodeType {
 
 							let realObjectId = objectId;
 
-							if (idProperty) {
+							if (idProperty !== 'objectId') {
 								const qs = {
 									idProperty,
 									properties: [idProperty],
