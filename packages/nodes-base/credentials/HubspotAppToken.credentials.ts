@@ -1,5 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -17,11 +17,12 @@ export class HubspotAppToken implements ICredentialType {
 			default: '',
 		},
 	];
-	authenticate: IAuthenticateHeaderAuth = {
-		type: 'headerAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			name: 'Authorization',
-			value: '=Bearer {{$credentials?.appToken}}',
+			qs: {
+				Authorization: '=Bearer {{$credentials.appToken}}',
+			},
 		},
 	};
 	test: ICredentialTestRequest = {

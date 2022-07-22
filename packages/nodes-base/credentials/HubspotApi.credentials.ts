@@ -1,5 +1,5 @@
 import {
-	IAuthenticateQueryAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -17,11 +17,12 @@ export class HubspotApi implements ICredentialType {
 			default: '',
 		},
 	];
-	authenticate: IAuthenticateQueryAuth = {
-		type: 'queryAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			key: 'hapikey',
-			value: '={{$credentials?.apiKey}}',
+			qs: {
+				hapikey: '={{$credentials.apiKey}}',
+			},
 		},
 	};
 	test: ICredentialTestRequest = {
