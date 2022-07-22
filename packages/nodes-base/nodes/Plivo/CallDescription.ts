@@ -20,6 +20,7 @@ export const callOperations: INodeProperties[] = [
 				name: 'Make',
 				value: 'make',
 				description: 'Make a voice call',
+				action: 'Make a call',
 			},
 		],
 		default: 'make',

@@ -33,11 +33,15 @@ import Notification from 'element-ui/lib/notification';
 import Popover from 'element-ui/lib/popover';
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
 
+import N8nInfoAccordion from './N8nInfoAccordion';
 import N8nActionBox from './N8nActionBox';
 import N8nActionToggle from './N8nActionToggle';
 import N8nAvatar from './N8nAvatar';
 import N8nBadge from './N8nBadge';
 import N8nButton from './N8nButton';
+import { N8nElButton } from './N8nButton/overrides';
+import N8nCallout from './N8nCallout';
+import N8nPanelCallout from './N8nPanelCallout';
 import N8nCard from './N8nCard';
 import N8nFormBox from './N8nFormBox';
 import N8nFormInput from './N8nFormInput';
@@ -56,6 +60,7 @@ import N8nMenuItem from './N8nMenuItem';
 import N8nNotice from './N8nNotice';
 import N8nLink from './N8nLink';
 import N8nOption from './N8nOption';
+import N8nPulse from './N8nPulse';
 import N8nRadioButtons from './N8nRadioButtons';
 import N8nSelect from './N8nSelect';
 import N8nSpinner from './N8nSpinner';
@@ -72,11 +77,15 @@ import N8nUserSelect from './N8nUserSelect';
 import locale from '../locale';
 
 export {
+	N8nInfoAccordion,
 	N8nActionBox,
 	N8nActionToggle,
 	N8nAvatar,
 	N8nBadge,
 	N8nButton,
+	N8nElButton,
+	N8nCallout,
+	N8nPanelCallout,
 	N8nCard,
 	N8nHeading,
 	N8nFormBox,
@@ -95,6 +104,7 @@ export {
 	N8nMenuItem,
 	N8nNotice,
 	N8nOption,
+	N8nPulse,
 	N8nRadioButtons,
 	N8nSelect,
 	N8nSpinner,

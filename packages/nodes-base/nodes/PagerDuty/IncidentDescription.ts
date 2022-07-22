@@ -20,21 +20,25 @@ export const incidentOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an incident',
+				action: 'Create an incident',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an incident',
+				action: 'Get an incident',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all incidents',
+				action: 'Get all incidents',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an incident',
+				action: 'Update an incident',
 			},
 		],
 		default: 'create',
@@ -83,12 +87,13 @@ export const incidentFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The incident will be created on this service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The incident will be created on this service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -128,7 +133,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getEscalationPolicies',
 				},
 				default: '',
-				description: 'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Incident Details',
@@ -152,7 +157,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'The incident will be created on this service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The incident will be created on this service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Urgency',
@@ -323,12 +328,12 @@ export const incidentFields: INodeProperties[] = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Assigness',
-						value: 'assigness',
-					},
-					{
 						name: 'Acknowledgers',
 						value: 'acknowledgers',
+					},
+					{
+						name: 'Assignees',
+						value: 'assigness',
 					},
 					{
 						name: 'Conferenece Bridge',
@@ -363,14 +368,14 @@ export const incidentFields: INodeProperties[] = [
 				description: 'Additional details to include',
 			},
 			{
-				displayName: 'Service IDs',
+				displayName: 'Service Names or IDs',
 				name: 'serviceIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getServices',
 				},
 				default: [],
-				description: 'Returns only the incidents associated with the passed service(s)',
+				description: 'Returns only the incidents associated with the passed service(s). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Since',
@@ -423,7 +428,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Time zone in which dates in the result will be rendered. If not set dates will return UTC. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Until',
@@ -483,6 +488,7 @@ export const incidentFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
@@ -532,7 +538,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getEscalationPolicies',
 				},
 				default: '',
-				description: 'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Delegate this incident to the specified escalation policy. Cannot be specified if an assignee is given. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Priority Name or ID',
@@ -542,7 +548,7 @@ export const incidentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				description: 'The incident will be created on this service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The incident will be created on this service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Resolution',

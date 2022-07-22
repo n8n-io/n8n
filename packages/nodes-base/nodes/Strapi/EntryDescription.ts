@@ -20,26 +20,31 @@ export const entryOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an entry',
+				action: 'Create an entry',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an entry',
+				action: 'Delete an entry',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an entry',
+				action: 'Get an entry',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all entries',
+				action: 'Get all entries',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an entry',
+				action: 'Update an entry',
 			},
 		],
 		default: 'get',
@@ -83,7 +88,6 @@ export const entryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the properties which should used as columns for the new rows',
 	},
@@ -344,7 +348,6 @@ export const entryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the properties which should used as columns for the new rows',
 	},

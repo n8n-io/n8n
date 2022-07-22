@@ -23,7 +23,7 @@ export const channelMembersDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Channel Name or ID',
@@ -48,7 +48,7 @@ export const channelMembersDescription: ChannelProperties = [
 				],
 			},
 		},
-		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Resolve Data',
@@ -65,6 +65,7 @@ export const channelMembersDescription: ChannelProperties = [
 			},
 		},
 		default: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the response only contain the ID of the user. If this option gets activated, it will resolve the user automatically.',
 	},
 	{

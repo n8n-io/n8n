@@ -66,7 +66,7 @@ export class ExecuteCommand implements INodeType {
 				name: 'executeOnce',
 				type: 'boolean',
 				default: true,
-				description: 'If activated it executes only once instead of once for each entry',
+				description: 'Whether to execute only once instead of once for each entry',
 			},
 			{
 				displayName: 'Command',
@@ -109,7 +109,7 @@ export class ExecuteCommand implements INodeType {
 				} = await execPromise(command);
 
 				if (error !== undefined) {
-					throw new NodeOperationError(this.getNode(), error.message);
+					throw new NodeOperationError(this.getNode(), error.message, { itemIndex });
 				}
 
 				returnItems.push(

@@ -2,22 +2,24 @@ import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-
 import type { ICredentialsDb, IDatabaseCollections } from '../../../src';
 import type { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
 import type { User } from '../../../src/databases/entities/User';
+import { MAPPING_TABLES } from './constants';
 
 export type CollectionName = keyof IDatabaseCollections;
 
-export type SmtpTestAccount = {
-	user: string;
-	pass: string;
-	smtp: {
-		host: string;
-		port: number;
-		secure: boolean;
-	};
-};
+export type MappingName = keyof typeof MAPPING_TABLES;
 
 export type ApiPath = 'internal' | 'public';
 
-type EndpointGroup = 'me' | 'users' | 'auth' | 'owner' | 'passwordReset' | 'credentials' | 'publicApi';
+type EndpointGroup =
+	| 'me'
+	| 'users'
+	| 'auth'
+	| 'owner'
+	| 'passwordReset'
+	| 'credentials'
+	| 'workflows'
+	| 'publicApi'
+	| 'nodes';
 
 export type CredentialPayload = {
 	name: string;
@@ -43,3 +45,16 @@ export interface TriggerTime {
 	weekeday: number;
 	[key: string]: string | number;
 }
+
+export type InstalledPackagePayload = {
+	packageName: string;
+	installedVersion: string;
+}
+
+export type InstalledNodePayload = {
+	name: string;
+	type: string;
+	latestVersion: string;
+	package: string;
+}
+

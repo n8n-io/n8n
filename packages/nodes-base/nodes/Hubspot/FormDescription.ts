@@ -20,11 +20,13 @@ export const formOperations: INodeProperties[] = [
 				name: 'Get Fields',
 				value: 'getFields',
 				description: 'Get all fields from a form',
+				action: 'Get all fields from a form',
 			},
 			{
 				name: 'Submit',
 				value: 'submit',
 				description: 'Submit data to a form',
+				action: 'Submit a form',
 			},
 		],
 		default: 'getFields',
@@ -55,7 +57,7 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the form you\'re sending data to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the form you\'re sending data to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -213,7 +215,7 @@ export const formFields: INodeProperties[] = [
 											loadOptionsMethod: 'getSubscriptionTypes',
 										},
 										default: '',
-										description: 'The ID of the specific subscription type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+										description: 'The ID of the specific subscription type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Value',
@@ -247,14 +249,15 @@ export const formFields: INodeProperties[] = [
 							loadOptionsMethod: 'getSubscriptionTypes',
 						},
 						default: '',
-						description: 'The ID of the specific subscription type that this forms indicates interest to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The ID of the specific subscription type that this forms indicates interest to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'boolean',
 						default: false,
-						description: 'Whether using the \'legitimateInterest\' option must be set to true, as it reflects the consent indicated by the visitor when submitting the form',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description: 'This must be true when using the \'legitimateInterest\' option, as it reflects the consent indicated by the visitor when submitting the form',
 					},
 					{
 						displayName: 'Legal Basis',
@@ -307,6 +310,6 @@ export const formFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

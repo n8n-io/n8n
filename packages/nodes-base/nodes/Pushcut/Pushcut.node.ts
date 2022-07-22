@@ -19,6 +19,7 @@ export class Pushcut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pushcut',
 		name: 'pushcut',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:pushcut.png',
 		group: ['input'],
 		version: 1,
@@ -66,6 +67,7 @@ export class Pushcut implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send a notification',
+						action: 'Send a notification',
 					},
 				],
 				default: 'send',
@@ -74,6 +76,7 @@ export class Pushcut implements INodeType {
 				displayName: 'Notification Name or ID',
 				name: 'notificationName',
 				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getNotifications',
 				},
@@ -107,14 +110,14 @@ export class Pushcut implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Devices',
+						displayName: 'Device Names or IDs',
 						name: 'devices',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getDevices',
 						},
 						default: [],
-						description: 'List of devices this notification is sent to. (default is all devices).',
+						description: 'List of devices this notification is sent to. (default is all devices). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Input',

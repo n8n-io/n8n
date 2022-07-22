@@ -1,13 +1,10 @@
-import { execSync } from 'child_process';
-
 import express from 'express';
-import path from 'path';
 
 import { Db } from '../../../src';
+import { Reset } from '../../../commands/user-management/reset';
 import * as utils from '../shared/utils';
-import type { Role } from '../../../src/databases/entities/Role';
 import * as testDb from '../shared/testDb';
-import { randomEmail, randomName, randomValidPassword } from '../shared/random';
+import type { Role } from '../../../src/databases/entities/Role';
 
 let app: express.Application;
 let testDbName = '';
@@ -21,6 +18,10 @@ beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 });
 
+beforeEach(async () => {
+	await testDb.truncate(['User'], testDbName);
+});
+
 afterAll(async () => {
 	await testDb.terminate(testDbName);
 });
@@ -28,17 +29,19 @@ afterAll(async () => {
 test('user-management:reset should reset DB to default user state', async () => {
 	await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const command = [path.join('bin', 'n8n'), 'user-management:reset'].join(' ');
+	await Reset.run();
 
-	execSync(command);
+	const user = await Db.collections.User.findOne({ globalRole: globalOwnerRole });
 
-	const user = await Db.collections.User.findOne();
+	if (!user) {
+		fail('No owner found after DB reset to default user state');
+	}
 
-	expect(user?.email).toBeNull();
-	expect(user?.firstName).toBeNull();
-	expect(user?.lastName).toBeNull();
-	expect(user?.password).toBeNull();
-	expect(user?.resetPasswordToken).toBeNull();
-	expect(user?.resetPasswordTokenExpiration).toBeNull();
-	expect(user?.personalizationAnswers).toBeNull();
+	expect(user.email).toBeNull();
+	expect(user.firstName).toBeNull();
+	expect(user.lastName).toBeNull();
+	expect(user.password).toBeNull();
+	expect(user.resetPasswordToken).toBeNull();
+	expect(user.resetPasswordTokenExpiration).toBeNull();
+	expect(user.personalizationAnswers).toBeNull();
 });

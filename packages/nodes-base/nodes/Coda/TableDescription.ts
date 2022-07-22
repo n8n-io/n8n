@@ -18,35 +18,42 @@ export const tableOperations: INodeProperties[] = [
 				name: 'Create Row',
 				value: 'createRow',
 				description: 'Create/Insert a row',
+				action: 'Create a row',
 			},
 			{
 				name: 'Delete Row',
 				value: 'deleteRow',
 				description: 'Delete one or multiple rows',
+				action: 'Delete a row',
 			},
 			{
 				name: 'Get All Columns',
 				value: 'getAllColumns',
+				action: 'Get all columns',
 			},
 			{
 				name: 'Get All Rows',
 				value: 'getAllRows',
 				description: 'Get all the rows',
+				action: 'Get all rows',
 			},
 			{
 				name: 'Get Column',
 				value: 'getColumn',
 				description: 'Get a column',
+				action: 'Get a column',
 			},
 			{
 				name: 'Get Row',
 				value: 'getRow',
 				description: 'Get a row',
+				action: 'Get a row',
 			},
 			{
 				name: 'Push Button',
 				value: 'pushButton',
 				description: 'Pushes a button',
+				action: 'Push a button',
 			},
 		],
 		default: 'createRow',
@@ -77,7 +84,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -101,7 +108,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to create the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The table to create the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -125,7 +132,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'disableParsing',
 				type: 'boolean',
 				default: false,
-				description: 'If true, the API will not attempt to parse the data in any way',
+				description: 'Whether the API will not attempt to parse the data in any way',
 			},
 			{
 				displayName: 'Key Columns',
@@ -158,7 +165,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -182,7 +189,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -224,14 +231,14 @@ export const tableFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Use Column Names',
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: 'Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
+				description: 'Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -278,7 +285,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -302,7 +309,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The table to get the rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -377,7 +384,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Returns the data exactly in the way it got received from the API',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 			{
 				displayName: 'Sort By',
@@ -401,7 +408,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: 'Use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
+				description: 'Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -429,7 +436,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'visibleOnly',
 				type: 'boolean',
 				default: false,
-				description: 'If true, returns only visible rows and columns for the table',
+				description: 'Whether to return only visible rows and columns for the table',
 			},
 		],
 	},
@@ -455,7 +462,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -479,7 +486,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to delete the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The table to delete the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -521,7 +528,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -545,7 +552,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -569,6 +576,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Column Name or ID',
 		name: 'columnId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
@@ -611,7 +619,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -635,7 +643,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Column ID',
@@ -677,7 +685,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -701,7 +709,7 @@ export const tableFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

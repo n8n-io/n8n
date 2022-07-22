@@ -20,21 +20,25 @@ export const lightOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a light',
+				action: 'Delete a light',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a light',
+				action: 'Get a light',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all lights',
+				action: 'Get all lights',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a light',
+				action: 'Update a light',
 			},
 		],
 		default: 'update',
@@ -137,6 +141,7 @@ export const lightFields: INodeProperties[] = [
 		displayName: 'Light Name or ID',
 		name: 'lightId',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getLights',
 		},
@@ -169,6 +174,7 @@ export const lightFields: INodeProperties[] = [
 			},
 		},
 		default: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'On/Off state of the light',
 	},
 	{

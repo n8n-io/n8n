@@ -204,7 +204,7 @@ export class Raindrop implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (isEmpty(updateFields)) {
-							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
 						}
 
 						Object.assign(body, updateFields);
@@ -317,7 +317,7 @@ export class Raindrop implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (isEmpty(updateFields)) {
-							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
+							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
 						}
 
 						if (updateFields.parentId) {
@@ -336,11 +336,11 @@ export class Raindrop implements INodeType {
 						if (updateFields.cover) {
 
 							if (!items[i].binary) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							if (!updateFields.cover) {
-								throw new NodeOperationError(this.getNode(), 'Please enter a binary property to upload a cover image.');
+								throw new NodeOperationError(this.getNode(), 'Please enter a binary property to upload a cover image.', { itemIndex: i });
 							}
 
 							const binaryPropertyName = updateFields.cover as string;

@@ -20,26 +20,31 @@ export const programAffiliateOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add affiliate to program',
+				action: 'Add a program affiliate',
 			},
 			{
 				name: 'Approve',
 				value: 'approve',
 				description: 'Approve an affiliate for a program',
+				action: 'Approve a program affiliate',
 			},
 			{
 				name: 'Disapprove',
 				value: 'disapprove',
 				description: 'Disapprove an affiliate',
+				action: 'Disapprove a program affiliate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an affiliate in a program',
+				action: 'Get a program affiliate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all affiliates in program',
+				action: 'Get all program affiliates',
 			},
 		],
 		default: 'add',
@@ -69,7 +74,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -111,6 +116,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				name: 'approved',
 				type: 'boolean',
 				default: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'An optional approval status',
 			},
 			{
@@ -144,7 +150,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -185,7 +191,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -227,7 +233,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -270,7 +276,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -341,6 +347,7 @@ export const programAffiliateFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'An email address',
 			},

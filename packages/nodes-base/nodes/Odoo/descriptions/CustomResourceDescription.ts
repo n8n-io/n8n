@@ -7,6 +7,7 @@ export const customResourceOperations: INodeProperties[] = [
 		displayName: 'Custom Resource Name or ID',
 		name: 'customResource',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getModels',
@@ -37,26 +38,31 @@ export const customResourceOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new item',
+				action: 'Create an item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an item',
+				action: 'Delete an item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an item',
+				action: 'Get an item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all items',
+				action: 'Get all items',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an item',
+				action: 'Update an item',
 			},
 		],
 	},
@@ -95,6 +101,7 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
@@ -196,9 +203,11 @@ export const customResourceDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Fields to Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
@@ -239,6 +248,7 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsDependsOn: [
@@ -357,6 +367,7 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',

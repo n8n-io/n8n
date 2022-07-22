@@ -19,6 +19,7 @@ import {
 	INode,
 	INodeConnections,
 	INodeExecutionData,
+	IPinData,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -59,6 +60,7 @@ export class WorkflowExecute {
 			startData: {},
 			resultData: {
 				runData: {},
+				pinData: {},
 			},
 			executionData: {
 				contextData: {},
@@ -82,7 +84,12 @@ export class WorkflowExecute {
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
+	run(
+		workflow: Workflow,
+		startNode?: INode,
+		destinationNode?: string,
+		pinData?: IPinData,
+	): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
@@ -121,6 +128,7 @@ export class WorkflowExecute {
 			},
 			resultData: {
 				runData: {},
+				pinData,
 			},
 			executionData: {
 				contextData: {},
@@ -152,6 +160,7 @@ export class WorkflowExecute {
 		runData: IRunData,
 		startNodes: string[],
 		destinationNode: string,
+		pinData?: IPinData,
 		// @ts-ignore
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
@@ -258,6 +267,7 @@ export class WorkflowExecute {
 			},
 			resultData: {
 				runData,
+				pinData,
 			},
 			executionData: {
 				contextData: {},
@@ -683,7 +693,13 @@ export class WorkflowExecute {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
 
-		const workflowIssues = workflow.checkReadyForExecution({ startNode, destinationNode });
+		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
+
+		const workflowIssues = workflow.checkReadyForExecution({
+			startNode,
+			destinationNode,
+			pinDataNodeNames,
+		});
 		if (workflowIssues !== null) {
 			throw new Error(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',
@@ -914,24 +930,37 @@ export class WorkflowExecute {
 								}
 							}
 
-							Logger.debug(`Running node "${executionNode.name}" started`, {
-								node: executionNode.name,
-								workflowId: workflow.id,
-							});
-							const runNodeData = await workflow.runNode(
-								executionData,
-								this.runExecutionData,
-								runIndex,
-								this.additionalData,
-								NodeExecuteFunctions,
-								this.mode,
-							);
-							nodeSuccessData = runNodeData.data;
+							const { pinData } = this.runExecutionData.resultData;
 
-							if (runNodeData.closeFunction) {
-								// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-								closeFunction = runNodeData.closeFunction();
+							if (pinData && !executionNode.disabled && pinData[executionNode.name] !== undefined) {
+								let nodePinData = pinData[executionNode.name];
+
+								if (!Array.isArray(nodePinData)) nodePinData = [nodePinData];
+
+								const itemsPerRun = nodePinData.map((item, index) => {
+									return { json: item, pairedItem: { item: index } };
+								});
+								nodeSuccessData = [itemsPerRun]; // always zeroth runIndex
+							} else {
+								Logger.debug(`Running node "${executionNode.name}" started`, {
+									node: executionNode.name,
+									workflowId: workflow.id,
+								});
+								const runNodeData = await workflow.runNode(
+									executionData,
+									this.runExecutionData,
+									runIndex,
+									this.additionalData,
+									NodeExecuteFunctions,
+									this.mode,
+								);
+								nodeSuccessData = runNodeData.data;
+
+								if (runNodeData.closeFunction) {
+									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+									closeFunction = runNodeData.closeFunction();
+								}
 							}
 
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, {
@@ -945,21 +974,33 @@ export class WorkflowExecute {
 									if (outputData === null) {
 										continue;
 									}
-									for (const item of outputData) {
+									for (const [index, item] of outputData.entries()) {
 										if (!item.pairedItem) {
-											// The pairedItem is missing so check if it can get automatically fixed
+											// The pairedItem data is missing, so check if it can get automatically fixed
 											if (
-												executionData.data.main.length !== 1 ||
-												executionData.data.main[0]?.length !== 1
+												executionData.data.main.length === 1 &&
+												executionData.data.main[0]?.length === 1
 											) {
-												// Automatically fixing is only possible if there is only one
-												// input and one input item
+												// The node has one input and one incoming item, so we know
+												// that all items must originate from that single
+												item.pairedItem = {
+													item: 0,
+												};
+											} else if (
+												nodeSuccessData.length === 1 &&
+												executionData.data.main.length === 1 &&
+												executionData.data.main[0]?.length === nodeSuccessData[0].length
+											) {
+												// The node has one input and one output. The number of items on both is
+												// identical so we can make the resonable asumption that each of the input
+												// items is the origin of the corresponding output items
+												item.pairedItem = {
+													item: index,
+												};
+											} else {
+												// In all other cases is autofixing not possible
 												break checkOutputData;
 											}
-
-											item.pairedItem = {
-												item: 0,
-											};
 										}
 									}
 								}
@@ -1013,10 +1054,11 @@ export class WorkflowExecute {
 					if (!this.runExecutionData.resultData.runData.hasOwnProperty(executionNode.name)) {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
+
 					taskData = {
 						startTime,
 						executionTime: new Date().getTime() - startTime,
-						source: executionData.source === null ? [] : executionData.source.main,
+						source: !executionData.source ? [] : executionData.source.main,
 					};
 
 					if (executionError !== undefined) {

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
@@ -16,6 +17,7 @@ export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GraphQL',
 		name: 'graphql',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:graphql.png',
 		group: ['input'],
 		version: 1,
@@ -414,7 +416,7 @@ export class GraphQL implements INodeType {
 							try {
 								requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
 							} catch (error) {
-								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error);
+								throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error, { itemIndex });
 							}
 						}
 						if (requestOptions.body.operationName === '') {
@@ -448,7 +450,7 @@ export class GraphQL implements INodeType {
 						try {
 							response = JSON.parse(response);
 						} catch (error) {
-							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
+							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"', { itemIndex });
 						}
 					}
 

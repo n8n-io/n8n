@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const databaseOperations = [
+export const databaseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -23,16 +23,19 @@ export const databaseOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database',
+				action: 'Get a database',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all databases',
+				action: 'Get all databases',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search databases using text search',
+				action: 'Search a database',
 			},
 		],
 		default: 'get',
@@ -57,18 +60,20 @@ export const databaseOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database',
+				action: 'Get a database',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all databases',
+				action: 'Get all databases',
 			},
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const databaseFields = [
+export const databaseFields: INodeProperties[] = [
 
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
@@ -301,4 +306,4 @@ export const databaseFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

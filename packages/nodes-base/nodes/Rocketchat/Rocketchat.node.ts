@@ -99,6 +99,7 @@ export class Rocketchat implements INodeType {
 						name: 'Post Message',
 						value: 'postMessage',
 						description: 'Post a message to a channel or a direct message',
+						action: 'Post a message',
 					},
 				],
 				default: 'postMessage',
@@ -259,6 +260,7 @@ export class Rocketchat implements INodeType {
 						name: 'collapsed',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Causes the image, audio, and video sections to be hiding when collapsed is true',
 					},
 					{
@@ -302,6 +304,7 @@ export class Rocketchat implements INodeType {
 						name: 'titleLinkDownload',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'When this is true, a download icon appears and clicking this saves the link to file',
 					},
 					{

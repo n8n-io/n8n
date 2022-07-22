@@ -14,21 +14,25 @@ export const chargeOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a charge',
+				action: 'Create a charge',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a charge',
+				action: 'Get a charge',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all charges',
+				action: 'Get all charges',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a charge',
+				action: 'Update a charge',
 			},
 		],
 		displayOptions: {
@@ -94,7 +98,7 @@ export const chargeFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [

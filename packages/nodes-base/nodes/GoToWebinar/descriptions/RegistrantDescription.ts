@@ -13,18 +13,22 @@ export const registrantOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a registrant',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a registrant',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a registrant',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all registrants',
 			},
 		],
 		displayOptions: {
@@ -50,7 +54,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Key of the webinar of the registrant to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -100,6 +104,7 @@ export const registrantFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'Email address of the registrant to create',
 		displayOptions: {
@@ -208,6 +213,7 @@ export const registrantFields: INodeProperties[] = [
 								displayName: 'Question Key Name or ID',
 								name: 'questionKey',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getRegistranMultiChoiceQuestions',
 									loadOptionsDependsOn: [
@@ -292,6 +298,7 @@ export const registrantFields: INodeProperties[] = [
 								displayName: 'Question Key Name or ID',
 								name: 'questionKey',
 								type: 'options',
+								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getRegistranSimpleQuestions',
 									loadOptionsDependsOn: [
@@ -333,7 +340,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'The key of the webinar to retrieve registrants from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The key of the webinar to retrieve registrants from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -399,7 +406,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Key of the webinar of the registrant to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -442,7 +449,7 @@ export const registrantFields: INodeProperties[] = [
 		},
 		required: true,
 		default: [],
-		description: 'Key of the webinar of the registrant to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Key of the webinar of the registrant to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: [
