@@ -184,18 +184,18 @@ import {
 	IDataObject,
 	INode,
 	INodeConnections,
+	INodeCredentialsDetails,
 	INodeIssues,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	NodeHelpers,
-	Workflow,
+	IPinData,
 	IRun,
 	ITaskData,
-	INodeCredentialsDetails,
-	TelemetryHelpers,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	PinData,
+	NodeHelpers,
+	TelemetryHelpers,
+	Workflow,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -2963,7 +2963,7 @@ export default mixins(
 					await this.importWorkflowData(workflowData);
 				}
 			},
-			addPinDataConnections(pinData: PinData) {
+			addPinDataConnections(pinData: IPinData) {
 				Object.keys(pinData).forEach((nodeName) => {
 					// @ts-ignore
 					const connections = this.instance.getConnections({
@@ -2978,7 +2978,7 @@ export default mixins(
 					});
 				});
 			},
-			removePinDataConnections(pinData: PinData) {
+			removePinDataConnections(pinData: IPinData) {
 				Object.keys(pinData).forEach((nodeName) => {
 					// @ts-ignore
 					const connections = this.instance.getConnections({
