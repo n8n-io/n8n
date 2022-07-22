@@ -278,7 +278,7 @@ export class Telemetry {
 	initPostHog() {
 		if (this.postHogInitialized) return;
 
-		// @TODO_FINAL: Set to !['desktop_mac', 'desktop_win', 'cloud'].includes(this.store?.getters.deploymentType)
+		// @TODO_ON_COMPLETION: Set to !['desktop_mac', 'desktop_win', 'cloud'].includes(this.store?.getters.deploymentType)
 		const disableSessionRecording = true;
 
 		return new Promise((resolve) => {
@@ -289,7 +289,7 @@ export class Telemetry {
 
 			this.postHogInitialized = true;
 
-			posthog.debug(); // @TODO_FINAL: Make conditional on `this.logLevel === 'debug'`
+			posthog.debug(); // @TODO_ON_COMPLETION: Make conditional on `this.logLevel === 'debug'`
 
 			posthog.onFeatureFlags(resolve);
 		});
