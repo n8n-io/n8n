@@ -140,7 +140,13 @@ export class Telemetry {
 	}): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.postHog) {
-				this.postHog.identify({ distinctId: this.instanceId, properties: traits });
+				this.postHog.identify({
+					distinctId: this.instanceId,
+					properties: {
+						...traits,
+						instanceId: this.instanceId,
+					},
+				});
 			}
 
 			if (this.rudderStack) {
