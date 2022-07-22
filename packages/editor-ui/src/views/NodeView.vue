@@ -2906,9 +2906,6 @@ export default mixins(
 			async loadCredentials (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
 			},
-			async loadCommunityNodes (): Promise<void> {
-				await this.$store.dispatch('communityNodes/fetchInstalledPackages');
-			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
 
@@ -3015,7 +3012,6 @@ export default mixins(
 				this.loadCredentials(),
 				this.loadCredentialTypes(),
 				this.loadNodeTypes(),
-				this.loadCommunityNodes(),
 			];
 
 			try {
