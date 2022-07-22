@@ -419,7 +419,7 @@ export class GmailV2 implements INodeType {
 						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 					}
 					if (operation === 'reply') {
-						const id = this.getNodeParameter('messageId', i) as string;
+						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						let toStr = '';
@@ -474,7 +474,7 @@ export class GmailV2 implements INodeType {
 							}
 						}
 
-						endpoint = `/gmail/v1/users/me/messages/${id}`;
+						endpoint = `/gmail/v1/users/me/messages/${messageIdGmail}`;
 
 						qs.format = 'metadata';
 
@@ -505,8 +505,9 @@ export class GmailV2 implements INodeType {
 						}
 
 						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0]?.value  || '';
-						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
-						const inReplyTo = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Message-Id')[0]?.value || '';
+						// always empty
+						// const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
+						const messageIdGlobal = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Message-Id')[0]?.value || '';
 
 						let from = '';
 						if (additionalFields.senderName) {
@@ -534,14 +535,12 @@ export class GmailV2 implements INodeType {
 							body: messageBody,
 							htmlBody: messageBodyHtml,
 							attachments: attachmentsList,
-							inReplyTo,
+							inReplyTo: messageIdGlobal,
+							reference: messageIdGlobal,
 						};
 
 						endpoint = '/gmail/v1/users/me/messages/send';
 						method = 'POST';
-
-						email.replyTo = id;
-						email.reference = references;
 
 						body = {
 							raw: await encodeEmail(email),
@@ -968,7 +967,7 @@ export class GmailV2 implements INodeType {
 					}
 					//----------------------------------------------------------------------------------------------------------------------
 					if (operation === 'reply') {
-						const id = this.getNodeParameter('messageId', i) as string;
+						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						let toStr = '';
@@ -1023,7 +1022,7 @@ export class GmailV2 implements INodeType {
 							}
 						}
 
-						endpoint = `/gmail/v1/users/me/messages/${id}`;
+						endpoint = `/gmail/v1/users/me/messages/${messageIdGmail}`;
 
 						qs.format = 'metadata';
 
@@ -1053,8 +1052,9 @@ export class GmailV2 implements INodeType {
 						}
 
 						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0]?.value  || '';
-						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
-						const inReplyTo = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Message-Id')[0]?.value || '';
+						// always empty
+						// const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
+						const messageIdGlobal = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Message-Id')[0]?.value || '';
 
 						let from = '';
 						if (additionalFields.senderName) {
@@ -1082,19 +1082,17 @@ export class GmailV2 implements INodeType {
 							body: messageBody,
 							htmlBody: messageBodyHtml,
 							attachments: attachmentsList,
-							inReplyTo,
+							inReplyTo: messageIdGlobal,
+							reference: messageIdGlobal,
 						};
-
-						endpoint = '/gmail/v1/users/me/messages/send';
-						method = 'POST';
-
-						email.replyTo = id;
-						email.reference = references;
 
 						body = {
 							raw: await encodeEmail(email),
 							threadId,
 						};
+
+						endpoint = '/gmail/v1/users/me/messages/send';
+						method = 'POST';
 
 						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 					}

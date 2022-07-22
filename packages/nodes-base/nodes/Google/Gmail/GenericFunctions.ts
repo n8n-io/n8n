@@ -40,7 +40,6 @@ export interface IEmail {
 	cc?: string;
 	bcc?: string;
 	inReplyTo?: string;
-	replyTo?: string;
 	reference?: string;
 	subject: string;
 	body: string;
@@ -168,13 +167,13 @@ export async function encodeEmail(email: IEmail) {
 		to: email.to,
 		cc: email.cc,
 		bcc: email.bcc,
-		replyTo: email.replyTo,
 		inReplyTo: email.inReplyTo,
 		references: email.reference,
 		subject: email.subject,
 		text: email.body,
 		keepBcc: true,
 	} as IDataObject;
+
 	if (email.htmlBody) {
 		mailOptions.html = email.htmlBody;
 	}
