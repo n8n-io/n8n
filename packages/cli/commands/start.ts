@@ -416,6 +416,7 @@ export class Start extends Command {
 					process.stdin.setRawMode(true);
 					process.stdin.resume();
 					process.stdin.setEncoding('utf8');
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 					let inputText = '';
 
 					if (flags.open) {
