@@ -29,11 +29,6 @@ import {
 	messageOperations,
 } from './MessageDescription';
 
-// import {
-// 	messageLabelFields,
-// 	messageLabelOperations,
-// } from './MessageLabelDescription';
-
 import {
 	labelFields,
 	labelOperations,
@@ -48,11 +43,6 @@ import {
 	threadFields,
 	threadOperations,
 } from './ThreadDescription';
-
-// import {
-// 	threadLabelFields,
-// 	threadLabelOperations,
-// } from './ThreadLabelDescription';
 
 import {
 	isEmpty,
@@ -126,18 +116,10 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Message',
 					value: 'message',
 				},
-				// {
-				// 	name: 'Message Label',
-				// 	value: 'messageLabel',
-				// },
 				{
 					name: 'Thread',
 					value: 'thread',
 				},
-				// {
-				// 	name: 'Thread Label',
-				// 	value: 'threadLabel',
-				// },
 				{
 					name: 'Label',
 					value: 'label',
@@ -165,20 +147,11 @@ const versionDescription: INodeTypeDescription = {
 		...messageOperations,
 		...messageFields,
 		//-------------------------------
-		// MessageLabel Operations
-		//-------------------------------
-		// ...messageLabelOperations,
-		// ...messageLabelFields,
-		//-------------------------------
 		// Thread Operations
 		//-------------------------------
 		...threadOperations,
 		...threadFields,
 		//-------------------------------
-		// ThreadLabels Operations
-		//-------------------------------
-		// ...threadLabelOperations,
-		// ...threadLabelFields,
 	],
 };
 
@@ -290,35 +263,34 @@ export class GmailV2 implements INodeType {
 							responseData = responseData.splice(0, limit);
 						}
 					}
+					if (operation === 'addLabels') {
+						const id = this.getNodeParameter('resourceId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+						const resourceAPI = this.getNodeParameter('operateOn', i) as string;
+
+						method = 'POST';
+						endpoint = `/gmail/v1/users/me/${resourceAPI}/${id}/modify`;
+
+						body = {
+							addLabelIds: labelIds,
+						};
+
+						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+					}
+					if (operation === 'removeLabels') {
+						const id = this.getNodeParameter('resourceId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+						const resourceAPI = this.getNodeParameter('operateOn', i) as string;
+
+						method = 'POST';
+						endpoint = `/gmail/v1/users/me/${resourceAPI}/${id}/modify`;
+
+						body = {
+							removeLabelIds: labelIds,
+						};
+						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+					}
 				}
-				// if (resource === 'messageLabel') {
-				// 	if (operation === 'remove') {
-				// 		//https://developers.google.com/gmail/api/v1/reference/users/messages/modify
-				// 		const messageID = this.getNodeParameter('messageId', i);
-				// 		const labelIds = this.getNodeParameter('labelIds', i) as string[];
-
-				// 		method = 'POST';
-				// 		endpoint = `/gmail/v1/users/me/messages/${messageID}/modify`;
-				// 		body = {
-				// 			removeLabelIds: labelIds,
-				// 		};
-				// 		responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-				// 	}
-				// 	if (operation === 'add') {
-				// 		// https://developers.google.com/gmail/api/v1/reference/users/messages/modify
-				// 		const messageID = this.getNodeParameter('messageId', i);
-				// 		const labelIds = this.getNodeParameter('labelIds', i) as string[];
-
-				// 		method = 'POST';
-				// 		endpoint = `/gmail/v1/users/me/messages/${messageID}/modify`;
-
-				// 		body = {
-				// 			addLabelIds: labelIds,
-				// 		};
-
-				// 		responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-				// 	}
-				// }
 				if (resource === 'message') {
 					if (operation === 'send') {
 						// https://developers.google.com/gmail/api/v1/reference/users/messages/send
@@ -1074,34 +1046,6 @@ export class GmailV2 implements INodeType {
 						responseData = await googleApiRequest.call(this, method, endpoint, {}, qs);
 					}
 				}
-				// if (resource === 'threadLabel') {
-				// 	if (operation === 'remove') {
-				// 		//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/modify
-				// 		const threadId = this.getNodeParameter('threadId', i);
-				// 		const labelIds = this.getNodeParameter('labelIds', i) as string[];
-
-				// 		method = 'POST';
-				// 		endpoint = `/gmail/v1/users/me/threads/${threadId}/modify`;
-				// 		body = {
-				// 			removeLabelIds: labelIds,
-				// 		};
-				// 		responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-				// 	}
-				// 	if (operation === 'add') {
-				// 		//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/modify
-				// 		const threadId = this.getNodeParameter('threadId', i);
-				// 		const labelIds = this.getNodeParameter('labelIds', i) as string[];
-
-				// 		method = 'POST';
-				// 		endpoint = `/gmail/v1/users/me/threads/${threadId}/modify`;
-
-				// 		body = {
-				// 			addLabelIds: labelIds,
-				// 		};
-
-				// 		responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-				// 	}
-				// }
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else {

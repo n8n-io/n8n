@@ -15,7 +15,13 @@ export const labelOperations: INodeProperties[] = [
 				],
 			},
 		},
+
 		options: [
+			{
+				name: 'Add Labels',
+				value: 'addLabels',
+				action: 'Add labels',
+			},
 			{
 				name: 'Create',
 				value: 'create',
@@ -27,17 +33,22 @@ export const labelOperations: INodeProperties[] = [
 				action: 'Delete a label',
 			},
 			{
-				name: 'Get',
-				value: 'get',
-				action: 'Get a label',
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 				action: 'Get all labels',
 			},
+			{
+				name: 'Get Label Info',
+				value: 'get',
+				action: 'Get a label info',
+			},
+			{
+				name: 'Remove Labels',
+				value: 'removeLabels',
+				action: 'Remove labels',
+			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -183,5 +194,103 @@ export const labelFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                      label:addLabel, removeLabel                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Operate On',
+		name: 'operateOn',
+		type: 'options',
+		default: 'threads',
+		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Message',
+				value: 'messages',
+			},
+			{
+				name: 'Thread',
+				value: 'threads',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'label',
+				],
+				operation: [
+					'addLabels',
+					'removeLabels',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Thread ID',
+		name: 'resourceId',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: '172ce2c4a72cc243',
+		displayOptions: {
+			show: {
+				resource: [
+					'label',
+				],
+				operation: [
+					'addLabels',
+					'removeLabels',
+				],
+				operateOn: [
+					'threads',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Message ID',
+		name: 'resourceId',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: '172ce2c4a72cc243',
+		displayOptions: {
+			show: {
+				resource: [
+					'label',
+				],
+				operation: [
+					'addLabels',
+					'removeLabels',
+				],
+				operateOn: [
+					'messages',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Label ID Names or IDs',
+		name: 'labelIds',
+		type: 'multiOptions',
+		typeOptions: {
+			loadOptionsMethod: 'getLabels',
+		},
+		default: [],
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'label',
+				],
+				operation: [
+					'addLabels',
+					'removeLabels',
+				],
+			},
+		},
+		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 ];
