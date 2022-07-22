@@ -119,90 +119,81 @@ const createOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'createAdditionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
 		default: {},
+		description: 'Array of attributes to be added',
+		displayName: 'Contact Attributes',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['create'],
 			},
 		},
+		name: 'createContactAttributes',
 		options: [
 			{
-				displayName: 'Contact Attributes',
-				name: 'createContactAttributes',
-				placeholder: 'Add Attribute',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
+				name: 'attributesValues',
+				displayName: 'Attribute',
+				values: [
 					{
-						name: 'attributesValues',
-						displayName: 'Attribute',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'options',
-								typeOptions: {
-									loadOptions: {
-										routing: {
-											request: {
-												method: 'GET',
-												url: '/v3/contacts/attributes',
-											},
-											output: {
-												postReceive: [
-													{
-														type: 'rootProperty',
-														properties: {
-															property: 'attributes',
-														},
-													},
-													{
-														type: 'setKeyValue',
-														properties: {
-															name: '={{$responseItem.name}} - ({{$responseItem.category}})',
-															value: '={{$responseItem.name}}',
-														},
-													},
-													{
-														type: 'sort',
-														properties: {
-															key: 'name',
-														},
-													},
-												],
-											},
-										},
-									},
-								},
-								default: '',
-							},
-							{
-								displayName: 'Field Value',
-								name: 'fieldValue',
-								type: 'string',
-								default: '',
+						displayName: 'Field Name',
+						name: 'fieldName',
+						type: 'options',
+						typeOptions: {
+							loadOptions: {
 								routing: {
-									send: {
-										value: '={{$value}}',
-										property: '=attributes.{{$parent.fieldName}}',
-										type: 'body',
+									request: {
+										method: 'GET',
+										url: '/v3/contacts/attributes',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'attributes',
+												},
+											},
+											{
+												type: 'setKeyValue',
+												properties: {
+													name: '={{$responseItem.name}} - ({{$responseItem.category}})',
+													value: '={{$responseItem.name}}',
+												},
+											},
+											{
+												type: 'sort',
+												properties: {
+													key: 'name',
+												},
+											},
+										],
 									},
 								},
 							},
-						],
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								value: '={{$value}}',
+								property: '=attributes.{{$parent.fieldName}}',
+								type: 'body',
+							},
+						},
 					},
 				],
-				default: {},
-				description: 'Array of attributes to be added',
 			},
 		],
+		placeholder: 'Add Attribute',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 	},
 ];
 
@@ -384,96 +375,86 @@ const updateOperations: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
-		name: 'updateAdditionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		required: true,
 		default: {},
+		description: 'Array of attributes to be updated',
+		displayName: 'Attributes',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['update'],
 			},
 		},
+		name: 'updateAttributes',
 		options: [
 			{
-				displayName: 'Attributes',
-				name: 'updateAttributes',
-				placeholder: 'Add Attribute',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
+				name: 'updateAttributesValues',
+				displayName: 'Attribute',
+				values: [
 					{
-						name: 'updateAttributesValues',
-						displayName: 'Attribute',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'options',
-								typeOptions: {
-									loadOptions: {
-										routing: {
-											request: {
-												method: 'GET',
-												url: '/v3/contacts/attributes',
-											},
-											output: {
-												postReceive: [
-													{
-														type: 'rootProperty',
-														properties: {
-															property: 'attributes',
-														},
-													},
-													{
-														type: 'setKeyValue',
-														properties: {
-															name: '={{$responseItem.name}} - ({{$responseItem.category}})',
-															value: '={{$responseItem.name}}',
-														},
-													},
-													{
-														type: 'sort',
-														properties: {
-															key: 'name',
-														},
-													},
-												],
-											},
-										},
-									},
-								},
-								default: '',
-							},
-							{
-								displayName: 'Field Value',
-								name: 'fieldValue',
-								type: 'string',
-								default: '',
+						displayName: 'Field Name',
+						name: 'fieldName',
+						type: 'options',
+						typeOptions: {
+							loadOptions: {
 								routing: {
-									send: {
-										value: '={{$value}}',
-										property: '=attributes.{{$parent.fieldName}}',
-										type: 'body',
+									request: {
+										method: 'GET',
+										url: '/v3/contacts/attributes',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'attributes',
+												},
+											},
+											{
+												type: 'setKeyValue',
+												properties: {
+													name: '={{$responseItem.name}} - ({{$responseItem.category}})',
+													value: '={{$responseItem.name}}',
+												},
+											},
+											{
+												type: 'sort',
+												properties: {
+													key: 'name',
+												},
+											},
+										],
 									},
 								},
 							},
-						],
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								value: '={{$value}}',
+								property: '=attributes.{{$parent.fieldName}}',
+								type: 'body',
+							},
+						},
 					},
 				],
-				default: {},
-				description: 'Array of attributes to be updated',
 			},
 		],
+		placeholder: 'Add Attribute',
 		routing: {
 			request: {
 				method: 'PUT',
 				url: '=/v3/contacts/{{$parameter.identifier}}',
 			},
+		},
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
 		},
 	},
 ];
@@ -486,7 +467,7 @@ const upsertOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['contact'],
-				operation: ['update'],
+				operation: ['upsert'],
 			},
 		},
 		name: 'identifier',
@@ -494,91 +475,81 @@ const upsertOperations: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Update Fields',
-		name: 'updateAdditionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		required: true,
 		default: {},
+		description: 'Array of attributes to be updated',
+		displayName: 'Contact Attributes',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['upsert'],
 			},
 		},
+		name: 'upsertAttributes',
 		options: [
 			{
-				displayName: 'Attributes',
-				name: 'updateAttributes',
-				placeholder: 'Add Attribute',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
+				name: 'upsertAttributesValues',
+				displayName: 'Attribute',
+				values: [
 					{
-						name: 'updateAttributesValues',
-						displayName: 'Attribute',
-						values: [
-							{
-								displayName: 'Field Name',
-								name: 'fieldName',
-								type: 'options',
-								typeOptions: {
-									loadOptions: {
-										routing: {
-											request: {
-												method: 'GET',
-												url: '/v3/contacts/attributes',
-											},
-											output: {
-												postReceive: [
-													{
-														type: 'rootProperty',
-														properties: {
-															property: 'attributes',
-														},
-													},
-													{
-														type: 'setKeyValue',
-														properties: {
-															name: '={{$responseItem.name}} - ({{$responseItem.category}})',
-															value: '={{$responseItem.name}}',
-														},
-													},
-													{
-														type: 'sort',
-														properties: {
-															key: 'name',
-														},
-													},
-												],
-											},
-										},
-									},
-								},
-								default: '',
-							},
-							{
-								displayName: 'Field Value',
-								name: 'fieldValue',
-								type: 'string',
-								default: '',
+						displayName: 'Field Name',
+						name: 'fieldName',
+						type: 'options',
+						typeOptions: {
+							loadOptions: {
 								routing: {
-									send: {
-										value: '={{$value}}',
-										property: '=attributes.{{$parent.fieldName}}',
-										type: 'body',
+									request: {
+										method: 'GET',
+										url: '/v3/contacts/attributes',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'attributes',
+												},
+											},
+											{
+												type: 'setKeyValue',
+												properties: {
+													name: '={{$responseItem.name}} - ({{$responseItem.category}})',
+													value: '={{$responseItem.name}}',
+												},
+											},
+											{
+												type: 'sort',
+												properties: {
+													key: 'name',
+												},
+											},
+										],
 									},
 								},
 							},
-						],
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								value: '={{$value}}',
+								property: '=attributes.{{$parent.fieldName}}',
+								type: 'body',
+							},
+						},
 					},
 				],
-				default: {},
-				description: 'Array of attributes to be updated',
 			},
 		],
+		placeholder: 'Add Attribute',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		routing: {
 			send: {
 				preSend: [
