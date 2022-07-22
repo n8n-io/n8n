@@ -151,8 +151,6 @@ export default mixins(restApi).extend({
 				return '';
 			}
 
-
-
 			const appName = getAppNameFromCredType(
 				(this.credentialType as ICredentialType).displayName,
 			);
@@ -165,7 +163,7 @@ export default mixins(restApi).extend({
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
 			const activeNode = this.$store.getters.activeNode;
-			const isCommunityNode = isCommunityPackageName(activeNode.type);
+			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 			if (!type || !type.documentationUrl) {
 				return '';
