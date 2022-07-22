@@ -16,46 +16,55 @@ export const customObjectOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a custom Object',
+				action: 'Create a custom object',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or Update a custom object',
 			},
 			{
 				name: 'Create or Update (Batch)',
 				value: 'batchUpsert',
 				description: 'Like upsert, but this costs only up to three requests per 100 objects',
+				action: 'Create or Update (Batch) a custom object',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Archive a custom Object',
+				action: 'Delete a custom object',
 			},
 			{
 				name: 'Delete (Batch)',
 				value: 'batchDelete',
 				description: 'Like delete, but this costs only up to two requests per 100 objects',
+				action: 'Delete (Batch) a custom object',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a custom Object',
+				action: 'Get a custom object',
 			},
 			{
 				name: 'Get (Batch)',
 				value: 'batchGet',
 				description: 'Like get, but this has fewer options and costs only one request per 100 objects',
+				action: 'Get (Batch) a custom object',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search custom Objects',
+				action: 'Search a custom object',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a custom Object',
+				action: 'Update a custom object',
 			},
 		],
 		default: 'create',
@@ -64,6 +73,7 @@ export const customObjectOperations: INodeProperties[] = [
 		displayName: 'Custom Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
@@ -112,7 +122,7 @@ export const customObjectFields: INodeProperties[] = [
 							loadOptionsMethod: 'getCustomObjectProperties',
 						},
 						default: '',
-						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -145,7 +155,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Object ID',
@@ -190,7 +200,7 @@ export const customObjectFields: INodeProperties[] = [
 							loadOptionsMethod: 'getCustomObjectProperties',
 						},
 						default: '',
-						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -223,7 +233,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		hint: 'When "Hubspot object ID" is used and object with such ID does not exist, a new object will be created with ID assigned by system',
 	},
 	{
@@ -269,7 +279,7 @@ export const customObjectFields: INodeProperties[] = [
 							loadOptionsMethod: 'getCustomObjectProperties',
 						},
 						default: '',
-						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -302,7 +312,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Object ID',
@@ -332,7 +342,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -340,7 +350,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
-				description: 'A list of the properties to be returned in the response',
+				description: 'A list of the properties to be returned in the response. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
@@ -351,7 +361,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
-				description: 'A list of the properties to be returned along with their history of previous values',
+				description: 'A list of the properties to be returned along with their history of previous values. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -375,7 +385,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Object ID',
@@ -405,7 +415,7 @@ export const customObjectFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -413,7 +423,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsDependsOn: ['objectType'],
 				},
 				default: [],
-				description: 'A list of the properties to be returned in the response',
+				description: 'A list of the properties to be returned in the response. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
@@ -424,7 +434,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsDependsOn: ['objectType'],
 				},
 				default: [],
-				description: 'A list of the properties to be returned along with their history of previous values',
+				description: 'A list of the properties to be returned along with their history of previous values. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -510,6 +520,7 @@ export const customObjectFields: INodeProperties[] = [
 										displayName: 'Property Name or ID',
 										name: 'propertyName',
 										type: 'options',
+										description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 										typeOptions: {
 											loadOptionsDependsOn: ['objectType'],
 											loadOptionsMethod: 'getCustomObjectProperties',
@@ -679,7 +690,7 @@ export const customObjectFields: INodeProperties[] = [
 				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -687,7 +698,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: [],
-				description: 'A list of the properties to be returned in the response',
+				description: 'A list of the properties to be returned in the response. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 
 			{
@@ -700,7 +711,7 @@ export const customObjectFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCustomObjectProperties',
 				},
 				default: '',
-				description: 'Sort the results ascending by this property. . Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'Sort the results ascending by this property. . Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',
@@ -731,7 +742,7 @@ export const customObjectFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The property that will be used as the ID. The property has to have "hasUniqueValue" set to true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Object ID',

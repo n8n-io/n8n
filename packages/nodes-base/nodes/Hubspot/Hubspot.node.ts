@@ -1158,8 +1158,8 @@ export class Hubspot implements INodeType {
 				const idProperties = properties.filter((property: { hasUniqueValue?: boolean }) => property.hasUniqueValue === true);
 
 				returnData.push({
-					name: 'Hubspot object ID',
-					value: '',
+					name: 'Hubspot Object ID',
+					value: 'objectId',
 				});
 
 				if (objectType === '0-1' || objectType === 'contact') {
@@ -1177,6 +1177,7 @@ export class Hubspot implements INodeType {
 						value: propertyValue,
 					});
 				}
+				console.log(JSON.stringify(returnData, undefined, 2));
 				return returnData;
 			},
 
@@ -1359,7 +1360,11 @@ export class Hubspot implements INodeType {
 						return [...(response?.errors?.length ? response.errors : [{ success: true }])];
 					}
 					if (operation === 'batchUpsert') {
-						const idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+						let idProperty = this.getNodeParameter('idProperty', 0) as string | null;
+
+						if (idProperty === 'objectId') {
+							idProperty = '';
+						}
 
 						// Resolve object ids and check for existence
 						const idMap: Record<string, string | undefined> = {};
