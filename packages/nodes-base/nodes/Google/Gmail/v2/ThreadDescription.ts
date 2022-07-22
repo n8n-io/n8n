@@ -76,8 +76,32 @@ export const threadFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 thread:reply                              */
+	/*                                 thread:reply                               */
 	/* -------------------------------------------------------------------------- */
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Message Snippet or ID',
+		name: 'messageId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getThreadMessages',
+			loadOptionsDependsOn: [
+				'threadId',
+			],
+		},
+		default: '',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		displayOptions: {
+			show: {
+				resource: [
+					'thread',
+				],
+				operation: [
+					'reply',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Email Type',
 		name: 'emailType',
@@ -356,6 +380,37 @@ export const threadFields: INodeProperties[] = [
 				},
 				default: '',
 				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
+			},
+			{
+				displayName: 'Read Status',
+				name: 'readStatus',
+				type: 'options',
+				default: 'unread',
+				description: 'Filter emails by their read status',
+				options: [
+					{
+						name: 'Only Read Emails',
+						value: 'read',
+					},
+					{
+						name: 'Only Unread Emails',
+						value: 'unread',
+					},
+				],
+			},
+			{
+				displayName: 'Received After',
+				name: 'receivedAfter',
+				type: 'dateTime',
+				default: '',
+				description: 'Get all emails received after the specified date, in an expression you can set date using string in ISO format or a timestamp in miliseconds',
+			},
+			{
+				displayName: 'Received Before',
+				name: 'receivedBefore',
+				type: 'dateTime',
+				default: '',
+				description: 'Get all emails received after the specified date, in an expression you can set date using string in ISO format or a timestamp in miliseconds',
 			},
 		],
 	},

@@ -23,6 +23,10 @@ import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
 
+import {
+	DateTime,
+} from 'luxon';
+
 interface IGoogleAuthCredentials {
 	delegatedEmail?: string;
 	email: string;
@@ -278,4 +282,73 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	//@ts-ignore
 	return this.helpers.request(options);
+}
+
+export function buildQuery(fields: IDataObject) {
+	const qs: IDataObject = {...fields};
+	if (qs.labelIds) {
+		if (qs.labelIds === '') {
+			delete qs.labelIds;
+		} else {
+			qs.labelIds = qs.labelIds as string[];
+		}
+	}
+
+	if (qs.sender) {
+		if (qs.q) {
+			qs.q += ` from:${qs.sender}`;
+		} else {
+			qs.q = `from:${qs.sender}`;
+		}
+		delete qs.sender;
+	}
+
+	if (qs.readStatus) {
+		if (qs.q) {
+			qs.q += ` is:${qs.readStatus}`;
+		} else {
+			qs.q = `is:${qs.readStatus}`;
+		}
+		delete qs.readStatus;
+	}
+
+	if (qs.receivedAfter) {
+		let timestamp =	DateTime.fromISO(qs.receivedAfter as string).toSeconds();
+
+		if (!timestamp) {
+			timestamp = DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds();
+		}
+
+		if (!timestamp) {
+			throw new Error(`Datetime ${qs.receivedAfter} provided in "Received After" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`);
+		}
+
+		if (qs.q) {
+			qs.q += ` after:${timestamp}`;
+		} else {
+			qs.q = `after:${timestamp}`;
+		}
+		delete qs.receivedAfter;
+	}
+
+	if (qs.receivedBefore) {
+		let timestamp =	DateTime.fromISO(qs.receivedBefore as string).toSeconds();
+
+		if (!timestamp) {
+			timestamp = DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds();
+		}
+
+		if (!timestamp) {
+			throw new Error(`Datetime ${qs.receivedBefore} provided in "Received Before" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`);
+		}
+
+		if (qs.q) {
+			qs.q += ` before:${timestamp}`;
+		} else {
+			qs.q = `before:${timestamp}`;
+		}
+		delete qs.receivedBefore;
+	}
+
+	return qs;
 }

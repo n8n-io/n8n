@@ -16,6 +16,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	buildQuery,
 	encodeEmail,
 	extractEmail,
 	googleApiRequest,
@@ -169,27 +170,44 @@ export class GmailV2 implements INodeType {
 		loadOptions: {
 			// Get all the labels to display them to user so that he can
 			// select them easily
-			async getLabels(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+
 				const labels = await googleApiRequestAllItems.call(
 					this,
 					'labels',
 					'GET',
 					'/gmail/v1/users/me/labels',
 				);
+
 				for (const label of labels) {
 					returnData.push({
 						name: label.name,
 						value: label.id,
 					});
 				}
+
 				return returnData.sort((a, b) => {
 					if (a.name < b.name) { return -1; }
 					if (a.name > b.name) { return 1; }
 					return 0;
 				});
+			},
+
+			async getThreadMessages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const id = this.getNodeParameter('threadId', 0) as string;
+				const {messages} = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/threads/${id}`, {}, { format: 'minimal' });
+
+				for (const message of messages || []) {
+					returnData.push({
+						name: message.snippet,
+						value: message.id,
+					});
+				}
+
+				return returnData;
 			},
 		},
 	};
@@ -401,7 +419,6 @@ export class GmailV2 implements INodeType {
 						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 					}
 					if (operation === 'reply') {
-
 						const id = this.getNodeParameter('messageId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -480,7 +497,7 @@ export class GmailV2 implements INodeType {
 								const email = entry.trim();
 
 								if (email.indexOf('@') === -1) {
-									throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Send To" input field is not valid`, { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Extra to Recipients" option is not valid`, { itemIndex: i });
 								}
 
 								toStr += `<${email}>, `;
@@ -568,72 +585,7 @@ export class GmailV2 implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						Object.assign(qs, additionalFields);
-
-						if (qs.labelIds) {
-							// tslint:disable-next-line: triple-equals
-							if (qs.labelIds == '') {
-								delete qs.labelIds;
-							} else {
-								qs.labelIds = qs.labelIds as string[];
-							}
-						}
-
-						if (qs.sender) {
-							if (qs.q) {
-								qs.q += ` from:${qs.sender}`;
-							} else {
-								qs.q = `from:${qs.sender}`;
-							}
-							delete qs.sender;
-						}
-
-						if (qs.readStatus) {
-							if (qs.q) {
-								qs.q += ` is:${qs.readStatus}`;
-							} else {
-								qs.q = `is:${qs.readStatus}`;
-							}
-							delete qs.readStatus;
-						}
-
-						if (qs.receivedAfter) {
-							let timestamp =	DateTime.fromISO(qs.receivedAfter as string).toSeconds();
-
-							if (!timestamp) {
-								timestamp = DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds();
-							}
-
-							if (!timestamp) {
-								throw new NodeOperationError(this.getNode(), `Datetime ${qs.receivedAfter} provided in "Received After" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`, { itemIndex: i });
-							}
-
-							if (qs.q) {
-								qs.q += ` after:${timestamp}`;
-							} else {
-								qs.q = `after:${timestamp}`;
-							}
-							delete qs.receivedAfter;
-						}
-
-						if (qs.receivedBefore) {
-							let timestamp =	DateTime.fromISO(qs.receivedBefore as string).toSeconds();
-
-							if (!timestamp) {
-								timestamp = DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds();
-							}
-
-							if (!timestamp) {
-								throw new NodeOperationError(this.getNode(), `Datetime ${qs.receivedBefore} provided in "Received Before" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`, { itemIndex: i });
-							}
-
-							if (qs.q) {
-								qs.q += ` before:${timestamp}`;
-							} else {
-								qs.q = `before:${timestamp}`;
-							}
-							delete qs.receivedBefore;
-						}
+						Object.assign(qs, buildQuery(additionalFields));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -987,15 +939,7 @@ export class GmailV2 implements INodeType {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/list
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						Object.assign(qs, additionalFields);
-
-						if (qs.labelIds) {
-							if (qs.labelIds === '') {
-								delete qs.labelIds;
-							} else {
-								qs.labelIds = qs.labelIds as string[];
-							}
-						}
+						Object.assign(qs, buildQuery(additionalFields));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -1022,9 +966,139 @@ export class GmailV2 implements INodeType {
 							responseData = [];
 						}
 					}
+					//----------------------------------------------------------------------------------------------------------------------
 					if (operation === 'reply') {
+						const id = this.getNodeParameter('messageId', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
+						let toStr = '';
+						let ccStr = '';
+						let bccStr = '';
+						let attachmentsList: IDataObject[] = [];
+
+						if (additionalFields.ccList) {
+							const ccList = additionalFields.ccList as IDataObject[];
+
+							ccList.forEach((email) => {
+								ccStr += `<${email}>, `;
+							});
+						}
+
+						if (additionalFields.bccList) {
+							const bccList = additionalFields.bccList as IDataObject[];
+
+							bccList.forEach((email) => {
+								bccStr += `<${email}>, `;
+							});
+						}
+
+						if (additionalFields.attachmentsUi) {
+							const attachmentsUi = additionalFields.attachmentsUi as IDataObject;
+							const attachmentsBinary = [];
+							if (!isEmpty(attachmentsUi)) {
+								if (attachmentsUi.hasOwnProperty('attachmentsBinary')
+									&& !isEmpty(attachmentsUi.attachmentsBinary)
+									&& items[i].binary) {
+									// @ts-ignore
+									for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
+										for (const binaryProperty of (property as string).split(',')) {
+											if (items[i].binary![binaryProperty] !== undefined) {
+												const binaryData = items[i].binary![binaryProperty];
+												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
+												attachmentsBinary.push({
+													name: binaryData.fileName || 'unknown',
+													content: binaryDataBuffer,
+													type: binaryData.mimeType,
+												});
+											}
+										}
+									}
+								}
+
+								qs = {
+									userId: 'me',
+									uploadType: 'media',
+								};
+								attachmentsList = attachmentsBinary;
+							}
+						}
+
+						endpoint = `/gmail/v1/users/me/messages/${id}`;
+
+						qs.format = 'metadata';
+
+						const { payload, threadId } = await googleApiRequest.call(this, method, endpoint, body, qs);
+
+						if (toStr === '') {
+							for (const header of payload.headers as IDataObject[]) {
+								if (header.name === 'From') {
+									toStr = `<${extractEmail(header.value as string)}>,`;
+									break;
+								}
+							}
+						}
+
+						if (additionalFields.sendTo) {
+							const sendTo = additionalFields.sendTo as string;
+
+							sendTo.split(',').forEach(entry => {
+								const email = entry.trim();
+
+								if (email.indexOf('@') === -1) {
+									throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Extra to Recipients" option is not valid`, { itemIndex: i });
+								}
+
+								toStr += `<${email}>, `;
+							});
+						}
+
+						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0]?.value  || '';
+						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
+						const inReplyTo = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Message-Id')[0]?.value || '';
+
+						let from = '';
+						if (additionalFields.senderName) {
+							const {emailAddress} = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
+							from = `${additionalFields.senderName as string} <${emailAddress}>`;
+						}
+
+						const emailType = this.getNodeParameter('emailType', i) as string;
+
+						let messageBody = '';
+						let messageBodyHtml = '';
+
+						if (emailType === 'html') {
+							messageBodyHtml = this.getNodeParameter('message', i) as string;
+						} else {
+							messageBody = this.getNodeParameter('message', i) as string;
+						}
+
+						const email: IEmail = {
+							from,
+							to: toStr,
+							cc: ccStr,
+							bcc: bccStr,
+							subject,
+							body: messageBody,
+							htmlBody: messageBodyHtml,
+							attachments: attachmentsList,
+							inReplyTo,
+						};
+
+						endpoint = '/gmail/v1/users/me/messages/send';
+						method = 'POST';
+
+						email.replyTo = id;
+						email.reference = references;
+
+						body = {
+							raw: await encodeEmail(email),
+							threadId,
+						};
+
+						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 					}
+					//----------------------------------------------------------------------------------------------------------------------
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
 						method = 'POST';
