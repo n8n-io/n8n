@@ -338,8 +338,10 @@ export default mixins(
 				return this.$store.getters.allNodes;
 			},
 			runButtonText (): string {
+				// @TODO_PART_2: Remove
 				this.$telemetry.capture('This is a self-capture event', { property: 'testing 123' });
 
+				// @TODO_PART_4: Remove
 				if (this.$telemetry.isFeatureFlagEnabled('test-1')) {
 					return 'Hello from my feature flag';
 				}
