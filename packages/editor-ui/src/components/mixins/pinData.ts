@@ -1,17 +1,17 @@
 import Vue from 'vue';
-import { INodeUi } from "@/Interface";
-import {IDataObject, PinData} from "n8n-workflow";
-import {stringSizeInBytes} from "@/components/helpers";
-import {MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST} from "@/constants";
+import { INodeUi } from '@/Interface';
+import { IPinData } from 'n8n-workflow';
+import { stringSizeInBytes } from '@/components/helpers';
+import { MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST } from '@/constants';
 
-interface PinDataContext {
+interface IPinDataContext {
 	node: INodeUi;
 	$showError(error: Error, title: string): void;
 }
 
-export const pinData = (Vue as Vue.VueConstructor<Vue & PinDataContext>).extend({
+export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend({
 	computed: {
-		pinData (): PinData[string] | undefined {
+		pinData (): IPinData[string] | undefined {
 			return this.node ? this.$store.getters['pinDataByNodeName'](this.node!.name) : undefined;
 		},
 		hasPinData (): boolean {

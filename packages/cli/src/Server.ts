@@ -70,11 +70,11 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	ITelemetrySettings,
 	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
-	PinData,
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
@@ -2836,7 +2836,7 @@ const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
 const isTrigger = (str: string) =>
 	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
 
-function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: PinData) {
+function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
 	if (!pinData) return;
 
 	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
