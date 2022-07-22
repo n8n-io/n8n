@@ -13,10 +13,10 @@ import {
 	INodeConnections,
 	INodeIssueData,
 	INodeTypeDescription,
+	IPinData,
 	IRunData,
 	ITaskData,
 	IWorkflowSettings,
-	PinData,
 } from 'n8n-workflow';
 
 import {
@@ -213,7 +213,7 @@ export const store = new Vuex.Store({
 		},
 
 		// Pin data
-		pinData(state, payload: { node: INodeUi, data: PinData[string] }) {
+		pinData(state, payload: { node: INodeUi, data: IPinData[string] }) {
 			if (state.workflow.pinData) {
 				Vue.set(state.workflow.pinData, payload.node.name, payload.data);
 			}
@@ -651,7 +651,7 @@ export const store = new Vuex.Store({
 			Vue.set(state.workflow, 'settings', workflowSettings);
 		},
 
-		setWorkflowPinData(state, pinData: PinData) {
+		setWorkflowPinData(state, pinData: IPinData) {
 			Vue.set(state.workflow, 'pinData', pinData);
 
 			dataPinningEventBus.$emit('pin-data', pinData);
@@ -905,7 +905,7 @@ export const store = new Vuex.Store({
 		 * Pin data
 		 */
 
-		pinData: (state): PinData | undefined => {
+		pinData: (state): IPinData | undefined => {
 			return state.workflow.pinData;
 		},
 		pinDataByNodeName: (state) => (nodeName: string) => {
