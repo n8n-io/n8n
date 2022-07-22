@@ -91,9 +91,6 @@ export class Telemetry {
 		}
 	}
 
-	/**
-	 * Identify instance and user or only instance with all telemetry services.
-	 */
 	identify(instanceId: string, userId?: string) {
 		const traits = { instance_id: instanceId };
 
@@ -131,11 +128,6 @@ export class Telemetry {
 	}
 
 	track(event: string, properties?: ITelemetryTrackProperties) {
-		// @TODO
-		// capture(eventName: string, props: object) {
-		// 	posthog.capture(eventName, props);
-		// }
-
 		if (!this.rudderStack) return;
 
 		const updatedProperties = {
