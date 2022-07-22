@@ -105,7 +105,7 @@ export class Telemetry {
 			}
 
 			if (this.postHogInitialized) {
-				const fullId = [instanceId, userId].join('_'); // @TODO: PostHog disallows # in ID
+				const fullId = [instanceId, userId].join('_'); // PostHog disallows # in ID
 				posthog.identify(fullId, traits);
 
 				if (this.store) {
