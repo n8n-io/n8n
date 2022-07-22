@@ -35,7 +35,7 @@
 			top: 0;
 			right: -50px;
 			color: var(--color-foreground-xlight);
-			background-color: $--custom-table-background-main;
+			background-color: var(--color-background-dark);
 			border-radius: 0 18px 18px 0;
 			z-index: 110;
 			font-size: 1.7em;
@@ -83,8 +83,8 @@
 // Table
 .el-table {
 	thead th {
-		color: var(--color-foreground-xlight);
-		background-color: $--custom-table-background-main;
+		color: var(--color-text-base);
+		background-color: var(--color-background-base);
 	}
 	tr {
 		color: var(--color-text-dark);
@@ -100,14 +100,14 @@
 .el-table--striped {
 	.el-table__body {
 		tr.el-table__row--striped {
-			background-color: $--custom-table-background-stripe-color;
+			background-color: var(--color-background-light);
 			td {
 				background: none;
 			}
 		}
 		tr.el-table__row:hover,
 		tr.el-table__row:hover > td {
-			background-color: $--custom-table-background-hover-color;
+			background-color: var(--color-primary-tint-3);
 		}
 	}
 }

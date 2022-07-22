@@ -461,12 +461,12 @@
 		left: 7px;
 
 		&.ascending {
-			border-bottom-color: var(--color-text-lighter);
+			border-bottom-color: var(--color-text-light);
 			top: 5px;
 		}
 
 		&.descending {
-			border-top-color: var(--color-text-lighter);
+			border-top-color: var(--color-text-light);
 			bottom: 7px;
 		}
 	}
