@@ -547,7 +547,6 @@ export class WorkflowDataProxy {
 						context = {};
 					}
 					message = `‘${nodeName}‘ must be unpinned to execute`;
-					context.description = `To fetch the data the expression needs, The node ‘${nodeName}’ needs to execute without being pinned. <a>Unpin it</a>`;
 					context.description = `To fetch the data for the expression, you must unpin the node '${nodeName}' and execute the workflow again.`;
 					context.descriptionTemplate = `To fetch the data for the expression under '%%PARAMETER%%', you must unpin the node '${nodeName}' and execute the workflow again.`;
 				}
