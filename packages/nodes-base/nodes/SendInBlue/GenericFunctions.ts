@@ -6,6 +6,7 @@ import {
 	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
+import { OptionsWithUri } from 'request';
 export namespace SendInBlueNode {
 	export interface EmailAttachment {
 		content?: string;
