@@ -204,33 +204,6 @@ const createOperations: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['create'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Update Enabled',
-				name: 'updateEnabled',
-				type: 'boolean',
-				default: false,
-				routing: {
-					send: {
-						type: 'body',
-						property: 'updateEnabled',
-					},
-				},
-			},
-		],
-	},
 ];
 
 const getAllOperations: INodeProperties[] = [
