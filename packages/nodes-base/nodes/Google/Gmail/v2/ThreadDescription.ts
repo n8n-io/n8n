@@ -24,14 +24,17 @@ export const threadOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a thread',
 				action: 'Get a thread',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all threads',
 				action: 'Get all threads',
+			},
+			{
+				name: 'Reply to Sender',
+				value: 'reply',
+				action: 'Reply to a message',
 			},
 			{
 				name: 'Trash',
@@ -44,7 +47,7 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Untrash a thread',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 	},
 ];
 
@@ -55,6 +58,7 @@ export const threadFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
+		description: 'The ID of the thread you are operating on',
 		displayOptions: {
 			show: {
 				resource: [
@@ -63,12 +67,158 @@ export const threadFields: INodeProperties[] = [
 				operation: [
 					'get',
 					'delete',
+					'reply',
 					'trash',
 					'untrash',
 				],
 			},
 		},
 	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 thread:reply                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Email Type',
+		name: 'emailType',
+		type: 'options',
+		default: 'text',
+		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+			{
+				name: 'Text',
+				value: 'text',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'thread',
+				],
+				operation: [
+					'reply',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'thread',
+				],
+				operation: [
+					'reply',
+				],
+			},
+		},
+		hint: 'Get better Text and Expressions writing experience by using the expression editor',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'thread',
+				],
+				operation: [
+					'reply',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Attachment',
+				name: 'attachmentsUi',
+				placeholder: 'Add Attachment',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'attachmentsBinary',
+						displayName: 'Attachment Binary',
+						values: [
+							{
+								displayName: 'Attachment Field Name (in Input)',
+								name: 'property',
+								type: 'string',
+								default: '',
+								description: 'Add the field name from the input node. Multiple properties can be set separated by comma.',
+							},
+						],
+					},
+				],
+				default: {},
+				description: 'Array of supported attachments to add to the message',
+			},
+			{
+				displayName: 'BCC Email',
+				name: 'bccList',
+				type: 'string',
+				description: 'The email addresses of the blind copy recipients',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add BCC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+			{
+				displayName: 'CC Email',
+				name: 'ccList',
+				type: 'string',
+				description: 'The email addresses of the copy recipients',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add CC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+			{
+				displayName: 'Extra to Recipients',
+				name: 'sendTo',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'/operation': [
+							'reply',
+						],
+					},
+				},
+				placeholder: 'info@example.com',
+				description: 'These emails would be sent along with the original sender\'s email. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+			},
+			{
+				displayName: 'Override Sender Name',
+				name: 'senderName',
+				type: 'string',
+				placeholder: '',
+				default: '',
+				description: 'The name displayed in your contacts inboxes',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 thread:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -164,8 +314,8 @@ export const threadFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},

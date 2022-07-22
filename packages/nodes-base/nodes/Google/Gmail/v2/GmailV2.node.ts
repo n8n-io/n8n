@@ -1014,12 +1014,11 @@ export class GmailV2 implements INodeType {
 					if (operation === 'getAll') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/list
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						Object.assign(qs, filters);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						Object.assign(qs, additionalFields);
 
 						if (qs.labelIds) {
-							// tslint:disable-next-line: triple-equals
-							if (qs.labelIds == '') {
+							if (qs.labelIds === '') {
 								delete qs.labelIds;
 							} else {
 								qs.labelIds = qs.labelIds as string[];
@@ -1050,6 +1049,9 @@ export class GmailV2 implements INodeType {
 						if (responseData === undefined) {
 							responseData = [];
 						}
+					}
+					if (operation === 'reply') {
+
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
