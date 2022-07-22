@@ -37,6 +37,7 @@ import {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	LoggerProxy as Logger,
+	IHttpRequestHelper,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -138,6 +139,61 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		return requestOptions as IHttpRequestOptions;
+	}
+
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined> {
+		const credentialType = this.credentialTypes.getByName(typeName);
+
+		const expirableProperty = credentialType.properties.find(
+			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
+		);
+
+		if (expirableProperty === undefined || expirableProperty.name === undefined) {
+			return undefined;
+		}
+
+		// check if the node is the mockup node used for testing
+		// if so, it means this is a credential test and not normal node execution
+		const isTestingCredentials =
+			node?.parameters?.temp === '' && node?.type === 'n8n-nodes-base.noOp';
+
+		if (credentialType.preAuthentication) {
+			if (typeof credentialType.preAuthentication === 'function') {
+				// if the expirable property is empty in the credentials
+				// or are expired, call pre authentication method
+				// or the credentials are being tested
+				if (
+					credentials[expirableProperty?.name] === '' ||
+					credentialsExpired ||
+					isTestingCredentials
+				) {
+					const output = await credentialType.preAuthentication.call(helpers, credentials);
+
+					// if there is data in the output, make sure the returned
+					// property is the expirable property
+					// else the database will not get updated
+					if (output[expirableProperty.name] === undefined) {
+						return undefined;
+					}
+
+					if (node.credentials) {
+						await this.updateCredentials(
+							node.credentials[credentialType.name],
+							credentialType.name,
+							Object.assign(credentials, output),
+						);
+						return Object.assign(credentials, output);
+					}
+				}
+			}
+		}
+		return undefined;
 	}
 
 	/**
@@ -538,6 +594,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 				? nodeType.description.version.slice(-1)[0]
 				: nodeType.description.version,
 			position: [0, 0],
+			credentials: {
+				[credentialType]: {
+					id: credentialsDecrypted.id.toString(),
+					name: credentialsDecrypted.name,
+				},
+			},
 		};
 
 		const workflowData = {
@@ -622,7 +684,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		} catch (error) {
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
-			if (error.cause.response) {
+			if (error.cause?.response) {
 				const errorResponseData = {
 					statusCode: error.cause.response.status,
 					statusMessage: error.cause.response.statusText,
