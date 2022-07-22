@@ -1,15 +1,19 @@
 <template>
 	<div>
 		<div
-			:class="$style['node-icon-wrapper']"
+			:class="{
+				[$style['node-icon-wrapper']]: true,
+				[$style['circle']]: this.circle,
+				[$style['disabled']]: this.disabled,
+			}"
 			:style="iconStyleData"
-			@click="(e) => $emit('click')"
+			v-on="$listeners"
 		>
 			<n8n-tooltip placement="top" :disabled="!showTooltip">
-				<div slot="content" v-text="nodeTypeName"></div>
+				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style['icon']">
-					<img v-if="type === 'file'" :src="path" :class="$style['node-icon-image']" />
-					<font-awesome-icon v-else :icon="path" :style="fontStyleData" />
+					<img v-if="type === 'file'" :src="iconPath" :class="$style['node-icon-image']" />
+					<font-awesome-icon v-else :icon="iconName" :style="fontStyleData" />
 				</div>
 				<div v-else :class="$style['node-icon-placeholder']">
 					{{ nodeTypeName? nodeTypeName.charAt(0) : '?' }}
@@ -38,33 +42,29 @@ export default Vue.extend({
 			validator: (value: string): boolean =>
 				['file', 'icon', 'unknown'].includes(value),
 		},
-		path: {
+		iconPath: {
 			type: String,
-			required: true,
+		},
+		iconName: {
+			type: String,
 		},
 		nodeTypeName: {
 			type: String,
-			required: false,
 		},
 		size: {
 			type: Number,
-			required: false,
 		},
 		disabled: {
 			type: Boolean,
-			default: false,
 		},
 		circle: {
 			type: Boolean,
-			default: false,
 		},
 		color: {
 			type: String,
-			required: false,
 		},
 		showTooltip: {
 			type: Boolean,
-			default: false,
 		},
 	},
 	computed: {
@@ -80,12 +80,6 @@ export default Vue.extend({
 				height: `${this.size}px`,
 				'font-size': `${this.size}px`,
 				'line-height': `${this.size}px`,
-				'border-radius': this.circle ? '50%': '2px',
-				...(this.disabled && {
-					color: '#ccc',
-					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-					'filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-				}),
 			};
 		},
 		fontStyleData (): object {
@@ -101,7 +95,7 @@ export default Vue.extend({
 .node-icon-wrapper {
 	width: 26px;
 	height: 26px;
-	border-radius: 2px;
+	border-radius: var(--border-radius-small);
 	color: #444;
 	line-height: 26px;
 	font-size: 1.1em;
@@ -127,5 +121,15 @@ export default Vue.extend({
 	width: 100%;
 	max-width: 100%;
 	max-height: 100%;
+}
+
+.circle {
+	border-radius: 50%;
+}
+
+.disabled {
+	color: '#ccc';
+	-webkit-filter: contrast(40%) brightness(1.5) grayscale(100%);
+			filter: contrast(40%) brightness(1.5) grayscale(100%);
 }
 </style>

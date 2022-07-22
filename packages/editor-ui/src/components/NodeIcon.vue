@@ -1,8 +1,9 @@
 <template>
 	<n8n-node-icon
-		:type="nodeIconData.type"
-		:path="nodeIconData.path || nodeIconData.icon || nodeIconData.fileBuffer"
-		:color="nodeIconData.color"
+		:type="type"
+		:iconPath="iconSource.path || iconSource.fileBuffer"
+		:iconName="iconSource.icon"
+		:color="color"
 		:disabled="disabled"
 		:size="size"
 		:circle="circle"
@@ -14,22 +15,19 @@
 <script lang="ts">
 import { IVersionNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
-import N8nNodeIcon from '../../../design-system/src/components/N8nNodeIcon/NodeIcon.vue';
 import Vue from 'vue';
-interface NodeIconData {
-	type: string;
-	path?: string;
-	fileExtension?: string;
-	fileBuffer?: string;
-	color?: string;
+
+interface NodeIconSource {
+		path?: string;
+		fileBuffer?: string;
+		icon?: string;
 }
+
 export default Vue.extend({
 	name: 'NodeIcon',
-	components: {
-		N8nNodeIcon,
-	},
 	props: {
-		nodeType: {},
+		nodeType: {
+		},
 		size: {
 			type: Number,
 			required: false,
@@ -48,39 +46,50 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		nodeIconData (): null | NodeIconData {
+		type (): string {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
-			if (nodeType === null) {
-				return null;
-			}
-			if ((nodeType as IVersionNode).iconData) {
-				return {
-					...(nodeType as IVersionNode).iconData,
-					color: color ? color.toString() : '',
-				};
-			}
-			const restUrl = this.$store.getters.getRestUrl;
-			if (nodeType.icon) {
-				let type, path;
-				[type, path] = nodeType.icon.split(':');
-				const returnData: NodeIconData = {
-					type,
-					path,
-					color: color ? color.toString() : '',
-				};
-				if (type === 'file') {
-					returnData.path = restUrl + '/node-icon/' + nodeType.name;
-					returnData.fileExtension = path.split('.').slice(-1).join();
-				}else {
-					returnData.type = 'icon';
+			let iconType = 'unknown';
+			if (nodeType) {
+				if ((nodeType as IVersionNode).iconData) {
+					iconType = (nodeType as IVersionNode).iconData.type;
+				} else if (nodeType.icon) {
+					iconType = nodeType.icon.split(':')[0] === 'file' ? 'file' : 'icon';
 				}
-				return returnData;
 			}
-			return {
-				type: 'unknown',
-				color: color ? color.toString() : '',
-			};
+			return iconType;
+		},
+		color () : string {
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			if (nodeType && nodeType.defaults && nodeType.defaults.color) {
+				return nodeType.defaults.color.toString();
+			}
+			return '';
+		},
+		iconSource () : NodeIconSource {
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const restUrl = this.$store.getters.getRestUrl;
+			const iconSource = {} as NodeIconSource;
+
+			if (nodeType) {
+				// If node type has icon data, use it
+				if ((nodeType as IVersionNode).iconData) {
+					return {
+						icon: (nodeType as IVersionNode).iconData.icon,
+						fileBuffer: (nodeType as IVersionNode).iconData.fileBuffer,
+					};
+				}
+				// Otherwise, extract it from icon prop
+				if (nodeType.icon) {
+					let type, path;
+					[type, path] = nodeType.icon.split(':');
+					if (type === 'file') {
+						iconSource.path = `${restUrl}/node-icon/${nodeType.name}`;
+					} else {
+						iconSource.icon = path;
+					}
+				}
+			}
+			return iconSource;
 		},
 	},
 });
