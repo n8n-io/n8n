@@ -1,11 +1,13 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import TelemetryClient from '@rudderstack/rudder-sdk-node';
+import RudderStack from '@rudderstack/rudder-sdk-node';
+import PostHog from 'posthog-node';
 import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
-import * as config from '../../config';
+import config from '../../config';
 import { IExecutionTrackProperties } from '../Interfaces';
 import { getLogger } from '../Logger';
+import { POSTHOG_API_KEY } from '../constants';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -24,7 +26,9 @@ interface IExecutionsBuffer {
 }
 
 export class Telemetry {
-	private client?: TelemetryClient;
+	private rudderStack?: RudderStack;
+
+	private postHog?: PostHog;
 
 	private instanceId: string;
 
@@ -51,18 +55,19 @@ export class Telemetry {
 				return;
 			}
 
-			this.client = this.createTelemetryClient(key, url, logLevel);
+			this.rudderStack = this.initRudderStack(key, url, logLevel);
+			this.postHog = this.initPostHog();
 
 			this.startPulse();
 		}
 	}
 
-	private createTelemetryClient(
-		key: string,
-		url: string,
-		logLevel: string,
-	): TelemetryClient | undefined {
-		return new TelemetryClient(key, url, { logLevel });
+	private initPostHog(): PostHog {
+		return new PostHog(POSTHOG_API_KEY);
+	}
+
+	private initRudderStack(key: string, url: string, logLevel: string): RudderStack {
+		return new RudderStack(key, url, { logLevel });
 	}
 
 	private startPulse() {
@@ -72,9 +77,7 @@ export class Telemetry {
 	}
 
 	private async pulse(): Promise<unknown> {
-		if (!this.client) {
-			return Promise.resolve();
-		}
+		if (!this.rudderStack) return Promise.resolve();
 
 		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
 			const promise = this.track('Workflow execution count', {
@@ -92,7 +95,7 @@ export class Telemetry {
 	}
 
 	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
-		if (this.client) {
+		if (this.rudderStack) {
 			const execTime = new Date();
 			const workflowId = properties.workflow_id;
 
@@ -122,8 +125,10 @@ export class Telemetry {
 		clearInterval(this.pulseIntervalReference);
 		void this.track('User instance stopped');
 		return new Promise<void>((resolve) => {
-			if (this.client) {
-				this.client.flush(resolve);
+			if (this.postHog) this.postHog.shutdown();
+
+			if (this.rudderStack) {
+				this.rudderStack.flush(resolve);
 			} else {
 				resolve();
 			}
@@ -134,8 +139,12 @@ export class Telemetry {
 		[key: string]: string | number | boolean | object | undefined | null;
 	}): Promise<void> {
 		return new Promise<void>((resolve) => {
-			if (this.client) {
-				this.client.identify(
+			if (this.postHog) {
+				this.postHog.identify({ distinctId: this.instanceId, properties: traits });
+			}
+
+			if (this.rudderStack) {
+				this.rudderStack.identify(
 					{
 						userId: this.instanceId,
 						anonymousId: '000000000000',
@@ -154,7 +163,7 @@ export class Telemetry {
 
 	async track(eventName: string, properties: ITelemetryTrackProperties = {}): Promise<void> {
 		return new Promise<void>((resolve) => {
-			if (this.client) {
+			if (this.rudderStack) {
 				const { user_id } = properties;
 				const updatedProperties: ITelemetryTrackProperties = {
 					...properties,
@@ -162,7 +171,7 @@ export class Telemetry {
 					version_cli: this.versionCli,
 				};
 
-				this.client.track(
+				this.rudderStack.track(
 					{
 						userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
 						anonymousId: '000000000000',

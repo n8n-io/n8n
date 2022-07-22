@@ -29,3 +29,6 @@ export const NPM_COMMAND_TOKENS = {
 };
 
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';
+
+// telemetry
+export const POSTHOG_API_KEY = 'phc_QLECpA3yiIJcyafUv0pe6EoxvdfIDZ5A12dGpGXH4jV'; // @TODO: Replace with paid account's key
