@@ -296,6 +296,8 @@ export class Telemetry {
 	}
 
 	isFeatureFlagEnabled(featureFlagName: string) {
+		if (!this.postHogInitialized) return;
+
 		return posthog.isFeatureEnabled(featureFlagName);
 	}
 
@@ -306,6 +308,8 @@ export class Telemetry {
 	 * User events: https://posthog.com/docs/integrate/client/js#super-properties
 	 */
 	setMetaData(metadata: object, { target }: { target: 'user' | 'userEvents' }) {
+		if (!this.postHogInitialized) return;
+
 		if (target === 'user') return posthog.people.set(metadata);
 
 		return posthog.register(metadata);

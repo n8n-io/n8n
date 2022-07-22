@@ -158,7 +158,11 @@ export default mixins(
 		},
 	},
 	beforeMount() {
-		this.$telemetry.initPostHog();
+		try {
+			this.$telemetry.initPostHog();
+		} catch (error) {
+			this.$telemetry.track('Failed to init PostHog', error); // @TODO: Confirm what we want
+		}
 	},
 	async mounted() {
 		await this.initialize();
