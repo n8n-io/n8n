@@ -6,20 +6,49 @@
 				<div
 					v-if="!isReadOnly"
 				>
-					<NodeExecuteButton :nodeName="node.name" @execute="onNodeExecute" size="small" telemetrySource="parameters" />
+					<NodeExecuteButton
+						:nodeName="node.name"
+						:disabled="outputPanelEditMode.enabled"
+						size="small"
+						telemetrySource="parameters"
+						@execute="onNodeExecute"
+					/>
 				</div>
 			</div>
-			<NodeSettingsTabs v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
+			<NodeSettingsTabs v-if="node && nodeValid" v-model="openPanel" :nodeType="nodeType" :sessionId="sessionId" />
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			<n8n-text>
-				{{
-					$locale.baseText(
-						'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
-						{ interpolate: { nodeType: node.type } },
-					)
-				}}
-			</n8n-text>
+			<p :class="$style.warningIcon">
+				<font-awesome-icon icon="exclamation-triangle" />
+			</p>
+			<div class="missingNodeTitleContainer mt-s mb-xs">
+				<n8n-text size="large" color="text-dark" bold>
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
+				</n8n-text>
+			</div>
+			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
+				<div class="mb-l">
+					<span
+						v-html="$locale.baseText('nodeSettings.communityNodeUnknown.description', { interpolate: { packageName: node.type.split('.')[0] } })"
+						@click="onMissingNodeTextClick"
+					>
+					</span>
+				</div>
+				<n8n-link
+					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
+					@click="onMissingNodeLearnMoreLinkClick"
+				>
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
+				</n8n-link>
+			</div>
+			<span v-else
+				v-html="
+					$locale.baseText('nodeSettings.nodeTypeUnknown.description',
+						{
+							interpolate: { docURL: CUSTOM_NODES_DOCS_URL }
+						})
+					">
+			</span>
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<div v-show="openPanel === 'params'">
@@ -77,6 +106,11 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
+import {
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CUSTOM_NODES_DOCS_URL,
+} from '../constants';
+
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -91,6 +125,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { isCommunityPackageName } from './helpers';
 
 export default mixins(
 	externalHooks,
@@ -168,6 +203,12 @@ export default mixins(
 				}
 
 				return this.nodeType.properties;
+			},
+			outputPanelEditMode(): { enabled: boolean; value: string; } {
+				return this.$store.getters['ui/outputPanelEditMode'];
+			},
+			isCommunityNode(): boolean {
+				return isCommunityPackageName(this.node.type);
 			},
 		},
 		props: {
@@ -289,7 +330,8 @@ export default mixins(
 						description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
 					},
 				] as INodeProperties[],
-
+				COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+				CUSTOM_NODES_DOCS_URL,
 			};
 		},
 		watch: {
@@ -552,6 +594,18 @@ export default mixins(
 					this.nodeValid = false;
 				}
 			},
+			onMissingNodeTextClick(event: MouseEvent) {
+				if ((event.target as Element).localName === 'a') {
+					this.$telemetry.track('user clicked cnr browse button', { source: 'cnr missing node modal' });
+				}
+			},
+			onMissingNodeLearnMoreLinkClick() {
+				this.$telemetry.track('user clicked cnr docs link', {
+					source: 'missing node modal source',
+					package_name: this.node.type.split('.')[0],
+					node_type: this.node.type,
+				});
+			},
 		},
 		mounted () {
 			this.setNodeValues();
@@ -567,6 +621,16 @@ export default mixins(
 <style lang="scss" module>
 .header {
 	background-color: var(--color-background-base);
+}
+
+.warningIcon {
+	color: var(--color-text-lighter);
+	font-size: var(--font-size-2xl);
+}
+
+.descriptionContainer {
+	display: flex;
+	flex-direction: column;
 }
 </style>
 
@@ -597,7 +661,14 @@ export default mixins(
 	}
 
 	.node-is-not-valid {
+		height: 75%;
 		padding: 10px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		line-height: var(--font-line-height-regular);
 	}
 
 	.node-parameters-wrapper {
@@ -659,5 +730,4 @@ export default mixins(
 		background-color: #793300;
 	}
 }
-
 </style>

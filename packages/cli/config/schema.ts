@@ -740,6 +740,14 @@ export const schema = {
 			default: 'n8n-nodes-base.errorTrigger',
 			env: 'NODES_ERROR_TRIGGER_TYPE',
 		},
+		communityPackages: {
+			enabled: {
+				doc: 'Allows you to disable the usage of community packages for nodes',
+				format: Boolean,
+				default: true,
+				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
+			},
+		},
 	},
 
 	logs: {

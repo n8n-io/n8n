@@ -10,8 +10,8 @@
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						$locale.baseText('ndv.trigger.webhookNode.listening')
 					}}</n8n-text>
-					<div :class="$style.shake">
-						<n8n-text class="mb-xs">
+					<div :class="[$style.shake, 'mb-xs']">
+						<n8n-text>
 							{{
 								$locale.baseText('ndv.trigger.webhookNode.requestHint', {
 									interpolate: { type: this.webhookHttpMethod },
@@ -33,8 +33,8 @@
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						$locale.baseText('ndv.trigger.webhookBasedNode.listening')
 					}}</n8n-text>
-					<div :class="$style.shake">
-						<n8n-text class="mb-xs" tag="div">
+					<div :class="[$style.shake, 'mb-xs']">
+						<n8n-text tag="div">
 							{{
 								$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
 									interpolate: { service: serviceName },

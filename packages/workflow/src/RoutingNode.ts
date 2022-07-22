@@ -25,7 +25,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	IRequestOptionsFromParameters,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowDataProxyAdditionalKeys,
@@ -110,7 +110,20 @@ export class RoutingNode {
 		if (credentialsDecrypted) {
 			credentials = credentialsDecrypted.data;
 		} else if (credentialType) {
-			credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+			try {
+				credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+			} catch (error) {
+				if (
+					nodeType.description.credentials?.length &&
+					nodeType.description.credentials[0].required
+				) {
+					// Only throw error if credential is mandatory
+					throw error;
+				} else {
+					// Do not request cred type since it doesn't exist
+					credentialType = undefined;
+				}
+			}
 		}
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
@@ -128,7 +141,7 @@ export class RoutingNode {
 					executeData,
 					this.mode,
 				);
-				const requestData: IRequestOptionsFromParameters = {
+				const requestData: DeclarativeRestApiSettings.ResultOptions = {
 					options: {
 						qs: {},
 						body: {},
@@ -215,8 +228,8 @@ export class RoutingNode {
 	}
 
 	mergeOptions(
-		destinationOptions: IRequestOptionsFromParameters,
-		sourceOptions?: IRequestOptionsFromParameters,
+		destinationOptions: DeclarativeRestApiSettings.ResultOptions,
+		sourceOptions?: DeclarativeRestApiSettings.ResultOptions,
 	): void {
 		if (sourceOptions) {
 			destinationOptions.paginate = destinationOptions.paginate ?? sourceOptions.paginate;
@@ -376,7 +389,7 @@ export class RoutingNode {
 
 	async rawRoutingRequest(
 		executeSingleFunctions: IExecuteSingleFunctions,
-		requestData: IRequestOptionsFromParameters,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
 		credentialType?: string,
@@ -435,7 +448,7 @@ export class RoutingNode {
 	}
 
 	async makeRoutingRequest(
-		requestData: IRequestOptionsFromParameters,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
 		itemIndex: number,
 		runIndex: number,
@@ -453,7 +466,7 @@ export class RoutingNode {
 
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
-			makeRoutingRequest: async (requestOptions: IRequestOptionsFromParameters) => {
+			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
 				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
@@ -592,8 +605,8 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): IRequestOptionsFromParameters | undefined {
-		const returnData: IRequestOptionsFromParameters = {
+	): DeclarativeRestApiSettings.ResultOptions | undefined {
+		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
 				qs: {},
 				body: {},

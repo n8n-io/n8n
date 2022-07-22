@@ -19,7 +19,6 @@ import {
 } from 'change-case';
 
 export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 
 	let credentials;
@@ -28,11 +27,9 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (authenticationMethod === 'apiKey') {
 		credentials = await this.getCredentials('shopifyApi');
 		credentialType = 'shopifyApi';
-
 	} else if (authenticationMethod === 'accessToken') {
 		credentials = await this.getCredentials('shopifyAccessTokenApi');
 		credentialType = 'shopifyAccessTokenApi';
-
 	} else {
 		credentials = await this.getCredentials('shopifyOAuth2Api');
 	}
