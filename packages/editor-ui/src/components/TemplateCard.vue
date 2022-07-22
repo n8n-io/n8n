@@ -29,7 +29,7 @@
 		<div :class="$style.buttonContainer" v-if="useWorkflowButton">
 			<n8n-button
 				v-if="useWorkflowButton"
-				type="outline"
+				outline
 				label="Use workflow"
 				@click.stop="onUseWorkflowClick"
 			/>
