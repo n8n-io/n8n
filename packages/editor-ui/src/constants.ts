@@ -290,6 +290,5 @@ export const TEST_PIN_DATA = [
 ];
 export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`, '$parameter'];
 
-// telemetry
-export const POSTHOG_API_KEY = "phc_QLECpA3yiIJcyafUv0pe6EoxvdfIDZ5A12dGpGXH4jV"; // @TODO: Replace with paid account's key
-export const POSTHOG_API_HOST = "https://app.posthog.com";
+// @TODO: Replace with paid account's key
+export const POSTHOG_API_KEY = "phc_QLECpA3yiIJcyafUv0pe6EoxvdfIDZ5A12dGpGXH4jV";

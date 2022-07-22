@@ -7,8 +7,7 @@ import {
 import { Route } from "vue-router";
 import posthog from "posthog-js";
 
-import { POSTHOG_API_KEY, POSTHOG_API_HOST } from "@/constants";
-
+import { POSTHOG_API_KEY } from "@/constants";
 import type { ILogLevel, INodeCreateElement, IRootState } from "@/Interface";
 import type { Store } from "vuex";
 import type { IUserNodesPanelSession } from "./telemetry.types";
@@ -112,10 +111,10 @@ export class Telemetry {
 				if (this.store) {
 					this.setMetaData(
 						{ is_owner: this.store.getters['users/globalRoleName'] === 'owner' },
-						{ attachTo: 'user' },
+						{ target: 'user' },
 					);
 				}
-			};
+			}
 
 			return;
 		}
@@ -292,14 +291,13 @@ export class Telemetry {
 
 		return new Promise((resolve) => {
 			posthog.init(POSTHOG_API_KEY, {
-				api_host: POSTHOG_API_HOST,
 				autocapture: false, // @TODO_PART_3: Confirm if needed for session recording, if so enable
 				disable_session_recording: disableSessionRecording,
 			});
 
-			posthog.debug(); // @TODO_FINAL: Make conditional on `this.logLevel === 'debug'`
-
 			this.postHogInitialized = true;
+
+			posthog.debug(); // @TODO_FINAL: Make conditional on `this.logLevel === 'debug'`
 
 			posthog.onFeatureFlags(resolve);
 		});
@@ -315,9 +313,13 @@ export class Telemetry {
 	 * User: https://posthog.com/docs/integrate/client/js#sending-user-information
 	 * User events: https://posthog.com/docs/integrate/client/js#super-properties
 	 */
-	setMetaData(metadata: object, { attachTo }: { attachTo: 'user' | 'userEvents' }) {
-		if (attachTo === 'user') return posthog.people.set(metadata);
+	setMetaData(metadata: object, { target }: { target: 'user' | 'userEvents' }) {
+		if (target === 'user') return posthog.people.set(metadata);
 
 		return posthog.register(metadata);
+	}
+
+	capture(eventName: string, props: object) {
+		posthog.capture(eventName, props);
 	}
 }
