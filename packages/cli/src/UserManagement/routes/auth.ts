@@ -7,29 +7,30 @@ import { Db, ResponseHelper } from '../..';
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { compareHash, sanitizeUser } from '../UserManagementHelper';
+import { sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import type { LoginRequest } from '../../requests';
 import config = require('../../../config');
-import { handleActiveDirectoryLogin } from '../../ActiveDirectory/helpers';
+// import { handleActiveDirectoryLogin } from '../../ActiveDirectory/helpers';
+import { handleEmailLogin, handleLdapLogin } from '../../Authentication';
 
-const handleEmailLogin = async (email: string, password: string): Promise<User | undefined> => {
-	const user = await Db.collections.User.findOne(
-		{
-			email,
-			signInType: 'email',
-		},
-		{
-			relations: ['globalRole'],
-		},
-	);
+// const handleEmailLogin = async (email: string, password: string): Promise<User | undefined> => {
+// 	const user = await Db.collections.User.findOne(
+// 		{
+// 			email,
+// 			signInType: 'email',
+// 		},
+// 		{
+// 			relations: ['globalRole'],
+// 		},
+// 	);
 
-	if (user?.password && (await compareHash(password, user.password))) {
-		return undefined;
-	}
+// 	if (user?.password && (await compareHash(password, user.password))) {
+// 		return undefined;
+// 	}
 
-	return user;
-};
+// 	return user;
+// };
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -50,7 +51,7 @@ export function authenticationMethods(this: N8nApp): void {
 				throw new Error('Password is required to log in');
 			}
 
-			const adUser = await handleActiveDirectoryLogin(email, password);
+			const adUser = await handleLdapLogin(email, password);
 
 			if (adUser) {
 				await issueCookie(res, adUser);

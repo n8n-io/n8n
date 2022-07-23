@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable import/no-cycle */
 import { AES, enc } from 'crypto-js';
-import humanizeDuration from 'humanize-duration';
 import { Entry } from 'ldapts';
 import { UserSettings } from 'n8n-core';
 import { Db, IFeatureConfigDb } from '..';
@@ -20,9 +19,9 @@ import {
 	ACTIVE_DIRECTORY_LOGIN_LABEL,
 	SignInType,
 } from './constants';
-import type { ActiveDirectoryConfig, SyncronizationList } from './types';
+import type { ActiveDirectoryConfig } from './types';
 
-const isActiveDirectoryDisabled = (): boolean => config.getEnv(ACTIVE_DIRECTORY_DISABLED);
+export const isActiveDirectoryDisabled = (): boolean => config.getEnv(ACTIVE_DIRECTORY_DISABLED);
 
 export const isActiveDirectoryEnabled = (): boolean => !config.getEnv(ACTIVE_DIRECTORY_DISABLED);
 
@@ -42,7 +41,7 @@ const isFirstRunAfterFeatureEnabled = (databaseSettings: Settings[]) => {
 	return !dbSetting;
 };
 
-const randonPassword = () => {
+export const randonPassword = (): string => {
 	return Math.random().toString(36).slice(-8);
 };
 
@@ -69,7 +68,7 @@ const saveSettings = async () => {
 
 const saveFeatureConfiguration = async () => {
 	const featureConfig: IFeatureConfigDb = {
-		name: 'activeDirectory',
+		name: ACTIVE_DIRECTORY_FEATURE_NAME,
 		data: {
 			login: {
 				enabled: false,
@@ -160,7 +159,7 @@ export const handleActiveDirectoryFirstInit = async (
 	ActiveDirectoryManager.init(adConfig.data);
 };
 
-const findUserOnActiveDirectory = async (
+export const findUserOnActiveDirectory = async (
 	email: string,
 	password: string,
 	loginIdAttribute: string,
@@ -191,7 +190,9 @@ const findUserOnActiveDirectory = async (
 	return user;
 };
 
-const getUserByUsername = async (usernameAttributeValue: string) => {
+export const getUserByUsername = async (
+	usernameAttributeValue: string,
+): Promise<User | undefined> => {
 	return Db.collections.User.findOne(
 		{
 			username: usernameAttributeValue,
@@ -215,56 +216,56 @@ export const mapAttributesToLocalDb = (
 	};
 };
 
-export const handleActiveDirectoryLogin = async (
-	email: string,
-	password: string,
-): Promise<User | undefined> => {
-	if (isActiveDirectoryDisabled()) return undefined;
+// export const handleActiveDirectoryLogin = async (
+// 	email: string,
+// 	password: string,
+// ): Promise<User | undefined> => {
+// 	if (isActiveDirectoryDisabled()) return undefined;
 
-	const adConfig = await getActiveDirectoryConfig();
+// 	const adConfig = await getActiveDirectoryConfig();
 
-	if (!adConfig.data.login.enabled) return undefined;
+// 	if (!adConfig.data.login.enabled) return undefined;
 
-	const {
-		data: { attributeMapping },
-	} = adConfig;
+// 	const {
+// 		data: { attributeMapping },
+// 	} = adConfig;
 
-	const adUser = await findUserOnActiveDirectory(email, password, attributeMapping.loginId);
+// 	const adUser = await findUserOnActiveDirectory(email, password, attributeMapping.loginId);
 
-	if (!adUser) return undefined;
+// 	if (!adUser) return undefined;
 
-	const usernameAttributeValue = adUser[attributeMapping.username] as string | undefined;
+// 	const usernameAttributeValue = adUser[attributeMapping.username] as string | undefined;
 
-	if (!usernameAttributeValue) return undefined;
+// 	if (!usernameAttributeValue) return undefined;
 
-	const localUser = await getUserByUsername(usernameAttributeValue);
+// 	const localUser = await getUserByUsername(usernameAttributeValue);
 
-	if (localUser?.disabled) return undefined;
+// 	if (localUser?.disabled) return undefined;
 
-	if (!localUser) {
-		const role = await getAdUserRole();
+// 	if (!localUser) {
+// 		const role = await getAdUserRole();
 
-		await Db.collections.User.save({
-			password: randonPassword(),
-			signInType: SignInType.LDAP,
-			globalRole: role,
-			...mapAttributesToLocalDb(adUser, attributeMapping),
-		});
-	} else {
-		// @ts-ignore
-		delete localUser.isPending;
-		// move this to it's own function
-		await Db.collections.User.update(localUser.id, {
-			...localUser,
-			...mapAttributesToLocalDb(adUser, attributeMapping),
-		});
-	}
+// 		await Db.collections.User.save({
+// 			password: randonPassword(),
+// 			signInType: SignInType.LDAP,
+// 			globalRole: role,
+// 			...mapAttributesToLocalDb(adUser, attributeMapping),
+// 		});
+// 	} else {
+// 		// @ts-ignore
+// 		delete localUser.isPending;
+// 		// move this to it's own function
+// 		await Db.collections.User.update(localUser.id, {
+// 			...localUser,
+// 			...mapAttributesToLocalDb(adUser, attributeMapping),
+// 		});
+// 	}
 
-	// Retrieve the user again as user's data might have been updated
-	const updatedUser = await getUserByUsername(usernameAttributeValue);
+// 	// Retrieve the user again as user's data might have been updated
+// 	const updatedUser = await getUserByUsername(usernameAttributeValue);
 
-	return updatedUser;
-};
+// 	return updatedUser;
+// };
 
 export const getActiveDirectoryUsersInLocalDb = async (): Promise<string[]> => {
 	const users = await Db.collections.User.find({
