@@ -15,6 +15,10 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
+import {
+	INodeTypeNameVersion,
+} from 'n8n-workflow';
+
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '../helpers';
@@ -365,6 +369,30 @@ export const pushConnection = mixins(
 					}
 
 					this.processWaitingPushMessages();
+				} else if (receivedData.type === 'reloadNodeType') {
+					const pushData = receivedData.data;
+
+					const nodesToBeFetched: INodeTypeNameVersion[] = [pushData];
+
+					// Force reload of all credential types
+					this.$store.dispatch('credentials/fetchCredentialTypes', true)
+						.then(() => {
+							// Get the data of the node and update in internal storage
+							return this.restApi().getNodesInformation(nodesToBeFetched);
+						})
+						.then((nodesInfo) => {
+							this.$store.commit('updateNodeTypes', nodesInfo);
+						});
+				} else if (receivedData.type === 'removeNodeType') {
+					const pushData = receivedData.data;
+
+					const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
+
+					// Force reload of all credential types
+					this.$store.dispatch('credentials/fetchCredentialTypes')
+						.then(() => {
+							this.$store.commit('removeNodeTypes', nodesToBeRemoved);
+						});
 				}
 				return true;
 			},
