@@ -30,7 +30,7 @@ export const handleLdapLogin = async (
 
 	if (!adUser) return undefined;
 
-	const usernameAttributeValue = adUser[attributeMapping.username] as string | undefined;
+	const usernameAttributeValue = adUser[attributeMapping.ldapId] as string | undefined;
 
 	if (!usernameAttributeValue) return undefined;
 

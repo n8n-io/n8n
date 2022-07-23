@@ -23,7 +23,7 @@ export interface ActiveDirectoryConfig {
 		lastName: string;
 		email: string;
 		loginId: string;
-		username: string;
+		ldapId: string;
 	};
 	syncronization: {
 		enabled: boolean;

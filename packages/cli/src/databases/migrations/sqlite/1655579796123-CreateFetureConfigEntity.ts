@@ -20,7 +20,7 @@ export class CreateFeatureConfig1655579796123 implements MigrationInterface {
 				"password" varchar,
 				"resetPasswordToken" varchar,
 				"resetPasswordTokenExpiration" integer DEFAULT NULL,
-				"username" varchar DEFAULT NULL,
+				"ldapId" varchar DEFAULT NULL,
 				"signInType" varchar DEFAULT email,
 				"personalizationAnswers" text,
 				"createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),

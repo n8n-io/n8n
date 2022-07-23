@@ -88,7 +88,7 @@ const saveFeatureConfiguration = async () => {
 				lastName: '',
 				email: '',
 				loginId: '',
-				username: '',
+				ldapId: '',
 			},
 			syncronization: {
 				enabled: false,
@@ -212,7 +212,7 @@ export const mapAttributesToLocalDb = (
 		email: user[attributes.email] as string,
 		firstName: user[attributes.firstName] as string,
 		lastName: user[attributes.lastName] as string,
-		username: user[attributes.username] as string,
+		username: user[attributes.ldapId] as string,
 	};
 };
 

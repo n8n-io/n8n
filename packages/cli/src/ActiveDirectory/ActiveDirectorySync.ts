@@ -134,7 +134,7 @@ export class ActiveDirectorySync {
 	private getUsersToCreate(adUsers: Entry[], localAdUsers: string[], role: Role): User[] {
 		return adUsers
 			.filter(
-				(user) => !localAdUsers.includes(user[this._config.attributeMapping.username] as string),
+				(user) => !localAdUsers.includes(user[this._config.attributeMapping.ldapId] as string),
 			)
 			.map((user: Entry) => mapToLocalDbUser(user, this._config.attributeMapping, role));
 	}
@@ -148,9 +148,7 @@ export class ActiveDirectorySync {
 	 */
 	private getUsersToUpdate(adUsers: Entry[], localAdUsers: string[]) {
 		return adUsers
-			.filter((user) =>
-				localAdUsers.includes(user[this._config.attributeMapping.username] as string),
-			)
+			.filter((user) => localAdUsers.includes(user[this._config.attributeMapping.ldapId] as string))
 			.map((user: Entry) => mapToLocalDbUser(user, this._config.attributeMapping));
 	}
 
@@ -162,7 +160,7 @@ export class ActiveDirectorySync {
 	 * @retuens Array
 	 */
 	private getUsersToDisable(adUsers: Entry[], localAdUsers: string[]): string[] {
-		const filteredAdUsers = adUsers.map((user) => user[this._config.attributeMapping.username]);
+		const filteredAdUsers = adUsers.map((user) => user[this._config.attributeMapping.ldapId]);
 		return localAdUsers.filter((user) => !filteredAdUsers.includes(user));
 	}
 }

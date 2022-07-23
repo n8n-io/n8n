@@ -12,7 +12,7 @@ import { User } from '../../databases/entities/User';
 import type { LoginRequest } from '../../requests';
 import config = require('../../../config');
 // import { handleActiveDirectoryLogin } from '../../ActiveDirectory/helpers';
-import { handleEmailLogin, handleLdapLogin } from '../../Authentication';
+import { handleEmailLogin, handleLdapLogin } from '../../UserAuthentication';
 
 // const handleEmailLogin = async (email: string, password: string): Promise<User | undefined> => {
 // 	const user = await Db.collections.User.findOne(

@@ -142,7 +142,7 @@ export default mixins(
 				email: string,
 				lastName: string,
 				firstName: string,
-				username: string,
+				ldapId: string,
 				syncronizationEnabled: string,
 				useSsl: string;
 				syncronizationInterval: string;
@@ -170,7 +170,7 @@ export default mixins(
 					firstName: form.firstName,
 					lastName: form.lastName,
 					loginId: form.loginId,
-					username: form.username,
+					ldapId: form.ldapId,
 				},
 				syncronization: {
 					enabled: form.syncronizationEnabled === 'true' ? true : false,
@@ -373,10 +373,10 @@ export default mixins(
 						},
 					},
 					{
-						name: 'username',
-						initialValue: this.adConfig.attributeMapping.username,
+						name: 'id',
+						initialValue: this.adConfig.attributeMapping.ldapId,
 						properties: {
-							label: 'Username',
+							label: 'ID',
 							type: 'text',
 							autocomplete: 'email',
 							required: true,

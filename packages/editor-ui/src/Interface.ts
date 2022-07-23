@@ -1002,7 +1002,7 @@ export interface IActiveDirectoryConfig {
 			firstName: string;
 			lastName: string;
 			loginId: string;
-			username: string;
+			ldapId: string;
 		};
 		binding: {
 			adminDn: string;
