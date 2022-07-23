@@ -1,12 +1,6 @@
 import {
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
-	IPushDataConsoleMessage,
-	IPushDataExecutionFinished,
-	IPushDataExecutionStarted,
-	IPushDataNodeExecuteAfter,
-	IPushDataNodeExecuteBefore,
-	IPushDataTestWebhook,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -16,7 +10,11 @@ import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
+	ExpressionError,
+	IDataObject,
 	INodeTypeNameVersion,
+	IWorkflowBase,
+	TelemetryHelpers,
 } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
@@ -258,6 +256,38 @@ export const pushConnection = mixins(
 						});
 					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
+
+						if (
+							runDataExecuted.data.resultData.error!.name === 'ExpressionError' &&
+							(runDataExecuted.data.resultData.error as ExpressionError).context.functionality === 'pairedItem'
+						) {
+							const error = runDataExecuted.data.resultData.error as ExpressionError;
+
+							this.getWorkflowDataToSave().then((workflowData) => {
+								const eventData: IDataObject = {
+									caused_by_credential: false,
+									error_message: error.description,
+									error_title: error.message,
+									error_type: error.context.type,
+									node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+									workflow_id: this.$store.getters.workflowId,
+								};
+
+								if (error.context.nodeCause && ['no pairing info', 'invalid pairing info'].includes(error.context.type as string)) {
+									const node = workflow.getNode(error.context.nodeCause as string);
+
+									if (node) {
+										eventData.is_pinned = !!workflow.getPinDataOfNode(node.name);
+										eventData.mode = node.parameters.mode;
+										eventData.node_type = node.type;
+										eventData.operation = node.parameters.operation;
+										eventData.resource = node.parameters.resource;
+									}
+								}
+
+								this.$telemetry.track('Instance FE emitted paired item error', eventData);
+							});
+						}
 
 						this.$showMessage({
 							title: 'Problem executing workflow',

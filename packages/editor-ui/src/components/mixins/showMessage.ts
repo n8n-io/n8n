@@ -107,10 +107,10 @@ export const showMessage = mixins(externalHooks).extend({
 
 			if (error && error.message) {
 				let nodeName: string | undefined;
-				if (error.node) {
+				if ('node' in error) {
 					nodeName = typeof error.node === 'string'
 						? error.node
-						: error.node.name;
+						: error.node!.name;
 				}
 
 				const receivedError = nodeName
