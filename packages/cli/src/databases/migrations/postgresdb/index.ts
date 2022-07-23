@@ -12,7 +12,9 @@ import { IncreaseTypeVarcharLimit1646834195327 } from './1646834195327-IncreaseT
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
+import { CommunityNodes1652254514002 } from './1652254514002-CommunityNodes';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
+import { IntroducePinData1654090467022 } from './1654090467022-IntroducePinData';
 import { ProcessedData1657969159557 } from './1657969159557-ProcessedData';
 
 export const postgresMigrations = [
@@ -30,6 +32,8 @@ export const postgresMigrations = [
 	CreateUserManagement1646992772331,
 	LowerCaseUserEmail1648740597343,
 	AddUserSettings1652367743993,
+	CommunityNodes1652254514002,
 	AddAPIKeyColumn1652905585850,
+	IntroducePinData1654090467022,
 	ProcessedData1657969159557,
 ];

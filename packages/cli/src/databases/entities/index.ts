@@ -11,6 +11,8 @@ import { Role } from './Role';
 import { Settings } from './Settings';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
+import { InstalledPackages } from './InstalledPackages';
+import { InstalledNodes } from './InstalledNodes';
 
 export const entities = {
 	CredentialsEntity,
@@ -24,4 +26,6 @@ export const entities = {
 	Settings,
 	SharedWorkflow,
 	SharedCredentials,
+	InstalledPackages,
+	InstalledNodes,
 };

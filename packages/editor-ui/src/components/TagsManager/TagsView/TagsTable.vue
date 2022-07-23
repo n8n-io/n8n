@@ -44,15 +44,15 @@
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 					<div class="ops" v-if="scope.row.create">
-						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="secondary" :disabled="isSaving" />
 						<n8n-button :label="$locale.baseText('tagsTable.createTag')" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops" v-else-if="scope.row.update">
-						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="secondary" :disabled="isSaving" />
 						<n8n-button :label="$locale.baseText('tagsTable.saveChanges')" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops" v-else-if="scope.row.delete">
-						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="outline" :disabled="isSaving" />
+						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="secondary" :disabled="isSaving" />
 						<n8n-button :label="$locale.baseText('tagsTable.deleteTag')" @click.stop="apply" :loading="isSaving" />
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
