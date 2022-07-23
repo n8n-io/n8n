@@ -1,6 +1,9 @@
+import { IDataObject } from 'n8n-workflow';
+import get from 'lodash.get';
 import {
 	ICheckProcessedContextData,
 	ICheckProcessedOutput,
+	ICheckProcessedOutputItems,
 	IProcessedDataConfig,
 	IProcessedDataContext,
 	IProcessedDataManagers,
@@ -45,6 +48,35 @@ export class ProcessedDataManager {
 		}
 
 		throw new Error(`There is no manager for the defined mode "${this.mode}"`);
+	}
+
+	async checkProcessedItemsAndRecord(
+		propertyName: string,
+		items: IDataObject[],
+		context: IProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+	): Promise<ICheckProcessedOutputItems> {
+		if (!this.managers[this.mode]) {
+			throw new Error(`There is no manager for the defined mode "${this.mode}"`);
+		}
+
+		let value;
+		const itemLookup = items.reduce((acc, cur, index) => {
+			value = get(cur, propertyName);
+			acc[value ? value.toString() : ''] = index;
+			return acc;
+		}, {});
+
+		const checkedItems = await this.managers[this.mode].checkProcessedAndRecord(
+			Object.keys(itemLookup),
+			context,
+			contextData,
+		);
+
+		return {
+			new: checkedItems.new.map((key) => items[itemLookup[key] as number]),
+			processed: checkedItems.processed.map((key) => items[itemLookup[key] as number]),
+		};
 	}
 
 	async checkProcessedAndRecord(

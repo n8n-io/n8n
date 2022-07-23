@@ -90,6 +90,7 @@ import { BinaryDataManager } from './BinaryDataManager';
 import {
 	ICheckProcessedContextData,
 	ICheckProcessedOutput,
+	ICheckProcessedOutputItems,
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -822,6 +823,20 @@ export async function checkProcessedAndRecord(
 	contextData: ICheckProcessedContextData,
 ): Promise<ICheckProcessedOutput> {
 	return ProcessedDataManager.getInstance().checkProcessedAndRecord(items, context, contextData);
+}
+
+export async function checkProcessedItemsAndRecord(
+	key: string,
+	items: IDataObject[],
+	context: IProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+): Promise<ICheckProcessedOutputItems> {
+	return ProcessedDataManager.getInstance().checkProcessedItemsAndRecord(
+		key,
+		items,
+		context,
+		contextData,
+	);
 }
 
 export async function removeProcessed(
@@ -2399,6 +2414,13 @@ export function getExecuteFunctions(
 					context: IProcessedDataContext,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessedAndRecord(items, context, { node, workflow });
+				},
+				async checkProcessedItemsAndRecord(
+					propertyName: string,
+					items: IDataObject[],
+					context: IProcessedDataContext,
+				): Promise<ICheckProcessedOutputItems> {
+					return checkProcessedItemsAndRecord(propertyName, items, context, { node, workflow });
 				},
 				async removeProcessed(items: string[], context: IProcessedDataContext): Promise<void> {
 					return removeProcessed(items, context, { node, workflow });

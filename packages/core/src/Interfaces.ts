@@ -43,6 +43,11 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			items: string[],
 			context: IProcessedDataContext,
 		): Promise<ICheckProcessedOutput>;
+		checkProcessedItemsAndRecord(
+			propertyName: string,
+			items: IDataObject[],
+			context: IProcessedDataContext,
+		): Promise<ICheckProcessedOutputItems>;
 		removeProcessed(items: string[], context: IProcessedDataContext): Promise<void>;
 		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
 		prepareBinaryData(
@@ -378,6 +383,11 @@ export interface IProcessedDataManagers {
 export interface ICheckProcessedOutput {
 	new: string[];
 	processed: string[];
+}
+
+export interface ICheckProcessedOutputItems {
+	new: IDataObject[];
+	processed: IDataObject[];
 }
 
 export interface ICheckProcessedContextData {
