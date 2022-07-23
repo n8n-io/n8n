@@ -1,10 +1,8 @@
 import {
 	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
-	 ICredentialTestRequest,
-	 ICredentialType,
-	 IHttpRequestOptions,
-	 INodeProperties,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class MauticApi implements ICredentialType {
