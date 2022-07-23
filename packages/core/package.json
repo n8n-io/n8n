@@ -47,7 +47,7 @@
     "client-oauth2": "^4.2.5",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
-    "file-type": "^14.6.2",
+    "file-type": "^16.5.4",
     "flatted": "^3.2.4",
     "form-data": "^4.0.0",
     "lodash.get": "^4.4.2",
