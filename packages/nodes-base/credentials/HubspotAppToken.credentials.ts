@@ -1,8 +1,4 @@
-import {
-	IAuthenticateGeneric,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HubspotAppToken implements ICredentialType {
 	name = 'hubspotAppToken';

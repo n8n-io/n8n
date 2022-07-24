@@ -17,30 +17,37 @@ export const paymentOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a payment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a payment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a payment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				action: 'Get all payments',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send a payment',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a payment',
 			},
 			{
 				name: 'Void',
 				value: 'void',
+				action: 'Void a payment',
 			},
 		],
 		displayOptions: {
@@ -62,7 +69,7 @@ export const paymentFields: INodeProperties[] = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the customer who the payment is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',

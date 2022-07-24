@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Sftp implements ICredentialType {
 	name = 'sftp';
@@ -46,7 +43,8 @@ export class Sftp implements ICredentialType {
 				alwaysOpenEditWindow: true,
 			},
 			default: '',
-			description: 'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format)',
+			description:
+				'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format)',
 		},
 		{
 			displayName: 'Passphrase',

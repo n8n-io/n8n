@@ -23,26 +23,31 @@ export const groupDescription: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a group',
+				action: 'Create a group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a group',
+				action: 'Delete a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a group',
+				action: 'Get a group',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all groups',
+				action: 'Get all groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a group',
+				action: 'Update a group',
 			},
 		],
 		default: 'create',
@@ -72,7 +77,7 @@ export const groupDescription: INodeProperties[] = [
 		displayName: 'Group ID',
 		name: 'id',
 		type: 'string',
-		description: 'Group to update. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Group to update. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -90,7 +95,7 @@ export const groupDescription: INodeProperties[] = [
 		displayName: 'Group ID',
 		name: 'id',
 		type: 'string',
-		description: 'Group to delete. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Group to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -108,7 +113,7 @@ export const groupDescription: INodeProperties[] = [
 		displayName: 'Group ID',
 		name: 'id',
 		type: 'string',
-		description: 'Group to retrieve. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Group to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -168,7 +173,7 @@ export const groupDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadGroupCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -237,7 +242,7 @@ export const groupDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadGroupCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',

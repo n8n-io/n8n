@@ -34,7 +34,6 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 
 	const options: OptionsWithUri = {
 		headers: {
-			'Api-Token': credentials.apiKey,
 		},
 		method,
 		qs: query,
@@ -47,7 +46,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 	}
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.requestWithAuthentication.call(this, 'activeCampaignApi',options);
 
 		if (responseData.success === false) {
 			throw new NodeApiError(this.getNode(), responseData);

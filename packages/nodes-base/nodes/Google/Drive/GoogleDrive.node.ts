@@ -21,7 +21,7 @@ export class GoogleDrive implements INodeType {
 		name: 'googleDrive',
 		icon: 'file:googleDrive.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on Google Drive',
 		defaults: {
@@ -69,6 +69,36 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 				default: 'serviceAccount',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2 (Recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Resource',
@@ -113,36 +143,43 @@ export class GoogleDrive implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a file',
+						action: 'Copy a file',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a file',
+						action: 'Delete a file',
 					},
 					{
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file',
+						action: 'Download a file',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List files and folders',
+						action: 'List a file',
 					},
 					{
 						name: 'Share',
 						value: 'share',
 						description: 'Share a file',
+						action: 'Share a file',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a file',
+						action: 'Update a file',
 					},
 					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
+						action: 'Upload a file',
 					},
 				],
 				default: 'upload',
@@ -165,16 +202,19 @@ export class GoogleDrive implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a folder',
+						action: 'Create a folder',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a folder',
+						action: 'Delete a folder',
 					},
 					{
 						name: 'Share',
 						value: 'share',
 						description: 'Share a folder',
+						action: 'Share a folder',
 					},
 				],
 				default: 'create',
@@ -475,7 +515,7 @@ export class GoogleDrive implements INodeType {
 					minValue: 1,
 					maxValue: 1000,
 				},
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 			},
 			{
@@ -906,6 +946,13 @@ export class GoogleDrive implements INodeType {
 						description: 'Whether to set the \'keepForever\' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.',
 					},
 					{
+						displayName: 'Move to Trash',
+						name: 'trashed',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to move a file to the trash. Only the owner may trash a file.',
+					},
+					{
 						displayName: 'OCR Language',
 						name: 'ocrLanguage',
 						type: 'string',
@@ -951,7 +998,7 @@ export class GoogleDrive implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All fields',
 							},
@@ -1404,7 +1451,7 @@ export class GoogleDrive implements INodeType {
 						},
 						options: [
 							{
-								name: '*',
+								name: '[All]',
 								value: '*',
 								description: 'All spaces',
 							},
@@ -1505,26 +1552,31 @@ export class GoogleDrive implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a drive',
+						action: 'Create a drive',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a drive',
+						action: 'Delete a drive',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a drive',
+						action: 'Get a drive',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'List all drives',
+						action: 'List all drives',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a drive',
+						action: 'Update a drive',
 					},
 				],
 				default: 'create',
@@ -2268,6 +2320,7 @@ export class GoogleDrive implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
+							// @ts-ignore
 							Object.assign(newItem.binary, items[i].binary);
 						}
 
@@ -2365,7 +2418,13 @@ export class GoogleDrive implements INodeType {
 
 						const files = response!.files;
 
-						return [this.helpers.returnJsonArray(files as IDataObject[])];
+						const version = this.getNode().typeVersion;
+
+						if (version === 1) {
+							return [this.helpers.returnJsonArray(files as IDataObject[])];
+						} else {
+							returnData.push(...files);
+						}
 
 					} else if (operation === 'upload') {
 						// ----------------------------------
@@ -2381,13 +2440,13 @@ export class GoogleDrive implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 							}
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
 							}
 
 							if (item.binary[propertyNameUpload].mimeType) {
@@ -2474,6 +2533,10 @@ export class GoogleDrive implements INodeType {
 
 						if (updateFields.fileName) {
 							body.name = updateFields.fileName;
+						}
+
+						if (updateFields.hasOwnProperty('trashed')) {
+							body.trashed = updateFields.trashed;
 						}
 
 						if (updateFields.parentId && updateFields.parentId !== '') {

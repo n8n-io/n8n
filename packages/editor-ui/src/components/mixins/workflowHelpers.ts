@@ -21,6 +21,7 @@ import {
 	INodeTypeData,
 	INodeTypeDescription,
 	INodeVersionedType,
+	IPinData,
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
@@ -69,7 +70,7 @@ export const workflowHelpers = mixins(
 					source: null,
 				} as IExecuteData;
 
-				if (parentNode.length) {
+				 if (parentNode.length) {
 					// Add the input data to be able to also resolve the short expression format
 					// which does not use the node name
 					const parentNodeName = parentNode[0];
@@ -78,6 +79,7 @@ export const workflowHelpers = mixins(
 					if (workflowRunData === null) {
 						return executeData;
 					}
+
 					if (!workflowRunData[parentNodeName] ||
 						workflowRunData[parentNodeName].length <= runIndex ||
 						!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
@@ -108,7 +110,7 @@ export const workflowHelpers = mixins(
 			},
 			// Returns connectionInputData to be able to execute an expression.
 			connectionInputData (parentNode: string[], currentNode: string, inputName: string, runIndex: number, nodeConnection: INodeConnection = { sourceIndex: 0,	destinationIndex: 0 }): INodeExecutionData[] | null {
-				let connectionInputData = null;
+				let connectionInputData: INodeExecutionData[] | null = null;
 				const executeData = this.executeData(parentNode, currentNode, inputName, runIndex);
 				if (parentNode.length) {
 					if (!Object.keys(executeData.data).length || executeData.data[inputName].length <= nodeConnection.sourceIndex) {
@@ -128,6 +130,35 @@ export const workflowHelpers = mixins(
 								};
 							});
 						}
+					}
+				}
+
+				const parentPinData = parentNode.reduce((acc: INodeExecutionData[], parentNodeName, index) => {
+					const pinData = this.$store.getters['pinDataByNodeName'](parentNodeName);
+
+					if (pinData) {
+						acc.push({
+							json: pinData[0],
+							pairedItem: {
+								item: index,
+								input: 1,
+							},
+						});
+					}
+
+					return acc;
+				}, []);
+
+				if (parentPinData.length > 0) {
+					if (connectionInputData && connectionInputData.length > 0) {
+						parentPinData.forEach((parentPinDataEntry) => {
+							connectionInputData![0].json = {
+								...connectionInputData![0].json,
+								...parentPinDataEntry.json,
+							};
+						});
+					} else {
+						connectionInputData = parentPinData;
 					}
 				}
 
@@ -258,11 +289,7 @@ export const workflowHelpers = mixins(
 				return workflowIssues;
 			},
 
-			// Returns a workflow instance.
-			getWorkflow (nodes?: INodeUi[], connections?: IConnections, copyData?: boolean): Workflow {
-				nodes = nodes || this.getNodes();
-				connections = connections || (this.$store.getters.allConnections as IConnections);
-
+			getNodeTypes (): INodeTypes {
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
@@ -287,6 +314,15 @@ export const workflowHelpers = mixins(
 					},
 				};
 
+				return nodeTypes;
+			},
+
+			// Returns a workflow instance.
+			getWorkflow (nodes?: INodeUi[], connections?: IConnections, copyData?: boolean): Workflow {
+				nodes = nodes || this.getNodes();
+				connections = connections || (this.$store.getters.allConnections as IConnections);
+
+				const nodeTypes = this.getNodeTypes();
 				let workflowId = this.$store.getters.workflowId;
 				if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					workflowId = undefined;
@@ -294,11 +330,16 @@ export const workflowHelpers = mixins(
 
 				const workflowName = this.$store.getters.workflowName;
 
-				if (copyData === true) {
-					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
-				} else {
-					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
-				}
+				return new Workflow({
+					id: workflowId,
+					name: workflowName,
+					nodes: copyData ? JSON.parse(JSON.stringify(nodes)) : nodes,
+					connections: copyData? JSON.parse(JSON.stringify(connections)): connections,
+					active: false,
+					nodeTypes,
+					settings: this.$store.getters.workflowSettings,
+					pinData: this.$store.getters.pinData,
+				});
 			},
 
 			// Returns the currently loaded workflow as JSON.
@@ -323,6 +364,7 @@ export const workflowHelpers = mixins(
 				const data: IWorkflowData = {
 					name: this.$store.getters.workflowName,
 					nodes,
+					pinData: this.$store.getters.pinData,
 					connections: workflowConnections,
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,
@@ -468,7 +510,10 @@ export const workflowHelpers = mixins(
 				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
 				let runIndexParent = 0;
 				if (workflowRunData !== null && parentNode.length) {
-					runIndexParent = workflowRunData[parentNode[0]].length -1;
+					const firstParentWithWorkflowRunData = parentNode.find((parentNodeName) => workflowRunData[parentNodeName]);
+					if (firstParentWithWorkflowRunData) {
+						runIndexParent = workflowRunData[firstParentWithWorkflowRunData].length - 1;
+					}
 				}
 
 				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
@@ -484,6 +529,34 @@ export const workflowHelpers = mixins(
 				} else {
 					runExecutionData = executionData.data;
 				}
+
+				parentNode.forEach((parentNodeName) => {
+					const pinData: IPinData[string] = this.$store.getters['pinDataByNodeName'](parentNodeName);
+
+					if (pinData) {
+						runExecutionData = {
+							...runExecutionData,
+							resultData: {
+								...runExecutionData.resultData,
+								runData: {
+									...runExecutionData.resultData.runData,
+									[parentNodeName]: [
+										{
+											startTime: new Date().valueOf(),
+											executionTime: 0,
+											source: [],
+											data: {
+												main: [
+													pinData.map((data) => ({ json: data })),
+												],
+											},
+										},
+									],
+								},
+							},
+						};
+					}
+				});
 
 				if (connectionInputData === null) {
 					connectionInputData = [];
@@ -504,7 +577,6 @@ export const workflowHelpers = mixins(
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
-
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,

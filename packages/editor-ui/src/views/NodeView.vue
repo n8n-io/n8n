@@ -74,7 +74,12 @@
 					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
 					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
 				>
-					<n8n-icon-button size="large" :icon="['far', 'note-sticky']" type="outline" :title="$locale.baseText('nodeView.addSticky')"/>
+					<n8n-icon-button
+						size="medium"
+						type="secondary"
+						:icon="['far', 'note-sticky']"
+						:title="$locale.baseText('nodeView.addSticky')"
+					/>
 				</div>
 			</div>
 		</div>
@@ -84,33 +89,27 @@
 			@closeNodeCreator="closeNodeCreator"
 		/>
 		<div :class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
-			<button @click="zoomToFit" class="button-white" :title="$locale.baseText('nodeView.zoomToFit')">
-				<font-awesome-icon icon="expand"/>
-			</button>
-			<button @click="zoomIn()" class="button-white" :title="$locale.baseText('nodeView.zoomIn')">
-				<font-awesome-icon icon="search-plus"/>
-			</button>
-			<button @click="zoomOut()" class="button-white" :title="$locale.baseText('nodeView.zoomOut')">
-				<font-awesome-icon icon="search-minus"/>
-			</button>
-			<button
+			<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')" icon="expand" />
+			<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')" icon="search-plus" />
+			<n8n-icon-button @click="zoomOut" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomOut')" icon="search-minus" />
+			<n8n-icon-button
 				v-if="nodeViewScale !== 1 && !isDemo"
-				@click="resetZoom()"
-				class="button-white"
+				@click="resetZoom"
+				type="tertiary"
+				size="large"
 				:title="$locale.baseText('nodeView.resetZoom')"
-				>
-				<font-awesome-icon icon="undo" :title="$locale.baseText('nodeView.resetZoom')"/>
-			</button>
+				icon="undo"
+			/>
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
 			<n8n-button
 				@click.stop="onRunWorkflow"
 				:loading="workflowRunning"
 				:label="runButtonText"
+				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
 				size="large"
 				icon="play-circle"
-				:title="$locale.baseText('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
-				:type="workflowRunning ? 'light' : 'primary'"
+				type="primary"
 			/>
 
 			<n8n-icon-button
@@ -118,7 +117,7 @@
 				icon="stop"
 				size="large"
 				class="stop-execution"
-				type="light"
+				type="secondary"
 				:title="stopExecutionInProgress
 					? $locale.baseText('nodeView.stoppingCurrentExecution')
 					: $locale.baseText('nodeView.stopCurrentExecution')
@@ -133,7 +132,7 @@
 				icon="stop"
 				size="large"
 				:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
-				type="light"
+				type="secondary"
 				@click.stop="stopWaitingForWebhook()"
 			/>
 
@@ -185,14 +184,18 @@ import {
 	IDataObject,
 	INode,
 	INodeConnections,
+	INodeCredentialsDetails,
 	INodeIssues,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	NodeHelpers,
-	Workflow,
+	IPinData,
 	IRun,
 	ITaskData,
-	INodeCredentialsDetails,
+	ITelemetryTrackProperties,
+	IWorkflowBase,
+	NodeHelpers,
+	TelemetryHelpers,
+	Workflow,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -217,6 +220,7 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -405,11 +409,18 @@ export default mixins(
 		},
 		methods: {
 			onRunNode(nodeName: string, source: string) {
-				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				const node = this.$store.getters.getNodeByName(nodeName);
+				this.$telemetry.track('User clicked execute node button', { node_type: node ? node.type : null, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
-				this.$telemetry.track('User clicked execute workflow button', { workflow_id: this.$store.getters.workflowId });
+				this.getWorkflowDataToSave().then((workflowData) => {
+					this.$telemetry.track('User clicked execute workflow button', {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					});
+				});
+
 				this.runWorkflow();
 			},
 			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
@@ -540,12 +551,14 @@ export default mixins(
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 				this.$store.commit('setWorkflowExecutionData', data);
+				this.$store.commit('setWorkflowPinData', data.workflowData.pinData);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', false);
 				});
+
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
@@ -601,6 +614,11 @@ export default mixins(
 				this.resetWorkspace();
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
+
+				if (data.workflow.pinData) {
+					this.$store.commit('setWorkflowPinData', data.workflow.pinData);
+				}
+
 				this.$nextTick(() => {
 					this.zoomToFit();
 				});
@@ -669,6 +687,7 @@ export default mixins(
 				this.$store.commit('setWorkflowId', workflowId);
 				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
+				this.$store.commit('setWorkflowPinData', data.pinData || {});
 
 				const tags = (data.tags || []) as ITag[];
 				this.$store.commit('tags/upsertTags', tags);
@@ -1169,6 +1188,15 @@ export default mixins(
 					}
 				}
 				this.stopExecutionInProgress = false;
+
+				this.getWorkflowDataToSave().then((workflowData) => {
+					const trackProps = {
+						workflow_id: this.$store.getters.workflowId,
+						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+					};
+
+					this.$telemetry.track('User clicked stop workflow execution', trackProps);
+				});
 			},
 
 			async stopWaitingForWebhook () {
@@ -1293,6 +1321,10 @@ export default mixins(
 							this.nodeSelectedByName(node.name);
 						});
 					});
+
+					if (workflowData.pinData) {
+						this.$store.commit('setWorkflowPinData', workflowData.pinData);
+					}
 
 					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
 					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
@@ -1501,11 +1533,17 @@ export default mixins(
 					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.$store.getters.workflowId });
 				} else {
 					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
-					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', {
+					const trackProperties: ITelemetryTrackProperties = {
 						node_type: nodeTypeName,
 						workflow_id: this.$store.getters.workflowId,
 						drag_and_drop: options.dragAndDrop,
-					} as IDataObject);
+					};
+
+					if (lastSelectedNode) {
+						trackProperties.input_node_type = lastSelectedNode.type;
+					}
+
+					this.$telemetry.trackNodesPanel('nodeView.addNodeButton', trackProperties);
 				}
 
 				// Automatically deselect all nodes and select the current one and also active
@@ -2053,6 +2091,10 @@ export default mixins(
 					// so if we do not connect we have to save the connection manually
 					this.$store.commit('addConnection', connectionProperties);
 				}
+
+				setTimeout(() => {
+					this.addPinDataConnections(this.$store.getters.pinData);
+				});
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
 				if (removeVisualConnection === true) {
@@ -2143,6 +2185,14 @@ export default mixins(
 				}
 
 				await this.addNodes([newNodeData]);
+
+				const pinData = this.$store.getters['pinDataByNodeName'](nodeName);
+				if (pinData) {
+					this.$store.commit('pinData', {
+						node: newNodeData,
+						data: pinData,
+					});
+				}
 
 				this.$store.commit('setStateDirty', true);
 
@@ -2247,6 +2297,7 @@ export default mixins(
 
 								if (connection) {
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
+
 									if (!output || !output.total) {
 										CanvasHelpers.resetConnection(connection);
 									}
@@ -2808,7 +2859,7 @@ export default mixins(
 				}
 
 				this.$store.commit('removeAllConnections', {setStateDirty: false});
-				this.$store.commit('removeAllNodes', {setStateDirty: false});
+				this.$store.commit('removeAllNodes', { setStateDirty: false, removePinData: true });
 
 				// Reset workflow execution data
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -2842,7 +2893,7 @@ export default mixins(
 				this.$store.commit('setNodeTypes', nodeTypes);
 			},
 			async loadCredentialTypes (): Promise<void> {
-				await this.$store.dispatch('credentials/fetchCredentialTypes');
+				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
 			},
 			async loadCredentials (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
@@ -2913,6 +2964,31 @@ export default mixins(
 					await this.importWorkflowData(workflowData);
 				}
 			},
+			addPinDataConnections(pinData: IPinData) {
+				Object.keys(pinData).forEach((nodeName) => {
+					// @ts-ignore
+					const connections = this.instance.getConnections({
+						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+					}) as Connection[];
+
+					connections.forEach((connection) => {
+						CanvasHelpers.addConnectionOutputSuccess(connection, {
+							total: pinData[nodeName].length,
+							iterations: 0,
+						});
+					});
+				});
+			},
+			removePinDataConnections(pinData: IPinData) {
+				Object.keys(pinData).forEach((nodeName) => {
+					// @ts-ignore
+					const connections = this.instance.getConnections({
+						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+					}) as Connection[];
+
+					connections.forEach(CanvasHelpers.resetConnection);
+				});
+			},
 		},
 
 		async mounted () {
@@ -2961,10 +3037,14 @@ export default mixins(
 				setTimeout(() => {
 					this.$store.dispatch('users/showPersonalizationSurvey');
 					this.checkForNewVersions();
+					this.addPinDataConnections(this.$store.getters.pinData);
 				}, 0);
 			});
 
 			this.$externalHooks().run('nodeView.mount');
+
+			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
+			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
 
 		destroyed () {
@@ -2974,6 +3054,9 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+
+			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
+			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 		},
 	});
 </script>
@@ -2985,8 +3068,8 @@ export default mixins(
 
 	position: fixed;
 	left: $--sidebar-width + $--zoom-menu-margin;
-	width: 200px;
-	bottom: 45px;
+	width: 210px;
+	bottom: 44px;
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;
@@ -2997,6 +3080,16 @@ export default mixins(
 
 	button {
 		border: var(--border-base);
+	}
+
+	> * {
+		+ * {
+			margin-left: var(--spacing-3xs);
+		}
+
+		&:hover {
+			transform: scale(1.1);
+		}
 	}
 }
 
@@ -3168,23 +3261,6 @@ export default mixins(
 
 .node-input-endpoint-label {
 	text-align: right;
-}
-
-.button-white {
-	border: none;
-	padding: 0.3em;
-	margin: 0 0.1em;
-	border-radius: 3px;
-	font-size: 1.2em;
-	background: #fff;
-	width: 40px;
-	height: 40px;
-	color: #666;
-	cursor: pointer;
-
-	&:hover {
-		transform: scale(1.1);
-	}
 }
 
 .connection-actions {

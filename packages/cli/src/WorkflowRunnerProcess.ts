@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -230,6 +231,7 @@ export class WorkflowRunnerProcess {
 			nodeTypes,
 			staticData: this.data.workflowData.staticData,
 			settings: this.data.workflowData.settings,
+			pinData: this.data.pinData,
 		});
 		await checkPermissionsForExecution(this.workflow, userId);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
@@ -345,9 +347,22 @@ export class WorkflowRunnerProcess {
 		) {
 			// Execute all nodes
 
+			let startNode;
+			if (
+				this.data.startNodes?.length === 1 &&
+				Object.keys(this.data.pinData ?? {}).includes(this.data.startNodes[0])
+			) {
+				startNode = this.workflow.getNode(this.data.startNodes[0]) ?? undefined;
+			}
+
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
-			return this.workflowExecute.run(this.workflow, undefined, this.data.destinationNode);
+			return this.workflowExecute.run(
+				this.workflow,
+				startNode,
+				this.data.destinationNode,
+				this.data.pinData,
+			);
 		}
 		// Execute only the nodes between start and destination nodes
 		this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
@@ -356,6 +371,7 @@ export class WorkflowRunnerProcess {
 			this.data.runData,
 			this.data.startNodes,
 			this.data.destinationNode,
+			this.data.pinData,
 		);
 	}
 

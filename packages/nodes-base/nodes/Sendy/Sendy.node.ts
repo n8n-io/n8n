@@ -192,7 +192,7 @@ export class Sendy implements INodeType {
 					if (responseData === '1') {
 						responseData = { success: true };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 
@@ -222,7 +222,7 @@ export class Sendy implements INodeType {
 					if (!errors.includes(responseData)) {
 						responseData = { count: responseData };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 
@@ -247,7 +247,7 @@ export class Sendy implements INodeType {
 					if (responseData === '1') {
 						responseData = { success: true };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 
@@ -272,7 +272,7 @@ export class Sendy implements INodeType {
 					if (responseData === '1') {
 						responseData = { success: true };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 
@@ -306,7 +306,7 @@ export class Sendy implements INodeType {
 					if (status.includes(responseData)) {
 						responseData = { status: responseData };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 			}

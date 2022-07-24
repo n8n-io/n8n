@@ -26,7 +26,7 @@ export class GoogleBooks implements INodeType {
 		name: 'googleBooks',
 		icon: 'file:googlebooks.svg',
 		group: ['input', 'output'],
-		version: 1,
+		version: [1, 2],
 		description: 'Read data from Google Books',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
@@ -74,6 +74,36 @@ export class GoogleBooks implements INodeType {
 					},
 				],
 				default: 'serviceAccount',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2 (Recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Resource',
@@ -106,11 +136,13 @@ export class GoogleBooks implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a specific bookshelf resource for the specified user',
+						action: 'Get a bookshelf',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all public bookshelf resource for the specified user',
+						action: 'Get all bookshelves',
 					},
 				],
 				displayOptions: {
@@ -132,26 +164,31 @@ export class GoogleBooks implements INodeType {
 						name: 'Add',
 						value: 'add',
 						description: 'Add a volume to a bookshelf',
+						action: 'Add a bookshelf volume',
 					},
 					{
 						name: 'Clear',
 						value: 'clear',
 						description: 'Clears all volumes from a bookshelf',
+						action: 'Clear a bookshelf volume',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all volumes in a specific bookshelf for the specified user',
+						action: 'Get all bookshelf volumes',
 					},
 					{
 						name: 'Move',
 						value: 'move',
 						description: 'Moves a volume within a bookshelf',
+						action: 'Move a bookshelf volume',
 					},
 					{
 						name: 'Remove',
 						value: 'remove',
 						description: 'Removes a volume from a bookshelf',
+						action: 'Remove a bookshelf volume',
 					},
 				],
 				displayOptions: {
@@ -173,11 +210,13 @@ export class GoogleBooks implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a volume resource based on ID',
+						action: 'Get a volume',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all volumes filtered by query',
+						action: 'Get all volumes',
 					},
 				],
 				displayOptions: {

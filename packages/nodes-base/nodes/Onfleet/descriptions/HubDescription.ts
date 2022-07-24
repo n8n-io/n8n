@@ -24,16 +24,19 @@ export const hubOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet hub',
+				action: 'Create a hub',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all Onfleet hubs',
+				action: 'Get all hubs',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet hub',
+				action: 'Update a hub',
 			},
 		],
 		default: 'getAll',
@@ -56,7 +59,7 @@ const teamsField = {
 		loadOptionsMethod: 'getTeams',
 	},
 	default: [],
-	description: 'These are the teams that this Hub will be assigned to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description: 'These are the teams that this Hub will be assigned to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 export const hubFields: INodeProperties[] = [

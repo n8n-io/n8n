@@ -1,14 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GithubOAuth2Api implements ICredentialType {
 	name = 'githubOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'GitHub OAuth2 API';
 	documentationUrl = 'github';
 	properties: INodeProperties[] = [
@@ -29,21 +23,24 @@ export class GithubOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
-			default: '={{$self["server"] === "https://api.github.com" ? "https://github.com" : $self["server"]}}/login/oauth/authorize',
+			default:
+				'={{$self["server"] === "https://api.github.com" ? "https://github.com" : $self["server"]}}/login/oauth/authorize',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden',
-			default: '={{$self["server"] === "https://api.github.com" ? "https://github.com" : $self["server"]}}/login/oauth/access_token',
+			default:
+				'={{$self["server"] === "https://api.github.com" ? "https://github.com" : $self["server"]}}/login/oauth/access_token',
 			required: true,
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'repo,admin:repo_hook,admin:org,admin:org_hook,gist,notifications,user,write:packages,read:packages,delete:packages,worfklow',
+			default:
+				'repo,admin:repo_hook,admin:org,admin:org_hook,gist,notifications,user,write:packages,read:packages,delete:packages,worfklow',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

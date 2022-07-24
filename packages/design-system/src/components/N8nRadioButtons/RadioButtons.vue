@@ -1,10 +1,12 @@
 <template>
-	<div role="radiogroup" :class="$style.radioGroup">
+	<div role="radiogroup" :class="{[$style.radioGroup]: true, [$style.disabled]: disabled}">
 		<RadioButton
 			v-for="option in options"
 			:key="option.value"
 			v-bind="option"
 			:active="value === option.value"
+			:size="size"
+			:disabled="disabled"
 			@click="(e) => onClick(option.value, e)"
 		/>
 	</div>
@@ -21,12 +23,21 @@ export default {
 		},
 		options: {
 		},
+		size: {
+			type: String,
+		},
+		disabled: {
+			type: Boolean,
+		},
 	},
 	components: {
 		RadioButton,
 	},
 	methods: {
 		onClick(value) {
+			if (this.disabled) {
+				return;
+			}
 			this.$emit('input', value);
 		},
 	},
@@ -43,6 +54,10 @@ export default {
 	background-color: var(--color-foreground-base);
 	padding: var(--spacing-5xs);
 	border-radius: var(--border-radius-base);
+}
+
+.disabled {
+	cursor: not-allowed;
 }
 
 </style>

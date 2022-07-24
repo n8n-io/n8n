@@ -38,7 +38,7 @@ export class GoogleSheets implements INodeType {
 		name: 'googleSheets',
 		icon: 'file:googleSheets.svg',
 		group: ['input', 'output'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Read, update and write data to Google Sheets',
 		defaults: {
@@ -87,6 +87,36 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 				default: 'serviceAccount',
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2 (Recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Resource',
@@ -123,46 +153,55 @@ export class GoogleSheets implements INodeType {
 						name: 'Append',
 						value: 'append',
 						description: 'Append data to a sheet',
+						action: 'Append data to a sheet',
 					},
 					{
 						name: 'Clear',
 						value: 'clear',
 						description: 'Clear data from a sheet',
+						action: 'Clear a sheet',
 					},
 					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new sheet',
+						action: 'Create a sheet',
 					},
 					{
 						name: 'Create or Update',
 						value: 'upsert',
 						description: 'Create a new record, or update the current one if it already exists (upsert)',
+						action: 'Create or update a sheet',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete columns and rows from a sheet',
+						action: 'Delete a sheet',
 					},
 					{
 						name: 'Lookup',
 						value: 'lookup',
 						description: 'Look up a specific column value and return the matching row',
+						action: 'Look up a column value in a sheet',
 					},
 					{
 						name: 'Read',
 						value: 'read',
 						description: 'Read data from a sheet',
+						action: 'Read a sheet',
 					},
 					{
 						name: 'Remove',
 						value: 'remove',
 						description: 'Remove a sheet',
+						action: 'Remove a sheet',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in a sheet',
+						action: 'Update a sheet',
 					},
 				],
 				default: 'read',
@@ -247,7 +286,7 @@ export class GoogleSheets implements INodeType {
 								options: [],
 								default: '',
 								required: true,
-								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Start Index',
@@ -285,7 +324,7 @@ export class GoogleSheets implements INodeType {
 								options: [],
 								default: '',
 								required: true,
-								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The sheet to delete columns from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Start Index',
@@ -710,6 +749,7 @@ export class GoogleSheets implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a spreadsheet',
+						action: 'Create a spreadsheet',
 					},
 				],
 				default: 'create',

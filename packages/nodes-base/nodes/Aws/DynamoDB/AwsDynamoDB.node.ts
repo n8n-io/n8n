@@ -303,15 +303,17 @@ export class AwsDynamoDB implements INodeType {
 						const select = this.getNodeParameter('select', 0) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const scan = this.getNodeParameter('scan', 0) as boolean;
-						const eanUi = this.getNodeParameter('additionalFields.eanUi.eanValues', i, []) as IAttributeNameUi[];
+						const eanUi = this.getNodeParameter('options.eanUi.eanValues', i, []) as IAttributeNameUi[];
 
 						const body: IRequestBody = {
 							TableName: this.getNodeParameter('tableName', i) as string,
-							ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
 						};
 
 						if (scan === true) {
-							body['FilterExpression'] = this.getNodeParameter('filterExpression', i) as string;
+							const filterExpression = this.getNodeParameter('filterExpression', i) as string;
+							if (filterExpression) {
+								body['FilterExpression'] = filterExpression;
+							}
 						} else {
 							body['KeyConditionExpression'] = this.getNodeParameter('keyConditionExpression', i) as string;
 						}
@@ -330,6 +332,12 @@ export class AwsDynamoDB implements INodeType {
 
 						if (Object.keys(expressionAttributeName).length) {
 							body.ExpressionAttributeNames = expressionAttributeName;
+						}
+
+						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
+
+						if (Object.keys(expressionAttributeValues).length) {
+							body.ExpressionAttributeValues = expressionAttributeValues;
 						}
 
 						if (indexName) {
