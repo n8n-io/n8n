@@ -33,7 +33,7 @@ export class ActiveDirectoryManager {
 		this.initialized = true;
 	}
 
-	static config(config: ActiveDirectoryConfig): void {
+	static updateConfig(config: ActiveDirectoryConfig): void {
 		this.activeDirectory.service.config = config;
 		this.activeDirectory.sync.config = config;
 	}

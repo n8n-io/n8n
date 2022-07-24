@@ -2,6 +2,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { IDataObject } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
+import Mustache from 'mustache';
 import { GenericHelpers } from '../..';
 import * as config from '../../../config';
 import {
@@ -73,8 +74,10 @@ export class UserManagementMailer {
 
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
 		let template = await getTemplate('passwordReset', 'passwordReset.html');
-		template = replaceStrings(template, passwordResetData);
-
+		template = Mustache.render(template, {
+			...passwordResetData,
+			isEmailUser: passwordResetData.signInType === 'email',
+		});
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const result = await this.mailer?.sendMail({
 			emailRecipients: passwordResetData.email,

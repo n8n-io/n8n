@@ -65,7 +65,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			user.resetPasswordToken = uuid();
 
-			const { id, firstName, lastName, resetPasswordToken } = user;
+			const { id, firstName, lastName, resetPasswordToken, signInType } = user;
 
 			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
 
@@ -84,6 +84,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 					lastName,
 					passwordResetUrl: url.toString(),
 					domain: baseUrl,
+					signInType,
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({

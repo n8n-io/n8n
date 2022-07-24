@@ -43,7 +43,7 @@ activeDirectoryController.put(
 
 		const { data } = await getActiveDirectoryConfig();
 
-		ActiveDirectoryManager.config(data);
+		ActiveDirectoryManager.updateConfig(data);
 
 		return res.status(200).json(data);
 	},
