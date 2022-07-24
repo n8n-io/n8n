@@ -35,7 +35,7 @@
     "@types/mime-types": "^2.1.0",
     "@types/node": "^16.11.22",
     "@types/request-promise-native": "~1.0.15",
-    "@types/uuid": "^8.3.4",
+    "@types/uuid": "^8.3.2",
     "jest": "^27.4.7",
     "source-map-support": "^0.5.9",
     "ts-jest": "^27.1.3",
