@@ -34,7 +34,7 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			auth:{
+			auth: {
 				username: '={{$credentials.email}}',
 				password: '={{$credentials.apiToken}}',
 			},
