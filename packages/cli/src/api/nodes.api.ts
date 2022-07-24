@@ -61,7 +61,7 @@ nodesController.post(
 		try {
 			parsedPackageName = parsePackageName(name);
 		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 			throw new ResponseHelper.ResponseError(error.message, undefined, 400);
 		}
 
@@ -100,7 +100,7 @@ nodesController.post(
 			installedPackage.installedNodes.forEach((nodeData) => {
 				const pushInstance = Push.getInstance();
 				pushInstance.send('reloadNodeType', {
-					name: nodeData.name,
+					name: nodeData.type,
 					version: nodeData.latestVersion,
 				});
 			});
@@ -166,14 +166,14 @@ nodesController.get(
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 			if (error.code === 1) {
 				// Updates available
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				pendingUpdates = JSON.parse(error.stdout);
 			}
 		}
 		let hydratedPackages = matchPackagesWithUpdates(packages, pendingUpdates);
 		try {
 			if (config.get('nodes.packagesMissing')) {
-				// eslint-disable-next-line prettier/prettier
+				// eslint-disable-next-line prettier/prettier, @typescript-eslint/no-unsafe-argument
 				hydratedPackages = matchMissingPackages(hydratedPackages, config.get('nodes.packagesMissing'));
 			}
 		} catch (error) {
