@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-var path = require('path'); // tslint:disable-line:no-var-keyword
+var path = require('path');
 
 // Make sure that it also find the config folder when it
 // did get started from another folder that the root one.
 process.env.NODE_CONFIG_DIR = process.env.NODE_CONFIG_DIR || path.join(__dirname, 'config');
 
 // Check if version should be displayed
-var versionFlags = [ // tslint:disable-line:no-var-keyword
+var versionFlags = [
 	'-v',
 	'-V',
 	'--version',
