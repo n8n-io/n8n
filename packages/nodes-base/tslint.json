@@ -104,10 +104,6 @@
 			"allow-null-check"
 		],
 		"use-isnan": true,
-		"quotemark": [
-			true,
-			"single"
-		],
 		"quotes": [
 			"error",
 			"single"

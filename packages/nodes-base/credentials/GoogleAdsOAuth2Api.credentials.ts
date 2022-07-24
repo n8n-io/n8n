@@ -1,17 +1,10 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = [
-	'https://www.googleapis.com/auth/adwords',
-];
+const scopes = ['https://www.googleapis.com/auth/adwords'];
 
 export class GoogleAdsOAuth2Api implements ICredentialType {
 	name = 'googleAdsOAuth2Api';
-	extends = [
-		'googleOAuth2Api',
-	];
+	extends = ['googleOAuth2Api'];
 	displayName = 'Google Ads OAuth2 API';
 	documentationUrl = 'google';
 	properties: INodeProperties[] = [
@@ -28,5 +21,4 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 			default: scopes.join(' '),
 		},
 	];
-
 }
