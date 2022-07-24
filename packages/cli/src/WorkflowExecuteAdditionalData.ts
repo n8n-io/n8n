@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */

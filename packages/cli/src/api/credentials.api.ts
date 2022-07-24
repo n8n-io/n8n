@@ -83,6 +83,7 @@ credentialsController.get(
 				});
 			}
 		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			LoggerProxy.error('Request to list credentials failed', error);
 			throw error;
 		}
