@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 import { Length } from 'class-validator';
 
-import { IConnections, IDataObject, INode, IWorkflowSettings, PinData } from 'n8n-workflow';
+import { IConnections, IDataObject, INode, IPinData, IWorkflowSettings } from 'n8n-workflow';
 
 import {
 	BeforeUpdate,
@@ -122,7 +122,7 @@ export class WorkflowEntity implements IWorkflowDb {
 		nullable: true,
 		transformer: serializer,
 	})
-	pinData: PinData;
+	pinData: IPinData;
 
 	@BeforeUpdate()
 	setUpdateDate() {
