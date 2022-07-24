@@ -394,7 +394,7 @@ export default mixins(
 						},
 					},
 					{
-						name: 'id',
+						name: 'ldapId',
 						initialValue: this.adConfig.attributeMapping.ldapId,
 						properties: {
 							label: 'ID',

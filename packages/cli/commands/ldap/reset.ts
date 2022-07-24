@@ -14,9 +14,9 @@ export class Reset extends BaseCommand {
 
 		await Db.collections.ActiveDirectorySync.delete({});
 
-		// await Db.collections.FeatureConfig.delete({ name: ACTIVE_DIRECTORY_FEATURE_NAME });
+		await Db.collections.FeatureConfig.delete({ name: ACTIVE_DIRECTORY_FEATURE_NAME });
 
-		// await Db.collections.Settings.delete({ key: ACTIVE_DIRECTORY_DISABLED });
+		await Db.collections.Settings.delete({ key: ACTIVE_DIRECTORY_DISABLED });
 
 		this.logger.info('Successfully reset the database to default ldap state.');
 	}
