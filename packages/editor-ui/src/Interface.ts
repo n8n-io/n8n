@@ -1009,6 +1009,9 @@ export interface IActiveDirectoryConfig {
 			adminPassword: string;
 			baseDn: string;
 		};
+		filter: {
+			user: string;
+		};
 		connection: {
 			useSsl: boolean;
 			url: string;

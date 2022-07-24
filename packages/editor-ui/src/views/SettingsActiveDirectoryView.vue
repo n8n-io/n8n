@@ -146,6 +146,7 @@ export default mixins(
 				syncronizationEnabled: string,
 				useSsl: string;
 				syncronizationInterval: string;
+				userFilter: string;
 				}) {
 			if (!this.hasAnyChanges) {
 				return;
@@ -171,6 +172,9 @@ export default mixins(
 					lastName: form.lastName,
 					loginId: form.loginId,
 					ldapId: form.ldapId,
+				},
+				filter: {
+					user: form.userFilter,
 				},
 				syncronization: {
 					enabled: form.syncronizationEnabled === 'true' ? true : false,
@@ -363,6 +367,23 @@ export default mixins(
 						},
 						shouldDisplay(values): boolean {
 							return values['bindingType'] === 'admin';
+						},
+					},
+					{
+						name: 'filters',
+						properties: {
+							label: 'Filters',
+							type: 'info',
+						},
+					},
+					{
+						name: 'userFilter',
+						initialValue: this.adConfig.filter.user,
+						properties: {
+							label: 'User Filter',
+							type: 'text',
+							required: false,
+							capitalize: true,
 						},
 					},
 					{

@@ -23,10 +23,15 @@ export const handleLdapLogin = async (
 	if (!adConfig.data.login.enabled) return undefined;
 
 	const {
-		data: { attributeMapping },
+		data: { attributeMapping, filter },
 	} = adConfig;
 
-	const adUser = await findUserOnActiveDirectory(email, password, attributeMapping.loginId);
+	const adUser = await findUserOnActiveDirectory(
+		email,
+		password,
+		attributeMapping.loginId,
+		filter.user,
+	);
 
 	if (!adUser) return undefined;
 

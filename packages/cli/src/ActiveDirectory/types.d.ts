@@ -4,7 +4,6 @@ import type { User } from '../databases/entities/User';
 import { RunningMode, SyncStatus } from './constants';
 
 export interface ActiveDirectoryConfig {
-	// activeDirectoryLoginEnabled: boolean;
 	login: {
 		enabled: boolean;
 		label: string;
@@ -24,6 +23,9 @@ export interface ActiveDirectoryConfig {
 		email: string;
 		loginId: string;
 		ldapId: string;
+	};
+	filter: {
+		user: string;
 	};
 	syncronization: {
 		enabled: boolean;

@@ -6,6 +6,7 @@ import { ActiveDirectoryService } from './ActiveDirectoryService';
 import type { ActiveDirectoryConfig } from './types';
 import { AD_LOG_PREPEND_MESSAGE, RunningMode, SyncStatus } from './constants';
 import {
+	addConfigFilter,
 	getActiveDirectoryUsersInLocalDb,
 	getAdUserRole,
 	mapToLocalDbUser,
@@ -57,8 +58,14 @@ export class ActiveDirectorySync {
 	async run(mode: RunningMode): Promise<void> {
 		Logger.info(`${AD_LOG_PREPEND_MESSAGE} Starting a syncronization run in ${mode} mode`);
 
+
+		console.log(
+			addConfigFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
+		);
+
+		//	`(&(${this._config.attributeMapping.loginId}=*)(!(mail=teresa.zeron1@gmail.com)))`
 		const adUsers = await this._activeDirectoryService.searchWithAdminBinding(
-			`(&(${this._config.attributeMapping.loginId}=*)(!(mail=teresa.zeron1@gmail.com)))`,
+			addConfigFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
 		);
 
 		const startedAt = new Date();

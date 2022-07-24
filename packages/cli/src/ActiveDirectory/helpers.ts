@@ -35,6 +35,9 @@ export const getActiveDirectoryLoginLabel = (): string =>
 export const isActiveDirectoryLoginEnabled = (): boolean =>
 	config.getEnv(ACTIVE_DIRECTORY_LOGIN_ENABLED);
 
+export const isActiveDirectoryLoginDisabled = (): boolean =>
+	!config.getEnv(ACTIVE_DIRECTORY_LOGIN_ENABLED);
+
 const isFirstRunAfterFeatureEnabled = (databaseSettings: Settings[]) => {
 	const dbSetting = databaseSettings.find((setting) => setting.key === ACTIVE_DIRECTORY_DISABLED);
 
@@ -89,6 +92,9 @@ const saveFeatureConfiguration = async () => {
 				email: '',
 				loginId: '',
 				ldapId: '',
+			},
+			filter: {
+				user: '',
 			},
 			syncronization: {
 				enabled: false,
@@ -159,15 +165,23 @@ export const handleActiveDirectoryFirstInit = async (
 	ActiveDirectoryManager.init(adConfig.data);
 };
 
+export const addConfigFilter = (filter: string, configUserFilter: string): string => {
+	if (configUserFilter) {
+		return `(&${configUserFilter}${filter})`;
+	}
+	return filter;
+};
+
 export const findUserOnActiveDirectory = async (
 	email: string,
 	password: string,
 	loginIdAttribute: string,
+	userFilter: string,
 ): Promise<Entry | undefined> => {
 	const activeDirectoryService = ActiveDirectoryManager.getInstance().service;
 
 	const searchResult = await activeDirectoryService.searchWithAdminBinding(
-		`(${loginIdAttribute}=${email})`,
+		addConfigFilter(`(${loginIdAttribute}=${email})`, userFilter),
 	);
 
 	if (!searchResult.length) {
