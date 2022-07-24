@@ -1,9 +1,9 @@
 import {
 	ICredentialDataDecryptedObject,
-	 ICredentialTestRequest,
-	 ICredentialType,
-	 IHttpRequestOptions,
-	 INodeProperties,
+	ICredentialTestRequest,
+	ICredentialType,
+	IHttpRequestOptions,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class MauticApi implements ICredentialType {
@@ -34,15 +34,14 @@ export class MauticApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate (credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		const {
-			url,
-			username,
-			password,
-		} = credentials as {
-			url: string,
-			username: string,
-			password: string,
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		const { url, username, password } = credentials as {
+			url: string;
+			username: string;
+			password: string;
 		};
 		const credentialUrl = url.endsWith('/') ? `${url}api/users/self` : `${url}/api/users/self`;
 		const base64Key = Buffer.from(`${username}:${password}`).toString('base64');
