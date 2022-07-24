@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class DisqusApi implements ICredentialType {
 	name = 'disqusApi';
@@ -13,7 +10,8 @@ export class DisqusApi implements ICredentialType {
 			name: 'accessToken',
 			type: 'string',
 			default: '',
-			description: 'Visit your account details page, and grab the Access Token. See <a href="https://disqus.com/api/docs/auth/">Disqus auth</a>.',
+			description:
+				'Visit your account details page, and grab the Access Token. See <a href="https://disqus.com/api/docs/auth/">Disqus auth</a>.',
 		},
 	];
 }
