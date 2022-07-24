@@ -29,12 +29,10 @@ export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]) {
 }
 
 export function adjustExpressionAttributeName(eanUi: IAttributeNameUi[]) {
-
-	// tslint:disable-next-line: no-any
-	const ean: { [key: string]: any } = {};
+	const ean: { [key: string]: string } = {};
 
 	eanUi.forEach(({ key, value }) => {
-		ean[addPound(key)] = { value } as IAttributeValueValue;
+		ean[addPound(key)] = value;
 	});
 
 	return ean;
