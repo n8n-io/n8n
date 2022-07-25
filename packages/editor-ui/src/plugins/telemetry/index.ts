@@ -32,7 +32,6 @@ export class Telemetry {
 	private logLevel: string | null = null;
 
 	private get rudderStack() {
-		// @ts-ignore
 		return window.rudderanalytics;
 	}
 
@@ -152,7 +151,7 @@ export class Telemetry {
 			}
 
 			const category = (route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
-			this.rudderStack.page(category, pageName, properties);
+			this.rudderStack.page(category, pageName!, properties);
 		}
 		else {
 			this.pageEventQueue.push({
@@ -243,34 +242,48 @@ export class Telemetry {
 	}
 
 	private initRudderStack(key: string, url: string, options: IDataObject) {
-		// @ts-ignore
 		window.rudderanalytics = window.rudderanalytics || [];
 
-		this.rudderStack.methods = ["load", "page", "track", "identify", "alias", "group", "ready", "reset", "getAnonymousId", "setAnonymousId"];
-		this.rudderStack.factory = (t: any) => { // tslint:disable-line:no-any
-			return (...args: any[]) => { // tslint:disable-line:no-any
-				const r = Array.prototype.slice.call(args);
-				r.unshift(t);
-				this.rudderStack.push(r);
+		this.rudderStack.methods = [
+			"load",
+			"page",
+			"track",
+			"identify",
+			"alias",
+			"group",
+			"ready",
+			"reset",
+			"getAnonymousId",
+			"setAnonymousId",
+		];
+
+		this.rudderStack.factory = (method: string) => {
+			return (...args: unknown[]) => {
+				const argsCopy = [method, ...args];
+				this.rudderStack.push(argsCopy);
+
 				return this.rudderStack;
 			};
 		};
 
-		for (let t = 0; t < this.rudderStack.methods.length; t++) {
-			const r = this.rudderStack.methods[t];
-			this.rudderStack[r] = this.rudderStack.factory(r);
+		for (const method of this.rudderStack.methods) {
+			this.rudderStack[method] = this.rudderStack.factory(method);
 		}
 
 		this.rudderStack.loadJS = () => {
-			const r = document.createElement("script");
-			r.type = "text/javascript";
-			r.async = !0;
-			r.src = "https://cdn.rudderlabs.com/v1/rudder-analytics.min.js";
-			const a = document.getElementsByTagName("script")[0];
-			if(a && a.parentNode) {
-				a.parentNode.insertBefore(r, a);
+			const script = document.createElement("script");
+
+			script.type = "text/javascript";
+			script.async = !0;
+			script.src = "https://cdn.rudderlabs.com/v1/rudder-analytics.min.js";
+
+			const element: Element = document.getElementsByTagName("script")[0];
+
+			if (element && element.parentNode) {
+				element.parentNode.insertBefore(script, element);
 			}
 		};
+
 		this.rudderStack.loadJS();
 		this.rudderStack.load(key, url, options);
 	}
