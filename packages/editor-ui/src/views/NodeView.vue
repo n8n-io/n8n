@@ -1305,6 +1305,10 @@ export default mixins(
 				}
 
 				try {
+					if (workflowData.nodes) {
+						CanvasHelpers.addIdsToNodes(workflowData.nodes);
+					}
+
 					// By default we automatically deselect all the currently
 					// selected nodes and select the new ones
 					this.deselectAllNodes();
