@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'attachments:write',
@@ -14,9 +11,7 @@ const scopes = [
 
 export class TwistOAuth2Api implements ICredentialType {
 	name = 'twistOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'Twist OAuth2 API';
 	documentationUrl = 'twist';
 	properties: INodeProperties[] = [

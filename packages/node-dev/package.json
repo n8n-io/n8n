@@ -50,8 +50,7 @@
     "@types/copyfiles": "^2.1.1",
     "@types/inquirer": "^6.5.0",
     "@types/tmp": "^0.2.0",
-    "@types/vorpal": "^1.11.0",
-    "tslint": "^6.1.2"
+    "@types/vorpal": "^1.11.0"
   },
   "dependencies": {
     "@oclif/command": "^1.5.18",
