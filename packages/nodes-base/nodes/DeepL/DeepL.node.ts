@@ -129,13 +129,7 @@ export class DeepL implements INodeType {
 						}
 
 						const response = await deepLApiRequest.call(this, 'GET', '/translate', body);
-						responseData.push({
-							json: response.translations[0],
-							pairedItem: {
-								item: i,
-								input: i
-							}
-						});
+						responseData.push(response.translations[0]);
 					}
 				}
 			} catch (error) {
