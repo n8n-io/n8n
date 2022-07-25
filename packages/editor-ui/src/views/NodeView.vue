@@ -154,7 +154,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -227,8 +227,6 @@ interface AddNodeOptions {
 	dragAndDrop?: boolean;
 }
 
-const DEFAULT_STICKY_HEIGHT = 160;
-const DEFAULT_STICKY_WIDTH = 240;
 
 export default mixins(
 	copyPaste,
