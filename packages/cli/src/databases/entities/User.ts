@@ -146,7 +146,7 @@ export class User {
 
 	@Column({ type: String, nullable: true })
 	@Index({ unique: true })
-	username?: string | null;
+	ldapId?: string | null;
 
 	@Column({ type: Boolean, default: false })
 	disabled?: boolean;

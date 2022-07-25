@@ -1,24 +1,24 @@
 /* eslint-disable import/no-cycle */
 import { Db } from '../..';
-import { SignInType } from '../../ActiveDirectory/constants';
+import { SignInType } from '../../Ldap/constants';
 import {
-	findUserOnActiveDirectory,
-	getActiveDirectoryConfig,
+	findAndAuthenticateLdapUser,
+	getLdapConfig,
 	getAdUserRole,
-	getUserByUsername,
-	isActiveDirectoryDisabled,
-	mapAttributesToLocalDb,
-	randonPassword,
-} from '../../ActiveDirectory/helpers';
+	getUserByLdapId,
+	isLdapDisabled,
+	mapLdapAttributesToDb,
+	randomPassword,
+} from '../../Ldap/helpers';
 import type { User } from '../../databases/entities/User';
 
 export const handleLdapLogin = async (
 	email: string,
 	password: string,
 ): Promise<User | undefined> => {
-	if (isActiveDirectoryDisabled()) return undefined;
+	if (isLdapDisabled()) return undefined;
 
-	const adConfig = await getActiveDirectoryConfig();
+	const adConfig = await getLdapConfig();
 
 	if (!adConfig.data.login.enabled) return undefined;
 
@@ -26,7 +26,7 @@ export const handleLdapLogin = async (
 		data: { attributeMapping, filter },
 	} = adConfig;
 
-	const adUser = await findUserOnActiveDirectory(
+	const adUser = await findAndAuthenticateLdapUser(
 		email,
 		password,
 		attributeMapping.loginId,
@@ -39,7 +39,7 @@ export const handleLdapLogin = async (
 
 	if (!usernameAttributeValue) return undefined;
 
-	const localUser = await getUserByUsername(usernameAttributeValue);
+	const localUser = await getUserByLdapId(usernameAttributeValue);
 
 	if (localUser?.disabled) return undefined;
 
@@ -47,10 +47,10 @@ export const handleLdapLogin = async (
 		const role = await getAdUserRole();
 
 		await Db.collections.User.save({
-			password: randonPassword(),
+			password: randomPassword(),
 			signInType: SignInType.LDAP,
 			globalRole: role,
-			...mapAttributesToLocalDb(adUser, attributeMapping),
+			...mapLdapAttributesToDb(adUser, attributeMapping),
 		});
 	} else {
 		// @ts-ignore
@@ -58,12 +58,12 @@ export const handleLdapLogin = async (
 		// move this to it's own function
 		await Db.collections.User.update(localUser.id, {
 			...localUser,
-			...mapAttributesToLocalDb(adUser, attributeMapping),
+			...mapLdapAttributesToDb(adUser, attributeMapping),
 		});
 	}
 
 	// Retrieve the user again as user's data might have been updated
-	const updatedUser = await getUserByUsername(usernameAttributeValue);
+	const updatedUser = await getUserByLdapId(usernameAttributeValue);
 
 	return updatedUser;
 };

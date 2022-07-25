@@ -165,12 +165,8 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
-import {
-	getActiveDirectoryLoginLabel,
-	isActiveDirectoryEnabled,
-	isActiveDirectoryLoginEnabled,
-} from './ActiveDirectory/helpers';
-import { activeDirectoryController } from './ActiveDirectory/routes/activeDirectoryController';
+import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
+import { ldapController } from './Ldap/routes/ldapController';
 
 require('body-parser-xml')(bodyParser);
 
@@ -322,10 +318,10 @@ class App {
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
 			},
-			activeDirectory: {
-				enabled: isActiveDirectoryEnabled(),
-				loginLabel: getActiveDirectoryLoginLabel(),
-				loginEnabled: isActiveDirectoryLoginEnabled(),
+			ldap: {
+				enabled: isLdapEnabled(),
+				loginLabel: getLdapLoginLabel(),
+				loginEnabled: isLdapLoginEnabled(),
 			},
 			publicApi: {
 				enabled: config.getEnv('publicApi.disabled') === false,
@@ -365,10 +361,10 @@ class App {
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 		});
 
-		Object.assign(this.frontendSettings.activeDirectory, {
-			enabled: isActiveDirectoryEnabled(),
-			loginLabel: getActiveDirectoryLoginLabel(),
-			loginEnabled: isActiveDirectoryLoginEnabled(),
+		Object.assign(this.frontendSettings.ldap, {
+			enabled: isLdapEnabled(),
+			loginLabel: getLdapLoginLabel(),
+			loginEnabled: isLdapLoginEnabled(),
 		});
 		return this.frontendSettings;
 	}
@@ -722,11 +718,11 @@ class App {
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
 		// ----------------------------------------
-		// Active Directory
+		// LDAP
 		// ----------------------------------------
 
-		if (isActiveDirectoryEnabled()) {
-			this.app.use(`/${this.restEndpoint}/active-directory`, activeDirectoryController);
+		if (isLdapEnabled()) {
+			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
 		}
 
 		// ----------------------------------------

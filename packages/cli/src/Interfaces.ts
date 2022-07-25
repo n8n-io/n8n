@@ -36,8 +36,8 @@ import { SharedCredentials } from './databases/entities/SharedCredentials';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { Settings } from './databases/entities/Settings';
 import { FeatureConfig } from './databases/entities/FeatureConfig';
-import { ActiveDirectorySync } from './databases/entities/ActiveDirectorySync';
-import type { ActiveDirectoryConfig } from './ActiveDirectory/types';
+import { LdapSyncHistory } from './databases/entities/LdapSyncHistory';
+import type { LdapConfig } from './Ldap/types';
 
 export interface IActivationError {
 	time: number;
@@ -87,7 +87,7 @@ export interface IDatabaseCollections {
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;
 	FeatureConfig: Repository<FeatureConfig>;
-	ActiveDirectorySync: Repository<ActiveDirectorySync>;
+	LdapSyncHistory: Repository<LdapSyncHistory>;
 }
 
 export interface IWebhookDb {
@@ -105,13 +105,8 @@ export interface IWebhookDb {
 
 export interface IFeatureConfigDb {
 	name: string;
-	data: string | ActiveDirectoryConfig;
+	data: string | LdapConfig;
 }
-
-// export interface IActiveDirectoryFeatureConfig {
-// 	name: string;
-// 	data: ActiveDirectoryConfig;
-// }
 
 // ----------------------------------
 //               settings
@@ -505,7 +500,7 @@ export interface IN8nUISettings {
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
-	activeDirectory: {
+	ldap: {
 		enabled: boolean;
 		loginLabel: string;
 		loginEnabled: boolean;

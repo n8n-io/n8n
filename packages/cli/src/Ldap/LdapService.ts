@@ -1,14 +1,14 @@
 /* eslint-disable no-underscore-dangle */
 import { Client, Entry } from 'ldapts';
 // eslint-disable-next-line import/no-cycle
-import type { ActiveDirectoryConfig } from './types';
+import type { LdapConfig } from './types';
 
-export class ActiveDirectoryService {
+export class LdapService {
 	private client: Client | undefined;
 
-	private _config: ActiveDirectoryConfig;
+	private _config: LdapConfig;
 
-	set config(config: ActiveDirectoryConfig) {
+	set config(config: LdapConfig) {
 		this._config = config;
 		this.client = undefined;
 	}

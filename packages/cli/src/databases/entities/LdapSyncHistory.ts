@@ -3,7 +3,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import * as config from '../../../config';
 import { DatabaseType } from '../..';
-import { RunningMode, SyncStatus } from '../../ActiveDirectory/constants';
+import { RunningMode, SyncStatus } from '../../Ldap/constants';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');
@@ -22,8 +22,8 @@ function resolveDataType(dataType: string) {
 	return typeMap[dbType][dataType] ?? dataType;
 }
 
-@Entity({ name: 'ad_sync' })
-export class ActiveDirectorySync {
+@Entity({ name: 'ldap_sync_history' })
+export class LdapSyncHistory {
 	@PrimaryGeneratedColumn()
 	id: number;
 

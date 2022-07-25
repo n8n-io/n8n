@@ -5,7 +5,7 @@
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import { Strategy } from 'passport-jwt';
-import { NextFunction, Request, response, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
@@ -102,10 +102,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		}
 		// Not owner and user exists. We now protect restricted urls.
 		const postRestrictedUrls = [`/${this.restEndpoint}/users`, `/${this.restEndpoint}/owner`];
-		const getRestrictedUrls = [
-			`/${this.restEndpoint}/users`,
-			`/${this.restEndpoint}/active-directory/config`,
-		];
+		const getRestrictedUrls = [`/${this.restEndpoint}/users`, `/${this.restEndpoint}/ldap/config`];
 		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
 		if (
 			(req.method === 'POST' && postRestrictedUrls.includes(trimmedUrl)) ||

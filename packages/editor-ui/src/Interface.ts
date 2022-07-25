@@ -561,7 +561,7 @@ export interface IPermissionGroup {
 	role?: IRole[];
 	um?: boolean;
 	api?: boolean;
-	ad?: boolean;
+	ldap?: boolean;
 }
 
 export interface IPermissions {
@@ -669,7 +669,7 @@ export interface IN8nUISettings {
 		latestVersion: number;
 		path: string;
 	};
-	activeDirectory: {
+	ldap: {
 		enabled: boolean;
 		loginLabel: string;
 		loginEnabled: boolean;
@@ -894,7 +894,7 @@ export interface ISettingsState {
 		latestVersion: number;
 		path: string;
 	};
-	ad: {
+	ldap: {
 		enabled: boolean;
 		loginLabel: string;
 		loginEnabled: boolean;
@@ -971,7 +971,7 @@ export interface ITab {
 }
 
 
-export interface IActiveDirectorySyncData {
+export interface ILdapSyncData {
 	id: number;
 	startedAt: string;
 	endedAt: string;
@@ -984,15 +984,14 @@ export interface IActiveDirectorySyncData {
 	runMode: string;
 }
 
-export interface IActiveDirectorySyncTable {
+export interface ILdapSyncTable {
 	status: string;
 	endedAt: string;
 	runTime: string;
 	runMode: string;
 	details: string;
 }
-export interface IActiveDirectoryConfig {
-		// activeDirectoryLoginEnabled: boolean;
+export interface ILdapConfig {
 		login: {
 			enabled: boolean;
 			label: string;

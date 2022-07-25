@@ -2,29 +2,29 @@
 /* eslint-disable no-underscore-dangle */
 import type { Entry } from 'ldapts';
 import { IDataObject, LoggerProxy as Logger } from 'n8n-workflow';
-import { ActiveDirectoryService } from './ActiveDirectoryService';
-import type { ActiveDirectoryConfig } from './types';
-import { AD_LOG_PREPEND_MESSAGE, RunningMode, SyncStatus } from './constants';
+import { LdapService } from './LdapService';
+import type { LdapConfig } from './types';
+import { LDAP_LOG_PREPEND_MESSAGE, RunningMode, SyncStatus } from './constants';
 import {
 	addConfigFilter,
-	getActiveDirectoryUsersInLocalDb,
+	getLdapUsers,
 	getAdUserRole,
-	mapToLocalDbUser,
+	mapLdapUserToDbUser,
 	processUsers,
-	saveSyncronization,
+	saveLdapSyncronization,
 } from './helpers';
 import type { User } from '../databases/entities/User';
 import type { Role } from '../databases/entities/Role';
-import { ActiveDirectorySync as ADSync } from '../databases/entities/ActiveDirectorySync';
+import { LdapSyncHistory as ADSync } from '../databases/entities/LdapSyncHistory';
 
-export class ActiveDirectorySync {
+export class LdapSync {
 	private intervalId: NodeJS.Timeout | undefined = undefined;
 
-	private _config: ActiveDirectoryConfig;
+	private _config: LdapConfig;
 
-	private _activeDirectoryService: ActiveDirectoryService;
+	private _ldapService: LdapService;
 
-	set config(config: ActiveDirectoryConfig) {
+	set config(config: LdapConfig) {
 		this._config = config;
 		// If user disable syncronization in the UI
 		if (this.intervalId && !this._config.syncronization.enabled) {
@@ -39,13 +39,13 @@ export class ActiveDirectorySync {
 		}
 	}
 
-	set activeDirectoryService(service: ActiveDirectoryService) {
-		this._activeDirectoryService = service;
+	set ldapService(service: LdapService) {
+		this._ldapService = service;
 	}
 
 	scheduleRun(): void {
 		Logger.info(
-			`${AD_LOG_PREPEND_MESSAGE} Scheduling a syncronization run in ${this._config.syncronization.interval} minutes`,
+			`${LDAP_LOG_PREPEND_MESSAGE} Scheduling a syncronization run in ${this._config.syncronization.interval} minutes`,
 		);
 		if (!this._config.syncronization.interval) {
 			throw new Error('Interval variable has to be defined');
@@ -56,16 +56,16 @@ export class ActiveDirectorySync {
 	}
 
 	async run(mode: RunningMode): Promise<void> {
-		Logger.info(`${AD_LOG_PREPEND_MESSAGE} Starting a syncronization run in ${mode} mode`);
+		Logger.info(`${LDAP_LOG_PREPEND_MESSAGE} Starting a syncronization run in ${mode} mode`);
 
 		//	`(&(${this._config.attributeMapping.loginId}=*)(!(mail=teresa.zeron1@gmail.com)))`
-		const adUsers = await this._activeDirectoryService.searchWithAdminBinding(
+		const adUsers = await this._ldapService.searchWithAdminBinding(
 			addConfigFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
 		);
 
 		const startedAt = new Date();
 
-		const localAdUsers = await getActiveDirectoryUsersInLocalDb();
+		const localAdUsers = await getLdapUsers();
 
 		const role = await getAdUserRole();
 
@@ -102,7 +102,7 @@ export class ActiveDirectorySync {
 			error: errorMessage,
 		});
 
-		await saveSyncronization(syncronization);
+		await saveLdapSyncronization(syncronization);
 	}
 
 	stop(): void {
@@ -138,7 +138,7 @@ export class ActiveDirectorySync {
 			.filter(
 				(user) => !localAdUsers.includes(user[this._config.attributeMapping.ldapId] as string),
 			)
-			.map((user: Entry) => mapToLocalDbUser(user, this._config.attributeMapping, role));
+			.map((user: Entry) => mapLdapUserToDbUser(user, this._config.attributeMapping, role));
 	}
 
 	/**
@@ -151,7 +151,7 @@ export class ActiveDirectorySync {
 	private getUsersToUpdate(adUsers: Entry[], localAdUsers: string[]) {
 		return adUsers
 			.filter((user) => localAdUsers.includes(user[this._config.attributeMapping.ldapId] as string))
-			.map((user: Entry) => mapToLocalDbUser(user, this._config.attributeMapping));
+			.map((user: Entry) => mapLdapUserToDbUser(user, this._config.attributeMapping));
 	}
 
 	/**

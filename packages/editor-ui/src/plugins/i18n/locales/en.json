@@ -929,12 +929,12 @@
 	"workflowSettings.timeoutAfter": "Timeout After",
 	"workflowSettings.timeoutWorkflow": "Timeout Workflow",
 	"workflowSettings.timezone": "Timezone",
-	"settings.ad": "AD/LDAP",
-	"settings.ad.save": "Save",
-	"settings.ad.connectionTestError": "Problem testing Active Directory connection",
-	"settings.ad.connectionTest": "Active Directory connection tested",
-	"settings.ad.runSync": "Active Directory Syncronization done",
-	"settings.ad.updateConfiguration": "Active Directory configuration updated",
-	"settings.ad.testingConnection": "Testing Connection",
-	"settings.ad.testConnection": "Test Connection"
+	"settings.ldap": "LDAP",
+	"settings.ldap.save": "Save",
+	"settings.ldap.connectionTestError": "Problem testing LDAP connection",
+	"settings.ldap.connectionTest": "LDAP connection tested",
+	"settings.ldap.runSync": "LDAP syncronization done",
+	"settings.ldap.updateConfiguration": "LDAP configuration updated",
+	"settings.ldap.testingConnection": "Testing Connection",
+	"settings.ldap.testConnection": "Test Connection"
 }

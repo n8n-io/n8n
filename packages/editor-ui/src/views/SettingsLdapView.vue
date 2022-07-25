@@ -3,7 +3,7 @@
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText('settings.ad') }}
+					{{ $locale.baseText('settings.ldap') }}
 				</n8n-heading>
 			</div>
 			<div>
@@ -19,8 +19,8 @@
 			</div>
 
 			<div>
-				<n8n-button float="right" :label="$locale.baseText('settings.ad.save')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
-				<n8n-button float="left" :label=" loadingTestConnection ? $locale.baseText('settings.ad.testingConnection') : $locale.baseText('settings.ad.testConnection')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="onTestConnectionClick" />
+				<n8n-button float="right" :label="$locale.baseText('settings.ldap.save')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
+				<n8n-button float="left" :label=" loadingTestConnection ? $locale.baseText('settings.ldap.testingConnection') : $locale.baseText('settings.ldap.testConnection')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="onTestConnectionClick" />
 			</div>
 		</div>
 		<div :class="$style.syncTable">
@@ -69,7 +69,7 @@
 <script lang="ts">
 import { convertToDisplayDate } from '@/components/helpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { IActiveDirectoryConfig, IActiveDirectorySyncData, IActiveDirectorySyncTable, IFormInputs, IUser } from '@/Interface';
+import { ILdapConfig, ILdapSyncData, ILdapSyncTable, IFormInputs, IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
@@ -79,14 +79,14 @@ import humanizeDuration from 'humanize-duration';
 export default mixins(
 	showMessage,
 ).extend({
-	name: 'SettingsActiveDirectoryView',
+	name: 'SettingsLdapView',
 	components: {
 		SettingsView,
 	},
 	data() {
 		return {
-			dataTable: [] as IActiveDirectorySyncTable[],
-			adConfig: {} as IActiveDirectoryConfig,
+			dataTable: [] as ILdapSyncTable[],
+			adConfig: {} as ILdapConfig,
 			loadingTestConnection: false,
 			loadingDryRun: false,
 			loadingLiveRun: false,
@@ -98,8 +98,8 @@ export default mixins(
 		};
 	},
 	async mounted() {
-		await this.getADConfig();
-		await this.getADSyncronizations();
+		await this.getLdapConfig();
+		await this.getLdapSyncronizations();
 	},
 	computed: {
 		currentUser() {
@@ -183,9 +183,9 @@ export default mixins(
 			};
 
 			try {
-				this.adConfig = await this.$store.dispatch('settings/updateADConfig', newConfiguration);
+				this.adConfig = await this.$store.dispatch('settings/updateLdapConfig', newConfiguration);
 				this.$showToast({
-					title: this.$locale.baseText('settings.ad.updateConfiguration'),
+					title: this.$locale.baseText('settings.ldap.updateConfiguration'),
 					message: '',
 					type: 'success',
 				});
@@ -201,15 +201,15 @@ export default mixins(
 		async onTestConnectionClick() {
 			this.loadingTestConnection = true;
 			try {
-				await this.$store.dispatch('settings/testADConnection');
+				await this.$store.dispatch('settings/testLdapConnection');
 				this.$showToast({
-					title: this.$locale.baseText('settings.ad.connectionTest'),
+					title: this.$locale.baseText('settings.ldap.connectionTest'),
 					message: 'Connection succeeded',
 					type: 'success',
 				});
 			} catch (error) {
 				this.$showToast({
-					title: this.$locale.baseText('settings.ad.connectionTestError'),
+					title: this.$locale.baseText('settings.ldap.connectionTestError'),
 					message: error.message,
 					type: 'error',
 				});
@@ -220,43 +220,43 @@ export default mixins(
 		async onDryRunClick() {
 			this.loadingDryRun = true;
 			try {
-				this.adConfig = await this.$store.dispatch('settings/runADSync', { type: 'dry' });
+				this.adConfig = await this.$store.dispatch('settings/runLdapSync', { type: 'dry' });
 				this.$showToast({
-					title: this.$locale.baseText('settings.ad.runSync'),
+					title: this.$locale.baseText('settings.ldap.runSync'),
 					message: 'Syncronization succeded',
 					type: 'success',
 				});
 			} catch (error) {
 			} finally {
 				this.loadingDryRun = false;
-				await this.getADSyncronizations();
+				await this.getLdapSyncronizations();
 			}
 		},
 		async onLiveRunClick() {
 			this.loadingLiveRun = true;
 			try {
-				this.adConfig = await this.$store.dispatch('settings/runADSync', { type: 'live' });
+				this.adConfig = await this.$store.dispatch('settings/runLdapSync', { type: 'live' });
 				this.$showToast({
-					title: this.$locale.baseText('settings.ad.runSync'),
+					title: this.$locale.baseText('settings.ldap.runSync'),
 					message: 'Syncronization succeded',
 					type: 'success',
 				});
 			} catch (error) {
 			} finally {
 				this.loadingLiveRun = false;
-				await this.getADSyncronizations();
+				await this.getLdapSyncronizations();
 			}
 		},
-		async getADConfig() {
+		async getLdapConfig() {
 			try {
-				this.adConfig = await this.$store.dispatch('settings/getADConfig');
+				this.adConfig = await this.$store.dispatch('settings/getLdapConfig');
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
 						initialValue: this.adConfig.login.enabled.toString(),
 						properties: {
 							type: 'select',
-							label: 'Enabled Active Directory Login',
+							label: 'Enabled LDAP Login',
 							required: true,
 							options: [
 								{
@@ -276,7 +276,7 @@ export default mixins(
 						properties: {
 							label: 'Login Label',
 							required: false,
-							placeholder: 'Active Directory Username or Email',
+							placeholder: 'LDAP Username or Email',
 						},
 					},
 					{
@@ -463,7 +463,7 @@ export default mixins(
 						initialValue: this.adConfig.syncronization.enabled.toString(),
 						properties: {
 							type: 'select',
-							label: 'Enabled Active Directory Syncronization',
+							label: 'Enabled LDAP Syncronization',
 							required: true,
 							options: [
 								{
@@ -497,12 +497,12 @@ export default mixins(
 				//this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			}
 		},
-		async getADSyncronizations() {
+		async getLdapSyncronizations() {
 			try {
 				this.loadingTable = true;
-				const data = await this.$store.dispatch('settings/getADSyncronizations') as IActiveDirectorySyncData[];
+				const data = await this.$store.dispatch('settings/getLdapSyncronizations') as ILdapSyncData[];
 
-				const syncDataMapper = (sync: IActiveDirectorySyncData): IActiveDirectorySyncTable => {
+				const syncDataMapper = (sync: ILdapSyncData): ILdapSyncTable => {
 					const startedAt = new Date(sync.startedAt);
 					const endedAt = new Date(sync.endedAt);
 					const runTimeInMinutes = endedAt.getTime() - startedAt.getTime();

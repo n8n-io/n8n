@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 import { Db } from '../..';
-import { SignInType } from '../../ActiveDirectory/constants';
+import { SignInType } from '../../Ldap/constants';
 import type { User } from '../../databases/entities/User';
 import { compareHash } from '../../UserManagement/UserManagementHelper';
 

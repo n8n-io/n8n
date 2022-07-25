@@ -3,7 +3,7 @@ import express from 'express';
 import type { User } from '../databases/entities/User';
 import { RunningMode, SyncStatus } from './constants';
 
-export interface ActiveDirectoryConfig {
+export interface LdapConfig {
 	login: {
 		enabled: boolean;
 		label: string;
@@ -42,8 +42,8 @@ export type AuthenticatedRequest<
 	user: User;
 };
 
-export declare namespace ActiveDirectoryConfig {
-	type Update = AuthenticatedRequest<{}, {}, ActiveDirectoryConfig, {}>;
+export declare namespace LdapConfig {
+	type Update = AuthenticatedRequest<{}, {}, LdapConfig, {}>;
 	type Sync = AuthenticatedRequest<{}, {}, { type: RunningMode }, {}>;
 }
 
@@ -54,4 +54,11 @@ export interface SyncronizationList {
 	status: SyncStatus;
 	startedAt: string;
 	errorMessage: string;
+}
+
+export interface LdapDbColumns {
+	email: string;
+	firstName: string;
+	lastName: string;
+	ldapId: string;
 }

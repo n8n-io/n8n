@@ -681,11 +681,11 @@ export const schema = {
 		},
 	},
 
-	activeDirectory: {
+	ldap: {
 		disabled: {
 			format: Boolean,
 			default: false,
-			env: 'N8N_ACTIVE_DIRECTORY_DISABLED',
+			env: 'N8N_LDAP_DISABLED',
 		},
 	},
 

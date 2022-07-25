@@ -2,13 +2,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/naming-convention */
 
-export const ACTIVE_DIRECTORY_FEATURE_NAME = 'activeDirectory';
+export const LDAP_FEATURE_NAME = 'ldap';
 
-export const ACTIVE_DIRECTORY_DISABLED = 'activeDirectory.disabled';
+export const LDAP_DISABLED = 'ldap.disabled';
 
-export const ACTIVE_DIRECTORY_LOGIN_LABEL = 'activeDirectory.loginLabel';
+export const LDAP_LOGIN_LABEL = 'ldap.loginLabel';
 
-export const ACTIVE_DIRECTORY_LOGIN_ENABLED = 'activeDirectory.loginEnabled';
+export const LDAP_LOGIN_ENABLED = 'ldap.loginEnabled';
 
 export enum SignInType {
 	LDAP = 'ldap',
@@ -25,4 +25,4 @@ export enum SyncStatus {
 	ERROR = 'error',
 }
 
-export const AD_LOG_PREPEND_MESSAGE = 'Activery Directory -';
+export const LDAP_LOG_PREPEND_MESSAGE = 'LDAP -';

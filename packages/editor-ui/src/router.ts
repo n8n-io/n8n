@@ -8,7 +8,7 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
-import SettingsActiveDirectoryView from './views/SettingsActiveDirectoryView.vue';
+import SettingsLdapView from './views/SettingsLdapView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
@@ -337,10 +337,10 @@ const router = new Router({
 			},
 		},
 		{
-			path: '/settings/ad',
-			name: VIEWS.ACTIVE_DIRECTORY_SETTINGS,
+			path: '/settings/ldap',
+			name: VIEWS.LDAP_SETTINGS,
 			components: {
-				default: SettingsActiveDirectoryView,
+				default: SettingsLdapView,
 			},
 			meta: {
 				permissions: {

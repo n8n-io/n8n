@@ -195,7 +195,7 @@ export async function init(
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);
 	collections.FeatureConfig = linkRepository(entities.FeatureConfig);
-	collections.ActiveDirectorySync = linkRepository(entities.ActiveDirectorySync);
+	collections.LdapSyncHistory = linkRepository(entities.LdapSyncHistory);
 
 	isInitialized = true;
 

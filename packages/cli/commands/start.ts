@@ -33,9 +33,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
-import { handleActiveDirectoryFirstInit } from '../src/ActiveDirectory/helpers';
-// import { ActiveDirectoryService } from '../src/ActiveDirectory/ActiveDirectoryService';
-// import { SearchEntry } from 'ldapts';
+import { handleLdapInit } from '../src/Ldap/helpers';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -217,7 +215,7 @@ export class Start extends Command {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
 
-				await handleActiveDirectoryFirstInit(databaseSettings);
+				await handleLdapInit(databaseSettings);
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
@@ -356,63 +354,6 @@ export class Start extends Command {
 				if (saveManualExecutions) {
 					this.log('\nManual executions will be visible only for the owner');
 				}
-
-				// the attibute the user uses the sign in in mattermost;
-				// so whatever they type in in the email field it's going to be mapped to
-				// the login id attribute in mattermost;
-				// THIS IS ENV VARIABLE
-				// const loginId = 'mail';
-				// const userFilter = '';
-
-				// const usernameInputFromUi = 'teresa.zeron1@gmail.com';
-				// const passwordInputFromUi = 'Ricardo_123';
-
-				// const activeDirectory = new ActiveDirectoryService();
-
-				// const aja = await getActiveDirectoryConfig();
-
-				// activeDirectory.config = aja.data;
-
-				// const searchResult = await activeDirectory.searchWithAdminBinding(
-				// 	`(${loginId}=${usernameInputFromUi})`,
-				// );
-
-				// console.log(searchResult);
-
-				// if (!searchResult.length) {
-				// 	return;
-				// }
-
-				// // get the last user in the results
-				// let user = searchResult.pop();
-
-				// if (user === undefined) {
-				// 	user = { dn: '' };
-				// }
-
-				// await activeDirectory.validUser(user.dn, passwordInputFromUi);
-
-				// const n8nUser: {
-				// 	email: string;
-				// 	firstname: string;
-				// 	lastname: string;
-				// };
-
-				// 	console.log('pase papa');
-				// } catch (error) {
-				// 	console.log('este es el error');
-				// 	console.log(error);
-				// }
-
-				// console.log('sali the la function');
-
-				// const data = getActiveDirectorySyncInstance();
-
-				// data.config = {
-				// 	seconds: 3,
-				// };
-
-				// data.start();
 
 				// Allow to open n8n editor by pressing "o"
 				if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {

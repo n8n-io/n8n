@@ -23,11 +23,11 @@ export default mixins(
 	},
 	data() {
 		let emailLabel = this.$locale.baseText('auth.email');
-		const adLoginLabel = this.$store.getters['settings/getADLoginLabel'];
-		const isAdLoginEnabled = this.$store.getters['settings/isADLoginEnabled'];
+		const ldapLoginLabel = this.$store.getters['settings/getLdapLoginLabel'];
+		const isLdapLoginEnabled = this.$store.getters['settings/isLdapLoginEnabled'];
 
-		if (isAdLoginEnabled && adLoginLabel) {
-			emailLabel = adLoginLabel;
+		if (isLdapLoginEnabled && ldapLoginLabel) {
+			emailLabel = ldapLoginLabel;
 		}
 
 		const FORM_CONFIG: IFormBoxConfig = {

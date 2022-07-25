@@ -1,9 +1,5 @@
 import { Db } from '../../src';
-import {
-	ACTIVE_DIRECTORY_DISABLED,
-	ACTIVE_DIRECTORY_FEATURE_NAME,
-	SignInType,
-} from '../../src/ActiveDirectory/constants';
+import { LDAP_DISABLED, LDAP_FEATURE_NAME, SignInType } from '../../src/Ldap/constants';
 import { BaseCommand } from '../BaseCommand';
 
 export class Reset extends BaseCommand {
@@ -12,11 +8,11 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		await Db.collections.User.delete({ signInType: SignInType.LDAP });
 
-		await Db.collections.ActiveDirectorySync.delete({});
+		await Db.collections.LdapSyncHistory.delete({});
 
-		await Db.collections.FeatureConfig.delete({ name: ACTIVE_DIRECTORY_FEATURE_NAME });
+		await Db.collections.FeatureConfig.delete({ name: LDAP_FEATURE_NAME });
 
-		await Db.collections.Settings.delete({ key: ACTIVE_DIRECTORY_DISABLED });
+		await Db.collections.Settings.delete({ key: LDAP_DISABLED });
 
 		this.logger.info('Successfully reset the database to default ldap state.');
 	}

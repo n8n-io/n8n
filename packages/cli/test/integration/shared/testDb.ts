@@ -259,7 +259,7 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
 		FeatureConfig: 'feature_config',
-		ActiveDirectorySync: 'ad_sync',
+		LdapSyncHistory: 'ldap_sync_history',
 	}[sourceName];
 }
 

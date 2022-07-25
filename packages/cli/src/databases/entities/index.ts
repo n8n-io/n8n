@@ -11,7 +11,7 @@ import { Settings } from './Settings';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { FeatureConfig } from './FeatureConfig';
-import { ActiveDirectorySync } from './ActiveDirectorySync';
+import { LdapSyncHistory } from './LdapSyncHistory';
 
 export const entities = {
 	CredentialsEntity,
@@ -25,5 +25,5 @@ export const entities = {
 	SharedWorkflow,
 	SharedCredentials,
 	FeatureConfig,
-	ActiveDirectorySync,
+	LdapSyncHistory,
 };

@@ -1,6 +1,6 @@
 import {  ActionContext, Module } from 'vuex';
 import {
-	IActiveDirectoryConfig,
+	ILdapConfig,
 	ILogLevel,
 	IN8nPrompts,
 	IN8nUISettings,
@@ -14,7 +14,7 @@ import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
 import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
-import { getADConfig, getADSyncronizations, runADSync, testADConnection, updateADConfig } from "@/api/active-directory";
+import { getLdapConfig, getLdapSyncronizations, runLdapSync, testLdapConnection, updateLdapConfig } from "@/api/ldap";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -32,7 +32,7 @@ const module: Module<ISettingsState, IRootState> = {
 			latestVersion: 0,
 			path: '/',
 		},
-		ad: {
+		ldap: {
 			enabled: false,
 			loginLabel: '',
 			loginEnabled: false,
@@ -54,14 +54,14 @@ const module: Module<ISettingsState, IRootState> = {
 		publicApiPath(state: ISettingsState): string {
 			return state.api.path;
 		},
-		isADEnabled(state: ISettingsState): boolean {
-			return state.ad.enabled;
+		isLdapEnabled(state: ISettingsState): boolean {
+			return state.ldap.enabled;
 		},
-		isADLoginEnabled(state: ISettingsState): boolean {
-			return state.ad.loginEnabled;
+		isLdapLoginEnabled(state: ISettingsState): boolean {
+			return state.ldap.loginEnabled;
 		},
-		getADLoginLabel(state: ISettingsState): string {
-			return state.ad.loginLabel;
+		getLdapLoginLabel(state: ISettingsState): string {
+			return state.ldap.loginLabel;
 		},
 		showSetupPage(state: ISettingsState) {
 			return state.userManagement.showSetupOnFirstLoad;
@@ -109,9 +109,9 @@ const module: Module<ISettingsState, IRootState> = {
 			state.api.enabled = settings.publicApi.enabled;
 			state.api.latestVersion = settings.publicApi.latestVersion;
 			state.api.path = settings.publicApi.path;
-			state.ad.enabled = settings.activeDirectory.enabled;
-			state.ad.loginLabel = settings.activeDirectory.loginLabel;
-			state.ad.loginEnabled = settings.activeDirectory.loginEnabled;
+			state.ldap.enabled = settings.ldap.enabled;
+			state.ldap.loginLabel = settings.ldap.loginLabel;
+			state.ldap.loginEnabled = settings.ldap.loginEnabled;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);
@@ -201,22 +201,22 @@ const module: Module<ISettingsState, IRootState> = {
 		async deleteApiKey(context: ActionContext<ISettingsState, IRootState>) {
 			await deleteApiKey(context.rootGetters['getRestApiContext']);
 		},
-		async getADConfig(context: ActionContext<ISettingsState, IRootState>) {
-			const config = await getADConfig(context.rootGetters['getRestApiContext']);
+		async getLdapConfig(context: ActionContext<ISettingsState, IRootState>) {
+			const config = await getLdapConfig(context.rootGetters['getRestApiContext']);
 			return config;
 		},
-		async getADSyncronizations(context: ActionContext<ISettingsState, IRootState>) {
-			const syncronizations = await getADSyncronizations(context.rootGetters['getRestApiContext']);
+		async getLdapSyncronizations(context: ActionContext<ISettingsState, IRootState>) {
+			const syncronizations = await getLdapSyncronizations(context.rootGetters['getRestApiContext']);
 			return syncronizations;
 		},
-		async testADConnection(context: ActionContext<ISettingsState, IRootState>) {
-			return await testADConnection(context.rootGetters['getRestApiContext']);
+		async testLdapConnection(context: ActionContext<ISettingsState, IRootState>) {
+			return await testLdapConnection(context.rootGetters['getRestApiContext']);
 		},
-		async updateADConfig(context: ActionContext<ISettingsState, IRootState>, adConfig: IActiveDirectoryConfig) {
-			return await updateADConfig(context.rootGetters['getRestApiContext'], adConfig);
+		async updateLdapConfig(context: ActionContext<ISettingsState, IRootState>, ldapConfig: ILdapConfig) {
+			return await updateLdapConfig(context.rootGetters['getRestApiContext'], ldapConfig);
 		},
-		async runADSync(context: ActionContext<ISettingsState, IRootState>, data) {
-			return await runADSync(context.rootGetters['getRestApiContext'], data);
+		async runLdapSync(context: ActionContext<ISettingsState, IRootState>, data) {
+			return await runLdapSync(context.rootGetters['getRestApiContext'], data);
 		},
 	},
 };

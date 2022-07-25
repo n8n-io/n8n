@@ -1,8 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
-export class CreateFeatureConfig1655579796123 implements MigrationInterface {
-	name = 'CreateFeatureConfig1655579796123';
+export class CreateLdapEntities1655579796123 implements MigrationInterface {
+	name = 'CreateLdapEntities1655579796123';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
@@ -76,7 +76,7 @@ export class CreateFeatureConfig1655579796123 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE IF NOT EXISTS "${tablePrefix}ad_sync" (
+			`CREATE TABLE IF NOT EXISTS "${tablePrefix}ldap_sync_history" (
 				"id"	INTEGER,
 				"startedAt"	datetime NOT NULL,
 				"endedAt"	datetime NOT NULL,
@@ -94,11 +94,5 @@ export class CreateFeatureConfig1655579796123 implements MigrationInterface {
 		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
-		await queryRunner.query(
-			`DROP TABLE "${tablePrefix}feature_config"`
-		);
-	}
+	async down(queryRunner: QueryRunner): Promise<void> {}
 }

@@ -23,7 +23,7 @@
 					@submit="onSubmit"
 				/>
 			</div>
-			<div v-if="!signInWithAD">
+			<div v-if="!signInWithLdap">
 				<div :class="$style.sectionHeader">
 					<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 				</div>
@@ -75,7 +75,7 @@ export default mixins(
 					required: true,
 					autocomplete: 'given-name',
 					capitalize: true,
-					disabled: this.signInWithAD,
+					disabled: this.signInWithLdap,
 				},
 			},
 			{
@@ -87,7 +87,7 @@ export default mixins(
 					required: true,
 					autocomplete: 'family-name',
 					capitalize: true,
-					disabled: this.signInWithAD,
+					disabled: this.signInWithLdap,
 				},
 			},
 			{
@@ -100,7 +100,7 @@ export default mixins(
 					validationRules: [{name: 'VALID_EMAIL'}],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: this.signInWithAD,
+					disabled: this.signInWithLdap,
 				},
 			},
 		];
@@ -109,7 +109,7 @@ export default mixins(
 		currentUser() {
 			return this.$store.getters['users/currentUser'] as IUser;
 		},
-		signInWithAD(): boolean {
+		signInWithLdap(): boolean {
 			return this.currentUser.signInType === SignInType.LDAP;
 		},
 	},

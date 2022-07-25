@@ -2,7 +2,7 @@
 import { Column, ColumnOptions, Entity, PrimaryColumn } from 'typeorm';
 import * as config from '../../../config';
 import { DatabaseType, IFeatureConfigDb } from '../..';
-import type { ActiveDirectoryConfig } from '../../ActiveDirectory/types';
+import type { LdapConfig } from '../../Ldap/types';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');
@@ -30,5 +30,5 @@ export class FeatureConfig implements IFeatureConfigDb {
 		type: resolveDataType('json') as ColumnOptions['type'],
 		default: '{}',
 	})
-	data: string | ActiveDirectoryConfig;
+	data: string | LdapConfig;
 }

@@ -263,7 +263,7 @@ export default mixins(
 					VIEWS.PERSONAL_SETTINGS,
 					VIEWS.USERS_SETTINGS,
 					VIEWS.API_SETTINGS,
-					VIEWS.ACTIVE_DIRECTORY_SETTINGS,
+					VIEWS.LDAP_SETTINGS,
 				].some((route) => this.canUserAccessRouteByName(route));
 			},
 			helpMenuItems (): object[] {
