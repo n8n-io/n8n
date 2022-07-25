@@ -5,9 +5,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 import { Route } from "vue-router";
-import posthog from "posthog-js";
 
-import { POSTHOG_API_KEY } from "@/constants";
 import type { ILogLevel, INodeCreateElement, IRootState } from "@/Interface";
 import type { Store } from "vuex";
 import type { IUserNodesPanelSession } from "./telemetry.types";
@@ -29,13 +27,9 @@ export class Telemetry {
 	private previousPath: string;
 	private store: Store<IRootState> | null;
 
-	private logLevel: string | null = null;
-
 	private get rudderStack() {
 		return window.rudderanalytics;
 	}
-
-	private postHogInitialized = false;
 
 	private userNodesPanelSession: IUserNodesPanelSession = {
 		sessionId: '',
@@ -62,67 +56,38 @@ export class Telemetry {
 			deploymentType: string;
 	 },
 	) {
-		if (!telemetrySettings.enabled) return;
+		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
-		if (logLevel) this.logLevel = logLevel;
+		const { config: { key, url } } = telemetrySettings;
 
 		this.store = store;
 
-		if (!this.rudderStack && telemetrySettings.config) {
-			const logging = this.logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
+		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
 
-			this.initRudderStack(
-				telemetrySettings.config.key,
-				telemetrySettings.config.url,
-				{
-					integrations: { All: false },
-					loadIntegration: false,
-					...logging,
-				},
-			);
-		}
+		this.initRudderStack(
+			key,
+			url,
+			{
+				integrations: { All: false },
+				loadIntegration: false,
+				...logging,
+			},
+		);
 
 		this.identify(instanceId, userId);
 
-		if (this.rudderStack) {
-			this.flushPageEvents();
-			this.track('Session started', { session_id: store.getters.sessionId });
-		}
+		this.flushPageEvents();
+		this.track('Session started', { session_id: store.getters.sessionId });
 	}
 
 	identify(instanceId: string, userId?: string) {
 		const traits = { instance_id: instanceId };
 
 		if (userId) {
-
-			if (this.rudderStack) {
-				const fullId = [instanceId, userId].join('#');
-				this.rudderStack.identify(fullId, traits);
-			}
-
-			if (this.postHogInitialized) {
-				const fullId = [instanceId, userId].join('_'); // PostHog disallows # in ID
-				posthog.identify(fullId, traits);
-
-				if (this.store) {
-					this.setMetaData(
-						{ is_owner: this.store.getters['users/globalRoleName'] === 'owner' },
-						{ target: 'user' },
-					);
-				}
-			}
-
-			return;
-		}
-
-		if (this.rudderStack) {
+			this.rudderStack.identify(`${instanceId}#${userId}`, traits);
+		} else {
 			this.rudderStack.reset();
 			this.rudderStack.identify(undefined, traits);
-		}
-
-		if (this.postHogInitialized) {
-			posthog.reset();
-			posthog.identify(undefined, traits);
 		}
 	}
 
@@ -286,49 +251,5 @@ export class Telemetry {
 
 		this.rudderStack.loadJS();
 		this.rudderStack.load(key, url, options);
-	}
-
-	initPostHog() {
-		if (this.postHogInitialized) return;
-
-		// @TODO_ON_COMPLETION: Set to !['desktop_mac', 'desktop_win', 'cloud'].includes(this.store?.getters.deploymentType)
-		const disableSessionRecording = true;
-
-		return new Promise((resolve) => {
-			posthog.init(POSTHOG_API_KEY, {
-				autocapture: false, // @TODO_PART_3: Confirm if needed for session recording, if so enable
-				disable_session_recording: disableSessionRecording,
-			});
-
-			this.postHogInitialized = true;
-
-			posthog.debug(); // @TODO_ON_COMPLETION: Make conditional on `this.logLevel === 'debug'`
-
-			posthog.onFeatureFlags(resolve);
-		});
-	}
-
-	isFeatureFlagEnabled(featureFlagName: string) {
-		if (!this.postHogInitialized) return;
-
-		return posthog.isFeatureEnabled(featureFlagName);
-	}
-
-	/**
-	 * Attach metadata to a user, or to every event sent by a user.
-	 *
-	 * User: https://posthog.com/docs/integrate/client/js#sending-user-information
-	 * User events: https://posthog.com/docs/integrate/client/js#super-properties
-	 */
-	setMetaData(metadata: object, { target }: { target: 'user' | 'userEvents' }) {
-		if (!this.postHogInitialized) return;
-
-		if (target === 'user') return posthog.people.set(metadata);
-
-		return posthog.register(metadata);
-	}
-
-	capture(eventName: string, props: object) {
-		posthog.capture(eventName, props);
 	}
 }

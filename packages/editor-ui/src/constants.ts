@@ -290,5 +290,3 @@ export const TEST_PIN_DATA = [
 ];
 export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`, '$parameter'];
 
-// @TODO_PART_4: Replace with n8n account's key
-export const POSTHOG_API_KEY = "phc_QLECpA3yiIJcyafUv0pe6EoxvdfIDZ5A12dGpGXH4jV";
