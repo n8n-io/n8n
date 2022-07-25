@@ -1295,7 +1295,42 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	}
 
 	jsonData.forEach((data) => {
-		returnData.push({ json: data });
+		const { json } = data;
+		if (json === undefined) {
+			returnData.push({ json: data });
+		} else {
+			returnData.push({ ...(data as INodeExecutionData) });
+		}
+	});
+
+	return returnData;
+}
+
+/**
+ * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
+ *
+ * @export
+ * @param {(IDataObject | IDataObject[])} data
+ * @returns {INodeExecutionData[]}
+ */
+export function preparePairedData(
+	data: IDataObject | IDataObject[],
+	index = 0,
+): INodeExecutionData[] {
+	const returnData: INodeExecutionData[] = [];
+
+	if (!Array.isArray(data)) {
+		data = [data];
+	}
+
+	data.forEach((jsonData) => {
+		returnData.push({
+			json: jsonData,
+			pairedItem: {
+				input: index,
+				item: index,
+			},
+		});
 	});
 
 	return returnData;
@@ -2401,6 +2436,7 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
+				preparePairedData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);
