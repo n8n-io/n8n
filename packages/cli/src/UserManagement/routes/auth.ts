@@ -11,26 +11,7 @@ import { sanitizeUser } from '../UserManagementHelper';
 import { User } from '../../databases/entities/User';
 import type { LoginRequest } from '../../requests';
 import config = require('../../../config');
-// import { handleActiveDirectoryLogin } from '../../ActiveDirectory/helpers';
 import { handleEmailLogin, handleLdapLogin } from '../../UserAuthentication';
-
-// const handleEmailLogin = async (email: string, password: string): Promise<User | undefined> => {
-// 	const user = await Db.collections.User.findOne(
-// 		{
-// 			email,
-// 			signInType: 'email',
-// 		},
-// 		{
-// 			relations: ['globalRole'],
-// 		},
-// 	);
-
-// 	if (user?.password && (await compareHash(password, user.password))) {
-// 		return undefined;
-// 	}
-
-// 	return user;
-// };
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -89,6 +70,8 @@ export function authenticationMethods(this: N8nApp): void {
 				try {
 					user = await resolveJwt(cookieContents);
 
+					// currently only LDAP users during syncronization
+					// can be set to disabled
 					if (user.disabled === true) {
 						res.clearCookie(AUTH_COOKIE_NAME);
 						const error = new Error('User disabled cannot log in');
