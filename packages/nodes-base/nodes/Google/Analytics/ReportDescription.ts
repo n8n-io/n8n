@@ -17,6 +17,7 @@ export const reportOperations: INodeProperties[] = [
 			show: {
 				resource: [
 					'report',
+					'reportGA4',
 				],
 			},
 		},
@@ -52,9 +53,6 @@ export const reportFields: INodeProperties[] = [
 				operation: [
 					'get',
 				],
-				apiVersion: [
-					'reportingAPI',
-				],
 			},
 		},
 		placeholder: '123456',
@@ -73,18 +71,15 @@ export const reportFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'report',
+					'reportGA4',
 				],
 				operation: [
 					'get',
 				],
-				apiVersion: [
-					'dataAPI',
-				],
 			},
 		},
 		placeholder: '123456',
-		description: 'The Property ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The Property ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	 //-------------------------------------------------------------------//
 	{
@@ -98,6 +93,7 @@ export const reportFields: INodeProperties[] = [
 				],
 				resource: [
 					'report',
+					'reportGA4',
 				],
 			},
 		},
@@ -115,6 +111,7 @@ export const reportFields: INodeProperties[] = [
 				],
 				resource: [
 					'report',
+					'reportGA4',
 				],
 				returnAll: [
 					false,
@@ -139,6 +136,7 @@ export const reportFields: INodeProperties[] = [
 				],
 				resource: [
 					'report',
+					'reportGA4',
 				],
 			},
 		},
@@ -158,9 +156,6 @@ export const reportFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
-				],
-				apiVersion: [
-					'reportingAPI',
 				],
 			},
 		},
@@ -403,13 +398,10 @@ export const reportFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'report',
+					'reportGA4',
 				],
 				operation: [
 					'get',
-				],
-				apiVersion: [
-					'dataAPI',
 				],
 			},
 		},
@@ -486,7 +478,7 @@ export const reportFields: INodeProperties[] = [
 									],
 								},
 								default: '',
-								description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -540,7 +532,7 @@ export const reportFields: INodeProperties[] = [
 									],
 								},
 								default: '',
-								description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -587,7 +579,7 @@ export const reportFields: INodeProperties[] = [
 									],
 								},
 								default: '',
-								description: 'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -613,7 +605,7 @@ export const reportFields: INodeProperties[] = [
 									],
 								},
 								default: '',
-								description: 'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description: 'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Order Type',

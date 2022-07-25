@@ -16,8 +16,8 @@ import {
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
 	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
-	const baseURL = apiVersion === 'dataAPI' ? 'https://analyticsdata.googleapis.com' : 'https://analyticsreporting.googleapis.com';
+	const resource = this.getNodeParameter('resource', 0) as string;
+	const baseURL = resource === 'reportGA4' ? 'https://analyticsdata.googleapis.com' : 'https://analyticsreporting.googleapis.com';
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -49,12 +49,12 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+	const resource = this.getNodeParameter('resource', 0) as string;
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
-	if (apiVersion === 'dataAPI') {
+	if (resource === 'reportGA4') {
 		let rows: IDataObject[] = [];
 		query.limit = 100000;
 		query.offset = 0;
@@ -134,7 +134,7 @@ export function simplifyGA4 (response: IDataObject) {
 	});
 
 	return returnData;
-};
+}
 
 export function merge(responseData: [any]) { // tslint:disable-line:no-any
 	const response: { columnHeader: IDataObject, data: { rows: [] } } = {

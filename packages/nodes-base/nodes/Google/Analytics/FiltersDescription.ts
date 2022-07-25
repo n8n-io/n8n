@@ -26,7 +26,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -93,7 +93,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Values',
@@ -125,7 +125,7 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value Type',
@@ -249,7 +249,7 @@ const metricsFilterExpressions: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value Type',
@@ -296,7 +296,7 @@ const metricsFilterExpressions: INodeProperties[] = [
 							],
 						},
 						default: '',
-						description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+						description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value Type',

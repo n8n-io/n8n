@@ -42,7 +42,7 @@ export class GoogleAnalytics implements INodeType {
 		name: 'googleAnalytics',
 		icon: 'file:analytics.svg',
 		group: ['transform'],
-		version: [1, 2],
+		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Use the Google Analytics API',
 		defaults: {
@@ -58,61 +58,17 @@ export class GoogleAnalytics implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'API Version',
-				name: 'apiVersion',
-				type: 'options',
-				isNodeSetting: true,
-				displayOptions: {
-					show: {
-						'@version': [
-							1,
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Reporting API V4',
-						value: 'reportingAPI',
-					},
-					{
-						name: 'Data API V1',
-						value: 'dataAPI',
-					},
-				],
-				default: 'reportingAPI',
-			},
-			{
-				displayName: 'API Version',
-				name: 'apiVersion',
-				type: 'options',
-				isNodeSetting: true,
-				displayOptions: {
-					show: {
-						'@version': [
-							2,
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Reporting API V4',
-						value: 'reportingAPI',
-					},
-					{
-						name: 'Data API V1',
-						value: 'dataAPI',
-					},
-				],
-				default: 'dataAPI',
-			},
-			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Report',
+						name: 'Report for Google Analytics 4',
+						value: 'reportGA4',
+					},
+					{
+						name: 'Report for Uinversal Analytic',
 						value: 'report',
 					},
 					{
@@ -120,33 +76,6 @@ export class GoogleAnalytics implements INodeType {
 						value: 'userActivity',
 					},
 				],
-				displayOptions: {
-					show: {
-						apiVersion: [
-							'reportingAPI',
-						],
-					},
-				},
-				default: 'report',
-			},
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Report',
-						value: 'report',
-					},
-				],
-				displayOptions: {
-					show: {
-						apiVersion: [
-							'dataAPI',
-						],
-					},
-				},
 				default: 'report',
 			},
 			//-------------------------------
@@ -332,7 +261,6 @@ export class GoogleAnalytics implements INodeType {
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
 		let method = '';
 		const qs: IDataObject = {};
@@ -341,7 +269,7 @@ export class GoogleAnalytics implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if(resource === 'report') {
-					if(operation === 'get' && apiVersion === 'reportingAPI') {
+					if(operation === 'get') {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 						method = 'POST';
 						endpoint = '/v4/reports:batchGet';
@@ -421,8 +349,9 @@ export class GoogleAnalytics implements INodeType {
 							responseData = merge(responseData);
 						}
 					}
-
-					if(operation === 'get' && apiVersion === 'dataAPI') {
+				}
+				if(resource === 'reportGA4') {
+					if(operation === 'get') {
 						//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
 						const propertyId = this.getNodeParameter('propertyId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
@@ -532,7 +461,7 @@ export class GoogleAnalytics implements INodeType {
 							responseData = await googleApiRequestAllItems.call(this, '', method, endpoint, body, qs);
 						} else {
 							body.limit = this.getNodeParameter('limit', 0) as number;
-							responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+							responseData = [await googleApiRequest.call(this, method, endpoint, body, qs)];
 						}
 
 						if (responseData && responseData.length && simple === true) {
