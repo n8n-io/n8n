@@ -20,9 +20,12 @@ export class CalendlyApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		//check whether the token is an API Key or an access token
-		const { apiKey } = credentials as { apiKey: string } ;
+		const { apiKey } = credentials as { apiKey: string };
 		const tokenType = getAuthenticationType(apiKey);
 		// remove condition once v1 is deprecated
 		// and only inject credentials as an access token
@@ -42,7 +45,7 @@ export class CalendlyApi implements ICredentialType {
 	};
 }
 
- const getAuthenticationType = (data: string): 'accessToken' | 'apiKey' => {
+const getAuthenticationType = (data: string): 'accessToken' | 'apiKey' => {
 	// The access token is a JWT, so it will always include dots to separate
 	// header, payoload and signature.
 	return data.includes('.') ? 'accessToken' : 'apiKey';

@@ -21,6 +21,7 @@ import {
 	INodeTypeData,
 	INodeTypeDescription,
 	INodeVersionedType,
+	IPinData,
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
@@ -30,7 +31,6 @@ import {
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
-	PinData,
 } from 'n8n-workflow';
 
 import {
@@ -330,11 +330,16 @@ export const workflowHelpers = mixins(
 
 				const workflowName = this.$store.getters.workflowName;
 
-				if (copyData === true) {
-					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
-				} else {
-					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes, settings: this.$store.getters.workflowSettings});
-				}
+				return new Workflow({
+					id: workflowId,
+					name: workflowName,
+					nodes: copyData ? JSON.parse(JSON.stringify(nodes)) : nodes,
+					connections: copyData? JSON.parse(JSON.stringify(connections)): connections,
+					active: false,
+					nodeTypes,
+					settings: this.$store.getters.workflowSettings,
+					pinData: this.$store.getters.pinData,
+				});
 			},
 
 			// Returns the currently loaded workflow as JSON.
@@ -526,7 +531,7 @@ export const workflowHelpers = mixins(
 				}
 
 				parentNode.forEach((parentNodeName) => {
-					const pinData: PinData[string] = this.$store.getters['pinDataByNodeName'](parentNodeName);
+					const pinData: IPinData[string] = this.$store.getters['pinDataByNodeName'](parentNodeName);
 
 					if (pinData) {
 						runExecutionData = {

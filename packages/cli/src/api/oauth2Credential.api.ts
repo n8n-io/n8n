@@ -338,6 +338,7 @@ oauth2CredentialController.get(
 			return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-callback.html'));
 		} catch (error) {
 			// Error response
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			return ResponseHelper.sendErrorResponse(res, error);
 		}
 	},

@@ -1,13 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class PipedriveOAuth2Api implements ICredentialType {
 	name = 'pipedriveOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'Pipedrive OAuth2 API';
 	documentationUrl = 'pipedrive';
 	properties: INodeProperties[] = [

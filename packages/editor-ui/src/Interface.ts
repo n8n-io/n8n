@@ -14,6 +14,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	IRunExecutionData,
 	IRun,
 	IRunData,
@@ -21,14 +22,8 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
-	PinData,
 	PublicInstalledPackage,
 } from 'n8n-workflow';
-
-import {
-	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-} from './constants';
-
 
 export * from 'n8n-design-system/src/types';
 
@@ -218,7 +213,7 @@ export interface IStartRunData {
 	startNodes?: string[];
 	destinationNode?: string;
 	runData?: IRunData;
-	pinData?: PinData;
+	pinData?: IPinData;
 }
 
 export interface IRunDataUi {
@@ -253,7 +248,7 @@ export interface IWorkflowData {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: string[];
-	pinData?: PinData;
+	pinData?: IPinData;
 }
 
 export interface IWorkflowDataUpdate {
@@ -264,7 +259,7 @@ export interface IWorkflowDataUpdate {
 	settings?: IWorkflowSettings;
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
-	pinData?: PinData;
+	pinData?: IPinData;
 }
 
 export interface IWorkflowTemplate {
@@ -287,7 +282,7 @@ export interface IWorkflowDb {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
-	pinData?: PinData;
+	pinData?: IPinData;
 }
 
 // Identical to cli.Interfaces.ts

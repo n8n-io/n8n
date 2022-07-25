@@ -10,6 +10,7 @@ export class ExpressionError extends ExecutionBaseError {
 		options?: {
 			causeDetailed?: string;
 			description?: string;
+			descriptionTemplate?: string;
 			runIndex?: number;
 			itemIndex?: number;
 			messageTemplate?: string;
@@ -21,6 +22,10 @@ export class ExpressionError extends ExecutionBaseError {
 
 		if (options?.description !== undefined) {
 			this.description = options.description;
+		}
+
+		if (options?.descriptionTemplate !== undefined) {
+			this.context.descriptionTemplate = options.descriptionTemplate;
 		}
 
 		if (options?.causeDetailed !== undefined) {
