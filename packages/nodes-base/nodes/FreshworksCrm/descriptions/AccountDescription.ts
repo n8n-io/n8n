@@ -112,7 +112,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getBusinessTypes',
 				},
-				description: 'ID of the business that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the business that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'City',
@@ -143,7 +143,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getIndustryTypes',
 				},
-				description: 'ID of the industry that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the industry that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'LinkedIn',
@@ -167,7 +167,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user to whom the account is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to whom the account is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Parent Sales Account ID',
@@ -198,7 +198,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTerritories',
 				},
-				description: 'ID of the territory that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the territory that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Twitter',
@@ -275,7 +275,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'View Name or ID',
 		name: 'view',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getAccountViews',
@@ -393,7 +393,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getBusinessTypes',
 				},
-				description: 'ID of the business that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the business that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'City',
@@ -424,7 +424,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getIndustryTypes',
 				},
-				description: 'ID of the industry that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the industry that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'LinkedIn',
@@ -455,7 +455,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'ID of the user to whom the account is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the user to whom the account is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Parent Sales Account ID',
@@ -486,7 +486,7 @@ export const accountFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getTerritories',
 				},
-				description: 'ID of the territory that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'ID of the territory that the account belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Twitter',

@@ -188,6 +188,7 @@ export const workflowRun = mixins(
 				const startRunData: IStartRunData = {
 					workflowData,
 					runData: newRunData,
+					pinData: workflowData.pinData,
 					startNodes,
 				};
 				if (nodeName) {
@@ -208,6 +209,7 @@ export const workflowRun = mixins(
 					data: {
 						resultData: {
 							runData: newRunData || {},
+							pinData: workflowData.pinData,
 							startNodes,
 							workflowData,
 						},

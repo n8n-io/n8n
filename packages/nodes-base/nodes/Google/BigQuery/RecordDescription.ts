@@ -56,7 +56,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the project to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the project to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Dataset Name or ID',
@@ -80,7 +80,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the dataset to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the dataset to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -105,7 +105,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the table to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the table to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Columns',
@@ -196,7 +196,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Dataset Name or ID',
@@ -220,7 +220,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -245,7 +245,7 @@ export const recordFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

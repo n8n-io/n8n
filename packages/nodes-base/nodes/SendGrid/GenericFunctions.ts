@@ -14,7 +14,6 @@ import {
 } from 'n8n-workflow';
 
 export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
 	const host = 'api.sendgrid.com/v3';
 
 	const options: OptionsWithUri = {
@@ -34,7 +33,6 @@ export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 
 	try {
-		//@ts-ignore
 		return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

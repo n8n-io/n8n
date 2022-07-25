@@ -15,13 +15,10 @@ export async function apiTemplateIoApiRequest(
 	qs = {},
 	body = {},
 ) {
-	const { apiKey } = await this.getCredentials('apiTemplateIoApi') as { apiKey: string };
-
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
 			Accept: 'application/json',
-			'X-API-KEY': `${apiKey}`,
 		},
 		uri: `https://api.apitemplate.io/v1${endpoint}`,
 		method,
@@ -41,7 +38,7 @@ export async function apiTemplateIoApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.requestWithAuthentication.call(this, 'apiTemplateIoApi',options);
 		if (response.status === 'error') {
 			throw new NodeApiError(this.getNode(), response.message);
 		}

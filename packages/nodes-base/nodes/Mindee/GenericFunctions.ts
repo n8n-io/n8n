@@ -1,37 +1,42 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
+export async function mindeeApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	path: string,
+	body: any = {}, // tslint:disable-line:no-any
+	qs: IDataObject = {},
+	option = {},
+): Promise<any> {// tslint:disable-line:no-any
+
 
 	const resource = this.getNodeParameter('resource', 0) as string;
 
-	let credentials;
+	let service;
 
 	if (resource === 'receipt') {
-		credentials = await this.getCredentials('mindeeReceiptApi');
+		service = 'mindeeReceiptApi';
 	} else {
-		credentials = await this.getCredentials('mindeeInvoiceApi');
+		service = 'mindeeInvoiceApi';
 	}
 
+	const version = this.getNodeParameter('apiVersion', 0) as number;
+	// V1 of mindee is deprecated, we are keeping it for now but now V3 is active
+	const url =
+		version === 1
+			? `https://api.mindee.net/products${path}`
+			: `https://api.mindee.net/v1/products/mindee${path}`;
+
 	const options: OptionsWithUri = {
-		headers: {
-			'X-Inferuser-Token': credentials.apiKey,
-		},
+		headers: {},
 		method,
 		body,
 		qs,
-		uri: `https://api.mindee.net/products${path}`,
+		uri: url,
 		json: true,
 	};
 	try {
@@ -44,19 +49,17 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+
+		return await this.helpers.requestWithAuthentication.call(this, service, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export function cleanData(predictions: IDataObject[]) {
-
+export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 	const newData: IDataObject = {};
 
 	for (const key of Object.keys(predictions[0])) {
-
 		const data = predictions[0][key] as IDataObject | IDataObject[];
 
 		if (key === 'taxes' && data.length) {
@@ -65,13 +68,46 @@ export function cleanData(predictions: IDataObject[]) {
 				rate: (data as IDataObject[])[0].rate,
 			};
 		} else if (key === 'locale') {
-				//@ts-ignore
-				newData['currency'] = data.currency;
-				//@ts-ignore
-				newData['locale'] = data.value;
-		} else {
 			//@ts-ignore
-			newData[key] = data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+			newData['currency'] = data.currency;
+			//@ts-ignore
+			newData['locale'] = data.value;
+		} else {
+
+			newData[key] =
+				//@ts-ignore
+				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+		}
+	}
+
+	return newData;
+}
+
+export function cleanData(document: IDataObject) {
+	// @ts-ignore
+	const prediction = document.inference.prediction as IDataObject;
+	const newData: IDataObject = {};
+	newData['id'] = document.id;
+	newData['name'] = document.name;
+	newData['number_of_pages'] = document.n_pages;
+	for (const key of Object.keys(prediction)) {
+		const data = prediction[key] as IDataObject | IDataObject[];
+
+		if (key === 'taxes' && data.length) {
+			newData[key] = {
+				amount: (data as IDataObject[])[0].amount,
+				rate: (data as IDataObject[])[0].rate,
+			};
+		} else if (key === 'locale') {
+			//@ts-ignore
+			newData['currency'] = data.currency;
+			//@ts-ignore
+			newData['locale'] = data.value;
+		} else {
+
+			newData[key] =
+				//@ts-ignore
+				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
 		}
 	}
 
