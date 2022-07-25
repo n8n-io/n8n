@@ -271,22 +271,22 @@ nodesController.patch(
 			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
 		}
 
-		const installedPackage = await findInstalledPackage(name);
+		const previouslyInstalledPackage = await findInstalledPackage(name);
 
-		if (!installedPackage) {
+		if (!previouslyInstalledPackage) {
 			throw new ResponseHelper.ResponseError(PACKAGE_NOT_INSTALLED, undefined, 400);
 		}
 
 		try {
 			const newInstalledPackage = await LoadNodesAndCredentials().updateNpmModule(
 				parseNpmPackageName(name).packageName,
-				installedPackage,
+				previouslyInstalledPackage,
 			);
 
 			const pushInstance = Push.getInstance();
 
 			// broadcast to connected frontends that node list has been updated
-			installedPackage.installedNodes.forEach((node) => {
+			previouslyInstalledPackage.installedNodes.forEach((node) => {
 				pushInstance.send('removeNodeType', {
 					name: node.type,
 					version: node.latestVersion,
@@ -303,7 +303,7 @@ nodesController.patch(
 			void InternalHooksManager.getInstance().onCommunityPackageUpdateFinished({
 				user_id: req.user.id,
 				package_name: name,
-				package_version_current: installedPackage.installedVersion,
+				package_version_current: previouslyInstalledPackage.installedVersion,
 				package_version_new: newInstalledPackage.installedVersion,
 				package_node_names: newInstalledPackage.installedNodes.map((node) => node.name),
 				package_author: newInstalledPackage.authorName,
@@ -312,7 +312,7 @@ nodesController.patch(
 
 			return newInstalledPackage;
 		} catch (error) {
-			installedPackage.installedNodes.forEach((node) => {
+			previouslyInstalledPackage.installedNodes.forEach((node) => {
 				const pushInstance = Push.getInstance();
 				pushInstance.send('removeNodeType', {
 					name: node.type,
