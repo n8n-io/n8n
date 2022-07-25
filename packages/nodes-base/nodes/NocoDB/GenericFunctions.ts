@@ -35,14 +35,8 @@ interface IAttachment {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
-	let credentials;
-
-	if (authenticationMethod === 'nocoDbApiToken') {
-		credentials = await this.getCredentials('nocoDbApiToken');
-	} else if (authenticationMethod === 'nocoDb') {
-		credentials = await this.getCredentials('nocoDb');
-	}
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	const credentials = await this.getCredentials(authenticationMethod);
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -69,10 +63,8 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		delete options.body;
 	}
 
-	const credentialType = authenticationMethod === 'nocoDb' ? 'nocoDb' : 'nocoDbApiToken';
-
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
