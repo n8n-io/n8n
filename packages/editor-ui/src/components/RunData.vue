@@ -113,8 +113,8 @@
 
 
 			<n8n-tooltip placement="right" v-if="canLinkRuns" :content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint': 'runData.linking.hint')">
-				<n8n-icon-button v-if="linkedRuns" icon="unlink" text size="small" @click="unlinkRun" />
-				<n8n-icon-button v-else icon="link" text size="small" @click="linkRun" />
+				<n8n-icon-button v-if="linkedRuns" icon="unlink" text type="tertiary" size="small" @click="unlinkRun" />
+				<n8n-icon-button v-else icon="link" text type="tertiary" size="small" @click="linkRun" />
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
