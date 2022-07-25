@@ -409,7 +409,8 @@ export default mixins(
 		},
 		methods: {
 			onRunNode(nodeName: string, source: string) {
-				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				const node = this.$store.getters.getNodeByName(nodeName);
+				this.$telemetry.track('User clicked execute node button', { node_type: node ? node.type : null, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {

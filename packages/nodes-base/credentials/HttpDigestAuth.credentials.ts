@@ -1,8 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HttpDigestAuth implements ICredentialType {
 	name = 'httpDigestAuth';
@@ -16,7 +12,6 @@ export class HttpDigestAuth implements ICredentialType {
 			name: 'user',
 			type: 'string',
 			default: '',
-
 		},
 		{
 			displayName: 'Password',
