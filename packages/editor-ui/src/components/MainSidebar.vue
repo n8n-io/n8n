@@ -647,7 +647,7 @@ export default mixins(
 		height: 35px;
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.item-title {
 			position: absolute;
@@ -667,7 +667,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.el-menu--collapse {
 			width: 75px;
