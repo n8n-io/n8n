@@ -10,6 +10,7 @@ import {
 	NodeInputConnections,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { v4 as uuidv4} from 'uuid';
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
@@ -724,7 +725,7 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	});
 
 	if (!hasStartNode) {
-		nodes.push({...DEFAULT_START_NODE});
+		nodes.push({...DEFAULT_START_NODE, id: uuidv4() });
 	}
 	return nodes;
 };

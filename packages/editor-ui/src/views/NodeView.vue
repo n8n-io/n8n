@@ -1458,6 +1458,7 @@ export default mixins(
 				}
 
 				const newNodeData: INodeUi = {
+					id: uuidv4(),
 					name: nodeTypeData.defaults.name as string,
 					type: nodeTypeData.name,
 					typeVersion: Array.isArray(nodeTypeData.version)
@@ -1950,7 +1951,10 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
+				await this.addNodes([{
+					id: uuidv4(),
+					...CanvasHelpers.DEFAULT_START_NODE,
+				}]);
 
 				this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
 
@@ -1965,6 +1969,7 @@ export default mixins(
 						this.$nextTick(async () => {
 							await this.addNodes([
 								{
+									id: uuidv4(),
 									...CanvasHelpers.WELCOME_STICKY_NODE,
 									parameters: {
 										// Use parameters from the template but add translated content
