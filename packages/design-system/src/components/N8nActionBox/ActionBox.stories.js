@@ -5,6 +5,12 @@ export default {
 	title: 'Atoms/ActionBox',
 	component: N8nActionBox,
 	argTypes: {
+		calloutTheme: {
+			control: {
+				type: 'select',
+				options: ['info', 'success', 'warning', 'danger', 'custom'],
+			},
+		},
 	},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },

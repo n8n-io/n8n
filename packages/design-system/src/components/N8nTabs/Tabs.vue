@@ -7,28 +7,35 @@
 			<n8n-icon icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
-			<div  v-for="option in options" :key="option.value" :class="{ [$style.alignRight]: option.align === 'right' }">
-				<a
-					v-if="option.href"
-					target="_blank"
-					:href="option.href"
-					:class="[$style.link, $style.tab]"
-					@click="() => handleTabClick(option.value)"
-				>
-					<div>
-						{{ option.label }}
-						<span :class="$style.external"><n8n-icon icon="external-link-alt" size="small" /></span>
-					</div>
-				</a>
+			<div  v-for="option in options"
+				:key="option.value"
+				:id="option.value"
+				:class="{ [$style.alignRight]: option.align === 'right' }"
+			>
+				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
+					<div slot="content" v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)"></div>
+					<a
+						v-if="option.href"
+						target="_blank"
+						:href="option.href"
+						:class="[$style.link, $style.tab]"
+						@click="() => handleTabClick(option.value)"
+					>
+						<div>
+							{{ option.label }}
+							<span :class="$style.external"><n8n-icon icon="external-link-alt" size="small" /></span>
+						</div>
+					</a>
 
-				<div
-					v-else
-					:class="{ [$style.tab]: true, [$style.activeTab]: value === option.value }"
-					@click="() => handleTabClick(option.value)"
-				>
-					<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
-					<span v-if="option.label">{{ option.label }}</span>
-				</div>
+					<div
+						v-else
+						:class="{ [$style.tab]: true, [$style.activeTab]: value === option.value }"
+						@click="() => handleTabClick(option.value)"
+					>
+						<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</div>
+				</n8n-tooltip>
 			</div>
 		</div>
 	</div>
@@ -82,6 +89,9 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		handleTooltipClick(tab: string, event: MouseEvent) {
+			this.$emit('tooltipClick', tab, event);
+		},
 		handleTabClick(tab: string) {
 			this.$emit('input', tab);
 		},
