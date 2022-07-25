@@ -29,6 +29,3 @@ export const NPM_COMMAND_TOKENS = {
 };
 
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';
-
-// @TODO_PART_4: Replace with n8n account's key
-export const POSTHOG_API_KEY = 'phc_QLECpA3yiIJcyafUv0pe6EoxvdfIDZ5A12dGpGXH4jV';
