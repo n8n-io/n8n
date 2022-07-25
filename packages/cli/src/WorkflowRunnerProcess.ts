@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -230,6 +231,7 @@ export class WorkflowRunnerProcess {
 			nodeTypes,
 			staticData: this.data.workflowData.staticData,
 			settings: this.data.workflowData.settings,
+			pinData: this.data.pinData,
 		});
 		await checkPermissionsForExecution(this.workflow, userId);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
