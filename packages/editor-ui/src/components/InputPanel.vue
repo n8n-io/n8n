@@ -37,7 +37,7 @@
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
 				<n8n-tooltip v-if="!readOnly" :manual="true" :value="showDraggableHint && showDraggableHintWithDelay">
 					<div slot="content" v-html="$locale.baseText('dataMapping.dragFromPreviousHint',  { interpolate: { name: focusedMappableInput } })"></div>
-					<NodeExecuteButton type="outline" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
+					<NodeExecuteButton type="secondary" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
 				</n8n-tooltip>
 				<n8n-text v-if="!readOnly" tag="div" size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
@@ -115,7 +115,7 @@ export default mixins(
 		},
 		showDraggableHint(): boolean {
 			const toIgnore = [START_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
-			if (toIgnore.includes(this.currentNode.type)) {
+			if (!this.currentNode || toIgnore.includes(this.currentNode.type)) {
 				return false;
 			}
 
@@ -145,7 +145,7 @@ export default mixins(
 		activeNode (): INodeUi | null {
 			return this.$store.getters.activeNode;
 		},
-		currentNode (): INodeUi {
+		currentNode (): INodeUi | null {
 			return this.$store.getters.getNodeByName(this.currentNodeName);
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
@@ -164,7 +164,7 @@ export default mixins(
 			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
 		},
 		currentNodeDepth (): number {
-			const node = this.parentNodes.find((node) => node.name === this.currentNode.name);
+			const node = this.parentNodes.find((node) => this.currentNode && node.name === this.currentNode.name);
 			return node ? node.depth: -1;
 		},
 	},

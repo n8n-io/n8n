@@ -24,10 +24,10 @@
 				<div :class="$style.credActions">
 					<n8n-icon-button
 						v-if="currentCredential"
-						size="small"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
-						type="text"
+						size="medium"
+						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
 						@click="deleteCredential"
@@ -884,6 +884,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 }
 
 .credActions {
+	display: flex;
+	align-items: flex-start;
 	margin-right: var(--spacing-xl);
 	> * {
 		margin-left: var(--spacing-2xs);

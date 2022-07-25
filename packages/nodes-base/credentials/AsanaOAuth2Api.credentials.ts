@@ -1,13 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AsanaOAuth2Api implements ICredentialType {
 	name = 'asanaOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'Asana OAuth2 API';
 	documentationUrl = 'asana';
 	properties: INodeProperties[] = [

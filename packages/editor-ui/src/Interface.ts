@@ -14,6 +14,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	IRunExecutionData,
 	IRun,
 	IRunData,
@@ -21,6 +22,7 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
 
 export * from 'n8n-design-system/src/types';
@@ -138,13 +140,13 @@ export interface INodeUpdatePropertiesInformation {
 export type XYPosition = [number, number];
 
 export type MessageType = 'success' | 'warning' | 'info' | 'error';
-
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
 	notes?: string;
 	issues?: INodeIssues;
 	name: string;
+	pinData?: IDataObject;
 }
 
 export interface INodeTypesMaxCount {
@@ -211,6 +213,7 @@ export interface IStartRunData {
 	startNodes?: string[];
 	destinationNode?: string;
 	runData?: IRunData;
+	pinData?: IPinData;
 }
 
 export interface IRunDataUi {
@@ -245,6 +248,7 @@ export interface IWorkflowData {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: string[];
+	pinData?: IPinData;
 }
 
 export interface IWorkflowDataUpdate {
@@ -255,6 +259,7 @@ export interface IWorkflowDataUpdate {
 	settings?: IWorkflowSettings;
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: IPinData;
 }
 
 export interface IWorkflowTemplate {
@@ -277,6 +282,7 @@ export interface IWorkflowDb {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: IPinData;
 }
 
 // Identical to cli.Interfaces.ts
@@ -411,6 +417,8 @@ export type IPushData =
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
+	| PushDataReloadNodeType
+	| PushDataRemoveNodeType
 	| PushDataTestWebhook;
 
 type PushDataExecutionFinished = {
@@ -436,6 +444,16 @@ type PushDataExecuteBefore = {
 type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataReloadNodeType = {
+	data: IPushDataReloadNodeType;
+	type: 'reloadNodeType';
+};
+
+type PushDataRemoveNodeType = {
+	data: IPushDataRemoveNodeType;
+	type: 'removeNodeType';
 };
 
 type PushDataTestWebhook = {
@@ -471,6 +489,15 @@ export interface IPushDataNodeExecuteAfter {
 export interface IPushDataNodeExecuteBefore {
 	executionId: string;
 	nodeName: string;
+}
+
+export interface IPushDataReloadNodeType {
+	name: string;
+	version: number;
+}
+export interface IPushDataRemoveNodeType {
+	name: string;
+	version: number;
 }
 
 export interface IPushDataTestWebhook {
@@ -557,13 +584,19 @@ export interface IUserManagementConfig {
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
-	um?: boolean;
-	api?: boolean;
+}
+
+export interface IPermissionAllowGroup extends IPermissionGroup {
+	shouldAllow?: () => boolean;
+}
+
+export interface IPermissionDenyGroup extends IPermissionGroup {
+	shouldDeny?: () => boolean;
 }
 
 export interface IPermissions {
-	allow?: IPermissionGroup;
-	deny?: IPermissionGroup;
+	allow?: IPermissionAllowGroup;
+	deny?: IPermissionDenyGroup;
 }
 
 export interface IUserPermissions {
@@ -661,6 +694,8 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	executionMode: string;
+	communityNodesEnabled: boolean;
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -826,6 +861,10 @@ export interface IRootState {
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
 }
 
+export interface ICommunityPackageMap {
+	[name: string]: PublicInstalledPackage;
+}
+
 export interface ICredentialTypeMap {
 	[name: string]: ICredentialType;
 }
@@ -869,6 +908,10 @@ export interface IUiState {
 		};
 		output: {
 			displayMode: IRunDataDisplayMode;
+			editMode: {
+				enabled: boolean;
+				value: string;
+			};
 		};
 		focusedMappableInput: string;
 		mappingTelemetry: {[key: string]: string | number | boolean};
@@ -931,6 +974,11 @@ export interface IUsersState {
 export interface IWorkflowsState {
 }
 
+export interface ICommunityNodesState {
+	availablePackageCount: number;
+	installedPackages: ICommunityPackageMap;
+}
+
 export interface IRestApiContext {
 	baseUrl: string;
 	sessionId: string;
@@ -964,4 +1012,5 @@ export interface ITab {
 	href?: string;
 	icon?: string;
 	align?: 'right';
+	tooltip?: string;
 }

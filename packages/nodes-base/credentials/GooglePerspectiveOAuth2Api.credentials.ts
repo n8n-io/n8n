@@ -1,17 +1,10 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = [
-	'https://www.googleapis.com/auth/userinfo.email',
-];
+const scopes = ['https://www.googleapis.com/auth/userinfo.email'];
 
 export class GooglePerspectiveOAuth2Api implements ICredentialType {
 	name = 'googlePerspectiveOAuth2Api';
-	extends = [
-		'googleOAuth2Api',
-	];
+	extends = ['googleOAuth2Api'];
 	displayName = 'Google Perspective OAuth2 API';
 	documentationUrl = 'google';
 	properties: INodeProperties[] = [

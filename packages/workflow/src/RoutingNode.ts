@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
@@ -109,7 +110,20 @@ export class RoutingNode {
 		if (credentialsDecrypted) {
 			credentials = credentialsDecrypted.data;
 		} else if (credentialType) {
-			credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+			try {
+				credentials = (await executeFunctions.getCredentials(credentialType)) || {};
+			} catch (error) {
+				if (
+					nodeType.description.credentials?.length &&
+					nodeType.description.credentials[0].required
+				) {
+					// Only throw error if credential is mandatory
+					throw error;
+				} else {
+					// Do not request cred type since it doesn't exist
+					credentialType = undefined;
+				}
+			}
 		}
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
