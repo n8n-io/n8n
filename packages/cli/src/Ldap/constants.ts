@@ -26,3 +26,99 @@ export enum SyncStatus {
 }
 
 export const LDAP_LOG_PREPEND_MESSAGE = 'LDAP -';
+
+export const LDAP_CONFIG_SCHEMA = {
+	$schema: 'https://json-schema.org/draft/2019-09/schema',
+	type: 'object',
+	properties: {
+		attributeMapping: {
+			type: 'object',
+			properties: {
+				email: {
+					type: 'string',
+				},
+				firstName: {
+					type: 'string',
+				},
+				lastName: {
+					type: 'string',
+				},
+				ldapId: {
+					type: 'string',
+				},
+				loginId: {
+					type: 'string',
+				},
+			},
+			required: ['email', 'firstName', 'lastName', 'ldapId', 'loginId'],
+			additionalProperties: false,
+		},
+		binding: {
+			type: 'object',
+			properties: {
+				adminDn: {
+					type: 'string',
+				},
+				adminPassword: {
+					type: 'string',
+				},
+				baseDn: {
+					type: 'string',
+				},
+			},
+			required: ['adminDn', 'adminPassword', 'baseDn'],
+			additionalProperties: false,
+		},
+		connection: {
+			type: 'object',
+			properties: {
+				url: {
+					type: 'string',
+				},
+				useSsl: {
+					type: 'boolean',
+				},
+			},
+			required: ['url', 'useSsl'],
+			additionalProperties: false,
+		},
+		filter: {
+			type: 'object',
+			properties: {
+				user: {
+					type: 'string',
+				},
+			},
+			required: ['user'],
+			additionalProperties: false,
+		},
+		login: {
+			type: 'object',
+			properties: {
+				enabled: {
+					type: 'boolean',
+				},
+				label: {
+					type: 'string',
+				},
+			},
+			required: ['enabled', 'label'],
+			additionalProperties: false,
+		},
+		syncronization: {
+			type: 'object',
+			properties: {
+				enabled: {
+					type: 'boolean',
+				},
+				interval: {
+					type: 'number',
+				},
+			},
+			required: ['enabled', 'interval'],
+			additionalProperties: false,
+		},
+	},
+	required: ['attributeMapping', 'binding', 'connection', 'filter', 'syncronization', 'login'],
+	additionalProperties: false,
+};

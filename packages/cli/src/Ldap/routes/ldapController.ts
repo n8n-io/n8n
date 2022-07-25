@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 import express from 'express';
 import { LdapManager } from '../LdapManager';
-import { getLdapConfig, getLdapSyncronizations, updateActiveDirectoryConfig } from '../helpers';
+import { getLdapConfig, getLdapSyncronizations, updateLdapConfig } from '../helpers';
 import type { LdapConfig } from '../types';
 
 export const ldapController = express.Router();
@@ -30,7 +30,13 @@ ldapController.post('/test-connection', async (req: express.Request, res: expres
  * PUT /active-directory/config
  */
 ldapController.put('/config', async (req: LdapConfig.Update, res: express.Response) => {
-	await updateActiveDirectoryConfig(req.body);
+	try {
+		await updateLdapConfig(req.body);
+	} catch (e) {
+		if (e instanceof Error) {
+			return res.status(400).json({ message: e.message });
+		}
+	}
 
 	const { data } = await getLdapConfig();
 

@@ -4,6 +4,7 @@
 import { AES, enc } from 'crypto-js';
 import { Entry } from 'ldapts';
 import { UserSettings } from 'n8n-core';
+import { validate } from 'jsonschema';
 import { Db, IFeatureConfigDb } from '..';
 import config from '../../config';
 import { LdapSyncHistory } from '../databases/entities/LdapSyncHistory';
@@ -13,6 +14,7 @@ import { User } from '../databases/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager';
 import {
+	LDAP_CONFIG_SCHEMA,
 	LDAP_DISABLED,
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
@@ -87,6 +89,24 @@ export const randomPassword = (): string => {
  */
 export const getAdUserRole = async (): Promise<Role> => {
 	return Db.collections.Role.findOneOrFail({ scope: 'global', name: 'member' });
+};
+
+/**
+ * Validate the structure of the LDAP
+ * configuration schema
+ * @param  {LdapConfig} config
+ * @returns string
+ */
+const validateLdapConfigurationSchema = (
+	config: LdapConfig,
+): { valid: boolean; message: string } => {
+	const { valid, errors } = validate(config, LDAP_CONFIG_SCHEMA, { nestedErrors: true });
+
+	let message = '';
+	if (!valid) {
+		message = errors.map((error) => `request.body.${error.path[0]} ${error.message}`).join(',');
+	}
+	return { valid, message };
 };
 
 /**
@@ -204,7 +224,13 @@ const setGlobalLdapConfigVariables = (config: LdapConfig): void => {
  * @param  {LdapConfig} config
  * @returns Promise<void>
  */
-export const updateActiveDirectoryConfig = async (config: LdapConfig): Promise<void> => {
+export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
+	const { valid, message } = validateLdapConfigurationSchema(config);
+
+	if (!valid) {
+		throw new Error(message);
+	}
+
 	config.binding.adminPassword = await encryptPassword(config.binding.adminPassword);
 
 	if (!config.login.enabled) {
