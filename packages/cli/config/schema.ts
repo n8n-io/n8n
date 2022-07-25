@@ -888,6 +888,20 @@ export const schema = {
 			env: 'N8N_DIAGNOSTICS_ENABLED',
 		},
 		config: {
+			posthog: {
+				apiKey: {
+					doc: 'API key for PostHog',
+					format: String,
+					default: 'phc_QLECpA3yiIJcyafUv0pe6EoxvdfIDZ5A12dGpGXH4jV',
+					env: 'N8N_DIAGNOSTICS_POSTHOG_API_KEY',
+				},
+				apiHost: {
+					doc: 'API host for PostHog',
+					format: String,
+					default: 'https://app.posthog.com',
+					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
+				},
+			},
 			frontend: {
 				doc: 'Diagnostics config for frontend.',
 				format: String,
