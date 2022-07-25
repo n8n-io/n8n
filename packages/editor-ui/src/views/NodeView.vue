@@ -184,18 +184,18 @@ import {
 	IDataObject,
 	INode,
 	INodeConnections,
+	INodeCredentialsDetails,
 	INodeIssues,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	NodeHelpers,
-	Workflow,
+	IPinData,
 	IRun,
 	ITaskData,
-	INodeCredentialsDetails,
-	TelemetryHelpers,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	PinData,
+	NodeHelpers,
+	TelemetryHelpers,
+	Workflow,
 } from 'n8n-workflow';
 import {
 	ICredentialsResponse,
@@ -410,7 +410,8 @@ export default mixins(
 		},
 		methods: {
 			onRunNode(nodeName: string, source: string) {
-				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				const node = this.$store.getters.getNodeByName(nodeName);
+				this.$telemetry.track('User clicked execute node button', { node_type: node ? node.type : null, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
@@ -2914,9 +2915,6 @@ export default mixins(
 			async loadCredentials (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
 			},
-			async loadCommunityNodes (): Promise<void> {
-				await this.$store.dispatch('communityNodes/fetchInstalledPackages');
-			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
 
@@ -2983,7 +2981,7 @@ export default mixins(
 					await this.importWorkflowData(workflowData);
 				}
 			},
-			addPinDataConnections(pinData: PinData) {
+			addPinDataConnections(pinData: IPinData) {
 				Object.keys(pinData).forEach((nodeName) => {
 					// @ts-ignore
 					const connections = this.instance.getConnections({
@@ -2998,7 +2996,7 @@ export default mixins(
 					});
 				});
 			},
-			removePinDataConnections(pinData: PinData) {
+			removePinDataConnections(pinData: IPinData) {
 				Object.keys(pinData).forEach((nodeName) => {
 					// @ts-ignore
 					const connections = this.instance.getConnections({
@@ -3024,7 +3022,6 @@ export default mixins(
 				this.loadCredentials(),
 				this.loadCredentialTypes(),
 				this.loadNodeTypes(),
-				this.loadCommunityNodes(),
 			];
 
 			try {

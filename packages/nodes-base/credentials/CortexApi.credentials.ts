@@ -5,7 +5,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class CortexApi implements ICredentialType {
 	name = 'cortexApi';
 	displayName = 'Cortex API';
@@ -42,5 +41,4 @@ export class CortexApi implements ICredentialType {
 			url: '/api/analyzer',
 		},
 	};
-
 }
