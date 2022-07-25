@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Kafka implements ICredentialType {
 	name = 'kafka';
@@ -40,9 +37,7 @@ export class Kafka implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					authentication: [
-						true,
-					],
+					authentication: [true],
 				},
 			},
 			default: '',
@@ -54,9 +49,7 @@ export class Kafka implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					authentication: [
-						true,
-					],
+					authentication: [true],
 				},
 			},
 			typeOptions: {
@@ -71,9 +64,7 @@ export class Kafka implements ICredentialType {
 			type: 'options',
 			displayOptions: {
 				show: {
-					authentication: [
-						true,
-					],
+					authentication: [true],
 				},
 			},
 			options: [

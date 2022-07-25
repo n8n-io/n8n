@@ -11,7 +11,7 @@
 				<n8n-button
 					v-if="parameter.options.length === 1"
 					type="tertiary"
-					fullWidth
+					block
 					@click="optionSelected(parameter.options[0].name)"
 					:label="getPlaceholderText"
 				/>
@@ -194,6 +194,10 @@ export default mixins(
 
 	.param-options {
 		margin-top: var(--spacing-xs);
+
+		.button {
+			--button-background-color: var(--color-background-base);
+		}
 	}
 
 	.no-items-exist {

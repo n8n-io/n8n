@@ -386,4 +386,45 @@ export class InternalHooksClass implements IInternalHooksClass {
 			failedEmailData,
 		);
 	}
+
+	/**
+	 * Community nodes backend telemetry events
+	 */
+
+	async onCommunityPackageInstallFinished(installationData: {
+		user_id: string;
+		input_string: string;
+		package_name: string;
+		success: boolean;
+		package_version?: string;
+		package_node_names?: string[];
+		package_author?: string;
+		package_author_email?: string;
+		failure_reason?: string;
+	}): Promise<void> {
+		return this.telemetry.track('cnr package install finished', installationData);
+	}
+
+	async onCommunityPackageUpdateFinished(updateData: {
+		user_id: string;
+		package_name: string;
+		package_version_current: string;
+		package_version_new: string;
+		package_node_names: string[];
+		package_author?: string;
+		package_author_email?: string;
+	}): Promise<void> {
+		return this.telemetry.track('cnr package updated', updateData);
+	}
+
+	async onCommunityPackageDeleteFinished(updateData: {
+		user_id: string;
+		package_name: string;
+		package_version: string;
+		package_node_names: string[];
+		package_author?: string;
+		package_author_email?: string;
+	}): Promise<void> {
+		return this.telemetry.track('cnr package deleted', updateData);
+	}
 }
