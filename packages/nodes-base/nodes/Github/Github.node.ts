@@ -2108,13 +2108,14 @@ export class Github implements INodeType {
 				}
 
 				if (returnAll === true) {
-					responseData = await githubApiRequestAllItems.call(
+					const allItems = await githubApiRequestAllItems.call(
 						this,
 						requestMethod,
 						endpoint,
 						body,
 						qs,
 					);
+					responseData = this.helpers.preparePairedData(allItems);
 				} else {
 					responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
@@ -2155,10 +2156,8 @@ export class Github implements INodeType {
 					responseData = { success: true };
 				}
 
-				if (overwriteDataOperations.includes(fullOperation)) {
-					returnData.push(responseData);
-				} else if (overwriteDataOperationsArray.includes(fullOperation)) {
-					returnData.push.apply(returnData, responseData);
+				if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
+					returnData.push(...responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
