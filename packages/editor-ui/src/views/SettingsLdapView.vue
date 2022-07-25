@@ -34,34 +34,34 @@
 			height="250">
 			<el-table-column
 				prop="status"
-				label="Status"
+				:label="$locale.baseText('settings.ldap.syncronizationTable.column.status')"
 				>
 			</el-table-column>
 			<el-table-column
 				prop="endedAt"
-				label="Ended at"
+				:label="$locale.baseText('settings.ldap.syncronizationTable.column.endedAt')"
 			>
 			</el-table-column>
 			<el-table-column
 				prop="runMode"
-				label="Run Mode"
+				:label="$locale.baseText('settings.ldap.syncronizationTable.column.runMode')"
 			>
 			</el-table-column>
 			<el-table-column
 				prop="runTime"
-				label="Run Time"
+				:label="$locale.baseText('settings.ldap.syncronizationTable.column.runTime')"
 			>
 			</el-table-column>
 			<el-table-column
 				prop="details"
-				label="Details"
+				:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
 				>
 			</el-table-column>
 		</el-table>
 		</div>
 		<div :class="$style.syncronizationActionButtons">
-			<n8n-button float="right" label="Dry Run" type="light" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingDryRun" @click="onDryRunClick" />
-			<n8n-button float="left" label="Synchronize Now" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingLiveRun" @click="onLiveRunClick" />
+			<n8n-button float="right" :label="$locale.baseText('settings.ldap.dryRun')" type="light" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingDryRun" @click="onDryRunClick" />
+			<n8n-button float="left" :label="$locale.baseText('settings.ldap.synchronizeNow')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingLiveRun" @click="onLiveRunClick" />
 		</div>
 	</SettingsView>
 </template>
