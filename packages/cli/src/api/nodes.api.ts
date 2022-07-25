@@ -124,7 +124,9 @@ nodesController.post(
 
 			const message = [`Error loading package "${name}"`, errorMessage].join(':');
 
-			throw new ResponseHelper.ResponseError(message, undefined, isClientError(error) ? 400 : 500);
+			const clientError = error instanceof Error ? isClientError(error) : false;
+
+			throw new ResponseHelper.ResponseError(message, undefined, clientError ? 400 : 500);
 		}
 
 		if (!hasLoaded) removePackageFromMissingList(name);
