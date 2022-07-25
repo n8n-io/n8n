@@ -1394,6 +1394,7 @@ export default mixins(
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 	display: flex;
+	align-items: center;
 
 	> * {
 		margin-right: var(--spacing-4xs);
