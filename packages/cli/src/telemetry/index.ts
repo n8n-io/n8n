@@ -7,7 +7,6 @@ import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
 import config from '../../config';
 import { IExecutionTrackProperties } from '../Interfaces';
 import { getLogger } from '../Logger';
-import { POSTHOG_API_KEY } from '../constants';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -56,14 +55,9 @@ export class Telemetry {
 			}
 
 			this.rudderStack = this.initRudderStack(key, url, logLevel);
-			this.postHog = this.initPostHog();
 
 			this.startPulse();
 		}
-	}
-
-	private initPostHog(): PostHog {
-		return new PostHog(POSTHOG_API_KEY);
 	}
 
 	private initRudderStack(key: string, url: string, logLevel: string): RudderStack {
