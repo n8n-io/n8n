@@ -289,3 +289,6 @@ export const TEST_PIN_DATA = [
 	},
 ];
 export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`, '$parameter'];
+
+export const DEFAULT_STICKY_HEIGHT = 160;
+export const DEFAULT_STICKY_WIDTH = 240;
