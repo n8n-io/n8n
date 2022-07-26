@@ -149,6 +149,8 @@
 	"credentialsList.type": "Type",
 	"credentialsList.updated": "Updated",
 	"credentialsList.yourSavedCredentials": "Your saved credentials",
+	"credentials.heading": "Credentials",
+	"credentials.add": "Add Credential",
 	"dataDisplay.needHelp": "Need help?",
 	"dataDisplay.nodeDocumentation": "Node Documentation",
 	"dataDisplay.openDocumentationFor": "Open {nodeTypeDisplayName} documentation",

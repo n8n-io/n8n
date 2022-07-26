@@ -2,9 +2,11 @@
 	<div :class="[$style.wrapper, !sidebarMenuCollapsed && $style['wrapper-with-expanded-sidebar']]">
 		<div :class="$style.container">
 			<aside :class="$style.aside" v-if="$slots.aside">
-				<slot name="aside"/>
+				<slot name="aside" />
 			</aside>
-			<main :class="$style.content"></main>
+			<main :class="$style.content">
+				<slot />
+			</main>
 		</div>
 	</div>
 </template>
@@ -57,6 +59,8 @@ export default Vue.extend({
 
 .aside {
 	display: flex;
+	flex-shrink: 0;
+	flex-direction: column;
 	height: 100%;
 	width: 160px;
 	margin-right: var(--spacing-l);
@@ -68,6 +72,7 @@ export default Vue.extend({
 
 .content {
 	display: flex;
+	flex-direction: column;
 	flex: 1 1 100%;
 	height: 100%;
 }
