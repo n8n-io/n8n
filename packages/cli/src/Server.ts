@@ -2616,7 +2616,9 @@ class App {
 				// Set `disableSessionRecording` to `!['desktop_mac', 'desktop_win', 'cloud'].includes(deploymentType)`
 				// Set `debug` to `config.getEnv('logs.level') === 'debug'`
 
-				const postHogScript = telemetryScripts.postHog({
+				const { createPostHogLoadingScript, postHogHooksScript } = telemetryScripts;
+
+				const postHogLoadingScript = createPostHogLoadingScript({
 					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
 					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
 					autocapture: false,
@@ -2626,7 +2628,10 @@ class App {
 
 				const firstLinkedScript = '<link href="/js/';
 
-				readIndexFile = readIndexFile.replace(firstLinkedScript, postHogScript + firstLinkedScript);
+				readIndexFile = readIndexFile.replace(
+					firstLinkedScript,
+					postHogLoadingScript + postHogHooksScript + firstLinkedScript,
+				);
 			}
 
 			// Serve the altered index.html file separately
