@@ -1325,12 +1325,14 @@ export default mixins(
 						});
 					}
 
+					const currInstanceId = this.$store.getters.instanceId;
+
 					const nodeGraph = JSON.stringify(
 						TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase,
 							this.getNodeTypes(),
 							{
 								nodeIdMap,
-								sourceInstanceId: workflowData.meta && workflowData.meta.instanceId,
+								sourceInstanceId: workflowData.meta && workflowData.meta.instanceId !== currInstanceId? workflowData.meta.instanceId: '',
 							}).nodeGraph,
 						);
 					if (source === 'paste') {
