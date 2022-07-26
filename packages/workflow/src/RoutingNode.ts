@@ -746,12 +746,34 @@ export class RoutingNode {
 				}
 
 				if (nodeProperties.routing.output.postReceive) {
-					returnData.postReceive.push({
-						data: {
-							parameterValue,
-						},
-						actions: nodeProperties.routing.output.postReceive,
+					const postReceiveActions = nodeProperties.routing.output.postReceive.filter((action) => {
+						if (typeof action === 'function') {
+							return true;
+						}
+
+						if (typeof action.enabled === 'string' && action.enabled.charAt(0) === '=') {
+							// If the propertyName is an expression resolve it
+							return this.getParameterValue(
+								action.enabled,
+								itemIndex,
+								runIndex,
+								executeSingleFunctions.getExecuteData(),
+								{ ...additionalKeys, $value: parameterValue },
+								true,
+							) as boolean;
+						}
+
+						return action.enabled !== false;
 					});
+
+					if (postReceiveActions.length) {
+						returnData.postReceive.push({
+							data: {
+								parameterValue,
+							},
+							actions: postReceiveActions,
+						});
+					}
 				}
 			}
 		}
