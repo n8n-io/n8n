@@ -68,7 +68,7 @@
 		font-size: 12px;
 
 		&[disabled] {
-			color: #cccccc;
+			color: var(--color-text-lighter);
 			cursor: not-allowed;
 		}
 	}
