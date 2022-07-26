@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TaigaApi implements ICredentialType {
 	name = 'taigaApi';
@@ -44,9 +41,7 @@ export class TaigaApi implements ICredentialType {
 			placeholder: 'https://taiga.yourdomain.com',
 			displayOptions: {
 				show: {
-					environment: [
-						'selfHosted',
-					],
+					environment: ['selfHosted'],
 				},
 			},
 		},

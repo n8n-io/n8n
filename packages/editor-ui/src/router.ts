@@ -8,6 +8,7 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
+import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
@@ -23,6 +24,7 @@ import { IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
+import { store } from './store';
 
 Vue.use(Router);
 
@@ -288,7 +290,9 @@ const router = new Router({
 						role: [ROLE.Default],
 					},
 					deny: {
-						um: false,
+						shouldDeny: () => {
+							return store.getters['settings/isUserManagementEnabled'] === false;
+						},
 					},
 				},
 			},
@@ -346,7 +350,9 @@ const router = new Router({
 						role: [ROLE.Default, ROLE.Owner],
 					},
 					deny: {
-						um: false,
+						shouldDeny: () => {
+							return store.getters['settings/isUserManagementEnabled'] === false;
+						},
 					},
 				},
 			},
@@ -386,7 +392,31 @@ const router = new Router({
 						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
 					deny: {
-						api: false,
+						shouldDeny: () => {
+							return store.getters['settings/isPublicApiEnabled'] === false;
+						},
+					},
+				},
+			},
+		},
+		{
+			path: '/settings/community-nodes',
+			name: VIEWS.COMMUNITY_NODES,
+			components: {
+				default: SettingsCommunityNodesView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+				permissions: {
+					allow: {
+						role: [ROLE.Default, ROLE.Owner],
+					},
+					deny: {
+						shouldDeny: () => {
+							return store.getters['settings/isCommunityNodesFeatureEnabled'] === false;
+						},
 					},
 				},
 			},

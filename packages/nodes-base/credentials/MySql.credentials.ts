@@ -1,8 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MySql implements ICredentialType {
 	name = 'mySql';
@@ -47,7 +43,8 @@ export class MySql implements ICredentialType {
 			name: 'connectTimeout',
 			type: 'number',
 			default: 10000,
-			description: 'The milliseconds before a timeout occurs during the initial connection to the MySQL server',
+			description:
+				'The milliseconds before a timeout occurs during the initial connection to the MySQL server',
 		},
 		{
 			displayName: 'SSL',
@@ -64,9 +61,7 @@ export class MySql implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
+					ssl: [true],
 				},
 			},
 			type: 'string',
@@ -81,9 +76,7 @@ export class MySql implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
+					ssl: [true],
 				},
 			},
 			type: 'string',
@@ -98,9 +91,7 @@ export class MySql implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
+					ssl: [true],
 				},
 			},
 			type: 'string',

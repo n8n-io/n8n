@@ -320,6 +320,19 @@ export const databasePageFields = [
 						description: 'Email address',
 					},
 					{
+						displayName: 'Ignore If Empty',
+						name: 'ignoreIfEmpty',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								type: [
+									'url',
+								],
+							},
+						},
+						default: false,
+					},
+					{
 						displayName: 'URL',
 						name: 'urlValue',
 						type: 'string',
@@ -731,6 +744,19 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
+					},
+					{
+						displayName: 'Ignore If Empty',
+						name: 'ignoreIfEmpty',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								type: [
+									'url',
+								],
+							},
+						},
+						default: false,
 					},
 					{
 						displayName: 'URL',

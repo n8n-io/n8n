@@ -79,7 +79,7 @@ export class GoogleBooks implements INodeType {
 						'@version': [
 							1,
 						],
-					}
+					},
 				},
 			},
 			{
@@ -102,7 +102,7 @@ export class GoogleBooks implements INodeType {
 						'@version': [
 							2,
 						],
-					}
+					},
 				},
 			},
 			{
