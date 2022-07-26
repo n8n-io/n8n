@@ -9,6 +9,7 @@ declare module 'vue/types/vue' {
 declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
+		posthog: posthog;
 	}
 }
 
@@ -24,7 +25,42 @@ interface IUserNodesPanelSessionData {
 }
 
 /**
- * Based on: https://github.com/rudderlabs/rudder-sdk-js/blob/master/dist/rudder-sdk-js/index.d.ts
+ * Simplified version of:
+ * https://github.com/PostHog/posthog-js/blob/master/src/module.d.ts
+ */
+
+/* tslint:disable-next-line */
+interface posthog {
+	identify(
+		uniqueId?: string,
+		userPropertiesToSet?: object,
+		userPropertiesToSetOnce?: object,
+	): void;
+
+	reset(resetDeviceId?: boolean): void;
+
+	capture(
+		eventName: string,
+		properties?: object,
+		options?: object,
+	): unknown;
+
+	isFeatureEnabled(key: string, options?: object): boolean;
+
+	register(properties: object, days?: number): void;
+
+	people: {
+		set(
+			prop: object | string,
+			to?: object,
+			callback?: Function,
+		): unknown;
+	};
+}
+
+/**
+ * Simplified version of:
+ * https://github.com/rudderlabs/rudder-sdk-js/blob/master/dist/rudder-sdk-js/index.d.ts
  */
 interface RudderStack extends Array<unknown> {
 	[key: string]: unknown;
