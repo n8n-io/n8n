@@ -286,7 +286,7 @@ export enum FAKE_DOOR_FEATURES {
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
-export const FIRST_ONBOARDING_PROMPT_TIMEOUT = 5000; // TODO: Once testing is done, update to 300000;
+export const FIRST_ONBOARDING_PROMPT_TIMEOUT = 300000;
 
 export const TEST_PIN_DATA = [
 	{
