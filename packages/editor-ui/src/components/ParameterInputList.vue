@@ -361,7 +361,7 @@ export default mixins(
 	}
 
 	.parameter-notice {
-		background-color: #fff5d3;
+		background-color: var(--color-warning-tint-2);
 		color: $--custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;
