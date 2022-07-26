@@ -17,8 +17,8 @@ $color-transition-base: color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 /* Color
 -------------------------- */
-$color-white: #ffffff;
-$color-black: #000000;
+$color-white: var(--color-foreground-xlight);
+$color-black: var(--color-foreground-dark);
 
 $color-primary-light-1: function.lightness(
 				--color-primary-h,
@@ -275,7 +275,7 @@ $disabled-border-base: var(--disabled-border, var(--border-color-base));
 
 /* Icon
 -------------------------- */
-$icon-color: #666;
+$icon-color: var(--color-text-base);
 $icon-color-base: var(--color-info);
 
 /* Checkbox
@@ -412,7 +412,7 @@ $select-font-size: $font-size-base;
 $select-close-hover-color: var(--color-text-light);
 
 $select-input-color: var(--color-text-lighter);
-$select-multiple-input-color: #666;
+$select-multiple-input-color: var(--color-text-base);
 /// color||Color|0
 $select-input-focus-border-color: var(--color-secondary);
 /// fontSize||Font|1
@@ -434,7 +434,7 @@ $select-group-font-size: 12px;
 
 $select-dropdown-background: $color-white;
 $select-dropdown-shadow: $box-shadow-light;
-$select-dropdown-empty-color: #999;
+$select-dropdown-empty-color: var(--color-text-light);
 /// height||Other|4
 $select-dropdown-max-height: 274px;
 $select-dropdown-padding: 6px 0;
@@ -986,7 +986,7 @@ $datepicker-inrange-hover-background-color: var(--border-color-light);
 $datepicker-active-color: var(--color-primary);
 /// color||Color|0
 $datepicker-hover-font-color: var(--color-primary);
-$datepicker-cell-hover-color: #fff;
+$datepicker-cell-hover-color: var(--color-foreground-xlight);
 
 /* Loading
 --------------------------*/
@@ -1128,7 +1128,7 @@ $form-label-font-size: $font-size-base;
 /* Avatar
 --------------------------*/
 /// color||Color|0
-$avatar-font-color: #fff;
+$avatar-font-color: var(--color-text-xlight);
 /// color||Color|0
 $avatar-background-color: #c0c4cc;
 /// fontSize||Font Size|1
