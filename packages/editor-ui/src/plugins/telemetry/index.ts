@@ -82,10 +82,10 @@ export class Telemetry {
 
 	identify(instanceId: string, userId?: string) {
 		const traits = { instance_id: instanceId };
-
 		if (userId) {
 			this.rudderStack.identify(`${instanceId}#${userId}`, traits);
-		} else {
+		}
+		else {
 			this.rudderStack.reset();
 			this.rudderStack.identify(undefined, traits);
 		}

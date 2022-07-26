@@ -2990,6 +2990,7 @@ export default mixins(
 				});
 			},
 		},
+
 		async mounted () {
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
