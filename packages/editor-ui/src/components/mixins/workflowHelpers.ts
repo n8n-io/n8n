@@ -666,7 +666,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}, redirect = true): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, resetNodeIds, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean, resetNodeIds?: boolean} = {}, redirect = true): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
@@ -674,6 +674,15 @@ export const workflowHelpers = mixins(
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
 					const changedNodes = {} as IDataObject;
+
+					if (resetNodeIds) {
+						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
+							node.id = uuidv4();
+
+							return node;
+						});
+					}
+
 					if (resetWebhookUrls) {
 						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
 							if (node.webhookId) {
