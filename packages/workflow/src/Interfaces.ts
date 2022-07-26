@@ -909,7 +909,8 @@ export type NodePropertyTypes =
 	| 'number'
 	| 'options'
 	| 'string'
-	| 'credentialsSelect';
+	| 'credentialsSelect'
+	| 'resourceLocator';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -970,7 +971,57 @@ export interface INodeProperties {
 	credentialTypes?: Array<
 		'extends:oAuth2Api' | 'extends:oAuth1Api' | 'has:authenticate' | 'has:genericAuth'
 	>;
+	modes?: INodePropertyMode[];
 }
+
+// Base resource locator mode type. Can be used for 'By Id' and 'By URL' modes
+export interface INodePropertyMode {
+	displayName: string;
+	name: string;
+	type: 'string' | 'list';
+	hint: string;
+	validation: Array<
+		INodePropertyModeValidation | { (this: IExecuteSingleFunctions, value: string): void }
+	>;
+	placeholder: string;
+	url?: string;
+	extractValue?: {
+		type: string;
+		regex: string;
+	};
+}
+
+// Resource locator list mode type
+export interface INodePropertyModeList extends INodePropertyMode {
+	type: 'list';
+	initType: string;
+	entryTypes: {
+		[name: string]: {
+			selectable?: boolean;
+			hidden?: boolean;
+			queryable?: boolean;
+			data?: {
+				request?: IHttpRequestOptions;
+				output?: INodeRequestOutput;
+			};
+		};
+	};
+	search?: INodePropertyRouting;
+}
+
+export interface INodePropertyModeValidation {
+	type: string;
+	properties: {};
+}
+
+export interface INodePropertyRegexValidation extends INodePropertyModeValidation {
+	type: 'regex';
+	properties: {
+		regex: string;
+		errorMessage: string;
+	};
+}
+
 export interface INodePropertyOptions {
 	name: string;
 	value: string | number | boolean;
