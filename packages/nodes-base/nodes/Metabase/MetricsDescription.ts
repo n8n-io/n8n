@@ -1,9 +1,4 @@
-import {
-	IExecuteSingleFunctions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const metricsOperations: INodeProperties[] = [
 	{
@@ -13,24 +8,10 @@ export const metricsOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metrics',
-				],
+				resource: ['metrics'],
 			},
 		},
 		options: [
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all the metrics',
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/api/metric/',
-					},
-				},
-				action: 'Get all metrics',
-			},
 			{
 				name: 'Get',
 				value: 'get',
@@ -43,6 +24,18 @@ export const metricsOperations: INodeProperties[] = [
 					},
 				},
 				action: 'Get a metric',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all the metrics',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/api/metric/',
+					},
+				},
+				action: 'Get all metrics',
 			},
 		],
 		default: 'getAll',
@@ -58,12 +51,8 @@ export const metricsFields: INodeProperties[] = [
 		placeholder: '0',
 		displayOptions: {
 			show: {
-				resource: [
-					'metrics',
-				],
-								operation: [
-										'get',
-								],
+				resource: ['metrics'],
+				operation: ['get'],
 			},
 		},
 		default: '',

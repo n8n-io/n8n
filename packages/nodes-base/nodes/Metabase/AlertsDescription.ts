@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const alertsOperations: INodeProperties[] = [
 	{
@@ -10,24 +8,10 @@ export const alertsOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'alerts',
-				],
+				resource: ['alerts'],
 			},
 		},
 		options: [
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all the alerts',
-				routing: {
-					request: {
-						method: 'GET',
-						url: '/api/alert/',
-					},
-				},
-				action: 'Get all alerts',
-			},
 			{
 				name: 'Get',
 				value: 'get',
@@ -39,6 +23,18 @@ export const alertsOperations: INodeProperties[] = [
 					},
 				},
 				action: 'Get an alert',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all the alerts',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/api/alert/',
+					},
+				},
+				action: 'Get all alerts',
 			},
 		],
 		default: 'getAll',
@@ -54,12 +50,8 @@ export const alertsFields: INodeProperties[] = [
 		placeholder: '0',
 		displayOptions: {
 			show: {
-				resource: [
-					'alerts',
-				],
-								operation: [
-										'get',
-								],
+				resource: ['alerts'],
+				operation: ['get'],
 			},
 		},
 		default: '',

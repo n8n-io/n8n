@@ -1,10 +1,4 @@
-import {
-	IDataObject,
-	IExecuteSingleFunctions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import { IN8nHttpFullResponse, INodeProperties } from 'n8n-workflow';
 
 export const databasesOperations: INodeProperties[] = [
 	{
@@ -14,12 +8,22 @@ export const databasesOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
+				resource: ['databases'],
 			},
 		},
 		options: [
+			{
+				name: 'Add',
+				value: 'addNewDatasource',
+				description: 'Add a new datasource to the metabase instance',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '/api/database',
+					},
+				},
+				action: 'Add a databases',
+			},
 			{
 				name: 'Get All',
 				value: 'getAll',
@@ -31,42 +35,12 @@ export const databasesOperations: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-						// @ts-ignore
-						function(
-							this: IExecuteSingleFunctions,
-							_items: INodeExecutionData[],
-							response: MetabaseDatabaseResult,
-						): INodeExecutionData[] {
-							// @ts-ignore
-							return response.body.data.map((metabaseDatabase) => {
-								if(!this.getNode().parameters.simple){
-									return {
-										json: {
-											...metabaseDatabase,
-									},
-								};
-								} else{
-								return {
-									json: {
-										name: metabaseDatabase.name,
-										id: metabaseDatabase.id,
-										description: metabaseDatabase.description,
-										engine: metabaseDatabase.engine,
-										creator_id: metabaseDatabase.creator_id,
-										timezone: metabaseDatabase.timezone,
-										created_at: metabaseDatabase.created_at,
-										updated_at: metabaseDatabase.updated_at,
-										db: metabaseDatabase.details.db,
-										user: metabaseDatabase.details.user,
-										host: metabaseDatabase.details.host,
-										port: metabaseDatabase.details.port,
-										ssl: metabaseDatabase.details.ssl,
-										is_full_sync: metabaseDatabase.details.is_full_sync,
-									},
-								};
-							}
-							});
-						},
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
 						],
 					},
 				},
@@ -84,18 +58,6 @@ export const databasesOperations: INodeProperties[] = [
 				},
 				action: 'Get Fields a databases',
 			},
-			{
-				name: 'Add',
-				value: 'addNewDatasource',
-				description: 'Add a new datasource to the metabase instance',
-				routing: {
-					request: {
-						method: 'POST',
-						url: '/api/database',
-					},
-				},
-				action: 'Add a databases',
-				},
 		],
 		default: 'getAll',
 	},
@@ -110,12 +72,8 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: '0',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-								operation: [
-										'getFields',
-								],
+				resource: ['databases'],
+				operation: ['getFields'],
 			},
 		},
 		default: '',
@@ -155,18 +113,14 @@ export const databasesFields: INodeProperties[] = [
 		default: 'postgres',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-								operation: [
-										'addNewDatasource',
-								],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
 			},
 		},
 		routing: {
 			send: {
-							property: 'engine',
-							type: 'body',
+				property: 'engine',
+				type: 'body',
 			},
 		},
 	},
@@ -178,24 +132,15 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: 'localhost:5432',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-				operation: [
-						'addNewDatasource',
-				],
-				engine: [
-					'postgres',
-					'redshift',
-					'mysql',
-					'mongo',
-				],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
+				engine: ['postgres', 'redshift', 'mysql', 'mongo'],
 			},
 		},
 		routing: {
 			send: {
-							property: 'details.host',
-							type: 'body',
+				property: 'details.host',
+				type: 'body',
 			},
 		},
 		default: '',
@@ -208,18 +153,14 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: 'Database 1',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-								operation: [
-										'addNewDatasource',
-								],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
 			},
 		},
 		routing: {
 			send: {
-							property: 'name',
-							type: 'body',
+				property: 'name',
+				type: 'body',
 			},
 		},
 		default: '',
@@ -232,24 +173,15 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: '5432',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-				operation: [
-						'addNewDatasource',
-				],
-				engine: [
-					'postgres',
-					'redshift',
-					'mysql',
-					'mongo',
-				],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
+				engine: ['postgres', 'redshift', 'mysql', 'mongo'],
 			},
 		},
 		routing: {
 			send: {
-							property: 'details.port',
-							type: 'body',
+				property: 'details.port',
+				type: 'body',
 			},
 		},
 		default: 5432,
@@ -262,24 +194,15 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: 'Admin',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-				operation: [
-						'addNewDatasource',
-				],
-				engine: [
-					'postgres',
-					'redshift',
-					'mysql',
-					'mongo',
-				],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
+				engine: ['postgres', 'redshift', 'mysql', 'mongo'],
 			},
 		},
 		routing: {
 			send: {
-							property: 'details.user',
-							type: 'body',
+				property: 'details.user',
+				type: 'body',
 			},
 		},
 		default: '',
@@ -292,24 +215,15 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: 'password',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-				operation: [
-						'addNewDatasource',
-				],
-				engine: [
-					'postgres',
-					'redshift',
-					'mysql',
-					'mongo',
-				],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
+				engine: ['postgres', 'redshift', 'mysql', 'mongo'],
 			},
 		},
 		routing: {
 			send: {
-							property: 'details.password',
-							type: 'body',
+				property: 'details.password',
+				type: 'body',
 			},
 		},
 		default: '',
@@ -321,24 +235,15 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: 'Users',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-				operation: [
-						'addNewDatasource',
-				],
-				engine: [
-					'postgres',
-					'redshift',
-					'mysql',
-					'mongo',
-				],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
+				engine: ['postgres', 'redshift', 'mysql', 'mongo'],
 			},
 		},
 		routing: {
 			send: {
-							property: 'details.db',
-							type: 'body',
+				property: 'details.db',
+				type: 'body',
 			},
 		},
 		default: '',
@@ -351,22 +256,15 @@ export const databasesFields: INodeProperties[] = [
 		placeholder: 'file:/Users/admin/Desktop/Users',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-				operation: [
-						'addNewDatasource',
-				],
-				engine: [
-					'h2',
-					'sqlite',
-				],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
+				engine: ['h2', 'sqlite'],
 			},
 		},
 		routing: {
 			send: {
-							property: 'details.db',
-							type: 'body',
+				property: 'details.db',
+				type: 'body',
 			},
 		},
 		default: '',
@@ -379,12 +277,8 @@ export const databasesFields: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-				operation: [
-						'addNewDatasource',
-				],
+				resource: ['databases'],
+				operation: ['addNewDatasource'],
 			},
 		},
 		routing: {
@@ -401,11 +295,33 @@ export const databasesFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 		displayOptions: {
 			show: {
-				resource: [
-					'databases',
-				],
-				operation: [
-					'getAll',
+				resource: ['databases'],
+				operation: ['getAll'],
+			},
+		},
+		routing: {
+			output: {
+				postReceive: [
+					{
+						type: 'setKeyValue',
+						enabled: '={{$value}}',
+						properties: {
+							id: '={{$responseItem.id}}',
+							name: '={{$responseItem.name}}',
+							description: '={{$responseItem.description}}',
+							engine: '={{$responseItem.engine}}',
+							creator_id: '={{$responseItem.creator_id}}',
+							timezone: '={{$responseItem.timezone}}',
+							created_at: '={{$responseItem.created_at}}',
+							updated_at: '={{$responseItem.updated_at}}',
+							db: '={{$responseItem.details.db}}',
+							user: '={{$responseItem.details.user}}',
+							host: '={{$responseItem.details.host}}',
+							port: '={{$responseItem.details.port}}',
+							ssl: '={{$responseItem.details.ssl}}',
+							is_full_sync: '={{$responseItem.details.is_full_sync}}',
+						},
+					},
 				],
 			},
 		},
@@ -414,7 +330,20 @@ export const databasesFields: INodeProperties[] = [
 ];
 
 type MetabaseDatabaseResult = IN8nHttpFullResponse & {
-	body: Array<{data: Array<{id: number, name: string, description: string, details: MetabaseDatabaseDetail,timezone: string, creator_id: number,created_at: string, updated_at: string, engine: string, is_full_sync: string,  }>}>
+	body: Array<{
+		data: Array<{
+			id: number;
+			name: string;
+			description: string;
+			details: MetabaseDatabaseDetail;
+			timezone: string;
+			creator_id: number;
+			created_at: string;
+			updated_at: string;
+			engine: string;
+			is_full_sync: string;
+		}>;
+	}>;
 };
 
 type MetabaseDatabaseDetail = {

@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.metabase",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Data & Storage"
-	],
+	"categories": ["Development", "Data & Storage"],
 	"resources": {
 		"credentialDocumentation": [
 			{

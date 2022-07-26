@@ -1,27 +1,12 @@
-import {
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	questionsFields,
-	questionsOperations,
-} from './QuestionsDescription';
+import { questionsFields, questionsOperations } from './QuestionsDescription';
 
-import {
-	metricsFields,
-	metricsOperations,
-} from './MetricsDescription';
+import { metricsFields, metricsOperations } from './MetricsDescription';
 
-import {
-	databasesFields,
-	databasesOperations,
-} from './DatabasesDescription';
+import { databasesFields, databasesOperations } from './DatabasesDescription';
 
-import {
-	alertsFields,
-	alertsOperations,
-} from './AlertsDescription';
+import { alertsFields, alertsOperations } from './AlertsDescription';
 
 export class Metabase implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,8 +32,7 @@ export class Metabase implements INodeType {
 		requestDefaults: {
 			returnFullResponse: true,
 			baseURL: '={{$credentials.url.replace(new RegExp("/$"), "")}}',
-			headers: {
-			},
+			headers: {},
 		},
 		properties: [
 			{
@@ -58,20 +42,20 @@ export class Metabase implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Question',
-						value: 'questions',
-					},
-					{
-						name: 'Metric',
-						value: 'metrics',
+						name: 'Alert',
+						value: 'alerts',
 					},
 					{
 						name: 'Database',
 						value: 'databases',
 					},
 					{
-						name: 'Alert',
-						value: 'alerts',
+						name: 'Metric',
+						value: 'metrics',
+					},
+					{
+						name: 'Question',
+						value: 'questions',
 					},
 				],
 				default: 'questions',
