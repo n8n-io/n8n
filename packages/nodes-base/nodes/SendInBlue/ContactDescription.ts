@@ -567,6 +567,16 @@ const upsertOperations: INodeProperties[] = [
 				method: 'PUT',
 				url: '=/v3/contacts/{{$parameter.identifier}}',
 			},
+			output: {
+				postReceive: [
+					{
+						type: 'set',
+						properties: {
+							value: '={{ { "success": true } }}', // Also possible to use the original response data
+						},
+					},
+				],
+			},
 		},
 	},
 ];

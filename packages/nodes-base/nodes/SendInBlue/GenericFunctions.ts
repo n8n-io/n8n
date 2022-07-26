@@ -152,14 +152,12 @@ export namespace SendInBlueWebhookApi {
 	]);
 
 	export const fetchWebhooks = async (ref: IHookFunctions, type: string): Promise<Webhooks> => {
-		const { apiKey } = await ref.getCredentials(credentialsName);
 		const endpoint = `${baseURL}/webhooks?type=${type}`;
 
 		const options: OptionsWithUri = {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
-				'Api-Key': apiKey,
 			},
 			uri: endpoint,
 		};
@@ -179,14 +177,12 @@ export namespace SendInBlueWebhookApi {
 		events: string[],
 		url: string,
 	): Promise<WebhookId> => {
-		const { apiKey } = await ref.getCredentials(credentialsName);
 		const endpoint = `${baseURL}/webhooks`;
 
 		const options: OptionsWithUri = {
 			method: 'POST',
 			headers: {
 				Accept: 'application/json',
-				'Api-Key': apiKey,
 			},
 			uri: endpoint,
 			body: {
@@ -207,14 +203,12 @@ export namespace SendInBlueWebhookApi {
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {
 		const endpoint = `${baseURL}/webhooks/${webhookId}`;
-		const { apiKey } = await ref.getCredentials(credentialsName);
 		const body = {};
 
 		const options: OptionsWithUri = {
 			method: 'DELETE',
 			headers: {
 				Accept: 'application/json',
-				'Api-Key': apiKey,
 			},
 			uri: endpoint,
 			body,

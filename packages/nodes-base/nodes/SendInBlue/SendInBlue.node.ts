@@ -8,7 +8,7 @@ import { senderFields, senderOperations } from './SenderDescrition';
 export class SendInBlue implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SendInBlue',
-		name: 'sendinblue',
+		name: 'sendInBlue',
 		icon: 'file:sendinblue.svg',
 		group: ['transform'],
 		version: 1,
@@ -22,17 +22,12 @@ export class SendInBlue implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'sendinblueApi',
+				name: 'sendInBlueApi',
 				required: true,
 			},
 		],
 		requestDefaults: {
 			baseURL: 'https://api.sendinblue.com',
-			url: '',
-			headers: {
-				Accept: 'application/json',
-				'Content-Type': 'application/json',
-			},
 		},
 		properties: [
 			{
@@ -42,20 +37,20 @@ export class SendInBlue implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Email',
-						value: 'email',
-					},
-					{
 						name: 'Contact',
 						value: 'contact',
 					},
 					{
-						name: 'Sender',
-						value: 'sender',
-					},
-					{
 						name: 'Contact Attribute',
 						value: 'attribute',
+					},
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Sender',
+						value: 'sender',
 					},
 				],
 				default: 'email',

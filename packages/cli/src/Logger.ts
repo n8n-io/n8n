@@ -4,7 +4,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import { inspect } from 'util';
-
 import winston from 'winston';
 
 import { IDataObject, ILogger, LogTypes } from 'n8n-workflow';

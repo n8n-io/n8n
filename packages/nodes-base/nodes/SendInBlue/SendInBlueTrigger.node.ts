@@ -14,7 +14,7 @@ export class SendInBlueTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		credentials: [
 			{
-				name: 'sendinblueApi',
+				name: 'sendInBlueApi',
 				required: true,
 			},
 		],
@@ -27,7 +27,7 @@ export class SendInBlueTrigger implements INodeType {
 		group: ['trigger'],
 		icon: 'file:sendinblue.svg',
 		inputs: [],
-		name: 'sendinblueTrigger',
+		name: 'sendInBlueTrigger',
 		outputs: ['main'],
 		version: 1,
 		webhooks: [
@@ -36,7 +36,6 @@ export class SendInBlueTrigger implements INodeType {
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
 				path: 'webhooks',
-				responseData: 'allEntries',
 			},
 		],
 		properties: [
@@ -45,9 +44,9 @@ export class SendInBlueTrigger implements INodeType {
 				displayName: 'Resource',
 				name: 'type',
 				options: [
-					{ name: 'Transactional', value: 'transactional' },
-					{ name: 'Marketing', value: 'marketing' },
 					{ name: 'Inbound', value: 'inbound' },
+					{ name: 'Marketing', value: 'marketing' },
+					{ name: 'Transactional', value: 'transactional' },
 				],
 				required: true,
 				type: 'options',
@@ -245,16 +244,7 @@ export class SendInBlueTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events') as string[];
 
-				if (webhookUrl.includes('%20')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The name of the Asana Trigger Node is not allowed to contain any spaces!',
-					);
-				}
-
-				let responseData;
-
-				responseData = await SendInBlueWebhookApi.createWebHook(this, type, events, webhookUrl);
+				let responseData = await SendInBlueWebhookApi.createWebHook(this, type, events, webhookUrl);
 
 				if (responseData === undefined || responseData.id === undefined) {
 					// Required data is missing so was not successful
@@ -290,8 +280,6 @@ export class SendInBlueTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		// The data to return and so start the workflow with
 		const bodyData = this.getBodyData() as IDataObject;
-		const headerData = this.getHeaderData() as IDataObject;
-		const req = this.getRequestObject();
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],

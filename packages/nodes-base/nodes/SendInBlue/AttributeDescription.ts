@@ -21,7 +21,7 @@ export const attributeOperations: INodeProperties[] = [
 		options: [
 			{
 				name: 'Create',
-				value: 'createAttribute',
+				value: 'create',
 				routing: {
 					request: {
 						method: 'POST',
@@ -58,7 +58,7 @@ export const attributeOperations: INodeProperties[] = [
 			},
 			{
 				name: 'Update',
-				value: 'updateAttribute',
+				value: 'update',
 				routing: {
 					request: {
 						method: 'PUT',
@@ -69,7 +69,7 @@ export const attributeOperations: INodeProperties[] = [
 			},
 			{
 				name: 'Delete',
-				value: 'deleteAttribute',
+				value: 'delete',
 				routing: {
 					request: {
 						method: 'DELETE',
@@ -138,7 +138,7 @@ const createAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['createAttribute'],
+				operation: ['create'],
 			},
 		},
 		name: 'attributeCategory',
@@ -173,7 +173,7 @@ const createAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['createAttribute'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -187,15 +187,15 @@ const createAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['createAttribute'],
+				operation: ['create'],
 				attributeCategory: ['normal'],
 			},
 		},
 		name: 'attributeType',
 		options: [
 			{
-				name: 'Text',
-				value: 'text',
+				name: 'Boolean',
+				value: 'boolean',
 			},
 			{
 				name: 'Date',
@@ -206,8 +206,8 @@ const createAttributeOperations: INodeProperties[] = [
 				value: 'float',
 			},
 			{
-				name: 'Boolean',
-				value: 'boolean',
+				name: 'Text',
+				value: 'text',
 			},
 		],
 		required: true,
@@ -227,7 +227,7 @@ const createAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['createAttribute'],
+				operation: ['create'],
 				attributeCategory: ['global', 'calculated'],
 			},
 		},
@@ -251,7 +251,7 @@ const createAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['createAttribute'],
+				operation: ['create'],
 				attributeCategory: ['category'],
 			},
 		},
@@ -446,7 +446,7 @@ const deleteAttribueOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['deleteAttribute'],
+				operation: ['delete'],
 			},
 		},
 		name: 'deleteAttributeCategory',
@@ -481,7 +481,7 @@ const deleteAttribueOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['deleteAttribute'],
+				operation: ['delete'],
 			},
 		},
 		name: 'deleteAttributeName',
