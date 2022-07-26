@@ -43,16 +43,7 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters(
-			'settings', [
-				'isHiringBannerEnabled',
-				'isTemplatesEnabled',
-				'isTemplatesEndpointReachable',
-				'isUserManagementEnabled',
-				'showSetupPage',
-				'deploymentType',
-			],
-		),
+		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['currentUser']),
 		defaultLocale (): string {
 			return this.$store.getters.defaultLocale;
