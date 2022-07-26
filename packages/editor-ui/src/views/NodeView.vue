@@ -72,7 +72,7 @@
 				/>
 				<div
 					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
-					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
+					@click="addStickyNote"
 				>
 					<n8n-icon-button
 						size="medium"
@@ -154,7 +154,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import { DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -227,6 +227,7 @@ interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
+
 
 export default mixins(
 	copyPaste,
@@ -1408,6 +1409,22 @@ export default mixins(
 
 			closeNodeCreator () {
 				this.createNodeActive = false;
+			},
+
+			addStickyNote() {
+				if (document.activeElement) {
+					(document.activeElement as HTMLElement).blur();
+				}
+
+				const offset: [number, number] = [...(this.$store.getters.getNodeViewOffsetPosition as [number, number])];
+
+				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+				position[0] -= DEFAULT_STICKY_WIDTH / 2;
+				position[1] -= DEFAULT_STICKY_HEIGHT / 2;
+
+				this.addNodeButton(STICKY_NODE_TYPE, {
+					position,
+				});
 			},
 
 			nodeTypeSelected (nodeTypeName: string) {
@@ -3292,7 +3309,7 @@ export default mixins(
 }
 
 .drop-add-node-label {
-	color: #555;
+	color: var(--color-text-dark);
 	font-weight: 600;
 	font-size: 0.8em;
 	text-align: center;

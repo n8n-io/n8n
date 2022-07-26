@@ -485,7 +485,7 @@ export default mixins(
 			background-color: var(--color-background-xlight);
 
 			&.executing {
-				background-color: $--color-primary-light !important;
+				background-color: var(--color-primary-tint-3) !important;
 
 				.node-executing-info {
 					display: inline-block;
@@ -515,7 +515,7 @@ export default mixins(
 			font-size: 3.75em;
 			line-height: 1.65em;
 			text-align: center;
-			color: rgba($--color-primary, 0.7);
+			color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
 		}
 
 		.node-icon {

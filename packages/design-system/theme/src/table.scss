@@ -44,7 +44,7 @@
 	@include mixins.e(expand-icon) {
 		position: relative;
 		cursor: pointer;
-		color: #666;
+		color: var(--color-text-base);
 		font-size: 12px;
 		transition: transform 0.2s ease-in-out;
 		height: 20px;
@@ -461,12 +461,12 @@
 		left: 7px;
 
 		&.ascending {
-			border-bottom-color: var(--color-text-lighter);
+			border-bottom-color: var(--color-text-light);
 			top: 5px;
 		}
 
 		&.descending {
-			border-top-color: var(--color-text-lighter);
+			border-top-color: var(--color-text-light);
 			bottom: 7px;
 		}
 	}
