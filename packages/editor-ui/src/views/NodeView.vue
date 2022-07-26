@@ -614,7 +614,6 @@ export default mixins(
 				}
 				this.resetWorkspace();
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
-				CanvasHelpers.addNewIdsToNodes(data.workflow.nodes);
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 
@@ -650,7 +649,6 @@ export default mixins(
 				}
 
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
-				CanvasHelpers.addNewIdsToNodes(data.workflow.nodes);
 
 				this.blankRedirect = true;
 				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
@@ -1317,7 +1315,10 @@ export default mixins(
 
 				try {
 					if (workflowData.nodes) {
-						CanvasHelpers.addNewIdsToNodes(workflowData.nodes);
+						// set all new ids when pasting/importing workflows
+						workflowData.nodes.forEach((node: INode) => {
+							node.id = uuidv4();
+						});
 					}
 
 					// By default we automatically deselect all the currently
@@ -2600,6 +2601,10 @@ export default mixins(
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
+					if (!node.id) {
+						node.id = uuidv4();
+					}
+
 					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
 
 					// Make sure that some properties always exist
