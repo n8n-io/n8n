@@ -1311,11 +1311,14 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  *
  * @export
  * @param {(IDataObject | IDataObject[])} data
+ * @param {(number)} itemIndex
+ * @param {(number)} inputIndex
  * @returns {INodeExecutionData[]}
  */
 export function preparePairedData(
 	data: IDataObject | IDataObject[],
-	index = 0,
+	itemIndex = 0,
+	inputIndex = 0,
 ): INodeExecutionData[] {
 	const returnData: INodeExecutionData[] = [];
 
@@ -1327,8 +1330,8 @@ export function preparePairedData(
 		returnData.push({
 			json: jsonData,
 			pairedItem: {
-				input: index,
-				item: index,
+				input: inputIndex,
+				item: itemIndex,
 			},
 		});
 	});

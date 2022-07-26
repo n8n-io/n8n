@@ -2115,7 +2115,7 @@ export class Github implements INodeType {
 						body,
 						qs,
 					);
-					responseData = this.helpers.preparePairedData(allItems);
+					responseData = this.helpers.preparePairedData(allItems, i);
 				} else {
 					responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
 				}

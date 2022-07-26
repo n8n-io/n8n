@@ -68,7 +68,11 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
 		): Promise<any>;
-		preparePairedData(data: IDataObject | IDataObject[], index?: number): INodeExecutionData[];
+		preparePairedData(
+			data: IDataObject | IDataObject[],
+			itemIndex?: number,
+			inputIndex?: number,
+		): INodeExecutionData[];
 	};
 }
 
