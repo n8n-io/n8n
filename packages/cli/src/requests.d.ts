@@ -6,6 +6,7 @@ import {
 	ICredentialNodeAccess,
 	INode,
 	INodeCredentialTestRequest,
+	IPinData,
 	IRunData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
@@ -71,6 +72,7 @@ export declare namespace WorkflowRequest {
 		{
 			workflowData: IWorkflowDb;
 			runData: IRunData;
+			pinData: IPinData;
 			startNodes?: string[];
 			destinationNode?: string;
 		}
@@ -291,4 +293,18 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 
 export declare namespace TagsRequest {
 	type Delete = AuthenticatedRequest<{ id: string }>;
+}
+
+export declare namespace NodeRequest {
+	type RequestBody = {
+		name: string;
+	};
+
+	type GetAll = AuthenticatedRequest;
+
+	type Post = AuthenticatedRequest<{}, {}, RequestBody>;
+
+	type Delete = Post;
+
+	type Update = Post;
 }

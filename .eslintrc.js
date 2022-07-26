@@ -13,6 +13,7 @@ module.exports = {
 		sourceType: 'module',
 	},
 	ignorePatterns: [
+		'n8n',
 		'.eslintrc.js',
 		'**/*.js',
 		'**/node_modules/**',

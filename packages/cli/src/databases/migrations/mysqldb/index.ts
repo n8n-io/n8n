@@ -13,8 +13,10 @@ import { UpdateWorkflowCredentials1630451444017 } from './1630451444017-UpdateWo
 import { AddExecutionEntityIndexes1644424784709 } from './1644424784709-AddExecutionEntityIndexes';
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
+import { CommunityNodes1652254514003 } from './1652254514003-CommunityNodes';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
+import { IntroducePinData1654090101303 } from './1654090101303-IntroducePinData';
 import { CreateCredentialsEditorRole1657062385367 } from './1657062385367-CreateCredentialsEditorRole';
 
 export const mysqlMigrations = [
@@ -34,6 +36,8 @@ export const mysqlMigrations = [
 	CreateUserManagement1646992772331,
 	LowerCaseUserEmail1648740597343,
 	AddUserSettings1652367743993,
+	CommunityNodes1652254514003,
 	AddAPIKeyColumn1652905585850,
+	IntroducePinData1654090101303,
 	CreateCredentialsEditorRole1657062385367,
 ];

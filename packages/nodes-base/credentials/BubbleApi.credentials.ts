@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BubbleApi implements ICredentialType {
 	name = 'bubbleApi';
@@ -60,9 +57,7 @@ export class BubbleApi implements ICredentialType {
 			default: '',
 			displayOptions: {
 				show: {
-					hosting: [
-						'selfHosted',
-					],
+					hosting: ['selfHosted'],
 				},
 			},
 		},

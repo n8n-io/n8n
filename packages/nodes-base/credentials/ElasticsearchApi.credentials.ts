@@ -31,7 +31,7 @@ export class ElasticsearchApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'https://mydeployment.es.us-central1.gcp.cloud.es.io:9243',
-			description: 'Referred to as Elasticsearch \'endpoint\' in the Elastic deployment dashboard',
+			description: "Referred to as Elasticsearch 'endpoint' in the Elastic deployment dashboard",
 		},
 		{
 			displayName: 'Ignore SSL Issues',
