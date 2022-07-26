@@ -4,7 +4,7 @@ import { SignInType } from '../../Ldap/constants';
 import {
 	findAndAuthenticateLdapUser,
 	getLdapConfig,
-	getAdUserRole,
+	getLdapUserRole,
 	getUserByLdapId,
 	isLdapDisabled,
 	mapLdapAttributesToDb,
@@ -44,7 +44,7 @@ export const handleLdapLogin = async (
 	if (localUser?.disabled) return undefined;
 
 	if (!localUser) {
-		const role = await getAdUserRole();
+		const role = await getLdapUserRole();
 
 		await Db.collections.User.save({
 			password: randomPassword(),

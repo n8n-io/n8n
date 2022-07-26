@@ -8,7 +8,7 @@ import { RunningMode, SyncStatus } from './constants';
 import {
 	addConfigFilter,
 	getLdapUsers,
-	getAdUserRole,
+	getLdapUserRole,
 	mapLdapUserToDbUser,
 	processUsers,
 	saveLdapSyncronization,
@@ -91,7 +91,7 @@ export class LdapSync {
 
 		const localAdUsers = await getLdapUsers();
 
-		const role = await getAdUserRole();
+		const role = await getLdapUserRole();
 
 		const { usersToCreate, usersToUpdate, usersToDisable } = this.getUsersToProcess(
 			adUsers,

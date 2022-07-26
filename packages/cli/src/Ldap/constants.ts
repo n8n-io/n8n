@@ -25,6 +25,36 @@ export enum SyncStatus {
 	ERROR = 'error',
 }
 
+export const LDAP_DEFAULT_CONFIGURATION = {
+	login: {
+		enabled: false,
+		label: '',
+	},
+	connection: {
+		url: '',
+		useSsl: true,
+	},
+	binding: {
+		baseDn: '',
+		adminDn: '',
+		adminPassword: '',
+	},
+	attributeMapping: {
+		firstName: '',
+		lastName: '',
+		email: '',
+		loginId: '',
+		ldapId: '',
+	},
+	filter: {
+		user: '',
+	},
+	syncronization: {
+		enabled: false,
+		interval: 60,
+	},
+};
+
 export const LDAP_CONFIG_SCHEMA = {
 	$schema: 'https://json-schema.org/draft/2019-09/schema',
 	type: 'object',

@@ -13,8 +13,10 @@ import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager';
+
 import {
 	LDAP_CONFIG_SCHEMA,
+	LDAP_DEFAULT_CONFIGURATION,
 	LDAP_DISABLED,
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
@@ -39,13 +41,17 @@ export const isLdapEnabled = (): boolean => !config.getEnv(LDAP_DISABLED);
  * Set the LDAP login label
  * to the configuration object
  */
-const setLdapLoginLabel = (value: string) => config.set(LDAP_LOGIN_LABEL, value);
+export const setLdapLoginLabel = (value: string): void => {
+	config.set(LDAP_LOGIN_LABEL, value);
+};
 
 /**
  * Set the LDAP login enabled
  * to the configuration object
  */
-const setLdapLoginEnabled = (value: boolean) => config.set(LDAP_LOGIN_ENABLED, value);
+export const setLdapLoginEnabled = (value: boolean): void => {
+	config.set(LDAP_LOGIN_ENABLED, value);
+};
 
 /**
  * Retrieve the LDAP login label
@@ -60,17 +66,11 @@ export const getLdapLoginLabel = (): string => config.getEnv(LDAP_LOGIN_LABEL);
 export const isLdapLoginEnabled = (): boolean => config.getEnv(LDAP_LOGIN_ENABLED);
 
 /**
- * Check whether login with LDAP is
- * enabled in the instance
- */
-export const isActiveDirectoryLoginDisabled = (): boolean => !config.getEnv(LDAP_LOGIN_ENABLED);
-
-/**
  * Check whether the current run is the
  * first run after the feature was enabled
  * @param  {Settings[]} databaseSettings
  */
-const isFirstRunAfterLdapFeatureEnabled = (databaseSettings: Settings[]) => {
+export const isFirstRunAfterLdapFeatureEnabled = (databaseSettings: Settings[]): boolean => {
 	const dbSetting = databaseSettings.find((setting) => setting.key === LDAP_DISABLED);
 	return !dbSetting;
 };
@@ -87,7 +87,7 @@ export const randomPassword = (): string => {
  * Return the user role to be assigned
  * to LDAP users
  */
-export const getAdUserRole = async (): Promise<Role> => {
+export const getLdapUserRole = async (): Promise<Role> => {
 	return Db.collections.Role.findOneOrFail({ scope: 'global', name: 'member' });
 };
 
@@ -97,7 +97,7 @@ export const getAdUserRole = async (): Promise<Role> => {
  * @param  {LdapConfig} config
  * @returns string
  */
-const validateLdapConfigurationSchema = (
+export const validateLdapConfigurationSchema = (
 	config: LdapConfig,
 ): { valid: boolean; message: string } => {
 	const { valid, errors } = validate(config, LDAP_CONFIG_SCHEMA, { nestedErrors: true });
@@ -114,7 +114,7 @@ const validateLdapConfigurationSchema = (
  * encryption key
  * @param  {string} password
  */
-const encryptPassword = async (password: string) => {
+export const encryptPassword = async (password: string): Promise<string> => {
 	const encryptionKey = await UserSettings.getEncryptionKey();
 	return AES.encrypt(password, encryptionKey).toString();
 };
@@ -124,7 +124,7 @@ const encryptPassword = async (password: string) => {
  * encryption key
  * @param  {string} password
  */
-const decryptPassword = async (password: string): Promise<string> => {
+export const decryptPassword = async (password: string): Promise<string> => {
 	const encryptionKey = await UserSettings.getEncryptionKey();
 	return AES.decrypt(password, encryptionKey).toString(enc.Utf8);
 };
@@ -133,7 +133,7 @@ const decryptPassword = async (password: string): Promise<string> => {
  * Save the LDAP settings
  * to the database
  */
-const saveLdapSettings = async () => {
+export const saveLdapSettings = async (): Promise<void> => {
 	const setting: Settings = {
 		key: LDAP_DISABLED,
 		value: 'false',
@@ -150,38 +150,10 @@ const saveLdapSettings = async () => {
  * to the database with the default
  * values
  */
-const saveLdapFeatureConfiguration = async () => {
+export const saveLdapConfig = async (): Promise<void> => {
 	const featureConfig: IFeatureConfigDb = {
 		name: LDAP_FEATURE_NAME,
-		data: {
-			login: {
-				enabled: false,
-				label: '',
-			},
-			connection: {
-				url: '',
-				useSsl: true,
-			},
-			binding: {
-				baseDn: '',
-				adminDn: '',
-				adminPassword: '',
-			},
-			attributeMapping: {
-				firstName: '',
-				lastName: '',
-				email: '',
-				loginId: '',
-				ldapId: '',
-			},
-			filter: {
-				user: '',
-			},
-			syncronization: {
-				enabled: false,
-				interval: 60,
-			},
-		},
+		data: LDAP_DEFAULT_CONFIGURATION,
 	};
 	await Db.collections.FeatureConfig.save<IFeatureConfigDb>(featureConfig);
 };
@@ -214,7 +186,7 @@ export const getLdapConfig = async (): Promise<{
  * @param  {ActiveDirectoryConfig} config
  * @returns void
  */
-const setGlobalLdapConfigVariables = (config: LdapConfig): void => {
+export const setGlobalLdapConfigVariables = (config: LdapConfig): void => {
 	setLdapLoginEnabled(config.login.enabled);
 	setLdapLoginLabel(config.login.label);
 };
@@ -260,7 +232,7 @@ export const handleLdapInit = async (databaseSettings: Settings[]): Promise<void
 		await saveLdapSettings();
 
 		// Save all the default data for the feature
-		await saveLdapFeatureConfiguration();
+		await saveLdapConfig();
 	}
 
 	const adConfig = await getLdapConfig();

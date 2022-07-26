@@ -3,7 +3,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import * as config from '../../../config';
 import { DatabaseType } from '../..';
-import { RunningMode, SyncStatus } from '../../Ldap/constants';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');
@@ -46,11 +45,11 @@ export class LdapSyncHistory {
 	scanned: number;
 
 	@Column()
-	status: SyncStatus;
+	status: string;
 
 	@Column()
 	error: string;
 
 	@Column()
-	runMode: RunningMode;
+	runMode: string;
 }
