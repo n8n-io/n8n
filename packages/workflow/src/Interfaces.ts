@@ -971,6 +971,7 @@ export interface INodeProperties {
 	credentialTypes?: Array<
 		'extends:oAuth2Api' | 'extends:oAuth1Api' | 'has:authenticate' | 'has:genericAuth'
 	>;
+	extractValue?: INodePropertyValueExtractor;
 	modes?: INodePropertyMode[];
 }
 
@@ -1035,6 +1036,25 @@ export interface INodePropertyCollection {
 	name: string;
 	values: INodeProperties[];
 }
+
+export interface INodePropertyValueExtractorBase {
+	type: string;
+}
+
+export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtractorBase {
+	type: 'regex';
+	regex: string | RegExp;
+}
+
+export interface INodePropertyValueExtractorFunction {
+	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
+		| Promise<string | NodeParameterValue>
+		| (string | NodeParameterValue);
+}
+
+export type INodePropertyValueExtractor =
+	| INodePropertyValueExtractorRegex
+	| INodePropertyValueExtractorFunction;
 
 export interface IParameterDependencies {
 	[key: string]: string[];
