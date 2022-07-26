@@ -132,16 +132,16 @@ export const attributeOperations: INodeProperties[] = [
 
 const createAttributeOperations: INodeProperties[] = [
 	{
+		displayName: 'Category',
+		name: 'attributeCategory',
 		default: 'normal',
 		description: 'Category of the attribute',
-		displayName: 'Category',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
 				operation: ['create'],
 			},
 		},
-		name: 'attributeCategory',
 		options: [
 			{
 				name: 'Calculated',
@@ -167,9 +167,10 @@ const createAttributeOperations: INodeProperties[] = [
 		type: 'options',
 	},
 	{
+		displayName: 'Name',
+		name: 'attributeName',
 		default: '',
 		description: 'Name of the attribute',
-		displayName: 'Name',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
@@ -177,13 +178,13 @@ const createAttributeOperations: INodeProperties[] = [
 			},
 		},
 		required: true,
-		name: 'attributeName',
 		type: 'string',
 	},
 	{
+		displayName: 'Type',
+		name: 'attributeType',
 		default: '',
 		description: 'Attribute Type',
-		displayName: 'Type',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
@@ -191,7 +192,6 @@ const createAttributeOperations: INodeProperties[] = [
 				attributeCategory: ['normal'],
 			},
 		},
-		name: 'attributeType',
 		options: [
 			{
 				name: 'Boolean',
@@ -221,9 +221,10 @@ const createAttributeOperations: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Value',
+		name: 'attributeValue',
 		default: '',
 		description: 'Value of the attribute',
-		displayName: 'Value',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
@@ -231,7 +232,6 @@ const createAttributeOperations: INodeProperties[] = [
 				attributeCategory: ['global', 'calculated'],
 			},
 		},
-		name: 'attributeValue',
 		type: 'string',
 		placeholder: '',
 		routing: {
@@ -309,16 +309,16 @@ const createAttributeOperations: INodeProperties[] = [
 
 const updateAttributeOperations: INodeProperties[] = [
 	{
+		displayName: 'Category',
+		name: 'updateAttributeCategory',
 		default: 'calculated',
 		description: 'Category of the attribute',
-		displayName: 'Category',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
 				operation: ['updateAttribute'],
 			},
 		},
-		name: 'updateAttributeCategory',
 		options: [
 			{
 				name: 'Calculated',
@@ -336,22 +336,23 @@ const updateAttributeOperations: INodeProperties[] = [
 		type: 'options',
 	},
 	{
+		displayName: 'Name',
+		name: 'updateAttributeName',
 		default: '',
 		description: 'Name of the existing attribute',
-		displayName: 'Name',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
 				operation: ['updateAttribute'],
 			},
 		},
-		name: 'updateAttributeName',
 		type: 'string',
 	},
 	{
+		displayName: 'Value',
+		name: 'updateAttributeValue',
 		default: '',
 		description: 'Value of the attribute to update',
-		displayName: 'Value',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
@@ -361,7 +362,6 @@ const updateAttributeOperations: INodeProperties[] = [
 				updateAttributeCategory: ['category'],
 			},
 		},
-		name: 'updateAttributeValue',
 		type: 'string',
 		placeholder: '',
 		routing: {
@@ -374,11 +374,11 @@ const updateAttributeOperations: INodeProperties[] = [
 	},
 	{
 		displayName: 'Update Fields',
-		description: 'List of the values and labels that the attribute can take',
 		name: 'updateAttributeCategoryList',
+		default: {},
+		description: 'List of the values and labels that the attribute can take',
 		type: 'collection',
 		placeholder: 'Add Field',
-		default: {},
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
@@ -440,16 +440,16 @@ const updateAttributeOperations: INodeProperties[] = [
 
 const deleteAttribueOperations: INodeProperties[] = [
 	{
+		displayName: 'Category',
+		name: 'deleteAttributeCategory',
 		default: 'normal',
 		description: 'Category of the attribute',
-		displayName: 'Category',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
 				operation: ['delete'],
 			},
 		},
-		name: 'deleteAttributeCategory',
 		options: [
 			{
 				name: 'Calculated',
@@ -475,16 +475,16 @@ const deleteAttribueOperations: INodeProperties[] = [
 		type: 'options',
 	},
 	{
+		displayName: 'Name',
+		name: 'deleteAttributeName',
 		default: '',
 		description: 'Name of the attribute',
-		displayName: 'Name',
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
 				operation: ['delete'],
 			},
 		},
-		name: 'deleteAttributeName',
 		type: 'string',
 	},
 ];

@@ -119,16 +119,16 @@ const createOperations: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Contact Attributes',
+		name: 'createContactAttributes',
 		default: {},
 		description: 'Array of attributes to be added',
-		displayName: 'Contact Attributes',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['create'],
 			},
 		},
-		name: 'createContactAttributes',
 		options: [
 			{
 				name: 'attributesValues',
@@ -361,34 +361,34 @@ const deleteOperations: INodeProperties[] = [
 
 const updateOperations: INodeProperties[] = [
 	{
+		displayName: 'Contact Identifier',
+		name: 'identifier',
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
-		displayName: 'Contact Identifier',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['update'],
 			},
 		},
-		name: 'identifier',
 		type: 'string',
 		required: true,
 	},
 	{
+		displayName: 'Attributes',
+		name: 'updateAttributes',
 		default: {},
 		description: 'Array of attributes to be updated',
-		displayName: 'Attributes',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['update'],
 			},
 		},
-		name: 'updateAttributes',
 		options: [
 			{
-				name: 'updateAttributesValues',
 				displayName: 'Attribute',
+				name: 'updateAttributesValues',
 				values: [
 					{
 						displayName: 'Field Name',
@@ -461,30 +461,30 @@ const updateOperations: INodeProperties[] = [
 
 const upsertOperations: INodeProperties[] = [
 	{
+		displayName: 'Contact Identifier',
+		name: 'identifier',
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
-		displayName: 'Contact Identifier',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['upsert'],
 			},
 		},
-		name: 'identifier',
 		type: 'string',
 		required: true,
 	},
 	{
+		displayName: 'Contact Attributes',
+		name: 'upsertAttributes',
 		default: {},
 		description: 'Array of attributes to be updated',
-		displayName: 'Contact Attributes',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
 				operation: ['upsert'],
 			},
 		},
-		name: 'upsertAttributes',
 		options: [
 			{
 				name: 'upsertAttributesValues',

@@ -244,7 +244,12 @@ export class SendInBlueTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events') as string[];
 
-				let responseData = await SendInBlueWebhookApi.createWebHook(this, type, events, webhookUrl);
+				const responseData = await SendInBlueWebhookApi.createWebHook(
+					this,
+					type,
+					events,
+					webhookUrl,
+				);
 
 				if (responseData === undefined || responseData.id === undefined) {
 					// Required data is missing so was not successful

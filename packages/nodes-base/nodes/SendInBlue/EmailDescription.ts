@@ -381,9 +381,9 @@ const sendHtmlEmailFields: INodeProperties[] = [
 
 const sendHtmlTemplateEmailFields: INodeProperties[] = [
 	{
-		type: 'options',
-		name: 'templateId',
 		displayName: 'Template ID',
+		name: 'templateId',
+		type: 'options',
 		default: {},
 		typeOptions: {
 			loadOptions: {
@@ -410,7 +410,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 							{
 								type: 'sort',
 								properties: {
-									key: 'value',
+									key: 'name',
 								},
 							},
 						],
@@ -448,8 +448,8 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				name: 'receipient',
 				displayName: 'Receipient',
+				name: 'receipient',
 				values: [
 					{
 						displayName: 'Name',
@@ -484,10 +484,10 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		type: 'collection',
-		name: 'additionalFields',
-		description: 'Additional fields to add',
 		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		description: 'Additional fields to add',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
@@ -508,13 +508,13 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				default: {},
 				options: [
 					{
-						name: 'attachment',
 						displayName: 'Attachment Data',
+						name: 'attachment',
 						values: [
 							{
-								default: '',
 								displayName: 'Input Data Field Name',
 								name: 'binaryPropertyName',
+								default: '',
 								type: 'string',
 								description:
 									'The name of the incoming field containing the binary file data to be processed',
@@ -529,10 +529,10 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				},
 			},
 			{
-				default: {},
-				description: 'Add tags to your emails to find them more easily',
 				displayName: 'Email Tags',
 				name: 'emailTags',
+				default: {},
+				description: 'Add tags to your emails to find them more easily',
 				options: [
 					{
 						displayName: 'Tags',
