@@ -496,6 +496,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 			try {
 				const survey = { ...values, version: SURVEY_VERSION };
 
+				// @TODO_PART_2: To be done via hook
+				// window.posthog.people.set(survey);
+
 				await this.$store.dispatch('users/submitPersonalizationSurvey', survey);
 
 				if (Object.keys(values).length === 0) {
