@@ -25,8 +25,6 @@ export enum SyncStatus {
 	ERROR = 'error',
 }
 
-export const LDAP_LOG_PREPEND_MESSAGE = 'LDAP -';
-
 export const LDAP_CONFIG_SCHEMA = {
 	$schema: 'https://json-schema.org/draft/2019-09/schema',
 	type: 'object',

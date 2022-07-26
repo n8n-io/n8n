@@ -4,7 +4,7 @@ import type { Entry } from 'ldapts';
 import { IDataObject, LoggerProxy as Logger } from 'n8n-workflow';
 import { LdapService } from './LdapService';
 import type { LdapConfig } from './types';
-import { LDAP_LOG_PREPEND_MESSAGE, RunningMode, SyncStatus } from './constants';
+import { RunningMode, SyncStatus } from './constants';
 import {
 	addConfigFilter,
 	getLdapUsers,
@@ -24,28 +24,44 @@ export class LdapSync {
 
 	private _ldapService: LdapService;
 
+	/**
+	 * Updates the LDAP configuration
+	 * @param  {LdapConfig} config
+	 */
 	set config(config: LdapConfig) {
 		this._config = config;
-		// If user disable syncronization in the UI
+		// If user disabled syncronization in the UI and there a job schedule,
+		// stop it
 		if (this.intervalId && !this._config.syncronization.enabled) {
 			this.stop();
-			// will only run the instance crashes and it starts again
+			// If instance crashed with a job scheduled, once the server starts
+			// again, reschedule it.
 		} else if (!this.intervalId && this._config.syncronization.enabled) {
 			this.scheduleRun();
-			// If syncronization scheduled and internval got updated in the UI
+			// If job scheduled and the run interval got updated in the UI
+			// stop the current one and schedule a new one with the new internal
 		} else if (this.intervalId && this._config.syncronization.enabled) {
 			this.stop();
 			this.scheduleRun();
 		}
 	}
 
+	/**
+	 * Set the LDAP service instance
+	 * @param  {LdapService} service
+	 */
 	set ldapService(service: LdapService) {
 		this._ldapService = service;
 	}
 
+	/**
+	 * Schedule a syncronization job based
+	 * on the interval set in the LDAP config
+	 * @returns void
+	 */
 	scheduleRun(): void {
 		Logger.info(
-			`${LDAP_LOG_PREPEND_MESSAGE} Scheduling a syncronization run in ${this._config.syncronization.interval} minutes`,
+			`LDAP - Scheduling a syncronization run in ${this._config.syncronization.interval} minutes`,
 		);
 		if (!this._config.syncronization.interval) {
 			throw new Error('Interval variable has to be defined');
@@ -55,10 +71,18 @@ export class LdapSync {
 		}, this._config.syncronization.interval * 60000);
 	}
 
+	/**
+	 * Run the syncronization job.
+	 * If the job runs in "live" mode,
+	 * changes to LDAP users are persisted
+	 * in the database, else the users are
+	 * not modified
+	 * @param  {RunningMode} mode
+	 * @returns Promise
+	 */
 	async run(mode: RunningMode): Promise<void> {
-		Logger.info(`${LDAP_LOG_PREPEND_MESSAGE} Starting a syncronization run in ${mode} mode`);
+		Logger.info(`LDAP - Starting a syncronization run in ${mode} mode`);
 
-		//	`(&(${this._config.attributeMapping.loginId}=*)(!(mail=teresa.zeron1@gmail.com)))`
 		const adUsers = await this._ldapService.searchWithAdminBinding(
 			addConfigFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
 		);
@@ -103,13 +127,29 @@ export class LdapSync {
 		});
 
 		await saveLdapSyncronization(syncronization);
+
+		Logger.info(`LDAP - Syncronization finished successfully`);
 	}
 
+	/**
+	 * Stop the current job scheduled,
+	 * if any
+	 * @returns void
+	 */
 	stop(): void {
+		Logger.info(`LDAP - Stopping syncronization job`);
 		clearInterval(this.intervalId);
 		this.intervalId = undefined;
 	}
 
+	/**
+	 * Get all the user that will be
+	 * changed (created, updated, disabled),
+	 * in the database
+	 * @param  {Entry[]} adUsers
+	 * @param  {string[]} localAdUsers
+	 * @param  {Role} role
+	 */
 	private getUsersToProcess(
 		adUsers: Entry[],
 		localAdUsers: string[],
@@ -127,8 +167,8 @@ export class LdapSync {
 	}
 
 	/**
-	 * Get users in Active Directory that
-	 * are not in the n8n DB
+	 * Get users in LDAP that
+	 * are not in the database
 	 * @param  {Entry[]} adUsers
 	 * @param  {string[]} localAdUsers
 	 * @returns Array
@@ -142,8 +182,8 @@ export class LdapSync {
 	}
 
 	/**
-	 * Get users in Active Directory that
-	 * are in the n8n DB
+	 * Get users in LDAP that
+	 * are in THE DATABASE
 	 * @param  {Entry[]} adUsers
 	 * @param  {string[]} localAdUsers
 	 * @returns Array
@@ -155,8 +195,8 @@ export class LdapSync {
 	}
 
 	/**
-	 * Get users that are in the local DB
-	 * but no in Active Directory
+	 * Get users that are in the database
+	 * but no in the LDAP
 	 * @param  {Entry[]} adUsers
 	 * @param  {string[]} localAdUsers
 	 * @retuens Array

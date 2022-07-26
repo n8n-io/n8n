@@ -17,7 +17,7 @@ export class LdapManager {
 		sync: LdapSync;
 	} {
 		if (!this.initialized) {
-			throw new Error('LDAP Service has not been initialized');
+			throw new Error('LDAP Manager has not been initialized');
 		}
 		return this.ldap;
 	}
