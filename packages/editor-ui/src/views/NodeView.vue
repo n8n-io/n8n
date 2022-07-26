@@ -210,6 +210,7 @@ import {
 	ITag,
 	IWorkflowTemplate,
 	IExecutionsSummary,
+	IWorkflowToShare,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
@@ -1071,7 +1072,14 @@ export default mixins(
 
 			copySelectedNodes (isCut: boolean) {
 				this.getSelectedNodesToSave().then((data) => {
-					const nodeData = JSON.stringify(data, null, 2);
+					const workflowToCopy: IWorkflowToShare = {
+						meta: {
+							instanceId: this.$store.getters.instanceId,
+						},
+						...data,
+					};
+
+					const nodeData = JSON.stringify(workflowToCopy, null, 2);
 					this.copyToClipboard(nodeData);
 					if (data.nodes.length > 0) {
 						if(!isCut){
