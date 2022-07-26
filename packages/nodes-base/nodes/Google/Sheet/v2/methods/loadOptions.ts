@@ -6,8 +6,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	GoogleSheet
-} from '../helper'
+	GoogleSheet,
+} from '../helper';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const spreadsheetId = this.getCurrentNodeParameter('sheetId') as string;
