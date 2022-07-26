@@ -410,15 +410,23 @@ export default mixins(
 		methods: {
 			onRunNode(nodeName: string, source: string) {
 				const node = this.$store.getters.getNodeByName(nodeName);
-				this.$telemetry.track('User clicked execute node button', { node_type: node ? node.type : null, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				const telemetryPayload = {
+					node_type: node ? node.type : null,
+					workflow_id: this.$store.getters.workflowId,
+					source: 'canvas',
+				};
+				this.$telemetry.track('User clicked execute node button', telemetryPayload);
+				this.$externalHooks().run('NodeView.onRunNode', telemetryPayload);
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
 				this.getWorkflowDataToSave().then((workflowData) => {
-					this.$telemetry.track('User clicked execute workflow button', {
+					const telemetryPayload = {
 						workflow_id: this.$store.getters.workflowId,
 						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
-					});
+					};
+					this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
+					this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 				});
 
 				this.runWorkflow();

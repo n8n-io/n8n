@@ -928,7 +928,7 @@ export default mixins(
 				}
 
 				if (this.node && (command === 'addExpression' || command === 'removeExpression')) {
-					this.$telemetry.track('User switched parameter mode', {
+					const telemetryPayload = {
 						node_type: this.node.type,
 						parameter: this.path,
 						old_mode: command === 'addExpression' ? 'fixed': 'expression',
@@ -936,7 +936,9 @@ export default mixins(
 						was_parameter_empty: prevValue === '' || prevValue === undefined,
 						had_mapping: hasExpressionMapping(prevValue),
 						had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
-					});
+					};
+					this.$telemetry.track('User switched parameter mode', telemetryPayload);
+					this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 				}
 			},
 		},
