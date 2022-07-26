@@ -474,6 +474,10 @@ export const getRelativePosition = (x: number, y: number, scale: number, offset:
 	];
 };
 
+export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosition => {
+	return getRelativePosition((window.innerWidth - SIDEBAR_WIDTH) / 2, (window.innerHeight - HEADER_HEIGHT) / 2, scale, offset);
+};
+
 export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) => {
 	const squareSize = GRID_SIZE * scale;
 	const dotSize = 1 * scale;

@@ -73,7 +73,7 @@
 		width: 40px;
 		height: 40px;
 		font-size: 24px;
-		color: #fff;
+		color: var(--color-foreground-xlight);
 		background-color: #606266;
 	}
 
@@ -93,7 +93,7 @@
 		height: 44px;
 		padding: 0 23px;
 		background-color: #606266;
-		border-color: #fff;
+		border-color: var(--color-foreground-xlight);
 		border-radius: 22px;
 
 		@include mixins.e(actions__inner) {
@@ -102,7 +102,7 @@
 			text-align: justify;
 			cursor: default;
 			font-size: 23px;
-			color: #fff;
+			color: var(--color-foreground-xlight);
 			display: flex;
 			align-items: center;
 			justify-content: space-around;
@@ -115,9 +115,9 @@
 		width: 44px;
 		height: 44px;
 		font-size: 24px;
-		color: #fff;
+		color: var(--color-foreground-xlight);
 		background-color: #606266;
-		border-color: #fff;
+		border-color: var(--color-foreground-xlight);
 		left: 40px;
 	}
 
@@ -127,9 +127,9 @@
 		width: 44px;
 		height: 44px;
 		font-size: 24px;
-		color: #fff;
+		color: var(--color-foreground-xlight);
 		background-color: #606266;
-		border-color: #fff;
+		border-color: var(--color-foreground-xlight);
 		right: 40px;
 		text-indent: 2px;
 	}
