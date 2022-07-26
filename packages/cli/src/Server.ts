@@ -2608,7 +2608,8 @@ class App {
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-			if (this.frontendSettings.telemetry.enabled) {
+			// @TODO_PART_3: Re-enable, for now injecting in editor-ui/public/index.html
+			if (false && this.frontendSettings.telemetry.enabled) {
 				// @TODO_PART_3:
 				// Confirm if `autocapture` is needed for session recording, if so enable
 
