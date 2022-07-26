@@ -266,7 +266,7 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 	meta?: {
 		instanceId: string;
 	};
-};
+}
 
 export interface IWorkflowTemplate {
 	id: number;
