@@ -1,4 +1,5 @@
 import {
+	IExecuteSingleFunctions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -333,9 +334,9 @@ export const boardFields: INodeProperties[] = [
 	//         board:get
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
-		name: 'id',
-		type: 'string',
+		displayName: 'Board',
+		name: 'boardId',
+		type: 'resourceLocator',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -349,6 +350,46 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		description: 'The ID of the board to get',
+		modes: [
+			// TODO: This rule should only apply for direct node properties, not their children
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Board Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]+',
+							errorMessage: 'The ID is not valid, it has to start with a lower case character followed by 5 numbers',
+						}
+					},
+				],
+				placeholder: 'a12345',
+				url: '=https://api.trello.com/1/boards/{{$value}}',
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				hint: 'Enter board URL',
+				placeholder: 'https://api.trello.com/1/boards/e123456',
+				validation: [
+					async function(this: IExecuteSingleFunctions, value: string) {
+						if (!value.startsWith("http")) {
+							throw new Error("No valid URL got entered.");
+						}
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https:\/\/api\.trello\.com\/1\/boards\/([a-zA-Z0-9]+)',
+				},
+			}
+		]
 	},
 	{
 		displayName: 'Additional Fields',
