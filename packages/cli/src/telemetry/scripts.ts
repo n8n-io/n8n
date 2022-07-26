@@ -1,5 +1,5 @@
 /**
- * Return a `<script>` to initialize PostHog, for embedding
+ * Return a script to initialize PostHog, for embedding
  * before the Vue bundle in `<head>` in `index.html`.
  */
 export const postHog = ({
