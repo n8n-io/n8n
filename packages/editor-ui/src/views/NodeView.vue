@@ -613,6 +613,8 @@ export default mixins(
 				}
 				this.resetWorkspace();
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
+				CanvasHelpers.addNewIdsToNodes(data.workflow.nodes);
+
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 
 				if (data.workflow.pinData) {
@@ -647,6 +649,7 @@ export default mixins(
 				}
 
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
+				CanvasHelpers.addNewIdsToNodes(data.workflow.nodes);
 
 				this.blankRedirect = true;
 				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
