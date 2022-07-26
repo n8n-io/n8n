@@ -1298,7 +1298,7 @@ export default mixins(
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowDataUpdate, importTags = true, source: string): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowToShare, importTags = true, source: string): Promise<void> {
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -1308,14 +1308,31 @@ export default mixins(
 				}
 
 				try {
+					const nodeIdMap = {};
 					if (workflowData.nodes) {
+
+						const nodeIdMap: {[prev: string]: string} = {};
 						// set all new ids when pasting/importing workflows
 						workflowData.nodes.forEach((node: INode) => {
-							node.id = uuidv4();
+							if (node.id) {
+								const newId = uuidv4();
+								nodeIdMap[newId] = node.id;
+								node.id = newId;
+							}
+							else {
+								node.id = uuidv4();
+							}
 						});
 					}
 
-					const nodeGraph = JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph);
+					const nodeGraph = JSON.stringify(
+						TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase,
+							this.getNodeTypes(),
+							{
+								nodeIdMap,
+								sourceInstanceId: workflowData.meta && workflowData.meta.instanceId,
+							}).nodeGraph,
+						);
 					if (source === 'paste') {
 						this.$telemetry.track('User pasted nodes', {
 							workflow_id: this.$store.getters.workflowId,

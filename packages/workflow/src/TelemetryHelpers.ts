@@ -114,6 +114,10 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 export function generateNodesGraph(
 	workflow: IWorkflowBase,
 	nodeTypes: INodeTypes,
+	options?: {
+		sourceInstanceId?: string,
+		nodeIdMap?: {[curr: string]: string}
+	},
 ): INodesGraphResult {
 	const nodesGraph: INodesGraph = {
 		node_types: [],
@@ -152,6 +156,14 @@ export function generateNodesGraph(
 				type: node.type,
 				position: node.position,
 			};
+
+			if (options?.sourceInstanceId) {
+				nodeItem.src_instance_id = options.sourceInstanceId;
+			}
+
+			if (node.id && options?.nodeIdMap && options.nodeIdMap[node.id]) {
+				nodeItem.src_node_id = options.nodeIdMap[options.nodeIdMap[node.id]];
+			}
 
 			if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
 				try {
