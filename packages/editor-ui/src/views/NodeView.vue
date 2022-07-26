@@ -1273,11 +1273,7 @@ export default mixins(
 					}
 				}
 
-				this.$telemetry.track('User pasted nodes', {
-					workflow_id: this.$store.getters.workflowId,
-				});
-
-				return this.importWorkflowData(workflowData!, false);
+				return this.importWorkflowData(workflowData!, false, 'paste');
 			},
 
 			// Returns the workflow data from a given URL. If no data gets found or
@@ -1298,13 +1294,11 @@ export default mixins(
 				}
 				this.stopLoading();
 
-				this.$telemetry.track('User imported workflow', { source: 'url', workflow_id: this.$store.getters.workflowId });
-
 				return workflowData;
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowDataUpdate, importTags = true): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowDataUpdate, importTags = true, source: string): Promise<void> {
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -1319,6 +1313,16 @@ export default mixins(
 						workflowData.nodes.forEach((node: INode) => {
 							node.id = uuidv4();
 						});
+					}
+
+					const nodeGraph = JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph);
+					if (source === 'paste') {
+						this.$telemetry.track('User pasted nodes', {
+							workflow_id: this.$store.getters.workflowId,
+							node_graph_string: nodeGraph,
+						});
+					} else {
+						this.$telemetry.track('User imported workflow', { source, workflow_id: this.$store.getters.workflowId, node_graph_string: nodeGraph });
 					}
 
 					// By default we automatically deselect all the currently
@@ -2982,12 +2986,12 @@ export default mixins(
 				}
 			},
 			async onImportWorkflowDataEvent(data: IDataObject) {
-				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
+				await this.importWorkflowData(data.data as IWorkflowDataUpdate, undefined, 'file');
 			},
 			async onImportWorkflowUrlEvent(data: IDataObject) {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 				if (workflowData !== undefined) {
-					await this.importWorkflowData(workflowData);
+					await this.importWorkflowData(workflowData, undefined, 'url');
 				}
 			},
 			addPinDataConnections(pinData: IPinData) {

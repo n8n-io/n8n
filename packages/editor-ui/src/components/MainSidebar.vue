@@ -442,7 +442,6 @@ export default mixins(
 						return;
 					}
 
-					this.$telemetry.track('User imported workflow', { source: 'file', workflow_id: this.$store.getters.workflowId });
 					this.$root.$emit('importWorkflowData', { data: worflowData });
 				};
 
