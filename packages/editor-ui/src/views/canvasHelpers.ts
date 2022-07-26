@@ -730,10 +730,8 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	return nodes;
 };
 
-export const addIdsToNodes = (nodes: INode[]) => {
+export const addNewIdsToNodes = (nodes: INode[]) => {
 	nodes.forEach((node: INode) => {
-		if (!node.id) {
-			node.id = uuidv4();
-		}
+		node.id = uuidv4();
 	});
 };

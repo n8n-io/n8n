@@ -1306,7 +1306,7 @@ export default mixins(
 
 				try {
 					if (workflowData.nodes) {
-						CanvasHelpers.addIdsToNodes(workflowData.nodes);
+						CanvasHelpers.addNewIdsToNodes(workflowData.nodes);
 					}
 
 					// By default we automatically deselect all the currently
@@ -2175,6 +2175,7 @@ export default mixins(
 				// Deep copy the data so that data on lower levels of the node-properties do
 				// not share objects
 				const newNodeData = JSON.parse(JSON.stringify(this.getNodeDataToSave(node)));
+				newNodeData.id = uuidv4();
 
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName({
