@@ -1334,7 +1334,7 @@ export default mixins(
 								nodeIdMap,
 								sourceInstanceId: workflowData.meta && workflowData.meta.instanceId !== currInstanceId? workflowData.meta.instanceId: '',
 							}).nodeGraph,
-						);
+					);
 					if (source === 'paste') {
 						this.$telemetry.track('User pasted nodes', {
 							workflow_id: this.$store.getters.workflowId,
