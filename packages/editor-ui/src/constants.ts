@@ -228,6 +228,7 @@ export enum VIEWS {
 	EXECUTION = "ExecutionById",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
+	CREDENTIALS = "CredentialsView",
 	NEW_WORKFLOW = "NodeViewNew",
 	WORKFLOW = "NodeViewExisting",
 	DEMO = "WorkflowDemo",
