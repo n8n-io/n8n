@@ -6,7 +6,7 @@ import {
 } from 'n8n-workflow';
 import { Route } from "vue-router";
 
-import type { ILogLevel, INodeCreateElement, IRootState } from "@/Interface";
+import type { INodeCreateElement, IRootState } from "@/Interface";
 import type { Store } from "vuex";
 import type { IUserNodesPanelSession } from "./telemetry.types";
 
@@ -48,12 +48,10 @@ export class Telemetry {
 
 	init(
 		telemetrySettings: ITelemetrySettings,
-		{ instanceId, logLevel, userId, store, deploymentType }: {
+		{ instanceId, userId, store }: {
 			instanceId: string;
-			logLevel?: ILogLevel;
 			userId?: string;
 			store: Store<IRootState>;
-			deploymentType: string;
 	 },
 	) {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
@@ -61,6 +59,8 @@ export class Telemetry {
 		const { config: { key, url } } = telemetrySettings;
 
 		this.store = store;
+
+		const logLevel = store.getters['settings/logLevel'];
 
 		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
 

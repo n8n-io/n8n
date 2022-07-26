@@ -15,7 +15,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['telemetry', 'logLevel', 'deploymentType']),
+		...mapGetters('settings', ['telemetry']),
 		...mapGetters('users', ['currentUserId']),
 		...mapGetters(['instanceId']),
 		isTelemetryEnabledOnRoute(): boolean {
@@ -38,9 +38,7 @@ export default Vue.extend({
 				{
 					instanceId: this.instanceId,
 					userId: this.currentUserId,
-					logLevel: this.logLevel,
 					store: this.$store,
-					deploymentType: this.deploymentType,
 				},
 			);
 
