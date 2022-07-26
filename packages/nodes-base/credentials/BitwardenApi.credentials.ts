@@ -36,6 +36,22 @@ export class BitwardenApi implements ICredentialType {
 			],
 		},
 		{
+			displayName: 'Oauth Scope',
+			name: 'oauthScope',
+			type: 'options',
+			default: 'organization',
+			options: [
+				{
+					name: 'Organization',
+					value: 'organization',
+				},
+				{
+					name: 'Personal',
+					value: 'personal',
+				},
+			],
+		},
+		{
 			displayName: 'Self-Hosted Domain',
 			name: 'domain',
 			type: 'string',

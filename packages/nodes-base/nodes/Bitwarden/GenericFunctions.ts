@@ -72,7 +72,7 @@ export async function getAccessToken(
 			client_id: credentials.clientId,
 			client_secret: credentials.clientSecret,
 			grant_type: 'client_credentials',
-			scope: 'api.organization',
+			scope: await getOauthScope.call(this),
 			deviceName: 'n8n',
 			deviceType: 2, // https://github.com/bitwarden/server/blob/master/src/Core/Enums/DeviceType.cs
 			deviceIdentifier: 'n8n',
@@ -110,6 +110,18 @@ export async function handleGetAll(
 		const limit = this.getNodeParameter('limit', i) as number;
 		return responseData.data.slice(0, limit);
 	}
+}
+
+/**
+ * Return the oauth scope based on the user's environment.
+ */
+ async function getOauthScope(this: IExecuteFunctions | ILoadOptionsFunctions) {
+	const { oauthScope } = await this.getCredentials('bitwardenApi');
+
+	return oauthScope === 'organization'
+		? 'api.organization'
+		: 'api';
+
 }
 
 /**
