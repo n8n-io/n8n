@@ -24,6 +24,7 @@ import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { Role } from '../../src/databases/entities/Role';
 import { User } from '../../src/databases/entities/User';
 import { setTagsForImport } from '../../src/TagHelpers';
+import { v4 as uuid } from 'uuid';
 
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -129,6 +130,10 @@ export class ImportWorkflowsCommand extends Command {
 						if (credentials.length > 0) {
 							workflow.nodes.forEach((node: INode) => {
 								this.transformCredentials(node, credentials);
+
+								if (!node.id) {
+									node.id = uuid();
+								}
 							});
 						}
 
@@ -157,6 +162,10 @@ export class ImportWorkflowsCommand extends Command {
 					if (credentials.length > 0) {
 						workflow.nodes.forEach((node: INode) => {
 							this.transformCredentials(node, credentials);
+
+							if (!node.id) {
+								node.id = uuid();
+							}
 						});
 					}
 
