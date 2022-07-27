@@ -259,7 +259,7 @@ details[open] {
 }
 
 .el-divider__text {
-	background-color: #f9f9f9;
+	background-color: var(--color-background-light);
 }
 
 .box-card {

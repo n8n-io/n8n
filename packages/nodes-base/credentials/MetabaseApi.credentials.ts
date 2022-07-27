@@ -4,6 +4,7 @@ import {
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestHelper,
+	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 

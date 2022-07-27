@@ -54,9 +54,7 @@
 						:data-col="index2"
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
-					>
-						{{ [null, undefined].includes(data) ? '&nbsp;' : data }}
-					</td>
+					>{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
 				</tr>
 			</tbody>
 		</table>
