@@ -160,6 +160,26 @@ export class Digitaliso implements INodeType {
 				},
 			},
             {
+				displayName: 'Page',
+				name: 'page',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				default: 1,
+				description: 'Page number',
+				displayOptions: {
+					show: {
+						resource: [
+							'item',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+			},
+            {
 				displayName: 'ID',
 				name: 'id',
 				type: 'number',
@@ -349,7 +369,9 @@ export class Digitaliso implements INodeType {
                     let endpoint = '';
                     switch (operation) {
                         case 'getAll':
-                            endpoint = `${url}?per-page=${this.getNodeParameter('perPage', i)}`;
+                            let perPage = this.getNodeParameter('perPage', i);
+                            let page = this.getNodeParameter('page', i);
+                            endpoint = `${url}?per-page=${perPage}&page=${page}`;
                             break;
                         case 'get':
                         case 'delete':
