@@ -308,7 +308,7 @@ $--max-input-height: 60px;
 
 	li {
 		height: $--item-height;
-		background-color: white;
+		background-color: var(--color-foreground-xlight);
 		padding: $--item-padding;
 		margin: 0;
 		line-height: $--item-line-height;
