@@ -1,6 +1,10 @@
-const n8nFEHooks_internalMethods = {
+// version 0.1.0
+
+const LOGGING_ENABLED = true;
+
+const internalMethods = {
 	identify: (meta) => {
-		console.log('posthog-hooks: identify() fired');
+		if (LOGGING_ENABLED) console.log('n8nExternalHooks.internalMethods: identify');
 
 		const { userId, instanceId } = meta;
 
@@ -15,14 +19,14 @@ const n8nFEHooks_internalMethods = {
 			window.posthog.reset();
 
 			/**
-			 * Main ID cannot be `undefined` as done in RudderStack
-			 * because PostHog requires a distinct ID
+			 * For PostHog, main ID cannot be `undefined` as being done for RudderStack.
 			 *
 			 * https://github.com/n8n-io/n8n/blob/02549e3ba9233a6d9f75fc1f9ff138e2aff7f4b9/packages/editor-ui/src/plugins/telemetry/index.ts#L87
 			 */
 			window.posthog.identify(instanceId, traits);
 		}
 	},
+
 	track: (eventData) => {
 		window.posthog.capture(eventData.eventName, eventData.properties);
 	},
@@ -48,69 +52,38 @@ const n8nFEHooks_internalMethods = {
 	},
 }
 
-const n8nFEHooks_userNodesPanelSession = {
-	sessionId: '',
-	data: {
-		nodeFilter: '',
-		resultsNodes: [],
-		filterMode: 'Regular',
-	},
-};
-
-const n8nFEHooks_resetSession = () => {
-	n8nFEHooks_userNodesPanelSession.sessionId = `nodes_panel_session_${(new Date()).valueOf()}`;
-	n8nFEHooks_userNodesPanelSession.data = {
-		nodeFilter: '',
-		resultsNodes: [],
-		filterMode: 'Regular',
-	};
+const n8n = {
+	postHogHooks: {
+		internalMethods,
+		userNodesPanelSession: {
+			sessionId: '',
+			data: {
+				nodeFilter: '',
+				resultsNodes: [],
+				filterMode: 'Regular',
+			},
+		},
+		resetNodesPanelSession() {
+			this.userNodesPanelSession.sessionId = `nodes_panel_session_${(new Date()).valueOf()}`;
+			this.userNodesPanelSession.data = {
+				nodeFilter: '',
+				resultsNodes: [],
+				filterMode: 'Regular',
+			};
+		}
+	}
 };
 
 window.n8nExternalHooks = {
-	/**
-	 * @TODO Delete
-	 * For testing, /cli
-	 */
-	workflow: {
-		create: [
-			async function (options) {
-				console.log("hello from workflow.create");
-			},
-		],
-	},
-
-	/**
-	 * @TODO Delete
-	 * For testing, /editor-ui
-	 */
-	credentials: {
-		create: [
-			async function (options) {
-				console.log("hello from credentials.create");
-			},
-		],
-	},
-
 	nodeView: {
 
 		/**
-		 * @TODO Refactor
-		 * Only needed for calling `n8nFEHooks_resetSession()`,
+		 * Used only for calling `resetNodesPanelSession()`,
 		 * which sets `sessionId` used by `addNodeButton`.
 		 */
 		createNodeActiveChanged: [
-			function (store, meta) {
-				console.log('hello from createNodeActiveChanged');
-				n8nFEHooks_resetSession();
-				const eventData = {
-					eventName: "User opened nodes panel",
-					properties: {
-						source: meta.source,
-						nodes_panel_session_id: n8nFEHooks_userNodesPanelSession.sessionId,
-					}
-				};
-
-				n8nFEHooks_internalMethods.track(eventData);
+			function (_, meta) {
+				n8n.postHogHooks.resetNodesPanelSession();
 			}
 		],
 
@@ -118,15 +91,15 @@ window.n8nExternalHooks = {
 		 * nodeView.onRunNode
 		 */
 		 onRunNode: [
-			function(store, meta) {
-				console.log('🔥 hook: nodeView.onRunNode');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: nodeView.onRunNode');
 
 				const eventData = {
 					eventName: 'User clicked execute node button',
 					properties: meta,
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		],
 
@@ -134,18 +107,18 @@ window.n8nExternalHooks = {
 		 * nodeView.addNodeButton
 		 */
 		addNodeButton: [
-			function (store, meta) {
-				console.log('🔥 hook: nodeView.addNodeButton');
+			function (_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: nodeView.addNodeButton');
 
 				const eventData = {
 					eventName: "User added node to workflow canvas",
 					properties: {
 						node_type: meta.nodeTypeName.split('.')[1],
-						nodes_panel_session_id: n8nFEHooks_userNodesPanelSession.sessionId,
+						nodes_panel_session_id: n8n.postHogHooks.userNodesPanelSession.sessionId,
 					}
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		],
 
@@ -153,15 +126,15 @@ window.n8nExternalHooks = {
 		 * nodeView.onRunWorkflow
 		 */
 		onRunWorkflow: [
-			function (store, meta) {
-				console.log('🔥 hook: nodeView.onRunWorkflow');
+			function (_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: nodeView.onRunWorkflow');
 
 				const eventData = {
 					eventName: "User clicked execute workflow button",
 					properties: meta,
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		],
 	},
@@ -171,15 +144,15 @@ window.n8nExternalHooks = {
 		 * credentialsSelectModal.openCredentialType
 		 */
 		openCredentialType: [
-			function(store, meta) {
-				console.log('🔥 hook: credentialsSelectModal.openCredentialType');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: credentialsSelectModal.openCredentialType');
 
 				const eventData = {
 					eventName: "User opened Credential modal",
 					properties: meta,
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		]
 	},
@@ -189,15 +162,15 @@ window.n8nExternalHooks = {
 		 * nodeExecuteButton.onClick
 		 */
 		onClick: [
-			function(store, meta) {
-				console.log('🔥 hook: nodeExecuteButton.onClick');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: nodeExecuteButton.onClick');
 
 				const eventData = {
 					eventName: 'User clicked execute node button',
 					properties: meta,
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		]
 	},
@@ -207,95 +180,100 @@ window.n8nExternalHooks = {
 		 * credentialEdit.saveCredential
 		 */
 		 saveCredential: [
-			function(store, meta) {
-				console.log('🔥 hook: credentialEdit.saveCredential');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: credentialEdit.saveCredential');
 
 				const eventData = {
 					eventName: "User saved credentials",
 					properties: meta,
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		]
 	},
 
 	expressionEdit: {
+
 		/**
 		 * expressionEdit.closeDialog
 		 */
 		 closeDialog: [
-			function(store, meta) {
-				console.log('🔥 hook: expressionEdit.closeDialog');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: expressionEdit.closeDialog');
 
 				const eventData = {
 					eventName: "User closed Expression Editor",
 					properties: meta,
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		]
 	},
 
 	parameterInput: {
+
 		/**
 		 * parameterInput.modeSwitch
 		 */
 		 modeSwitch: [
-			function(store, meta) {
-				console.log('🔥 hook: parameterInput.modeSwitch');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: parameterInput.modeSwitch');
 
 				const eventData = {
 					eventName: "User switched parameter mode",
 					properties: meta,
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		]
 	},
 
 	personalizationModal: {
+
 		/**
 		 * personalizationModal.onSubmit
 		 */
 		 onSubmit: [
-			function(store, meta) {
-				console.log('🔥 hook: personalizationModal.onSubmit');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: personalizationModal.onSubmit');
 
-				n8nFEHooks_internalMethods.setMetadata(meta, 'user');
+				n8n.postHogHooks.internalMethods.setMetadata(meta, 'user');
 			}
 		]
 	},
 
 	telemetry: {
+
 		/**
 		 * telemetry.currentUserIdChanged
 		 */
 		 currentUserIdChanged: [
-			function(store, meta) {
-				console.log('🔥 hook: telemetry.currentUserIdChanged');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: telemetry.currentUserIdChanged');
 
-				n8nFEHooks_internalMethods.identify(meta);
+				n8n.postHogHooks.internalMethods.identify(meta);
 			}
 		]
 	},
 
 	workflowActivate: {
+
 		/**
 		 * workflowActivate.updateWorkflowActivation
 		 */
 		 updateWorkflowActivation: [
-			function(store, meta) {
-				console.log('🔥 hook: workflowActivate.updateWorkflowActivation');
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: workflowActivate.updateWorkflowActivation');
 
 				const eventData = {
 					eventName: "User set workflow active status",
 					properties: meta,
 				};
 
-				n8nFEHooks_internalMethods.track(eventData);
+				n8n.postHogHooks.internalMethods.track(eventData);
 			}
 		]
 	},
