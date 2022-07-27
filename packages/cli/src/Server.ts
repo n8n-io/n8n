@@ -2627,11 +2627,11 @@ class App {
 					debug: true,
 				});
 
-				const firstLinkedScript = '<link href="/js/';
+				const firstLinkedScriptSegment = '<link href="/js/';
 
 				readIndexFile = readIndexFile.replace(
-					firstLinkedScript,
-					postHogLoadingScript + postHogHooksScript + firstLinkedScript,
+					firstLinkedScriptSegment,
+					postHogLoadingScript + postHogHooksScript + firstLinkedScriptSegment,
 				);
 			}
 
