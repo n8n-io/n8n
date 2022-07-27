@@ -26,7 +26,7 @@
 
 			<div
 				v-else-if="
-					['json', 'string'].includes(parameter.type) ||
+					['json', 'string', 'resourceLocator'].includes(parameter.type) ||
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
@@ -74,7 +74,7 @@
 					@focus="setFocus"
 					@blur="onBlur"
 					:title="displayTitle"
-					:placeholder="getPlaceholder()"
+					:placeholder="inputPlaceholder || getPlaceholder()"
 				>
 					<div slot="suffix" class="expand-input-icon-container">
 						<font-awesome-icon
@@ -330,6 +330,7 @@ export default mixins(
 			'activeDrop',
 			'droppable',
 			'forceShowExpression',
+			'currentMode',
 		],
 		data () {
 			return {
@@ -686,6 +687,9 @@ export default mixins(
 			},
 			workflow (): Workflow {
 				return this.getWorkflow();
+			},
+			inputPlaceholder (): string {
+				return this.currentMode.placeholder ? this.currentMode.placeholder : '';
 			},
 		},
 		methods: {
