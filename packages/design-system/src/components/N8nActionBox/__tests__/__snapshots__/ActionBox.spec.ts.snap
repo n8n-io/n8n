@@ -1,0 +1,13 @@
+// Vitest Snapshot v1
+
+exports[`components > N8NActionBox > props > should render correctly 1`] = `
+"<div class=\\"_container_6ho59_1\\">
+  <div class=\\"_emoji_6ho59_13\\"> 😿 </div>
+  <div class=\\"_heading_6ho59_17\\"><span class=\\"_size-xlarge_nr8tv_14 _regular_nr8tv_5\\" style=\\"text-align: center;\\">Headline you need to know</span></div>
+  <div class=\\"_description_6ho59_21\\">
+    <n8n-text-stub size=\\"medium\\" color=\\"text-base\\" tag=\\"span\\"><span>Long description that you should know something is the way it is because of how it is. </span></n8n-text-stub>
+  </div><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button _button_cccce_115 _primary_cccce_288 _large_cccce_264\\">
+    <!----><span>Do something</span></button>
+  <!---->
+</div>"
+`;
