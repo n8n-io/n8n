@@ -39,6 +39,7 @@ import config from '../config';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+import { v4 as uuid } from 'uuid';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -472,6 +473,22 @@ export async function getStaticDataById(workflowId: string | number) {
 
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	return workflowData.staticData || {};
+}
+
+/**
+ * Set node ids if not already set
+ *
+ * @param workflow
+ */
+export async function addNodeIds(workflow: WorkflowEntity) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	for (const node of nodes) {
+		if (!node.id) {
+			node.id = uuid();
+		}
+	}
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
