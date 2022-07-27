@@ -59,6 +59,8 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	INodeExecutionPairedData,
+	IBinaryKeyData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1309,6 +1311,70 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 }
 
 /**
+ * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
+ *
+ * @export
+ * @param {(IDataObject | IDataObject[] | IBinaryKeyData)} data
+ * @param {(number)} itemIndex
+ * @param {(number)} inputIndex
+ * @param {(boolean)} isBinary
+ * @returns {INodeExecutionPairedData[]}
+ */
+export function preparePairedOutputData(
+	data: IDataObject | IDataObject[] | IBinaryKeyData,
+	itemIndex = 0,
+	inputIndex = 0,
+	isBinary = false,
+): INodeExecutionPairedData[] {
+	const returnData: INodeExecutionPairedData[] = [];
+
+	if (!Array.isArray(data)) {
+		data = [data];
+	}
+
+	const pairedItem = {
+		input: inputIndex,
+		item: itemIndex,
+	};
+
+	data.forEach((data) => {
+		if (!isBinary) {
+			const { json } = data;
+			if (json !== undefined) {
+				returnData.push({
+					json: json as IDataObject,
+					pairedItem,
+				});
+			} else {
+				returnData.push({
+					json: data,
+					pairedItem,
+				});
+			}
+		}
+
+		if (isBinary) {
+			const { json, binary } = data;
+			if (json !== undefined && binary !== undefined) {
+				returnData.push({
+					json: json as IDataObject,
+					binary: binary as IBinaryKeyData,
+					pairedItem,
+				});
+			} else {
+				returnData.push({
+					json: data,
+					binary: data as IBinaryKeyData,
+					pairedItem,
+				});
+			}
+		}
+	});
+
+	return returnData;
+}
+
+/**
  * Automatically put the objects under a 'json' key and don't error,
  * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
  *
@@ -2408,6 +2474,7 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
+				preparePairedOutputData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);
