@@ -1136,6 +1136,7 @@ export interface INodeRequestSend {
 
 export interface IPostReceiveBase {
 	type: string;
+	enabled?: boolean | string;
 	properties: {
 		[key: string]: string | number | IDataObject;
 	};
