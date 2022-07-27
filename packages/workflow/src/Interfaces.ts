@@ -1543,6 +1543,7 @@ export interface INoteGraphItem {
 }
 
 export interface INodeGraphItem {
+	id: string;
 	type: string;
 	resource?: string;
 	operation?: string;

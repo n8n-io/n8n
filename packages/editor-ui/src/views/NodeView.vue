@@ -1309,10 +1309,8 @@ export default mixins(
 				}
 
 				try {
-					const nodeIdMap = {};
+					const nodeIdMap: {[prev: string]: string} = {};
 					if (workflowData.nodes) {
-
-						const nodeIdMap: {[prev: string]: string} = {};
 						// set all new ids when pasting/importing workflows
 						workflowData.nodes.forEach((node: INode) => {
 							if (node.id) {

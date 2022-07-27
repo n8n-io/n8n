@@ -153,6 +153,7 @@ export function generateNodesGraph(
 		otherNodes.forEach((node: INode, index: number) => {
 			nodesGraph.node_types.push(node.type);
 			const nodeItem: INodeGraphItem = {
+				id: node.id,
 				type: node.type,
 				position: node.position,
 			};
@@ -162,7 +163,7 @@ export function generateNodesGraph(
 			}
 
 			if (node.id && options?.nodeIdMap && options.nodeIdMap[node.id]) {
-				nodeItem.src_node_id = options.nodeIdMap[options.nodeIdMap[node.id]];
+				nodeItem.src_node_id = options.nodeIdMap[node.id];
 			}
 
 			if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
