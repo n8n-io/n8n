@@ -16,6 +16,10 @@ import {
 	IPairedItemData,
 } from 'n8n-workflow';
 
+import {
+	optionsDescription,
+} from './OptionsDescription';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
 	name: 'merge',
@@ -34,138 +38,114 @@ const versionDescription: INodeTypeDescription = {
 	inputNames: ['Input 1', 'Input 2'],
 	properties: [
 		{
-			displayName: 'Version 2',
-			name: 'version',
-			type: 'notice',
-			default: 'undefined',
-		},
-		{
-			displayName: 'Mode',
+			displayName: 'Type of Merging',
 			name: 'mode',
 			type: 'options',
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
 					name: 'Append',
 					value: 'append',
-					description: 'Combines data of both inputs. The output will contain items of input 1 and input 2.',
+					description: 'All items of input 1, then all items of input 2',
 				},
 				{
-					name: 'Keep Key Matches',
-					value: 'keepKeyMatches',
-					description: 'Keeps data of input 1 if it does find a match with data of input 2',
+					name: 'Match Fields',
+					value: 'matchFields',
+					description: 'Pair items with the same field values',
 				},
 				{
-					name: 'Merge By Index',
-					value: 'mergeByIndex',
-					description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on the index of the items. So first item of input 1 will be merged with first item of input 2 and so on.',
-				},
-				{
-					name: 'Merge By Key',
-					value: 'mergeByKey',
-					description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
+					name: 'Match Positions',
+					value: 'matchPositions',
+					description: 'Pair items based on their order',
 				},
 				{
 					name: 'Multiplex',
 					value: 'multiplex',
-					description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
+					description: 'All possible item combinations (cross join)',
 				},
 				{
-					name: 'Pass-Through',
-					value: 'passThrough',
-					description: 'Passes through data of one input. The output will contain only items of the defined input.',
-				},
-				{
-					name: 'Remove Key Matches',
-					value: 'removeKeyMatches',
-					description: 'Keeps data of input 1 if it does NOT find match with data of input 2',
-				},
-				{
-					name: 'Wait',
-					value: 'wait',
-					description: 'Waits till data of both inputs is available and will then output a single empty item. Source Nodes must connect to both Input 1 and 2. This node only supports 2 Sources, if you need more Sources, connect multiple Merge nodes in series. This node will not output any data.',
+					name: 'Choose Branch',
+					value: 'chooseBranch',
+					description: 'Output input data, without modifying it',
 				},
 			],
 			default: 'append',
 			description: 'How data of branches should be merged',
 		},
+
+		// matchFields ------------------------------------------------------------------
 		{
-			displayName: 'Join',
-			name: 'join',
-			type: 'options',
-			displayOptions: {
-				show: {
-					mode: [
-						'mergeByIndex',
-					],
-				},
+			displayName: 'Fields to Match',
+			name: 'customData',
+			type: 'fixedCollection',
+			placeholder: 'Add Fields',
+			default: {match: [{input1FieldName: '', input2FieldName: ''}]},
+			typeOptions: {
+				multipleValues: true,
 			},
 			options: [
 				{
-					name: 'Inner Join',
-					value: 'inner',
-					description: 'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items).',
-				},
-				{
-					name: 'Left Join',
-					value: 'left',
-					description: 'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items).',
-				},
-				{
-					name: 'Outer Join',
-					value: 'outer',
-					description: 'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items).',
+					displayName: 'Match',
+					name: 'match',
+					values: [
+						{
+							displayName: 'Input 1 Field Named',
+							name: 'input1FieldName',
+							type: 'string',
+							default: '',
+						},
+						{
+							displayName: 'Input 2 Field Named',
+							name: 'input2FieldName',
+							type: 'string',
+							default: '',
+						},
+					],
 				},
 			],
-			default: 'left',
-			description: 'How many items the output will contain if inputs contain different amount of items',
-		},
-		{
-			displayName: 'Property Input 1',
-			name: 'propertyName1',
-			type: 'string',
-			default: '',
-			hint: 'The name of the field as text (e.g. “id”)',
-			required: true,
 			displayOptions: {
 				show: {
-					mode: [
-						'keepKeyMatches',
-						'mergeByKey',
-						'removeKeyMatches',
-					],
+					mode: ['matchFields'],
 				},
 			},
-			description: 'Name of property which decides which items to merge of input 1',
 		},
 		{
-			displayName: 'Property Input 2',
-			name: 'propertyName2',
-			type: 'string',
-			default: '',
-			hint: 'The name of the field as text (e.g. “id”)',
-			required: true,
-			displayOptions: {
-				show: {
-					mode: [
-						'keepKeyMatches',
-						'mergeByKey',
-						'removeKeyMatches',
-					],
-				},
-			},
-			description: 'Name of property which decides which items to merge of input 2',
-		},
-		{
-			displayName: 'Output Data',
-			name: 'output',
+			displayName: 'Mode',
+			name: 'joinMode',
 			type: 'options',
+			options: [
+				{
+					name: 'Keep Matches',
+					value: 'innerJoin',
+					description: 'Items that match, merged together (inner join)',
+				},
+				{
+					name: 'Keep Non-Matches',
+					value: 'outerJoin',
+					description: 'Items that don\'t match (outer join)',
+				},
+				{
+					name: 'Enrich Input 1',
+					value: 'leftJoin',
+					description: 'All of input 1, with data from input 2 added in (left join)',
+				},
+				{
+					name: 'Enrich Input 2',
+					value: 'rightJoin',
+					description: 'All of input 2, with data from input 1 added in (right join)',
+				},
+			],
+			default: 'innerJoin',
 			displayOptions: {
 				show: {
-					mode: [
-						'passThrough',
-					],
+					mode: ['matchFields'],
 				},
 			},
+		},
+		{
+			displayName: 'Output Data From',
+			name: 'outputDataFrom',
+			type: 'options',
 			options: [
 				{
 					name: 'Input 1',
@@ -175,44 +155,87 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Input 2',
 					value: 'input2',
 				},
+				{
+					name: 'Both Inputs',
+					value: 'both',
+				},
 			],
 			default: 'input1',
-			description: 'Defines of which input the data should be used as output of node',
-		},
-		{
-			displayName: 'Overwrite',
-			name: 'overwrite',
-			type: 'options',
 			displayOptions: {
 				show: {
-					mode: [
-						'mergeByKey',
-					],
+					mode: ['matchFields'],
+					joinMode: ['innerJoin', 'outerJoin'],
 				},
 			},
+		},
+
+		// matchPositions ---------------------------------------------------------------
+		{
+			displayName: 'Include Any Unpaired Items',
+			name: 'includeUnpaired',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to include at the end items with nothing to pair with, if there are different numbers of items in input 1 and input 2',
+			displayOptions: {
+				show: {
+					mode: ['matchPositions'],
+				},
+			},
+		},
+
+		// chooseBranch -----------------------------------------------------------------
+		{
+			displayName: 'Mode',
+			name: 'chooseBranchMode',
+			type: 'options',
 			options: [
 				{
-					name: 'Always',
-					value: 'always',
-					description: 'Always overwrites everything',
+					name: 'Wait for Both Inputs to Arrive',
+					value: 'waitForBoth',
+				},
+				// not MVP
+				// {
+				// 	name: 'Immediately Pass the First Input to Arrive',
+				// 	value: 'passFirst',
+				// },
+			],
+			default: 'waitForBoth',
+			displayOptions: {
+				show: {
+					mode: ['chooseBranch'],
+				},
+			},
+		},
+		{
+			displayName: 'Output',
+			name: 'output',
+			type: 'options',
+			options: [
+				{
+					name: 'Input 1',
+					value: 'input1',
 				},
 				{
-					name: 'If Blank',
-					value: 'blank',
-					description: 'Overwrites only values of "null", "undefined" or empty string',
+					name: 'Input 2',
+					value: 'input2',
 				},
 				{
-					name: 'If Missing',
-					value: 'undefined',
-					description: 'Only adds values which do not exist yet',
+					name: 'Empty Item',
+					value: 'empty',
 				},
 			],
-			default: 'always',
-			description: 'Select when to overwrite the values from Input1 with values from Input 2',
+			default: 'empty',
+			displayOptions: {
+				show: {
+					mode: ['chooseBranch'],
+					chooseBranchMode: ['waitForBoth'],
+				},
+			},
 		},
+
+		...optionsDescription,
 	],
 };
-
 
 export class MergeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -223,7 +246,6 @@ export class MergeV2 implements INodeType {
 			...versionDescription,
 		};
 	}
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: INodeExecutionData[] = [];
