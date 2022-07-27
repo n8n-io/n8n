@@ -12,10 +12,10 @@ export namespace SendInBlueNode {
 	type ValidEmailFields = { to: string } | { sender: string } | { cc: string } | { bcc: string };
 	type Address = { address: string; name?: string };
 	type Email = { email: string; name?: string };
-	type ToEmail = { to: Array<Email> };
+	type ToEmail = { to: Email[] };
 	type SenderEmail = { sender: Email };
-	type CCEmail = { cc: Array<Email> };
-	type BBCEmail = { bbc: Array<Email> };
+	type CCEmail = { cc: Email[] };
+	type BBCEmail = { bbc: Email[] };
 	type ValidatedEmail = ToEmail | SenderEmail | CCEmail | BBCEmail;
 
 	enum OVERRIDE_MAP_VALUES {
@@ -250,7 +250,7 @@ export namespace SendInBlueNode {
 			]);
 
 			const result: { [key in keyof ValidatedEmail]: Email[] | Email } = {} as ValidatedEmail;
-			Object.keys(input).reduce((obj: any, key) => {
+			Object.keys(input).reduce((obj: { [key: string]: Email[] | Email }, key: string) => {
 				const getter = fieldFetcher.get(key);
 				const value = getter!();
 				obj[key] = value;
