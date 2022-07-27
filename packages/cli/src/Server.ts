@@ -2623,7 +2623,7 @@ class App {
 					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
 					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
 					autocapture: false,
-					disableSessionRecording: true,
+					disableSessionRecording: false,
 					debug: true,
 				});
 
