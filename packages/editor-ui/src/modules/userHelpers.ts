@@ -108,6 +108,16 @@ export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswersV
 	return getPersonalizationV1(answers as IPersonalizationSurveyAnswersV1);
 }
 
+export function getAccountAge(currentUser: IUser): number {
+	if(currentUser.createdAt) {
+		const accountCreatedAt = new Date(currentUser.createdAt);
+		const today = new Date();
+
+		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000* 3600 * 24));
+	}
+	return -1;
+}
+
 function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2) {
 	let nodeTypes: string[] = [];
 

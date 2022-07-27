@@ -30,6 +30,7 @@ const module: Module<ISettingsState, IRootState> = {
 			latestVersion: 0,
 			path: '/',
 		},
+		onboardingCallPromptEnabled: false,
 	},
 	getters: {
 		versionCli(state: ISettingsState) {
@@ -83,6 +84,9 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesHost: (state): string  => {
 			return state.settings.templates.host;
 		},
+		isOnboardingCallPromptFeatureEnabled: (state): boolean => {
+			return state.onboardingCallPromptEnabled;
+		},
 		isCommunityNodesFeatureEnabled: (state): boolean => {
 			return state.settings.communityNodesEnabled;
 		},
@@ -99,6 +103,7 @@ const module: Module<ISettingsState, IRootState> = {
 			state.api.enabled = settings.publicApi.enabled;
 			state.api.latestVersion = settings.publicApi.latestVersion;
 			state.api.path = settings.publicApi.path;
+			state.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);

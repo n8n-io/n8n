@@ -108,6 +108,9 @@ import {
 	OTHER_FOCUS,
 	COMPANY_INDUSTRY_EXTENDED_KEY,
 	OTHER_COMPANY_INDUSTRY_EXTENDED_KEY,
+	ONBOARDING_PROMPT_TIMEBOX,
+	FIRST_ONBOARDING_PROMPT_TIMEOUT,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 } from '../constants';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -115,6 +118,7 @@ import Modal from './Modal.vue';
 import { IFormInput, IFormInputs, IPersonalizationSurveyAnswersV2 } from '@/Interface';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
+import { getAccountAge } from '@/modules/userHelpers';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -135,6 +139,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 		...mapGetters({
 			baseUrl: 'getBaseUrl',
 		}),
+		...mapGetters('users', [
+			'currentUser',
+		]),
+		...mapGetters('settings', [
+			'isOnboardingCallPromptFeatureEnabled',
+		]),
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -500,12 +510,40 @@ export default mixins(showMessage, workflowHelpers).extend({
 					this.closeDialog();
 				}
 
+				await this.fetchOnboardingPrompt();
 				this.submitted = true;
 			} catch (e) {
 				this.$showError(e, 'Error while submitting results');
 			}
 
 			this.$data.isSaving = false;
+		},
+		async fetchOnboardingPrompt() {
+			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
+				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+
+				if (onboardingResponse.title && onboardingResponse.description) {
+					setTimeout(async () => {
+						this.$showToast({
+							type: 'info',
+							title: onboardingResponse.title,
+							message: onboardingResponse.description,
+							duration: 0,
+							customClass: 'clickable',
+							closeOnClick: true,
+							onClick: () => {
+								this.$telemetry.track('user clicked onboarding toast', {
+									seq_num: onboardingResponse.toast_sequence_number,
+									title: onboardingResponse.title,
+									description: onboardingResponse.description,
+								});
+								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
+							},
+						});
+					}, promptTimeout);
+				}
+			}
 		},
 	},
 });
