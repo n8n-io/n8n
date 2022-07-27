@@ -1,5 +1,8 @@
 <template functional>
 	<div :class="$style.container">
+		<div :class="$style.emoji" v-if="props.emoji">
+			{{ props.emoji }}
+		</div>
 		<div :class="$style.heading" v-if="props.heading">
 			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
 		</div>
@@ -24,6 +27,9 @@ import N8nCallout from '../N8nCallout';
 export default {
 	name: 'n8n-action-box',
 	props: {
+		emoji: {
+			type: String,
+		},
 		heading: {
 			type: String,
 		},

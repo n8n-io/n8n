@@ -5,16 +5,28 @@
 				{{ $locale.baseText('credentials.heading') }}
 			</n8n-heading>
 
-			<n8n-button icon="plus-square">
-				{{ $locale.baseText('credentials.add') }}
-			</n8n-button>
+			<div class="mt-l mb-l">
+				<n8n-button icon="plus-square" size="l">
+					{{ $locale.baseText('credentials.add') }}
+				</n8n-button>
+			</div>
 
-			<n8n-menu type="secondary" @select="onSelect">
-				<n8n-menu-item index="1">
-					<template #title>Item 1</template>
+			<n8n-menu default-active="my" type="secondary" @select="onSelect">
+				<n8n-menu-item index="my">
+					<template #title>
+						<n8n-icon icon="user" />
+						<span class="ml-xs">
+							{{ $locale.baseText('credentials.menu.myCredentials') }}
+						</span>
+					</template>
 				</n8n-menu-item>
-				<n8n-menu-item index="2">
-					<template #title>Item 2</template>
+				<n8n-menu-item index="all">
+					<template #title>
+						<n8n-icon icon="globe-americas" />
+						<span class="ml-xs">
+							{{ $locale.baseText('credentials.menu.allCredentials') }}
+						</span>
+					</template>
 				</n8n-menu-item>
 			</n8n-menu>
 		</template>
@@ -22,18 +34,19 @@
 		<div>
 			<n8n-action-box
 				emoji="👋"
-				heading="Headline you need to know"
-				description="Long description that you should know something is the way it is because of how it is. "
-				buttonText="Do something"
+				:heading="$locale.baseText('credentials.empty.heading', { interpolate: { name: currentUser.firstName } })"
+				:description="$locale.baseText('credentials.empty.description')"
+				:buttonText="$locale.baseText('credentials.empty.button')"
 				@click="addCredential"
 			/>
+			{{ credentials }}
 		</div>
 	</page-view-layout>
 </template>
 
 <script lang="ts">
 import { showMessage } from '@/components/mixins/showMessage';
-import { IUser } from '@/Interface';
+import {ICredentialsResponse, IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -56,14 +69,21 @@ export default mixins(
 		currentUser(): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
+		credentials(): ICredentialsResponse[] {
+			return this.$store.getters['credentials/allCredentials'];
+		},
 	},
 	methods: {
 		onSelect(index: string) {
-			console.log(index);
 		},
 		addCredential() {
-			console.log('add');
 		},
+		async loadCredentials (): Promise<void> {
+			await this.$store.dispatch('credentials/fetchAllCredentials');
+		},
+	},
+	mounted() {
+		this.loadCredentials();
 	},
 });
 </script>

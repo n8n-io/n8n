@@ -47,6 +47,7 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFolderOpen,
+	faGlobeAmericas,
 	faGift,
 	faGraduationCap,
 	faGripVertical,
@@ -98,6 +99,7 @@ import {
 	faTrash,
 	faUndo,
 	faUnlink,
+	faUser,
 	faUserCircle,
 	faUserFriends,
 	faUsers,
@@ -160,6 +162,7 @@ addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFolderOpen);
 addIcon(faGift);
+addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
 addIcon(faHdd);
 addIcon(faHome);
@@ -211,6 +214,7 @@ addIcon(faTimesCircle);
 addIcon(faTrash);
 addIcon(faUndo);
 addIcon(faUnlink);
+addIcon(faUser);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);
