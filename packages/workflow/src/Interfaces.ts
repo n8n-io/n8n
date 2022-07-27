@@ -986,10 +986,7 @@ export interface INodePropertyMode {
 	>;
 	placeholder: string;
 	url?: string;
-	extractValue?: {
-		type: string;
-		regex: string;
-	};
+	extractValue?: INodePropertyValueExtractor;
 }
 
 // Resource locator list mode type
