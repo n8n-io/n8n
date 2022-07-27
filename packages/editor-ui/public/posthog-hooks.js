@@ -1,7 +1,27 @@
 const n8nFEHooks_internalMethods = {
-	identify: (userId) => {
+	identify: (meta) => {
 		console.log('posthog-hooks: identify() fired');
-		// TODO
+
+		const { userId, instanceId } = meta;
+
+		const traits = { instance_id: instanceId };
+
+		if (userId) {
+			window.posthog.identify({
+				distinctId: [instanceId, userId].join('_'),
+				traits,
+			});
+		} else {
+			window.posthog.reset();
+
+			/**
+			 * Main ID cannot be `undefined` as done in RudderStack
+			 * because PostHog requires a distinct ID
+			 *
+			 * https://github.com/n8n-io/n8n/blob/02549e3ba9233a6d9f75fc1f9ff138e2aff7f4b9/packages/editor-ui/src/plugins/telemetry/index.ts#L87
+			 */
+			window.posthog.identify(instanceId, traits);
+		}
 	},
 	track: (eventData) => {
 		window.posthog.capture(eventData.eventName, eventData.properties);
@@ -74,6 +94,7 @@ window.n8nExternalHooks = {
 	nodeView: {
 
 		/**
+		 * @TODO Refactor
 		 * Only needed for calling `n8nFEHooks_resetSession()`,
 		 * which sets `sessionId` used by `addNodeButton`.
 		 */
@@ -90,7 +111,6 @@ window.n8nExternalHooks = {
 				};
 
 				n8nFEHooks_internalMethods.track(eventData);
-				n8nFEHooks_internalMethods.page('Cloud instance', 'Nodes panel', eventData.properties);
 			}
 		],
 
@@ -245,6 +265,19 @@ window.n8nExternalHooks = {
 				console.log('🔥 hook: personalizationModal.onSubmit');
 
 				n8nFEHooks_internalMethods.setMetadata(meta, 'user');
+			}
+		]
+	},
+
+	telemetry: {
+		/**
+		 * telemetry.currentUserIdChanged
+		 */
+		 currentUserIdChanged: [
+			function(store, meta) {
+				console.log('🔥 hook: telemetry.currentUserIdChanged');
+
+				n8nFEHooks_internalMethods.identify(meta);
 			}
 		]
 	},
