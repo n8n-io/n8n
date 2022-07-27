@@ -65,15 +65,15 @@ export async function apiRequest(this: IExecuteFunctions | IExecuteSingleFunctio
 	}
 }
 
-export async function apiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	query.maxResults = 100;
-
+	let url = uri ? uri : `https://sheets.googleapis.com${method}`;
 	do {
-		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
 		query.pageToken = responseData['nextPageToken'];
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (

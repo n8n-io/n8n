@@ -518,3 +518,18 @@ export class GoogleSheet {
 		return setData;
 	}
 }
+
+// Used to extract the ID from the URL
+export function getSpreadsheetId(resourceType: string, value: string ) : string {
+	if (resourceType === 'byUrl') {
+		const regex = /([-\w]{25,})/;
+		const parts = value.match(regex);
+		if (parts == null || parts.length < 2) {
+			return '';
+		} else {
+			return parts[0];
+		}
+	}
+	// If it is byID or byList we can just return
+	return value;
+}

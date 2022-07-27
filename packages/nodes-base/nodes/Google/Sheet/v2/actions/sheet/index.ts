@@ -94,11 +94,10 @@ export const descriptions: INodeProperties[] = [
 		],
 		default: 'read',
 	},
-	// This applies to all
 	{
-		displayName: 'Spreadsheet ID',
-		name: 'sheetId',
-		type: 'string',
+		displayName: 'Resource Locator',
+		name: 'resourceLocator',
+		type: 'options',
 		displayOptions: {
 			show: {
 				resource: [
@@ -106,9 +105,84 @@ export const descriptions: INodeProperties[] = [
 				],
 			},
 		},
+		required: true,
+		default: '',
+		options: [
+			{
+				'name': 'From List',
+				'value': 'fromList',
+				'description': 'Select from a pre-populated list',
+			},
+			{
+				'name': 'By ID',
+				'value': 'byId',
+				'description': 'Use the spreadsheet ID',
+			},
+			{
+				'name': 'by URL',
+				'value': 'byUrl',
+				'description': 'Use the spreadsheet URL',
+			},
+		],
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Spreadsheet Name',
+		name: 'spreadsheetName',
+		type: 'options',
 		default: '',
 		required: true,
-		description: 'The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+		description: 'Google Sheet to operate on. Choose from the list.',
+		typeOptions: {
+			loadOptionsMethod: 'getSheetIds',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				resourceLocator: [
+					'fromList',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Spreadsheet ID',
+		name: 'spreadsheetId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				resourceLocator: [
+					'byId'
+				]
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The ID of the Google Sheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
+	},
+	{
+		displayName: 'Spreadsheet URL',
+		name: 'spreadsheetUrl',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				resourceLocator: [
+					'byUrl'
+				]
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The URL of the Google Sheet',
 	},
 	...append.description,
 	...clear.description,

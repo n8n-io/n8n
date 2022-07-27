@@ -4,6 +4,10 @@ import {
 	INodePropertyOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
+import {
+	apiRequest,
+	apiRequestAllItems,
+} from '../transport';
 
 import {
 	GoogleSheet,
@@ -31,5 +35,26 @@ export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePrope
 		});
 	}
 
+	return returnData;
+}
+
+export async function getSheetIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData : INodePropertyOptions[] = [];
+	let qs = {
+		pageSize: 50,
+		orderBy: "modifiedTime desc",
+		fields: "nextPageToken, files(id, name)",
+		q: "mimeType = 'application/vnd.google-apps.spreadsheet'",
+		includeItemsFromAllDrives: true,
+		supportsAllDrives: true,
+	};
+
+	const sheets = await apiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
+	for (const sheet of sheets) {
+		returnData.push({
+			name: sheet.name,
+			value: sheet.id,
+		});
+	}
 	return returnData;
 }
