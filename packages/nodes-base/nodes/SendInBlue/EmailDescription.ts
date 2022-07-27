@@ -384,13 +384,19 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		displayName: 'Template ID',
 		name: 'templateId',
 		type: 'options',
-		default: {},
+		default: '',
 		typeOptions: {
 			loadOptions: {
 				routing: {
 					request: {
 						method: 'GET',
-						url: '/v3/smtp/templates?templateStatus=true&limit=1000&offset=0&sort=desc',
+						url: '/v3/smtp/templates',
+						qs: {
+							templateStatus: true,
+							limit: 1000,
+							offset: 0,
+							sort: 'desc',
+						},
 					},
 					output: {
 						postReceive: [
