@@ -190,7 +190,7 @@ export default mixins(
 						source: this.telemetrySource,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
-					this.$externalHooks().run('NodeExecuteButton.onClick', telemetryPayload);
+					this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
 
 					this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 					this.$emit('execute');

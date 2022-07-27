@@ -416,7 +416,7 @@ export default mixins(
 					source: 'canvas',
 				};
 				this.$telemetry.track('User clicked execute node button', telemetryPayload);
-				this.$externalHooks().run('NodeView.onRunNode', telemetryPayload);
+				this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
