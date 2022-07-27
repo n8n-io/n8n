@@ -11,6 +11,7 @@ _START_PACKAGE
 .env
 .vscode/*
 !.vscode/extensions.json
+!.vscode/suggested.settings.json
 .idea
 nodelinter.config.json
 packages/*/package-lock.json
