@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
+import { ActionContext } from 'vuex';
 
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -32,7 +33,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	ICommunityNodesState,
+	IWorkflowsState,
 } from './Interface';
 
 import credentials from './modules/credentials';
@@ -46,7 +47,7 @@ import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
-import { isCommunityPackageName } from './components/helpers';
+import {getNodeTypes} from "@/api/nodes";
 
 Vue.use(Vuex);
 
@@ -118,6 +119,13 @@ export const store = new Vuex.Store({
 	strict: process.env.NODE_ENV !== 'production',
 	modules,
 	state,
+	actions: {
+		async getNodeTypes({ commit, rootGetters }: ActionContext<IWorkflowsState, IRootState>) {
+			const nodeTypes = await getNodeTypes(rootGetters.getRestApiContext);
+
+			commit('setNodeTypes', nodeTypes);
+		},
+	},
 	mutations: {
 		// Active Actions
 		addActiveAction(state, action: string) {

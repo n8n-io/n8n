@@ -6,13 +6,13 @@
 			</n8n-heading>
 
 			<div class="mt-l mb-l">
-				<n8n-button icon="plus-square" size="l">
+				<n8n-button icon="plus-square" size="l" @click="addCredential">
 					{{ $locale.baseText('credentials.add') }}
 				</n8n-button>
 			</div>
 
-			<n8n-menu default-active="my" type="secondary" @select="onSelect">
-				<n8n-menu-item index="my">
+			<n8n-menu default-active="owner" type="secondary" @select="onSelect">
+				<n8n-menu-item index="owner">
 					<template #title>
 						<n8n-icon icon="user" />
 						<span class="ml-xs">
@@ -33,13 +33,18 @@
 
 		<div>
 			<n8n-action-box
+				v-if="credentials.length === 0"
 				emoji="👋"
 				:heading="$locale.baseText('credentials.empty.heading', { interpolate: { name: currentUser.firstName } })"
 				:description="$locale.baseText('credentials.empty.description')"
 				:buttonText="$locale.baseText('credentials.empty.button')"
 				@click="addCredential"
 			/>
-			{{ credentials }}
+			<ul class="list-style-none">
+				<li v-for="credential in credentials" :key="credential.id" class="mb-2xs">
+					<credential-card :data="credential" />
+				</li>
+			</ul>
 		</div>
 	</page-view-layout>
 </template>
@@ -51,6 +56,8 @@ import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
 import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
+import CredentialCard from "@/components/CredentialCard.vue";
+import {CREDENTIAL_SELECT_MODAL_KEY} from "@/constants";
 
 export default mixins(
 	showMessage,
@@ -59,10 +66,14 @@ export default mixins(
 	components: {
 		PageViewLayout,
 		SettingsView,
+		CredentialCard,
 	},
 	data() {
 		return {
 			loading: false,
+			filter: {
+				type: 'owner',
+			},
 		};
 	},
 	computed: {
@@ -72,14 +83,27 @@ export default mixins(
 		credentials(): ICredentialsResponse[] {
 			return this.$store.getters['credentials/allCredentials'];
 		},
+		filteredCredentials(): ICredentialsResponse[] {
+			return this.credentials.filter((credential) => {
+				if (this.filter.type === 'owner') {
+					return credential.type === 'owner'; // @TODO
+				}
+
+				return true;
+			});
+		},
 	},
 	methods: {
-		onSelect(index: string) {
+		onSelect(type: string) {
+			this.filter.type = type;
 		},
 		addCredential() {
+			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
 		},
-		async loadCredentials (): Promise<void> {
-			await this.$store.dispatch('credentials/fetchAllCredentials');
+		loadCredentials () {
+			this.$store.dispatch('credentials/fetchAllCredentials');
+			this.$store.dispatch('credentials/fetchCredentialTypes');
+			this.$store.dispatch('getNodeTypes');
 		},
 	},
 	mounted() {
