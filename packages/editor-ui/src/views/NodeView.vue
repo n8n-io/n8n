@@ -154,7 +154,25 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import {
+	DEFAULT_STICKY_HEIGHT,
+	DEFAULT_STICKY_WIDTH,
+	FIRST_ONBOARDING_PROMPT_TIMEOUT,
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRMED,
+	NODE_NAME_PREFIX,
+	NODE_OUTPUT_DEFAULT_KEY,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+	ONBOARDING_PROMPT_TIMEBOX,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	QUICKSTART_NOTE_NAME,
+	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
+	WORKFLOW_OPEN_MODAL_KEY,
+} from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -215,11 +233,12 @@ import { mapGetters } from 'vuex';
 
 import {
 	addNodeTranslation,
-	addHeaders,
 } from '@/plugins/i18n';
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+import { getAccountAge } from '@/modules/userHelpers';
+import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 interface AddNodeOptions {
@@ -312,8 +331,14 @@ export default mixins(
 			}
 		},
 		computed: {
+			...mapGetters('users', [
+				'currentUser',
+			]),
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
+			]),
+			...mapGetters('settings', [
+				'isOnboardingCallPromptFeatureEnabled',
 			]),
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
@@ -3060,6 +3085,35 @@ export default mixins(
 
 			this.$externalHooks().run('nodeView.mount');
 
+			if (
+				this.currentUser.personalizationAnswers !== null &&
+				this.isOnboardingCallPromptFeatureEnabled &&
+				getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
+			) {
+				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+
+				if (onboardingResponse.title && onboardingResponse.description) {
+					setTimeout(async () => {
+						this.$showToast({
+							type: 'info',
+							title: onboardingResponse.title,
+							message: onboardingResponse.description,
+							duration: 0,
+							customClass: 'clickable',
+							closeOnClick: true,
+							onClick: () => {
+								this.$telemetry.track('user clicked onboarding toast', {
+									seq_num: onboardingResponse.toast_sequence_number,
+									title: onboardingResponse.title,
+									description: onboardingResponse.description,
+								});
+								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
+							},
+						});
+					}, promptTimeout);
+				}
+			}
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
