@@ -2,6 +2,7 @@
 
 // @TODO_ON_COMPLETION: Disable
 const LOGGING_ENABLED = true;
+const POSTHOG_NO_CAPTURE_CLASS = 'ph-no-capture';
 
 const internalMethods = {
 	identify: (meta) => {
@@ -75,7 +76,81 @@ const n8n = {
 	}
 };
 
+function appendNoCapture(originalClasses) {
+	return [originalClasses, POSTHOG_NO_CAPTURE_CLASS].join(' ');
+}
+
 window.n8nExternalHooks = {
+	workflowOpen: {
+
+		/**
+		 * workflowOpen.mounted
+		 */
+		mounted: [
+			function(_, meta) {
+				// workflow names in table body
+				const tableBody = meta.tableRef.$refs.bodyWrapper;
+				for (const item of tableBody.querySelectorAll('.name')) {
+					item.classList.value = appendNoCapture(item.classList.value);
+				};
+			}
+		],
+	},
+
+	credentialsList: {
+
+		/**
+		 * credentialsList.mounted
+		 */
+		mounted: [
+			function(_, meta) {
+				// credential names in table body
+				const tableBody = meta.tableRef.$refs.bodyWrapper;
+				for (const item of tableBody.querySelectorAll('.el-table_1_column_1 > .cell')) {
+					item.classList.value = appendNoCapture(item.classList.value);
+				};
+			}
+		],
+	},
+
+	sticky: {
+
+		/**
+		 * sticky.mounted
+		 */
+		mounted: [
+			function(_, meta) {
+				console.log(meta.stickyRef);
+				// sticky content
+				meta.stickyRef.classList.value = appendNoCapture(meta.stickyRef.classList.value);
+			}
+		],
+	},
+
+	executionsList: {
+
+		/**
+		 * workflowOpen.mounted
+		 */
+		created: [
+			function(_, meta) {
+
+				const { filtersRef, tableRef } = meta;
+
+				// workflow names in filters dropdown
+				for (const item of filtersRef.querySelectorAll('li')) {
+					item.classList.value = appendNoCapture(item.classList.value);
+				}
+
+				// workflow names in table body
+				const tableBody = tableRef.$refs.bodyWrapper;
+				for (const item of tableBody.querySelectorAll('.workflow-name')) {
+					item.classList.value = appendNoCapture(item.classList.value);
+				};
+			}
+		],
+	},
+
 	nodeView: {
 
 		/**
