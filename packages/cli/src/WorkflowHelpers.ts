@@ -480,7 +480,7 @@ export async function getStaticDataById(workflowId: string | number) {
  *
  * @param workflow
  */
-export async function addNodeIds(workflow: WorkflowEntity) {
+export function addNodeIds(workflow: WorkflowEntity) {
 	const { nodes } = workflow;
 	if (!nodes) return;
 

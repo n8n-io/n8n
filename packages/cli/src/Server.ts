@@ -932,6 +932,8 @@ class App {
 				// check credentials for old format
 				await WorkflowHelpers.replaceInvalidCredentials(updateData);
 
+				WorkflowHelpers.addNodeIds(updateData);
+
 				await this.externalHooks.run('workflow.update', [updateData]);
 
 				if (shared.workflow.active) {
