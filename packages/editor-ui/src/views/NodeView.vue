@@ -171,7 +171,7 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
-	WORKFLOW_OPEN_MODAL_KEY
+	WORKFLOW_OPEN_MODAL_KEY,
 } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
