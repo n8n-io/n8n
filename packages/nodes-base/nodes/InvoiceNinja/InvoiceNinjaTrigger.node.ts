@@ -14,7 +14,6 @@ import {
 	eventID,
 	invoiceNinjaApiRequest,
 	invoiceNinjaApiRequestAllItems,
-	testInvoiceNinjaAuth,
 } from './GenericFunctions';
 
 export class InvoiceNinjaTrigger implements INodeType {
@@ -34,7 +33,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 			{
 				name: 'invoiceNinjaApi',
 				required: true,
-				testedBy: 'testInvoiceNinjaAuth',
 			},
 		],
 		webhooks: [
@@ -46,6 +44,54 @@ export class InvoiceNinjaTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Version 4',
+						value: 'v4',
+					},
+					{
+						name: 'Version 5',
+						value: 'v5',
+					},
+				],
+				default: 'v4',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Version 4',
+						value: 'v4',
+					},
+					{
+						name: 'Version 5',
+						value: 'v5',
+					},
+				],
+				default: 'v5',
+			},
 			{
 				displayName: 'Event',
 				name: 'event',
@@ -79,12 +125,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 
 	};
 
-	methods = {
-		credentialTest: {
-			testInvoiceNinjaAuth,
-		},
-	};
-
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
@@ -92,13 +132,13 @@ export class InvoiceNinjaTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const event = this.getNodeParameter('event') as string;
-				const version = (await this.getCredentials('invoiceNinjaApi'))?.version as string;
+				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
 
-				if (version === 'v5') {
+				if (apiVersion === 'v5') {
 					const registeredWebhooks = await invoiceNinjaApiRequestAllItems.call(this, 'data',  'GET', '/webhooks') as IDataObject[];
 
 					for (const webhook of registeredWebhooks) {
@@ -113,12 +153,13 @@ export class InvoiceNinjaTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const event = this.getNodeParameter('event') as string;
-				const version = (await this.getCredentials('invoiceNinjaApi'))?.version as string;
 				const webhookData = this.getWorkflowStaticData('node');
+				const event = this.getNodeParameter('event') as string;
+				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+
 				let responseData;
 
-				if (version === 'v4') {
+				if (apiVersion === 'v4') {
 					const endpoint = '/hooks';
 
 					const body = {
@@ -130,7 +171,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 					 webhookData.webhookId = responseData.id as string;
 				}
 
-				if (version === 'v5') {
+				if (apiVersion === 'v5') {
 					const endpoint = '/webhooks';
 
 					const body = {
@@ -151,8 +192,9 @@ export class InvoiceNinjaTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const version = (await this.getCredentials('invoiceNinjaApi'))?.version as string;
-				const hooksEndpoint = version === 'v4' ? '/hooks' : '/webhooks';
+
+				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
+				const hooksEndpoint = apiVersion === 'v4' ? '/hooks' : '/webhooks';
 
 				if (webhookData.webhookId !== undefined) {
 

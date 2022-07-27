@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, ICredentialTestRequest, ICredentialType, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 
 export class InvoiceNinjaApi implements ICredentialType {
 	name = 'invoiceNinjaApi';
@@ -49,4 +49,27 @@ export class InvoiceNinjaApi implements ICredentialType {
 			},
 		},
 	];
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.url}}',
+			url: '/api/v1/clients',
+			method: 'GET',
+		},
+	};
+	async authenticate( credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions ): Promise<IHttpRequestOptions> {
+		if (credentials.version === 'v4') {
+			requestOptions.headers = {
+				Accept: 'application/json',
+				'X-Ninja-Token': credentials.apiToken,
+			};
+		} else {
+			requestOptions.headers = {
+				'Content-Type': 'application/json',
+				'X-API-TOKEN': credentials.apiToken,
+				'X-Requested-With': 'XMLHttpRequest',
+				'X-API-SECRET': credentials.secret || '',
+			};
+		}
+		return requestOptions;
+	}
 }

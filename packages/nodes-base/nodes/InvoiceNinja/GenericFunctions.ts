@@ -10,10 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
-	INodeCredentialTestResult,
 	JsonObject,
 	NodeApiError,
 	NodeOperationError,
@@ -37,27 +34,13 @@ export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunc
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
-	const version = credentials.version;
+
+	const version = this.getNodeParameter('apiVersion', 0) as string;
+
 	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
 	const baseUrl = credentials!.url || defaultUrl;
 
-	let headers;
-	if (version === 'v4') {
-		headers = {
-			Accept: 'application/json',
-			'X-Ninja-Token': credentials.apiToken,
-		};
-	} else {
-		headers = {
-			'Content-Type': 'application/json',
-			'X-API-TOKEN': credentials.apiToken,
-			'X-Requested-With': 'XMLHttpRequest',
-			'X-API-SECRET': credentials.secret || '',
-		};
-	}
-
 	const options: OptionsWithUri = {
-		headers,
 		method,
 		qs: query,
 		uri: uri || `${baseUrl}/api/v1${endpoint}`,
@@ -66,7 +49,7 @@ export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunc
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'invoiceNinjaApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), (error as JsonObject));
 	}
@@ -95,46 +78,4 @@ export async function invoiceNinjaApiRequestAllItems(this: IExecuteFunctions | I
 	);
 
 	return returnData;
-}
-
-export async function testInvoiceNinjaAuth(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-	const credentials = credential.data;
-	const version = credentials?.version as string;
-	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
-	const baseUrl = credentials!.url || defaultUrl;
-
-	let headers;
-	if (version === 'v4') {
-		headers = {
-			Accept: 'application/json',
-			'X-Ninja-Token': credentials?.apiToken as string,
-		};
-	} else {
-		headers = {
-			'Content-Type': 'application/json',
-			'X-API-TOKEN': credentials?.apiToken as string,
-			'X-Requested-With': 'XMLHttpRequest',
-			'X-API-SECRET': credentials?.secret as string || '',
-		};
-	}
-
-	const options: OptionsWithUri = {
-		headers,
-		method: 'GET',
-		uri:`${baseUrl}/api/v1/clients`,
-	};
-
-	try {
-		const response = await this.helpers.request(options);
-	} catch (err) {
-		return {
-			status: 'Error',
-			message: `${(err as JsonObject).message}`,
-		};
-	}
-
-	return {
-		status: 'OK',
-		message: 'Connection successful!',
-	};
 }

@@ -3,11 +3,8 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -18,7 +15,6 @@ import {
 import {
 	invoiceNinjaApiRequest,
 	invoiceNinjaApiRequestAllItems,
-	testInvoiceNinjaAuth,
 } from './GenericFunctions';
 
 import {
@@ -80,7 +76,6 @@ import {
 import {
 	IQuote,
 } from './QuoteInterface';
-import { OptionsWithUri } from 'request';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
@@ -88,7 +83,7 @@ export class InvoiceNinja implements INodeType {
 		name: 'invoiceNinja',
 		icon: 'file:invoiceNinja.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Invoice Ninja API',
 		defaults: {
@@ -100,10 +95,57 @@ export class InvoiceNinja implements INodeType {
 			{
 				name: 'invoiceNinjaApi',
 				required: true,
-				testedBy: 'testInvoiceNinjaAuth',
 			},
 		],
 		properties: [
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							1,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Version 4',
+						value: 'v4',
+					},
+					{
+						name: 'Version 5',
+						value: 'v5',
+					},
+				],
+				default: 'v4',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [
+							2,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Version 4',
+						value: 'v4',
+					},
+					{
+						name: 'Version 5',
+						value: 'v5',
+					},
+				],
+				default: 'v5',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -153,10 +195,6 @@ export class InvoiceNinja implements INodeType {
 	};
 
 	methods = {
-		credentialTest: {
-			testInvoiceNinjaAuth,
-		},
-
 		loadOptions: {
 			// Get all the available clients to display them to user so that he can
 			// select them easily
@@ -254,11 +292,13 @@ export class InvoiceNinja implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		let responseData;
 		const qs: IDataObject = {};
+
+		let responseData;
+
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const versionOfAPI = (await this.getCredentials('invoiceNinjaApi'))?.version as string;
+		const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
 
 		for (let i = 0; i < length; i++) {
 			//Routes: https://github.com/invoiceninja/invoiceninja/blob/ff455c8ed9fd0c0326956175ecd509efa8bad263/routes/api.php
@@ -448,13 +488,12 @@ export class InvoiceNinja implements INodeType {
 					}
 					if (operation === 'email') {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-						if (versionOfAPI === 'v4') {
+						if (apiVersion === 'v4') {
 							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', { id: invoiceId });
 						}
-						if (versionOfAPI === 'v5') {
+						if (apiVersion === 'v5') {
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', `/invoices/${invoiceId}/email`);
 						}
-
 					}
 					if (operation === 'get') {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
@@ -689,7 +728,7 @@ export class InvoiceNinja implements INodeType {
 					}
 				}
 				if (resource === 'quote') {
-					const resourceEndpoint = versionOfAPI === 'v4' ? '/invoices' : '/quotes';
+					const resourceEndpoint = apiVersion === 'v4' ? '/invoices' : '/quotes';
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const body: IQuote = {
@@ -785,10 +824,10 @@ export class InvoiceNinja implements INodeType {
 					if (operation === 'email') {
 						const quoteId = this.getNodeParameter('quoteId', i) as string;
 
-						if (versionOfAPI === 'v4') {
+						if (apiVersion === 'v4') {
 							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', { id: quoteId });
 						}
-						if (versionOfAPI === 'v5') {
+						if (apiVersion === 'v5') {
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', `/quotes/${quoteId}/email`);
 						}
 					}
