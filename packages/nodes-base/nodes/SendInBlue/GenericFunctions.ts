@@ -7,23 +7,27 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
+import MailComposer from 'nodemailer/lib/mail-composer';
 export namespace SendInBlueNode {
-	export interface EmailAttachment {
-		content?: string;
-		name?: string;
-		url?: string;
-	}
-
-	export enum OVERRIDE_MAP_TYPE {
-		'CATEGORY' = 'category',
-		'NORMAL' = 'normal',
-		'TRANSACTIONAL' = 'transactional',
-	}
+	type ValidEmailFields = { to: string } | { sender: string } | { cc: string } | { bcc: string };
+	type Address = { address: string; name?: string };
+	type Email = { email: string; name?: string };
+	type ToEmail = { to: Array<Email> };
+	type SenderEmail = { sender: Email };
+	type CCEmail = { cc: Array<Email> };
+	type BBCEmail = { bbc: Array<Email> };
+	type ValidatedEmail = ToEmail | SenderEmail | CCEmail | BBCEmail;
 
 	enum OVERRIDE_MAP_VALUES {
 		'CATEGORY' = 'category',
 		'NORMAL' = 'boolean',
 		'TRANSACTIONAL' = 'id',
+	}
+
+	enum OVERRIDE_MAP_TYPE {
+		'CATEGORY' = 'category',
+		'NORMAL' = 'normal',
+		'TRANSACTIONAL' = 'transactional',
 	}
 
 	export const INTERCEPTORS = new Map<string, (body: JsonObject) => void>([
@@ -46,6 +50,187 @@ export namespace SendInBlueNode {
 			},
 		],
 	]);
+	export namespace Validators {
+		export async function validateAndCompileAttachmentsData(
+			this: IExecuteSingleFunctions,
+			requestOptions: IHttpRequestOptions,
+		): Promise<IHttpRequestOptions> {
+			const dataPropertyList = this.getNodeParameter(
+				'additionalFields.emailAttachments.attachment',
+			) as JsonObject;
+			const { body } = requestOptions;
+
+			const { attachment = [] } = body as { attachment: Array<{ content: string; name: string }> };
+
+			try {
+				const { binaryPropertyName } = dataPropertyList;
+				const dataMappingList = (binaryPropertyName as string).split(',');
+				for (const attachmentDataName of dataMappingList) {
+					const binaryPropertyName = attachmentDataName;
+
+					const item = this.getInputData();
+
+					if (item.binary![binaryPropertyName as string] === undefined) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`No binary data property “${binaryPropertyName}” exists on item!`,
+						);
+					}
+
+					const bufferFromIncomingData = (await this.helpers.getBinaryDataBuffer(
+						binaryPropertyName,
+					)) as Buffer;
+
+					const {
+						data: content,
+						mimeType,
+						fileName,
+						fileExtension,
+					} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
+
+					const itemIndex = this.getItemIndex();
+					const name = getFileName(
+						itemIndex,
+						mimeType,
+						fileExtension,
+						fileName || item.binary!.data.fileName,
+					);
+
+					attachment.push({ content, name });
+				}
+
+				Object.assign(body!, { attachment });
+
+				return requestOptions;
+			} catch (err) {
+				throw new NodeOperationError(this.getNode(), `${err}`);
+			}
+		}
+
+		export async function validateAndCompileTags(
+			this: IExecuteSingleFunctions,
+			requestOptions: IHttpRequestOptions,
+		): Promise<IHttpRequestOptions> {
+			const { tag } = this.getNodeParameter('additionalFields.emailTags.tags') as JsonObject;
+			const tags = (tag as string)
+				.split(',')
+				.map((tag) => tag.trim())
+				.filter((tag) => {
+					return tag !== '';
+				});
+			const { body } = requestOptions;
+			Object.assign(body!, { tags });
+			return requestOptions;
+		}
+
+		export async function validateAndCompileCCEmails(
+			this: IExecuteSingleFunctions,
+			requestOptions: IHttpRequestOptions,
+		): Promise<IHttpRequestOptions> {
+			const ccData = this.getNodeParameter(
+				'additionalFields.receipientsCC.receipientCc',
+			) as JsonObject;
+			const { cc } = ccData;
+			const { body } = requestOptions;
+			const data = validateEmailStrings({ cc: cc as string });
+			Object.assign(body!, data);
+
+			return requestOptions;
+		}
+
+		export async function validateAndCompileBCCEmails(
+			this: IExecuteSingleFunctions,
+			requestOptions: IHttpRequestOptions,
+		): Promise<IHttpRequestOptions> {
+			const bccData = this.getNodeParameter(
+				'additionalFields.receipientsBCC.receipientBcc',
+			) as JsonObject;
+			const { bcc } = bccData;
+			const { body } = requestOptions;
+			const data = validateEmailStrings({ bcc: bcc as string });
+			Object.assign(body!, data);
+
+			return requestOptions;
+		}
+
+		export async function validateAndCompileReceipientEmails(
+			this: IExecuteSingleFunctions,
+			requestOptions: IHttpRequestOptions,
+		): Promise<IHttpRequestOptions> {
+			const to = this.getNodeParameter('receipients') as string;
+			const { body } = requestOptions;
+			const data = validateEmailStrings({ to });
+			Object.assign(body!, data);
+
+			return requestOptions;
+		}
+
+		export async function validateAndCompileSenderEmail(
+			this: IExecuteSingleFunctions,
+			requestOptions: IHttpRequestOptions,
+		): Promise<IHttpRequestOptions> {
+			const sender = this.getNodeParameter('sender') as string;
+			const { body } = requestOptions;
+			const data = validateEmailStrings({ sender });
+			Object.assign(body!, data);
+
+			return requestOptions;
+		}
+
+		function validateEmailStrings(input: ValidEmailFields): ValidatedEmail {
+			const composer = new MailComposer({ ...input });
+			const addressFields = composer.compile().getAddresses();
+
+			const fieldFetcher = new Map<string, () => Email[] | Email>([
+				[
+					'bcc',
+					() => {
+						return (addressFields.bcc as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+				[
+					'cc',
+					() => {
+						return (addressFields.cc as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+				[
+					'from',
+					() => {
+						return (addressFields.from as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+				[
+					'reply-to',
+					() => {
+						return (addressFields['reply-to'] as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+				[
+					'sender',
+					() => {
+						return (addressFields.sender as unknown as Address[])?.map(formatToEmailName)[0];
+					},
+				],
+				[
+					'to',
+					() => {
+						return (addressFields.to as unknown as Address[])?.map(formatToEmailName);
+					},
+				],
+			]);
+
+			const result: { [key in keyof ValidatedEmail]: Email[] | Email } = {} as ValidatedEmail;
+			Object.keys(input).reduce((obj: any, key) => {
+				const getter = fieldFetcher.get(key);
+				const value = getter!();
+				obj[key] = value;
+				return obj;
+			}, result);
+
+			return result as ValidatedEmail;
+		}
+	}
 
 	function getFileName(
 		itemIndex: number,
@@ -65,58 +250,13 @@ export namespace SendInBlueNode {
 		return name;
 	}
 
-	export async function validateAttachmentsData(
-		this: IExecuteSingleFunctions,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		const dataPropertyList = this.getNodeParameter(
-			'additionalFields.emailAttachments.attachment',
-		) as JsonObject[];
-		const { body } = requestOptions;
-
-		const { attachment = [] } = body as { attachment: Array<{ content: string; name: string }> };
-
-		try {
-			for (const [, attachmentDataName] of dataPropertyList.entries()) {
-				const { binaryPropertyName } = attachmentDataName;
-
-				const item = this.getInputData();
-
-				if (item.binary![binaryPropertyName as string] === undefined) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`No binary data property “${binaryPropertyName}” exists on item!`,
-					);
-				}
-
-				const bufferFromIncomingData = (await this.helpers.getBinaryDataBuffer(
-					binaryPropertyName,
-				)) as Buffer;
-
-				const {
-					data: content,
-					mimeType,
-					fileName,
-					fileExtension,
-				} = await this.helpers.prepareBinaryData(bufferFromIncomingData);
-
-				const itemIndex = this.getItemIndex();
-				const name = getFileName(
-					itemIndex,
-					mimeType,
-					fileExtension,
-					fileName || item.binary!.data.fileName,
-				);
-
-				attachment.push({ content, name });
-			}
-
-			Object.assign(body as {}, { attachment });
-
-			return requestOptions;
-		} catch (err) {
-			throw new NodeOperationError(this.getNode(), `${err}`);
+	function formatToEmailName(data: Address): Email {
+		const { address: email, name } = data;
+		const result = { email };
+		if (name !== undefined && name !== '') {
+			Object.assign(result, { name });
 		}
+		return { ...result };
 	}
 }
 
