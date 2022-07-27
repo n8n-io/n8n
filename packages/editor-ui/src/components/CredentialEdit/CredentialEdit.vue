@@ -57,6 +57,14 @@
 						<n8n-menu-item index="connection"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
 						>
+						<n8n-menu-item
+							v-for="fakeDoor in credentialsFakeDoorFeatures"
+							v-bind:key="fakeDoor.featureName"
+							:index="`coming-soon/${fakeDoor.id}`"
+							:class="$style.tab"
+						>
+							<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
+						</n8n-menu-item>
 						<n8n-menu-item index="details"
 							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
 						>
@@ -89,6 +97,9 @@
 						@accessChange="onNodeAccessChange"
 					/>
 				</div>
+				<div v-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
+					<FeatureComingSoon :featureId="activeTab.split('/')[1]"></FeatureComingSoon>
+				</div>
 			</div>
 		</template>
 	</Modal>
@@ -100,6 +111,7 @@ import Vue from 'vue';
 import {
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
+	IFakeDoor,
 } from '@/Interface';
 
 import {
@@ -108,6 +120,7 @@ import {
 	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
+	INode,
 	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
@@ -126,6 +139,7 @@ import CredentialInfo from './CredentialInfo.vue';
 import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
+import FeatureComingSoon from '../FeatureComingSoon.vue';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -140,6 +154,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		InlineNameEdit,
 		Modal,
 		SaveButton,
+		FeatureComingSoon,
 	},
 	props: {
 		modalName: {
@@ -351,6 +366,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 			return true;
 		},
+		credentialsFakeDoorFeatures(): IFakeDoor[] {
+			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
+		},
 	},
 	methods: {
 		async beforeClose() {
@@ -474,6 +492,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		onTabSelect(tab: string) {
 			this.activeTab = tab;
+			const tabName: string = tab.replaceAll('coming-soon/', '');
+			const credType: string = this.credentialType ? this.credentialType.name : '';
+			const activeNode: INode | null = this.$store.getters.activeNode;
+
+			this.$telemetry.track('User viewed credential tab', {
+				credential_type: credType,
+				node_type: activeNode ? activeNode.type : null,
+				tab: tabName,
+			});
 		},
 		onNodeAccessChange({name, value}: {name: string, value: boolean}) {
 			this.hasUnsavedChanges = true;

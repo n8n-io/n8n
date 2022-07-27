@@ -34,8 +34,8 @@
 			position: absolute;
 			top: 0;
 			right: -50px;
-			color: #fff;
-			background-color: $--custom-table-background-main;
+			color: var(--color-foreground-xlight);
+			background-color: var(--color-background-dark);
 			border-radius: 0 18px 18px 0;
 			z-index: 110;
 			font-size: 1.7em;
@@ -44,7 +44,7 @@
 			height: 50px;
 			width: 50px;
 			.el-dialog__close {
-				color: #fff;
+				color: var(--color-foreground-xlight);
 				font-weight: 400;
 			}
 			.el-dialog__close:hover {
@@ -83,31 +83,31 @@
 // Table
 .el-table {
 	thead th {
-		color: #fff;
-		background-color: $--custom-table-background-main;
+		color: var(--color-text-base);
+		background-color: var(--color-background-base);
 	}
 	tr {
-		color: #555;
+		color: var(--color-text-dark);
 
 		td {
 			border: none;
 		}
 	}
 	.tr {
-		color: #555;
+		color: var(--color-text-dark);
 	}
 }
 .el-table--striped {
 	.el-table__body {
 		tr.el-table__row--striped {
-			background-color: $--custom-table-background-stripe-color;
+			background-color: var(--color-background-light);
 			td {
 				background: none;
 			}
 		}
 		tr.el-table__row:hover,
 		tr.el-table__row:hover > td {
-			background-color: $--custom-table-background-hover-color;
+			background-color: var(--color-primary-tint-3);
 		}
 	}
 }
@@ -127,7 +127,7 @@
 
 // Loading Indicator
 .el-loading-mask {
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	opacity: 0.8;
 }
 
@@ -137,15 +137,15 @@
 .el-pagination .btn-prev,
 .el-pagination .btn-next {
 	background: none;
-	color: #555;
+	color: var(--color-text-dark);
 }
 .el-pagination button:disabled {
 	background: none;
-	color: $--custom-input-background-disabled;
+	color: var(--color-text-lighter);
 }
 .el-pager li.btn-quicknext,
 .el-pager li.btn-quickprev {
-	color: #555;
+	color: var(--color-text-dark);
 }
 
 // Notification

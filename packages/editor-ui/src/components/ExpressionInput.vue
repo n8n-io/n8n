@@ -304,8 +304,8 @@ export default mixins(
 
 .variable-value {
 	font-weight: bold;
-	color: #000;
-	background-color: #c0c0c0;
+	color: var(--color-text-dark);
+	background-color: var(--color-text-base);
 	padding: 3px;
 	border-radius: 3px;
 }
@@ -315,21 +315,21 @@ export default mixins(
 	left: -3px;
 	top: -8px;
 	display: none;
-	color: #fff;
+	color: var(--color-text-xlight);
 	font-weight: bold;
 	padding: 2px 4px;
 }
 
 .variable-wrapper:hover .variable-delete {
 	display: inline;
-	background-color: #AA2200;
+	background-color: var(--color-danger);
 	border-radius: 5px;
 }
 
 .variable {
 	font-weight: bold;
 	color: #000;
-	background-color: #c0c0c0;
+	background-color: var(--color-text-base);
 	padding: 3px;
 	border-radius: 3px;
 	margin: 0 2px;
@@ -339,11 +339,11 @@ export default mixins(
 	}
 
 	&.invalid {
-		background-color: #e25e5e;
+		background-color: var(--color-danger);
 	}
 
 	&.valid {
-		background-color: #37ac37;
+		background-color: var(--color-success);
 	}
 
 }

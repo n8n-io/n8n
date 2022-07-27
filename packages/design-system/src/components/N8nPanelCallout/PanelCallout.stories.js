@@ -32,7 +32,7 @@ export default {
 	},
 };
 
-const template: StoryFn = (args, { argTypes }) => ({
+const template = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nLink,
