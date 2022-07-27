@@ -740,6 +740,14 @@ export const schema = {
 			default: 'n8n-nodes-base.errorTrigger',
 			env: 'NODES_ERROR_TRIGGER_TYPE',
 		},
+		communityPackages: {
+			enabled: {
+				doc: 'Allows you to disable the usage of community packages for nodes',
+				format: Boolean,
+				default: true,
+				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
+			},
+		},
 	},
 
 	logs: {
@@ -900,5 +908,14 @@ export const schema = {
 		format: String,
 		default: 'en',
 		env: 'N8N_DEFAULT_LOCALE',
+	},
+
+	onboardingCallPrompt: {
+		enabled: {
+			doc: 'Whether onboarding call propmpt feature is available',
+			format: Boolean,
+			default: true,
+			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
+		},
 	},
 };

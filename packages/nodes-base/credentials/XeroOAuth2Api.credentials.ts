@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'offline_access',
@@ -12,9 +9,7 @@ const scopes = [
 
 export class XeroOAuth2Api implements ICredentialType {
 	name = 'xeroOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'Xero OAuth2 API';
 	documentationUrl = 'xero';
 	properties: INodeProperties[] = [

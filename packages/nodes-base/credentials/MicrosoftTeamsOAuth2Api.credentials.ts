@@ -1,13 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 	name = 'microsoftTeamsOAuth2Api';
-	extends = [
-		'microsoftOAuth2Api',
-	];
+	extends = ['microsoftOAuth2Api'];
 	displayName = 'Microsoft Teams OAuth2 API';
 	documentationUrl = 'microsoft';
 	properties: INodeProperties[] = [

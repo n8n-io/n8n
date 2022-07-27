@@ -40,25 +40,23 @@
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
-					:labelHoverableOnly="true"
-				>
-					<collection-parameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-					<fixed-collection-parameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-				</n8n-input-label>
+				/>
+				<collection-parameter
+					v-if="parameter.type === 'collection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					@valueChanged="valueChanged"
+				/>
+				<fixed-collection-parameter
+					v-else-if="parameter.type === 'fixedCollection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					@valueChanged="valueChanged"
+				/>
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
@@ -363,7 +361,7 @@ export default mixins(
 	}
 
 	.parameter-notice {
-		background-color: #fff5d3;
+		background-color: var(--color-warning-tint-2);
 		color: $--custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;

@@ -89,7 +89,7 @@ export class GoogleDocs implements INodeType {
 						'@version': [
 							1,
 						],
-					}
+					},
 				},
 			},
 			{
@@ -112,7 +112,7 @@ export class GoogleDocs implements INodeType {
 						'@version': [
 							2,
 						],
-					}
+					},
 				},
 			},
 			{

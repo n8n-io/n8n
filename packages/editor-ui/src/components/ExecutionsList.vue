@@ -100,16 +100,14 @@
 						</n8n-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
-							<span class="retry-button">
-								<n8n-icon-button
-									 v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
-									 type="light"
-									 :theme="scope.row.stoppedAt === null ? 'warning': 'danger'"
-									 size="mini"
-									 :title="$locale.baseText('executionsList.retryExecution')"
-									 icon="redo"
-								/>
-							</span>
+							<n8n-icon-button
+								v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
+								:type="scope.row.stoppedAt === null ? 'warning': 'danger'"
+								class="ml-3xs"
+								size="mini"
+								:title="$locale.baseText('executionsList.retryExecution')"
+								icon="redo"
+							/>
 							<el-dropdown-menu slot="dropdown">
 								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">
 									{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
@@ -763,10 +761,6 @@ export default mixins(
 	text-align: center;
 }
 
-.retry-button {
-	margin-left: 5px;
-}
-
 .selection-options {
 	height: 2em;
 }
@@ -809,11 +803,11 @@ export default mixins(
 <style lang="scss">
 
 .currently-running {
-	background-color: $--color-primary-light !important;
+	background-color: var(--color-primary-tint-3) !important;
 }
 
 .el-table tr:hover.currently-running td {
-	background-color: darken($--color-primary-light, 3% ) !important;
+	background-color: var(--color-primary-tint-2) !important;
 }
 
 </style>

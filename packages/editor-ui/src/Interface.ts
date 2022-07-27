@@ -14,6 +14,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	IRunExecutionData,
 	IRun,
 	IRunData,
@@ -21,7 +22,9 @@ import {
 	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
+	PublicInstalledPackage,
 } from 'n8n-workflow';
+import { FAKE_DOOR_FEATURES } from './constants';
 
 export * from 'n8n-design-system/src/types';
 
@@ -138,13 +141,13 @@ export interface INodeUpdatePropertiesInformation {
 export type XYPosition = [number, number];
 
 export type MessageType = 'success' | 'warning' | 'info' | 'error';
-
 export interface INodeUi extends INode {
 	position: XYPosition;
 	color?: string;
 	notes?: string;
 	issues?: INodeIssues;
 	name: string;
+	pinData?: IDataObject;
 }
 
 export interface INodeTypesMaxCount {
@@ -211,6 +214,7 @@ export interface IStartRunData {
 	startNodes?: string[];
 	destinationNode?: string;
 	runData?: IRunData;
+	pinData?: IPinData;
 }
 
 export interface IRunDataUi {
@@ -245,6 +249,7 @@ export interface IWorkflowData {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: string[];
+	pinData?: IPinData;
 }
 
 export interface IWorkflowDataUpdate {
@@ -255,6 +260,7 @@ export interface IWorkflowDataUpdate {
 	settings?: IWorkflowSettings;
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: IPinData;
 }
 
 export interface IWorkflowTemplate {
@@ -277,6 +283,7 @@ export interface IWorkflowDb {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
+	pinData?: IPinData;
 }
 
 // Identical to cli.Interfaces.ts
@@ -411,6 +418,8 @@ export type IPushData =
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
+	| PushDataReloadNodeType
+	| PushDataRemoveNodeType
 	| PushDataTestWebhook;
 
 type PushDataExecutionFinished = {
@@ -436,6 +445,16 @@ type PushDataExecuteBefore = {
 type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataReloadNodeType = {
+	data: IPushDataReloadNodeType;
+	type: 'reloadNodeType';
+};
+
+type PushDataRemoveNodeType = {
+	data: IPushDataRemoveNodeType;
+	type: 'removeNodeType';
 };
 
 type PushDataTestWebhook = {
@@ -471,6 +490,15 @@ export interface IPushDataNodeExecuteAfter {
 export interface IPushDataNodeExecuteBefore {
 	executionId: string;
 	nodeName: string;
+}
+
+export interface IPushDataReloadNodeType {
+	name: string;
+	version: number;
+}
+export interface IPushDataRemoveNodeType {
+	name: string;
+	version: number;
 }
 
 export interface IPushDataTestWebhook {
@@ -515,6 +543,7 @@ export interface IUserResponse {
 	globalRole?: {
 		name: IRole;
 		id: string;
+		createdAt: Date;
 	};
 	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
 	isPending: boolean;
@@ -525,6 +554,7 @@ export interface IUser extends IUserResponse {
 	isPendingUser: boolean;
 	isOwner: boolean;
 	fullName?: string;
+	createdAt?: Date;
 }
 
 export interface IVersionNotificationSettings {
@@ -557,13 +587,19 @@ export interface IUserManagementConfig {
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
-	um?: boolean;
-	api?: boolean;
+}
+
+export interface IPermissionAllowGroup extends IPermissionGroup {
+	shouldAllow?: () => boolean;
+}
+
+export interface IPermissionDenyGroup extends IPermissionGroup {
+	shouldDeny?: () => boolean;
 }
 
 export interface IPermissions {
-	allow?: IPermissionGroup;
-	deny?: IPermissionGroup;
+	allow?: IPermissionAllowGroup;
+	deny?: IPermissionDenyGroup;
 }
 
 export interface IUserPermissions {
@@ -661,11 +697,14 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	executionMode: string;
+	communityNodesEnabled: boolean;
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
 	};
+	onboardingCallPromptEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -826,6 +865,10 @@ export interface IRootState {
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
 }
 
+export interface ICommunityPackageMap {
+	[name: string]: PublicInstalledPackage;
+}
+
 export interface ICredentialTypeMap {
 	[name: string]: ICredentialType;
 }
@@ -869,12 +912,39 @@ export interface IUiState {
 		};
 		output: {
 			displayMode: IRunDataDisplayMode;
+			editMode: {
+				enabled: boolean;
+				value: string;
+			};
 		};
+		focusedMappableInput: string;
+		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
+	fakeDoorFeatures: IFakeDoor[];
+	draggable: {
+		isDragging: boolean;
+		type: string;
+		data: string;
+		canDrop: boolean;
+		stickyPosition: null | XYPosition;
+	};
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
+
+export type IFakeDoor = {
+	id: FAKE_DOOR_FEATURES,
+	featureName: string,
+	icon?: string,
+	infoText?: string,
+	actionBoxTitle: string,
+	actionBoxDescription: string,
+	linkURL: string,
+	uiLocations: IFakeDoorLocation[],
+};
+
+export type IFakeDoorLocation = 'settings' | 'credentialsModal';
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
@@ -886,6 +956,7 @@ export interface ISettingsState {
 		latestVersion: number;
 		path: string;
 	};
+	onboardingCallPromptEnabled: boolean;
 }
 
 export interface ITemplateState {
@@ -922,6 +993,11 @@ export interface IUsersState {
 export interface IWorkflowsState {
 }
 
+export interface ICommunityNodesState {
+	availablePackageCount: number;
+	installedPackages: ICommunityPackageMap;
+}
+
 export interface IRestApiContext {
 	baseUrl: string;
 	sessionId: string;
@@ -949,10 +1025,21 @@ export interface IInviteResponse {
 	error?: string;
 }
 
+export interface IOnboardingCallPromptResponse {
+	nextPrompt: IOnboardingCallPrompt;
+}
+
+export interface IOnboardingCallPrompt {
+	title: string;
+	body: string;
+	index: number;
+}
+
 export interface ITab {
 	value: string | number;
 	label?: string;
 	href?: string;
 	icon?: string;
 	align?: 'right';
+	tooltip?: string;
 }

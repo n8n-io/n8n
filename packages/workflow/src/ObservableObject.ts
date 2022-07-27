@@ -61,6 +61,7 @@ export function create(
 					depth === 0 &&
 					target[name.toString()] === undefined &&
 					typeof value === 'object' &&
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					Object.keys(value).length === 0
 					// eslint-disable-next-line no-empty
 				) {
