@@ -21,7 +21,6 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
 	"editor.formatOnSave": true,
-	"security.workspace.trust.untrustedFiles": "open",
 	"search.exclude": {
     "node_modules": true,
     "dist": true,
