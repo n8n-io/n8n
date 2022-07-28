@@ -856,7 +856,16 @@ export const store = new Vuex.Store({
 
 		// Selected Nodes
 		getSelectedNodes: (state): INodeUi[] => {
-			return state.selectedNodes;
+			const seen = new Set();
+			return state.selectedNodes.filter((node: INodeUi) => {
+				// dedupe for instances when same node is selected in different ways
+				if (!seen.has(node.id)) {
+					seen.add(node.id);
+					return true;
+				}
+
+				return false;
+			});
 		},
 		isNodeSelected: (state) => (nodeName: string): boolean => {
 			let index;
