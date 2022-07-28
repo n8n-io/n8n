@@ -342,13 +342,13 @@ export const boardFields: INodeProperties[] = [
 						properties: {
 							regex: '[a-zA-Z0-9]+',
 							errorMessage: 'The ID is not valid, it has to start with a lower case character followed by 5 numbers',
-						}
+						},
 					},
 				],
 				placeholder: 'a12345',
 				url: '=https://api.trello.com/1/boards/{{$value}}',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -385,7 +385,7 @@ export const boardFields: INodeProperties[] = [
 						properties: {
 							regex: '[a-zA-Z0-9]+',
 							errorMessage: 'The ID is not valid, it has to start with a lower case character followed by 5 numbers',
-						}
+						},
 					},
 				],
 				placeholder: 'a12345',
@@ -409,8 +409,8 @@ export const boardFields: INodeProperties[] = [
 					type: 'regex',
 					regex: 'https:\/\/api\.trello\.com\/1\/boards\/([a-zA-Z0-9]+)',
 				},
-			}
-		]
+			},
+		],
 	},
 	{
 		displayName: 'Additional Fields',
