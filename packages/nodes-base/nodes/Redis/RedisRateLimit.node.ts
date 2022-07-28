@@ -48,7 +48,7 @@ export class RedisRateLimit implements INodeType {
 				description: 'Number of concurrent requests in a time slot',
 			},
 			{
-				displayName: 'Rata Limit Duration',
+				displayName: 'Rate Limit Duration',
 				name: 'duration',
 				type: 'number',
 				default: 30,
