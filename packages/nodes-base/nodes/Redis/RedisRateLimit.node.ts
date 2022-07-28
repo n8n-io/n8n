@@ -96,28 +96,17 @@ export class RedisRateLimit implements INodeType {
 						const duration = this.getNodeParameter('duration', itemIndex, -1) as number;
 
 						// Based on https://redis.io/commands/incr/
-						const clientLlen = util.promisify(client.llen).bind(client);
-						const current = await clientLlen(keyName);
+						const multi = client.multi([
+							['INCR', keyName],
+							['EXPIRE', keyName, duration],
+						])
+						let clientMulti = util.promisify(multi.exec).bind(multi);
+						const [incrResult, _expireResult] = await clientMulti();
 
-						if (current >= count) {
+						if (incrResult > count) {
 							// Deny
 							returnRateLimitedItems.push(items[itemIndex]);
 						} else {
-							const clientExists = util.promisify(client.exists).bind(client);
-							//@ts-ignore
-							const exists = await clientExists(keyName);
-							if (exists == 0) {
-								const multi = client.multi([
-									['RPUSH', keyName, keyName],
-									['EXPIRE', keyName, duration],
-								])
-								let clientMulti = util.promisify(multi.exec).bind(multi);
-								await clientMulti();
-							} else {
-								const clientRpushx = util.promisify(client.rpushx).bind(client);
-								await clientRpushx(keyName, keyName);
-							}
-
 							// Allow
 							returnItems.push(items[itemIndex]);
 						}
