@@ -10,6 +10,7 @@ import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
+import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -328,6 +329,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'users',
+						};
+					},
 				},
 				permissions: {
 					allow: {
@@ -350,6 +356,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'personal',
+						};
+					},
 				},
 				permissions: {
 					allow: {
@@ -370,6 +381,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'api',
+						};
+					},
 				},
 				permissions: {
 					allow: {
@@ -406,6 +422,27 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/settings/coming-soon/:featureId',
+			name: VIEWS.FAKE_DOOR,
+			component: SettingsFakeDoorView,
+			props: true,
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: route.params['featureId'],
+						};
+					},
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
 			path: '*',
 			name: VIEWS.NOT_FOUND,
 			component: ErrorView,
@@ -422,6 +459,7 @@ const router = new Router({
 				},
 				permissions: {
 					allow: {
+						// TODO: Once custom permissions are merged, this needs to be updated with index validation
 						loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
 					},
 				},

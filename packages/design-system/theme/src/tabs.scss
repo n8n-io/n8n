@@ -405,7 +405,7 @@
 			}
 			.el-tabs__item.is-left.is-active {
 				border: 1px solid var(--border-color-base);
-				border-right-color: #fff;
+				border-right-color: var(--color-foreground-xlight);
 				border-left: none;
 				border-bottom: none;
 
@@ -477,7 +477,7 @@
 			}
 			.el-tabs__item.is-right.is-active {
 				border: 1px solid var(--border-color-base);
-				border-left-color: #fff;
+				border-left-color: var(--color-foreground-xlight);
 				border-right: none;
 				border-bottom: none;
 

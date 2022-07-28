@@ -312,9 +312,9 @@ export const boardFields: INodeProperties[] = [
 	//         board:delete
 	// ----------------------------------
 	{
-		displayName: 'Board ID',
+		displayName: 'Board',
 		name: 'id',
-		type: 'string',
+		type: 'resourceLocator',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -328,6 +328,27 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		description: 'The ID of the board to delete',
+		modes: [
+			// TODO: This rule should only apply for direct node properties, not their children
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				hint: 'Enter Board Id',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]+',
+							errorMessage: 'The ID is not valid, it has to start with a lower case character followed by 5 numbers',
+						}
+					},
+				],
+				placeholder: 'a12345',
+				url: '=https://api.trello.com/1/boards/{{$value}}',
+			},
+		]
 	},
 
 	// ----------------------------------

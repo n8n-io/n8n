@@ -1071,7 +1071,7 @@ export default mixins(
 }
 
 .el-dropdown {
-	color: #999;
+	color: var(--color-text-light);
 }
 
 .list-option {
