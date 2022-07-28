@@ -131,6 +131,7 @@ export const optionsDescription: INodeProperties[] = [
 					show: {
 						'/mode': [
 							'multiplex',
+							'matchPositions',
 						],
 					},
 				},
@@ -141,7 +142,6 @@ export const optionsDescription: INodeProperties[] = [
 				mode: [
 					'chooseBranch',
 					'append',
-					'matchPositions',
 				],
 			},
 		},

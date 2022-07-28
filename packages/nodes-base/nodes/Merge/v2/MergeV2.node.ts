@@ -257,7 +257,6 @@ export class MergeV2 implements INodeType {
 		const mode = this.getNodeParameter('mode', 0) as string;
 
 		if (mode === 'append') {
-			// Simply appends the data
 			for (let i = 0; i < 2; i++) {
 				returnData.push.apply(returnData, this.getInputData(i));
 			}
@@ -309,45 +308,51 @@ export class MergeV2 implements INodeType {
 			return [returnData];
 		}
 
-		// mode === 'matchPositions'
-		if (mode === 'mergeByIndex') {
-			// Merges data by index
+		if (mode === 'matchPositions') {
+			const includeUnpaired = this.getNodeParameter('includeUnpaired', 0) as boolean;
+			const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
 
-			const join = this.getNodeParameter('join', 0) as string;
+			let dataInput1 = this.getInputData(0);
+			let dataInput2 = this.getInputData(1);
 
-			const dataInput1 = this.getInputData(0);
-			const dataInput2 = this.getInputData(1);
-
-			if (dataInput1 === undefined || dataInput1.length === 0) {
-				if (['inner', 'left'].includes(join)) {
-					// When "inner" or "left" join return empty if first
-					// input does not contain any items
-					return [returnData];
-				}
-
-				// For "outer" return data of second input
-				return [dataInput2];
+			if (options.resolveClash === 'preferInput1') {
+				const dataTemp = [...dataInput1];
+				dataInput1 = dataInput2;
+				dataInput2 = dataTemp;
 			}
 
-			if (dataInput2 === undefined || dataInput2.length === 0) {
-				if (['left', 'outer'].includes(join)) {
-					// When "left" or "outer" join return data of first input
-					return [dataInput1];
-				}
+			if (options.resolveClash === 'addSuffix') {
+				dataInput1 = addSuffixToEntriesKeys(dataInput1, '1');
+				dataInput2 = addSuffixToEntriesKeys(dataInput2, '2');
+			}
 
-				// For "inner" return empty
+			if (dataInput1 === undefined || dataInput1.length === 0) {
+				if (includeUnpaired) {
+					return [dataInput2];
+				}
 				return [returnData];
 			}
 
-			// Default "left"
-			let numEntries = dataInput1.length;
-			if (join === 'inner') {
-				numEntries = Math.min(dataInput1.length, dataInput2.length);
-			} else if (join === 'outer') {
-				numEntries = Math.max(dataInput1.length, dataInput2.length);
+			if (dataInput2 === undefined || dataInput2.length === 0) {
+				if (includeUnpaired) {
+					return [dataInput1];
+				}
+				return [returnData];
 			}
 
-			let newItem: INodeExecutionData;
+			let numEntries = dataInput1.length;
+			if (includeUnpaired) {
+				numEntries = Math.max(dataInput1.length, dataInput2.length);
+			} else {
+				numEntries = Math.min(dataInput1.length, dataInput2.length);
+			}
+
+			let mergeEntries = merge;
+
+			if (options.mergeMode === 'shallowMerge') {
+				mergeEntries = assign;
+			}
+
 			for (let i = 0; i < numEntries; i++) {
 				if (i >= dataInput1.length) {
 					returnData.push(dataInput2[i]);
@@ -358,42 +363,21 @@ export class MergeV2 implements INodeType {
 					continue;
 				}
 
-				newItem = {
-					json: {},
+				const entry1 = dataInput1[i];
+				const entry2 = dataInput2[i];
+
+				returnData.push({
+					json: {
+						...mergeEntries({}, entry1.json, entry2.json),
+					},
+					binary: {
+						...merge({}, entry1.binary, entry2.binary),
+					},
 					pairedItem: [
-						dataInput1[i].pairedItem as IPairedItemData,
-						dataInput2[i].pairedItem as IPairedItemData,
+						entry1.pairedItem as IPairedItemData,
+						entry2.pairedItem as IPairedItemData,
 					],
-				};
-
-				if (dataInput1[i].binary !== undefined) {
-					newItem.binary = {};
-					// Create a shallow copy of the binary data so that the old
-					// data references which do not get changed still stay behind
-					// but the incoming data does not get changed.
-					Object.assign(newItem.binary, dataInput1[i].binary);
-				}
-
-				// Create also a shallow copy of the json data
-				Object.assign(newItem.json, dataInput1[i].json);
-
-				// Copy json data
-				for (const key of Object.keys(dataInput2[i].json)) {
-					newItem.json[key] = dataInput2[i].json[key];
-				}
-
-				// Copy binary data
-				if (dataInput2[i].binary !== undefined) {
-					if (newItem.binary === undefined) {
-						newItem.binary = {};
-					}
-
-					for (const key of Object.keys(dataInput2[i].binary!)) {
-						newItem.binary[key] = dataInput2[i].binary![key] ?? newItem.binary[key];
-					}
-				}
-
-				returnData.push(newItem);
+				});
 			}
 		}
 
