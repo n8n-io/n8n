@@ -535,19 +535,22 @@ export class MergeV2 implements INodeType {
 			return [returnData];
 		}
 
-		// mode = 'chooseBranch'
-		if (mode === 'passThrough') {
-			const output = this.getNodeParameter('output', 0) as string;
+		if (mode === 'chooseBranch') {
+			const chooseBranchMode = this.getNodeParameter('chooseBranchMode', 0) as string;
 
-			if (output === 'input1') {
-				returnData.push.apply(returnData, this.getInputData(0));
-			} else  {
-				returnData.push.apply(returnData, this.getInputData(1));
+			if (chooseBranchMode === 'waitForBoth') {
+				const output = this.getNodeParameter('output', 0) as string;
+
+				if (output === 'input1') {
+					returnData.push.apply(returnData, this.getInputData(0));
+				}
+				if (output === 'input2') {
+					returnData.push.apply(returnData, this.getInputData(1));
+				}
+				if (output === 'empty') {
+					returnData.push({ json: {} });
+				}
 			}
-		}
-
-		if (mode === 'wait') {
-			returnData.push({ json: {} });
 		}
 
 		return [returnData];
