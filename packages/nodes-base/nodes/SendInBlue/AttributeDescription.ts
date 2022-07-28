@@ -126,7 +126,7 @@ export const attributeOperations: INodeProperties[] = [
 				action: 'Get all attributes',
 			},
 		],
-		default: 'createAttribute',
+		default: 'create',
 	},
 ];
 
@@ -165,6 +165,7 @@ const createAttributeOperations: INodeProperties[] = [
 			},
 		],
 		type: 'options',
+		required: true,
 	},
 	{
 		displayName: 'Name',
@@ -234,6 +235,7 @@ const createAttributeOperations: INodeProperties[] = [
 		},
 		type: 'string',
 		placeholder: '',
+		required: true,
 		routing: {
 			send: {
 				type: 'body',
@@ -316,7 +318,7 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['updateAttribute'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -343,7 +345,7 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['updateAttribute'],
+				operation: ['update'],
 			},
 		},
 		type: 'string',
@@ -356,7 +358,7 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['updateAttribute'],
+				operation: ['update'],
 			},
 			hide: {
 				updateAttributeCategory: ['category'],
@@ -382,7 +384,7 @@ const updateAttributeOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['attribute'],
-				operation: ['updateAttribute'],
+				operation: ['update'],
 				updateAttributeCategory: ['category'],
 			},
 		},
