@@ -2,7 +2,6 @@ export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
-export const NODE_NAME_PREFIX = 'node-';
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
 

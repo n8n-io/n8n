@@ -78,7 +78,6 @@ const state: IRootState = {
 	workflowExecutionData: null,
 	lastSelectedNode: null,
 	lastSelectedNodeOutputIndex: null,
-	nodeIndex: [],
 	nodeTypes: [],
 	nodeViewOffsetPosition: [0, 0],
 	nodeViewMoveInProgress: false,
@@ -532,17 +531,6 @@ export const store = new Vuex.Store({
 			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
-		// Node-Index
-		addToNodeIndex(state, nodeName: string) {
-			state.nodeIndex.push(nodeName);
-		},
-		setNodeIndex(state, newData: { index: number, name: string | null }) {
-			state.nodeIndex[newData.index] = newData.name;
-		},
-		resetNodeIndex(state) {
-			Vue.set(state, 'nodeIndex', []);
-		},
-
 		// Node-View
 		setNodeViewMoveInProgress(state, value: boolean) {
 			state.nodeViewMoveInProgress = value;
@@ -839,14 +827,6 @@ export const store = new Vuex.Store({
 			});
 		},
 
-		// Node-Index
-		getNodeIndex: (state) => (nodeName: string): number => {
-			return state.nodeIndex.indexOf(nodeName);
-		},
-		getNodeNameByIndex: (state) => (index: number): string | null => {
-			return state.nodeIndex[index];
-		},
-
 		getNodeViewOffsetPosition: (state): XYPosition => {
 			return state.nodeViewOffsetPosition;
 		},
@@ -900,6 +880,9 @@ export const store = new Vuex.Store({
 		},
 		getNodeByName: (state, getters) => (nodeName: string): INodeUi | null => {
 			return getters.nodesByName[nodeName] || null;
+		},
+		getNodeById: (state, getters) => (nodeId: string): INodeUi | undefined => {
+			return state.workflow.nodes.find((node: INodeUi) => node.id === nodeId);
 		},
 		nodesIssuesExist: (state): boolean => {
 			for (const node of state.workflow.nodes) {
