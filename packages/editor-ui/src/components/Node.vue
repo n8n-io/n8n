@@ -75,7 +75,7 @@
 		<div class="node-description">
 			<div class="node-name" :title="nodeTitle">
 				<p>
-					{{ node.id }}
+					{{ nodeTitle }}
 				</p>
 				<p v-if="data.disabled">
 					({{ $locale.baseText('node.disabled') }})
