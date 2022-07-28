@@ -182,15 +182,17 @@ export class Telemetry {
 					version_cli: this.versionCli,
 				};
 
+				const distinctId = `${this.instanceId}${user_id ? `#${user_id}` : ''}`;
+
 				const payload = {
-					userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
+					userId: distinctId,
 					anonymousId: '000000000000',
 					event: eventName,
 					properties: updatedProperties,
 				};
 
 				if (withPostHog && this.postHog) {
-					this.postHog.capture({ ...payload, distinctId: payload.userId });
+					this.postHog.capture({ ...payload, distinctId });
 				}
 
 				this.rudderStack.track(payload, resolve);
