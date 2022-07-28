@@ -67,10 +67,12 @@
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { INodeUi, ITableData } from '@/Interface';
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
+import { externalHooks } from './mixins/externalHooks';
 
-export default Vue.extend({
+export default mixins(externalHooks).extend({
 	name: 'RunDataTable',
 	components: { Draggable },
 	props: {
@@ -153,7 +155,7 @@ export default Vue.extend({
 		onDragEnd(column: string) {
 			setTimeout(() => {
 				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
-				this.$telemetry.track('User dragged data for mapping', {
+				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,
 					src_nodes_back: this.distanceFromActive,
@@ -163,7 +165,11 @@ export default Vue.extend({
 					src_element: 'column',
 					success: false,
 					...mappingTelemetry,
-				});
+				};
+
+				this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop
 		},
 	},

@@ -157,6 +157,113 @@ window.n8nExternalHooks = {
 		]
 	},
 
+	runDataTable: {
+		/**
+		 * runDataTable.onDragEnd
+		 */
+		onDragEnd: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: runDataTable.onDragEnd');
+
+				const eventData = {
+					eventName: "User dragged data for mapping",
+					properties: meta,
+				};
+
+				n8n.postHogHooks.internalMethods.track(eventData);
+			}
+		]
+	},
+
+	settingsCommunityNodesView: {
+		/**
+		 * settingsCommunityNodesView.openInstallModal
+		 */
+		openInstallModal: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: settingsCommunityNodesView.openInstallModal');
+
+				const eventData = {
+					eventName: "user clicked cnr install button",
+					properties: meta,
+				};
+
+				n8n.postHogHooks.internalMethods.track(eventData);
+			}
+		]
+	},
+
+	templatesCollectionView: {
+		/**
+		 * templatesCollectionView.onUseWorkflow
+		 */
+		onUseWorkflow: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: templatesCollectionView.onUseWorkflow');
+
+				const eventData = {
+					eventName: "User inserted workflow template",
+					properties: meta,
+				};
+
+				n8n.postHogHooks.internalMethods.track(eventData);
+			}
+		]
+	},
+
+	templatesWorkflowView: {
+
+		/**
+		 * templatesWorkflowView.openWorkflow
+		 */
+		openWorkflow: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: templatesWorkflowView.onUseWorkflow');
+
+				const eventData = {
+					eventName: "User inserted workflow template",
+					properties: meta,
+				};
+
+				n8n.postHogHooks.internalMethods.track(eventData);
+			}
+		],
+	},
+
+	runData: {
+		/**
+		 * runData.onTogglePinData
+		 */
+		onTogglePinData: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: runData.onTogglePinData');
+
+				const eventData = {
+					eventName: "User clicked pin data icon",
+					properties: meta,
+				};
+
+				n8n.postHogHooks.internalMethods.track(eventData);
+			}
+		],
+
+		/**
+		 * runData.onDataPinningSuccess
+		 */
+		onDataPinningSuccess: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: runData.onDataPinningSuccess');
+
+				const eventData = {
+					eventName: "Ndv data pinning success",
+					properties: meta,
+				};
+
+				n8n.postHogHooks.internalMethods.track(eventData);
+			}
+		]
+	},
+
 	nodeExecuteButton: {
 		/**
 		 * nodeExecuteButton.onClick
