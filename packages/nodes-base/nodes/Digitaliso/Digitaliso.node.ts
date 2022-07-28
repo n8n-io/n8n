@@ -12,7 +12,6 @@ import {
 import {
     OptionsWithUri,
 } from 'request';
-import { IData } from '../Google/CloudNaturalLanguage/Interface';
 
 
 export class Digitaliso implements INodeType {
