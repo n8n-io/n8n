@@ -590,7 +590,6 @@ export class RoutingNode {
 			retValue = await extractor.call(executeSingleFunctions, value);
 		} else if (typeof extractor === 'object') {
 			if (typeof value !== 'string') {
-				// TODO: Custom error?
 				throw new NodeOperationError(
 					this.node,
 					`Node value extractor was given value of type "${typeof value}". Expected type "string".`,
@@ -601,10 +600,16 @@ export class RoutingNode {
 				const regex = new RegExp(extractor.regex);
 				const extracted = regex.exec(value);
 				if (!extracted) {
-					// TODO: error
-					throw new NodeOperationError(this.node, 'No extract', { itemIndex, runIndex });
+					throw new NodeOperationError(this.node, 'Could not extract value for given property.', {
+						itemIndex,
+						runIndex,
+					});
 				} else if (extracted.length === 1) {
-					throw new NodeOperationError(this.node, 'Invalid regex', { itemIndex, runIndex });
+					throw new NodeOperationError(
+						this.node,
+						'Value extractor regex is requires a group to extract the value.',
+						{ itemIndex, runIndex },
+					);
 				} else {
 					// eslint-disable-next-line prefer-destructuring
 					retValue = extracted[1];
@@ -616,7 +621,7 @@ export class RoutingNode {
 				});
 			}
 		} else {
-			throw new NodeOperationError(this.node, 'Bad extractValue', { itemIndex, runIndex });
+			throw new NodeOperationError(this.node, 'Unknown extractValue type', { itemIndex, runIndex });
 		}
 
 		return retValue;
