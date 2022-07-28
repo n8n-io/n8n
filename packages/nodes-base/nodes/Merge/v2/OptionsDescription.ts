@@ -34,7 +34,7 @@ const clashHandlingProperties: INodeProperties = 	{
 					displayName: 'Merging Nested Fields',
 					name: 'nestedFields',
 					type: 'options',
-					default: '',
+					default: 'deepMerge',
 					options: [
 						{
 							name: 'Deep Merge',
@@ -84,6 +84,14 @@ export const optionsDescription: INodeProperties[] = [
 				name: 'disableDotNotation',
 				type: 'boolean',
 				default: false,
+				description: 'Whether to disallow referencing child fields using `parent.child` in the field name',
+				displayOptions: {
+					show: {
+						'/mode': [
+							'matchFields',
+						],
+					},
+				},
 			},
 			{
 				...clashHandlingProperties,
@@ -122,7 +130,6 @@ export const optionsDescription: INodeProperties[] = [
 				displayOptions: {
 					show: {
 						'/mode': [
-							'append',
 							'multiplex',
 						],
 					},
@@ -131,7 +138,11 @@ export const optionsDescription: INodeProperties[] = [
 		],
 		displayOptions: {
 			hide: {
-				mode: ['chooseBranch'],
+				mode: [
+					'chooseBranch',
+					'append',
+					'matchPositions',
+				],
 			},
 		},
 	},
