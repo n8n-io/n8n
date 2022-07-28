@@ -50,8 +50,6 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		const workflowsQuery = `
@@ -82,7 +80,5 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 				queryRunner.query(updateQuery, updateParams);
 			});
 		});
-
-		logMigrationEnd(this.name);
 	}
 }
