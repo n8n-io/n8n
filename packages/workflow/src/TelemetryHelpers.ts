@@ -22,10 +22,10 @@ export function isNumber(value: unknown): value is number {
 }
 
 function getStickyDimensions(note: INode, stickyType: INodeType | undefined) {
-	const heightProperty = stickyType?.description.properties.find(
+	const heightProperty = stickyType?.description?.properties.find(
 		(property) => property.name === 'height',
 	);
-	const widthProperty = stickyType?.description.properties.find(
+	const widthProperty = stickyType?.description?.properties.find(
 		(property) => property.name === 'width',
 	);
 
@@ -195,7 +195,7 @@ export function generateNodesGraph(
 			} else {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
-				nodeType?.description.properties.forEach((property) => {
+				nodeType?.description?.properties?.forEach((property) => {
 					if (
 						property.name === 'operation' ||
 						property.name === 'resource' ||
@@ -225,7 +225,10 @@ export function generateNodesGraph(
 				});
 			});
 		});
-	} catch (_) {
+	} catch (e) {
+		if (window) { // log error client side
+			console.error(e);
+		}
 		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 	}
 
