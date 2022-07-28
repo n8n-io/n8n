@@ -226,9 +226,6 @@ export function generateNodesGraph(
 			});
 		});
 	} catch (e) {
-		if (window) { // log error client side
-			console.error(e);
-		}
 		return { nodeGraph: nodesGraph, nameIndices: nodeNameAndIndex, webhookNodeNames };
 	}
 
