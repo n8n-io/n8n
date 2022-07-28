@@ -33,6 +33,12 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create or Update',
 				value: 'upsert',
 				action: 'Upsert a contact',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '=/v3/contacts',
+					},
+				},
 			},
 			{
 				name: 'Delete',
@@ -473,6 +479,13 @@ const upsertOperations: INodeProperties[] = [
 		},
 		type: 'string',
 		required: true,
+		routing: {
+			send: {
+				value: '={{$value}}',
+				property: 'email',
+				type: 'body',
+			},
+		},
 	},
 	{
 		displayName: 'Contact Attributes',
@@ -562,10 +575,6 @@ const upsertOperations: INodeProperties[] = [
 						return requestOptions;
 					},
 				],
-			},
-			request: {
-				method: 'PUT',
-				url: '=/v3/contacts/{{$parameter.identifier}}',
 			},
 			output: {
 				postReceive: [
