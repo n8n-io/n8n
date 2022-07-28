@@ -1,6 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
-	get
+	assign,
+	get,
+	merge,
 } from 'lodash';
 
 import {
@@ -9,12 +11,14 @@ import {
 
 import {
 	GenericValue,
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { addSuffixToEntriesKeys } from './GenericFunctions';
 
 import {
 	optionsDescription,
@@ -257,7 +261,56 @@ export class MergeV2 implements INodeType {
 			for (let i = 0; i < 2; i++) {
 				returnData.push.apply(returnData, this.getInputData(i));
 			}
-		} else if (mode === 'mergeByIndex') {
+		}
+
+		if (mode === 'multiplex') {
+			const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+
+			let dataInput1 = this.getInputData(0);
+			let dataInput2 = this.getInputData(1);
+
+			if (options.resolveClash === 'preferInput1') {
+				const dataTemp = [...dataInput1];
+				dataInput1 = dataInput2;
+				dataInput2 = dataTemp;
+			}
+
+			if (options.resolveClash === 'addSuffix') {
+				dataInput1 = addSuffixToEntriesKeys(dataInput1, '1');
+				dataInput2 = addSuffixToEntriesKeys(dataInput2, '2');
+			}
+
+			let mergeEntries = merge;
+
+			if (options.mergeMode === 'shallowMerge') {
+				mergeEntries = assign;
+			}
+
+			if (!dataInput1 || !dataInput2) {
+				return [returnData];
+			}
+
+			let entry1: INodeExecutionData;
+			let entry2: INodeExecutionData;
+
+			for (entry1 of dataInput1) {
+				for (entry2 of dataInput2) {
+					returnData.push({
+						json: {
+							...mergeEntries({}, entry1.json, entry2.json),
+						},
+						pairedItem: [
+							entry1.pairedItem as IPairedItemData,
+							entry2.pairedItem as IPairedItemData,
+						],
+					});
+				}
+			}
+			return [returnData];
+		}
+
+		// mode === 'matchPositions'
+		if (mode === 'mergeByIndex') {
 			// Merges data by index
 
 			const join = this.getNodeParameter('join', 0) as string;
@@ -342,32 +395,10 @@ export class MergeV2 implements INodeType {
 
 				returnData.push(newItem);
 			}
-		} else if (mode === 'multiplex') {
-			const dataInput1 = this.getInputData(0);
-			const dataInput2 = this.getInputData(1);
+		}
 
-			if (!dataInput1 || !dataInput2) {
-				return [returnData];
-			}
-
-			let entry1: INodeExecutionData;
-			let entry2: INodeExecutionData;
-
-			for (entry1 of dataInput1) {
-				for (entry2 of dataInput2) {
-					returnData.push({
-						json: {
-							...(entry1.json), ...(entry2.json),
-						},
-						pairedItem: [
-							entry1.pairedItem as IPairedItemData,
-							entry2.pairedItem as IPairedItemData,
-						],
-					});
-				}
-			}
-			return [returnData];
-		} else if (['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'].includes(mode)) {
+		// mode === 'matchFields'
+		if (['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'].includes(mode)) {
 			const dataInput1 = this.getInputData(0);
 			if (!dataInput1) {
 				// If it has no input data from first input return nothing
@@ -502,7 +533,10 @@ export class MergeV2 implements INodeType {
 			}
 
 			return [returnData];
-		} else if (mode === 'passThrough') {
+		}
+
+		// mode = 'chooseBranch'
+		if (mode === 'passThrough') {
 			const output = this.getNodeParameter('output', 0) as string;
 
 			if (output === 'input1') {
@@ -510,7 +544,9 @@ export class MergeV2 implements INodeType {
 			} else  {
 				returnData.push.apply(returnData, this.getInputData(1));
 			}
-		} else if (mode === 'wait') {
+		}
+
+		if (mode === 'wait') {
 			returnData.push({ json: {} });
 		}
 

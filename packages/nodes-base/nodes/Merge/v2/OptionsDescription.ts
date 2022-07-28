@@ -4,7 +4,7 @@ const clashHandlingProperties: INodeProperties = 	{
 	displayName: 'Clash Handling',
 	name: 'clashHandling',
 	type: 'fixedCollection',
-	default: {values: {fieldClash: 'preferInput1', nestedFields: 'deepMerge', minimiseEmptyFields: false}},
+	default: {values: {resolveClash: 'preferInput1', mergeMode: 'deepMerge', overrideEmpty: false}},
 	options: [
 		{
 			displayName: 'Values',
@@ -12,13 +12,13 @@ const clashHandlingProperties: INodeProperties = 	{
 			values: [
 				{
 					displayName: 'When Field Names Clash',
-					name: 'fieldClash',
+					name: 'resolveClash',
 					type: 'options',
 					default: '',
 					options: [
 						{
-							name: 'Add Input Number to Field Names',
-							value: 'addInputNumber',
+							name: 'Always Add Input Number to Field Names',
+							value: 'addSuffix',
 						},
 						{
 							name: 'Prefer Input 1 Version',
@@ -32,7 +32,7 @@ const clashHandlingProperties: INodeProperties = 	{
 				},
 				{
 					displayName: 'Merging Nested Fields',
-					name: 'nestedFields',
+					name: 'mergeMode',
 					type: 'options',
 					default: 'deepMerge',
 					options: [
@@ -50,19 +50,19 @@ const clashHandlingProperties: INodeProperties = 	{
 					hint: 'How to merge when there are sub-fields below the top-level ones',
 					displayOptions: {
 						show: {
-							fieldClash: ['preferInput1', 'preferInput2'],
+							resolveClash: ['preferInput1', 'preferInput2'],
 						},
 					},
 				},
 				{
 					displayName: 'Minimise Empty Fields',
-					name: 'minimiseEmptyFields',
+					name: 'overrideEmpty',
 					type: 'boolean',
 					default: false,
 					description: 'Whether to override the preferred input version if it is null, undefined or an empty string',
 					displayOptions: {
 						show: {
-							fieldClash: ['preferInput1', 'preferInput2'],
+							resolveClash: ['preferInput1', 'preferInput2'],
 						},
 					},
 				},
