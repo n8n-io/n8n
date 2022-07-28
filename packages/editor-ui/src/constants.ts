@@ -40,6 +40,7 @@ export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
 export const EXECUTIONS_MODAL_KEY = 'executions';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
+export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 
@@ -54,7 +55,6 @@ export const BREAKPOINT_SM = 768;
 export const BREAKPOINT_MD = 992;
 export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
-
 
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
 export const DATA_PINNING_DOCS_URL = 'https://docs.n8n.io/data/data-pinning/';
@@ -275,8 +275,18 @@ export enum VIEWS {
 	PERSONAL_SETTINGS = "PersonalSettings",
 	API_SETTINGS = "APISettings",
 	NOT_FOUND = "NotFoundView",
+	FAKE_DOOR = "ComingSoon",
 	COMMUNITY_NODES = "CommunityNodes",
 }
+
+export enum FAKE_DOOR_FEATURES {
+	ENVIRONMENTS = 'environments',
+	LOGGING = 'logging',
+	SHARING = 'sharing',
+}
+
+export const ONBOARDING_PROMPT_TIMEBOX = 14;
+export const FIRST_ONBOARDING_PROMPT_TIMEOUT = 300000;
 
 export const TEST_PIN_DATA = [
 	{
