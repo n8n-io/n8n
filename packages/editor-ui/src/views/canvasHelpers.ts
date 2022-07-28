@@ -588,7 +588,6 @@ export const getRunItemsLabel = (output: {total: number, iterations: number}): s
 };
 
 export const addConnectionOutputSuccess = (connection: Connection, output: {total: number, iterations: number}) => {
-	console.log('success', connection);
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
 	if (connection.canvas) {
 		connection.canvas.classList.add('success');
