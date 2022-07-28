@@ -172,6 +172,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
 import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import * as telemetryScripts from './telemetry/scripts';
 
 require('body-parser-xml')(bodyParser);
 
@@ -337,6 +338,9 @@ class App {
 			},
 			executionMode: config.getEnv('executions.mode'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			deployment: {
+				type: config.getEnv('deployment.type'),
+			},
 		};
 	}
 
@@ -2603,6 +2607,27 @@ class App {
 			let readIndexFile = readFileSync(filePath, 'utf8');
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
+
+			if (this.frontendSettings.telemetry.enabled) {
+				// @TODO_PART_3:
+				// Confirm if `autocapture` is needed for session recording, if so enable
+
+				// @TODO_ON_COMPLETION:
+				// Set `disableSessionRecording` to `!['desktop_mac', 'desktop_win', 'cloud'].includes(deploymentType)`
+				// Set `debug` to `config.getEnv('logs.level') === 'debug'`
+
+				const postHogScript = telemetryScripts.postHog({
+					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+					autocapture: false,
+					disableSessionRecording: true,
+					debug: true,
+				});
+
+				const firstLinkedScript = '<link href="/js/';
+
+				readIndexFile = readIndexFile.replace(firstLinkedScript, postHogScript + firstLinkedScript);
+			}
 
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {

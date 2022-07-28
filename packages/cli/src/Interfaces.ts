@@ -515,6 +515,9 @@ export interface IN8nUISettings {
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
 	communityNodesEnabled: boolean;
+	deployment: {
+		type: string;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
