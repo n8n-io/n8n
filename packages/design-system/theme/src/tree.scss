@@ -48,7 +48,7 @@
 	@include mixins.when(drop-inner) {
 		> .el-tree-node__content .el-tree-node__label {
 			background-color: var(--color-primary);
-			color: #fff;
+			color: var(--color-foreground-xlight);
 		}
 	}
 

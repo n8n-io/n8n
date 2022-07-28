@@ -92,7 +92,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (credentialType.authenticate) {
 			if (typeof credentialType.authenticate === 'function') {
 				// Special authentication function is defined
-
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
 			}
@@ -559,7 +558,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeToTestWith?: string,
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType, nodeToTestWith);
-
 		if (credentialTestFunction === undefined) {
 			return Promise.resolve({
 				status: 'Error',
@@ -690,7 +688,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					statusCode: error.cause.response.status,
 					statusMessage: error.cause.response.statusText,
 				};
-
 				if (credentialTestFunction.testRequest.rules) {
 					// Special testing rules are defined so check all in order
 					for (const rule of credentialTestFunction.testRequest.rules) {
@@ -716,6 +713,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 							`Received HTTP status code: ${errorResponseData.statusCode}`,
 					};
 				}
+			} else if (error.cause.code) {
+				return {
+					status: 'Error',
+					message: error.cause.code,
+				};
 			}
 			Logger.debug('Credential test failed', error);
 			return {
