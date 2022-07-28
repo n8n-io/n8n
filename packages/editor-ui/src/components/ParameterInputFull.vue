@@ -230,6 +230,7 @@ export default mixins(
 		display: flex;
 
 		.input-container {
+			width: 100%;
 			input {
 				border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
 			}
@@ -238,6 +239,7 @@ export default mixins(
 		&.multiple-modes {
 			.input-container {
 				flex-basis: calc(100% - 100px);
+				flex-grow: 1;
 			}
 		}
 
@@ -249,6 +251,8 @@ export default mixins(
 		input {
 			border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
 			border-right: none;
+			overflow: hidden;
+			text-overflow: ellipsis;
 
 			&:focus {
 				border-right: var(--color-secondary) var(--border-style-base) var(--border-width-base);

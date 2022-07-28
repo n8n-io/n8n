@@ -74,7 +74,7 @@
 					@focus="setFocus"
 					@blur="onBlur"
 					:title="displayTitle"
-					:placeholder="inputPlaceholder || getPlaceholder()"
+					:placeholder="getPlaceholder()"
 				>
 					<div slot="suffix" class="expand-input-icon-container">
 						<font-awesome-icon
@@ -296,6 +296,7 @@ import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 import { hasExpressionMapping } from './helpers';
+import { validateResourceLocatorParameter } from './ResourceLocator/helpers';
 
 export default mixins(
 	externalHooks,
@@ -562,6 +563,13 @@ export default mixins(
 					const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
 
 					issues.parameters[this.parameter.name] = [issue];
+				} else if (this.parameter.type === 'resourceLocator' && this.displayValue !== null) {
+					// Perform front-end validation of the resource locator value
+					issues.parameters = issues.parameters || {};
+					const validationErrors: string[] = validateResourceLocatorParameter(this.displayValue.toString(), this.currentMode);
+					for (const error of validationErrors) {
+						issues.parameters[this.parameter.name] = [error];
+					}
 				} else if (
 					['options', 'multiOptions'].includes(this.parameter.type) &&
 					this.remoteParameterOptionsLoading === false &&
@@ -713,7 +721,9 @@ export default mixins(
 			getPlaceholder(): string {
 				return this.isForCredential
 					? this.$locale.credText().placeholder(this.parameter)
-					: this.$locale.nodeText().placeholder(this.parameter, this.path);
+					: this.inputPlaceholder
+						? this.inputPlaceholder
+						: this.$locale.nodeText().placeholder(this.parameter, this.path);
 			},
 			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
 				return this.isForCredential
