@@ -1,15 +1,15 @@
-<template functional>
-	<component :is="$options.components.N8nRoute" :to="props.to" :newWindow="props.newWindow"
-			   @click="listeners.click"
+<template>
+	<n8n-route :to="to" :newWindow="newWindow"
+		v-on="$listeners"
 	>
 		<span
-			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
+			:class="$style[`${underline ? `${theme}-underline` : theme}`]"
 		>
-			<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold">
+			<n8n-text :size="size" :bold="bold">
 				<slot></slot>
-			</component>
+			</n8n-text>
 		</span>
-	</component>
+	</n8n-route>
 </template>
 
 <script lang="ts">
