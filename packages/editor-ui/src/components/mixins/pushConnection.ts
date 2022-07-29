@@ -272,7 +272,7 @@ export const pushConnection = mixins(
 						const execution = this.$store.getters.getWorkflowExecution;
 						if (execution && execution.executedNode) {
 							const node = this.$store.getters.getNodeByName(execution.executedNode);
-							const nodeType = node && this.$store.getters.nodeType(node.type, node.typeVersion);
+							const nodeType = node && this.$store.getters['nodeTypes/nodeType'](node.type, node.typeVersion);
 							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
 							if (node && nodeType && !nodeOutput) {
 								this.$showMessage({
@@ -381,7 +381,7 @@ export const pushConnection = mixins(
 							return this.restApi().getNodesInformation(nodesToBeFetched);
 						})
 						.then((nodesInfo) => {
-							this.$store.commit('updateNodeTypes', nodesInfo);
+							this.$store.commit('nodeTypes/updateNodeTypes', nodesInfo);
 						});
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;
@@ -391,7 +391,7 @@ export const pushConnection = mixins(
 					// Force reload of all credential types
 					this.$store.dispatch('credentials/fetchCredentialTypes')
 						.then(() => {
-							this.$store.commit('removeNodeTypes', nodesToBeRemoved);
+							this.$store.commit('nodeTypes/removeNodeTypes', nodesToBeRemoved);
 						});
 				}
 				return true;

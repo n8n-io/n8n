@@ -853,7 +853,6 @@ export interface IRootState {
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
 	nodeIndex: Array<string | null>;
-	nodeTypes: INodeTypeDescription[];
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -957,6 +956,10 @@ export interface ISettingsState {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
+}
+
+export interface INodeTypesState {
+	nodeTypes: { [nodeType: string]: INodeTypeDescription };
 }
 
 export interface ITemplateState {
