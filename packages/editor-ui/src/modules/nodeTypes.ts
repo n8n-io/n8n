@@ -1,11 +1,22 @@
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
-import type { ILoadOptions, INodeCredentials, INodeParameters, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
+import type {
+	ILoadOptions,
+	INodeCredentials,
+	INodeParameters,
+	INodeTypeDescription,
+	INodeTypeNameVersion,
+} from 'n8n-workflow';
 
-import type { IRootState, INodeTypesState } from '../Interface';
 import { DEFAULT_NODETYPE_VERSION } from '@/constants';
-import { getNodeParameterOptions, getNodesInformation, getNodeTranslationHeaders, getNodeTypes } from '@/api/nodeTypes';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
+import {
+	getNodeParameterOptions,
+	getNodesInformation,
+	getNodeTranslationHeaders,
+	getNodeTypes,
+} from '@/api/nodeTypes';
+import type { IRootState, INodeTypesState } from '../Interface';
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,
@@ -31,32 +42,22 @@ const module: Module<INodeTypesState, IRootState> = {
 			Vue.set(state, 'nodeTypes', toNodeTypesState(nodeTypesArray));
 		},
 
-		updateNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
-			const oldNodesToKeep = Object.values(state.nodeTypes).filter(
-				node => !nodeTypes.find(
-					n => n.name === node.name && n.version.toString() === node.version.toString(),
-				),
+		updateNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
+			const oldNodesToKeep = newNodeTypes.reduce(
+				(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
+				state.nodeTypes,
 			);
 
-			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
-
-			Vue.set(state, 'nodeTypes', newNodesState);
-
-			state.nodeTypes = toNodeTypesState(newNodesState);
+			state.nodeTypes = { ...oldNodesToKeep, ...toNodeTypesState(newNodeTypes) };
 		},
 
-		removeNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
-			console.log('Store will remove nodes: ', nodeTypes); // eslint-disable-line no-console
+		removeNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
+			console.log('Store will remove nodes: ', newNodeTypes); // eslint-disable-line no-console
 
-			const oldNodesToKeep = Object.values(state.nodeTypes).filter(
-				node => !nodeTypes.find(
-					n => n.name === node.name && n.version === node.version,
-				),
+			state.nodeTypes = newNodeTypes.reduce(
+				(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
+				state.nodeTypes,
 			);
-
-			Vue.set(state, 'nodeTypes', oldNodesToKeep);
-
-			state.nodeTypes = toNodeTypesState(oldNodesToKeep);
 		},
 	},
 	actions: {
@@ -141,3 +142,5 @@ function hasValidVersion(nodeType: INodeTypeDescription, version?: number) {
 
 	return nodeTypeVersion.includes(version || nodeType.defaultVersion || DEFAULT_NODETYPE_VERSION);
 }
+
+const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
