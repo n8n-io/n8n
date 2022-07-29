@@ -1,11 +1,10 @@
-<template functional>
+<template>
 	<span>
-		<div v-if="props.type === 'ring'" class="lds-ring"><div></div><div></div><div></div><div></div></div>
-		<component
+		<div v-if="type === 'ring'" class="lds-ring"><div></div><div></div><div></div><div></div></div>
+		<n8n-icon
 			v-else
-			:is="$options.components.N8nIcon"
 			icon="spinner"
-			:size="props.size"
+			:size="size"
 			spin
 		/>
 	</span>
