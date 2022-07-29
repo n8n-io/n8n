@@ -1,10 +1,11 @@
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ILoadOptions, INodeCredentials, INodeParameters, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 
 import type { IRootState, INodeTypesState } from '../Interface';
 import { DEFAULT_NODETYPE_VERSION } from '@/constants';
-import { getNodeTypes } from '@/api/nodeTypes';
+import { getNodeParameterOptions, getNodesInformation, getNodeTranslationHeaders, getNodeTypes } from '@/api/nodeTypes';
+import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,
@@ -72,6 +73,48 @@ const module: Module<INodeTypesState, IRootState> = {
 			if (nodeTypes.length) {
 				context.commit('setNodeTypes', nodeTypes);
 			}
+		},
+		async getNodeTranslationHeaders(context: ActionContext<INodeTypesState, IRootState>) {
+			const headers = await getNodeTranslationHeaders(context.rootGetters.getRestApiContext);
+
+			if (headers) {
+				addHeaders(headers, context.getters.defaultLocale);
+			}
+		},
+		async getNodesInformation(
+			context: ActionContext<INodeTypesState, IRootState>,
+			nodeInfos: INodeTypeNameVersion[],
+		) {
+			const nodesInformation = await getNodesInformation(
+				context.rootGetters.getRestApiContext,
+				nodeInfos,
+			);
+
+			nodesInformation.forEach(nodeInformation => {
+				if (nodeInformation.translation) {
+					const nodeType = nodeInformation.name.replace('n8n-nodes-base.', '');
+
+					addNodeTranslation(
+						{ [nodeType]: nodeInformation.translation },
+						context.getters.defaultLocale,
+					);
+				}
+			});
+
+			context.commit('nodeTypes/updateNodeTypes', nodesInformation);
+		},
+		async getNodeParameterOptions(
+			context: ActionContext<INodeTypesState, IRootState>,
+			sendData: {
+				nodeTypeAndVersion: INodeTypeNameVersion,
+				path: string,
+				methodName?: string,
+				loadOptions?: ILoadOptions,
+				currentNodeParameters: INodeParameters,
+				credentials?: INodeCredentials,
+			},
+		) {
+			return getNodeParameterOptions(context.rootGetters.getRestApiContext, sendData);
 		},
 	},
 };

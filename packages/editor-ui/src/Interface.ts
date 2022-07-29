@@ -173,9 +173,6 @@ export interface IRestApi {
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getCredentialTranslation(credentialType: string): Promise<object>;
-	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
-	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -198,6 +195,17 @@ export interface INodeTranslationHeaders {
 			description: string;
 		},
 	};
+}
+
+export interface IGetNodeParameterOptionsPayload {
+	sendData: {
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		path: string,
+		methodName?: string,
+		loadOptions?: ILoadOptions,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+	}
 }
 
 export interface IBinaryDisplayData {

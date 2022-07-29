@@ -2958,21 +2958,7 @@ export default mixins(
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
-
-					const nodesInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
-
-					nodesInfo.forEach(nodeInfo => {
-						if (nodeInfo.translation) {
-							const nodeType = this.$locale.shortNodeType(nodeInfo.name);
-
-							addNodeTranslation(
-								{ [nodeType]: nodeInfo.translation },
-								this.$store.getters.defaultLocale,
-							);
-						}
-					});
-
-					this.$store.commit('nodeTypes/updateNodeTypes', nodesInfo);
+					await this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
 					this.stopLoading();
 				}
 			},
