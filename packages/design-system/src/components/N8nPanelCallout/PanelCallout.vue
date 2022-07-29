@@ -1,5 +1,5 @@
 <template>
-	<div :class="classes" role="alert">
+	<div :class="['n8n-panel-callout', ...classes]" role="alert">
 
 		<div :class="$style['message-section']">
 			<div :class="$style.icon">

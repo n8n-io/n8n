@@ -1,5 +1,5 @@
 <template>
-	<span>
+	<span class="n8n-spinner">
 		<div v-if="type === 'ring'" class="lds-ring"><div></div><div></div><div></div><div></div></div>
 		<n8n-icon
 			v-else

@@ -1,5 +1,5 @@
 <template>
-	<div :id="id" :class="classes" role="alert" @click=onClick>
+	<div :id="id" :class="['n8n-notice', ...classes]" role="alert" @click=onClick>
 		<div class="notice-content">
 			<n8n-text size="small" :compact="true">
 				<slot>
@@ -57,7 +57,6 @@ export default Vue.extend({
 	computed: {
 		classes(): string[] {
 			return [
-				'notice',
 				this.$style['notice'],
 				this.$style[this.theme],
 			];

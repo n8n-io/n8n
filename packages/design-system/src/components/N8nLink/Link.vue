@@ -1,6 +1,7 @@
 <template>
 	<n8n-route :to="to" :newWindow="newWindow"
 		v-on="$listeners"
+		class="n8n-route"
 	>
 		<span
 			:class="$style[`${underline ? `${theme}-underline` : theme}`]"

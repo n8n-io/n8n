@@ -1,5 +1,5 @@
 <template>
-	<span :class="$style.container"	v-on="$listeners">
+	<span :class="['n8n-avatar', $style.container]"	v-on="$listeners">
 		<avatar
 			v-if="firstName"
 			:size="getSize(size)"

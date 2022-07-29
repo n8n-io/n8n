@@ -1,6 +1,6 @@
 <template>
 	<button
-		:class="classes"
+		:class="['n8n-button', ...classes]"
 		:disabled="disabled || loading"
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
@@ -88,7 +88,7 @@ export default Vue.extend({
 			return this.disabled ? 'true' : 'false';
 		},
 		classes(): string {
-			return `button ${this.$style['button']} ${this.$style[this.type]}` +
+			return `${this.$style['button']} ${this.$style[this.type]}` +
 				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
 				`${this.outline ? ` ${this.$style['outline']}` : ''}` +
 				`${this.loading ? ` ${this.$style['loading']}` : ''}` +

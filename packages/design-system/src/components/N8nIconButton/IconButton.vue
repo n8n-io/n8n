@@ -1,6 +1,6 @@
 <template>
 	<n8n-button
-		:class="`icon-button ${$style['icon-button']} ${$style[size]}`"
+		:class="`n8n-icon-button ${$style['icon-button']} ${$style[size]}`"
 		v-bind="$props"
 		v-on="$listeners"
 	/>

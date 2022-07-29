@@ -3,7 +3,7 @@
 		:defaultActive="defaultActive"
 		:collapse="collapse"
 		:router="router"
-		:class="$style[type + (light ? '-light' : '')]"
+		:class="['n8n-menu', $style[type + (light ? '-light' : '')]]"
 		v-on="$listeners"
 	>
 		<slot></slot>

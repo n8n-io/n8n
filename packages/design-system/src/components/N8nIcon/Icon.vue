@@ -3,6 +3,7 @@
 		:size="size"
 		:color="color"
 		:compact="true"
+		class="n8n-icon"
 	>
 		<font-awesome-icon
 			:icon="icon"

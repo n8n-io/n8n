@@ -1,5 +1,5 @@
 <template>
-	<div :class="classes" role="alert">
+	<div :class="['n8n-callout', ...classes]" role="alert">
 		<div :class="$style.icon">
 			<n8n-icon v-bind="$attrs" :icon="getIcon" size="large"/>
 		</div>

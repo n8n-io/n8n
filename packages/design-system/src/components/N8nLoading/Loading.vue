@@ -1,5 +1,5 @@
 <template>
-	<el-skeleton :loading="loading" :animated="animated">
+	<el-skeleton :loading="loading" :animated="animated" class="n8n-loading">
 		<template slot="template">
 			<el-skeleton-item
 				v-if="variant === 'button'"

@@ -1,6 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<div :class="{
+				'n8n-input-label': true,
 				[this.$style.label]: !!this.label,
 				[this.$style.underline]: this.underline,
 				[this.$style[this.size]]: true,

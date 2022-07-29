@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="n8n-markdown">
 		<div
 			v-if="!loading"
 			ref="editor"

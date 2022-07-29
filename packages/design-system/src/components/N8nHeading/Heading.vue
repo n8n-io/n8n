@@ -1,5 +1,5 @@
 <template>
-	<component :is="tag" :class="classes" v-on="$listeners">
+	<component :is="tag" :class="['n8n-heading', ...classes]" v-on="$listeners">
 		<slot></slot>
 	</component>
 </template>

@@ -1,5 +1,5 @@
 <template>
-	<div :class="{[$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
+	<div :class="{'n8n-info-tip': true, [$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
 		<n8n-tooltip :placement="tooltipPlacement" :popper-class="$style.tooltipPopper" :disabled="type !== 'tooltip'">
 			<span :class="$style.iconText">
 				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />

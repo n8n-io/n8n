@@ -1,5 +1,5 @@
 <template>
-	<div role="radiogroup" :class="{[$style.radioGroup]: true, [$style.disabled]: disabled}">
+	<div role="radiogroup" :class="{'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled}">
 		<RadioButton
 			v-for="option in options"
 			:key="option.value"
