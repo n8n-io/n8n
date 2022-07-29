@@ -18,21 +18,21 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 export const FileIcon = DefaultTemplate.bind({});
 FileIcon.args = {
 	type: 'file',
-	iconPath: 'https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/cartman.svg',
+	src: 'https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/cartman.svg',
 	size: 200,
 };
 
 export const FontIcon = DefaultTemplate.bind({});
 FontIcon.args = {
 	type: 'icon',
-	iconName: 'cogs',
+	name: 'cogs',
 	size: 200,
 };
 
 export const Hoverable = DefaultTemplate.bind({});
 Hoverable.args = {
 	type: 'icon',
-	iconName: 'heart',
+	name: 'heart',
 	color: 'red',
 	size: 200,
 	nodeTypeName: 'We ❤️ n8n',

@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="n8n-node-icon">
 		<div
 			:class="{
 				[$style['node-icon-wrapper']]: true,
@@ -12,8 +12,8 @@
 			<n8n-tooltip placement="top" :disabled="!showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style['icon']">
-					<img v-if="type === 'file'" :src="iconPath" :class="$style['node-icon-image']" />
-					<font-awesome-icon v-else :icon="iconName" :style="fontStyleData" />
+					<img v-if="type === 'file'" :src="src" :class="$style['node-icon-image']" />
+					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
 				</div>
 				<div v-else :class="$style['node-icon-placeholder']">
 					{{ nodeTypeName? nodeTypeName.charAt(0) : '?' }}
@@ -42,10 +42,10 @@ export default Vue.extend({
 			validator: (value: string): boolean =>
 				['file', 'icon', 'unknown'].includes(value),
 		},
-		iconPath: {
+		src: {
 			type: String,
 		},
-		iconName: {
+		name: {
 			type: String,
 		},
 		nodeTypeName: {

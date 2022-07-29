@@ -1,8 +1,8 @@
 <template>
 	<n8n-node-icon
 		:type="type"
-		:iconPath="iconSource.path || iconSource.fileBuffer"
-		:iconName="iconSource.icon"
+		:src="iconSource.path || iconSource.fileBuffer"
+		:name="iconSource.icon"
 		:color="color"
 		:disabled="disabled"
 		:size="size"
