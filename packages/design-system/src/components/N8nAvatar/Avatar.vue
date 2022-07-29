@@ -46,7 +46,7 @@ export default {
 	},
 	computed: {
 		initials() {
-			return this.firstName.charAt(0) + this.lastName.charAt(0);
+			return (this.firstName ? this.firstName.charAt(0): '') + (this.lastName? this.lastName.charAt(0): '');
 		},
 	},
 	methods: {
