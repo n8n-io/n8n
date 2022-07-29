@@ -39,7 +39,7 @@ const module: Module<INodeTypesState, IRootState> = {
 	},
 	mutations: {
 		setNodeTypes(state, nodeTypesArray: INodeTypeDescription[]) {
-			Vue.set(state, 'nodeTypes', toNodeTypesState(nodeTypesArray));
+			state.nodeTypes = toNodeTypesState(nodeTypesArray);
 		},
 
 		updateNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
