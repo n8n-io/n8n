@@ -50,8 +50,6 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 
 		removeNodeTypes(state, nodeTypesToRemove: INodeTypeDescription[]) {
-			console.log('Store will remove nodes: ', nodeTypesToRemove); // eslint-disable-line no-console
-
 			state.nodeTypes = nodeTypesToRemove.reduce(
 				(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
 				state.nodeTypes,
