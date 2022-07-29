@@ -11,6 +11,7 @@ RUN apk --update add --virtual build-dependencies python3 build-base ca-certific
 WORKDIR /data
 
 COPY package.json .
+COPY package-lock.json .
 COPY packages/cli/ ./packages/cli/
 COPY packages/core/ ./packages/core/
 COPY packages/design-system/ ./packages/design-system/
