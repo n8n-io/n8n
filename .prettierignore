@@ -58,29 +58,29 @@ packages/design-system
 # packages/nodes-base/nodes/Drift
 # packages/nodes-base/nodes/Dropbox
 # packages/nodes-base/nodes/Dropcontact
-packages/nodes-base/nodes/EditImage
-packages/nodes-base/nodes/Egoi
-packages/nodes-base/nodes/Elastic
-packages/nodes-base/nodes/EmailReadImap
-packages/nodes-base/nodes/EmailSend
-packages/nodes-base/nodes/Emelia
-packages/nodes-base/nodes/ERPNext
-packages/nodes-base/nodes/ErrorTrigger
-packages/nodes-base/nodes/Eventbrite
-packages/nodes-base/nodes/ExecuteCommand
-packages/nodes-base/nodes/ExecuteWorkflow
-packages/nodes-base/nodes/Facebook
-packages/nodes-base/nodes/Figma
-packages/nodes-base/nodes/FileMaker
-packages/nodes-base/nodes/Flow
-packages/nodes-base/nodes/FormIo
-packages/nodes-base/nodes/Formstack
-packages/nodes-base/nodes/Freshdesk
-packages/nodes-base/nodes/Freshservice
-packages/nodes-base/nodes/FreshworksCrm
-packages/nodes-base/nodes/Ftp
-packages/nodes-base/nodes/Function
-packages/nodes-base/nodes/FunctionItem
+# packages/nodes-base/nodes/EditImage
+# packages/nodes-base/nodes/Egoi
+# packages/nodes-base/nodes/Elastic
+# packages/nodes-base/nodes/EmailReadImap
+# packages/nodes-base/nodes/EmailSend
+# packages/nodes-base/nodes/Emelia
+# packages/nodes-base/nodes/ERPNext
+# packages/nodes-base/nodes/ErrorTrigger
+# packages/nodes-base/nodes/Eventbrite
+# packages/nodes-base/nodes/ExecuteCommand
+# packages/nodes-base/nodes/ExecuteWorkflow
+# packages/nodes-base/nodes/Facebook
+# packages/nodes-base/nodes/Figma
+# packages/nodes-base/nodes/FileMaker
+# packages/nodes-base/nodes/Flow
+# packages/nodes-base/nodes/FormIo
+# packages/nodes-base/nodes/Formstack
+# packages/nodes-base/nodes/Freshdesk
+# packages/nodes-base/nodes/Freshservice
+# packages/nodes-base/nodes/FreshworksCrm
+# packages/nodes-base/nodes/Ftp
+# packages/nodes-base/nodes/Function
+# packages/nodes-base/nodes/FunctionItem
 packages/nodes-base/nodes/GetResponse
 packages/nodes-base/nodes/Ghost
 packages/nodes-base/nodes/Git
