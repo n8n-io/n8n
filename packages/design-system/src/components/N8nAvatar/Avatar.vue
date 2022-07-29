@@ -1,19 +1,17 @@
-<template functional>
-	<span :class="$style.container">
-		<component
-			v-if="props.firstName"
-			:is="$options.components.Avatar"
-			:size="$options.methods.getSize(props.size)"
-			:name="props.firstName + ' ' + props.lastName"
+<template>
+	<span :class="$style.container"	v-on="$listeners">
+		<avatar
+			v-if="firstName"
+			:size="getSize(size)"
+			:name="firstName + ' ' + lastName"
 			variant="marble"
-			:colors="$options.methods.getColors(props.colors)"
+			:colors="getColors(colors)"
 		/>
 		<div
 			v-else
-			:class="$style.empty"
-			:style="$options.methods.getBlankStyles(props.size)">
+			:class="[$style.empty, $style[size]]"
 		</div>
-		<span v-if="props.firstName" :class="$style.initials">{{$options.methods.getInitials(props)}}</span>
+		<span v-if="firstName" :class="$style.initials">{{initials}}</span>
 	</span>
 </template>
 
@@ -46,14 +44,12 @@ export default {
 	components: {
 		Avatar,
 	},
+	computed: {
+		initials() {
+			return this.firstName.charAt(0) + this.lastName.charAt(0);
+		},
+	},
 	methods: {
-		getInitials({firstName, lastName}) {
-			return firstName.charAt(0) + lastName.charAt(0);
-		},
-		getBlankStyles(size): {height: string, width: string} {
-			const px = sizes[size];
-			return { height: `${px}px`, width: `${px}px` };
-		},
 		getColors(colors): string[] {
 			const style = getComputedStyle(document.body);
 			return colors.map((color: string) => style.getPropertyValue(color));
@@ -85,5 +81,20 @@ export default {
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-xlight);
 	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.3);
+}
+
+.small {
+	height: 28px;
+	width: 28px;
+}
+
+.medium {
+	height: 40px;
+	width: 40px;
+}
+
+.large {
+	height: 48px;
+	width: 48px;
 }
 </style>
