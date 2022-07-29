@@ -18,16 +18,16 @@ packages/design-system
 # packages/nodes-base/nodes/Automizy
 # packages/nodes-base/nodes/Autopilot
 # packages/nodes-base/nodes/Aws
-packages/nodes-base/nodes/BambooHr
-packages/nodes-base/nodes/Bannerbear
-packages/nodes-base/nodes/Baserow
-packages/nodes-base/nodes/Beeminder
-packages/nodes-base/nodes/Bitbucket
-packages/nodes-base/nodes/Bitly
-packages/nodes-base/nodes/Bitwarden
-packages/nodes-base/nodes/Box
-packages/nodes-base/nodes/Brandfetch
-packages/nodes-base/nodes/Bubble
+# packages/nodes-base/nodes/BambooHr
+# packages/nodes-base/nodes/Bannerbear
+# packages/nodes-base/nodes/Baserow
+# packages/nodes-base/nodes/Beeminder
+# packages/nodes-base/nodes/Bitbucket
+# packages/nodes-base/nodes/Bitly
+# packages/nodes-base/nodes/Bitwarden
+# packages/nodes-base/nodes/Box
+# packages/nodes-base/nodes/Brandfetch
+# packages/nodes-base/nodes/Bubble
 packages/nodes-base/nodes/Cal
 packages/nodes-base/nodes/Calendly
 packages/nodes-base/nodes/Chargebee
