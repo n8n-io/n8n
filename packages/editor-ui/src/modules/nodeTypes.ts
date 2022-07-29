@@ -16,7 +16,7 @@ const module: Module<INodeTypesState, IRootState> = {
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return Object.values(state.nodeTypes);
 		},
-		nodeType: (state) => (nodeType: string, version?: number): INodeTypeDescription | null => {
+		getNodeType: (state) => (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 			const foundType = Object.values(state.nodeTypes).find(typeData => {
 				const typeVersion = Array.isArray(typeData.version)
 					? typeData.version

@@ -205,7 +205,7 @@ export interface IGetNodeParameterOptionsPayload {
 		loadOptions?: ILoadOptions,
 		currentNodeParameters: INodeParameters,
 		credentials?: INodeCredentials,
-	}
+	};
 }
 
 export interface IBinaryDisplayData {

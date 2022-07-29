@@ -816,7 +816,7 @@ export const store = new Vuex.Store({
 
 		workflowTriggerNodes: (state, getters) => {
 			return state.workflow.nodes.filter(node => {
-				const nodeType = getters['nodeTypes/nodeType'](node.type, node.typeVersion);
+				const nodeType = getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				return nodeType && nodeType.group.includes('trigger');
 			});
 		},

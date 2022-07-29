@@ -742,7 +742,7 @@ export default mixins(
 						{
 							nodeTypeAndVersion: {
 								name: this.node.type,
-								version: this.node.typeVersion
+								version: this.node.typeVersion,
 							},
 							path: this.path,
 							methodName: loadOptionsMethod,
