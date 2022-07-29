@@ -185,12 +185,9 @@ export default mixins(Locale).extend({
 			setTimeout(() => {
 				if (newMode &&
 					!prevMode &&
-					this.$refs.input &&
-					this.$refs.input.$refs &&
-					this.$refs.input.$refs.innerInput &&
-					this.$refs.input.$refs.innerInput.$refs.textarea
+					this.$refs.input
 				) {
-					const textarea = this.$refs.input.$refs.innerInput.$refs.textarea;
+					const textarea = this.$refs.input;
 					if (this.defaultText === this.content) {
 						textarea.select();
 					}

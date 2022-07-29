@@ -87,9 +87,21 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const input = this.$refs.innerInput;
-			if (input) {
-				input.focus();
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+			}
+		},
+		blur() {
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).blur();
+			}
+		},
+		select() {
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).select();
 			}
 		},
 	},
