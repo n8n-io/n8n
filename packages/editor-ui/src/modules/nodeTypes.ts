@@ -16,6 +16,7 @@ import {
 	getNodeTranslationHeaders,
 	getNodeTypes,
 } from '@/api/nodeTypes';
+import { omit } from '@/utils';
 import type { IRootState, INodeTypesState } from '../Interface';
 
 const module: Module<INodeTypesState, IRootState> = {
@@ -131,7 +132,5 @@ function hasValidVersion(nodeType: INodeTypeDescription, version?: number) {
 
 	return nodeTypeVersion.includes(version || nodeType.defaultVersion || DEFAULT_NODETYPE_VERSION);
 }
-
-const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
 export default module;
