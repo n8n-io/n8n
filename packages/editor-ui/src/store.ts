@@ -214,19 +214,22 @@ export const store = new Vuex.Store({
 
 		// Pin data
 		pinData(state, payload: { node: INodeUi, data: IPinData[string] }) {
-			if (state.workflow.pinData) {
-				Vue.set(state.workflow.pinData, payload.node.name, payload.data);
+			if (!state.workflow.pinData) {
+				Vue.set(state.workflow, 'pinData', {});
 			}
 
+			Vue.set(state.workflow.pinData!, payload.node.name, payload.data);
 			state.stateIsDirty = true;
 
 			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: payload.data });
 		},
 		unpinData(state, payload: { node: INodeUi }) {
-			if (state.workflow.pinData) {
-				Vue.set(state.workflow.pinData, payload.node.name, undefined);
-				delete state.workflow.pinData[payload.node.name];
+			if (!state.workflow.pinData) {
+				Vue.set(state.workflow, 'pinData', {});
 			}
+
+			Vue.set(state.workflow.pinData!, payload.node.name, undefined);
+			delete state.workflow.pinData![payload.node.name];
 
 			state.stateIsDirty = true;
 
@@ -478,7 +481,7 @@ export const store = new Vuex.Store({
 			}
 
 			if (data.removePinData) {
-				state.workflow.pinData = {};
+				Vue.set(state.workflow, 'pinData', {});
 			}
 
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
@@ -652,9 +655,9 @@ export const store = new Vuex.Store({
 		},
 
 		setWorkflowPinData(state, pinData: IPinData) {
-			Vue.set(state.workflow, 'pinData', pinData);
+			Vue.set(state.workflow, 'pinData', pinData || {});
 
-			dataPinningEventBus.$emit('pin-data', pinData);
+			dataPinningEventBus.$emit('pin-data', pinData || {});
 		},
 
 		setWorkflowTagIds(state, tags: string[]) {
@@ -909,7 +912,7 @@ export const store = new Vuex.Store({
 			return state.workflow.pinData;
 		},
 		pinDataByNodeName: (state) => (nodeName: string) => {
-			return state.workflow.pinData && state.workflow.pinData[nodeName];
+			return state.workflow.pinData ? state.workflow.pinData[nodeName] : undefined;
 		},
 		pinDataSize: (state) => {
 			return state.workflow.nodes

@@ -142,7 +142,9 @@ export default mixins(genericHelpers).extend({
 
 	&:after {
 		left: 27px;
-		background: linear-gradient(270deg, rgba(255, 255, 255, 0.25) 0%, rgba(248, 249, 251, 1) 86%);
+		background: linear-gradient(270deg,
+			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 50%),
+			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 100%));
 	}
 }
 
@@ -151,7 +153,9 @@ export default mixins(genericHelpers).extend({
 	right: -30px;
 	&:after {
 		right: 27px;
-		background: linear-gradient(270deg,rgba(248, 249, 251, 1) 25%, rgba(255, 255, 255, 0.25) 100%);
+		background: linear-gradient(90deg,
+			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 50%),
+			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 100%));
 	}
 }
 </style>

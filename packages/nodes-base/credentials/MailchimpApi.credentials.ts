@@ -19,9 +19,9 @@ export class MailchimpApi implements ICredentialType {
 		},
 	];
 	authenticate: IAuthenticateGeneric = {
-		type:'generic',
-		properties:{
-			headers:{
+		type: 'generic',
+		properties: {
+			headers: {
 				Authorization: '=apikey {{$credentials.apiKey}}',
 			},
 		},

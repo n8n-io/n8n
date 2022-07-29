@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { IBinaryDataConfig, IProcessedDataConfig } from 'n8n-core';

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-lonely-if */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-prototype-builtins */
@@ -998,8 +999,10 @@ export async function requestOAuth2(
 			newRequestOptions?.headers?.Authorization.split(' ')[1];
 	}
 
+	// @ts-ignore
 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 		Object.assign(newRequestOptions.headers, {
+			// @ts-ignore
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
 	}
@@ -1054,8 +1057,10 @@ export async function requestOAuth2(
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as clientOAuth2.RequestObject);
 
+				// @ts-ignore
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 					Object.assign(newRequestOptions.headers, {
+						// @ts-ignore
 						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 					});
 				}
@@ -1131,8 +1136,10 @@ export async function requestOAuth2(
 			// Make the request again with the new token
 			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
 
+			// @ts-ignore
 			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 				Object.assign(newRequestOptions.headers, {
+					// @ts-ignore
 					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 				});
 			}
