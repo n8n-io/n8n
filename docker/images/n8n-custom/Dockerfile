@@ -6,7 +6,7 @@ USER root
 
 # Install all needed dependencies
 RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates && \
-	npm_config_user=root npm install -g run-script-os npm@latest
+	npm_config_user=root npm install -g npm@latest run-script-os
 
 WORKDIR /data
 
@@ -34,7 +34,7 @@ RUN apk add --update graphicsmagick tzdata tini su-exec git
 WORKDIR /data
 
 # Install all needed dependencies
-RUN npm_config_user=root npm install -g full-icu
+RUN npm_config_user=root npm install -g npm@latest full-icu
 
 # Install fonts
 RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \

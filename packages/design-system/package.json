@@ -13,7 +13,7 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "scripts": {
-    "build": "echo build",
+    "build": "npm run build:theme",
     "build:vue": "vite build",
     "build:vue:typecheck": "vue-tsc --emitDeclarationOnly",
     "dev": "npm run watch:theme",
