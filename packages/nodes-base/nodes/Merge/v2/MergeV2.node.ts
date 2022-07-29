@@ -21,6 +21,7 @@ import {
 
 import {
 	addSuffixToEntriesKeys,
+	findMatches,
  } from './GenericFunctions';
 
 import {
@@ -86,7 +87,7 @@ const versionDescription: INodeTypeDescription = {
 			name: 'matchFields',
 			type: 'fixedCollection',
 			placeholder: 'Add Fields',
-			default: {values: [{input1FieldName: '', input2FieldName: ''}]},
+			default: {values: [{field1: '', field2: ''}]},
 			typeOptions: {
 				multipleValues: true,
 			},
@@ -97,15 +98,17 @@ const versionDescription: INodeTypeDescription = {
 					values: [
 						{
 							displayName: 'Input 1 Field Named',
-							name: 'input1FieldName',
+							name: 'field1',
 							type: 'string',
 							default: '',
+							required: true,
 						},
 						{
 							displayName: 'Input 2 Field Named',
-							name: 'input2FieldName',
+							name: 'field2',
 							type: 'string',
 							default: '',
+							required: true,
 						},
 					],
 				},
@@ -142,7 +145,7 @@ const versionDescription: INodeTypeDescription = {
 					description: 'All of input 2, with data from input 1 added in (right join)',
 				},
 			],
-			default: 'innerJoin',
+			default: 'keepMatches',
 			displayOptions: {
 				show: {
 					mode: ['matchFields'],
@@ -388,10 +391,10 @@ export class MergeV2 implements INodeType {
 			const matchFields = this.getNodeParameter('matchFields.values', 0, []) as IDataObject[];
 			const joinMode = this.getNodeParameter('joinMode', 0) as string;
 
-			let dataInput1 = this.getInputData(0);
+			const dataInput1 = this.getInputData(0);
 			if (!dataInput1 ) return [returnData];
 
-			let dataInput2 = this.getInputData(1);
+			const dataInput2 = this.getInputData(1);
 			if (!dataInput2 || !matchFields.length) {
 				if (joinMode === 'keepMatches' || joinMode === 'enrichInput2') {
 					return [returnData];
@@ -399,179 +402,42 @@ export class MergeV2 implements INodeType {
 				return [dataInput1];
 			}
 
+			const {matched1, matched2, unmatched1, unmatched2} = findMatches(dataInput1, dataInput2, matchFields);
+
 			if (joinMode === 'keepMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
 
-				if (outputDataFrom === 'both') {
-					const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
-
-					if (options.resolveClash === 'preferInput1') {
-						const dataTemp = [...dataInput1];
-						dataInput1 = dataInput2;
-						dataInput2 = dataTemp;
-					}
-
-					if (options.resolveClash === 'addSuffix') {
-						dataInput1 = addSuffixToEntriesKeys(dataInput1, '1');
-						dataInput2 = addSuffixToEntriesKeys(dataInput2, '2');
-					}
-
-					let mergeEntries = merge;
-					if (options.mergeMode === 'shallowMerge') {
-						mergeEntries = assign;
-					}
-
+				if (outputDataFrom === 'input1' ) {
+					return [matched1];
 				}
-
+				if (outputDataFrom === 'input2' ) {
+					return [matched2];
+				}
+				if (outputDataFrom === 'both' ) {
+					return [[...matched1, ...matched2]];
+				}
 			}
 
 			if (joinMode === 'keepNonMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
-
-			}
-
-			if (joinMode === 'enrichInput1' || joinMode === 'enrichInput2') {
-
-			}
-
-		}
-
-		// mode === 'matchFields'
-		if (['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'].includes(mode)) {
-			const dataInput1 = this.getInputData(0);
-			if (!dataInput1) {
-				// If it has no input data from first input return nothing
-				return [returnData];
-			}
-
-			const propertyName1 = this.getNodeParameter('propertyName1', 0) as string;
-			const propertyName2 = this.getNodeParameter('propertyName2', 0) as string;
-			const overwrite = this.getNodeParameter('overwrite', 0, 'always') as string;
-
-			const dataInput2 = this.getInputData(1);
-			if (!dataInput2 || !propertyName1 || !propertyName2) {
-				// Second input does not have any data or the property names are not defined
-				if (mode === 'keepKeyMatches') {
-					// For "keepKeyMatches" return nothing
-					return [returnData];
+				if (outputDataFrom === 'input1' ) {
+					return [unmatched1];
 				}
-
-				// For "mergeByKey" and "removeKeyMatches" return the data from the first input
-				return [dataInput1];
-			}
-
-			// Get the data to copy
-			const copyData: {
-				[key: string]: INodeExecutionData;
-			} = {};
-			let entry: INodeExecutionData;
-			for (entry of dataInput2) {
-				const key = get(entry.json, propertyName2);
-				if (!entry.json || !key) {
-					// Entry does not have the property so skip it
-					continue;
+				if (outputDataFrom === 'input2' ) {
+					return [unmatched2];
 				}
-
-				copyData[key as string] = entry;
-			}
-
-			// Copy data on entries or add matching entries
-			let referenceValue: GenericValue;
-			let key: string;
-			for (entry of dataInput1) {
-				referenceValue = get(entry.json, propertyName1);
-
-				if (referenceValue === undefined) {
-					// Entry does not have the property
-
-					if (mode === 'removeKeyMatches') {
-						// For "removeKeyMatches" add item
-						returnData.push(entry);
-					}
-
-					// For "mergeByKey" and "keepKeyMatches" skip item
-					continue;
-				}
-
-				if (!['string', 'number'].includes(typeof referenceValue)) {
-					if (referenceValue !== null && referenceValue.constructor.name !== 'Data') {
-						// Reference value is not of comparable type
-
-						if (mode === 'removeKeyMatches') {
-							// For "removeKeyMatches" add item
-							returnData.push(entry);
-						}
-
-						// For "mergeByKey" and "keepKeyMatches" skip item
-						continue;
-					}
-				}
-
-				if (typeof referenceValue === 'number') {
-					referenceValue = referenceValue.toString();
-				} else if (referenceValue !== null && referenceValue.constructor.name === 'Date') {
-					referenceValue = (referenceValue as Date).toISOString();
-				}
-
-				if (copyData.hasOwnProperty(referenceValue as string)) {
-					// Item with reference value got found
-
-					if (['null', 'undefined'].includes(typeof referenceValue)) {
-						// The reference value is null or undefined
-
-						if (mode === 'removeKeyMatches') {
-							// For "removeKeyMatches" add item
-							returnData.push(entry);
-						}
-
-						// For "mergeByKey" and "keepKeyMatches" skip item
-						continue;
-					}
-
-					// Match exists
-					if (mode === 'removeKeyMatches') {
-						// For "removeKeyMatches" we can skip the item as it has a match
-						continue;
-					} else if (mode === 'mergeByKey') {
-						// Copy the entry as the data gets changed
-						entry = JSON.parse(JSON.stringify(entry));
-
-						for (key of Object.keys(copyData[referenceValue as string].json)) {
-							if (key === propertyName2) {
-								continue;
-							}
-
-							// TODO: Currently only copies json data and no binary one
-							const value = copyData[referenceValue as string].json[key];
-							if (
-								overwrite === 'always' ||
-								(overwrite === 'undefined' && !entry.json.hasOwnProperty(key)) ||
-								(overwrite === 'blank' && [null, undefined, ''].includes(entry.json[key] as string))
-							) {
-								entry.json[key] = value;
-							}
-						}
-					} else {
-						// For "keepKeyMatches" we add it as it is
-						returnData.push(entry);
-						continue;
-					}
-				} else {
-					// No item for reference value got found
-					if (mode === 'removeKeyMatches') {
-						// For "removeKeyMatches" we can add it if not match got found
-						returnData.push(entry);
-						continue;
-					}
-				}
-
-				if (mode === 'mergeByKey') {
-					// For "mergeByKey" we always add the entry anyway but then the unchanged one
-					returnData.push(entry);
+				if (outputDataFrom === 'both' ) {
+					return [[...unmatched1, ...unmatched2]];
 				}
 			}
 
-			return [returnData];
+			if (joinMode === 'enrichInput1') {
+				return [[...dataInput1, ...matched1]];
+			}
+
+			if (joinMode === 'enrichInput2') {
+				return [[...dataInput2, ...matched2]];
+			}
 		}
 
 		if (mode === 'chooseBranch') {
