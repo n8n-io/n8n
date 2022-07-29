@@ -41,12 +41,7 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 
 		updateNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
-			const oldNodesToKeep = newNodeTypes.reduce(
-				(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
-				state.nodeTypes,
-			);
-
-			state.nodeTypes = { ...oldNodesToKeep, ...toNodeTypesState(newNodeTypes) };
+			newNodeTypes.forEach((node) => Vue.set(state.nodeTypes, node.name, node));
 		},
 
 		removeNodeTypes(state, nodeTypesToRemove: INodeTypeDescription[]) {
