@@ -68,6 +68,19 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 	},
 	actions: {
+		async getFullNodesProperties(
+			context: ActionContext<INodeTypesState, IRootState>,
+			nodesToBeFetched: INodeTypeNameVersion[],
+		) {
+			await context.dispatch('credentials/fetchCredentialTypes', true);
+
+			const nodesInformation = await context.dispatch(
+				'nodeTypes/getNodesInformation',
+				nodesToBeFetched,
+			);
+
+			context.commit('nodeTypes/updateNodeTypes', nodesInformation);
+		},
 		async getNodeTypes(context: ActionContext<INodeTypesState, IRootState>) {
 			const nodeTypes = await getNodeTypes(context.rootGetters.getRestApiContext);
 			if (nodeTypes.length) {

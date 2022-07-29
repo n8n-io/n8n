@@ -370,19 +370,7 @@ export const pushConnection = mixins(
 
 					this.processWaitingPushMessages();
 				} else if (receivedData.type === 'reloadNodeType') {
-					const pushData = receivedData.data;
-
-					const nodesToBeFetched: INodeTypeNameVersion[] = [pushData];
-
-					// Force reload of all credential types
-					this.$store.dispatch('credentials/fetchCredentialTypes', true)
-						.then(() => {
-							// Get the data of the node and update in internal storage
-							return this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
-						})
-						.then((nodesInfo) => {
-							this.$store.commit('nodeTypes/updateNodeTypes', nodesInfo);
-						});
+					this.$store.dispatch('nodeTypes/getFullNodesProperties', [receivedData.data]);
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;
 
