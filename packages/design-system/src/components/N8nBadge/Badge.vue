@@ -1,10 +1,10 @@
-<template functional>
+<template>
 	<span
-		:class="$style[props.theme]"
+		:class="$style[theme]"
 	>
-		<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold" :compact="true">
+		<n8n-text :size="size" :bold="bold" :compact="true">
 			<slot></slot>
-		</component>
+		</n8n-text>
 	</span>
 </template>
 
