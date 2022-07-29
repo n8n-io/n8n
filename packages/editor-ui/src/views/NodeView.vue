@@ -2931,8 +2931,7 @@ export default mixins(
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
 			async loadNodeTypes (): Promise<void> {
-				const nodeTypes = await this.restApi().getNodeTypes();
-				this.$store.dispatch('nodeTypes/getNodeTypes', nodeTypes);
+				this.$store.dispatch('nodeTypes/getNodeTypes');
 			},
 			async loadCredentialTypes (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchCredentialTypes', true);

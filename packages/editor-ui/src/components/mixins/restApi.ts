@@ -88,11 +88,6 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('GET', '/node-translation-headers');
 				},
 
-				// Returns all node-types
-				getNodeTypes: (onlyLatest = false): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('GET', `/node-types`, {onlyLatest});
-				},
-
 				getNodesInformation: (nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]> => {
 					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeInfos});
 				},
