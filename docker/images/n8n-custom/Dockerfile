@@ -6,7 +6,7 @@ USER root
 
 # Install all needed dependencies
 RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates && \
-	npm_config_user=root npm install -g run-script-os
+	npm_config_user=root npm install -g run-script-os npm@latest
 
 WORKDIR /data
 
