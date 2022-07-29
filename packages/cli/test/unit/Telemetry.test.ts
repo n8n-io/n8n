@@ -333,7 +333,6 @@ describe('Telemetry', () => {
 
             expect(pulseSpy).toBeCalledTimes(1);
             expect(spyTrack).toHaveBeenCalledTimes(3);
-            console.log(spyTrack.getMockImplementation());
             expect(spyTrack).toHaveBeenNthCalledWith(1, 'Workflow execution count', {
                 event_version: '2',
 				workflow_id: '1',
