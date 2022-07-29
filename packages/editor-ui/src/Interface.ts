@@ -197,17 +197,6 @@ export interface INodeTranslationHeaders {
 	};
 }
 
-export interface IGetNodeParameterOptionsPayload {
-	sendData: {
-		nodeTypeAndVersion: INodeTypeNameVersion,
-		path: string,
-		methodName?: string,
-		loadOptions?: ILoadOptions,
-		currentNodeParameters: INodeParameters,
-		credentials?: INodeCredentials,
-	};
-}
-
 export interface IBinaryDisplayData {
 	index: number;
 	key: string;
