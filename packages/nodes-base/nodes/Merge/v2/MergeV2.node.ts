@@ -402,41 +402,41 @@ export class MergeV2 implements INodeType {
 				return [dataInput1];
 			}
 
-			const {matched1, matched2, unmatched1, unmatched2} = findMatches(dataInput1, dataInput2, matchFields);
+			const filteredData = findMatches(dataInput1, dataInput2, matchFields);
 
 			if (joinMode === 'keepMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
 
 				if (outputDataFrom === 'input1' ) {
-					return [matched1];
+					return [filteredData.getMatches1()];
 				}
 				if (outputDataFrom === 'input2' ) {
-					return [matched2];
+					return [filteredData.getMatches2()];
 				}
 				if (outputDataFrom === 'both' ) {
-					return [[...matched1, ...matched2]];
+					return [[...filteredData.getMatches1(), ...filteredData.getMatches2()]];
 				}
 			}
 
 			if (joinMode === 'keepNonMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
 				if (outputDataFrom === 'input1' ) {
-					return [unmatched1];
+					return [filteredData.unmatched1];
 				}
 				if (outputDataFrom === 'input2' ) {
-					return [unmatched2];
+					return [filteredData.unmatched2];
 				}
 				if (outputDataFrom === 'both' ) {
-					return [[...unmatched1, ...unmatched2]];
+					return [[...filteredData.unmatched1, ...filteredData.unmatched2]];
 				}
 			}
 
 			if (joinMode === 'enrichInput1') {
-				return [[...dataInput1, ...matched1]];
+				return [[...dataInput1, ...filteredData.getMatches1()]];
 			}
 
 			if (joinMode === 'enrichInput2') {
-				return [[...dataInput2, ...matched2]];
+				return [[...dataInput2, ...filteredData.getMatches2()]];
 			}
 		}
 

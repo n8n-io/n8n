@@ -7,6 +7,11 @@ import {
 	get,
 } from 'lodash';
 
+interface IMatch {
+	entry: INodeExecutionData;
+	matches: INodeExecutionData[];
+}
+
 export function addSuffixToEntriesKeys(data: INodeExecutionData[], suffix: string) {
 	return data.map( entry => {
 		const json: IDataObject = {};
@@ -23,10 +28,15 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 	const data2 = [...dataInput2];
 
 	const filteredData = {
-		matched1: [] as INodeExecutionData[],
+		matched: [] as IMatch[],
 		unmatched1: [] as INodeExecutionData[],
-		matched2: [] as INodeExecutionData[],
 		unmatched2: [] as INodeExecutionData[],
+		getMatches1 () {
+			return this.matched.map( match => match.entry);
+		},
+		getMatches2 () {
+			return this.matched.reduce((acc, match) => acc.concat(match.matches), [] as INodeExecutionData[]);
+		},
 	};
 
 	for (const entry1 of data1) {
@@ -52,8 +62,10 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 		});
 
 		if (foundedMarches.length) {
-			filteredData.matched1.push(entry1);
-			filteredData.matched2.push(...foundedMarches);
+			filteredData.matched.push({
+				entry: entry1,
+				matches: foundedMarches,
+			});
 		} else {
 			filteredData.unmatched1.push(entry1);
 		}
