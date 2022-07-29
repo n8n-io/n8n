@@ -183,8 +183,14 @@ export default mixins(Locale).extend({
 	watch: {
 		editMode(newMode, prevMode) {
 			setTimeout(() => {
-				if (newMode && !prevMode && this.$refs.input && this.$refs.input.$refs && this.$refs.input.$refs.textarea) {
-					const textarea = this.$refs.input.$refs.textarea;
+				if (newMode &&
+					!prevMode &&
+					this.$refs.input &&
+					this.$refs.input.$refs &&
+					this.$refs.input.$refs.innerInput &&
+					this.$refs.input.$refs.innerInput.$refs.textarea
+				) {
+					const textarea = this.$refs.input.$refs.innerInput.$refs.textarea;
 					if (this.defaultText === this.content) {
 						textarea.select();
 					}
