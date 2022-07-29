@@ -20,7 +20,7 @@ export default Vue.extend({
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'].includes(value),
+			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(value),
 		},
 		align: {
 			type: String,
@@ -115,6 +115,10 @@ export default Vue.extend({
 
 .text-xlight {
 	color: var(--color-text-xlight);
+}
+
+.danger {
+	color: var(--color-danger);
 }
 
 .align-left {
