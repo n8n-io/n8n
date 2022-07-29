@@ -432,11 +432,11 @@ export class MergeV2 implements INodeType {
 			}
 
 			if (joinMode === 'enrichInput1') {
-				return [[...dataInput1, ...filteredData.getMatches1()]];
+				return [[...dataInput1, ...filteredData.getMatches2()]];
 			}
 
 			if (joinMode === 'enrichInput2') {
-				return [[...dataInput2, ...filteredData.getMatches2()]];
+				return [[...dataInput2, ...filteredData.getMatches1()]];
 			}
 		}
 
