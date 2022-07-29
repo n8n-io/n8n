@@ -4,9 +4,10 @@
   "private": true,
   "homepage": "https://n8n.io",
   "scripts": {
+    "bootstrap": "npm install -ws",
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
-    "clean:dist": "npm exec --ws -- rimraf ./dist",
+    "clean:dist": "npm exec -ws -- rimraf ./dist",
     "format": "turbo run format",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
