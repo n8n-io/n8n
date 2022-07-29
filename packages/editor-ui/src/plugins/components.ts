@@ -112,7 +112,7 @@ Vue.use(N8nMenuItem);
 Vue.component('n8n-notice', N8nNotice);
 Vue.use(N8nOption);
 Vue.use(N8nPulse);
-Vue.use(N8nSelect);
+Vue.component('n8n-select', N8nSelect);
 Vue.use(N8nSpinner);
 Vue.component('n8n-sticky', N8nSticky);
 Vue.use(N8nRadioButtons);
