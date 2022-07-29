@@ -272,7 +272,7 @@ export const pushConnection = mixins(
 						const execution = this.$store.getters.getWorkflowExecution;
 						if (execution && execution.executedNode) {
 							const node = this.$store.getters.getNodeByName(execution.executedNode);
-							const nodeType = node && this.$store.getters['nodeTypes/nodeType'](node.type, node.typeVersion);
+							const nodeType = node && this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
 							if (node && nodeType && !nodeOutput) {
 								this.$showMessage({
@@ -378,7 +378,7 @@ export const pushConnection = mixins(
 					this.$store.dispatch('credentials/fetchCredentialTypes', true)
 						.then(() => {
 							// Get the data of the node and update in internal storage
-							return this.restApi().getNodesInformation(nodesToBeFetched);
+							return this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
 						})
 						.then((nodesInfo) => {
 							this.$store.commit('nodeTypes/updateNodeTypes', nodesInfo);
