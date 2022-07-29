@@ -10,6 +10,7 @@
 		<div
 			v-else
 			:class="[$style.empty, $style[size]]"
+		>
 		</div>
 		<span v-if="firstName" :class="$style.initials">{{initials}}</span>
 	</span>
