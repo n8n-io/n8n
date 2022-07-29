@@ -17,21 +17,13 @@ const module: Module<INodeTypesState, IRootState> = {
 			return Object.values(state.nodeTypes);
 		},
 		getNodeType: (state) => (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
-			const foundType = Object.values(state.nodeTypes).find(typeData => {
-				const typeVersion = Array.isArray(typeData.version)
-					? typeData.version
-					: [typeData.version];
+			const nodeType = state.nodeTypes[nodeTypeName];
 
-				return typeData.name === nodeTypeName && typeVersion.includes(
-					version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION,
-				);
-			});
+			if (!nodeType) return null;
 
-			if (foundType === undefined) {
-				return null;
-			}
+			if (!hasValidVersion(nodeType, version)) return null;
 
-			return foundType;
+			return nodeType;
 		},
 	},
 	mutations: {
@@ -141,3 +133,11 @@ function toNodeTypesState(nodeTypes: INodeTypeDescription[]): INodeTypesState['n
 }
 
 export default module;
+
+function hasValidVersion(nodeType: INodeTypeDescription, version?: number) {
+	const nodeTypeVersion = Array.isArray(nodeType.version)
+		? nodeType.version
+		: [nodeType.version];
+
+	return nodeTypeVersion.includes(version || nodeType.defaultVersion || DEFAULT_NODETYPE_VERSION);
+}
