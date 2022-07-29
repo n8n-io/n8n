@@ -4,7 +4,7 @@
   "private": true,
   "homepage": "https://n8n.io",
   "scripts": {
-    "bootstrap": "npm install -ws",
+    "bootstrap": "npm install",
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "clean:dist": "npm exec -ws -- rimraf ./dist",
