@@ -48,16 +48,16 @@ packages/design-system
 # packages/nodes-base/nodes/Cron
 # packages/nodes-base/nodes/Crypto
 # packages/nodes-base/nodes/CustomerIo
-packages/nodes-base/nodes/DateTime
-packages/nodes-base/nodes/DeepL
-packages/nodes-base/nodes/Demio
-packages/nodes-base/nodes/Dhl
-packages/nodes-base/nodes/Discord
-packages/nodes-base/nodes/Discourse
-packages/nodes-base/nodes/Disqus
-packages/nodes-base/nodes/Drift
-packages/nodes-base/nodes/Dropbox
-packages/nodes-base/nodes/Dropcontact
+# packages/nodes-base/nodes/DateTime
+# packages/nodes-base/nodes/DeepL
+# packages/nodes-base/nodes/Demio
+# packages/nodes-base/nodes/Dhl
+# packages/nodes-base/nodes/Discord
+# packages/nodes-base/nodes/Discourse
+# packages/nodes-base/nodes/Disqus
+# packages/nodes-base/nodes/Drift
+# packages/nodes-base/nodes/Dropbox
+# packages/nodes-base/nodes/Dropcontact
 packages/nodes-base/nodes/EditImage
 packages/nodes-base/nodes/Egoi
 packages/nodes-base/nodes/Elastic
