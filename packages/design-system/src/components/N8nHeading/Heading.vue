@@ -5,7 +5,9 @@
 </template>
 
 <script lang="ts">
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-heading',
 	props: {
 		tag: {
@@ -47,7 +49,7 @@ export default {
 			return applied.map((c) => this.$style[c]);
 		}
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

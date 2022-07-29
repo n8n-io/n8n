@@ -13,7 +13,9 @@
 <script lang="ts">
 import ElMenu from 'element-ui/lib/menu';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-menu',
 	props: {
 		type: {
@@ -37,7 +39,7 @@ export default {
 	components: {
 		ElMenu,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

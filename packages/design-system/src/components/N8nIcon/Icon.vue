@@ -16,7 +16,9 @@
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nText from '../N8nText';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-icon',
 	components: {
 		FontAwesomeIcon,
@@ -38,7 +40,7 @@ export default {
 			type: String,
 		},
 	},
-};
+});
 </script>
 
 

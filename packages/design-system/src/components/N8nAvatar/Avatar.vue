@@ -25,7 +25,9 @@ const sizes: {[size: string]: number} = {
 	medium: 40,
 };
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-avatar',
 	props: {
 		firstName: {
@@ -59,7 +61,7 @@ export default {
 			return sizes[size];
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

@@ -14,7 +14,9 @@
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-info-tip',
 	components: {
 		N8nIcon,
@@ -42,7 +44,7 @@ export default {
 			default: 'top',
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

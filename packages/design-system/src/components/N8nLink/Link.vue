@@ -17,7 +17,9 @@ import Vue from 'vue';
 import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-link',
 	props: {
 		size: {
@@ -49,7 +51,7 @@ export default {
 		N8nText,
 		N8nRoute,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

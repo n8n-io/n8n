@@ -21,7 +21,9 @@
 <script lang="ts">
 import Vue from 'vue';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-route',
 	props: {
 		to: {
@@ -54,6 +56,6 @@ export default {
 			return true;
 		},
 	},
-};
+});
 </script>
 

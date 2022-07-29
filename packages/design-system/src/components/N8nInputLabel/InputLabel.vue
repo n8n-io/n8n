@@ -33,7 +33,9 @@ import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-input-label',
 	components: {
 		N8nText,
@@ -73,7 +75,7 @@ export default {
 	methods: {
 		addTargetBlank,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

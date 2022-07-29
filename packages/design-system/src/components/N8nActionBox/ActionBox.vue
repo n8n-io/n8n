@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="['n8n-action-box', $style.container]">
 		<div :class="$style.heading" v-if="heading">
 			<n8n-heading size="xlarge" align="center">{{ heading }}</n8n-heading>
 		</div>
@@ -20,8 +20,9 @@ import N8nButton from '../N8nButton';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 import N8nCallout from '../N8nCallout';
+import Vue from 'vue';
 
-export default {
+export default Vue.extend({
 	name: 'n8n-action-box',
 	props: {
 		heading: {
@@ -50,7 +51,7 @@ export default {
 		N8nText,
 		N8nCallout,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

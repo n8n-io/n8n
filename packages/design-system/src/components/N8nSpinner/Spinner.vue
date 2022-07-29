@@ -13,7 +13,9 @@
 <script lang="ts">
 import N8nIcon from '../N8nIcon';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-spinner',
 	components: {
 		N8nIcon,
@@ -33,7 +35,7 @@ export default {
 			default: 'dots',
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss">

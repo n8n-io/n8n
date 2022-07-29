@@ -6,7 +6,9 @@
 </template>
 
 <script lang="ts">
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-radio-button',
 	props: {
 		label: {
@@ -31,7 +33,7 @@ export default {
 			type: Boolean,
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

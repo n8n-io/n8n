@@ -5,14 +5,16 @@
 </template>
 
 <script lang="ts">
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-tag',
 	props: {
 		text: {
 			type: String,
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
