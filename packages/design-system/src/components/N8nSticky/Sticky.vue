@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="{[$style.sticky]: true, [$style.clickable]: !isResizing}"
+		:class="{'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing}"
 		:style="styles"
 		@keydown.prevent
 	>
