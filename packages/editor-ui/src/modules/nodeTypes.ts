@@ -22,7 +22,7 @@ const module: Module<INodeTypesState, IRootState> = {
 					? typeData.version
 					: [typeData.version];
 
-				return typeData.name === nodeType && typeVersion.includes(
+				return typeData.name === nodeTypeName && typeVersion.includes(
 					version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION,
 				);
 			});
@@ -101,7 +101,7 @@ const module: Module<INodeTypesState, IRootState> = {
 				}
 			});
 
-			context.commit('nodeTypes/updateNodeTypes', nodesInformation);
+			context.commit('updateNodeTypes', nodesInformation);
 		},
 		async getNodeParameterOptions(
 			context: ActionContext<INodeTypesState, IRootState>,
