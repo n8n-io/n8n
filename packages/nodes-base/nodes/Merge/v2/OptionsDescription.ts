@@ -103,8 +103,8 @@ export const optionsDescription: INodeProperties[] = [
 					},
 					hide: {
 						'/joinMode': [
-							'innerJoin',
-							'outerJoin',
+							'keepMatches',
+							'keepNonMatches',
 						],
 					},
 				},
@@ -117,7 +117,7 @@ export const optionsDescription: INodeProperties[] = [
 							'matchFields',
 						],
 						'/joinMode': [
-							'innerJoin',
+							'keepMatches',
 						],
 						'/outputDataFrom': [
 							'both',

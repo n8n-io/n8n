@@ -18,7 +18,10 @@ import {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { addSuffixToEntriesKeys } from './GenericFunctions';
+
+import {
+	addSuffixToEntriesKeys,
+ } from './GenericFunctions';
 
 import {
 	optionsDescription,
@@ -80,17 +83,17 @@ const versionDescription: INodeTypeDescription = {
 		// matchFields ------------------------------------------------------------------
 		{
 			displayName: 'Fields to Match',
-			name: 'customData',
+			name: 'matchFields',
 			type: 'fixedCollection',
 			placeholder: 'Add Fields',
-			default: {match: [{input1FieldName: '', input2FieldName: ''}]},
+			default: {values: [{input1FieldName: '', input2FieldName: ''}]},
 			typeOptions: {
 				multipleValues: true,
 			},
 			options: [
 				{
-					displayName: 'Match',
-					name: 'match',
+					displayName: 'Values',
+					name: 'values',
 					values: [
 						{
 							displayName: 'Input 1 Field Named',
@@ -120,22 +123,22 @@ const versionDescription: INodeTypeDescription = {
 			options: [
 				{
 					name: 'Keep Matches',
-					value: 'innerJoin',
+					value: 'keepMatches',
 					description: 'Items that match, merged together (inner join)',
 				},
 				{
 					name: 'Keep Non-Matches',
-					value: 'outerJoin',
+					value: 'keepNonMatches',
 					description: 'Items that don\'t match (outer join)',
 				},
 				{
 					name: 'Enrich Input 1',
-					value: 'leftJoin',
+					value: 'enrichInput1',
 					description: 'All of input 1, with data from input 2 added in (left join)',
 				},
 				{
 					name: 'Enrich Input 2',
-					value: 'rightJoin',
+					value: 'enrichInput2',
 					description: 'All of input 2, with data from input 1 added in (right join)',
 				},
 			],
@@ -168,7 +171,7 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					mode: ['matchFields'],
-					joinMode: ['innerJoin', 'outerJoin'],
+					joinMode: ['keepMatches', 'keepNonMatches'],
 				},
 			},
 		},
@@ -379,6 +382,58 @@ export class MergeV2 implements INodeType {
 					],
 				});
 			}
+		}
+
+		if (mode === 'matchFields') {
+			const matchFields = this.getNodeParameter('matchFields.values', 0, []) as IDataObject[];
+			const joinMode = this.getNodeParameter('joinMode', 0) as string;
+
+			let dataInput1 = this.getInputData(0);
+			if (!dataInput1 ) return [returnData];
+
+			let dataInput2 = this.getInputData(1);
+			if (!dataInput2 || !matchFields.length) {
+				if (joinMode === 'keepMatches' || joinMode === 'enrichInput2') {
+					return [returnData];
+				}
+				return [dataInput1];
+			}
+
+			if (joinMode === 'keepMatches') {
+				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
+
+				if (outputDataFrom === 'both') {
+					const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+
+					if (options.resolveClash === 'preferInput1') {
+						const dataTemp = [...dataInput1];
+						dataInput1 = dataInput2;
+						dataInput2 = dataTemp;
+					}
+
+					if (options.resolveClash === 'addSuffix') {
+						dataInput1 = addSuffixToEntriesKeys(dataInput1, '1');
+						dataInput2 = addSuffixToEntriesKeys(dataInput2, '2');
+					}
+
+					let mergeEntries = merge;
+					if (options.mergeMode === 'shallowMerge') {
+						mergeEntries = assign;
+					}
+
+				}
+
+			}
+
+			if (joinMode === 'keepNonMatches') {
+				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
+
+			}
+
+			if (joinMode === 'enrichInput1' || joinMode === 'enrichInput2') {
+
+			}
+
 		}
 
 		// mode === 'matchFields'
