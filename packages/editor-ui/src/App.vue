@@ -160,7 +160,7 @@ export default mixins(
 		this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
-			this.$store.dispatch('nodeTypes/getNodeTranslationHeaders');
+			void this.$store.dispatch('nodeTypes/getNodeTranslationHeaders');
 		}
 	},
 	watch: {
