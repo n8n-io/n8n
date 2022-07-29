@@ -131,8 +131,6 @@ function toNodeTypesState(nodeTypes: INodeTypeDescription[]): INodeTypesState['n
 	}, {});
 }
 
-export default module;
-
 function hasValidVersion(nodeType: INodeTypeDescription, version?: number) {
 	const nodeTypeVersion = Array.isArray(nodeType.version)
 		? nodeType.version
@@ -142,3 +140,5 @@ function hasValidVersion(nodeType: INodeTypeDescription, version?: number) {
 }
 
 const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
+
+export default module;
