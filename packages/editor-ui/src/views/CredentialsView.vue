@@ -31,17 +31,34 @@
 			</n8n-menu>
 		</template>
 
-		<div>
+		<div v-if="credentials.length === 0">
 			<n8n-action-box
-				v-if="credentials.length === 0"
 				emoji="👋"
 				:heading="$locale.baseText('credentials.empty.heading', { interpolate: { name: currentUser.firstName } })"
 				:description="$locale.baseText('credentials.empty.description')"
 				:buttonText="$locale.baseText('credentials.empty.button')"
 				@click="addCredential"
 			/>
+		</div>
+		<div v-else>
+			<div class="mb-l">
+				<n8n-input
+					:placeholder="$locale.baseText('credentials.search.placeholder')"
+					v-model="filter.search"
+				>
+					<n8n-icon icon="search" slot="prefix" />
+				</n8n-input>
+				<n8n-select
+					v-model="filter.sortBy"
+				>
+					<n8n-option value="lastUpdated" :label="$locale.baseText('credentials.sort.lastUpdated')" />
+					<n8n-option value="lastCreated" :label="$locale.baseText('credentials.sort.lastCreated')"/>
+					<n8n-option value="nameAsc" :label="$locale.baseText('credentials.sort.nameAsc')"/>
+					<n8n-option value="nameDesc" :label="$locale.baseText('credentials.sort.nameDesc')" />
+				</n8n-select>
+			</div>
 			<ul class="list-style-none">
-				<li v-for="credential in credentials" :key="credential.id" class="mb-2xs">
+				<li v-for="credential in filteredAndSortedCredentials" :key="credential.id" class="mb-2xs">
 					<credential-card :data="credential" />
 				</li>
 			</ul>
@@ -73,6 +90,8 @@ export default mixins(
 			loading: false,
 			filter: {
 				type: 'owner',
+				search: '',
+				sortBy: 'lastUpdated',
 			},
 		};
 	},
@@ -83,13 +102,34 @@ export default mixins(
 		credentials(): ICredentialsResponse[] {
 			return this.$store.getters['credentials/allCredentials'];
 		},
-		filteredCredentials(): ICredentialsResponse[] {
-			return this.credentials.filter((credential) => {
+		filteredAndSortedCredentials(): ICredentialsResponse[] {
+			const filtered = this.credentials.filter((credential) => {
+				let matches = true;
+
 				if (this.filter.type === 'owner') {
-					return credential.type === 'owner'; // @TODO
+					// matches = credential.owner.id === this.currentUser.id;
 				}
 
-				return true;
+				if (this.filter.search) {
+					matches = matches && (credential.name.toLowerCase().includes(this.filter.search.toLowerCase()));
+				}
+
+				return matches;
+			});
+
+			return filtered.sort((a, b) => {
+				switch (this.filter.sortBy) {
+					// case 'lastUpdated':
+					// 	return b.updatedAt - a.updatedAt;
+					// case 'lastCreated':
+					// 	return b.createdAt - a.createdAt;
+					case 'nameAsc':
+						return a.name.localeCompare(b.name);
+					case 'nameDesc':
+						return b.name.localeCompare(a.name);
+					default:
+						return 0;
+				}
 			});
 		},
 	},

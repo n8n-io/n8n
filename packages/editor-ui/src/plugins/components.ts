@@ -100,7 +100,7 @@ Vue.component('n8n-form-inputs', N8nFormInputs);
 Vue.component('n8n-icon', N8nIcon);
 Vue.use(N8nIconButton);
 Vue.use(N8nInfoTip);
-Vue.use(N8nInput);
+Vue.component('n8n-input', N8nInput);
 Vue.use(N8nInputLabel);
 Vue.use(N8nInputNumber);
 Vue.component('n8n-loading', N8nLoading);

@@ -25,6 +25,7 @@ import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-card',
+	inheritAttrs: true,
 });
 </script>
 

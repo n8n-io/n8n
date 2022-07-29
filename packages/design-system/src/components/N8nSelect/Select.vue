@@ -29,7 +29,7 @@
 <script lang="ts">
 import ElSelect from 'element-ui/lib/select';
 
-interface IProps {
+export interface IProps {
 	size?: string;
 	limitPopperWidth?: string;
 	popperClass?: string;
