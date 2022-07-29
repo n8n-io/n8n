@@ -839,10 +839,9 @@ export interface INode {
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
-	pinData?: IDataObject;
 }
 
-export interface PinData {
+export interface IPinData {
 	[nodeName: string]: IDataObject[];
 }
 
@@ -1137,6 +1136,7 @@ export interface INodeRequestSend {
 
 export interface IPostReceiveBase {
 	type: string;
+	enabled?: boolean | string;
 	properties: {
 		[key: string]: string | number | IDataObject;
 	};
@@ -1328,7 +1328,7 @@ export interface IRunExecutionData {
 	resultData: {
 		error?: ExecutionError;
 		runData: IRunData;
-		pinData?: PinData;
+		pinData?: IPinData;
 		lastNodeExecuted?: string;
 	};
 	executionData?: {
@@ -1402,7 +1402,7 @@ export interface IWorkflowBase {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	staticData?: IDataObject;
-	pinData?: PinData;
+	pinData?: IPinData;
 }
 
 export interface IWorkflowCredentials {

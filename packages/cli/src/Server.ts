@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
@@ -70,11 +71,11 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	ITelemetrySettings,
 	IWorkflowBase,
 	LoggerProxy,
 	NodeHelpers,
-	PinData,
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
@@ -334,6 +335,7 @@ class App {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
 			},
+			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 		};
@@ -2836,7 +2838,7 @@ const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
 const isTrigger = (str: string) =>
 	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
 
-function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: PinData) {
+function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
 	if (!pinData) return;
 
 	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);

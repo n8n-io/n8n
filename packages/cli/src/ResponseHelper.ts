@@ -158,6 +158,7 @@ export function send(processFunction: (req: Request, res: Response) => Promise<a
 				error.message = 'There is already an entry with this name';
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			sendErrorResponse(res, error);
 		}
 	};

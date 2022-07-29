@@ -19,6 +19,7 @@ import {
 	INode,
 	INodeConnections,
 	INodeExecutionData,
+	IPinData,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -32,7 +33,6 @@ import {
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
-	PinData,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
@@ -88,7 +88,7 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		startNode?: INode,
 		destinationNode?: string,
-		pinData?: PinData,
+		pinData?: IPinData,
 	): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
@@ -160,7 +160,7 @@ export class WorkflowExecute {
 		runData: IRunData,
 		startNodes: string[],
 		destinationNode: string,
-		pinData?: PinData,
+		pinData?: IPinData,
 		// @ts-ignore
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;

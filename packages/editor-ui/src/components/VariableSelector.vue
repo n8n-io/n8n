@@ -21,10 +21,10 @@ import {
 	IContextObject,
 	IDataObject,
 	INodeExecutionData,
+	IPinData,
 	IRunData,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
-	PinData,
 	Workflow,
 	WorkflowDataProxy,
 } from 'n8n-workflow';
@@ -307,11 +307,11 @@ export default mixins(
 			 * Get the node's output using pinData
 			 *
 			 * @param {string} nodeName The name of the node to get the data of
-			 * @param {PinData[string]} pinData The node's pin data
+			 * @param {IPinData[string]} pinData The node's pin data
 			 * @param {string} filterText Filter text for parameters
 			 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
 			 */
-			getNodePinDataOutput(nodeName: string, pinData: PinData[string], filterText: string, useShort = false): IVariableSelectorOption[] | null {
+			getNodePinDataOutput(nodeName: string, pinData: IPinData[string], filterText: string, useShort = false): IVariableSelectorOption[] | null {
 				const outputData = pinData.map((data) => ({ json: data } as INodeExecutionData))[0];
 
 				return this.getNodeOutput(nodeName, outputData, filterText, useShort);

@@ -68,7 +68,7 @@
 
 			&:not(.is-disabled):hover,
 			&:not(.is-disabled):focus {
-				background-color: #fff;
+				background-color: var(--color-foreground-xlight);
 			}
 		}
 		& > .el-submenu {
@@ -96,7 +96,7 @@
 				color: var(--color-text-light);
 
 				&:hover {
-					background-color: #fff;
+					background-color: var(--color-foreground-xlight);
 				}
 			}
 			& .el-submenu__icon-arrow {
