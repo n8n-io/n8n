@@ -30,9 +30,7 @@ const module: Module<INodeTypesState, IRootState> = {
 		getNodeType: (state) => (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 			const nodeType = state.nodeTypes[nodeTypeName];
 
-			if (!nodeType) return null;
-
-			if (!hasValidVersion(nodeType, version)) return null;
+			if (!nodeType || !hasValidVersion(nodeType, version)) return null;
 
 			return nodeType;
 		},
