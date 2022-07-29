@@ -123,8 +123,8 @@ const module: Module<INodeTypesState, IRootState> = {
 	},
 };
 
-function toNodeTypesState(nodeTypes: INodeTypeDescription[]): INodeTypesState['nodeTypes'] {
-	return nodeTypes.reduce<{ [nodeType: string]: INodeTypeDescription }>((acc, cur) => {
+function toNodeTypesState(nodeTypes: INodeTypeDescription[]) {
+	return nodeTypes.reduce<INodeTypesState['nodeTypes']>((acc, cur) => {
 		acc[cur.name] = cur;
 
 		return acc;
