@@ -1,16 +1,16 @@
-<template functional>
+<template>
 	<div :class="$style.container">
-		<div :class="$style.heading" v-if="props.heading">
-			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
+		<div :class="$style.heading" v-if="heading">
+			<n8n-heading size="xlarge" align="center">{{ heading }}</n8n-heading>
 		</div>
-		<div :class="$style.description" @click="(e) => listeners.descriptionClick && listeners.descriptionClick(e)">
-			<n8n-text color="text-base"><span v-html="props.description"></span></n8n-text>
+		<div :class="$style.description" @click="$emit('descriptionClick', $event)">
+			<n8n-text color="text-base"><span v-html="description"></span></n8n-text>
 		</div>
-		<component v-if="props.buttonText" :is="$options.components.N8nButton" :label="props.buttonText" size="large"
-			@click="(e) => listeners.click && listeners.click(e)"
+		<n8n-button v-if="buttonText" :label="buttonText" size="large"
+			@click="$emit('click', $event)"
 		/>
-		<component v-if="props.calloutText" :is="$options.components.N8nCallout"
-			:theme="props.calloutTheme" :message="props.calloutText" :icon="props.calloutIcon"
+		<n8n-callout v-if="calloutText"
+			:theme="calloutTheme" :message="calloutText" :icon="props.calloutIcon"
 		/>
 	</div>
 </template>
