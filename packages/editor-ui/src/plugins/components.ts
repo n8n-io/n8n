@@ -110,7 +110,6 @@ Vue.use(N8nLink);
 Vue.component('n8n-markdown', N8nMarkdown);
 Vue.use(N8nMenu);
 Vue.use(N8nMenuItem);
-Vue.use('n8n-node-icon', N8nNodeIcon);
 Vue.component('n8n-node-icon', N8nNodeIcon);
 Vue.component('n8n-notice', N8nNotice);
 Vue.use(N8nOption);
