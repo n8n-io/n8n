@@ -49,10 +49,10 @@ const module: Module<INodeTypesState, IRootState> = {
 			state.nodeTypes = { ...oldNodesToKeep, ...toNodeTypesState(newNodeTypes) };
 		},
 
-		removeNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
-			console.log('Store will remove nodes: ', newNodeTypes); // eslint-disable-line no-console
+		removeNodeTypes(state, nodeTypesToRemove: INodeTypeDescription[]) {
+			console.log('Store will remove nodes: ', nodeTypesToRemove); // eslint-disable-line no-console
 
-			state.nodeTypes = newNodeTypes.reduce(
+			state.nodeTypes = nodeTypesToRemove.reduce(
 				(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
 				state.nodeTypes,
 			);
