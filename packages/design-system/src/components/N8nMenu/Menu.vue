@@ -1,14 +1,13 @@
-<template functional>
-	<component
-		:is="$options.components.ElMenu"
-		:defaultActive="props.defaultActive"
-		:collapse="props.collapse"
-		:router="props.router"
-		:class="$style[props.type + (props.light ? '-light' : '')]"
-		@select="(e) => listeners.select && listeners.select(e)"
+<template>
+	<el-menu
+		:defaultActive="defaultActive"
+		:collapse="collapse"
+		:router="router"
+		:class="$style[type + (light ? '-light' : '')]"
+		v-on="$listeners"
 	>
 		<slot></slot>
-	</component>
+	</el-menu>
 </template>
 
 <script lang="ts">
