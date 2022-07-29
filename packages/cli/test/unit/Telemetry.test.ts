@@ -1,4 +1,5 @@
 import { Telemetry } from '../../src/telemetry';
+import config from '../../config';
 
 jest.spyOn(Telemetry.prototype as any, 'createTelemetryClient').mockImplementation(() => {
     return {
@@ -21,6 +22,8 @@ describe('Telemetry', () => {
         startPulseSpy = jest.spyOn(Telemetry.prototype as any, 'startPulse').mockImplementation(() => {});
         jest.useFakeTimers();
         jest.setSystemTime(testDateTime);
+				config.set('diagnostics.enabled', true);
+				config.set('deployment.type', 'n8n-testing');
     });
 
     afterAll(() => {
