@@ -50,11 +50,11 @@ export async function acuitySchedulingApiRequest(
 			return await this.helpers.request!(options);
 		} else {
 			delete options.auth;
-			//@ts-ignore
 			return await this.helpers.requestOAuth2!.call(
 				this,
 				'acuitySchedulingOAuth2Api',
 				options,
+				//@ts-ignore
 				true,
 			);
 		}

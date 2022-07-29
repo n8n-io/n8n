@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const sequenceOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const sequenceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'sequence',
-				],
+				resource: ['sequence'],
 			},
 		},
 		options: [
@@ -45,20 +41,16 @@ export const sequenceFields: INodeProperties[] = [
 		displayName: 'Sequence Name or ID',
 		name: 'id',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getSequences',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'sequence',
-				],
-				operation: [
-					'addSubscriber',
-					'getSubscriptions',
-				],
+				resource: ['sequence'],
+				operation: ['addSubscriber', 'getSubscriptions'],
 			},
 		},
 		default: '',
@@ -71,16 +63,12 @@ export const sequenceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'sequence',
-				],
-				operation: [
-					'addSubscriber',
-				],
+				resource: ['sequence'],
+				operation: ['addSubscriber'],
 			},
 		},
 		default: '',
-		description: 'The subscriber\'s email address',
+		description: "The subscriber's email address",
 	},
 	{
 		displayName: 'Return All',
@@ -88,13 +76,8 @@ export const sequenceFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'getSubscriptions',
-				],
-				resource: [
-					'sequence',
-				],
+				operation: ['getAll', 'getSubscriptions'],
+				resource: ['sequence'],
 			},
 		},
 		default: false,
@@ -106,16 +89,9 @@ export const sequenceFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'getSubscriptions',
-				],
-				resource: [
-					'sequence',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll', 'getSubscriptions'],
+				resource: ['sequence'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -133,12 +109,8 @@ export const sequenceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'sequence',
-				],
-				operation: [
-					'addSubscriber',
-				],
+				resource: ['sequence'],
+				operation: ['addSubscriber'],
 			},
 		},
 		options: [
@@ -146,7 +118,8 @@ export const sequenceFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fieldsUi',
 				placeholder: 'Add Custom Field',
-				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
+				description:
+					'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -163,7 +136,7 @@ export const sequenceFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: 'The field\'s key',
+								description: "The field's key",
 							},
 							{
 								displayName: 'Field Value',
@@ -182,7 +155,7 @@ export const sequenceFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'The subscriber\'s first name',
+				description: "The subscriber's first name",
 			},
 			{
 				displayName: 'Tag Names or IDs',
@@ -192,7 +165,8 @@ export const sequenceFields: INodeProperties[] = [
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'Tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -204,12 +178,8 @@ export const sequenceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'sequence',
-				],
-				operation: [
-					'getSubscriptions',
-				],
+				resource: ['sequence'],
+				operation: ['getSubscriptions'],
 			},
 		},
 		options: [

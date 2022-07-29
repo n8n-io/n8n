@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	ILoadOptionsFunctions,
@@ -11,103 +8,101 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	calApiRequest,
-	sortOptionParameters,
-} from './GenericFunctions';
+import { calApiRequest, sortOptionParameters } from './GenericFunctions';
 
 export class CalTrigger implements INodeType {
 	description: INodeTypeDescription = {
-			displayName: 'Cal Trigger',
-			name: 'calTrigger',
-			icon: 'file:cal.svg',
-			group: ['trigger'],
-			version: 1,
-			subtitle: '=Events: {{$parameter["events"].join(", ")}}',
-			description: 'Handle Cal events via webhooks',
-			defaults: {
-					name: 'Cal Trigger',
-					color: '#888',
+		displayName: 'Cal Trigger',
+		name: 'calTrigger',
+		icon: 'file:cal.svg',
+		group: ['trigger'],
+		version: 1,
+		subtitle: '=Events: {{$parameter["events"].join(", ")}}',
+		description: 'Handle Cal events via webhooks',
+		defaults: {
+			name: 'Cal Trigger',
+			color: '#888',
+		},
+		inputs: [],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'calApi',
+				required: true,
 			},
-			inputs: [],
-			outputs: ['main'],
-			credentials: [
-				{
-					name: 'calApi',
-					required: true,
-				},
-			],
-			webhooks: [
+		],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				path: 'webhook',
+			},
+		],
+		properties: [
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				options: [
 					{
-							name: 'default',
-							httpMethod: 'POST',
-							responseMode: 'onReceived',
-							path: 'webhook',
+						name: 'Booking Cancelled',
+						value: 'BOOKING_CANCELLED',
+						description: 'Receive notifications when a Cal event is canceled',
 					},
-			],
-			properties: [
-				{
-					displayName: 'Events',
-					name: 'events',
-					type: 'multiOptions',
-					options: [
-						{
-							name: 'Booking Cancelled',
-							value: 'BOOKING_CANCELLED',
-							description: 'Receive notifications when a Cal event is canceled',
+					{
+						name: 'Booking Created',
+						value: 'BOOKING_CREATED',
+						description: 'Receive notifications when a new Cal event is created',
+					},
+					{
+						name: 'Booking Rescheduled',
+						value: 'BOOKING_RESCHEDULED',
+						description: 'Receive notifications when a Cal event is rescheduled',
+					},
+				],
+				default: [],
+				required: true,
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'App ID',
+						name: 'appId',
+						type: 'string',
+						description: 'The ID of the App to monitor',
+						default: '',
+					},
+					{
+						displayName: 'EventType Name or ID',
+						name: 'eventTypeId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getEventTypes',
 						},
-						{
-							name: 'Booking Created',
-							value: 'BOOKING_CREATED',
-							description: 'Receive notifications when a new Cal event is created',
+						description:
+							'The EventType to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						default: '',
+					},
+					{
+						displayName: 'Payload Template',
+						name: 'payloadTemplate',
+						type: 'string',
+						description: 'Template to customize the webhook payload',
+						default: '',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+							rows: 4,
 						},
-						{
-							name: 'Booking Rescheduled',
-							value: 'BOOKING_RESCHEDULED',
-							description: 'Receive notifications when a Cal event is rescheduled',
-						},
-					],
-					default: [],
-					required: true,
-				},
-				{
-					displayName: 'Options',
-					name: 'options',
-					type: 'collection',
-					placeholder: 'Add Field',
-					default: {},
-					options: [
-						{
-							displayName: 'App ID',
-							name: 'appId',
-							type: 'string',
-							description: 'The ID of the App to monitor',
-							default: '',
-						},
-						{
-							displayName: 'EventType Name or ID',
-							name: 'eventTypeId',
-							type: 'options',
-							typeOptions: {
-								loadOptionsMethod: 'getEventTypes',
-							},
-							description: 'The EventType to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-							default: '',
-						},
-						{
-							displayName: 'Payload Template',
-							name: 'payloadTemplate',
-							type: 'string',
-							description: 'Template to customize the webhook payload',
-							default: '',
-							typeOptions: {
-								alwaysOpenEditWindow: true,
-								rows: 4,
-							},
-						},
-					],
-				},
-			],
+					},
+				],
+			},
+		],
 	};
 
 	methods = {
@@ -165,7 +160,7 @@ export class CalTrigger implements INodeType {
 					subscriberUrl,
 					eventTriggers,
 					active,
-					...options as object,
+					...(options as object),
 				};
 
 				const responseData = await calApiRequest.call(this, 'POST', '/hooks', body);
@@ -181,7 +176,6 @@ export class CalTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/hooks/${webhookData.webhookId}`;
 
 					try {
@@ -202,13 +196,13 @@ export class CalTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-				workflowData: [
-						this.helpers.returnJsonArray({
-							triggerEvent: req.body.triggerEvent,
-							createdAt: req.body.createdAt,
-							...req.body.payload,
-						}),
-				],
+			workflowData: [
+				this.helpers.returnJsonArray({
+					triggerEvent: req.body.triggerEvent,
+					createdAt: req.body.createdAt,
+					...req.body.payload,
+				}),
+			],
 		};
 	}
 }

@@ -8,9 +8,7 @@ export const segmentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'segment',
-				],
+				resource: ['segment'],
 			},
 		},
 		options: [
@@ -30,10 +28,9 @@ export const segmentOperations: INodeProperties[] = [
 ];
 
 export const segmentFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                   segment:add                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   segment:add                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Segment ID',
 		name: 'segmentId',
@@ -42,13 +39,8 @@ export const segmentFields: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				resource: [
-					'segment',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['segment'],
+				operation: ['add', 'remove'],
 			},
 		},
 		description: 'The unique identifier of the segment',
@@ -61,13 +53,8 @@ export const segmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'segment',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['segment'],
+				operation: ['add', 'remove'],
 			},
 		},
 		description: 'A list of customer IDs to add to the segment',

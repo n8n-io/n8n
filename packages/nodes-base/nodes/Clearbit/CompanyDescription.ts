@@ -8,9 +8,7 @@ export const companyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -32,7 +30,6 @@ export const companyOperations: INodeProperties[] = [
 ];
 
 export const companyFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 company:enrich                         */
 	/* -------------------------------------------------------------------------- */
@@ -44,12 +41,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['company'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'The domain to look up',
@@ -62,12 +55,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['company'],
+				operation: ['enrich'],
 			},
 		},
 		options: [
@@ -113,12 +102,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'autocomplete',
-				],
+				resource: ['company'],
+				operation: ['autocomplete'],
 			},
 		},
 		description: 'Name is the partial name of the company',
