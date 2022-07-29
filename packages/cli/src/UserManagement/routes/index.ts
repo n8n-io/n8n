@@ -1,13 +1,16 @@
+/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable import/no-cycle */
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
-import { Strategy } from 'passport-jwt';
-import { NextFunction, Request, Response } from 'express';
+import { Strategy as JwtStrategy } from 'passport-jwt';
+import { NextFunction, Request, RequestHandler, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { LoggerProxy as Logger } from 'n8n-workflow';
+import expressSession from 'express-session';
+import { Issuer, Strategy, TokenSet } from 'openid-client';
 
 import { JwtPayload, N8nApp } from '../Interfaces';
 import { authenticationMethods } from './auth';
@@ -31,6 +34,14 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
 	this.app.use(cookieParser());
 
+	this.app.use(
+		expressSession({
+			secret: 'keyboard cat',
+			resave: false,
+			saveUninitialized: true,
+		}),
+	);
+
 	const options = {
 		jwtFromRequest: (req: Request) => {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -40,7 +51,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	};
 
 	passport.use(
-		new Strategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
+		new JwtStrategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
 			try {
 				const user = await resolveJwtContent(jwtPayload);
 				return done(null, user);
@@ -52,6 +63,62 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	);
 
 	this.app.use(passport.initialize());
+
+	const CLIENT_ID = 'REDACTED';
+	const CLIENT_SECRET = 'REDACTED';
+
+	const REDIRECT_URI_BASE = 'http://localhost:5678';
+	// const REDIRECT_URI_BASE = 'http://127.0.0.1:5678';
+	// const REDIRECT_URI_BASE = 'https://REDACTED.hooks.n8n.cloud';
+
+	void Issuer.discover('https://accounts.google.com').then((issuer) => {
+		const client = new issuer.Client({
+			client_id: CLIENT_ID,
+			client_secret: CLIENT_SECRET,
+			redirect_uris: [`${REDIRECT_URI_BASE}/rest/auth/callback/`],
+			token_endpoint_auth_method: 'client_secret_post',
+		});
+
+		this.app.use(
+			expressSession({
+				secret: 'keyboard cat',
+				resave: false,
+				saveUninitialized: true,
+			}),
+		);
+
+		this.app.use(passport.initialize());
+		this.app.use(passport.session());
+
+		passport.use(
+			'oidc',
+			new Strategy(
+				{ client },
+				(tokenSet: TokenSet, userInfo: object, done: (error: unknown, user?: object) => void) => {
+					return done(null, tokenSet.claims());
+				},
+			),
+		);
+
+		this.app.get(`/${restEndpoint}/auth`, passport.authenticate('oidc') as RequestHandler);
+
+		this.app.get(`/${restEndpoint}/auth/callback`, (req, res) => {
+			console.log('inside /rest/auth/callback');
+
+			// existing!
+			console.log('req.user', req.user);
+
+			// working!
+			passport.authenticate('oidc', { failureRedirect: '/login', failureMessage: true });
+			res.redirect('/');
+
+			// careful! `successRedirect` triggers uri_mismatch
+			// passport.authenticate('oidc', {
+			// 	successRedirect: '/',
+			// 	failureRedirect: '/login',
+			// })(req, res, next);
+		});
+	});
 
 	this.app.use(async (req: Request, res: Response, next: NextFunction) => {
 		if (
