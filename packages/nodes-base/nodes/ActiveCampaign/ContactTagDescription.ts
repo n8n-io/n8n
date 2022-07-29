@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactTagOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const contactTagOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactTag',
-				],
+				resource: ['contactTag'],
 			},
 		},
 		options: [
@@ -41,7 +37,8 @@ export const contactTagFields: INodeProperties[] = [
 		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
@@ -49,12 +46,8 @@ export const contactTagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['add'],
+				resource: ['contactTag'],
 			},
 		},
 	},
@@ -66,12 +59,8 @@ export const contactTagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['add'],
+				resource: ['contactTag'],
 			},
 		},
 	},
@@ -84,12 +73,8 @@ export const contactTagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'remove',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['remove'],
+				resource: ['contactTag'],
 			},
 		},
 		default: 0,

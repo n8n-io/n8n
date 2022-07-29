@@ -6,18 +6,18 @@ packages/design-system
 !packages/nodes-base/test
 !packages/nodes-base/nodes
 
-packages/nodes-base/nodes/ActionNetwork
-packages/nodes-base/nodes/ActiveCampaign
-packages/nodes-base/nodes/AcuityScheduling
-packages/nodes-base/nodes/Affinity
-packages/nodes-base/nodes/AgileCrm
-packages/nodes-base/nodes/Airtable
-packages/nodes-base/nodes/Amqp
-packages/nodes-base/nodes/ApiTemplateIo
-packages/nodes-base/nodes/Asana
-packages/nodes-base/nodes/Automizy
-packages/nodes-base/nodes/Autopilot
-packages/nodes-base/nodes/Aws
+# packages/nodes-base/nodes/ActionNetwork
+# packages/nodes-base/nodes/ActiveCampaign
+# packages/nodes-base/nodes/AcuityScheduling
+# packages/nodes-base/nodes/Affinity
+# packages/nodes-base/nodes/AgileCrm
+# packages/nodes-base/nodes/Airtable
+# packages/nodes-base/nodes/Amqp
+# packages/nodes-base/nodes/ApiTemplateIo
+# packages/nodes-base/nodes/Asana
+# packages/nodes-base/nodes/Automizy
+# packages/nodes-base/nodes/Autopilot
+# packages/nodes-base/nodes/Aws
 packages/nodes-base/nodes/BambooHr
 packages/nodes-base/nodes/Bannerbear
 packages/nodes-base/nodes/Baserow
@@ -271,3 +271,4 @@ packages/nodes-base/nodes/Zendesk
 packages/nodes-base/nodes/Zoho
 packages/nodes-base/nodes/Zoom
 packages/nodes-base/nodes/Zulip
+packages/nodes-base/nodes/Mindee/GenericFunctions.ts

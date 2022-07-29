@@ -958,8 +958,8 @@ export async function requestOAuth2(
 
 	// @ts-ignore
 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+		// @ts-ignore
 		Object.assign(newRequestOptions.headers, {
-			// @ts-ignore
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
 	}
@@ -1016,8 +1016,8 @@ export async function requestOAuth2(
 
 				// @ts-ignore
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+					// @ts-ignore
 					Object.assign(newRequestOptions.headers, {
-						// @ts-ignore
 						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 					});
 				}
@@ -1095,8 +1095,8 @@ export async function requestOAuth2(
 
 			// @ts-ignore
 			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+				// @ts-ignore
 				Object.assign(newRequestOptions.headers, {
-					// @ts-ignore
 					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 				});
 			}
