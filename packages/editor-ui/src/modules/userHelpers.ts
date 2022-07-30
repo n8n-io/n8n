@@ -1,6 +1,6 @@
 
 import { CALENDLY_TRIGGER_NODE_TYPE, CLEARBIT_NODE_TYPE, COMPANY_SIZE_1000_OR_MORE, COMPANY_SIZE_500_999, CRON_NODE_TYPE, ELASTIC_SECURITY_NODE_TYPE, EMAIL_SEND_NODE_TYPE, EXECUTE_COMMAND_NODE_TYPE, FINANCE_WORK_AREA, FUNCTION_NODE_TYPE, GITHUB_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, ITEM_LISTS_NODE_TYPE, IT_ENGINEERING_WORK_AREA, JIRA_TRIGGER_NODE_TYPE, MICROSOFT_EXCEL_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE, PAGERDUTY_NODE_TYPE, PRODUCT_WORK_AREA, QUICKBOOKS_NODE_TYPE, SALESFORCE_NODE_TYPE, SALES_BUSINESSDEV_WORK_AREA, SECURITY_WORK_AREA, SEGMENT_NODE_TYPE, SET_NODE_TYPE, SLACK_NODE_TYPE, SPREADSHEET_FILE_NODE_TYPE, SWITCH_NODE_TYPE, WEBHOOK_NODE_TYPE, XERO_NODE_TYPE, COMPANY_SIZE_KEY, WORK_AREA_KEY, CODING_SKILL_KEY, COMPANY_TYPE_KEY, ECOMMERCE_COMPANY_TYPE, MSP_COMPANY_TYPE, PERSONAL_COMPANY_TYPE, AUTOMATION_GOAL_KEY, OTHER_AUTOMATION_GOAL, NOT_SURE_YET_GOAL, CUSTOMER_INTEGRATIONS_GOAL, CUSTOMER_SUPPORT_GOAL, FINANCE_ACCOUNTING_GOAL, ZENDESK_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE, SALES_MARKETING_GOAL, HUBSPOT_TRIGGER_NODE_TYPE, HR_GOAL, WORKABLE_TRIGGER_NODE_TYPE, OPERATIONS_GOAL, PRODUCT_GOAL, NOTION_TRIGGER_NODE_TYPE, SECURITY_GOAL, THE_HIVE_TRIGGER_NODE_TYPE, ZENDESK_NODE_TYPE, SERVICENOW_NODE_TYPE, JIRA_NODE_TYPE, BAMBOO_HR_NODE_TYPE, GOOGLE_SHEETS_NODE_TYPE } from '@/constants';
-import { IPermissions, IPersonalizationSurveyAnswersV1, IPersonalizationSurveyAnswersV2, IRootState, IUser } from '@/Interface';
+import { IAuthType, IPermissions, IPersonalizationSurveyAnswersV1, IPersonalizationSurveyAnswersV2, IUser } from '@/Interface';
 
 import { ILogInStatus, IRole, IUserPermissions } from "@/Interface";
 
@@ -46,12 +46,14 @@ interface IsAuthorizedOptions {
 	currentUser: IUser | null;
 	isUMEnabled?: boolean;
 	isPublicApiEnabled?: boolean;
+	authType?: IAuthType;
 }
 
 export const isAuthorized = (permissions: IPermissions, {
 	currentUser,
 	isUMEnabled,
 	isPublicApiEnabled,
+	authType,
 }: IsAuthorizedOptions): boolean => {
 	const loginStatus = currentUser ? LOGIN_STATUS.LoggedIn : LOGIN_STATUS.LoggedOut;
 
@@ -61,6 +63,10 @@ export const isAuthorized = (permissions: IPermissions, {
 		}
 
 		if (permissions.deny.hasOwnProperty('api') && permissions.deny.api === isPublicApiEnabled) {
+			return false;
+		}
+
+		if (permissions.deny.hasOwnProperty('authTypes') && Array.isArray(permissions.deny.authTypes) && authType && permissions.deny.authTypes.includes(authType)) {
 			return false;
 		}
 
@@ -85,6 +91,10 @@ export const isAuthorized = (permissions: IPermissions, {
 		}
 
 		if (permissions.allow.hasOwnProperty('api') && permissions.allow.api === isPublicApiEnabled) {
+			return true;
+		}
+
+		if (permissions.allow.hasOwnProperty('authTypes') && Array.isArray(permissions.allow.authTypes) && authType && permissions.allow.authTypes.includes(authType)) {
 			return true;
 		}
 

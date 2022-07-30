@@ -12,13 +12,14 @@ import SettingsApiView from './views/SettingsApiView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
+import SignoutView from './views/SignoutView.vue';
 import Router, { Route } from 'vue-router';
 
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import { Store } from 'vuex';
-import { IPermissions, IRootState } from './Interface';
+import { IAuthType, IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
@@ -237,6 +238,9 @@ const router = new Router({
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedOut],
 					},
+					deny: {
+						authTypes: [IAuthType.saml],
+					},
 				},
 			},
 		},
@@ -253,6 +257,29 @@ const router = new Router({
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
+				},
+				deny: {
+					authTypes: [IAuthType.saml],
+				},
+			},
+		},
+		{
+			path: '/signout',
+			name: VIEWS.SIGNOUT,
+			components: {
+				default: SignoutView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						authTypes: [IAuthType.saml],
+					},
+					deny: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
 				},
 			},
@@ -291,6 +318,9 @@ const router = new Router({
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedOut],
 					},
+					deny: {
+						authTypes: [IAuthType.saml],
+					},
 				},
 			},
 		},
@@ -307,6 +337,9 @@ const router = new Router({
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
+					deny: {
+						authTypes: [IAuthType.saml],
 					},
 				},
 			},

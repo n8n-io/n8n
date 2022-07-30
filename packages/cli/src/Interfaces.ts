@@ -494,6 +494,12 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	authType: IAuthType;
+}
+
+export enum IAuthType {
+	saml = 'saml',
+	basic = 'basic',
 }
 
 export interface IPersonalizationSurveyAnswers {

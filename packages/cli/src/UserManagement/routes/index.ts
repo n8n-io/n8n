@@ -4,7 +4,8 @@
 /* eslint-disable import/no-cycle */
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
-import { Strategy } from 'passport-jwt';
+import { Strategy as JwtStrategy } from 'passport-jwt';
+import { Profile, Strategy as SamlStrategy, VerifiedCallback } from 'passport-saml';
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { LoggerProxy as Logger } from 'n8n-workflow';
@@ -40,7 +41,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	};
 
 	passport.use(
-		new Strategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
+		new JwtStrategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
 			try {
 				const user = await resolveJwtContent(jwtPayload);
 				return done(null, user);
@@ -49,6 +50,20 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 				return done(null, false, { message: 'User not found' });
 			}
 		}),
+	);
+
+	passport.use(
+		new SamlStrategy(
+			{
+				issuer: config.getEnv('userManagement.saml.issuer'),
+				protocol: 'http://',
+				path: `/login/saml/callback`,
+				entryPoint: config.getEnv('userManagement.saml.ssoUrl'),
+				cert: config.getEnv('userManagement.saml.certificate'),
+			},
+			(profile: Profile | null | undefined, done: VerifiedCallback) =>
+				done(null, profile as Record<string, unknown>),
+		),
 	);
 
 	this.app.use(passport.initialize());

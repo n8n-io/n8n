@@ -32,6 +32,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 	},
 	getters: {
+		authType(state: ISettingsState) {
+			return state.settings.authType;
+		},
 		versionCli(state: ISettingsState) {
 			return state.settings.versionCli;
 		},

@@ -184,6 +184,7 @@ import {
 	IWorkflowDataUpdate,
 	IMenuItem,
 	IUser,
+	IAuthType,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';
@@ -257,6 +258,7 @@ export default mixins(
 			]),
 			...mapGetters('settings', [
 				'isTemplatesEnabled',
+				'authType',
 			]),
 			canUserAccessSettings(): boolean {
 				return [
@@ -378,7 +380,19 @@ export default mixins(
 				try {
 					await this.$store.dispatch('users/logout');
 
-					const route = this.$router.resolve({ name: VIEWS.SIGNIN });
+					let viewName: string;
+					switch(this.authType) {
+						case IAuthType.saml:
+							viewName = VIEWS.SIGNOUT;
+							break;
+						case IAuthType.basic:
+							viewName = VIEWS.SIGNIN;
+							break;
+						default:
+							throw new Error('Unknown auth type');
+					}
+
+					const route = this.$router.resolve({ name: viewName });
 					window.open(route.href, '_self');
 				} catch (e) {
 					this.$showError(e, this.$locale.baseText('auth.signout.error'));

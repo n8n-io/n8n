@@ -25,7 +25,7 @@ import { HIRING_BANNER, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
-import { IUser } from './Interface';
+import { IAuthType, IUser } from './Interface';
 import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
 import { addHeaders, loadLanguage } from './plugins/i18n';
@@ -43,7 +43,7 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
+		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage', 'authType']),
 		...mapGetters('users', ['currentUser']),
 		defaultLocale (): string {
 			return this.$store.getters.defaultLocale;
@@ -119,14 +119,24 @@ export default mixins(
 				return;
 			}
 
-			// if cannot access page and not logged in, ask to sign in
 			const user = this.currentUser as IUser | null;
+
+			// if cannot access page and not logged in, ask to sign in
 			if (!user) {
-				const redirect =
-					this.$route.query.redirect ||
-					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-				return;
+				if (!this.authType) throw Error("No auth type provided");
+				switch (this.authType) {
+					case IAuthType.saml:
+						this.$store.dispatch('users/initializeSamlSignin');
+						break;
+					case IAuthType.basic:
+						const redirect =
+						this.$route.query.redirect ||
+						encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+						this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
+						return;
+					default:
+						throw Error("Unknown auth type");
+				}
 			}
 
 			// if cannot access page and is logged in, respect signin redirect

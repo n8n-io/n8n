@@ -617,6 +617,32 @@ export const schema = {
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
 		},
+		saml: {
+			enabled: {
+				doc: 'SAML SSO enabled flag.',
+				format: Boolean,
+				default: false,
+				env: 'N8N_USER_MANAGEMENT_SAML_ENABLED',
+			},
+			ssoUrl: {
+				doc: 'SAML SSO URL.',
+				format: String,
+				default: '',
+				env: 'N8N_USER_MANAGEMENT_SAML_SSO_URL',
+			},
+			issuer: {
+				doc: 'SAML SSO Issuer.',
+				format: String,
+				default: '',
+				env: 'N8N_USER_MANAGEMENT_SAML_ISSUER',
+			},
+			certificate: {
+				doc: 'SAML SSO Certificate.',
+				format: String,
+				default: '',
+				env: 'N8N_USER_MANAGEMENT_SAML_CERTIFICATE',
+			},
+		},
 		emails: {
 			mode: {
 				doc: 'How to send emails',

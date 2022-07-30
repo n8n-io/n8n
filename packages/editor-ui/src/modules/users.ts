@@ -129,6 +129,11 @@ const module: Module<IUsersState, IRootState> = {
 		},
 	},
 	actions: {
+		initializeSamlSignin(context: ActionContext<IUsersState, IRootState>) {
+			window.location.replace(`${context.rootGetters.getRestApiContext.baseUrl}/login/saml`);
+			// Throwing an error stops the remaining script from executing and initializes redirect instantly.
+			throw Error("Initialize SAML signin");
+		},
 		async loginWithCookie(context: ActionContext<IUsersState, IRootState>) {
 			const user = await loginCurrentUser(context.rootGetters.getRestApiContext);
 			if (user) {

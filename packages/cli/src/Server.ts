@@ -129,6 +129,7 @@ import {
 	WorkflowRunner,
 	getCredentialForUser,
 	getCredentialWithoutUser,
+	IAuthType,
 } from '.';
 
 import config from '../config';
@@ -329,6 +330,7 @@ class App {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
 			},
+			authType: IAuthType.basic,
 		};
 	}
 
@@ -354,6 +356,11 @@ class App {
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 		});
+
+		// replace auth option with saml if enabled
+		if (config.getEnv('userManagement.saml.enabled')) {
+			this.frontendSettings.authType = IAuthType.saml;
+		}
 
 		return this.frontendSettings;
 	}

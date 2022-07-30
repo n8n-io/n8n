@@ -507,6 +507,11 @@ export type IPersonalizationSurveyAnswersV2 = {
 
 export type IRole = 'default' | 'owner' | 'member';
 
+export enum IAuthType {
+	saml = "saml",
+	basic = "basic",
+}
+
 export interface IUserResponse {
 	id: string;
 	firstName?: string;
@@ -559,6 +564,7 @@ export interface IPermissionGroup {
 	role?: IRole[];
 	um?: boolean;
 	api?: boolean;
+	authTypes?: IAuthType[];
 }
 
 export interface IPermissions {
@@ -666,6 +672,7 @@ export interface IN8nUISettings {
 		latestVersion: number;
 		path: string;
 	};
+	authType: IAuthType;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

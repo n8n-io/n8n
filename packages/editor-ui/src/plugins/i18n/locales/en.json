@@ -66,6 +66,8 @@
 	"auth.signin": "Sign in",
 	"auth.signin.error": "Problem logging in",
 	"auth.signout": "Sign out",
+	"auth.signout.success": "You're signed out!",
+	"auth.signout.success.description": "You can close this tab or sign in again.",
 	"auth.signout.error": "Could not sign out",
 	"auth.signup.finishAccountSetup": "Finish account setup",
 	"auth.signup.missingTokenError": "Missing token",
