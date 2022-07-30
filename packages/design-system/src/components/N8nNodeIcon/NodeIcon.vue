@@ -103,6 +103,7 @@ export default Vue.extend({
 	text-align: center;
 	font-weight: bold;
 	font-size: 20px;
+	cursor: pointer;
 }
 
 .icon {
