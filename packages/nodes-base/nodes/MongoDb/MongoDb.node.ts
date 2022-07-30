@@ -36,14 +36,14 @@ export class MongoDb implements INodeType {
 			await this.getCredentials('mongoDb'),
 		);
 
-		const client: MongoClient = await MongoClient.connect(connectionString, {
+		const client = await MongoClient.connect(connectionString, {
 			useNewUrlParser: true,
 			useUnifiedTopology: true,
 		});
 
 		const mdb = client.db(database as string);
 
-		let returnItems = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -53,25 +53,27 @@ export class MongoDb implements INodeType {
 			//         aggregate
 			// ----------------------------------
 
-			try {
-				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const queryParameter = JSON.parse(this.getNodeParameter('query', itemIndex) as string);
 
-				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectID(queryParameter._id);
-				}
+					if (queryParameter._id && typeof queryParameter._id === 'string') {
+						queryParameter._id = new ObjectID(queryParameter._id);
+					}
 
-				const query = mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.aggregate(queryParameter);
+					const query = mdb
+						.collection(this.getNodeParameter('collection', itemIndex) as string)
+						.aggregate(queryParameter);
 
-				const queryResult = await query.toArray();
+					const queryResult = await query.toArray();
 
-				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message } );
-				} else {
-					throw error;
+					returnItems.push(...this.helpers.returnJsonArray(queryResult as IDataObject[]));
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnItems.push(...this.helpers.returnJsonArray({ error: (error as JsonObject).message } ));
+					} else {
+						throw error;
+					}
 				}
 			}
 		} else if (operation === 'delete') {
@@ -79,57 +81,60 @@ export class MongoDb implements INodeType {
 			//         delete
 			// ----------------------------------
 
-			try {
-				const { deletedCount } = await mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const { deletedCount } = await mdb
+						.collection(this.getNodeParameter('collection', itemIndex) as string)
+						.deleteMany(JSON.parse(this.getNodeParameter('query', itemIndex) as string));
 
-				returnItems = this.helpers.returnJsonArray([{ deletedCount }]);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message });
-				} else {
-					throw error;
+					returnItems = this.helpers.returnJsonArray([{ deletedCount }]);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message });
+					} else {
+						throw error;
+					}
 				}
 			}
-
 		} else if (operation === 'find') {
 			// ----------------------------------
 			//         find
 			// ----------------------------------
 
-			try {
-				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const queryParameter = JSON.parse(this.getNodeParameter('query', itemIndex) as string);
 
-				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectID(queryParameter._id);
-				}
+					if (queryParameter._id && typeof queryParameter._id === 'string') {
+						queryParameter._id = new ObjectID(queryParameter._id);
+					}
 
-				let query = mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.find(queryParameter);
+					let query = mdb
+						.collection(this.getNodeParameter('collection', itemIndex) as string)
+						.find(queryParameter);
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
-				const limit = options.limit as number;
-				const skip = options.skip as number;
-				const sort = options.sort && JSON.parse(options.sort as string);
-				if (skip > 0) {
-					query = query.skip(skip);
-				}
-				if (limit > 0) {
-					query = query.limit(limit);
-				}
-				if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
-					query = query.sort(sort);
-				}
-				const queryResult = await query.toArray();
+					const options = this.getNodeParameter('options', itemIndex) as IDataObject;
+					const limit = options.limit as number;
+					const skip = options.skip as number;
+					const sort = options.sort && JSON.parse(options.sort as string);
+					if (skip > 0) {
+						query = query.skip(skip);
+					}
+					if (limit > 0) {
+						query = query.limit(limit);
+					}
+					if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
+						query = query.sort(sort);
+					}
+					const queryResult = await query.toArray();
 
-				returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: (error as JsonObject).message } );
-				} else {
-					throw error;
+					returnItems.push(...this.helpers.returnJsonArray(queryResult as IDataObject[]));
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnItems.push(...this.helpers.returnJsonArray({ error: (error as JsonObject).message } ));
+					} else {
+						throw error;
+					}
 				}
 			}
 		} else if (operation === 'insert') {
