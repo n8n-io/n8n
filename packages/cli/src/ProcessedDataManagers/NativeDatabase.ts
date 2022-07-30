@@ -6,11 +6,19 @@ import {
 	IProcessedDataContext,
 	IProcessedDataManager,
 } from 'n8n-core';
-import { getConnection, In } from 'typeorm';
+import { getConnection, In, Not } from 'typeorm';
 import { createHash } from 'crypto';
 
+import { Workflow } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
-import { DatabaseType, Db, GenericHelpers } from '..';
+import {
+	DatabaseType,
+	Db,
+	ExternalHooks,
+	GenericHelpers,
+	IExternalHooksFileData,
+	IWorkflowBase,
+} from '..';
 
 export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager {
 	private static dbType: string;
@@ -19,6 +27,43 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		ProcessedDataManagerNativeDatabase.dbType = (await GenericHelpers.getConfigValue(
 			'database.type',
 		)) as DatabaseType;
+
+		const externalHooks = ExternalHooks();
+		const hookFileData: IExternalHooksFileData = {
+			workflow: {
+				afterUpdate: [
+					async (workflow: IWorkflowBase) => {
+						// Clean up all the data of no longer existing node
+						const contexts = workflow.nodes.map((node) =>
+							ProcessedDataManagerNativeDatabase.createContext('node', {
+								// TODO: Should change generally to use IWorkflowBase or just workflowId
+								workflow: workflow as unknown as Workflow,
+								node,
+							}),
+						);
+
+						// Add also empty else it will delete all the ones with context 'workflow'
+						// TODO: Should make probably "context" nullable
+						contexts.push('');
+
+						await Db.collections.ProcessedData.delete({
+							workflowId: workflow.id as string,
+							context: Not(In(contexts)),
+						});
+					},
+				],
+				afterDelete: [
+					async (workflowId: string) => {
+						// Clean up all the data of deleted workflows
+						await Db.collections.ProcessedData.delete({
+							workflowId,
+						});
+					},
+				],
+			},
+		};
+
+		externalHooks.loadHooks(hookFileData);
 	}
 
 	private static createContext(
@@ -30,7 +75,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 				throw new Error(`No node information has been provided and can so not use context 'node'`);
 			}
 			// TODO: Should probably also have another piece of information in case a node wants to use it twice
-			// TODO: Or should be be the up and coming node-id. Honestly not sure which one would cause less problems
+			// TODO: It should be be the up and coming node-id. Like that it does not delete the data if a node gets renamed
 			return `n:${contextData.node.name}`;
 		}
 

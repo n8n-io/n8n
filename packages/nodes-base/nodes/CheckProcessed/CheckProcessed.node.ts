@@ -1,5 +1,10 @@
-import { ICheckProcessedOutput, IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { ICheckProcessedOutput, IExecuteFunctions, IProcessedDataContext } from 'n8n-core';
+import {
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export class CheckProcessed implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,12 +65,37 @@ export class CheckProcessed implements INodeType {
 				default: true,
 				description: 'Whether the previously unprocessed value should be recorded as processed',
 			},
+			{
+				displayName: 'Context',
+				name: 'context',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Node',
+						value: 'node',
+					},
+					{
+						name: 'Workflow',
+						value: 'workflow',
+					},
+				],
+				default: 'workflow',
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0) as string;
+		const context = this.getNodeParameter('context', 0, 'workflow') as IProcessedDataContext;
+
+		if (!['node', 'workflow'].includes(context)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The context '${context}' is not supported. Please select either "node" or "workflow".`,
+			);
+		}
 
 		const node = this.getNode();
 		console.log('\nEXECUTE NODE: ', node.name);
@@ -88,10 +118,10 @@ export class CheckProcessed implements INodeType {
 		}
 
 		if (mode === 'add') {
-			await this.helpers.checkProcessedAndRecord(Object.keys(itemMapping), 'workflow');
+			await this.helpers.checkProcessedAndRecord(Object.keys(itemMapping), context);
 			return [items];
 		} else if (mode === 'remove') {
-			await this.helpers.removeProcessed(Object.keys(itemMapping), 'workflow');
+			await this.helpers.removeProcessed(Object.keys(itemMapping), context);
 			return [items];
 		} else {
 			// mode: filterOut
@@ -101,10 +131,10 @@ export class CheckProcessed implements INodeType {
 			if (addProcessedValue) {
 				itemsProcessed = await this.helpers.checkProcessedAndRecord(
 					Object.keys(itemMapping),
-					'workflow',
+					context,
 				);
 			} else {
-				itemsProcessed = await this.helpers.checkProcessed(Object.keys(itemMapping), 'workflow');
+				itemsProcessed = await this.helpers.checkProcessed(Object.keys(itemMapping), context);
 			}
 
 			returnData = itemsProcessed.new
