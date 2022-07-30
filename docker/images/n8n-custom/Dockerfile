@@ -11,14 +11,14 @@ RUN apk --update add --virtual build-dependencies python3 build-base ca-certific
 WORKDIR /data
 
 COPY lerna.json .
-COPY package.json .
-COPY package-lock.json .
-COPY packages/cli/ ./packages/cli/
-COPY packages/core/ ./packages/core/
-COPY packages/design-system/ ./packages/design-system/
-COPY packages/editor-ui/ ./packages/editor-ui/
-COPY packages/nodes-base/ ./packages/nodes-base/
-COPY packages/workflow/ ./packages/workflow/
+COPY package.json package*.json .
+COPY packages/* ./packages
+#COPY packages/cli/ ./packages/cli/
+#COPY packages/core/ ./packages/core/
+#COPY packages/design-system/ ./packages/design-system/
+#COPY packages/editor-ui/ ./packages/editor-ui/
+#COPY packages/nodes-base/ ./packages/nodes-base/
+#COPY packages/workflow/ ./packages/workflow/
 RUN rm -rf node_modules packages/*/node_modules packages/*/dist
 
 RUN npm config set legacy-peer-deps true
