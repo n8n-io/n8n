@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-param-reassign */
@@ -180,6 +181,7 @@ abstract class NodeError extends ExecutionBaseError {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	protected isTraversableObject(value: any): value is JsonObject {
 		return (
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length
 		);
 	}
@@ -322,9 +324,10 @@ export class NodeApiError extends NodeError {
 		parseString(xml, { explicitArray: false }, (_, result) => {
 			if (!result) return;
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const topLevelKey = Object.keys(result)[0];
 			this.description = this.findProperty(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				result[topLevelKey],
 				ERROR_MESSAGE_PROPERTIES,
 				['Error'].concat(ERROR_NESTING_PROPERTIES),

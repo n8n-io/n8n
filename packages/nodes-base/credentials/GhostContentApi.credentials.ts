@@ -25,10 +25,13 @@ export class GhostContentApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.qs = {
 			...requestOptions.qs,
-			'key': credentials.apiKey,
+			key: credentials.apiKey,
 		};
 		return requestOptions;
 	}

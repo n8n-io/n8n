@@ -72,7 +72,7 @@
 				/>
 				<div
 					:class="['add-sticky-button', showStickyButton ? 'visible-button' : '']"
-					@click="nodeTypeSelected(STICKY_NODE_TYPE)"
+					@click="addStickyNote"
 				>
 					<n8n-icon-button
 						size="medium"
@@ -154,7 +154,25 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import {
+	DEFAULT_STICKY_HEIGHT,
+	DEFAULT_STICKY_WIDTH,
+	FIRST_ONBOARDING_PROMPT_TIMEOUT,
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRMED,
+	NODE_NAME_PREFIX,
+	NODE_OUTPUT_DEFAULT_KEY,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+	ONBOARDING_PROMPT_TIMEBOX,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	QUICKSTART_NOTE_NAME,
+	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
+	WORKFLOW_OPEN_MODAL_KEY,
+} from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -215,17 +233,19 @@ import { mapGetters } from 'vuex';
 
 import {
 	addNodeTranslation,
-	addHeaders,
 } from '@/plugins/i18n';
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+import { getAccountAge } from '@/modules/userHelpers';
+import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
+
 
 export default mixins(
 	copyPaste,
@@ -311,8 +331,14 @@ export default mixins(
 			}
 		},
 		computed: {
+			...mapGetters('users', [
+				'currentUser',
+			]),
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
+			]),
+			...mapGetters('settings', [
+				'isOnboardingCallPromptFeatureEnabled',
 			]),
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
@@ -409,7 +435,8 @@ export default mixins(
 		},
 		methods: {
 			onRunNode(nodeName: string, source: string) {
-				this.$telemetry.track('User clicked execute node button', { node_type: nodeName, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
+				const node = this.$store.getters.getNodeByName(nodeName);
+				this.$telemetry.track('User clicked execute node button', { node_type: node ? node.type : null, workflow_id: this.$store.getters.workflowId, source: 'canvas' });
 				this.runWorkflow(nodeName, source);
 			},
 			onRunWorkflow() {
@@ -1368,6 +1395,22 @@ export default mixins(
 
 			closeNodeCreator () {
 				this.createNodeActive = false;
+			},
+
+			addStickyNote() {
+				if (document.activeElement) {
+					(document.activeElement as HTMLElement).blur();
+				}
+
+				const offset: [number, number] = [...(this.$store.getters.getNodeViewOffsetPosition as [number, number])];
+
+				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+				position[0] -= DEFAULT_STICKY_WIDTH / 2;
+				position[1] -= DEFAULT_STICKY_HEIGHT / 2;
+
+				this.addNodeButton(STICKY_NODE_TYPE, {
+					position,
+				});
 			},
 
 			nodeTypeSelected (nodeTypeName: string) {
@@ -3042,6 +3085,35 @@ export default mixins(
 
 			this.$externalHooks().run('nodeView.mount');
 
+			if (
+				this.currentUser.personalizationAnswers !== null &&
+				this.isOnboardingCallPromptFeatureEnabled &&
+				getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
+			) {
+				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+
+				if (onboardingResponse.title && onboardingResponse.description) {
+					setTimeout(async () => {
+						this.$showToast({
+							type: 'info',
+							title: onboardingResponse.title,
+							message: onboardingResponse.description,
+							duration: 0,
+							customClass: 'clickable',
+							closeOnClick: true,
+							onClick: () => {
+								this.$telemetry.track('user clicked onboarding toast', {
+									seq_num: onboardingResponse.toast_sequence_number,
+									title: onboardingResponse.title,
+									description: onboardingResponse.description,
+								});
+								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
+							},
+						});
+					}, promptTimeout);
+				}
+			}
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
@@ -3242,7 +3314,7 @@ export default mixins(
 }
 
 .drop-add-node-label {
-	color: #555;
+	color: var(--color-text-dark);
 	font-weight: 600;
 	font-size: 0.8em;
 	text-align: center;

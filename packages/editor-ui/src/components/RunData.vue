@@ -113,8 +113,8 @@
 
 
 			<n8n-tooltip placement="right" v-if="canLinkRuns" :content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint': 'runData.linking.hint')">
-				<n8n-icon-button v-if="linkedRuns" icon="unlink" text size="small" @click="unlinkRun" />
-				<n8n-icon-button v-else icon="link" text size="small" @click="linkRun" />
+				<n8n-icon-button v-if="linkedRuns" icon="unlink" text type="tertiary" size="small" @click="unlinkRun" />
+				<n8n-icon-button v-else icon="link" text type="tertiary" size="small" @click="linkRun" />
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
@@ -1394,6 +1394,7 @@ export default mixins(
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 	display: flex;
+	align-items: center;
 
 	> * {
 		margin-right: var(--spacing-4xs);
@@ -1446,7 +1447,7 @@ export default mixins(
 	display: inline-block;
 	width: 300px;
 	overflow: hidden;
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	margin-right: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 	border-radius: var(--border-radius-base);
@@ -1460,7 +1461,7 @@ export default mixins(
 	font-size: 1.2em;
 	padding-bottom: 0.5em;
 	margin-bottom: 0.5em;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid var(--color-text-light);
 }
 
 .binaryButtonContainer {
