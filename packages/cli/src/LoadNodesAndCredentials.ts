@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable global-require */
+/* eslint-disable import/no-dynamic-require */
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -360,7 +363,6 @@ class LoadNodesAndCredentialsClass {
 		let nodeVersion = 1;
 
 		try {
-			// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
 			if (expireCache) {
 				delete require.cache[filePath];
 			}
