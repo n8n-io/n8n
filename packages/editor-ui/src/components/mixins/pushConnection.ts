@@ -217,7 +217,7 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
-					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
+					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
 
 					// @ts-ignore
 					const workflow = this.getWorkflow();
@@ -287,10 +287,18 @@ export const pushConnection = mixins(
 
 								this.$telemetry.track('Instance FE emitted paired item error', eventData);
 							});
+
+						}
+
+						let title: string;
+						if (runDataExecuted.data.resultData.lastNodeExecuted) {
+							title = `Problem in ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+						} else {
+							title = 'Problem executing workflow';
 						}
 
 						this.$showMessage({
-							title: 'Problem executing workflow',
+							title,
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
