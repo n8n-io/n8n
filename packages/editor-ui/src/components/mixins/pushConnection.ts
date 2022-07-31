@@ -393,6 +393,8 @@ export const pushConnection = mixins(
 						.then(() => {
 							this.$store.commit('removeNodeTypes', nodesToBeRemoved);
 						});
+				} else if (receivedData.type === 'nodeDescriptionUpdated') {
+					location.reload();
 				}
 				return true;
 			},

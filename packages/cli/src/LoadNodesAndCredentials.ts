@@ -353,6 +353,7 @@ class LoadNodesAndCredentialsClass {
 		packageName: string,
 		nodeName: string,
 		filePath: string,
+		expireCache = false,
 	): Promise<INodeTypeNameVersion | undefined> {
 		let tempNode: INodeType | INodeVersionedType;
 		let fullNodeName: string;
@@ -360,6 +361,10 @@ class LoadNodesAndCredentialsClass {
 
 		try {
 			// eslint-disable-next-line import/no-dynamic-require, global-require, @typescript-eslint/no-var-requires
+			if (expireCache) {
+				delete require.cache[filePath];
+			}
+
 			const tempModule = require(filePath);
 			tempNode = new tempModule[nodeName]();
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });

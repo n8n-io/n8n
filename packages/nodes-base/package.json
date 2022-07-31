@@ -21,7 +21,7 @@
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/nodes-base/**/**.ts --write",
     "lint": "tslint -p tsconfig.json -c tslint.json && cd ../../ && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && cd ../.. && node_modules/eslint/bin/eslint.js packages/nodes-base/nodes packages/nodes-base/credentials --fix",
-    "watch": "tsc --watch",
+    "watch": "node scripts/watch.mjs",
     "test": "jest"
   },
   "files": [
@@ -781,6 +781,7 @@
     "snowflake-sdk": "^1.5.3",
     "ssh2-sftp-client": "^7.0.0",
     "tmp-promise": "^3.0.2",
+    "tsc-watch": "^5.0.3",
     "uuid": "^8.3.2",
     "vm2": "~3.9.5",
     "xlsx": "^0.17.0",

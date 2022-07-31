@@ -69,6 +69,13 @@ class NodeTypesClass implements INodeTypes {
 		};
 	}
 
+	updateNodeTypeDescription(
+		nodeTypeName: string,
+		description: INodeTypeDescription | INodeTypeDescription,
+	) {
+		this.nodeTypes[nodeTypeName].type.description = description;
+	}
+
 	removeNodeType(nodeType: string): void {
 		delete this.nodeTypes[nodeType];
 	}

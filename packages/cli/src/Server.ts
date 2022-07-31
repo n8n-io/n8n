@@ -2595,6 +2595,20 @@ class App {
 			);
 		}
 
+		if (process.env.NODE_ENV !== 'production') {
+			ignoredEndpoints.push('dev-node-description-updated');
+			this.app.post(
+				'/dev-node-description-updated',
+				async (req: express.Request, res: express.Response) => {
+					const nodeTypes = NodeTypes();
+					nodeTypes.updateNodeTypeDescription(req.body.type, req.body.description);
+					const pushInstance = Push.getInstance();
+					pushInstance.send('nodeDescriptionUpdated', {});
+					ResponseHelper.sendSuccessResponse(res, {}, true, 200);
+				},
+			);
+		}
+
 		if (!config.getEnv('endpoints.disableUi')) {
 			// Read the index file and replace the path placeholder
 			const editorUiPath = require.resolve('n8n-editor-ui');

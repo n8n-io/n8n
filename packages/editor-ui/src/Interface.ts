@@ -420,11 +420,17 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataNodeDescriptionUpdated;
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
 	type: 'executionFinished';
+};
+
+type PushDataNodeDescriptionUpdated = {
+	data: IPushDataNodeDescriptionUpdated;
+	type: 'nodeDescriptionUpdated';
 };
 
 type PushDataExecutionStarted = {
@@ -475,6 +481,10 @@ export interface IPushDataExecutionFinished {
 	data: IRun;
 	executionId: string;
 	retryOf?: string;
+}
+
+export interface IPushDataNodeDescriptionUpdated {
+	data: {};
 }
 
 export interface IPushDataExecutionStarted {

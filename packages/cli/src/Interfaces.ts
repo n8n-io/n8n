@@ -556,7 +556,8 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataNodeDescriptionUpdated;
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -571,6 +572,11 @@ type PushDataExecutionStarted = {
 type PushDataExecuteAfter = {
 	data: IPushDataNodeExecuteAfter;
 	type: 'nodeExecuteAfter';
+};
+
+type PushDataNodeDescriptionUpdated = {
+	data: IPushDataNodeDescriptionUpdated;
+	type: 'nodeDescriptionUpdated';
 };
 
 type PushDataExecuteBefore = {
@@ -604,6 +610,9 @@ export interface IPushDataExecutionFinished {
 	retryOf?: string;
 }
 
+export interface IPushDataNodeDescriptionUpdated {
+	data: {};
+}
 export interface IPushDataExecutionStarted {
 	executionId: string;
 	mode: WorkflowExecuteMode;
