@@ -5,7 +5,7 @@ import type { Role } from '../../src/databases/entities/Role';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
-import * as utils from './shared/utils';
+import { utils } from './shared/utils';
 
 jest.mock('../../src/telemetry');
 

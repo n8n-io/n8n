@@ -1,10 +1,10 @@
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 
-import * as utils from './shared/utils';
-import { Db } from '../../src';
-import config from '../../config';
 import { compare } from 'bcryptjs';
+import config from '../../config';
+import { Db } from '../../src';
+import type { Role } from '../../src/databases/entities/Role';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -12,7 +12,7 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { Role } from '../../src/databases/entities/Role';
+import { utils } from './shared/utils';
 
 jest.mock('../../src/telemetry');
 jest.mock('../../src/UserManagement/email/NodeMailer');

@@ -1,13 +1,14 @@
 import express from 'express';
 
-import { ActiveWorkflowRunner, Db } from '../../../src';
 import config from '../../../config';
+import { ActiveWorkflowRunner, Db } from '../../../src';
 import { Role } from '../../../src/databases/entities/Role';
 import { randomApiKey } from '../shared/random';
 
-import * as utils from '../shared/utils';
-import * as testDb from '../shared/testDb';
 import { TagEntity } from '../../../src/databases/entities/TagEntity';
+import * as testDb from '../shared/testDb';
+import type { AuthAgent } from '../shared/types';
+import { utils } from './shared/utils';
 
 let app: express.Application;
 let testDbName = '';
@@ -15,11 +16,12 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+let authAgent: AuthAgent;
 
 jest.mock('../../../src/telemetry');
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
+	app = await utils.initTestServer();
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -29,6 +31,8 @@ beforeAll(async () => {
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
+
+	authAgent = utils.createAuthAgent(app, { version: 1 });
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
@@ -58,14 +62,7 @@ afterAll(async () => {
 test('GET /workflows should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get('/workflows');
+	const response = await authAgent(owner).get('/workflows');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -75,14 +72,7 @@ test('GET /workflows should fail due to invalid API Key', async () => {
 
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get('/workflows');
+	const response = await authAgent(owner).get('/workflows');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -90,20 +80,13 @@ test('GET /workflows should fail due to invalid API Key', async () => {
 test('GET /workflows should return all owned workflows', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
-
 	await Promise.all([
 		testDb.createWorkflow({}, member),
 		testDb.createWorkflow({}, member),
 		testDb.createWorkflow({}, member),
 	]);
 
-	const response = await authAgent.get('/workflows');
+	const response = await authAgent(member).get('/workflows');
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(3);
@@ -139,12 +122,7 @@ test('GET /workflows should return all owned workflows', async () => {
 test('GET /workflows should return all owned workflows with pagination', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
+	const agent = authAgent(member);
 
 	await Promise.all([
 		testDb.createWorkflow({}, member),
@@ -152,13 +130,13 @@ test('GET /workflows should return all owned workflows with pagination', async (
 		testDb.createWorkflow({}, member),
 	]);
 
-	const response = await authAgent.get('/workflows?limit=1');
+	const response = await agent.get('/workflows?limit=1');
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(1);
 	expect(response.body.nextCursor).not.toBeNull();
 
-	const response2 = await authAgent.get(`/workflows?limit=1&cursor=${response.body.nextCursor}`);
+	const response2 = await agent.get(`/workflows?limit=1&cursor=${response.body.nextCursor}`);
 
 	expect(response2.statusCode).toBe(200);
 	expect(response2.body.data.length).toBe(1);
@@ -200,13 +178,6 @@ test('GET /workflows should return all owned workflows with pagination', async (
 test('GET /workflows should return all owned workflows filtered by tag', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
-
 	const tag = await testDb.createTag({});
 
 	const [workflow] = await Promise.all([
@@ -214,7 +185,7 @@ test('GET /workflows should return all owned workflows filtered by tag', async (
 		testDb.createWorkflow({}, member),
 	]);
 
-	const response = await authAgent.get(`/workflows?tags=${tag.name}`);
+	const response = await authAgent(member).get(`/workflows?tags=${tag.name}`);
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(1);
@@ -249,13 +220,6 @@ test('GET /workflows should return all owned workflows filtered by tag', async (
 test('GET /workflows should return all owned workflows filtered by tags', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
-
 	const tags = await Promise.all([await testDb.createTag({}), await testDb.createTag({})]);
 	const tagNames = tags.map((tag) => tag.name).join(',');
 
@@ -267,7 +231,7 @@ test('GET /workflows should return all owned workflows filtered by tags', async 
 		testDb.createWorkflow({ tags: [tags[1]] }, member),
 	]);
 
-	const response = await authAgent.get(`/workflows?tags=${tagNames}`);
+	const response = await authAgent(member).get(`/workflows?tags=${tagNames}`);
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(2);
@@ -299,13 +263,6 @@ test('GET /workflows should return all workflows for owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	await Promise.all([
 		testDb.createWorkflow({}, owner),
 		testDb.createWorkflow({}, member),
@@ -314,7 +271,7 @@ test('GET /workflows should return all workflows for owner', async () => {
 		testDb.createWorkflow({}, owner),
 	]);
 
-	const response = await authOwnerAgent.get('/workflows');
+	const response = await authAgent(owner).get('/workflows');
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(5);
@@ -352,14 +309,7 @@ test('GET /workflows/:id should fail due to missing API Key', async () => {
 
 	owner.apiKey = null;
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get(`/workflows/2`);
+	const response = await authAgent(owner).get(`/workflows/2`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -369,14 +319,7 @@ test('GET /workflows/:id should fail due to invalid API Key', async () => {
 
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get(`/workflows/2`);
+	const response = await authAgent(owner).get(`/workflows/2`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -384,32 +327,17 @@ test('GET /workflows/:id should fail due to invalid API Key', async () => {
 test('GET /workflows/:id should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get(`/workflows/2`);
+	const response = await authAgent(owner).get(`/workflows/2`);
 
 	expect(response.statusCode).toBe(404);
 });
 
 test('GET /workflows/:id should retrieve workflow', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
-
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
-
 	// create and assign workflow to owner
 	const workflow = await testDb.createWorkflow({}, member);
 
-	const response = await authAgent.get(`/workflows/${workflow.id}`);
+	const response = await authAgent(member).get(`/workflows/${workflow.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -432,17 +360,10 @@ test('GET /workflows/:id should retrieve non-owned workflow for owner', async ()
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	// create and assign workflow to owner
 	const workflow = await testDb.createWorkflow({}, member);
 
-	const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+	const response = await authAgent(owner).get(`/workflows/${workflow.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -463,14 +384,7 @@ test('GET /workflows/:id should retrieve non-owned workflow for owner', async ()
 test('DELETE /workflows/:id should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.delete(`/workflows/2`);
+	const response = await authAgent(owner).delete(`/workflows/2`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -480,14 +394,7 @@ test('DELETE /workflows/:id should fail due to invalid API Key', async () => {
 
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.delete(`/workflows/2`);
+	const response = await authAgent(owner).delete(`/workflows/2`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -495,14 +402,7 @@ test('DELETE /workflows/:id should fail due to invalid API Key', async () => {
 test('DELETE /workflows/:id should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.delete(`/workflows/2`);
+	const response = await authAgent(owner).delete(`/workflows/2`);
 
 	expect(response.statusCode).toBe(404);
 });
@@ -510,17 +410,10 @@ test('DELETE /workflows/:id should fail due to non-existing workflow', async () 
 test('DELETE /workflows/:id should delete the workflow', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
-
 	// create and assign workflow to owner
 	const workflow = await testDb.createWorkflow({}, member);
 
-	const response = await authAgent.delete(`/workflows/${workflow.id}`);
+	const response = await authAgent(member).delete(`/workflows/${workflow.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -549,17 +442,10 @@ test('DELETE /workflows/:id should delete non-owned workflow when owner', async 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	// create and assign workflow to owner
 	const workflow = await testDb.createWorkflow({}, member);
 
-	const response = await authAgent.delete(`/workflows/${workflow.id}`);
+	const response = await authAgent(owner).delete(`/workflows/${workflow.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -587,14 +473,7 @@ test('DELETE /workflows/:id should delete non-owned workflow when owner', async 
 test('POST /workflows/:id/activate should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post(`/workflows/2/activate`);
+	const response = await authAgent(owner).post(`/workflows/2/activate`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -604,14 +483,7 @@ test('POST /workflows/:id/activate should fail due to invalid API Key', async ()
 
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post(`/workflows/2/activate`);
+	const response = await authAgent(owner).post(`/workflows/2/activate`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -619,14 +491,7 @@ test('POST /workflows/:id/activate should fail due to invalid API Key', async ()
 test('POST /workflows/:id/activate should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post(`/workflows/2/activate`);
+	const response = await authAgent(owner).post(`/workflows/2/activate`);
 
 	expect(response.statusCode).toBe(404);
 });
@@ -634,16 +499,9 @@ test('POST /workflows/:id/activate should fail due to non-existing workflow', as
 test('POST /workflows/:id/activate should fail due to trying to activate a workflow without a trigger', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const workflow = await testDb.createWorkflow({}, owner);
 
-	const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
+	const response = await authAgent(owner).post(`/workflows/${workflow.id}/activate`);
 
 	expect(response.statusCode).toBe(400);
 });
@@ -651,16 +509,9 @@ test('POST /workflows/:id/activate should fail due to trying to activate a workf
 test('POST /workflows/:id/activate should set workflow as active', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
-
 	const workflow = await testDb.createWorkflowWithTrigger({}, member);
 
-	const response = await authAgent.post(`/workflows/${workflow.id}/activate`);
+	const response = await authAgent(member).post(`/workflows/${workflow.id}/activate`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -696,16 +547,9 @@ test('POST /workflows/:id/activate should set non-owned workflow as active when 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const workflow = await testDb.createWorkflowWithTrigger({}, member);
 
-	const response = await authAgent.post(`/workflows/${workflow.id}/activate`);
+	const response = await authAgent(owner).post(`/workflows/${workflow.id}/activate`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -749,14 +593,7 @@ test('POST /workflows/:id/activate should set non-owned workflow as active when 
 test('POST /workflows/:id/deactivate should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post(`/workflows/2/deactivate`);
+	const response = await authAgent(owner).post(`/workflows/2/deactivate`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -766,14 +603,7 @@ test('POST /workflows/:id/deactivate should fail due to invalid API Key', async 
 
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post(`/workflows/2/deactivate`);
+	const response = await authAgent(owner).post(`/workflows/2/deactivate`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -781,14 +611,7 @@ test('POST /workflows/:id/deactivate should fail due to invalid API Key', async 
 test('POST /workflows/:id/deactivate should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post(`/workflows/2/deactivate`);
+	const response = await authAgent(owner).post(`/workflows/2/deactivate`);
 
 	expect(response.statusCode).toBe(404);
 });
@@ -796,18 +619,13 @@ test('POST /workflows/:id/deactivate should fail due to non-existing workflow', 
 test('POST /workflows/:id/deactivate should deactive workflow', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
+	const agent = authAgent(member);
 
 	const workflow = await testDb.createWorkflowWithTrigger({}, member);
 
-	await authAgent.post(`/workflows/${workflow.id}/activate`);
+	await agent.post(`/workflows/${workflow.id}/activate`);
 
-	const workflowDeactivationResponse = await authAgent.post(`/workflows/${workflow.id}/deactivate`);
+	const workflowDeactivationResponse = await agent.post(`/workflows/${workflow.id}/deactivate`);
 
 	const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
 		workflowDeactivationResponse.body;
@@ -841,18 +659,13 @@ test('POST /workflows/:id/deactivate should deactive non-owned workflow when own
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
+	const agent = authAgent(owner);
 
 	const workflow = await testDb.createWorkflowWithTrigger({}, member);
 
-	await authAgent.post(`/workflows/${workflow.id}/activate`);
+	await agent.post(`/workflows/${workflow.id}/activate`);
 
-	const workflowDeactivationResponse = await authAgent.post(`/workflows/${workflow.id}/deactivate`);
+	const workflowDeactivationResponse = await agent.post(`/workflows/${workflow.id}/deactivate`);
 
 	const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
 		workflowDeactivationResponse.body;
@@ -893,14 +706,7 @@ test('POST /workflows/:id/deactivate should deactive non-owned workflow when own
 test('POST /workflows should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post('/workflows');
+	const response = await authAgent(owner).post('/workflows');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -910,14 +716,7 @@ test('POST /workflows should fail due to invalid API Key', async () => {
 
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post('/workflows');
+	const response = await authAgent(owner).post('/workflows');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -925,27 +724,13 @@ test('POST /workflows should fail due to invalid API Key', async () => {
 test('POST /workflows should fail due to invalid body', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.post('/workflows').send({});
+	const response = await authAgent(owner).post('/workflows').send({});
 
 	expect(response.statusCode).toBe(400);
 });
 
 test('POST /workflows should create workflow', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
-
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
 
 	const payload = {
 		name: 'testing',
@@ -970,7 +755,7 @@ test('POST /workflows should create workflow', async () => {
 		},
 	};
 
-	const response = await authAgent.post('/workflows').send(payload);
+	const response = await authAgent(member).post('/workflows').send(payload);
 
 	expect(response.statusCode).toBe(200);
 
@@ -1004,14 +789,7 @@ test('POST /workflows should create workflow', async () => {
 test('PUT /workflows/:id should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.put(`/workflows/1`);
+	const response = await authAgent(owner).put(`/workflows/1`);
 
 	expect(response.statusCode).toBe(401);
 });
@@ -1021,14 +799,7 @@ test('PUT /workflows/:id should fail due to invalid API Key', async () => {
 
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.put(`/workflows/1`).send({});
+	const response = await authAgent(owner).put(`/workflows/1`).send({});
 
 	expect(response.statusCode).toBe(401);
 });
@@ -1036,35 +807,30 @@ test('PUT /workflows/:id should fail due to invalid API Key', async () => {
 test('PUT /workflows/:id should fail due to non-existing workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.put(`/workflows/1`).send({
-		name: 'testing',
-		nodes: [
-			{
-				parameters: {},
-				name: 'Start',
-				type: 'n8n-nodes-base.start',
-				typeVersion: 1,
-				position: [240, 300],
+	const response = await authAgent(owner)
+		.put(`/workflows/1`)
+		.send({
+			name: 'testing',
+			nodes: [
+				{
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
 			},
-		],
-		connections: {},
-		staticData: null,
-		settings: {
-			saveExecutionProgress: true,
-			saveManualExecutions: true,
-			saveDataErrorExecution: 'all',
-			saveDataSuccessExecution: 'all',
-			executionTimeout: 3600,
-			timezone: 'America/New_York',
-		},
-	});
+		});
 
 	expect(response.statusCode).toBe(404);
 });
@@ -1072,34 +838,29 @@ test('PUT /workflows/:id should fail due to non-existing workflow', async () => 
 test('PUT /workflows/:id should fail due to invalid body', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.put(`/workflows/1`).send({
-		nodes: [
-			{
-				parameters: {},
-				name: 'Start',
-				type: 'n8n-nodes-base.start',
-				typeVersion: 1,
-				position: [240, 300],
+	const response = await authAgent(owner)
+		.put(`/workflows/1`)
+		.send({
+			nodes: [
+				{
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
 			},
-		],
-		connections: {},
-		staticData: null,
-		settings: {
-			saveExecutionProgress: true,
-			saveManualExecutions: true,
-			saveDataErrorExecution: 'all',
-			saveDataSuccessExecution: 'all',
-			executionTimeout: 3600,
-			timezone: 'America/New_York',
-		},
-	});
+		});
 
 	expect(response.statusCode).toBe(400);
 });
@@ -1108,13 +869,6 @@ test('PUT /workflows/:id should update workflow', async () => {
 	const member = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const workflow = await testDb.createWorkflow({}, member);
-
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
 
 	const payload = {
 		name: 'name updated',
@@ -1146,7 +900,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 		},
 	};
 
-	const response = await authAgent.put(`/workflows/${workflow.id}`).send(payload);
+	const response = await authAgent(member).put(`/workflows/${workflow.id}`).send(payload);
 
 	const { id, name, nodes, connections, staticData, active, settings, createdAt, updatedAt } =
 		response.body;
@@ -1184,13 +938,6 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 
 	const workflow = await testDb.createWorkflow({}, member);
 
-	const authAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const payload = {
 		name: 'name owner updated',
 		nodes: [
@@ -1221,7 +968,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 		},
 	};
 
-	const response = await authAgent.put(`/workflows/${workflow.id}`).send(payload);
+	const response = await authAgent(owner).put(`/workflows/${workflow.id}`).send(payload);
 
 	const { id, name, nodes, connections, staticData, active, settings, createdAt, updatedAt } =
 		response.body;

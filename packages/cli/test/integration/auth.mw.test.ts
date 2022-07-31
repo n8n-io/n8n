@@ -9,7 +9,7 @@ import {
 } from './shared/constants';
 import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
-import * as utils from './shared/utils';
+import { utils } from './shared/utils';
 
 jest.mock('../../src/telemetry');
 

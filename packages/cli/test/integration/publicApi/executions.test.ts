@@ -1,12 +1,13 @@
 import express from 'express';
 
-import { ActiveWorkflowRunner } from '../../../src';
 import config from '../../../config';
+import { ActiveWorkflowRunner } from '../../../src';
 import { Role } from '../../../src/databases/entities/Role';
 import { randomApiKey } from '../shared/random';
 
-import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
+import type { AuthAgent } from '../shared/types';
+import { utils } from './shared/utils';
 
 jest.mock('../../../src/telemetry');
 
@@ -14,13 +15,16 @@ let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
+	app = await utils.initTestServer();
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
+
+	authAgent = utils.createAuthAgent(app, { version: 1 });
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
@@ -60,14 +64,7 @@ afterAll(async () => {
 test('GET /executions/:id should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get('/executions/1');
+	const response = await authAgent(owner).get('/executions/1');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -76,14 +73,7 @@ test('GET /executions/:id should fail due to invalid API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get('/executions/1');
+	const response = await authAgent(owner).get('/executions/1');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -91,18 +81,11 @@ test('GET /executions/:id should fail due to invalid API Key', async () => {
 test('GET /executions/:id should get an execution', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const workflow = await testDb.createWorkflow({}, owner);
 
 	const execution = await testDb.createSuccessfulExecution(workflow);
 
-	const response = await authOwnerAgent.get(`/executions/${execution.id}`);
+	const response = await authAgent(owner).get(`/executions/${execution.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -132,14 +115,7 @@ test('GET /executions/:id should get an execution', async () => {
 test('DELETE /executions/:id should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.delete('/executions/1');
+	const response = await authAgent(owner).delete('/executions/1');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -148,14 +124,7 @@ test('DELETE /executions/:id should fail due to invalid API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.delete('/executions/1');
+	const response = await authAgent(owner).delete('/executions/1');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -163,18 +132,11 @@ test('DELETE /executions/:id should fail due to invalid API Key', async () => {
 test('DELETE /executions/:id should delete an execution', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const workflow = await testDb.createWorkflow({}, owner);
 
 	const execution = await testDb.createSuccessfulExecution(workflow);
 
-	const response = await authOwnerAgent.delete(`/executions/${execution.id}`);
+	const response = await authAgent(owner).delete(`/executions/${execution.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -204,14 +166,7 @@ test('DELETE /executions/:id should delete an execution', async () => {
 test('GET /executions should fail due to missing API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get('/executions');
+	const response = await authAgent(owner).get('/executions');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -220,14 +175,7 @@ test('GET /executions should fail due to invalid API Key', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	owner.apiKey = 'abcXYZ';
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	const response = await authOwnerAgent.get('/executions');
+	const response = await authAgent(owner).get('/executions');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -235,20 +183,13 @@ test('GET /executions should fail due to invalid API Key', async () => {
 test('GET /executions should retrieve all successfull executions', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const workflow = await testDb.createWorkflow({}, owner);
 
 	const successfullExecution = await testDb.createSuccessfulExecution(workflow);
 
 	await testDb.createErrorExecution(workflow);
 
-	const response = await authOwnerAgent.get(`/executions`).query({
+	const response = await authAgent(owner).get(`/executions`).query({
 		status: 'success',
 	});
 
@@ -282,20 +223,13 @@ test('GET /executions should retrieve all successfull executions', async () => {
 test('GET /executions should retrieve all error executions', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const workflow = await testDb.createWorkflow({}, owner);
 
 	await testDb.createSuccessfulExecution(workflow);
 
 	const errorExecution = await testDb.createErrorExecution(workflow);
 
-	const response = await authOwnerAgent.get(`/executions`).query({
+	const response = await authAgent(owner).get(`/executions`).query({
 		status: 'error',
 	});
 
@@ -329,13 +263,6 @@ test('GET /executions should retrieve all error executions', async () => {
 test('GET /executions should return all waiting executions', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const workflow = await testDb.createWorkflow({}, owner);
 
 	await testDb.createSuccessfulExecution(workflow);
@@ -344,7 +271,7 @@ test('GET /executions should return all waiting executions', async () => {
 
 	const waitingExecution = await testDb.createWaitingExecution(workflow);
 
-	const response = await authOwnerAgent.get(`/executions`).query({
+	const response = await authAgent(owner).get(`/executions`).query({
 		status: 'waiting',
 	});
 
@@ -378,13 +305,6 @@ test('GET /executions should return all waiting executions', async () => {
 test('GET /executions should retrieve all executions of specific workflow', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
 	const [workflow, workflow2] = await testDb.createManyWorkflows(2, {}, owner);
 
 	const savedExecutions = await testDb.createManyExecutions(
@@ -396,7 +316,7 @@ test('GET /executions should retrieve all executions of specific workflow', asyn
 	// @ts-ignore
 	await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
 
-	const response = await authOwnerAgent.get(`/executions`).query({
+	const response = await authAgent(owner).get(`/executions`).query({
 		workflowId: workflow.id.toString(),
 	});
 

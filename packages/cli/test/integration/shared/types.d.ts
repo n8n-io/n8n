@@ -9,8 +9,6 @@ export type CollectionName = keyof IDatabaseCollections;
 
 export type MappingName = keyof typeof MAPPING_TABLES;
 
-export type ApiPath = 'internal' | 'public';
-
 export type AuthAgent = (user: User) => SuperAgentTest;
 
 type EndpointGroup =
@@ -21,7 +19,6 @@ type EndpointGroup =
 	| 'passwordReset'
 	| 'credentials'
 	| 'workflows'
-	| 'publicApi'
 	| 'nodes';
 
 export type CredentialPayload = {
@@ -52,12 +49,11 @@ export interface TriggerTime {
 export type InstalledPackagePayload = {
 	packageName: string;
 	installedVersion: string;
-}
+};
 
 export type InstalledNodePayload = {
 	name: string;
 	type: string;
 	latestVersion: string;
 	package: string;
-}
-
+};

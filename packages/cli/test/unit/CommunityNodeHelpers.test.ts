@@ -1,31 +1,44 @@
-import { checkPackageStatus, matchPackagesWithUpdates, executeCommand, parsePackageName, matchMissingPackages, hasPackageLoadedSuccessfully, removePackageFromMissingList } from '../../src/CommunityNodes/helpers';
-import { NODE_PACKAGE_PREFIX, NPM_COMMAND_TOKENS, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '../../src/constants';
+import { exec } from 'child_process';
+import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
+import {
+	checkPackageStatus,
+	executeCommand,
+	hasPackageLoadedSuccessfully,
+	matchMissingPackages,
+	matchPackagesWithUpdates,
+	parsePackageName,
+	removePackageFromMissingList,
+} from '../../src/CommunityNodes/helpers';
+import {
+	NODE_PACKAGE_PREFIX,
+	NPM_COMMAND_TOKENS,
+	NPM_PACKAGE_STATUS_GOOD,
+	RESPONSE_ERROR_MESSAGES,
+} from '../../src/constants';
+import { InstalledPackages } from '../../src/databases/entities/InstalledPackages';
+import { utils } from '../integration/shared/utils';
 
 jest.mock('fs/promises');
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 
 jest.mock('child_process');
-import { exec } from 'child_process';
-import { InstalledPackages } from '../../src/databases/entities/InstalledPackages';
-import { installedNodePayload, installedPackagePayload } from '../integration/shared/utils';
+
 import { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
 import { NpmUpdatesAvailable } from '../../src/Interfaces';
 import { randomName } from '../integration/shared/random';
 
+import axios from 'axios';
 import config from '../../config';
 
 jest.mock('axios');
-import axios from 'axios';
 
 describe('CommunityNodesHelper', () => {
-
 	describe('parsePackageName', () => {
 		it('Should fail with empty package name', () => {
-			expect(() => parsePackageName('')).toThrowError()
+			expect(() => parsePackageName('')).toThrowError();
 		});
 
 		it('Should fail with invalid package prefix name', () => {
-			expect(() => parsePackageName('INVALID_PREFIX@123')).toThrowError()
+			expect(() => parsePackageName('INVALID_PREFIX@123')).toThrowError();
 		});
 
 		it('Should parse valid package name', () => {
@@ -65,7 +78,6 @@ describe('CommunityNodesHelper', () => {
 	});
 
 	describe('executeCommand', () => {
-
 		beforeEach(() => {
 			// @ts-ignore
 			fsAccess.mockReset();
@@ -91,7 +103,7 @@ describe('CommunityNodesHelper', () => {
 			expect(fsMkdir).toBeCalledTimes(0);
 		});
 
-		it ('Should make sure folder exists', async () => {
+		it('Should make sure folder exists', async () => {
 			// @ts-ignore
 			exec.mockImplementation((...args) => {
 				const callbackFunction = args[args.length - 1];
@@ -104,7 +116,7 @@ describe('CommunityNodesHelper', () => {
 			expect(fsMkdir).toBeCalledTimes(0);
 		});
 
-		it ('Should try to create folder if it does not exist', async () => {
+		it('Should try to create folder if it does not exist', async () => {
 			// @ts-ignore
 			exec.mockImplementation((...args) => {
 				const callbackFunction = args[args.length - 1];
@@ -122,14 +134,22 @@ describe('CommunityNodesHelper', () => {
 			expect(fsMkdir).toHaveBeenCalled();
 		});
 
-		it('Should throw especial error when package is not found', async() => {
+		it('Should throw especial error when package is not found', async () => {
 			// @ts-ignore
 			exec.mockImplementation((...args) => {
 				const callbackFunction = args[args.length - 1];
-				callbackFunction(new Error('Something went wrong - ' + NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR + '. Aborting.'));
+				callbackFunction(
+					new Error(
+						'Something went wrong - ' +
+							NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR +
+							'. Aborting.',
+					),
+				);
 			});
 
-			await expect(async () => await executeCommand('ls')).rejects.toThrow(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
+			await expect(async () => await executeCommand('ls')).rejects.toThrow(
+				RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND,
+			);
 
 			expect(fsAccess).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
@@ -137,16 +157,14 @@ describe('CommunityNodesHelper', () => {
 		});
 	});
 
-
 	describe('crossInformationPackage', () => {
-
 		it('Should return same list if availableUpdates is undefined', () => {
 			const fakePackages = generateListOfFakeInstalledPackages();
 			const crossedData = matchPackagesWithUpdates(fakePackages);
 			expect(crossedData).toEqual(fakePackages);
 		});
 
-		it ('Should correctly match update versions for packages', () => {
+		it('Should correctly match update versions for packages', () => {
 			const fakePackages = generateListOfFakeInstalledPackages();
 
 			const updates: NpmUpdatesAvailable = {
@@ -161,7 +179,7 @@ describe('CommunityNodesHelper', () => {
 					wanted: fakePackages[0].installedVersion,
 					latest: '0.3.0',
 					location: fakePackages[0].packageName,
-				}
+				},
 			};
 
 			const crossedData = matchPackagesWithUpdates(fakePackages, updates);
@@ -170,10 +188,9 @@ describe('CommunityNodesHelper', () => {
 			expect(crossedData[0].updateAvailable).toBe('0.2.0');
 			// @ts-ignore
 			expect(crossedData[1].updateAvailable).toBe('0.3.0');
-
 		});
 
-		it ('Should correctly match update versions for single package', () => {
+		it('Should correctly match update versions for single package', () => {
 			const fakePackages = generateListOfFakeInstalledPackages();
 
 			const updates: NpmUpdatesAvailable = {
@@ -182,7 +199,7 @@ describe('CommunityNodesHelper', () => {
 					wanted: fakePackages[0].installedVersion,
 					latest: '0.3.0',
 					location: fakePackages[0].packageName,
-				}
+				},
 			};
 
 			const crossedData = matchPackagesWithUpdates(fakePackages, updates);
@@ -191,9 +208,7 @@ describe('CommunityNodesHelper', () => {
 			expect(crossedData[0].updateAvailable).toBeUndefined();
 			// @ts-ignore
 			expect(crossedData[1].updateAvailable).toBe('0.3.0');
-
 		});
-
 	});
 
 	describe('matchMissingPackages', () => {
@@ -293,7 +308,6 @@ describe('CommunityNodesHelper', () => {
 			expect(packageList).toBe('packageA@0.1.0 packageBB@0.2.0');
 		});
 
-
 		it('Should not remove if package is not in the list', () => {
 			const failedToLoadList = 'packageA@0.1.0 packageB@0.2.0 packageBB@0.2.0';
 			config.set('nodes.packagesMissing', failedToLoadList);
@@ -303,7 +317,6 @@ describe('CommunityNodesHelper', () => {
 			const packageList = config.get('nodes.packagesMissing');
 			expect(packageList).toBe(failedToLoadList);
 		});
-
 	});
 });
 
@@ -314,17 +327,17 @@ describe('CommunityNodesHelper', () => {
  */
 function generateListOfFakeInstalledPackages(): InstalledPackages[] {
 	const fakeInstalledPackage1 = new InstalledPackages();
-	Object.assign(fakeInstalledPackage1, installedPackagePayload());
+	Object.assign(fakeInstalledPackage1, utils.installedPackagePayload());
 	const fakeInstalledNode1 = new InstalledNodes();
-	Object.assign(fakeInstalledNode1, installedNodePayload(fakeInstalledPackage1.packageName));
+	Object.assign(fakeInstalledNode1, utils.installedNodePayload(fakeInstalledPackage1.packageName));
 	fakeInstalledPackage1.installedNodes = [fakeInstalledNode1];
 
 	const fakeInstalledPackage2 = new InstalledPackages();
-	Object.assign(fakeInstalledPackage2, installedPackagePayload());
+	Object.assign(fakeInstalledPackage2, utils.installedPackagePayload());
 	const fakeInstalledNode2 = new InstalledNodes();
-	Object.assign(fakeInstalledNode2, installedNodePayload(fakeInstalledPackage2.packageName));
+	Object.assign(fakeInstalledNode2, utils.installedNodePayload(fakeInstalledPackage2.packageName));
 	const fakeInstalledNode3 = new InstalledNodes();
-	Object.assign(fakeInstalledNode3, installedNodePayload(fakeInstalledPackage2.packageName));
+	Object.assign(fakeInstalledNode3, utils.installedNodePayload(fakeInstalledPackage2.packageName));
 	fakeInstalledPackage2.installedNodes = [fakeInstalledNode2, fakeInstalledNode3];
 
 	return [fakeInstalledPackage1, fakeInstalledPackage2];

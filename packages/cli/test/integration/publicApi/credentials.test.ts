@@ -3,13 +3,12 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 
 import { Db } from '../../../src';
-import { randomApiKey, randomName, randomString } from '../shared/random';
-import * as utils from '../shared/utils';
-import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
-import type { Role } from '../../../src/databases/entities/Role';
-import type { User } from '../../../src/databases/entities/User';
-import * as testDb from '../shared/testDb';
 import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
+import type { Role } from '../../../src/databases/entities/Role';
+import { randomApiKey, randomName, randomString } from '../shared/random';
+import * as testDb from '../shared/testDb';
+import type { AuthAgent, CredentialPayload, SaveCredentialFunction } from '../shared/types';
+import { utils } from './shared/utils';
 
 let app: express.Application;
 let testDbName = '';
@@ -17,12 +16,14 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 
+let authAgent: AuthAgent;
+
 let saveCredential: SaveCredentialFunction;
 
 jest.mock('../../../src/telemetry');
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
+	app = await utils.initTestServer();
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -34,6 +35,8 @@ beforeAll(async () => {
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
+
+	authAgent = utils.createAuthAgent(app, { version: 1 });
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
@@ -54,12 +57,6 @@ test('POST /credentials should create credentials', async () => {
 	let ownerShell = await testDb.createUserShell(globalOwnerRole);
 	ownerShell = await testDb.addApiKey(ownerShell);
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
 	const payload = {
 		name: 'test credential',
 		type: 'githubApi',
@@ -70,7 +67,7 @@ test('POST /credentials should create credentials', async () => {
 		},
 	};
 
-	const response = await authOwnerAgent.post('/credentials').send(payload);
+	const response = await authAgent(ownerShell).post('/credentials').send(payload);
 
 	expect(response.statusCode).toBe(200);
 
@@ -98,12 +95,7 @@ test('POST /credentials should fail with invalid inputs', async () => {
 	let ownerShell = await testDb.createUserShell(globalOwnerRole);
 	ownerShell = await testDb.addApiKey(ownerShell);
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
+	const authOwnerAgent = authAgent(ownerShell);
 
 	await Promise.all(
 		INVALID_PAYLOADS.map(async (invalidPayload) => {
@@ -120,14 +112,7 @@ test('POST /credentials should fail with missing encryption key', async () => {
 	let ownerShell = await testDb.createUserShell(globalOwnerRole);
 	ownerShell = await testDb.addApiKey(ownerShell);
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
-
-	const response = await authOwnerAgent.post('/credentials').send(credentialPayload());
+	const response = await authAgent(ownerShell).post('/credentials').send(credentialPayload());
 
 	expect(response.statusCode).toBe(500);
 
@@ -138,16 +123,9 @@ test('DELETE /credentials/:id should delete owned cred for owner', async () => {
 	let ownerShell = await testDb.createUserShell(globalOwnerRole);
 	ownerShell = await testDb.addApiKey(ownerShell);
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
-
 	const savedCredential = await saveCredential(dbCredential(), { user: ownerShell });
 
-	const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
+	const response = await authAgent(ownerShell).delete(`/credentials/${savedCredential.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -169,18 +147,11 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 	let ownerShell = await testDb.createUserShell(globalOwnerRole);
 	ownerShell = await testDb.addApiKey(ownerShell);
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
-
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
 	const savedCredential = await saveCredential(dbCredential(), { user: member });
 
-	const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
+	const response = await authAgent(ownerShell).delete(`/credentials/${savedCredential.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -196,16 +167,9 @@ test('DELETE /credentials/:id should delete non-owned cred for owner', async () 
 test('DELETE /credentials/:id should delete owned cred for member', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authMemberAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: member,
-	});
-
 	const savedCredential = await saveCredential(dbCredential(), { user: member });
 
-	const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
+	const response = await authAgent(member).delete(`/credentials/${savedCredential.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -231,14 +195,7 @@ test('DELETE /credentials/:id should delete owned cred for member but leave othe
 	const notToBeChangedCredential = await saveCredential(dbCredential(), { user: member1 });
 	const notToBeChangedCredential2 = await saveCredential(dbCredential(), { user: member2 });
 
-	const authMemberAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: member1,
-	});
-
-	const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
+	const response = await authAgent(member1).delete(`/credentials/${savedCredential.id}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -280,15 +237,9 @@ test('DELETE /credentials/:id should not delete non-owned cred for member', asyn
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 	const member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	const authMemberAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: member,
-	});
 	const savedCredential = await saveCredential(dbCredential(), { user: ownerShell });
 
-	const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
+	const response = await authAgent(member).delete(`/credentials/${savedCredential.id}`);
 
 	expect(response.statusCode).toBe(404);
 
@@ -305,14 +256,7 @@ test('DELETE /credentials/:id should fail if cred not found', async () => {
 	let ownerShell = await testDb.createUserShell(globalOwnerRole);
 	ownerShell = await testDb.addApiKey(ownerShell);
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
-
-	const response = await authOwnerAgent.delete('/credentials/123');
+	const response = await authAgent(ownerShell).delete('/credentials/123');
 
 	expect(response.statusCode).toBe(404);
 });
@@ -321,14 +265,7 @@ test('GET /credentials/schema/:credentialType should fail due to not found type'
 	let ownerShell = await testDb.createUserShell(globalOwnerRole);
 	ownerShell = await testDb.addApiKey(ownerShell);
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
-
-	const response = await authOwnerAgent.get('/credentials/schema/testing');
+	const response = await authAgent(ownerShell).get('/credentials/schema/testing');
 
 	expect(response.statusCode).toBe(404);
 });
@@ -337,14 +274,7 @@ test('GET /credentials/schema/:credentialType should retrieve credential type', 
 	let ownerShell = await testDb.createUserShell(globalOwnerRole);
 	ownerShell = await testDb.addApiKey(ownerShell);
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: ownerShell,
-	});
-
-	const response = await authOwnerAgent.get('/credentials/schema/githubApi');
+	const response = await authAgent(ownerShell).get('/credentials/schema/githubApi');
 
 	const { additionalProperties, type, properties, required } = response.body;
 

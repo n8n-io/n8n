@@ -1,10 +1,10 @@
 import express from 'express';
 
-import * as utils from './shared/utils';
-import * as testDb from './shared/testDb';
-import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
-import type { Role } from '../../src/databases/entities/Role';
 import { IPinData } from 'n8n-workflow';
+import type { Role } from '../../src/databases/entities/Role';
+import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
+import * as testDb from './shared/testDb';
+import { utils } from './shared/utils';
 
 jest.mock('../../src/telemetry');
 
