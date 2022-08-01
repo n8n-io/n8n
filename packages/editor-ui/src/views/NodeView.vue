@@ -195,7 +195,7 @@ import Sticky from '@/components/Sticky.vue';
 import * as CanvasHelpers from './canvasHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { v4 as uuidv4} from 'uuid';
+import { v4 as uuid } from 'uuid';
 import {
 	IConnection,
 	IConnections,
@@ -1339,12 +1339,12 @@ export default mixins(
 						// set all new ids when pasting/importing workflows
 						workflowData.nodes.forEach((node: INode) => {
 							if (node.id) {
-								const newId = uuidv4();
+								const newId = uuid();
 								nodeIdMap[newId] = node.id;
 								node.id = newId;
 							}
 							else {
-								node.id = uuidv4();
+								node.id = uuid();
 							}
 						});
 					}
@@ -1537,7 +1537,7 @@ export default mixins(
 				}
 
 				const newNodeData: INodeUi = {
-					id: uuidv4(),
+					id: uuid(),
 					name: nodeTypeData.defaults.name as string,
 					type: nodeTypeData.name,
 					typeVersion: Array.isArray(nodeTypeData.version)
@@ -1602,7 +1602,7 @@ export default mixins(
 				});
 
 				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
-					newNodeData.webhookId = uuidv4();
+					newNodeData.webhookId = uuid();
 				}
 
 				await this.addNodes([newNodeData]);
@@ -2031,7 +2031,7 @@ export default mixins(
 				this.$store.commit('setStateDirty', false);
 
 				await this.addNodes([{
-					id: uuidv4(),
+					id: uuid(),
 					...CanvasHelpers.DEFAULT_START_NODE,
 				}]);
 
@@ -2048,7 +2048,7 @@ export default mixins(
 						this.$nextTick(async () => {
 							await this.addNodes([
 								{
-									id: uuidv4(),
+									id: uuid(),
 									...CanvasHelpers.WELCOME_STICKY_NODE,
 									parameters: {
 										// Use parameters from the template but add translated content
@@ -2250,7 +2250,7 @@ export default mixins(
 				// Deep copy the data so that data on lower levels of the node-properties do
 				// not share objects
 				const newNodeData = JSON.parse(JSON.stringify(this.getNodeDataToSave(node)));
-				newNodeData.id = uuidv4();
+				newNodeData.id = uuid();
 
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName({
@@ -2266,7 +2266,7 @@ export default mixins(
 
 				if (newNodeData.webhookId) {
 					// Make sure that the node gets a new unique webhook-ID
-					newNodeData.webhookId = uuidv4();
+					newNodeData.webhookId = uuid();
 				}
 
 				await this.addNodes([newNodeData]);
@@ -2665,7 +2665,7 @@ export default mixins(
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
 					if (!node.id) {
-						node.id = uuidv4();
+						node.id = uuid();
 					}
 
 					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;

@@ -484,11 +484,11 @@ export function addNodeIds(workflow: WorkflowEntity) {
 	const { nodes } = workflow;
 	if (!nodes) return;
 
-	for (const node of nodes) {
+	nodes.forEach((node) => {
 		if (!node.id) {
 			node.id = uuid();
 		}
-	}
+	});
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely

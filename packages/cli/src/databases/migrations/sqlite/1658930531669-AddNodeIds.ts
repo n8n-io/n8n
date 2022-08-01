@@ -61,10 +61,8 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 		await runChunked(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = JSON.parse(workflow.nodes);
-				nodes.forEach((node: INode) => {
-					// @ts-ignore
-					delete node.id;
-				});
+				// @ts-ignore
+				nodes.forEach((node) => delete node.id );
 
 				const [updateQuery, updateParams] =
 					queryRunner.connection.driver.escapeQueryWithParameters(

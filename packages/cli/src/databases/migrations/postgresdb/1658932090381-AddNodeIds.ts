@@ -69,9 +69,7 @@ export class AddNodeIds1658932090381 implements MigrationInterface {
 				const nodes = workflow.nodes;
 				// @ts-ignore
 				nodes.forEach((node) => {
-					if (!node.id) {
-						delete node.id;
-					}
+					delete node.id;
 				});
 
 				const [updateQuery, updateParams] =

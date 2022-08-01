@@ -53,7 +53,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuid } from 'uuid';
 
 export const workflowHelpers = mixins(
 	externalHooks,
@@ -677,7 +677,7 @@ export const workflowHelpers = mixins(
 
 					if (resetNodeIds) {
 						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
-							node.id = uuidv4();
+							node.id = uuid();
 
 							return node;
 						});
@@ -686,7 +686,7 @@ export const workflowHelpers = mixins(
 					if (resetWebhookUrls) {
 						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
 							if (node.webhookId) {
-								node.webhookId = uuidv4();
+								node.webhookId = uuid();
 								changedNodes[node.name] = node.webhookId;
 							}
 							return node;
