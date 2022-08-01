@@ -60,11 +60,11 @@ const module: Module<INodeTypesState, IRootState> = {
 			await context.dispatch('credentials/fetchCredentialTypes', true);
 
 			const nodesInformation = await context.dispatch(
-				'nodeTypes/getNodesInformation',
+				'getNodesInformation',
 				nodesToBeFetched,
 			);
 
-			context.commit('nodeTypes/updateNodeTypes', nodesInformation);
+			context.commit('updateNodeTypes', nodesInformation);
 		},
 		async getNodeTypes(context: ActionContext<INodeTypesState, IRootState>) {
 			const nodeTypes = await getNodeTypes(context.rootGetters.getRestApiContext);
