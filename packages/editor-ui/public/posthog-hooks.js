@@ -99,6 +99,15 @@ window.n8nExternalHooks = {
 		],
 	},
 
+	mainSidebar: {
+		mounted: [
+			function(_, meta) {
+				const { value } = meta.userRef.classList;
+				meta.userRef.classList.value = appendNoCapture(value);
+			}
+		],
+	},
+
 	settingsPersonalView: {
 		mounted: [
 			function(_, meta) {
