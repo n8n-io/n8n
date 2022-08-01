@@ -19,7 +19,7 @@ import {
 import { InstalledPackages } from '../databases/entities/InstalledPackages';
 import config from '../../config';
 
-import type { Npm } from '../Interfaces';
+import type { CommunityPackages } from '../Interfaces';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -42,7 +42,7 @@ const execAsync = promisify(exec);
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
-export const parseNpmPackageName = (rawString?: string): Npm.ParsedPackageName => {
+export const parseNpmPackageName = (rawString?: string): CommunityPackages.ParsedPackageName => {
 	if (!rawString) throw new Error(PACKAGE_NAME_NOT_PROVIDED);
 
 	if (INVALID_OR_SUSPICIOUS_PACKAGE_NAME.test(rawString))
@@ -121,7 +121,7 @@ export const executeCommand = async (
 
 export function matchPackagesWithUpdates(
 	packages: InstalledPackages[],
-	updates?: Npm.AvailableUpdates,
+	updates?: CommunityPackages.AvailableUpdates,
 ): PublicInstalledPackage[] {
 	if (!updates) return packages;
 
@@ -168,13 +168,13 @@ export function matchMissingPackages(
 	return hydratedPackageList;
 }
 
-export async function checkNpmPackageStatus(packageName: string): Promise<Npm.PackageStatusCheck> {
+export async function checkNpmPackageStatus(packageName: string): Promise<CommunityPackages.PackageStatusCheck> {
 	// You can change this URL for testing
 	// This default testing URL is a Postman mock service
 	const N8N_BACKEND_SERVICE_URL = 'https://api.n8n.io/api/package';
 
 	try {
-		const response = await axios.post<Npm.PackageStatusCheck>(
+		const response = await axios.post<CommunityPackages.PackageStatusCheck>(
 			N8N_BACKEND_SERVICE_URL,
 			{ name: packageName },
 			{ method: 'POST' },

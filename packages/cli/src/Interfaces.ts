@@ -717,7 +717,7 @@ export type WhereClause = Record<string, { id: string }>;
 //          community nodes
 // ----------------------------------
 
-export namespace Npm {
+export namespace CommunityPackages {
 	export type ParsedPackageName = {
 		packageName: string;
 		rawString: string;

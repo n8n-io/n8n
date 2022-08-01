@@ -24,7 +24,7 @@ import { randomName } from '../integration/shared/random';
 import config from '../../config';
 import { installedPackagePayload, installedNodePayload } from '../integration/shared/utils';
 
-import type { Npm } from '../../src/Interfaces';
+import type { CommunityPackages } from '../../src/Interfaces';
 
 jest.mock('fs/promises');
 jest.mock('child_process');
@@ -165,7 +165,7 @@ describe('crossInformationPackage', () => {
 	test('Should correctly match update versions for packages', () => {
 		const fakePackages = generateListOfFakeInstalledPackages();
 
-		const updates: Npm.AvailableUpdates = {
+		const updates: CommunityPackages.AvailableUpdates = {
 			[fakePackages[0].packageName]: {
 				current: fakePackages[0].installedVersion,
 				wanted: fakePackages[0].installedVersion,
@@ -191,7 +191,7 @@ describe('crossInformationPackage', () => {
 	test('Should correctly match update versions for single package', () => {
 		const fakePackages = generateListOfFakeInstalledPackages();
 
-		const updates: Npm.AvailableUpdates = {
+		const updates: CommunityPackages.AvailableUpdates = {
 			[fakePackages[1].packageName]: {
 				current: fakePackages[0].installedVersion,
 				wanted: fakePackages[0].installedVersion,

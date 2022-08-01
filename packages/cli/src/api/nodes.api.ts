@@ -26,7 +26,7 @@ import {
 import { isAuthenticatedRequest } from '../UserManagement/UserManagementHelper';
 
 import type { NodeRequest } from '../requests';
-import type { Npm } from '../Interfaces';
+import type { CommunityPackages } from '../Interfaces';
 import { InstalledPackages } from '../databases/entities/InstalledPackages';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
@@ -67,7 +67,7 @@ nodesController.post(
 			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
 		}
 
-		let parsed: Npm.ParsedPackageName;
+		let parsed: CommunityPackages.ParsedPackageName;
 
 		try {
 			parsed = parseNpmPackageName(name);
@@ -168,7 +168,7 @@ nodesController.get(
 
 		if (installedPackages.length === 0) return [];
 
-		let pendingUpdates: Npm.AvailableUpdates | undefined;
+		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
 		try {
 			const command = ['npm', 'outdated', '--json'].join(' ');
@@ -179,7 +179,7 @@ nodesController.get(
 			// https://github.com/npm/rfcs/issues/473
 
 			if (isNpmError(error) && error.code === 1) {
-				pendingUpdates = JSON.parse(error.stdout) as Npm.AvailableUpdates;
+				pendingUpdates = JSON.parse(error.stdout) as CommunityPackages.AvailableUpdates;
 			}
 		}
 
