@@ -91,6 +91,7 @@ export default Vue.extend({
 .icon {
 	margin-right: var(--spacing-xs);
 	margin-bottom: var(--spacing-xs);
+	cursor: pointer;
 }
 .text {
 	padding-bottom: var(--spacing-xs);
