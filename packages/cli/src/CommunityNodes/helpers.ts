@@ -169,8 +169,6 @@ export function matchMissingPackages(
 }
 
 export async function checkNpmPackageStatus(packageName: string): Promise<CommunityPackages.PackageStatusCheck> {
-	// You can change this URL for testing
-	// This default testing URL is a Postman mock service
 	const N8N_BACKEND_SERVICE_URL = 'https://api.n8n.io/api/package';
 
 	try {
