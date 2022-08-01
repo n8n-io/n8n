@@ -5,7 +5,6 @@ import { Length } from 'class-validator';
 import { IConnections, IDataObject, INode, IPinData, IWorkflowSettings } from 'n8n-workflow';
 
 import {
-	AfterLoad,
 	BeforeUpdate,
 	Column,
 	ColumnOptions,
@@ -113,7 +112,7 @@ export class WorkflowEntity implements IWorkflowDb {
 			referencedColumnName: 'id',
 		},
 	})
-	tags: TagEntity[];
+	tags?: TagEntity[];
 
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];
@@ -128,12 +127,5 @@ export class WorkflowEntity implements IWorkflowDb {
 	@BeforeUpdate()
 	setUpdateDate() {
 		this.updatedAt = new Date();
-	}
-
-	@AfterLoad()
-	nullCheck() {
-		if (!this.tags) {
-			this.tags = [];
-		}
 	}
 }

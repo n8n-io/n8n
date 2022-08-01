@@ -1002,7 +1002,7 @@ class App {
 					);
 				}
 
-				if (updatedWorkflow.tags.length && tags?.length) {
+				if (updatedWorkflow.tags?.length && tags?.length) {
 					updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
 						requestOrder: tags,
 					});
