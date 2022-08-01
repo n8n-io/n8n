@@ -1,11 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeSimpleField,
-	personAdditionalFieldsOptions,
-} from './SharedFields';
+import { makeSimpleField, personAdditionalFieldsOptions } from './SharedFields';
 
 export const personOperations: INodeProperties[] = [
 	{
@@ -15,9 +10,7 @@ export const personOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
+				resource: ['person'],
 			},
 		},
 		options: [
@@ -60,12 +53,8 @@ export const personFields: INodeProperties[] = [
 		description: 'Person’s email addresses',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -78,14 +67,14 @@ export const personFields: INodeProperties[] = [
 						name: 'address',
 						type: 'string',
 						default: '',
-						description: 'Person\'s email address',
+						description: "Person's email address",
 					},
 					{
 						displayName: 'Primary',
 						name: 'primary',
 						type: 'hidden',
 						default: true,
-						description: 'Whether this is the person\'s primary email address',
+						description: "Whether this is the person's primary email address",
 					},
 					{
 						displayName: 'Status',
@@ -132,12 +121,8 @@ export const personFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		options: personAdditionalFieldsOptions,
@@ -155,12 +140,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['person'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -177,12 +158,8 @@ export const personFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['person'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -198,15 +175,9 @@ export const personFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['person'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -224,12 +195,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -242,12 +209,8 @@ export const personFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 		options: personAdditionalFieldsOptions,
