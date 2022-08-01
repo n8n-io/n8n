@@ -68,9 +68,7 @@ export class AddNodeIds1658932090381 implements MigrationInterface {
 			workflows.forEach(async (workflow) => {
 				const nodes = workflow.nodes;
 				// @ts-ignore
-				nodes.forEach((node) => {
-					delete node.id;
-				});
+				nodes.forEach((node) => delete node.id );
 
 				const [updateQuery, updateParams] =
 					queryRunner.connection.driver.escapeQueryWithParameters(
