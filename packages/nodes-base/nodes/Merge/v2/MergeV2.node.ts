@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	assign,
-	get,
 	merge,
 } from 'lodash';
 
@@ -10,7 +9,6 @@ import {
 } from 'n8n-core';
 
 import {
-	GenericValue,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -22,6 +20,7 @@ import {
 import {
 	addSuffixToEntriesKeys,
 	findMatches,
+	mergeMatched,
  } from './GenericFunctions';
 
 import {
@@ -417,7 +416,6 @@ export class MergeV2 implements INodeType {
 		if (mode === 'matchFields') {
 			const matchFields = this.getNodeParameter('matchFields.values', 0, []) as IDataObject[];
 			const joinMode = this.getNodeParameter('joinMode', 0) as string;
-			// const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
 			const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 
 			const dataInput1 = this.getInputData(0);
@@ -431,175 +429,71 @@ export class MergeV2 implements INodeType {
 				return [dataInput1];
 			}
 
-			const filteredData = findMatches(dataInput1, dataInput2, matchFields, disableDotNotation);
+			const matches = findMatches(dataInput1, dataInput2, matchFields, disableDotNotation);
 
 			if (joinMode === 'keepMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
 				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
 
 				if (outputDataFrom === 'input1' ) {
-					return [filteredData.getMatches1()];
+					return [matches.getMatches1()];
 				}
 				if (outputDataFrom === 'input2' ) {
-					return [filteredData.getMatches2()];
+					return [matches.getMatches2()];
 				}
 				if (outputDataFrom === 'both' && !mergeMatchedItems ) {
-					return [[...filteredData.getMatches1(), ...filteredData.getMatches2()]];
+					return [[...matches.getMatches1(), ...matches.getMatches2()]];
 				}
 				if (outputDataFrom === 'both' && mergeMatchedItems ) {
-					const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+					const clashResolveOptions = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+					const mergedEntries = mergeMatched(matches, clashResolveOptions);
 
-					let mergeEntries = merge;
-
-					if (options.mergeMode === 'shallowMerge') {
-						mergeEntries = assign;
-					}
-
-					for (const match of filteredData.matched) {
-						let entry = match.entry;
-						let matches = match.matches;
-
-						let json: IDataObject = {};
-
-						if (options.resolveClash === 'addSuffix') {
-							[entry] = addSuffixToEntriesKeys([entry], '1');
-							matches = addSuffixToEntriesKeys(matches, '2');
-							json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
-						}
-
-						if (options.resolveClash === 'preferInput1') {
-							json = mergeEntries({}, ...matches.map(match => match.json), entry.json);
-						}
-
-						if (options.resolveClash === 'preferInput2') {
-							json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
-						}
-
-						const pairedItem = [
-							entry.pairedItem as IPairedItemData,
-							...matches.map(m => m.pairedItem as IPairedItemData),
-						];
-
-						returnData.push({
-							json,
-							pairedItem,
-						});
-					}
+					returnData.push(...mergedEntries);
 				}
 			}
 
 			if (joinMode === 'keepNonMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
 				if (outputDataFrom === 'input1' ) {
-					return [filteredData.unmatched1];
+					return [matches.unmatched1];
 				}
 				if (outputDataFrom === 'input2' ) {
-					return [filteredData.unmatched2];
+					return [matches.unmatched2];
 				}
 				if (outputDataFrom === 'both' ) {
-					return [[...filteredData.unmatched1, ...filteredData.unmatched2]];
+					return [[...matches.unmatched1, ...matches.unmatched2]];
 				}
 			}
 
 			if (joinMode === 'enrichInput1') {
 				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
 				if (mergeMatchedItems) {
-					const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+					const clashResolveOptions = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+					const mergedEntries = mergeMatched(matches, clashResolveOptions);
 
-					let mergeEntries = merge;
-
-					if (options.mergeMode === 'shallowMerge') {
-						mergeEntries = assign;
-					}
-
-					for (const match of filteredData.matched) {
-						let entry = match.entry;
-						let matches = match.matches;
-
-						let json: IDataObject = {};
-
-						if (options.resolveClash === 'addSuffix') {
-							[entry] = addSuffixToEntriesKeys([entry], '1');
-							matches = addSuffixToEntriesKeys(matches, '2');
-							json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
-						}
-
-						if (options.resolveClash === 'preferInput1') {
-							json = mergeEntries({}, ...matches.map(match => match.json), entry.json);
-						}
-
-						if (options.resolveClash === 'preferInput2') {
-							json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
-						}
-
-						const pairedItem = [
-							entry.pairedItem as IPairedItemData,
-							...matches.map(m => m.pairedItem as IPairedItemData),
-						];
-
-						returnData.push({
-							json,
-							pairedItem,
-						});
-					}
-					if (options.resolveClash === 'addSuffix') {
-						returnData.push(...addSuffixToEntriesKeys(filteredData.unmatched1, '1'));
+					if (clashResolveOptions.resolveClash === 'addSuffix') {
+						returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, '1'));
 					} else {
-						returnData.push(...filteredData.unmatched1);
+						returnData.push(...mergedEntries, ...matches.unmatched1);
 					}
 				} else {
-					return [[...dataInput1, ...filteredData.getMatches2()]];
+					return [[...dataInput1, ...matches.getMatches2()]];
 				}
 			}
 
 			if (joinMode === 'enrichInput2') {
 				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
 				if (mergeMatchedItems) {
-					const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+					const clashResolveOptions = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+					const mergedEntries = mergeMatched(matches, clashResolveOptions);
 
-					let mergeEntries = merge;
-
-					if (options.mergeMode === 'shallowMerge') {
-						mergeEntries = assign;
-					}
-
-					for (const match of filteredData.matched) {
-						let entry = match.entry;
-						let matches = match.matches;
-
-						let json: IDataObject = {};
-
-						if (options.resolveClash === 'addSuffix') {
-							[entry] = addSuffixToEntriesKeys([entry], '1');
-							matches = addSuffixToEntriesKeys(matches, '2');
-							json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
-						}
-
-						if (options.resolveClash === 'preferInput1') {
-							json = mergeEntries({}, ...matches.map(match => match.json), entry.json);
-						}
-
-						if (options.resolveClash === 'preferInput2') {
-							json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
-						}
-
-						const pairedItem = [
-							entry.pairedItem as IPairedItemData,
-							...matches.map(m => m.pairedItem as IPairedItemData),
-						];
-
-						returnData.push({
-							json,
-							pairedItem,
-						});
-					}
-					if (options.resolveClash === 'addSuffix') {
-						returnData.push(...addSuffixToEntriesKeys(filteredData.unmatched2, '2'));
+					if (clashResolveOptions.resolveClash === 'addSuffix') {
+						returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched2, '2'));
 					} else {
-						returnData.push(...filteredData.unmatched2);
+						returnData.push(...mergedEntries, ...matches.unmatched2);
 					}
 				} else {
-					return [[...dataInput2, ...filteredData.getMatches1()]];
+					return [[...dataInput2, ...matches.getMatches1()]];
 				}
 			}
 		}

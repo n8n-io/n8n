@@ -1,11 +1,14 @@
 import {
 	IDataObject,
-	INodeExecutionData
+	INodeExecutionData,
+	IPairedItemData
 } from "n8n-workflow";
 
 import {
+	assign,
 	get,
 	isEqual,
+	merge,
 } from 'lodash';
 
 interface IMatch {
@@ -97,4 +100,47 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 	filteredData.unmatched2.push(...data2);
 
 	return filteredData;
+}
+
+export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject) {
+	const returnData: INodeExecutionData[] = [];
+
+	let mergeEntries = merge;
+
+	if (clashResolveOptions.mergeMode === 'shallowMerge') {
+		mergeEntries = assign;
+	}
+
+	for (const match of data.matched as IMatch[]) {
+		let entry = match.entry;
+		let matches = match.matches;
+
+		let json: IDataObject = {};
+
+		if (clashResolveOptions.resolveClash === 'addSuffix') {
+			[entry] = addSuffixToEntriesKeys([entry], '1');
+			matches = addSuffixToEntriesKeys(matches, '2');
+			json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
+		}
+
+		if (clashResolveOptions.resolveClash === 'preferInput1') {
+			json = mergeEntries({}, ...matches.map(match => match.json), entry.json);
+		}
+
+		if (clashResolveOptions.resolveClash === 'preferInput2') {
+			json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
+		}
+
+		const pairedItem = [
+			entry.pairedItem as IPairedItemData,
+			...matches.map(m => m.pairedItem as IPairedItemData),
+		];
+
+		returnData.push({
+			json,
+			pairedItem,
+		});
+	}
+
+	return returnData;
 }
