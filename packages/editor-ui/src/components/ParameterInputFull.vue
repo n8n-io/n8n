@@ -119,7 +119,11 @@ export default mixins(
 			'hideLabel',
 		],
 		mounted() {
-			this.selectedMode = this.parameter.modes ? this.parameter.modes[0].name : '';
+			if (this.parameter.modes) {
+				// List mode is selected by default if it's available
+				const listMode = this.parameter.modes.find((mode : INodePropertyMode) => mode.name === 'list');
+				this.selectedMode = listMode ? listMode.name : this.parameter.modes[0].name;
+			}
 		},
 		computed: {
 			node (): INodeUi | null {

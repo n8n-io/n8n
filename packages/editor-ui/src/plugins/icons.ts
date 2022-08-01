@@ -37,6 +37,7 @@ import {
 	faEye,
 	faExclamationTriangle,
 	faExpand,
+	faExpandAlt,
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
@@ -149,6 +150,7 @@ addIcon(faEnvelope);
 addIcon(faEye);
 addIcon(faExclamationTriangle);
 addIcon(faExpand);
+addIcon(faExpandAlt);
 addIcon(faExternalLinkAlt);
 addIcon(faExchangeAlt);
 addIcon(faFile);

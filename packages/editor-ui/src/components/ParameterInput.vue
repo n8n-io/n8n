@@ -79,7 +79,7 @@
 					<div slot="suffix" class="expand-input-icon-container">
 						<font-awesome-icon
 							v-if="!isReadOnly"
-							icon="external-link-alt"
+							icon="expand-alt"
 							class="edit-window-button clickable"
 							:title="$locale.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
