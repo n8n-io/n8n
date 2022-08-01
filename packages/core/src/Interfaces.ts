@@ -15,6 +15,7 @@ import {
 	INodeExecutionPairedData,
 	INodeType,
 	IOAuth2Options,
+	IPairedItemData,
 	IPollFunctions as IPollFunctionsBase,
 	IPollResponse,
 	ITriggerFunctions as ITriggerFunctionsBase,
@@ -71,9 +72,8 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 		): Promise<any>;
 		preparePairedOutputData(
 			data: IDataObject | IDataObject[],
-			itemIndex?: number,
-			inputIndex?: number,
 			isBinary?: boolean,
+			pairedItem?: IPairedItemData,
 		): INodeExecutionPairedData[];
 	};
 }

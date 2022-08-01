@@ -61,6 +61,7 @@ import {
 	OAuth2GrantType,
 	INodeExecutionPairedData,
 	IBinaryKeyData,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1322,9 +1323,8 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  */
 export function preparePairedOutputData(
 	data: IDataObject | IDataObject[] | IBinaryKeyData,
-	itemIndex = 0,
-	inputIndex = 0,
 	isBinary = false,
+	pairedItem?: IPairedItemData,
 ): INodeExecutionPairedData[] {
 	const returnData: INodeExecutionPairedData[] = [];
 
@@ -1332,23 +1332,21 @@ export function preparePairedOutputData(
 		data = [data];
 	}
 
-	const pairedItem = {
-		input: inputIndex,
-		item: itemIndex,
-	};
+	data.forEach((data, itemIndex) => {
+		const { item = itemIndex, input = 0 } =
+			(data.pairedItem as IPairedItemData) || pairedItem || {};
 
-	data.forEach((data) => {
 		if (!isBinary) {
 			const { json } = data;
 			if (json !== undefined) {
 				returnData.push({
 					json: json as IDataObject,
-					pairedItem,
+					pairedItem: { item, input },
 				});
 			} else {
 				returnData.push({
 					json: data,
-					pairedItem,
+					pairedItem: { item, input },
 				});
 			}
 		}
@@ -1359,13 +1357,13 @@ export function preparePairedOutputData(
 				returnData.push({
 					json: json as IDataObject,
 					binary: binary as IBinaryKeyData,
-					pairedItem,
+					pairedItem: { item, input },
 				});
 			} else {
 				returnData.push({
 					json: data,
 					binary: data as IBinaryKeyData,
-					pairedItem,
+					pairedItem: { item, input },
 				});
 			}
 		}
