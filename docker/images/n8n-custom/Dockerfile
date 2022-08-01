@@ -5,7 +5,7 @@ FROM node:16-alpine as builder
 USER root
 
 # Install all needed dependencies
-RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates && \
+RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates git && \
 	npm_config_user=root npm install -g npm@latest run-script-os turbo
 
 WORKDIR /data
