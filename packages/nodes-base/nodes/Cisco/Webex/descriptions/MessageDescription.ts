@@ -1,9 +1,9 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
-	getActionInheritedProperties, getInputTextProperties, getTextBlockProperties,
+	getActionInheritedProperties,
+	getInputTextProperties,
+	getTextBlockProperties,
 } from '../GenericFunctions';
 
 export const messageOperations: INodeProperties[] = [
@@ -14,9 +14,7 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -72,12 +70,8 @@ export const messageFields: INodeProperties[] = [
 		default: 'room',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['message'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -85,7 +79,8 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',
 		},
@@ -93,15 +88,9 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
-				destination: [
-					'room',
-				],
+				resource: ['message'],
+				operation: ['create'],
+				destination: ['room'],
 			},
 		},
 	},
@@ -123,15 +112,9 @@ export const messageFields: INodeProperties[] = [
 		default: 'email',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
-				destination: [
-					'person',
-				],
+				resource: ['message'],
+				operation: ['create'],
+				destination: ['person'],
 			},
 		},
 	},
@@ -143,15 +126,9 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
-				specifyPersonBy: [
-					'id',
-				],
+				resource: ['message'],
+				operation: ['create'],
+				specifyPersonBy: ['id'],
 			},
 		},
 	},
@@ -163,15 +140,9 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
-				specifyPersonBy: [
-					'email',
-				],
+				resource: ['message'],
+				operation: ['create'],
+				specifyPersonBy: ['email'],
 			},
 		},
 	},
@@ -183,12 +154,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['message'],
+				operation: ['create'],
 			},
 		},
 		description: 'The message, in plain text',
@@ -199,12 +166,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['message'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -301,9 +264,7 @@ export const messageFields: INodeProperties[] = [
 												default: '',
 												displayOptions: {
 													show: {
-														type: [
-															'openUrl',
-														],
+														type: ['openUrl'],
 													},
 												},
 												description: 'The URL to open',
@@ -314,14 +275,12 @@ export const messageFields: INodeProperties[] = [
 												type: 'string',
 												displayOptions: {
 													show: {
-														type: [
-															'submit',
-															'execute',
-														],
+														type: ['submit', 'execute'],
 													},
 												},
 												default: '',
-												description: 'Any extra data to pass along. These are essentially ‘hidden’ properties.',
+												description:
+													'Any extra data to pass along. These are essentially ‘hidden’ properties.',
 											},
 											{
 												displayName: 'Verb',
@@ -329,9 +288,7 @@ export const messageFields: INodeProperties[] = [
 												type: 'string',
 												displayOptions: {
 													show: {
-														type: [
-															'execute',
-														],
+														type: ['execute'],
 													},
 												},
 												default: '',
@@ -384,9 +341,7 @@ export const messageFields: INodeProperties[] = [
 								required: true,
 								displayOptions: {
 									show: {
-										fileLocation: [
-											'binaryData',
-										],
+										fileLocation: ['binaryData'],
 									},
 								},
 								description: 'The field in the node input containing the binary file data',
@@ -398,9 +353,7 @@ export const messageFields: INodeProperties[] = [
 								default: '',
 								displayOptions: {
 									show: {
-										fileLocation: [
-											'url',
-										],
+										fileLocation: ['url'],
 									},
 								},
 								description: 'The public URL of the file',
@@ -414,7 +367,8 @@ export const messageFields: INodeProperties[] = [
 				name: 'markdown',
 				type: 'string',
 				default: '',
-				description: 'The message in markdown format. When used the text parameter is used to provide alternate text for UI clients that do not support rich text.',
+				description:
+					'The message in markdown format. When used the text parameter is used to provide alternate text for UI clients that do not support rich text.',
 			},
 		],
 	},
@@ -431,12 +385,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['message'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -453,12 +403,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['message'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -469,7 +415,8 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Room Name or ID',
 		name: 'roomId',
-		description: 'List messages in a room, by ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'List messages in a room, by ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getRooms',
@@ -478,12 +425,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['message'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -495,12 +438,8 @@ export const messageFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['message'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -515,15 +454,9 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['message'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -535,12 +468,8 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['message'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -570,7 +499,8 @@ export const messageFields: INodeProperties[] = [
 				name: 'mentionedPeople',
 				type: 'string',
 				default: '',
-				description: 'List only messages with certain person mentioned. Enter their ID. You can use \'me\' as a shorthand for yourself',
+				description:
+					"List only messages with certain person mentioned. Enter their ID. You can use 'me' as a shorthand for yourself",
 			},
 		],
 	},
@@ -587,12 +517,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['message'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -605,12 +531,8 @@ export const messageFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['message'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -622,15 +544,9 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
-				markdown: [
-					false,
-				],
+				resource: ['message'],
+				operation: ['update'],
+				markdown: [false],
 			},
 		},
 		description: 'The message, in plain text',
@@ -644,15 +560,9 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
-				markdown: [
-					true,
-				],
+				resource: ['message'],
+				operation: ['update'],
+				markdown: [true],
 			},
 		},
 	},
