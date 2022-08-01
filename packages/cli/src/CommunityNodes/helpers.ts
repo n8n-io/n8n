@@ -168,7 +168,9 @@ export function matchMissingPackages(
 	return hydratedPackageList;
 }
 
-export async function checkNpmPackageStatus(packageName: string): Promise<CommunityPackages.PackageStatusCheck> {
+export async function checkNpmPackageStatus(
+	packageName: string,
+): Promise<CommunityPackages.PackageStatusCheck> {
 	const N8N_BACKEND_SERVICE_URL = 'https://api.n8n.io/api/package';
 
 	try {
