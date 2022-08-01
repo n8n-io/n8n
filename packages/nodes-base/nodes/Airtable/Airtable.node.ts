@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,11 +8,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	apiRequestAllItems,
-	downloadRecordAttachments,
-} from './GenericFunctions';
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
@@ -106,9 +100,7 @@ export class Airtable implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'append',
-						],
+						operation: ['append'],
 					},
 				},
 				default: true,
@@ -124,12 +116,8 @@ export class Airtable implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						addAllFields: [
-							false,
-						],
-						operation: [
-							'append',
-						],
+						addAllFields: [false],
+						operation: ['append'],
 					},
 				},
 				default: [],
@@ -147,9 +135,7 @@ export class Airtable implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
+						operation: ['delete'],
 					},
 				},
 				default: '',
@@ -166,9 +152,7 @@ export class Airtable implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				default: true,
@@ -180,12 +164,8 @@ export class Airtable implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['list'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -201,13 +181,11 @@ export class Airtable implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				default: false,
-				description: 'Whether the attachment fields define in \'Download Fields\' will be downloaded',
+				description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
 			},
 			{
 				displayName: 'Download Fields',
@@ -216,16 +194,13 @@ export class Airtable implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						downloadAttachments: [
-							true,
-						],
+						operation: ['list'],
+						downloadAttachments: [true],
 					},
 				},
 				default: '',
-				description: 'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.',
+				description:
+					"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.",
 			},
 			{
 				displayName: 'Additional Options',
@@ -233,9 +208,7 @@ export class Airtable implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
+						operation: ['list'],
 					},
 				},
 				default: {},
@@ -252,15 +225,17 @@ export class Airtable implements INodeType {
 						},
 						default: [],
 						placeholder: 'Name',
-						description: 'Only data for fields whose names are in this list will be included in the records',
+						description:
+							'Only data for fields whose names are in this list will be included in the records',
 					},
 					{
 						displayName: 'Filter By Formula',
 						name: 'filterByFormula',
 						type: 'string',
 						default: '',
-						placeholder: 'NOT({Name} = \'\')',
-						description: 'A formula used to filter records. The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response.',
+						placeholder: "NOT({Name} = '')",
+						description:
+							'A formula used to filter records. The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response.',
 					},
 					{
 						displayName: 'Sort',
@@ -313,7 +288,8 @@ export class Airtable implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'All Stories',
-						description: 'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
+						description:
+							'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
 					},
 				],
 			},
@@ -327,9 +303,7 @@ export class Airtable implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'read',
-						],
+						operation: ['read'],
 					},
 				},
 				default: '',
@@ -346,9 +320,7 @@ export class Airtable implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
+						operation: ['update'],
 					},
 				},
 				default: '',
@@ -361,9 +333,7 @@ export class Airtable implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
+						operation: ['update'],
 					},
 				},
 				default: true,
@@ -379,12 +349,8 @@ export class Airtable implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						updateAllFields: [
-							false,
-						],
-						operation: [
-							'update',
-						],
+						updateAllFields: [false],
+						operation: ['update'],
 					},
 				},
 				default: [],
@@ -403,11 +369,7 @@ export class Airtable implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						operation: [
-							'append',
-							'delete',
-							'update',
-						],
+						operation: ['append', 'delete', 'update'],
 					},
 				},
 				default: {},
@@ -429,12 +391,8 @@ export class Airtable implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'update',
-								],
-								'/updateAllFields': [
-									true,
-								],
+								'/operation': ['update'],
+								'/updateAllFields': [true],
 							},
 						},
 						default: '',
@@ -446,14 +404,12 @@ export class Airtable implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'append',
-									'update',
-								],
+								'/operation': ['append', 'update'],
 							},
 						},
 						default: false,
-						description: 'Whether the Airtable API should attempt mapping of string values for linked records & select options',
+						description:
+							'Whether the Airtable API should attempt mapping of string values for linked records & select options',
 					},
 				],
 			},
@@ -496,7 +452,7 @@ export class Airtable implements INodeType {
 				try {
 					addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
 					options = this.getNodeParameter('options', i, {}) as IDataObject;
-					bulkSize = options.bulkSize as number || bulkSize;
+					bulkSize = (options.bulkSize as number) || bulkSize;
 
 					const row: IDataObject = {};
 
@@ -540,13 +496,12 @@ export class Airtable implements INodeType {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'delete') {
 			requestMethod = 'DELETE';
 
 			const rows: string[] = [];
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-			const bulkSize = options.bulkSize as number || 10;
+			const bulkSize = (options.bulkSize as number) || 10;
 
 			for (let i = 0; i < items.length; i++) {
 				try {
@@ -581,7 +536,6 @@ export class Airtable implements INodeType {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'list') {
 			// ----------------------------------
 			//         list
@@ -614,8 +568,14 @@ export class Airtable implements INodeType {
 				returnData.push.apply(returnData, responseData.records);
 
 				if (downloadAttachments === true) {
-					const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
-					const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames);
+					const downloadFieldNames = (
+						this.getNodeParameter('downloadFieldNames', 0) as string
+					).split(',');
+					const data = await downloadRecordAttachments.call(
+						this,
+						responseData.records,
+						downloadFieldNames,
+					);
 					return [data];
 				}
 			} catch (error) {
@@ -625,7 +585,6 @@ export class Airtable implements INodeType {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'read') {
 			// ----------------------------------
 			//         read
@@ -635,7 +594,6 @@ export class Airtable implements INodeType {
 
 			let id: string;
 			for (let i = 0; i < items.length; i++) {
-
 				id = this.getNodeParameter('id', i) as string;
 
 				endpoint = `${application}/${table}/${id}`;
@@ -658,7 +616,6 @@ export class Airtable implements INodeType {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update
@@ -677,7 +634,7 @@ export class Airtable implements INodeType {
 				try {
 					updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
 					options = this.getNodeParameter('options', i, {}) as IDataObject;
-					bulkSize = options.bulkSize as number || bulkSize;
+					bulkSize = (options.bulkSize as number) || bulkSize;
 
 					const row: IDataObject = {};
 					row.fields = {} as IDataObject;
@@ -690,7 +647,10 @@ export class Airtable implements INodeType {
 						delete (row.fields! as any).id;
 
 						if (options.ignoreFields && options.ignoreFields !== '') {
-							const ignoreFields = (options.ignoreFields as string).split(',').map(field => field.trim()).filter(field => !!field);
+							const ignoreFields = (options.ignoreFields as string)
+								.split(',')
+								.map((field) => field.trim())
+								.filter((field) => !!field);
 							if (ignoreFields.length) {
 								// From: https://stackoverflow.com/questions/17781472/how-to-get-a-subset-of-a-javascript-objects-properties
 								row.fields = Object.entries(items[i].json)
@@ -721,7 +681,7 @@ export class Airtable implements INodeType {
 						// according to specific rules like not more than 5 requests
 						// per seconds.
 
-						const data = { records: rows, typecast: (options.typecast) ? true : false };
+						const data = { records: rows, typecast: options.typecast ? true : false };
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
 
@@ -738,7 +698,6 @@ export class Airtable implements INodeType {
 					throw error;
 				}
 			}
-
 		} else {
 			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 		}

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryData,
@@ -13,11 +11,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	getAttachemnts,
-	webexApiRequest,
-	webexApiRequestAllItems,
-} from './GenericFunctions';
+import { getAttachemnts, webexApiRequest, webexApiRequestAllItems } from './GenericFunctions';
 
 import {
 	meetingFields,
@@ -97,7 +91,12 @@ export class CiscoWebex implements INodeType {
 			},
 			async getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const sites = await webexApiRequestAllItems.call(this, 'sites', 'GET', '/meetingPreferences/sites');
+				const sites = await webexApiRequestAllItems.call(
+					this,
+					'sites',
+					'GET',
+					'/meetingPreferences/sites',
+				);
 				for (const site of sites) {
 					returnData.push({
 						name: site.siteUrl,
@@ -118,25 +117,25 @@ export class CiscoWebex implements INodeType {
 
 		let responseData;
 
-
 		for (let i = 0; i < items.length; i++) {
-
 			try {
 				if (resource === 'message') {
-
 					// **********************************************************************
 					//                                message
 					// **********************************************************************
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//             message: create
 						// ----------------------------------------
 
 						// https://developer.webex.com/docs/api/v1/messages/create-a-message
 						const destination = this.getNodeParameter('destination', i);
-						const file = this.getNodeParameter('additionalFields.fileUi.fileValue', i, {}) as IDataObject;
+						const file = this.getNodeParameter(
+							'additionalFields.fileUi.fileValue',
+							i,
+							{},
+						) as IDataObject;
 						const markdown = this.getNodeParameter('additionalFields.markdown', i, '') as boolean;
 						const body = {} as IDataObject;
 						if (destination === 'room') {
@@ -158,22 +157,31 @@ export class CiscoWebex implements INodeType {
 
 						body['text'] = this.getNodeParameter('text', i);
 
-						body.attachments = getAttachemnts(this.getNodeParameter('additionalFields.attachmentsUi.attachmentValues', i, []) as IDataObject[]);
+						body.attachments = getAttachemnts(
+							this.getNodeParameter(
+								'additionalFields.attachmentsUi.attachmentValues',
+								i,
+								[],
+							) as IDataObject[],
+						);
 
 						if (Object.keys(file).length) {
-
 							const isBinaryData = file.fileLocation === 'binaryData' ? true : false;
 
 							if (isBinaryData) {
-
 								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+										itemIndex: i,
+									});
 								}
 
 								const binaryPropertyName = file.binaryPropertyName as string;
 
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
-								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+									i,
+									binaryPropertyName,
+								);
 
 								const formData = {
 									files: {
@@ -192,14 +200,19 @@ export class CiscoWebex implements INodeType {
 						}
 
 						if (file.fileLocation === 'binaryData') {
-							responseData = await webexApiRequest.call(this, 'POST', '/messages', {}, {}, undefined, { formData: body });
+							responseData = await webexApiRequest.call(
+								this,
+								'POST',
+								'/messages',
+								{},
+								{},
+								undefined,
+								{ formData: body },
+							);
 						} else {
 							responseData = await webexApiRequest.call(this, 'POST', '/messages', body);
 						}
-
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//             message: delete
 						// ----------------------------------------
@@ -210,9 +223,7 @@ export class CiscoWebex implements INodeType {
 						const endpoint = `/messages/${messageId}`;
 						responseData = await webexApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//               message: get
 						// ----------------------------------------
@@ -222,10 +233,7 @@ export class CiscoWebex implements INodeType {
 
 						const endpoint = `/messages/${messageId}`;
 						responseData = await webexApiRequest.call(this, 'GET', endpoint);
-
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//             message: getAll
 						// ----------------------------------------
@@ -237,22 +245,25 @@ export class CiscoWebex implements INodeType {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
 						}
 
 						if (returnAll === true) {
-							responseData = await webexApiRequestAllItems.call(this, 'items', 'GET', '/messages', {}, qs);
+							responseData = await webexApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								'/messages',
+								{},
+								qs,
+							);
 						} else {
 							qs.max = this.getNodeParameter('limit', i) as number;
 							responseData = await webexApiRequest.call(this, 'GET', '/messages', {}, qs);
 							responseData = responseData.items;
 						}
-
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//             message: update
 						// ----------------------------------------
@@ -284,7 +295,11 @@ export class CiscoWebex implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 						const start = this.getNodeParameter('start', i) as string;
 						const end = this.getNodeParameter('end', i) as string;
-						const invitees = this.getNodeParameter('additionalFields.inviteesUi.inviteeValues', i, []) as IDataObject[];
+						const invitees = this.getNodeParameter(
+							'additionalFields.inviteesUi.inviteeValues',
+							i,
+							[],
+						) as IDataObject[];
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const body: IDataObject = {
@@ -295,8 +310,10 @@ export class CiscoWebex implements INodeType {
 						};
 
 						if (body.requireRegistrationInfo) {
-							body['registration'] = (body.requireRegistrationInfo as string[])
-								.reduce((obj, value) => Object.assign(obj, { [`${value}`]: true }), {});
+							body['registration'] = (body.requireRegistrationInfo as string[]).reduce(
+								(obj, value) => Object.assign(obj, { [`${value}`]: true }),
+								{},
+							);
 							delete body.requireRegistrationInfo;
 						}
 
@@ -306,7 +323,6 @@ export class CiscoWebex implements INodeType {
 						}
 
 						responseData = await webexApiRequest.call(this, 'POST', '/meetings', body);
-
 					}
 
 					if (operation === 'delete') {
@@ -317,7 +333,13 @@ export class CiscoWebex implements INodeType {
 							...options,
 						};
 
-						responseData = await webexApiRequest.call(this, 'DELETE', `/meetings/${meetingId}`, {}, qs);
+						responseData = await webexApiRequest.call(
+							this,
+							'DELETE',
+							`/meetings/${meetingId}`,
+							{},
+							qs,
+						);
 						responseData = { success: true };
 					}
 
@@ -336,7 +358,15 @@ export class CiscoWebex implements INodeType {
 							};
 						}
 
-						responseData = await webexApiRequest.call(this, 'GET', `/meetings/${meetingId}`, {}, qs, undefined, { headers });
+						responseData = await webexApiRequest.call(
+							this,
+							'GET',
+							`/meetings/${meetingId}`,
+							{},
+							qs,
+							undefined,
+							{ headers },
+						);
 					}
 
 					if (operation === 'getAll') {
@@ -348,15 +378,26 @@ export class CiscoWebex implements INodeType {
 						};
 
 						if (qs.from) {
-							qs.from = moment(qs.from as string).utc(true).format();
+							qs.from = moment(qs.from as string)
+								.utc(true)
+								.format();
 						}
 
 						if (qs.to) {
-							qs.to = moment(qs.to as string).utc(true).format();
+							qs.to = moment(qs.to as string)
+								.utc(true)
+								.format();
 						}
 
 						if (returnAll === true) {
-							responseData = await webexApiRequestAllItems.call(this, 'items', 'GET', '/meetings', {}, qs);
+							responseData = await webexApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								'/meetings',
+								{},
+								qs,
+							);
 							returnData.push(...responseData);
 						} else {
 							qs.max = this.getNodeParameter('limit', i) as number;
@@ -367,23 +408,28 @@ export class CiscoWebex implements INodeType {
 
 					if (operation === 'update') {
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
-						const invitees = this.getNodeParameter('updateFields.inviteesUi.inviteeValues', i, []) as IDataObject[];
+						const invitees = this.getNodeParameter(
+							'updateFields.inviteesUi.inviteeValues',
+							i,
+							[],
+						) as IDataObject[];
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-						const {
-							title,
-							password,
-							start,
-							end,
-						} = await webexApiRequest.call(this, 'GET', `/meetings/${meetingId}`);
+						const { title, password, start, end } = await webexApiRequest.call(
+							this,
+							'GET',
+							`/meetings/${meetingId}`,
+						);
 
 						const body: IDataObject = {
 							...updateFields,
 						};
 
 						if (body.requireRegistrationInfo) {
-							body['registration'] = (body.requireRegistrationInfo as string[])
-								.reduce((obj, value) => Object.assign(obj, { [`${value}`]: true }), {});
+							body['registration'] = (body.requireRegistrationInfo as string[]).reduce(
+								(obj, value) => Object.assign(obj, { [`${value}`]: true }),
+								{},
+							);
 							delete body.requireRegistrationInfo;
 						}
 
@@ -412,7 +458,6 @@ export class CiscoWebex implements INodeType {
 						}
 
 						responseData = await webexApiRequest.call(this, 'PUT', `/meetings/${meetingId}`, body);
-
 					}
 				}
 
@@ -421,9 +466,7 @@ export class CiscoWebex implements INodeType {
 				} else if (responseData !== undefined) {
 					returnData.push(responseData as IDataObject);
 				}
-
 			} catch (error) {
-
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.toString() });
 					continue;
@@ -431,7 +474,6 @@ export class CiscoWebex implements INodeType {
 
 				throw error;
 			}
-
 		}
 
 		// if (resource === 'meetingTranscript') {
