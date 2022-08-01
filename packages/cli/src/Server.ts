@@ -789,7 +789,7 @@ class App {
 
 					let workflowData: IWorkflowResponse | undefined;
 					try {
-						workflowData = JSON.parse(data);
+						workflowData = JSON.parse(JSON.stringify(data));
 					} catch (error) {
 						throw new ResponseHelper.ResponseError(
 							`The URL does not point to valid JSON file!`,
@@ -1819,7 +1819,6 @@ class App {
 					let oauthToken;
 
 					try {
-						// oauthToken = await requestPromise(options);
 						oauthToken = await axios.request(options);
 					} catch (error) {
 						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
