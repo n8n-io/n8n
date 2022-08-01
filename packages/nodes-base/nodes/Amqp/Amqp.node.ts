@@ -1,9 +1,4 @@
-import {
-	ContainerOptions,
-	create_container,
-	Dictionary,
-	EventContext,
-} from 'rhea';
+import { ContainerOptions, create_container, Dictionary, EventContext } from 'rhea';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -28,10 +23,12 @@ export class Amqp implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [{
-			name: 'amqp',
-			required: true,
-		}],
+		credentials: [
+			{
+				name: 'amqp',
+				required: true,
+			},
+		],
 		properties: [
 			{
 				displayName: 'Queue / Topic',
@@ -47,7 +44,8 @@ export class Amqp implements INodeType {
 				name: 'headerParametersJson',
 				type: 'json',
 				default: '',
-				description: 'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
+				description:
+					'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
 			},
 			{
 				displayName: 'Options',
@@ -101,11 +99,13 @@ export class Amqp implements INodeType {
 			const credentials = await this.getCredentials('amqp');
 
 			const sink = this.getNodeParameter('sink', 0, '') as string;
-			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;
+			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as
+				| string
+				| object;
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 			const containerId = options.containerId as string;
-			const containerReconnect = options.reconnect as boolean || true;
-			const containerReconnectLimit = options.reconnectLimit as number || 50;
+			const containerReconnect = (options.reconnect as boolean) || true;
+			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
 			let headerProperties: Dictionary<any>; // tslint:disable-line:no-any
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
@@ -177,7 +177,7 @@ export class Amqp implements INodeType {
 		} catch (error) {
 			if (this.continueOnFail()) {
 				return [this.helpers.returnJsonArray({ error: error.message })];
-			}else{
+			} else {
 				throw error;
 			}
 		}

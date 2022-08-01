@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,13 +9,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	deepLApiRequest,
-} from './GenericFunctions';
+import { deepLApiRequest } from './GenericFunctions';
 
-import {
-	textOperations
-} from './TextDescription';
+import { textOperations } from './TextDescription';
 
 export class DeepL implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,9 +54,7 @@ export class DeepL implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'language',
-						],
+						resource: ['language'],
 					},
 				},
 				options: [
@@ -83,7 +75,13 @@ export class DeepL implements INodeType {
 		loadOptions: {
 			async getLanguages(this: ILoadOptionsFunctions) {
 				const returnData: INodePropertyOptions[] = [];
-				const languages = await deepLApiRequest.call(this, 'GET', '/languages', {}, { type: 'target' });
+				const languages = await deepLApiRequest.call(
+					this,
+					'GET',
+					'/languages',
+					{},
+					{ type: 'target' },
+				);
 				for (const language of languages) {
 					returnData.push({
 						name: language.name,
@@ -92,8 +90,12 @@ export class DeepL implements INodeType {
 				}
 
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
 					return 0;
 				});
 
@@ -115,12 +117,11 @@ export class DeepL implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 				if (resource === 'language') {
-
 					if (operation === 'translate') {
 						let body: IDataObject = {};
 						const text = this.getNodeParameter('text', i) as string;
 						const translateTo = this.getNodeParameter('translateTo', i) as string;
-						body = { target_lang: translateTo, 'text': text } as IDataObject;
+						body = { target_lang: translateTo, text } as IDataObject;
 
 						if (additionalFields.sourceLang !== undefined) {
 							body.source_lang = ['EN-GB', 'EN-US'].includes(additionalFields.sourceLang as string)
@@ -134,7 +135,7 @@ export class DeepL implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					responseData.push({ $error: error, $json: this.getInputData(i)});
+					responseData.push({ $error: error, $json: this.getInputData(i) });
 					continue;
 				}
 				throw error;

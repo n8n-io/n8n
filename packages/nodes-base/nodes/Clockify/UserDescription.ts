@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -28,7 +24,6 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -38,12 +33,8 @@ export const userFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['getAll'],
+				resource: ['user'],
 			},
 		},
 		default: false,
@@ -55,15 +46,9 @@ export const userFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'user',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['user'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -80,12 +65,8 @@ export const userFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -96,14 +77,16 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'name@email.com',
 				default: '',
-				description: 'If provided, you\'ll get a filtered list of users that contain the provided string in their email address',
+				description:
+					"If provided, you'll get a filtered list of users that contain the provided string in their email address",
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'If provided, you\'ll get a filtered list of users that contain the provided string in their name',
+				description:
+					"If provided, you'll get a filtered list of users that contain the provided string in their name",
 			},
 			{
 				displayName: 'Status',
@@ -128,7 +111,8 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'If provided, you\'ll get a filtered list of users with the corresponding status',
+				description:
+					"If provided, you'll get a filtered list of users with the corresponding status",
 			},
 			{
 				displayName: 'Sort Column',
