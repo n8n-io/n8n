@@ -35,7 +35,8 @@ export const nodesController = express.Router();
 
 nodesController.use((req, res, next) => {
 	if (!isAuthenticatedRequest(req) || req.user.globalRole.name !== 'owner') {
-		throw new ResponseHelper.ResponseError('Unauthorized', undefined, 403);
+		res.status(403).json({ status: 'error', message: 'Unauthorized' });
+		return;
 	}
 
 	next();
@@ -43,11 +44,11 @@ nodesController.use((req, res, next) => {
 
 nodesController.use((req, res, next) => {
 	if (config.getEnv('executions.mode') === 'queue' && req.method !== 'GET') {
-		throw new ResponseHelper.ResponseError(
-			'Package management is disabled when running in "queue" mode',
-			undefined,
-			400,
-		);
+		res.status(400).json({
+			status: 'error',
+			message: 'Package management is disabled when running in "queue" mode',
+		});
+		return;
 	}
 
 	next();
