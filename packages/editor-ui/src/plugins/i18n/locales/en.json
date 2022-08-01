@@ -577,7 +577,7 @@
 	"onboardingCallSignupModal.signupButton.label": "Submit",
 	"onboardingCallSignupModal.cancelButton.label": "Cancel",
 	"onboardingCallSignupModal.infoText.emailError": "This doesn't seem to be a valid email address",
-	"onboardingCallSignupSucess.title": "Successfully signed up for an onboarding session",
+	"onboardingCallSignupSucess.title": "Check your email for the final step",
 	"onboardingCallSignupSucess.message": "You should receive a message from us shortly",
 	"onboardingCallSignupFailed.title": "Something went wrong",
 	"onboardingCallSignupFailed.message": "Your request could not be sent",
