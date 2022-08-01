@@ -90,6 +90,15 @@ window.n8nExternalHooks = {
 		],
 	},
 
+	userInfo: {
+		mounted: [
+			function(_, meta) {
+				const { value } = meta.userInfoRef.classList;
+				meta.userInfoRef.classList.value = appendNoCapture(value);
+			}
+		],
+	},
+
 	workflowOpen: {
 
 		/**
