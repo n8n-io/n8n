@@ -341,11 +341,11 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'The ID is not valid, it has to start with a lower case character followed by 5 numbers',
+							errorMessage: 'ID value cannot be empty',
 						},
 					},
 				],
-				placeholder: 'a12345',
+				placeholder: '45g950pa5n24054o43t453fe5',
 				url: '=https://api.trello.com/1/boards/{{$value}}',
 			},
 		],
@@ -384,11 +384,11 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'The ID is not valid, it has to start with a lower case character followed by 5 numbers',
+							errorMessage: 'ID value cannot be empty',
 						},
 					},
 				],
-				placeholder: 'a12345',
+				placeholder: '45g950pa5n24054o43t453fe5',
 				url: '=https://api.trello.com/1/boards/{{$value}}',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
@@ -439,7 +439,7 @@ export const boardFields: INodeProperties[] = [
 						baseURL: "https://api.trello.com/1",
 						url: "/search",
 						qs: {
-							query: "={{$value}}",
+							query: "={{$value}}", // TODO: See what goes here
 							modelTypes: "=boards", // Search only boards
 							idBoards: "=mine",	  // That belong to current user
 						},
