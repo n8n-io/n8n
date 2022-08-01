@@ -3,7 +3,7 @@
 		<div v-for="node in slicedNodes" :class="[$style.container, $style[size]]" :key="node.name">
 			<NodeIcon
 				:nodeType="node"
-				::size="size === 'md'? 24: 18"
+				:size="size === 'md'? 24: 18"
 				:showTooltip="true"
 			/>
 		</div>
