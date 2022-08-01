@@ -12,8 +12,10 @@ import {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
+	INodeExecutionPairedData,
 	INodeType,
 	IOAuth2Options,
+	IPairedItemData,
 	IPollFunctions as IPollFunctionsBase,
 	IPollResponse,
 	ITriggerFunctions as ITriggerFunctionsBase,
@@ -68,6 +70,11 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
 		): Promise<any>;
+		preparePairedOutputData(
+			data: IDataObject | IDataObject[],
+			isBinary?: boolean,
+			pairedItem?: IPairedItemData,
+		): INodeExecutionPairedData[];
 	};
 }
 

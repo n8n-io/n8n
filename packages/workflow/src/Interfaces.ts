@@ -879,6 +879,10 @@ export interface INodeExecutionData {
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
 }
 
+export interface INodeExecutionPairedData extends INodeExecutionData {
+	pairedItem: IPairedItemData | IPairedItemData[] | number;
+}
+
 export interface INodeExecuteFunctions {
 	getExecutePollFunctions: IGetExecutePollFunctions;
 	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
@@ -1004,7 +1008,9 @@ export interface ITriggerResponse {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
+	execute?(
+		this: IExecuteFunctions,
+	): Promise<INodeExecutionData[][] | INodeExecutionPairedData[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
