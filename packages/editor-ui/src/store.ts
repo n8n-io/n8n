@@ -908,8 +908,8 @@ export const store = new Vuex.Store({
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */
 		nativelyNumberSuffixedDefaults: (_, getters): string[] => {
-			const {allNodeTypes} = getters as {
-				allNodeTypes: Array<INodeTypeDescription & { defaults: { name: string } }>;
+			const { 'nodeTypes/allNodeTypes': allNodeTypes } = getters as {
+				['nodeTypes/allNodeTypes']: Array<INodeTypeDescription & { defaults: { name: string } }>;
 			};
 
 			return allNodeTypes.reduce<string[]>((acc, cur) => {
