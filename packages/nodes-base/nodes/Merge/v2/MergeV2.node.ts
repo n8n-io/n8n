@@ -390,6 +390,8 @@ export class MergeV2 implements INodeType {
 		if (mode === 'matchFields') {
 			const matchFields = this.getNodeParameter('matchFields.values', 0, []) as IDataObject[];
 			const joinMode = this.getNodeParameter('joinMode', 0) as string;
+			const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+			const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
 
 			const dataInput1 = this.getInputData(0);
 			if (!dataInput1 ) return [returnData];
@@ -402,7 +404,7 @@ export class MergeV2 implements INodeType {
 				return [dataInput1];
 			}
 
-			const filteredData = findMatches(dataInput1, dataInput2, matchFields);
+			const filteredData = findMatches(dataInput1, dataInput2, matchFields, disableDotNotation);
 
 			if (joinMode === 'keepMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;

@@ -5,6 +5,7 @@ import {
 
 import {
 	get,
+	isEqual,
 } from 'lodash';
 
 interface IMatch {
@@ -23,7 +24,7 @@ export function addSuffixToEntriesKeys(data: INodeExecutionData[], suffix: strin
 }
 
 
-export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeExecutionData[], fieldsToMatch: IDataObject[]) {
+export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeExecutionData[], fieldsToMatch: IDataObject[], disableDotNotation: boolean) {
 	const data1 = [...dataInput1];
 	const data2 = [...dataInput2];
 
@@ -39,18 +40,40 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 		},
 	};
 
+	matchesLoop:
 	for (const entry1 of data1) {
 		const lookup: IDataObject = {};
 
 		fieldsToMatch.forEach(matchCase => {
-			const valueToCompare = get(entry1.json, matchCase.field1 as string);
+			let valueToCompare;
+			if (disableDotNotation) {
+				valueToCompare = entry1.json[matchCase.field1 as string];
+			} else {
+				 valueToCompare = get(entry1.json, matchCase.field1 as string);
+			}
 			lookup[matchCase.field2 as string] = valueToCompare;
 		});
+
+		for (const fieldValue of Object.values(lookup)) {
+			if (fieldValue === undefined) {
+				filteredData.unmatched1.push(entry1);
+				continue matchesLoop;
+			}
+		}
 
 		const foundedMarches = [...data2].filter( (entry2, i) => {
 			let matched = true;
 			for (const key of Object.keys(lookup)) {
-				if (get(entry2.json, key) !== lookup[key]) {
+				const excpectedValue = lookup[key];
+				let entry2FieldValue;
+
+				if (disableDotNotation) {
+					entry2FieldValue = entry2.json[key];
+				} else {
+					entry2FieldValue = get(entry2.json, key);
+				}
+
+				if (!isEqual(excpectedValue, entry2FieldValue)) {
 					matched = false;
 					break;
 				}
