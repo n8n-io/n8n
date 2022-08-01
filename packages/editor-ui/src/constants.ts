@@ -147,6 +147,7 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
+/** PERSONALIZATION SURVEY */
 export const WORK_AREA_KEY = 'workArea';
 export const FINANCE_WORK_AREA = 'finance';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
@@ -159,24 +160,9 @@ export const SAAS_COMPANY_TYPE = 'saas';
 export const ECOMMERCE_COMPANY_TYPE = 'ecommerce';
 export const MSP_COMPANY_TYPE = 'msp';
 export const DIGITAL_AGENCY_COMPANY_TYPE = 'digital-agency';
-export const AUTOMATION_AGENCY_COMPANY_TYPE = 'automation-agency';
 export const SYSTEMS_INTEGRATOR_COMPANY_TYPE = 'systems-integrator';
 export const OTHER_COMPANY_TYPE = 'other';
 export const PERSONAL_COMPANY_TYPE = 'personal';
-
-export const CUSTOMER_TYPE_KEY = 'customerType';
-export const INDIVIDUAL_CUSTOMER_TYPE = 'individual';
-export const SMALL_CUSTOMER_TYPE = 'small';
-export const MEDIUM_CUSTOMER_TYPE = 'medium';
-export const LARGE_CUSTOMER_TYPE = 'large';
-
-export const MSP_FOCUS_KEY = 'mspFocus';
-export const MSP_FOCUS_OTHER_KEY = 'mspFocusOther';
-export const CLOUD_INFRA_FOCUS = 'cloud-infra';
-export const IT_SUPPORT_FOCUS = 'it-support';
-export const NETWORKING_COMMUNICATION_FOCUS = 'networking-communication';
-export const SECURITY_FOCUS = 'security';
-export const OTHER_FOCUS = 'other';
 
 export const COMPANY_INDUSTRY_EXTENDED_KEY = 'companyIndustryExtended';
 export const OTHER_COMPANY_INDUSTRY_EXTENDED_KEY = 'otherCompanyIndustryExtended';
@@ -234,6 +220,8 @@ export const SALES_MARKETING_GOAL = 'sales-marketing';
 export const SECURITY_GOAL = 'security';
 export const OTHER_AUTOMATION_GOAL = 'other';
 export const NOT_SURE_YET_GOAL = 'not-sure-yet';
+
+/** END OF PERSONALIZATION SURVEY */
 
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CLOSE = 'close';

@@ -116,7 +116,7 @@ import {
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationSurveyAnswersV3 } from '@/Interface';
+import { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import { getAccountAge } from '@/modules/userHelpers';
@@ -253,7 +253,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 						],
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV3)[COMPANY_TYPE_KEY];
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						return companyType === OTHER_COMPANY_TYPE;
 					},
 				},
@@ -263,8 +263,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourCompanysIndustry'),
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV3)[COMPANY_TYPE_KEY];
-						const companyIndustry = (values as IPersonalizationSurveyAnswersV3)[COMPANY_INDUSTRY_EXTENDED_KEY];
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const companyIndustry = (values as IPersonalizationLatestVersion)[COMPANY_INDUSTRY_EXTENDED_KEY];
 						return companyType === OTHER_COMPANY_TYPE && !!companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
 					},
 				},
@@ -322,7 +322,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 						],
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV3)[COMPANY_TYPE_KEY];
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						return companyType !== PERSONAL_COMPANY_TYPE;
 					},
 				},
@@ -332,8 +332,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourAutomationGoal'),
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV3)[COMPANY_TYPE_KEY];
-						const automationGoal = (values as IPersonalizationSurveyAnswersV3)[AUTOMATION_GOAL_KEY];
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const automationGoal = (values as IPersonalizationLatestVersion)[AUTOMATION_GOAL_KEY];
 						return companyType !== PERSONAL_COMPANY_TYPE && automationGoal === OTHER_AUTOMATION_GOAL;
 					},
 				},
@@ -375,7 +375,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 						],
 					},
 					shouldDisplay(values): boolean {
-						const goal = (values as IPersonalizationSurveyAnswersV3)[AUTOMATION_GOAL_KEY];
+						const goal = (values as IPersonalizationLatestVersion)[AUTOMATION_GOAL_KEY];
 						return goal === SALES_MARKETING_GOAL;
 					},
 				},
@@ -385,7 +385,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourCompanysIndustry'),
 					},
 					shouldDisplay(values): boolean {
-						const goals = (values as IPersonalizationSurveyAnswersV3)[MARKETING_AUTOMATION_GOAL_KEY];
+						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
 						return !!goals && goals.includes(MARKETING_AUTOMATION_OTHER);
 					},
 				},
@@ -417,7 +417,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourCompanysIndustry'),
 					},
 					shouldDisplay(values): boolean {
-						const goals = (values as IPersonalizationSurveyAnswersV3)[MARKETING_AUTOMATION_GOAL_KEY];
+						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
 						return !!goals && goals.includes(MARKETING_AUTOMATION_OTHER);
 					},
 				},
@@ -455,7 +455,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 						],
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV3)[COMPANY_TYPE_KEY];
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						return companyType !== PERSONAL_COMPANY_TYPE;
 					},
 				},
@@ -471,7 +471,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		onSave() {
 			this.formBus.$emit('submit');
 		},
-		async onSubmit(values: IPersonalizationSurveyAnswersV3): Promise<void> {
+		async onSubmit(values: IPersonalizationLatestVersion): Promise<void> {
 			this.$data.isSaving = true;
 
 			try {
