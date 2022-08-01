@@ -1,19 +1,8 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	customerIoApiRequest,
-	eventExists,
-} from './GenericFunctions';
+import { customerIoApiRequest, eventExists } from './GenericFunctions';
 
 interface IEvent {
 	customer?: IDataObject;
@@ -236,15 +225,20 @@ export class CustomerIoTrigger implements INodeType {
 
 				const endpoint = '/reporting_webhooks';
 
-				let { reporting_webhooks: webhooks } = await customerIoApiRequest.call(this, 'GET', endpoint, {}, 'beta');
+				let { reporting_webhooks: webhooks } = await customerIoApiRequest.call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					'beta',
+				);
 
 				if (webhooks === null) {
 					webhooks = [];
 				}
 
 				for (const webhook of webhooks) {
-					if (webhook.endpoint === webhookUrl &&
-						eventExists(currentEvents, webhook.events)) {
+					if (webhook.endpoint === webhookUrl && eventExists(currentEvents, webhook.events)) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -320,9 +314,7 @@ export class CustomerIoTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

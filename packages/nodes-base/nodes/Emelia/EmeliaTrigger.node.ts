@@ -8,11 +8,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	emeliaApiRequest,
-	emeliaApiTest,
-	emeliaGraphqlRequest,
-} from './GenericFunctions';
+import { emeliaApiRequest, emeliaApiTest, emeliaGraphqlRequest } from './GenericFunctions';
 
 interface Campaign {
 	_id: string;
@@ -53,7 +49,8 @@ export class EmeliaTrigger implements INodeType {
 				displayName: 'Campaign Name or ID',
 				name: 'campaignId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCampaigns',
 				},
@@ -115,12 +112,10 @@ export class EmeliaTrigger implements INodeType {
 					variables: '{}',
 				});
 
-				return responseData.data.campaigns.map(
-					(campaign: Campaign) => ({
-						name: campaign.name,
-						value: campaign._id,
-					}),
-				);
+				return responseData.data.campaigns.map((campaign: Campaign) => ({
+					name: campaign.name,
+					value: campaign._id,
+				}));
 			},
 		},
 	};
@@ -147,7 +142,7 @@ export class EmeliaTrigger implements INodeType {
 				const campaignId = this.getNodeParameter('campaignId') as string;
 				const body = {
 					hookUrl: webhookUrl,
-					events: events.map(e => e.toUpperCase()),
+					events: events.map((e) => e.toUpperCase()),
 					campaignId,
 				};
 
@@ -179,9 +174,7 @@ export class EmeliaTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

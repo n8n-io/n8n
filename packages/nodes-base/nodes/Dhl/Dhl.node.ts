@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -13,10 +11,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	dhlApiRequest,
-	validateCredentials,
-} from './GenericFunctions';
+import { dhlApiRequest, validateCredentials } from './GenericFunctions';
 
 export class Dhl implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,9 +55,7 @@ export class Dhl implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'shipment',
-						],
+						resource: ['shipment'],
 					},
 				},
 				options: [
@@ -93,7 +86,8 @@ export class Dhl implements INodeType {
 						name: 'recipientPostalCode',
 						type: 'string',
 						default: '',
-						description: 'DHL will return more detailed information on the shipment when you provide the Recipient\'s Postal Code - it acts as a verification step',
+						description:
+							"DHL will return more detailed information on the shipment when you provide the Recipient's Postal Code - it acts as a verification step",
 					},
 				],
 			},
@@ -102,7 +96,10 @@ export class Dhl implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async dhlApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async dhlApiCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
@@ -134,7 +131,6 @@ export class Dhl implements INodeType {
 			try {
 				if (resource === 'shipment') {
 					if (operation === 'get') {
-
 						const trackingNumber = this.getNodeParameter('trackingNumber', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 

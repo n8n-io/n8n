@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	TLP,
-} from './AnalyzerInterface';
+import { TLP } from './AnalyzerInterface';
 
 export const respondersOperations: INodeProperties[] = [
 	{
@@ -16,9 +12,7 @@ export const respondersOperations: INodeProperties[] = [
 		description: 'Choose an operation',
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
+				resource: ['responder'],
 			},
 		},
 		options: [
@@ -45,12 +39,11 @@ export const responderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
+				resource: ['responder'],
 			},
 		},
-		description: 'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Entity Type Name or ID',
@@ -59,19 +52,16 @@ export const responderFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
+				resource: ['responder'],
 			},
 		},
 		typeOptions: {
 			loadOptionsMethod: 'loadDataTypeOptions',
-			loadOptionsDependsOn: [
-				'responder',
-			],
+			loadOptionsDependsOn: ['responder'],
 		},
 		default: '',
-		description: 'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -82,9 +72,7 @@ export const responderFields: INodeProperties[] = [
 		description: 'Choose between providing JSON object or seperated attributes',
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
+				resource: ['responder'],
 			},
 		},
 	},
@@ -95,12 +83,8 @@ export const responderFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
-				jsonObject: [
-					true,
-				],
+				resource: ['responder'],
+				jsonObject: [true],
 			},
 		},
 		default: '',
@@ -135,7 +119,8 @@ export const responderFields: INodeProperties[] = [
 						name: 'owner',
 						type: 'string',
 						default: '',
-						description: 'User who owns the case. This is automatically set to current user when status is set to InProgress.',
+						description:
+							'User who owns the case. This is automatically set to current user when status is set to InProgress.',
 					},
 					{
 						displayName: 'Severity',
@@ -208,30 +193,16 @@ export const responderFields: INodeProperties[] = [
 			},
 		],
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'entityType',
-			],
+			loadOptionsDependsOn: ['entityType'],
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
-				jsonObject: [
-					false,
-				],
-				entityType: [
-					'case',
-				],
+				resource: ['responder'],
+				jsonObject: [false],
+				entityType: ['case'],
 			},
 			hide: {
-				entityType: [
-					'',
-					'alert',
-					'case_artifact',
-					'case_task',
-					'case_task_log',
-				],
+				entityType: ['', 'alert', 'case_artifact', 'case_task', 'case_task_log'],
 			},
 		},
 		default: {},
@@ -267,9 +238,7 @@ export const responderFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												dataType: [
-													'file',
-												],
+												dataType: ['file'],
 											},
 										},
 										default: 'data',
@@ -280,9 +249,7 @@ export const responderFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											hide: {
-												dataType: [
-													'file',
-												],
+												dataType: ['file'],
 											},
 										},
 										default: '',
@@ -497,33 +464,17 @@ export const responderFields: INodeProperties[] = [
 			},
 		],
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'entityType',
-			],
+			loadOptionsDependsOn: ['entityType'],
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
-				jsonObject: [
-					false,
-				],
-				entityType: [
-					'alert',
-				],
+				resource: ['responder'],
+				jsonObject: [false],
+				entityType: ['alert'],
 			},
 			hide: {
-				responder: [
-					'',
-				],
-				entityType: [
-					'',
-					'case',
-					'case_artifact',
-					'case_task',
-					'case_task_log',
-				],
+				responder: [''],
+				entityType: ['', 'case', 'case_artifact', 'case_task', 'case_task_log'],
 			},
 		},
 		default: {},
@@ -545,9 +496,7 @@ export const responderFields: INodeProperties[] = [
 						default: 'data',
 						displayOptions: {
 							show: {
-								dataType: [
-									'file',
-								],
+								dataType: ['file'],
 							},
 						},
 						description: 'Name of the binary property which contains the attachement data',
@@ -559,9 +508,7 @@ export const responderFields: INodeProperties[] = [
 						default: '',
 						displayOptions: {
 							hide: {
-								dataType: [
-									'file',
-								],
+								dataType: ['file'],
 							},
 						},
 					},
@@ -683,7 +630,8 @@ export const responderFields: INodeProperties[] = [
 							{
 								name: 'Amber',
 								value: TLP.amber,
-							}, {
+							},
+							{
 								name: 'Red',
 								value: TLP.red,
 							},
@@ -694,33 +642,17 @@ export const responderFields: INodeProperties[] = [
 			},
 		],
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'entityType',
-			],
+			loadOptionsDependsOn: ['entityType'],
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
-				jsonObject: [
-					false,
-				],
-				entityType: [
-					'case_artifact',
-				],
+				resource: ['responder'],
+				jsonObject: [false],
+				entityType: ['case_artifact'],
 			},
 			hide: {
-				responder: [
-					'',
-				],
-				entityType: [
-					'',
-					'case',
-					'alert',
-					'case_task',
-					'case_task_log',
-				],
+				responder: [''],
+				entityType: ['', 'case', 'alert', 'case_task', 'case_task_log'],
 			},
 		},
 		default: {},
@@ -776,33 +708,17 @@ export const responderFields: INodeProperties[] = [
 			},
 		],
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'entityType',
-			],
+			loadOptionsDependsOn: ['entityType'],
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
-				jsonObject: [
-					false,
-				],
-				entityType: [
-					'case_task',
-				],
+				resource: ['responder'],
+				jsonObject: [false],
+				entityType: ['case_task'],
 			},
 			hide: {
-				responder: [
-					'',
-				],
-				entityType: [
-					'',
-					'case',
-					'alert',
-					'case_artifact',
-					'case_task_log',
-				],
+				responder: [''],
+				entityType: ['', 'case', 'alert', 'case_artifact', 'case_task_log'],
 			},
 		},
 		default: {},
@@ -851,33 +767,17 @@ export const responderFields: INodeProperties[] = [
 			},
 		],
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'entityType',
-			],
+			loadOptionsDependsOn: ['entityType'],
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'responder',
-				],
-				jsonObject: [
-					false,
-				],
-				entityType: [
-					'case_task_log',
-				],
+				resource: ['responder'],
+				jsonObject: [false],
+				entityType: ['case_task_log'],
 			},
 			hide: {
-				responder: [
-					'',
-				],
-				entityType: [
-					'',
-					'case',
-					'alert',
-					'case_artifact',
-					'case_task',
-				],
+				responder: [''],
+				entityType: ['', 'case', 'alert', 'case_artifact', 'case_task'],
 			},
 		},
 		default: {},

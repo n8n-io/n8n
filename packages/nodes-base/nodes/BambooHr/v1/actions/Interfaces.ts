@@ -1,8 +1,4 @@
-import {
-	AllEntities,
-	Entity,
-	PropertiesOf,
-} from 'n8n-workflow';
+import { AllEntities, Entity, PropertiesOf } from 'n8n-workflow';
 
 type BambooHrMap = {
 	employee: 'create' | 'get' | 'getAll' | 'update';

@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	activeCampaignDefaultGetAllProperties,
-} from './GenericFunctions';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const contactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -68,12 +62,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 		description: 'The email of the contact to create',
@@ -84,16 +74,13 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 		default: false,
-		description: 'Whether to update user if it exists already. If not set and user exists it will error instead.',
+		description:
+			'Whether to update user if it exists already. If not set and user exists it will error instead.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -102,12 +89,8 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 		default: {},
@@ -135,7 +118,8 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -181,12 +165,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['update'],
+				resource: ['contact'],
 			},
 		},
 		default: 0,
@@ -201,12 +181,8 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['update'],
+				resource: ['contact'],
 			},
 		},
 		default: {},
@@ -234,7 +210,8 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactCustomFields',
 								},
 								default: '',
-								description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -288,12 +265,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['delete'],
+				resource: ['contact'],
 			},
 		},
 		default: 0,
@@ -310,12 +283,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['get'],
+				resource: ['contact'],
 			},
 		},
 		default: 0,
@@ -334,12 +303,8 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
 			},
 		},
 		default: {},
@@ -392,7 +357,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Filter contacts that match the given value in the contact names, organization, phone or email',
+				description:
+					'Filter contacts that match the given value in the contact names, organization, phone or email',
 			},
 			{
 				displayName: 'Segment ID',

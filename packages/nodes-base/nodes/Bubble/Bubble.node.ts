@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,16 +8,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	bubbleApiRequest,
-	bubbleApiRequestAllItems,
-	validateJSON,
-} from './GenericFunctions';
+import { bubbleApiRequest, bubbleApiRequestAllItems, validateJSON } from './GenericFunctions';
 
-import {
-	objectFields,
-	objectOperations,
-} from './ObjectDescription';
+import { objectFields, objectOperations } from './ObjectDescription';
 
 export class Bubble implements INodeType {
 	description: INodeTypeDescription = {
@@ -71,9 +62,7 @@ export class Bubble implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-
 			if (resource === 'object') {
-
 				// *********************************************************************
 				//                             object
 				// *********************************************************************
@@ -81,7 +70,6 @@ export class Bubble implements INodeType {
 				// https://bubble.io/reference#API
 
 				if (operation === 'create') {
-
 					// ----------------------------------
 					//         object: create
 					// ----------------------------------
@@ -90,19 +78,15 @@ export class Bubble implements INodeType {
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 
 					const { property } = this.getNodeParameter('properties', i) as {
-						property: [
-							{ key: string; value: string; },
-						],
+						property: [{ key: string; value: string }];
 					};
 
 					const body = {} as IDataObject;
 
-					property.forEach(data => body[data.key] = data.value);
+					property.forEach((data) => (body[data.key] = data.value));
 
 					responseData = await bubbleApiRequest.call(this, 'POST', `/obj/${typeName}`, body, {});
-
 				} else if (operation === 'delete') {
-
 					// ----------------------------------
 					//         object: delete
 					// ----------------------------------
@@ -114,9 +98,7 @@ export class Bubble implements INodeType {
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					responseData = { success: true };
-
 				} else if (operation === 'get') {
-
 					// ----------------------------------
 					//         object: get
 					// ----------------------------------
@@ -128,9 +110,7 @@ export class Bubble implements INodeType {
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.response;
-
 				} else if (operation === 'getAll') {
-
 					// ----------------------------------
 					//         object: getAll
 					// ----------------------------------
@@ -153,7 +133,9 @@ export class Bubble implements INodeType {
 						const filter = options.filtersJson as string;
 						const data = validateJSON(filter);
 						if (data === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Filters must be a valid JSON', { itemIndex: i });
+							throw new NodeOperationError(this.getNode(), 'Filters must be a valid JSON', {
+								itemIndex: i,
+							});
 						}
 						qs.constraints = JSON.stringify(data);
 					}
@@ -170,9 +152,7 @@ export class Bubble implements INodeType {
 						responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.response.results;
 					}
-
 				} else if (operation === 'update') {
-
 					// ----------------------------------
 					//         object: update
 					// ----------------------------------
@@ -182,14 +162,12 @@ export class Bubble implements INodeType {
 					const objectId = this.getNodeParameter('objectId', i) as string;
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					const { property } = this.getNodeParameter('properties', i) as {
-						property: [
-							{ key: string; value: string; },
-						],
+						property: [{ key: string; value: string }];
 					};
 
 					const body = {} as IDataObject;
 
-					property.forEach(data => body[data.key] = data.value);
+					property.forEach((data) => (body[data.key] = data.value));
 					responseData = await bubbleApiRequest.call(this, 'PATCH', endpoint, body, {});
 					responseData = { sucess: true };
 				}
@@ -201,6 +179,5 @@ export class Bubble implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
-
 	}
 }

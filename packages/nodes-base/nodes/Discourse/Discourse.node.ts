@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -15,39 +13,22 @@ import {
 	JsonObject,
 } from 'n8n-workflow';
 
-import {
-	discourseApiRequest,
-} from './GenericFunctions';
+import { discourseApiRequest } from './GenericFunctions';
 
-import {
-	postFields,
-	postOperations,
-} from './PostDescription';
+import { postFields, postOperations } from './PostDescription';
 
-import {
-	categoryFields,
-	categoryOperations,
-} from './CategoryDescription';
+import { categoryFields, categoryOperations } from './CategoryDescription';
 
-import {
-	groupFields,
-	groupOperations,
-} from './GroupDescription';
+import { groupFields, groupOperations } from './GroupDescription';
 
 // import {
 // 	searchFields,
 // 	searchOperations,
 // } from './SearchDescription';
 
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
+import { userFields, userOperations } from './UserDescription';
 
-import {
-	userGroupFields,
-	userGroupOperations,
-} from './UserGroupDescription';
+import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { OptionsWithUri } from 'request';
 
 //import moment from 'moment';
@@ -122,19 +103,12 @@ export class Discourse implements INodeType {
 	};
 
 	methods = {
-
 		loadOptions: {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
-			async getCategories(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { category_list } = await discourseApiRequest.call(
-					this,
-					'GET',
-					`/categories.json`,
-				);
+				const { category_list } = await discourseApiRequest.call(this, 'GET', `/categories.json`);
 				for (const category of category_list.categories) {
 					returnData.push({
 						name: category.name,
@@ -169,12 +143,7 @@ export class Discourse implements INodeType {
 							text_color: textColor,
 						};
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'POST',
-							`/categories.json`,
-							body,
-						);
+						responseData = await discourseApiRequest.call(this, 'POST', `/categories.json`, body);
 
 						responseData = responseData.category;
 					}
@@ -182,13 +151,7 @@ export class Discourse implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'GET',
-							`/categories.json`,
-							{},
-							qs,
-						);
+						responseData = await discourseApiRequest.call(this, 'GET', `/categories.json`, {}, qs);
 
 						responseData = responseData.category_list.categories;
 
@@ -230,12 +193,9 @@ export class Discourse implements INodeType {
 							name,
 						};
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'POST',
-							`/admin/groups.json`,
-							{ group: body },
-						);
+						responseData = await discourseApiRequest.call(this, 'POST', `/admin/groups.json`, {
+							group: body,
+						});
 
 						responseData = responseData.basic_group;
 					}
@@ -243,28 +203,15 @@ export class Discourse implements INodeType {
 					if (operation === 'get') {
 						const name = this.getNodeParameter('name', i) as string;
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'GET',
-							`/groups/${name}`,
-							{},
-							qs,
-						);
+						responseData = await discourseApiRequest.call(this, 'GET', `/groups/${name}`, {}, qs);
 
 						responseData = responseData.group;
-
 					}
 					//https://docs.discourse.org/#tag/Groups/paths/~1groups.json/get
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'GET',
-							`/groups.json`,
-							{},
-							qs,
-						);
+						responseData = await discourseApiRequest.call(this, 'GET', `/groups.json`, {}, qs);
 
 						responseData = responseData.groups;
 
@@ -283,12 +230,9 @@ export class Discourse implements INodeType {
 							name,
 						};
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'PUT',
-							`/groups/${groupId}.json`,
-							{ group: body },
-						);
+						responseData = await discourseApiRequest.call(this, 'PUT', `/groups/${groupId}.json`, {
+							group: body,
+						});
 					}
 				}
 				if (resource === 'post') {
@@ -305,37 +249,20 @@ export class Discourse implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'POST',
-							`/posts.json`,
-							body,
-						);
+						responseData = await discourseApiRequest.call(this, 'POST', `/posts.json`, body);
 					}
 					//https://docs.discourse.org/#tag/Posts/paths/~1posts~1{id}.json/get
 					if (operation === 'get') {
 						const postId = this.getNodeParameter('postId', i) as string;
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'GET',
-							`/posts/${postId}`,
-							{},
-							qs,
-						);
+						responseData = await discourseApiRequest.call(this, 'GET', `/posts/${postId}`, {}, qs);
 					}
 					//https://docs.discourse.org/#tag/Posts/paths/~1posts.json/get
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const limit = this.getNodeParameter('limit', i, 0) as number;
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'GET',
-							`/posts.json`,
-							{},
-							qs,
-						);
+						responseData = await discourseApiRequest.call(this, 'GET', `/posts.json`, {}, qs);
 						responseData = responseData.latest_posts;
 
 						//Getting all posts relying on https://github.com/discourse/discourse_api/blob/main/spec/discourse_api/api/posts_spec.rb
@@ -437,12 +364,7 @@ export class Discourse implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'POST',
-							`/users.json`,
-							body,
-						);
+						responseData = await discourseApiRequest.call(this, 'POST', `/users.json`, body);
 					}
 					//https://docs.discourse.org/#tag/Users/paths/~1users~1{username}.json/get
 					if (operation === 'get') {
@@ -456,11 +378,7 @@ export class Discourse implements INodeType {
 							endpoint = `/u/by-external/${externalId}.json`;
 						}
 
-						responseData = await discourseApiRequest.call(
-							this,
-							'GET',
-							endpoint,
-						);
+						responseData = await discourseApiRequest.call(this, 'GET', endpoint);
 					}
 					//https://docs.discourse.org/#tag/Users/paths/~1admin~1users~1{id}.json/delete
 					if (operation === 'getAll') {
