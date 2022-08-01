@@ -10,6 +10,7 @@ RUN apk --update add --virtual build-dependencies python3 build-base ca-certific
 
 WORKDIR /data
 
+COPY turbo.json .
 COPY package.json .
 COPY package-lock.json .
 COPY packages/cli/ ./packages/cli/
