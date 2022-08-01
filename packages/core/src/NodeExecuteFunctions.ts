@@ -537,8 +537,9 @@ function digestAuthAxiosConfig(
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
+	// tslint:disable-line:no-any
+
 	// Check if there's a better way of getting this config here
 	if (process.env.N8N_USE_DEPRECATED_REQUEST_LIB) {
 		// @ts-ignore
@@ -957,8 +958,8 @@ export async function requestOAuth2(
 
 	// @ts-ignore
 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-		// @ts-ignore
 		Object.assign(newRequestOptions.headers, {
+			// @ts-ignore
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
 	}
@@ -1015,8 +1016,8 @@ export async function requestOAuth2(
 
 				// @ts-ignore
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-					// @ts-ignore
 					Object.assign(newRequestOptions.headers, {
+						// @ts-ignore
 						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 					});
 				}
@@ -1094,8 +1095,8 @@ export async function requestOAuth2(
 
 			// @ts-ignore
 			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-				// @ts-ignore
 				Object.assign(newRequestOptions.headers, {
+					// @ts-ignore
 					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 				});
 			}

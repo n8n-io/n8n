@@ -167,9 +167,7 @@ export class Mindee implements INodeType {
 						const rawData = this.getNodeParameter('rawData', i) as boolean;
 
 						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 						}
 
 						const item = items[i].binary as IBinaryKeyData;
@@ -238,9 +236,7 @@ export class Mindee implements INodeType {
 						const rawData = this.getNodeParameter('rawData', i) as boolean;
 
 						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
 						}
 
 						const item = items[i].binary as IBinaryKeyData;
