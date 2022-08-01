@@ -1,7 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
-	INodeExecutionData,
+	INodeExecutionPairedData,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -269,7 +269,7 @@ export class Postgres implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionPairedData[][]> {
 		const credentials = await this.getCredentials('postgres');
 		const largeNumbersOutput = this.getNodeParameter('additionalFields.largeNumbersOutput', 0, '') as string;
 
@@ -303,7 +303,7 @@ export class Postgres implements INodeType {
 
 		const db = pgp(config);
 
-		let returnItems = [];
+		let returnItems: INodeExecutionPairedData[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -315,7 +315,7 @@ export class Postgres implements INodeType {
 
 			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(queryResult);
+			returnItems = this.helpers.preparePairedOutputData(queryResult);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
@@ -323,11 +323,7 @@ export class Postgres implements INodeType {
 
 			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
-			for (let i = 0; i < insertData.length; i++) {
-				returnItems.push({
-					json: insertData[i],
-				});
-			}
+			returnItems = this.helpers.preparePairedOutputData(insertData);
 		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update
@@ -335,7 +331,7 @@ export class Postgres implements INodeType {
 
 			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(updateItems);
+			returnItems = this.helpers.preparePairedOutputData(updateItems);
 		} else {
 			await pgp.end();
 			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
@@ -344,6 +340,6 @@ export class Postgres implements INodeType {
 		// Close the connection
 		await pgp.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }
