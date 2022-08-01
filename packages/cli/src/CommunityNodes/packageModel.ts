@@ -11,7 +11,8 @@ export async function findInstalledPackage(
 }
 
 export async function isPackageInstalled(packageName: string): Promise<boolean> {
-	return findInstalledPackage(packageName) !== undefined;
+	const installedPackage = await findInstalledPackage(packageName);
+	return installedPackage !== undefined;
 }
 
 export async function getAllInstalledPackages(): Promise<InstalledPackages[]> {
