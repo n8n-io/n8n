@@ -102,7 +102,7 @@ import {
 	MARKETING_AUTOMATION_GOAL_KEY,
 	MARKETING_AUTOMATION_LEAD_GENERATION_GOAL,
 	MARKETING_AUTOMATION_CUSTOMER_COMMUNICATION,
-	MARKETING_AUTOMATION_CUSTOMER_ACTIONS,
+	MARKETING_AUTOMATION_ACTIONS,
 	MARKETING_AUTOMATION_AD_CAMPAIGN,
 	MARKETING_AUTOMATION_REPORTING,
 	MARKETING_AUTOMATION_DATA_SYNCHING,
@@ -354,7 +354,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 							},
 							{
 								label: this.$locale.baseText('personalizationModal.customerActions'),
-								value: MARKETING_AUTOMATION_CUSTOMER_ACTIONS,
+								value: MARKETING_AUTOMATION_ACTIONS,
 							},
 							{
 								label: this.$locale.baseText('personalizationModal.adCampaign'),
