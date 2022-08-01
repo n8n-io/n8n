@@ -12,7 +12,7 @@ import { Db } from '../..';
 import * as config from '../../../config';
 import { AUTH_COOKIE_NAME } from '../../constants';
 import { AuthenticatedRequest } from '../../requests';
-import { issueCookie } from '../auth/jwt';
+import { issueCookie, resolveJwtContent } from '../auth/jwt';
 import { JwtPayload, N8nApp } from '../Interfaces';
 import {
 	isAuthenticatedRequest,
@@ -25,6 +25,8 @@ import { meNamespace } from './me';
 import { ownerNamespace } from './owner';
 import { passwordResetNamespace } from './passwordReset';
 import { usersNamespace } from './users';
+
+import { Strategy as JwtStrategy } from 'passport-jwt';
 
 import expressSession from 'express-session';
 import { generators, Issuer, Strategy as OIDCStrategy } from 'openid-client';
@@ -49,111 +51,47 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		secretOrKey: config.getEnv('userManagement.jwtSecret'),
 	};
 
-	// passport.use(
-	// 	new Strategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
-	// 		try {
-	// 			const user = await resolveJwtContent(jwtPayload);
-	// 			return done(null, user);
-	// 		} catch (error) {
-	// 			Logger.debug('Failed to extract user from JWT payload', { jwtPayload });
-	// 			return done(null, false, { message: 'User not found' });
-	// 		}
-	// 	}),
-	// );
+	passport.use(
+		new JwtStrategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
+			try {
+				const user = await resolveJwtContent(jwtPayload);
+				return done(null, user);
+			} catch (error) {
+				Logger.debug('Failed to extract user from JWT payload', { jwtPayload });
+				return done(null, false, { message: 'User not found' });
+			}
+		}),
+	);
 
-	// void Issuer.discover('https://nodejs-sample.criipto.id').then((criiptoIssuer) => {
-	// 	const client = new criiptoIssuer.Client({
-	// 		client_id: 'urn:criipto:nodejs:demo:1010',
-	// 		client_secret: 'j9wYVyD3zXZPMo3LTq/xSU/sMu9/shiFKpTHKfqAutM=',
-	// 		redirect_uris: ['http://localhost:5678/rest/auth/callback'],
-	// 		post_logout_redirect_uris: ['http://localhost:5678/rest/logout'],
-	// 		token_endpoint_auth_method: 'client_secret_post',
-	// 	});
+	const CLIENT_ID = 'REDACTED';
+	const CLIENT_SECRET = 'REDACTED';
+	const REDIRECT_URI_BASE = 'http://localhost:5678';
 
-	// 	this.app.use(
-	// 		expressSesssion({
-	// 			secret: 'keyboard cat',
-	// 			resave: false,
-	// 			saveUninitialized: true,
-	// 		}),
-	// 	);
-
-	// 	this.app.use(passport.initialize());
-	// 	this.app.use(passport.session());
-
-	// 	// handles serialization and deserialization of authenticated user
-	// 	passport.serializeUser(function (user, done) {
-	// 		console.log(user);
-	// 		done(null, user);
-	// 	});
-	// 	passport.deserializeUser(function (user, done) {
-	// 		console.log(user);
-	// 		done(null, user);
-	// 	});
-
-	// 	passport.use(
-	// 		'oidc',
-	// 		new OidcStrategy({ client }, (tokenSet, userinfo, done) => {
-	// 			console.log('tokenSet', tokenSet);
-	// 			console.log('userinfo', userinfo);
-
-	// 			req.session.tokenSet = tokenSet;
-	// 			req.session.userinfo = userinfo;
-
-	// 			return done(null, tokenSet.claims());
-	// 		}),
-	// 	);
-
-	// 	this.app.get(`/${restEndpoint}/auth`, async (req, res, next) => {
-	// 		console.log('auth');
-	// 		passport.authenticate('oidc', { acr_values: 'urn:grn:authn:fi:all' })(req, res, next);
-	// 	});
-
-	// 	this.app.get(`/${restEndpoint}/auth/callback`, (req, res, next) => {
-	// 		console.log('auth callback');
-
-	// 		passport.authenticate('oidc', {
-	// 			passReqToCallback: true,
-	// 			successRedirect: '/workflows',
-	// 			failureRedirect: '/workflows',
-	// 		})(req, res, next);
-	// 	});
-	// });
-
-	let opts = {};
 	const initOIDC = async () => {
 		const googleIssuer = await Issuer.discover('https://accounts.google.com');
-		// console.log('Discovered issuer %s %O', googleIssuer.issuer, googleIssuer.metadata);
 
 		/* Authorize Code Flow */
 		/* client object */
 		const client = new googleIssuer.Client({
-			client_id: '974645230259-jmd492nm0hlc0vo62h95f47lqss6efj7.apps.googleusercontent.com',
-			client_secret: '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',
-			redirect_uris: ['https://bhesseldieck.hooks.n8n.cloud/rest/auth/callback'],
+			client_id: CLIENT_ID,
+			client_secret: CLIENT_SECRET,
+			redirect_uris: [`${REDIRECT_URI_BASE}/rest/login/openid/callback/`],
 			response_types: ['code'],
 			token_endpoint_auth_method: 'client_secret_post',
 		});
 
 		/* params object */
 		const params = {
-			client_id: '974645230259-jmd492nm0hlc0vo62h95f47lqss6efj7.apps.googleusercontent.com',
+			client_id: CLIENT_ID,
 			response_type: 'code',
 			scope: 'openid email profile',
 			nonce: generators.nonce(),
-			redirect_uri: 'https://bhesseldieck.hooks.n8n.cloud/rest/auth/callback',
+			redirect_uri: `${REDIRECT_URI_BASE}/rest/login/openid/callback/`,
 		};
-
-		opts.client = client;
-		opts.params = params;
-		opts.passReqToCallback = true;
-
-		this.app.use(passport.initialize());
-		this.app.use(passport.session());
 
 		passport.use(
 			'openid',
-			new OIDCStrategy({ client }, (tokenset, userinfo, done) => {
+			new OIDCStrategy({ client, params }, (tokenset, userinfo, done) => {
 				console.log('-----tokenset: ');
 				console.log(tokenset);
 				console.log('userinfo');
@@ -163,6 +101,9 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		);
 	};
 	void initOIDC();
+
+	this.app.use(passport.initialize());
+	this.app.use(passport.session());
 
 	passport.serializeUser(function (user, done) {
 		console.log('serialize', user);
@@ -174,29 +115,23 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	});
 
 	/* Endpoints */
-	this.app.get(`/${restEndpoint}/auth`, (req, res, next) => {
+	this.app.get(`/${restEndpoint}/login/openid`, (req, res, next) => {
 		console.log('auth', req.headers, req.body);
-		passport.authenticate('openid', { scope: 'profile email openid' }, (data) => {
-			console.log('cb auth', data);
-			return data;
-		})(req, res, next);
+		passport.authenticate('openid', { scope: 'profile email openid' })(req, res, next);
+	});
+	this.app.get(`/${restEndpoint}/login/hello`, (req, res, next) => {
+		console.log('hello', req.query, req.headers);
+		res.redirect('/');
 	});
 
-	this.app.get(`/${restEndpoint}/auth/callback`, (req, res, next) => {
+	this.app.get(`/${restEndpoint}/login/openid/callback`, (req, res, next) => {
 		console.log('auth callback', req.headers, req.query);
-		passport.authenticate(
-			'openid',
-			{
-				failWithError: true,
-				passReqToCallback: true,
-				successRedirect: `https://n8n.io`,
-				failureRedirect: 'https://github.com',
-			},
-			(error, user, info) => {
-				console.log('cb auth callback', error, user, info);
-				return user;
-			},
-		)(req, res, next);
+		passport.authenticate('openid', {
+			failWithError: true,
+			passReqToCallback: true,
+			successRedirect: `/${restEndpoint}/login/hello`,
+			failureRedirect: `/${restEndpoint}/login/hello`,
+		})(req, res, next);
 	});
 
 	this.app.use(async (req: Request, res: Response, next: NextFunction) => {
