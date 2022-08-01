@@ -180,7 +180,7 @@ export const OTHER_FOCUS = 'other';
 
 export const COMPANY_INDUSTRY_EXTENDED_KEY = 'companyIndustryExtended';
 export const OTHER_COMPANY_INDUSTRY_EXTENDED_KEY = 'otherCompanyIndustryExtended';
-export const EDUCATION_INDUSTRY = 'education';
+export const EDUCATION_TYPE = 'education';
 export const PHYSICAL_RETAIL_OR_SERVICES = 'physical-retail-or-services';
 export const REAL_ESTATE_OR_CONSTRUCTION = 'real-estate-or-construction';
 export const GOVERNMENT_INDUSTRY = 'government';
@@ -203,12 +203,24 @@ export const COMPANY_SIZE_500_999 = '500-999';
 export const COMPANY_SIZE_1000_OR_MORE = '1000+';
 export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 
+export const MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSm';
+export const MARKETING_AUTOMATION_LEAD_GENERATION_GOAL = 'lead-generation';
+export const MARKETING_AUTOMATION_CUSTOMER_COMMUNICATION = 'customer-communication';
+export const MARKETING_AUTOMATION_CUSTOMER_ACTIONS = 'actions';
+export const MARKETING_AUTOMATION_AD_CAMPAIGN = 'ad-campaign';
+export const MARKETING_AUTOMATION_REPORTING = 'reporting';
+export const MARKETING_AUTOMATION_DATA_SYNCHING = 'data-syncing';
+export const MARKETING_AUTOMATION_OTHER = 'other';
+
+export const OTHER_MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSmOther';
+
 export const CODING_SKILL_KEY = 'codingSkill';
 
 export const AUTOMATION_GOAL_KEY = 'automationGoal';
 export const AUTOMATION_GOAL_OTHER_KEY = 'otherAutomationGoal';
 export const CUSTOMER_INTEGRATIONS_GOAL = 'customer-integrations';
 export const CUSTOMER_SUPPORT_GOAL = 'customer-support';
+export const ENGINEERING_GOAL = 'engineering';
 export const FINANCE_ACCOUNTING_GOAL = 'finance-accounting';
 export const HR_GOAL = 'hr';
 export const OPERATIONS_GOAL = 'operations';

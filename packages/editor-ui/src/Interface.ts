@@ -533,6 +533,21 @@ export type IPersonalizationSurveyAnswersV2 = {
 	otherCompanyIndustryExtended?: string[] | null;
 };
 
+export type IPersonalizationSurveyAnswersV3 = {
+	version: 'v3';
+	automationGoal?: string | null;
+	codingSkill?: string | null;
+	companyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	mspFocus?: string[] | null;
+	mspFocusOther?: string | null;
+	otherAutomationGoal?: string | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+};
+
 export type IRole = 'default' | 'owner' | 'member';
 
 export interface IUserResponse {

@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<div :class="{
+		<div v-if="label || $slots.options" :class="{
 				[this.$style.label]: !!this.label,
 				[this.$style.underline]: this.underline,
 				[this.$style[this.size]]: true,
