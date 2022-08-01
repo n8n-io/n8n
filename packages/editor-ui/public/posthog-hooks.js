@@ -332,6 +332,21 @@ window.n8nExternalHooks = {
 		]
 	},
 
+	variableSelectorItem: {
+		/**
+		 * variableSelectorItem.mounted
+		 */
+		 mounted: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: variableSelectorItem.mounted');
+
+				const { value } = meta.variableSelectorItemRef.classList;
+
+				meta.variableSelectorItemRef.classList.value = appendNoCapture(value);
+			}
+		]
+	},
+
 	expressionEdit: {
 
 		/**
