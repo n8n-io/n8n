@@ -108,7 +108,10 @@ import {
 	MARKETING_AUTOMATION_DATA_SYNCHING,
 	MARKETING_AUTOMATION_OTHER,
 	OTHER_MARKETING_AUTOMATION_GOAL_KEY,
-  USAGE_MODE_KEY,
+	USAGE_MODE_KEY,
+	USAGE_MODE_MANIPULATE_FILES,
+	USAGE_MODE_BUILD_BE_SERVICES,
+	USAGE_MODE_CONNECT_TO_PRODUCT,
 } from '../constants';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -384,6 +387,28 @@ export default mixins(showMessage, workflowHelpers).extend({
 					shouldDisplay(values): boolean {
 						const goals = (values as IPersonalizationSurveyAnswersV3)[MARKETING_AUTOMATION_GOAL_KEY];
 						return !!goals && goals.includes(MARKETING_AUTOMATION_OTHER);
+					},
+				},
+				{
+					name: USAGE_MODE_KEY,
+					properties: {
+						type: 'multi-select',
+						label: this.$locale.baseText('personalizationModal.specifyUsageMode'),
+						placeholder: this.$locale.baseText('personalizationModal.select'),
+						options: [
+							{
+								label: this.$locale.baseText('personalizationModal.connectToOwnProduct'),
+								value: USAGE_MODE_CONNECT_TO_PRODUCT,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.buildBackendServices'),
+								value: USAGE_MODE_BUILD_BE_SERVICES,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.manipulateFiles'),
+								value: USAGE_MODE_MANIPULATE_FILES,
+							},
+						],
 					},
 				},
 				{

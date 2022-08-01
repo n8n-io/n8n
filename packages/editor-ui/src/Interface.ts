@@ -546,6 +546,7 @@ export type IPersonalizationSurveyAnswersV3 = {
 	otherCompanyIndustryExtended?: string[] | null;
 	automationGoalSm?: string[] | null;
 	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
 };
 
 export type IRole = 'default' | 'owner' | 'member';

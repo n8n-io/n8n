@@ -216,6 +216,11 @@ export const OTHER_MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSmOther';
 
 export const CODING_SKILL_KEY = 'codingSkill';
 
+export const USAGE_MODE_KEY = 'usageModes';
+export const USAGE_MODE_CONNECT_TO_PRODUCT = 'connect-to-Product';
+export const USAGE_MODE_BUILD_BE_SERVICES = 'build-be-services';
+export const USAGE_MODE_MANIPULATE_FILES = 'manipulate-files';
+
 export const AUTOMATION_GOAL_KEY = 'automationGoal';
 export const AUTOMATION_GOAL_OTHER_KEY = 'otherAutomationGoal';
 export const CUSTOMER_INTEGRATIONS_GOAL = 'customer-integrations';
