@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const assetTypeOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const assetTypeOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
+				resource: ['assetType'],
 			},
 		},
 		options: [
@@ -63,12 +59,8 @@ export const assetTypeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['assetType'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -80,12 +72,8 @@ export const assetTypeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['assetType'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -98,7 +86,8 @@ export const assetTypeFields: INodeProperties[] = [
 			{
 				displayName: 'Parent Asset Type Name or ID',
 				name: 'parent_asset_type_id',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				type: 'options',
 				default: '',
 				typeOptions: {
@@ -120,12 +109,8 @@ export const assetTypeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['assetType'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -142,12 +127,8 @@ export const assetTypeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['assetType'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -163,12 +144,8 @@ export const assetTypeFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['assetType'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -183,15 +160,9 @@ export const assetTypeFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['assetType'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -208,12 +179,8 @@ export const assetTypeFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['assetType'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -225,12 +192,8 @@ export const assetTypeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'assetType',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['assetType'],
+				operation: ['update'],
 			},
 		},
 		options: [
