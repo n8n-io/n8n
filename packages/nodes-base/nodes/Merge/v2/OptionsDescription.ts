@@ -1,4 +1,4 @@
-import {IDataObject, INodeProperties } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 const clashHandlingProperties: INodeProperties = 	{
 	displayName: 'Clash Handling',
@@ -100,6 +100,7 @@ export const optionsDescription: INodeProperties[] = [
 						'/mode': [
 							'matchFields',
 						],
+						'/mergeMatchedItems': [true],
 					},
 					hide: {
 						'/joinMode': [
@@ -122,6 +123,7 @@ export const optionsDescription: INodeProperties[] = [
 						'/outputDataFrom': [
 							'both',
 						],
+						'/mergeMatchedItems': [true],
 					},
 				},
 			},
