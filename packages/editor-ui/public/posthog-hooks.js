@@ -82,8 +82,13 @@ function appendNoCapture(originalClasses) {
 
 window.n8nExternalHooks = {
 	copyInput: {
+		/**
+		 * copyInput.mounted
+		 */
 		mounted: [
 			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: copyInput.mounted');
+
 				const { value } = meta.copyInputValueRef.classList;
 				meta.copyInputValueRef.classList.value = appendNoCapture(value);
 			}
@@ -91,8 +96,13 @@ window.n8nExternalHooks = {
 	},
 
 	userInfo: {
+		/**
+		 * userInfo.mounted
+		 */
 		mounted: [
 			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: userInfo.mounted');
+
 				const { value } = meta.userInfoRef.classList;
 				meta.userInfoRef.classList.value = appendNoCapture(value);
 			}
@@ -100,8 +110,13 @@ window.n8nExternalHooks = {
 	},
 
 	mainSidebar: {
+		/**
+		 * mainSidebar.mounted
+		 */
 		mounted: [
 			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: mainSidebar.mounted');
+
 				const { value } = meta.userRef.classList;
 				meta.userRef.classList.value = appendNoCapture(value);
 			}
@@ -109,8 +124,13 @@ window.n8nExternalHooks = {
 	},
 
 	settingsPersonalView: {
+		/**
+		 * settingsPersonalView.mounted
+		 */
 		mounted: [
 			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: settingsPersonalView.mounted');
+
 				const { value } = meta.userRef.classList;
 				meta.userRef.classList.value = appendNoCapture(value);
 			}
@@ -124,6 +144,8 @@ window.n8nExternalHooks = {
 		 */
 		mounted: [
 			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: workflowOpen.mounted');
+
 				// workflow names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper;
 				for (const item of tableBody.querySelectorAll('.name')) {
@@ -140,6 +162,8 @@ window.n8nExternalHooks = {
 		 */
 		mounted: [
 			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: credentialsList.mounted');
+
 				// credential names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper;
 				for (const item of tableBody.querySelectorAll('.el-table_1_column_1 > .cell')) {
@@ -156,6 +180,8 @@ window.n8nExternalHooks = {
 		 */
 		mounted: [
 			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: sticky.mounted');
+
 				meta.stickyRef.classList.value = appendNoCapture(meta.stickyRef.classList.value);
 			}
 		],
@@ -168,6 +194,7 @@ window.n8nExternalHooks = {
 		 */
 		created: [
 			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: nodeView.created');
 
 				const { filtersRef, tableRef } = meta;
 
@@ -193,6 +220,8 @@ window.n8nExternalHooks = {
 		 */
 		createNodeActiveChanged: [
 			function (_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: nodeView.createNodeActiveChanged');
+
 				n8n.postHogHooks.resetNodesPanelSession();
 			}
 		],
@@ -319,7 +348,19 @@ window.n8nExternalHooks = {
 
 				n8n.postHogHooks.internalMethods.track(eventData);
 			}
-		]
+		],
+
+		/**
+		 * expressionEdit.mounted
+		 */
+		mounted: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: expressionEdit.mounted');
+
+				meta.expressionInputRef.classList.value = appendNoCapture(meta.expressionInputRef.classList.value)
+				meta.expressionOutputRef.classList.value = appendNoCapture(meta.expressionOutputRef.classList.value)
+			}
+		],
 	},
 
 	parameterInput: {
