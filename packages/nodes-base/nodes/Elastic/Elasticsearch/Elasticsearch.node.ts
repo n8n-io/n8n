@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -13,26 +11,13 @@ import {
 	JsonObject,
 } from 'n8n-workflow';
 
-import {
-	elasticsearchApiRequest,
-} from './GenericFunctions';
+import { elasticsearchApiRequest } from './GenericFunctions';
 
-import {
-	documentFields,
-	documentOperations,
-	indexFields,
-	indexOperations,
-} from './descriptions';
+import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 
-import {
-	DocumentGetAllOptions,
-	ElasticsearchApiCredentials,
-	FieldsUiValues,
-} from './types';
+import { DocumentGetAllOptions, ElasticsearchApiCredentials, FieldsUiValues } from './types';
 
-import {
-	omit,
-} from 'lodash';
+import { omit } from 'lodash';
 
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,9 +74,7 @@ export class Elasticsearch implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-
 			if (resource === 'document') {
-
 				// **********************************************************************
 				//                                document
 				// **********************************************************************
@@ -99,7 +82,6 @@ export class Elasticsearch implements INodeType {
 				// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html
 
 				if (operation === 'delete') {
-
 					// ----------------------------------------
 					//             document: delete
 					// ----------------------------------------
@@ -111,9 +93,7 @@ export class Elasticsearch implements INodeType {
 
 					const endpoint = `/${indexId}/_doc/${documentId}`;
 					responseData = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
-
 				} else if (operation === 'get') {
-
 					// ----------------------------------------
 					//              document: get
 					// ----------------------------------------
@@ -142,9 +122,7 @@ export class Elasticsearch implements INodeType {
 							...responseData._source,
 						};
 					}
-
 				} else if (operation === 'getAll') {
-
 					// ----------------------------------------
 					//            document: getAll
 					// ----------------------------------------
@@ -170,7 +148,13 @@ export class Elasticsearch implements INodeType {
 						qs.size = this.getNodeParameter('limit', 0);
 					}
 
-					responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
+					responseData = await elasticsearchApiRequest.call(
+						this,
+						'GET',
+						`/${indexId}/_search`,
+						body,
+						qs,
+					);
 					responseData = responseData.hits.hits;
 
 					const simple = this.getNodeParameter('simple', 0) as IDataObject;
@@ -183,9 +167,7 @@ export class Elasticsearch implements INodeType {
 							};
 						});
 					}
-
 				} else if (operation === 'create') {
-
 					// ----------------------------------------
 					//             document: create
 					// ----------------------------------------
@@ -194,24 +176,22 @@ export class Elasticsearch implements INodeType {
 
 					const body: IDataObject = {};
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as
+						| 'defineBelow'
+						| 'autoMapInputData';
 
 					if (dataToSend === 'defineBelow') {
-
 						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						fields.forEach(({ fieldId, fieldValue }) => body[fieldId] = fieldValue);
-
+						fields.forEach(({ fieldId, fieldValue }) => (body[fieldId] = fieldValue));
 					} else {
-
 						const inputData = items[i].json;
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputsToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 
 						for (const key of Object.keys(inputData)) {
 							if (inputsToIgnore.includes(key)) continue;
 							body[key] = inputData[key];
 						}
-
 					}
 
 					const qs = {} as IDataObject;
@@ -234,9 +214,7 @@ export class Elasticsearch implements INodeType {
 						const endpoint = `/${indexId}/_doc`;
 						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body, qs);
 					}
-
 				} else if (operation === 'update') {
-
 					// ----------------------------------------
 					//             document: update
 					// ----------------------------------------
@@ -245,24 +223,22 @@ export class Elasticsearch implements INodeType {
 
 					const body = { doc: {} } as { doc: { [key: string]: string } };
 
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as
+						| 'defineBelow'
+						| 'autoMapInputData';
 
 					if (dataToSend === 'defineBelow') {
-
 						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						fields.forEach(({ fieldId, fieldValue }) => body.doc[fieldId] = fieldValue);
-
+						fields.forEach(({ fieldId, fieldValue }) => (body.doc[fieldId] = fieldValue));
 					} else {
-
 						const inputData = items[i].json;
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputsToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputsToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 
 						for (const key of Object.keys(inputData)) {
 							if (inputsToIgnore.includes(key)) continue;
 							body.doc[key] = inputData[key] as string;
 						}
-
 					}
 
 					const indexId = this.getNodeParameter('indexId', i);
@@ -275,11 +251,8 @@ export class Elasticsearch implements INodeType {
 
 					const endpoint = `/${indexId}/_update/${documentId}`;
 					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body, qs);
-
 				}
-
 			} else if (resource === 'index') {
-
 				// **********************************************************************
 				//                                 index
 				// **********************************************************************
@@ -287,7 +260,6 @@ export class Elasticsearch implements INodeType {
 				// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices.html
 
 				if (operation === 'create') {
-
 					// ----------------------------------------
 					//              index: create
 					// ----------------------------------------
@@ -309,9 +281,7 @@ export class Elasticsearch implements INodeType {
 					responseData = await elasticsearchApiRequest.call(this, 'PUT', `/${indexId}`);
 					responseData = { id: indexId, ...responseData };
 					delete responseData.index;
-
 				} else if (operation === 'delete') {
-
 					// ----------------------------------------
 					//              index: delete
 					// ----------------------------------------
@@ -322,9 +292,7 @@ export class Elasticsearch implements INodeType {
 
 					responseData = await elasticsearchApiRequest.call(this, 'DELETE', `/${indexId}`);
 					responseData = { success: true };
-
 				} else if (operation === 'get') {
-
 					// ----------------------------------------
 					//              index: get
 					// ----------------------------------------
@@ -342,9 +310,7 @@ export class Elasticsearch implements INodeType {
 
 					responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}`, {}, qs);
 					responseData = { id: indexId, ...responseData[indexId] };
-
 				} else if (operation === 'getAll') {
-
 					// ----------------------------------------
 					//              index: getAll
 					// ----------------------------------------
@@ -352,7 +318,7 @@ export class Elasticsearch implements INodeType {
 					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
 
 					responseData = await elasticsearchApiRequest.call(this, 'GET', '/_aliases');
-					responseData = Object.keys(responseData).map(i => ({ indexId: i }));
+					responseData = Object.keys(responseData).map((i) => ({ indexId: i }));
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -360,15 +326,12 @@ export class Elasticsearch implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.slice(0, limit);
 					}
-
 				}
-
 			}
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

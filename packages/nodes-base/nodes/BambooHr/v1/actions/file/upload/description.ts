@@ -8,34 +8,28 @@ export const fileUploadDescription: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		required: true,
-		description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
+		description:
+			'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 	},
 	{
 		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCompanyFileCategories',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -47,12 +41,8 @@ export const fileUploadDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		default: {},

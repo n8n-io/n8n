@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const workspaceOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const workspaceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'workspace',
-				],
+				resource: ['workspace'],
 			},
 		},
 		options: [
@@ -34,12 +30,8 @@ export const workspaceFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'workspace',
-				],
+				operation: ['getAll'],
+				resource: ['workspace'],
 			},
 		},
 		default: false,
@@ -51,15 +43,9 @@ export const workspaceFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'workspace',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['workspace'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

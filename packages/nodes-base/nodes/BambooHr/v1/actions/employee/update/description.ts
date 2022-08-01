@@ -1,6 +1,4 @@
-import {
-	EmployeeProperties,
-} from '../../Interfaces';
+import { EmployeeProperties } from '../../Interfaces';
 import { updateEmployeeSharedDescription } from './sharedDescription';
 
 export const employeeUpdateDescription: EmployeeProperties = [
@@ -11,12 +9,8 @@ export const employeeUpdateDescription: EmployeeProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['update'],
+				resource: ['employee'],
 			},
 		},
 		default: '',
@@ -28,16 +22,13 @@ export const employeeUpdateDescription: EmployeeProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['update'],
+				resource: ['employee'],
 			},
 		},
 		default: false,
-		description: 'Whether the employee to create was added to a pay schedule synced with Trax Payroll',
+		description:
+			'Whether the employee to create was added to a pay schedule synced with Trax Payroll',
 	},
 	...updateEmployeeSharedDescription(true),
 	{
@@ -48,12 +39,8 @@ export const employeeUpdateDescription: EmployeeProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['update'],
+				resource: ['employee'],
 			},
 		},
 		options: [
