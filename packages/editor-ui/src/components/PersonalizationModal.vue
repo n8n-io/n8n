@@ -89,7 +89,7 @@ import {
 	COMPANY_TYPE_KEY,
 	SAAS_COMPANY_TYPE,
 	ECOMMERCE_COMPANY_TYPE,
-	MSP_COMPANY_TYPE,
+	MSP_INDUSTRY,
 	DIGITAL_AGENCY_COMPANY_TYPE,
 	SYSTEMS_INTEGRATOR_COMPANY_TYPE,
 	OTHER_COMPANY_TYPE,
@@ -215,7 +215,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 								label: this.$locale.baseText('personalizationModal.legal'),
 							},
 							{
-								value: MSP_COMPANY_TYPE,
+								value: MSP_INDUSTRY,
 								label: this.$locale.baseText('personalizationModal.managedServiceProvider'),
 							},
 							{
