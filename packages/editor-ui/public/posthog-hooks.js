@@ -81,6 +81,15 @@ function appendNoCapture(originalClasses) {
 }
 
 window.n8nExternalHooks = {
+	copyInput: {
+		mounted: [
+			function(_, meta) {
+				const { value } = meta.copyInputValueRef.classList;
+				meta.copyInputValueRef.classList.value = appendNoCapture(value);
+			}
+		],
+	},
+
 	workflowOpen: {
 
 		/**
@@ -120,8 +129,6 @@ window.n8nExternalHooks = {
 		 */
 		mounted: [
 			function(_, meta) {
-				console.log(meta.stickyRef);
-				// sticky content
 				meta.stickyRef.classList.value = appendNoCapture(meta.stickyRef.classList.value);
 			}
 		],
