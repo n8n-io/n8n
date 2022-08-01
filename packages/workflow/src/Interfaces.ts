@@ -974,13 +974,12 @@ export interface INodeProperties {
 	modes?: INodePropertyMode[];
 }
 
-// Base resource locator mode type. Can be used for 'By Id' and 'By URL' modes
 export interface INodePropertyMode {
 	displayName: string;
 	name: string;
 	type: 'string' | 'list';
 	hint: string;
-	validation: Array<
+	validation?: Array<
 		INodePropertyModeValidation | { (this: IExecuteSingleFunctions, value: string): void }
 	>;
 	placeholder: string;
@@ -989,13 +988,8 @@ export interface INodePropertyMode {
 		type: string;
 		regex: string;
 	};
-}
-
-// Resource locator list mode type
-export interface INodePropertyModeList extends INodePropertyMode {
-	type: 'list';
-	initType: string;
-	entryTypes: {
+	initType?: string;
+	entryTypes?: {
 		[name: string]: {
 			selectable?: boolean;
 			hidden?: boolean;
@@ -1008,7 +1002,6 @@ export interface INodePropertyModeList extends INodePropertyMode {
 	};
 	search?: INodePropertyRouting;
 }
-
 export interface INodePropertyModeValidation {
 	type: string;
 	properties: {};
