@@ -1,23 +1,17 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../../../transport';
+import { apiRequest } from '../../../transport';
 
 import moment from 'moment';
 
-import {
-	capitalCase
-} from 'change-case';
+import { capitalCase } from 'change-case';
 
-export async function create(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function create(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
 	const requestMethod = 'POST';
 	const endpoint = 'employees';
@@ -30,8 +24,12 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	const synced = this.getNodeParameter('synced', index) as boolean;
 
 	if (synced) {
-		Object.assign(body, { address: this.getNodeParameter('address.value', index, {}) as IDataObject });
-		Object.assign(body, { payRate: this.getNodeParameter('payRate.value', index, {}) as IDataObject });
+		Object.assign(body, {
+			address: this.getNodeParameter('address.value', index, {}) as IDataObject,
+		});
+		Object.assign(body, {
+			payRate: this.getNodeParameter('payRate.value', index, {}) as IDataObject,
+		});
 		body.department = this.getNodeParameter('department', index) as string;
 		body.dateOfBirth = this.getNodeParameter('dateOfBirth', index);
 		body.division = this.getNodeParameter('division', index) as string;
@@ -47,8 +45,12 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 		body.preferredName = this.getNodeParameter('preferredName', index) as string;
 		body.ssn = this.getNodeParameter('ssn', index) as string;
 	} else {
-		Object.assign(body, { address: this.getNodeParameter('additionalFields.address.value', index, {}) as IDataObject });
-		Object.assign(body, { payRate: this.getNodeParameter('additionalFields.payRate.value', index, {}) as IDataObject });
+		Object.assign(body, {
+			address: this.getNodeParameter('additionalFields.address.value', index, {}) as IDataObject,
+		});
+		Object.assign(body, {
+			payRate: this.getNodeParameter('additionalFields.payRate.value', index, {}) as IDataObject,
+		});
 		delete additionalFields.address;
 		delete additionalFields.payRate;
 	}
@@ -88,7 +90,14 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	}
 
 	//response
-	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, {}, { resolveWithFullResponse: true });
+	const responseData = await apiRequest.call(
+		this,
+		requestMethod,
+		endpoint,
+		body,
+		{},
+		{ resolveWithFullResponse: true },
+	);
 
 	//obtain employeeID
 	const rawEmployeeId = responseData.headers.location.lastIndexOf('/');
