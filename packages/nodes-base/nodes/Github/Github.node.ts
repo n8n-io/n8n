@@ -2108,6 +2108,7 @@ export class Github implements INodeType {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
 				}
 
+				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i, false) as boolean;
 				if (returnAll === true) {
 					const allItems = await githubApiRequestAllItems.call(
 						this,
@@ -2116,15 +2117,13 @@ export class Github implements INodeType {
 						body,
 						qs,
 					);
-					responseData = this.helpers.preparePairedOutputData(allItems, false, {item: i});
+					responseData = this.helpers.preparePairedOutputData(allItems, asBinaryProperty, {item: i});
 				} else {
-					const isBinaryData = this.getNodeParameter('asBinaryProperty', i) as boolean;
 					const data = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
-					responseData = this.helpers.preparePairedOutputData(data, isBinaryData, {item: i});
+					responseData = this.helpers.preparePairedOutputData(data, asBinaryProperty, {item: i});
 				}
 
 				if (fullOperation === 'file:get') {
-					const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
 
 					if (asBinaryProperty === true) {
 						if (Array.isArray(responseData) && responseData.length > 1) {
