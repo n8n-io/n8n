@@ -1,7 +1,6 @@
 // version 0.1.0
 
-// @TODO_ON_COMPLETION: Disable
-const LOGGING_ENABLED = true;
+const LOGGING_ENABLED = true; // @TODO_ON_COMPLETION: Disable logging
 const POSTHOG_NO_CAPTURE_CLASS = 'ph-no-capture';
 
 const internalMethods = {
@@ -212,11 +211,26 @@ window.n8nExternalHooks = {
 		],
 	},
 
+	runData: {
+		/**
+		 * runData.updated
+		 */
+		 updated: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: runData.updated');
+
+				for (const element of meta.elements) {
+					element.classList.value = appendNoCapture(element.classList.value)
+				}
+			}
+		],
+	},
+
 	nodeView: {
 
 		/**
 		 * Used only for calling `resetNodesPanelSession()`,
-		 * which sets `sessionId` used by `addNodeButton`.
+		 * which sets `sessionId` used by `nodeView.addNodeButton`.
 		 */
 		createNodeActiveChanged: [
 			function (_, meta) {
