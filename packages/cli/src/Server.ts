@@ -785,11 +785,10 @@ class App {
 							400,
 						);
 					}
-					const { data } = await axios.get(req.query.url as string);
-
 					let workflowData: IWorkflowResponse | undefined;
 					try {
-						workflowData = JSON.parse(JSON.stringify(data));
+						const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
+						workflowData = data;
 					} catch (error) {
 						throw new ResponseHelper.ResponseError(
 							`The URL does not point to valid JSON file!`,
