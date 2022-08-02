@@ -1,4 +1,3 @@
-import { BinaryDataManager } from 'n8n-core';
 import {
 	IDataObject,
 	IExecuteSingleFunctions,
@@ -32,8 +31,11 @@ export async function setupUpload(
 	}
 	const mimeType = binaryFile.mimeType;
 
+
+	const buffer = await this.helpers.getBinaryDataBuffer(mediaPropertyName);
+
 	const data = new FormData();
-	data.append('file', await BinaryDataManager.getInstance().retrieveBinaryData(binaryFile), {
+	data.append('file', buffer, {
 		contentType: mimeType,
 		filename: mediaFileName || binaryFileName,
 	});
