@@ -340,7 +340,7 @@ export const messageFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is \'attachment_\' the first attachment is saved to \'attachment_0\'.',
 			},
 		],
 	},
@@ -422,7 +422,7 @@ export const messageFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is \'attachment_\' the first attachment is saved to \'attachment_0\'.',
 			},
 			{
 				displayName: 'Format',
@@ -488,7 +488,7 @@ export const messageFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
+				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, \'from:name@email.com is:unread\'. See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
 			},
 			{
 				displayName: 'Read Status',

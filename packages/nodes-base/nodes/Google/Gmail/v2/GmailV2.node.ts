@@ -327,7 +327,7 @@ export class GmailV2 implements INodeType {
 							const email = entry.trim();
 
 							if (email.indexOf('@') === -1) {
-								throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Send To" input field is not valid`, { itemIndex: i });
+								throw new NodeOperationError(this.getNode(), `Email address ${email} inside 'Send To' input field is not valid`, { itemIndex: i });
 							}
 
 							toStr += `<${email}>, `;
@@ -386,18 +386,16 @@ export class GmailV2 implements INodeType {
 							from = `${options.senderName as string} <${emailAddress}>`;
 						}
 
-
 						const emailType = this.getNodeParameter('emailType', i) as string;
 
 						let messageBody = '';
 						let messageBodyHtml = '';
 
 						if (emailType === 'html') {
-							messageBodyHtml = this.getNodeParameter('message', i) as string;
+							messageBodyHtml = (this.getNodeParameter('message', i, '') as string).trim();
 						} else {
-							messageBody = this.getNodeParameter('message', i) as string;
+							messageBody = (this.getNodeParameter('message', i, '') as string).trim();
 						}
-
 
 						const email: IEmail = {
 							from,
@@ -498,7 +496,7 @@ export class GmailV2 implements INodeType {
 								const email = entry.trim();
 
 								if (email.indexOf('@') === -1) {
-									throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Extra to Recipients" option is not valid`, { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), `Email address ${email} inside 'Extra to Recipients' option is not valid`, { itemIndex: i });
 								}
 
 								toStr += `<${email}>, `;
@@ -522,9 +520,9 @@ export class GmailV2 implements INodeType {
 						let messageBodyHtml = '';
 
 						if (emailType === 'html') {
-							messageBodyHtml = this.getNodeParameter('message', i) as string;
+							messageBodyHtml = (this.getNodeParameter('message', i, '') as string).trim();
 						} else {
-							messageBody = this.getNodeParameter('message', i) as string;
+							messageBody = (this.getNodeParameter('message', i, '') as string).trim();
 						}
 
 						const email: IEmail = {
@@ -699,7 +697,7 @@ export class GmailV2 implements INodeType {
 								const email = entry.trim();
 
 								if (email.indexOf('@') === -1) {
-									throw new NodeOperationError(this.getNode(), `Email address ${email} is not valid`, { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), `Email address ${email} inside 'Send To' input field is not valid`, { itemIndex: i });
 								}
 
 								toStr += `<${email}>, `;
@@ -761,9 +759,9 @@ export class GmailV2 implements INodeType {
 						let messageBodyHtml = '';
 
 						if (emailType === 'html') {
-							messageBodyHtml = this.getNodeParameter('message', i) as string;
+							messageBodyHtml = (this.getNodeParameter('message', i, '') as string).trim();
 						} else {
-							messageBody = this.getNodeParameter('message', i) as string;
+							messageBody = (this.getNodeParameter('message', i, '') as string).trim();
 						}
 
 						const email: IEmail = {
@@ -1045,7 +1043,7 @@ export class GmailV2 implements INodeType {
 								const email = entry.trim();
 
 								if (email.indexOf('@') === -1) {
-									throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Extra to Recipients" option is not valid`, { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), `Email address ${email} inside 'Extra to Recipients' option is not valid`, { itemIndex: i });
 								}
 
 								toStr += `<${email}>, `;
@@ -1069,9 +1067,9 @@ export class GmailV2 implements INodeType {
 						let messageBodyHtml = '';
 
 						if (emailType === 'html') {
-							messageBodyHtml = this.getNodeParameter('message', i) as string;
+							messageBodyHtml = (this.getNodeParameter('message', i, '') as string).trim();
 						} else {
-							messageBody = this.getNodeParameter('message', i) as string;
+							messageBody = (this.getNodeParameter('message', i, '') as string).trim();
 						}
 
 						const email: IEmail = {

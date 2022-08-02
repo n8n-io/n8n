@@ -379,7 +379,7 @@ export const threadFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
+				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, \'from:name@email.com is:unread\'. See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
 			},
 			{
 				displayName: 'Read Status',

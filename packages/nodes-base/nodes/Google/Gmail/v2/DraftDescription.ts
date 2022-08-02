@@ -234,7 +234,7 @@ export const draftFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is \'attachment_\' the first attachment is saved to \'attachment_0\'.',
 			},
 			{
 				displayName: 'Format',
@@ -350,7 +350,7 @@ export const draftFields: INodeProperties[] = [
 						],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is \'attachment_\' the first attachment is saved to \'attachment_0\'.',
 			},
 			{
 				displayName: 'Format',
