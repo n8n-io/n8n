@@ -286,21 +286,21 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 >;
 
 // ----------------------------------
-//      /tags
+//             /tags
 // ----------------------------------
 
 export declare namespace TagsRequest {
 	type Delete = AuthenticatedRequest<{ id: string }>;
 }
 
-export declare namespace NodeRequest {
-	type RequestBody = {
-		name: string;
-	};
+// ----------------------------------
+//             /nodes
+// ----------------------------------
 
+export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<{}, {}, RequestBody>;
+	type Post = AuthenticatedRequest<{}, {}, { name?: string }>;
 
 	type Delete = Post;
 
