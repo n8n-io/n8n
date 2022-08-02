@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -77,10 +75,7 @@ export class ApiTemplateIo implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'image',
-							'pdf',
-						],
+						resource: ['image', 'pdf'],
 					},
 				},
 			},
@@ -100,9 +95,7 @@ export class ApiTemplateIo implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'account',
-						],
+						resource: ['account'],
 					},
 				},
 			},
@@ -112,18 +105,15 @@ export class ApiTemplateIo implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getImageTemplates',
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'image',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['image'],
+						operation: ['create'],
 					},
 				},
 			},
@@ -133,18 +123,15 @@ export class ApiTemplateIo implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getPdfTemplates',
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'pdf',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['pdf'],
+						operation: ['create'],
 					},
 				},
 			},
@@ -155,13 +142,8 @@ export class ApiTemplateIo implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource: [
-							'pdf',
-							'image',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['pdf', 'image'],
+						operation: ['create'],
 					},
 				},
 			},
@@ -172,13 +154,8 @@ export class ApiTemplateIo implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource: [
-							'pdf',
-							'image',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['pdf', 'image'],
+						operation: ['create'],
 					},
 				},
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
@@ -193,16 +170,9 @@ export class ApiTemplateIo implements INodeType {
 				description: 'Name of the binary property to which to write to',
 				displayOptions: {
 					show: {
-						resource: [
-							'pdf',
-							'image',
-						],
-						operation: [
-							'create',
-						],
-						download: [
-							true,
-						],
+						resource: ['pdf', 'image'],
+						operation: ['create'],
+						download: [true],
 					},
 				},
 			},
@@ -213,15 +183,9 @@ export class ApiTemplateIo implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'image',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['image'],
+						operation: ['create'],
+						jsonParameters: [true],
 					},
 				},
 				placeholder: `[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]`,
@@ -233,15 +197,9 @@ export class ApiTemplateIo implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'pdf',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['pdf'],
+						operation: ['create'],
+						jsonParameters: [true],
 					},
 				},
 				placeholder: `{ "name": "text_1" }`,
@@ -256,15 +214,9 @@ export class ApiTemplateIo implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'image',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							false,
-						],
+						resource: ['image'],
+						operation: ['create'],
+						jsonParameters: [false],
 					},
 				},
 				default: {},
@@ -320,15 +272,9 @@ export class ApiTemplateIo implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'pdf',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							false,
-						],
+						resource: ['pdf'],
+						operation: ['create'],
+						jsonParameters: [false],
 					},
 				},
 				options: [
@@ -361,16 +307,9 @@ export class ApiTemplateIo implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'pdf',
-							'image',
-						],
-						'download': [
-							true,
-						],
+						operation: ['create'],
+						resource: ['pdf', 'image'],
+						download: [true],
 					},
 				},
 				default: {},
@@ -380,7 +319,8 @@ export class ApiTemplateIo implements INodeType {
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: 'The name of the downloaded image/pdf. It has to include the extension. For example: report.pdf',
+						description:
+							'The name of the downloaded image/pdf. It has to include the extension. For example: report.pdf',
 					},
 				],
 			},
@@ -410,13 +350,11 @@ export class ApiTemplateIo implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		if (resource === 'account') {
-
 			// *********************************************************************
 			//                               account
 			// *********************************************************************
 
 			if (operation === 'get') {
-
 				// ----------------------------------
 				//         account: get
 				// ----------------------------------
@@ -428,16 +366,14 @@ export class ApiTemplateIo implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({json:{ error: error.message }});
+							returnData.push({ json: { error: error.message } });
 							continue;
 						}
 						throw error;
 					}
 				}
 			}
-
 		} else if (resource === 'image') {
-
 			// *********************************************************************
 			//                               image
 			// *********************************************************************
@@ -466,12 +402,21 @@ export class ApiTemplateIo implements INodeType {
 						const body = { overrides: [] } as IDataObject;
 
 						if (jsonParameters === false) {
-							const overrides = (this.getNodeParameter('overridesUi', i) as IDataObject || {}).overrideValues as IDataObject[] || [];
+							const overrides =
+								(((this.getNodeParameter('overridesUi', i) as IDataObject) || {})
+									.overrideValues as IDataObject[]) || [];
 							if (overrides.length !== 0) {
 								const data: IDataObject[] = [];
 								for (const override of overrides) {
-									const properties = (override.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
-									data.push(properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}));
+									const properties =
+										(((override.propertiesUi as IDataObject) || {})
+											.propertyValues as IDataObject[]) || [];
+									data.push(
+										properties.reduce(
+											(obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }),
+											{},
+										),
+									);
 								}
 								body.overrides = data;
 							}
@@ -480,7 +425,9 @@ export class ApiTemplateIo implements INodeType {
 							if (overrideJson !== '') {
 								const data = validateJSON(overrideJson);
 								if (data === undefined) {
-									throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', { itemIndex: i });
+									throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', {
+										itemIndex: i,
+									});
 								}
 								body.overrides = data;
 							}
@@ -492,7 +439,10 @@ export class ApiTemplateIo implements INodeType {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 							const data = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
-							const binaryData = await this.helpers.prepareBinaryData(data, options.fileName || fileName);
+							const binaryData = await this.helpers.prepareBinaryData(
+								data,
+								options.fileName || fileName,
+							);
 							responseData = {
 								json: responseData,
 								binary: {
@@ -503,7 +453,7 @@ export class ApiTemplateIo implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({json:{ error: error.message }});
+							returnData.push({ json: { error: error.message } });
 							continue;
 						}
 						throw error;
@@ -514,15 +464,12 @@ export class ApiTemplateIo implements INodeType {
 					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
 				}
 			}
-
 		} else if (resource === 'pdf') {
-
 			// *********************************************************************
 			//                               pdf
 			// *********************************************************************
 
 			if (operation === 'create') {
-
 				// ----------------------------------
 				//          pdf: create
 				// ----------------------------------
@@ -546,16 +493,27 @@ export class ApiTemplateIo implements INodeType {
 						let data;
 
 						if (jsonParameters === false) {
-							const properties = (this.getNodeParameter('propertiesUi', i) as IDataObject || {}).propertyValues as IDataObject[] || [];
+							const properties =
+								(((this.getNodeParameter('propertiesUi', i) as IDataObject) || {})
+									.propertyValues as IDataObject[]) || [];
 							if (properties.length === 0) {
-								throw new NodeOperationError(this.getNode(), 'The parameter properties cannot be empty', { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									'The parameter properties cannot be empty',
+									{ itemIndex: i },
+								);
 							}
-							data = properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {});
+							data = properties.reduce(
+								(obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }),
+								{},
+							);
 						} else {
 							const propertiesJson = this.getNodeParameter('propertiesJson', i) as string;
 							data = validateJSON(propertiesJson);
 							if (data === undefined) {
-								throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', { itemIndex: i });
+								throw new NodeOperationError(this.getNode(), 'A valid JSON must be provided.', {
+									itemIndex: i,
+								});
 							}
 						}
 
@@ -565,7 +523,10 @@ export class ApiTemplateIo implements INodeType {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 							const data = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
-							const binaryData = await this.helpers.prepareBinaryData(data, options.fileName || fileName);
+							const binaryData = await this.helpers.prepareBinaryData(
+								data,
+								options.fileName || fileName,
+							);
 							responseData = {
 								json: responseData,
 								binary: {
@@ -576,7 +537,7 @@ export class ApiTemplateIo implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({json:{ error: error.message }});
+							returnData.push({ json: { error: error.message } });
 							continue;
 						}
 						throw error;

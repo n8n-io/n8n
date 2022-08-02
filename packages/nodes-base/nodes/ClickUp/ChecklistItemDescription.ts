@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const checklistItemOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const checklistItemOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
+				resource: ['checklistItem'],
 			},
 		},
 		options: [
@@ -40,7 +36,6 @@ export const checklistItemOperations: INodeProperties[] = [
 ];
 
 export const checklistItemFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                checklistItem:create                        */
 	/* -------------------------------------------------------------------------- */
@@ -51,12 +46,8 @@ export const checklistItemFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['checklistItem'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -68,12 +59,8 @@ export const checklistItemFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['checklistItem'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -86,12 +73,8 @@ export const checklistItemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['checklistItem'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -114,12 +97,8 @@ export const checklistItemFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['checklistItem'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -131,12 +110,8 @@ export const checklistItemFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['checklistItem'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -152,12 +127,8 @@ export const checklistItemFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['checklistItem'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -169,12 +140,8 @@ export const checklistItemFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['checklistItem'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -187,12 +154,8 @@ export const checklistItemFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['checklistItem'],
+				operation: ['update'],
 			},
 		},
 		options: [

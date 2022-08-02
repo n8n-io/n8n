@@ -1,6 +1,4 @@
-import {
-	EmployeeDocumentProperties,
-} from '../../Interfaces';
+import { EmployeeDocumentProperties } from '../../Interfaces';
 
 export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 	{
@@ -10,12 +8,8 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['getAll'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',
@@ -27,12 +21,8 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['getAll'],
+				resource: ['employeeDocument'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -49,15 +39,9 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'employeeDocument',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['employeeDocument'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -68,12 +52,8 @@ export const employeeDocumentGetAllDescription: EmployeeDocumentProperties = [
 		default: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['getAll'],
+				resource: ['employeeDocument'],
 			},
 		},
 		description: 'Whether to return a simplified version of the response instead of the raw data',

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const textOperations: INodeProperties[] = [
 	{
@@ -15,9 +13,7 @@ export const textOperations: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'translate',
-				],
+				operation: ['translate'],
 			},
 		},
 	},
@@ -29,13 +25,12 @@ export const textOperations: INodeProperties[] = [
 			loadOptionsMethod: 'getLanguages',
 		},
 		default: '',
-		description: 'Language to translate to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Language to translate to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'translate',
-				],
+				operation: ['translate'],
 			},
 		},
 	},
@@ -51,7 +46,8 @@ export const textOperations: INodeProperties[] = [
 				name: 'sourceLang',
 				type: 'options',
 				default: '',
-				description: 'Language to translate from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Language to translate from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
@@ -85,12 +81,14 @@ export const textOperations: INodeProperties[] = [
 				name: 'preserveFormatting',
 				type: 'options',
 				default: '0',
-				description: 'Whether the translation engine should respect the original formatting, even if it would usually correct some aspects',
+				description:
+					'Whether the translation engine should respect the original formatting, even if it would usually correct some aspects',
 				options: [
 					{
 						name: 'Apply Corrections',
 						value: '0',
-						description: 'Fix punctuation at the beginning and end of sentences and fixes lower/upper caseing at the beginning',
+						description:
+							'Fix punctuation at the beginning and end of sentences and fixes lower/upper caseing at the beginning',
 					},
 					{
 						name: 'Do Not Correct',
@@ -104,7 +102,8 @@ export const textOperations: INodeProperties[] = [
 				name: 'formality',
 				type: 'options',
 				default: 'default',
-				description: 'How formal or informal the target text should be. May not be supported with all languages.',
+				description:
+					'How formal or informal the target text should be. May not be supported with all languages.',
 				options: [
 					{
 						name: 'Formal',

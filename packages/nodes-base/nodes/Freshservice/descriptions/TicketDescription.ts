@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const ticketOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const ticketOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
+				resource: ['ticket'],
 			},
 		},
 		options: [
@@ -65,12 +61,8 @@ export const ticketFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -81,12 +73,8 @@ export const ticketFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -98,12 +86,8 @@ export const ticketFields: INodeProperties[] = [
 		description: 'HTML supported',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -114,12 +98,8 @@ export const ticketFields: INodeProperties[] = [
 		default: 1,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -148,12 +128,8 @@ export const ticketFields: INodeProperties[] = [
 		default: 2,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -183,12 +159,8 @@ export const ticketFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -204,7 +176,8 @@ export const ticketFields: INodeProperties[] = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department to which this ticket belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the department to which this ticket belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -214,7 +187,8 @@ export const ticketFields: INodeProperties[] = [
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the group to which the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the group to which the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgentGroups',
 				},
@@ -250,7 +224,8 @@ export const ticketFields: INodeProperties[] = [
 				displayName: 'Requester Name or ID',
 				name: 'requester_id',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getRequesters',
@@ -271,12 +246,8 @@ export const ticketFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['ticket'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -293,12 +264,8 @@ export const ticketFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['ticket'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -314,12 +281,8 @@ export const ticketFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -334,15 +297,9 @@ export const ticketFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -354,12 +311,8 @@ export const ticketFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticket'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -368,7 +321,8 @@ export const ticketFields: INodeProperties[] = [
 				name: 'agent_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom the tickets have been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the agent to whom the tickets have been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgents',
 				},
@@ -378,7 +332,8 @@ export const ticketFields: INodeProperties[] = [
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the group to which the tickets have been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the group to which the tickets have been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgentGroups',
 				},
@@ -480,12 +435,8 @@ export const ticketFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -497,12 +448,8 @@ export const ticketFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -511,7 +458,8 @@ export const ticketFields: INodeProperties[] = [
 				name: 'department_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the department to which this ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the department to which this ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getDepartments',
 				},
@@ -536,7 +484,8 @@ export const ticketFields: INodeProperties[] = [
 				name: 'group_id',
 				type: 'options',
 				default: '',
-				description: 'ID of the group to which the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the group to which the ticket has been assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getAgentGroups',
 				},
