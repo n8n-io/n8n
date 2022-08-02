@@ -1710,6 +1710,7 @@ class App {
 				};
 
 				const data = oauth.toHeader(oauth.authorize(options));
+				// console.log(data);
 
 				// @ts-ignore
 				options.headers = data;
@@ -1813,20 +1814,59 @@ class App {
 						timezone,
 					);
 
+					//------------------------------------------------------------------------------
+
+					const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
+					const oAuthOptions: clientOAuth1.Options = {
+						consumer: {
+							key: _.get(oauthCredentials, 'consumerKey') as string,
+							secret: _.get(oauthCredentials, 'consumerSecret') as string,
+						},
+						signature_method: signatureMethod,
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						hash_function(base, key) {
+							const algorithm = signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
+							return createHmac(algorithm, key).update(base).digest('base64');
+						},
+					};
+
+					const oauthRequestData = {
+						oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${
+							this.restEndpoint
+						}/oauth1-credential/callback?cid=${credentialId}`,
+					};
+
+					const oauth = new clientOAuth1(oAuthOptions);
+
+					const optionsForAuth: RequestOptions = {
+						method: 'POST',
+						url: _.get(oauthCredentials, 'requestTokenUrl') as string,
+						data: oauthRequestData,
+					};
+
+					const data = oauth.toHeader(oauth.authorize(optionsForAuth));
+
+					//-----------------------------------------------------------------------------
+
 					const options: OptionsWithUrl = {
+						headers: data,
 						method: 'POST',
 						url: _.get(oauthCredentials, 'accessTokenUrl') as string,
+						json: true,
 						qs: {
 							oauth_token,
 							oauth_verifier,
 						},
 					};
 
+					console.log(options, data);
+
 					let oauthToken;
 
 					try {
 						oauthToken = await requestPromise(options);
 					} catch (error) {
+						console.log(error);
 						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
 							userId: req.user?.id,
 							credentialId,
