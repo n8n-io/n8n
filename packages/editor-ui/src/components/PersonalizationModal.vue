@@ -412,16 +412,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 					},
 				},
 				{
-					name: OTHER_MARKETING_AUTOMATION_GOAL_KEY,
-					properties: {
-						placeholder: this.$locale.baseText('personalizationModal.specifyYourCompanysIndustry'),
-					},
-					shouldDisplay(values): boolean {
-						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
-						return !!goals && goals.includes(MARKETING_AUTOMATION_OTHER);
-					},
-				},
-				{
 					name: COMPANY_SIZE_KEY,
 					properties: {
 						type: 'select',
