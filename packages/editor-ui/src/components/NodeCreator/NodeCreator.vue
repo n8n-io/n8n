@@ -54,20 +54,37 @@ export default Vue.extend({
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
 			return this.allNodeTypes
-				.filter((nodeType: INodeTypeDescription) => {
-					return !HIDDEN_NODES.includes(nodeType.name);
-				}).reduce((accumulator: INodeTypeDescription[], currentValue: INodeTypeDescription) => {
-					// keep only latest version of the nodes
-					// accumulator starts as an empty array.
-					const exists = accumulator.findIndex(nodes => nodes.name === currentValue.name);
-					if (exists >= 0 && accumulator[exists].version < currentValue.version) {
-						// This must be a versioned node and we've found a newer version.
-						// Replace the previous one with this one.
-						accumulator[exists] = currentValue;
-					} else {
-						accumulator.push(currentValue);
+				.reduce((visibleNodeTypes: INodeTypeDescription[], nodeType: INodeTypeDescription) => {
+					if (HIDDEN_NODES.includes(nodeType.name)) return visibleNodeTypes;
+
+					const seenIndex = visibleNodeTypes.findIndex(node => node.name === nodeType.name);
+
+					const seen = seenIndex >= 0;
+
+					if (!seen) {
+						visibleNodeTypes.push(nodeType);
+						return visibleNodeTypes;
 					}
-					return accumulator;
+
+					if (
+						seen &&
+						Number.isInteger(nodeType.version) &&
+						visibleNodeTypes[seenIndex].version < nodeType.version
+					) {
+						visibleNodeTypes[seenIndex] = nodeType;
+						return visibleNodeTypes;
+					}
+
+					if (
+						seen &&
+						Array.isArray(nodeType.version) &&
+						visibleNodeTypes[seenIndex].version < Math.max(...nodeType.version)
+					) {
+						visibleNodeTypes[seenIndex] = nodeType;
+						return visibleNodeTypes;
+					}
+
+					return visibleNodeTypes;
 				}, []);
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
