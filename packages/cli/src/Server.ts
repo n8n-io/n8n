@@ -29,14 +29,17 @@
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-await-in-loop */
 
+import bodyParser from 'body-parser';
+import history from 'connect-history-api-fallback';
+import cookieParser from 'cookie-parser';
 import express from 'express';
-import { readFileSync, promises } from 'fs';
+import { promises, readFileSync } from 'fs';
 import { readFile } from 'fs/promises';
 import _, { cloneDeep } from 'lodash';
+import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
 	FindManyOptions,
-	getConnection,
 	getConnectionManager,
 	In,
 	IsNull,
@@ -44,16 +47,10 @@ import {
 	Not,
 	Raw,
 } from 'typeorm';
-import bodyParser from 'body-parser';
-import cookieParser from 'cookie-parser';
-import history from 'connect-history-api-fallback';
-import os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import clientOAuth2 from 'client-oauth2';
+import { createHmac } from 'crypto';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import csrf from 'csrf';
 import requestPromise, { OptionsWithUrl } from 'request-promise-native';
-import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -87,11 +84,9 @@ import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
-import querystring from 'querystring';
 import promClient, { Registry } from 'prom-client';
-import * as Queue from './Queue';
+import querystring from 'querystring';
 import {
-	LoadNodesAndCredentials,
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
@@ -101,6 +96,8 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	getCredentialForUser,
+	getCredentialWithoutUser,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
@@ -116,6 +113,7 @@ import {
 	IN8nUISettings,
 	IPackageVersions,
 	ITagWithCountDb,
+	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	IWorkflowResponse,
 	NodeTypes,
@@ -129,48 +127,43 @@ import {
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 	WorkflowRunner,
-	getCredentialForUser,
-	getCredentialWithoutUser,
-	IWorkflowDb,
 } from '.';
+import * as Queue from './Queue';
 
 import config from '../config';
 
 import * as TagHelpers from './TagHelpers';
 
-import { InternalHooksManager } from './InternalHooksManager';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getSharedWorkflowIds, isBelowOnboardingThreshold, whereClause } from './WorkflowHelpers';
+import { InternalHooksManager } from './InternalHooksManager';
 import { getCredentialTranslationPath, getNodeTranslationPath } from './TranslationHelpers';
 import { WEBHOOK_METHODS } from './WebhookHelpers';
+import { getSharedWorkflowIds, isBelowOnboardingThreshold, whereClause } from './WorkflowHelpers';
 
-import { userManagementRouter } from './UserManagement';
-import { resolveJwt } from './UserManagement/auth/jwt';
+import { credentialsController } from './api/credentials.api';
+import { nodesController } from './api/nodes.api';
+import { oauth2CredentialController } from './api/oauth2Credential.api';
+import { workflowsController } from './api/workflows.api';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
+import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 import { User } from './databases/entities/User';
+import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
+import { loadPublicApiVersions } from './PublicApi';
 import type {
-	AuthenticatedRequest,
-	CredentialRequest,
 	ExecutionRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
 	TagsRequest,
 	WorkflowRequest,
 } from './requests';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
-import { ExecutionEntity } from './databases/entities/ExecutionEntity';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
-import { credentialsController } from './api/credentials.api';
-import { workflowsController } from './api/workflows.api';
-import { nodesController } from './api/nodes.api';
-import { oauth2CredentialController } from './api/oauth2Credential.api';
+import { userManagementRouter } from './UserManagement';
+import { resolveJwt } from './UserManagement/auth/jwt';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
-import { loadPublicApiVersions } from './PublicApi';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 
 require('body-parser-xml')(bodyParser);
 
@@ -665,6 +658,7 @@ class App {
 						from: new RegExp(
 							// eslint-disable-next-line no-useless-escape
 							`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
+							// `^\/(${this.restEndpoint}(?!\/login\/)|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`,
 						),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();

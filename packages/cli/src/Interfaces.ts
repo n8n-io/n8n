@@ -29,15 +29,16 @@ import { Repository } from 'typeorm';
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
 import { Request } from 'express';
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { TagEntity } from './databases/entities/TagEntity';
-import { Role } from './databases/entities/Role';
-import { User } from './databases/entities/User';
-import { SharedCredentials } from './databases/entities/SharedCredentials';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
-import { Settings } from './databases/entities/Settings';
-import { InstalledPackages } from './databases/entities/InstalledPackages';
-import { InstalledNodes } from './databases/entities/InstalledNodes';
+import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import type { TagEntity } from './databases/entities/TagEntity';
+import type { Role } from './databases/entities/Role';
+import type { User } from './databases/entities/User';
+import type { SharedCredentials } from './databases/entities/SharedCredentials';
+import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import type { Settings } from './databases/entities/Settings';
+import type { InstalledPackages } from './databases/entities/InstalledPackages';
+import type { InstalledNodes } from './databases/entities/InstalledNodes';
+import type { FederatedUser } from './databases/entities/FederatedUser';
 
 export interface IActivationError {
 	time: number;
@@ -83,6 +84,7 @@ export interface IDatabaseCollections {
 	Tag: Repository<TagEntity>;
 	Role: Repository<Role>;
 	User: Repository<User>;
+	FederatedUser: Repository<FederatedUser>;
 	SharedCredentials: Repository<SharedCredentials>;
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;

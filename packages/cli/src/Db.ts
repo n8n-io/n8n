@@ -191,6 +191,7 @@ export async function init(
 
 	collections.Role = linkRepository(entities.Role);
 	collections.User = linkRepository(entities.User);
+	collections.FederatedUser = linkRepository(entities.FederatedUser);
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);

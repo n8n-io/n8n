@@ -1,27 +1,28 @@
 /* eslint-disable import/no-cycle */
+import { IsEmail, IsString, Length } from 'class-validator';
 import {
 	AfterLoad,
 	AfterUpdate,
+	BeforeInsert,
 	BeforeUpdate,
 	Column,
 	ColumnOptions,
 	CreateDateColumn,
 	Entity,
 	Index,
-	OneToMany,
 	ManyToOne,
+	OneToMany,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
-	BeforeInsert,
 } from 'typeorm';
-import { IsEmail, IsString, Length } from 'class-validator';
-import * as config from '../../../config';
 import { DatabaseType, IPersonalizationSurveyAnswers, IUserSettings } from '../..';
-import { Role } from './Role';
-import { SharedWorkflow } from './SharedWorkflow';
-import { SharedCredentials } from './SharedCredentials';
+import * as config from '../../../config';
 import { NoXss } from '../utils/customValidators';
-import { objectRetriever, lowerCaser } from '../utils/transformers';
+import { lowerCaser, objectRetriever } from '../utils/transformers';
+import { FederatedUser } from './FederatedUser';
+import { Role } from './Role';
+import { SharedCredentials } from './SharedCredentials';
+import { SharedWorkflow } from './SharedWorkflow';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -119,6 +120,9 @@ export class User {
 
 	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.user)
 	sharedCredentials: SharedCredentials[];
+
+	@OneToMany(() => FederatedUser, (federatedUser) => federatedUser.user)
+	federatedUsers: FederatedUser[];
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;

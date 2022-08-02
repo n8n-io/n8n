@@ -4,9 +4,12 @@
 /* eslint-disable import/no-cycle */
 import cookieParser from 'cookie-parser';
 import { NextFunction, Request, Response } from 'express';
+import expressSession from 'express-session';
 import jwt from 'jsonwebtoken';
 import { LoggerProxy as Logger } from 'n8n-workflow';
+import { generators, Issuer, Strategy as OIDCStrategy } from 'openid-client';
 import passport from 'passport';
+import { Strategy as JwtStrategy } from 'passport-jwt';
 
 import { Db } from '../..';
 import * as config from '../../../config';
@@ -25,11 +28,6 @@ import { meNamespace } from './me';
 import { ownerNamespace } from './owner';
 import { passwordResetNamespace } from './passwordReset';
 import { usersNamespace } from './users';
-
-import { Strategy as JwtStrategy } from 'passport-jwt';
-
-import expressSession from 'express-session';
-import { generators, Issuer, Strategy as OIDCStrategy } from 'openid-client';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
@@ -63,15 +61,14 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		}),
 	);
 
-	const CLIENT_ID = 'REDACTED';
-	const CLIENT_SECRET = 'REDACTED';
+	const CLIENT_ID = '974645230259-j5m3mbld4ibqqmmbvt3a174vn65d21fo.apps.googleusercontent.com';
+	const CLIENT_SECRET = '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';
 	const REDIRECT_URI_BASE = 'http://localhost:5678';
 
 	const initOIDC = async () => {
 		const googleIssuer = await Issuer.discover('https://accounts.google.com');
 
 		/* Authorize Code Flow */
-		/* client object */
 		const client = new googleIssuer.Client({
 			client_id: CLIENT_ID,
 			client_secret: CLIENT_SECRET,
@@ -91,12 +88,45 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 
 		passport.use(
 			'openid',
-			new OIDCStrategy({ client, params }, (tokenset, userinfo, done) => {
-				console.log('-----tokenset: ');
-				console.log(tokenset);
-				console.log('userinfo');
-				console.log(userinfo);
-				return done(null, tokenset.claims());
+			new OIDCStrategy({ client, params }, async (tokenset, userinfo, done) => {
+				const tokenData = tokenset.claims();
+
+				const federatedUser = await Db.collections.FederatedUser.findOne({
+					where: { identifier: userinfo.sub, issuer: tokenData.iss },
+				});
+
+				if (federatedUser) {
+					const user = await Db.collections.User.findOne(federatedUser.userId, {
+						relations: ['globalRole'],
+					});
+					return done(null, user);
+				}
+
+				if (!userinfo.email_verified) {
+					return done('Unverified email address from provider');
+				}
+
+				let user = await Db.collections.User.findOne({
+					where: { email: userinfo.email },
+					relations: ['globalRole'],
+				});
+
+				if (!user) {
+					throw new Error('User not found!');
+				}
+
+				await Db.collections.FederatedUser.insert({
+					user,
+					identifier: userinfo.sub,
+					issuer: tokenData.iss,
+				});
+
+				user.firstName = userinfo.given_name;
+				user.lastName = userinfo.family_name;
+
+				user = await Db.collections.User.save(user);
+
+				return done(null, user);
 			}),
 		);
 	};
@@ -105,34 +135,29 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	this.app.use(passport.initialize());
 	this.app.use(passport.session());
 
-	passport.serializeUser(function (user, done) {
-		console.log('serialize', user);
+	passport.serializeUser((user, done) => {
 		done(null, user);
 	});
-	passport.deserializeUser(function (user, done) {
-		console.log('deserialize', user);
+	passport.deserializeUser((user, done) => {
 		done(null, user);
 	});
 
 	/* Endpoints */
-	this.app.get(`/${restEndpoint}/login/openid`, (req, res, next) => {
-		console.log('auth', req.headers, req.body);
-		passport.authenticate('openid', { scope: 'profile email openid' })(req, res, next);
-	});
-	this.app.get(`/${restEndpoint}/login/hello`, (req, res, next) => {
-		console.log('hello', req.query, req.headers);
-		res.redirect('/');
-	});
+	this.app.get(`/${restEndpoint}/login/openid`, passport.authenticate('openid'));
 
-	this.app.get(`/${restEndpoint}/login/openid/callback`, (req, res, next) => {
-		console.log('auth callback', req.headers, req.query);
+	this.app.get(
+		`/${restEndpoint}/login/openid/callback`,
 		passport.authenticate('openid', {
-			failWithError: true,
-			passReqToCallback: true,
-			successRedirect: `/${restEndpoint}/login/hello`,
-			failureRedirect: `/${restEndpoint}/login/hello`,
-		})(req, res, next);
-	});
+			failureRedirect: `/${restEndpoint}/login/openid`,
+		}),
+		async (req, res) => {
+			if (!req.user) {
+				return res.redirect(`/${restEndpoint}/login/openid`);
+			}
+			await issueCookie(res, req.user);
+			res.redirect('/');
+		},
+	);
 
 	this.app.use(async (req: Request, res: Response, next: NextFunction) => {
 		if (
@@ -171,8 +196,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 			return next();
 		}
 
-		// return passport.authenticate('jwt', { session: false })(req, res, next);
-		return passport.authenticate('openid', { scope: 'profile email openid' })(req, res, next);
+		return passport.authenticate('jwt', { session: false })(req, res, next);
 	});
 
 	this.app.use((req: Request | AuthenticatedRequest, res: Response, next: NextFunction) => {
