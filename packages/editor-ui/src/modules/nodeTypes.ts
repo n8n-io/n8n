@@ -29,9 +29,6 @@ const module: Module<INodeTypesState, IRootState> = {
 			return Object.values(state.nodeTypes).reduce<INodeTypeDescription[]>((allNodeTypes, nodeType) => {
 				const nodeVersions = Object.keys(nodeType).map(Number);
 
-				if (nodeVersions.length === 0) {
-					return [...allNodeTypes, nodeType[DEFAULT_NODETYPE_VERSION]];
-				}
 
 				return [...allNodeTypes, ...nodeVersions.map(version => nodeType[version])];
 			}, []);
