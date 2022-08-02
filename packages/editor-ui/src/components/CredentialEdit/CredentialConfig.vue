@@ -74,7 +74,7 @@
 
 <script lang="ts">
 import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import { getAppNameFromCredType } from '../helpers';
+import { getAppNameFromCredType, isCommunityPackageName } from '../helpers';
 
 import Vue from 'vue';
 import Banner from '../Banner.vue';
@@ -84,6 +84,7 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
+import { NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -150,8 +151,6 @@ export default mixins(restApi).extend({
 				return '';
 			}
 
-
-
 			const appName = getAppNameFromCredType(
 				(this.credentialType as ICredentialType).displayName,
 			);
@@ -163,6 +162,8 @@ export default mixins(restApi).extend({
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
+			const activeNode = this.$store.getters.activeNode;
+			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 			if (!type || !type.documentationUrl) {
 				return '';
@@ -172,7 +173,9 @@ export default mixins(restApi).extend({
 				return type.documentationUrl;
 			}
 
-			return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
+			return  isCommunityNode ?
+				'' : // Don't show documentation link for community nodes if the URL is not an absolute path
+				`https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
 		},
 		isGoogleOAuthType(): boolean {
 			return this.credentialTypeName === 'googleOAuth2Api' || this.parentTypes.includes('googleOAuth2Api');
@@ -190,16 +193,6 @@ export default mixins(restApi).extend({
 		},
 	},
 	methods: {
-		/**
-		 * Get the current version for a node type.
-		 */
-		async getCurrentNodeVersion(targetNodeType: string) {
-			const { allNodeTypes }: { allNodeTypes: INodeTypeDescription[] } = this.$store.getters;
-			const found = allNodeTypes.find(nodeType => nodeType.name === targetNodeType);
-
-			return found ? found.version : 1;
-		},
-
 		onDataChange (event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},

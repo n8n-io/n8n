@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -9,17 +7,9 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	flowApiRequest,
-	FlowApiRequestAllItems,
-} from './GenericFunctions';
-import {
-	taskFields,
-	taskOpeations,
-} from './TaskDescription';
-import {
-	ITask, TaskInfo,
- } from './TaskInterface';
+import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
+import { taskFields, taskOpeations } from './TaskDescription';
+import { ITask, TaskInfo } from './TaskInterface';
 
 export class Flow implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,7 +42,8 @@ export class Flow implements INodeType {
 					{
 						name: 'Task',
 						value: 'task',
-						description: 'Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones.',
+						description:
+							'Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones.',
 					},
 				],
 				default: 'task',
@@ -214,7 +205,7 @@ export class Flow implements INodeType {
 						qs.include = (filters.include as string[]).join(',');
 					}
 					try {
-						responseData = await flowApiRequest.call(this,'GET', `/tasks/${taskId}`, {}, qs);
+						responseData = await flowApiRequest.call(this, 'GET', `/tasks/${taskId}`, {}, qs);
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error);
 					}
@@ -253,7 +244,14 @@ export class Flow implements INodeType {
 					}
 					try {
 						if (returnAll === true) {
-							responseData = await FlowApiRequestAllItems.call(this, 'tasks', 'GET', '/tasks', {}, qs);
+							responseData = await FlowApiRequestAllItems.call(
+								this,
+								'tasks',
+								'GET',
+								'/tasks',
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);

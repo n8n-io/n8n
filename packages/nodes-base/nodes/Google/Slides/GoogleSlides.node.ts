@@ -74,7 +74,7 @@ export class GoogleSlides implements INodeType {
 						'@version': [
 							1,
 						],
-					}
+					},
 				},
 			},
 			{
@@ -97,7 +97,7 @@ export class GoogleSlides implements INodeType {
 						'@version': [
 							2,
 						],
-					}
+					},
 				},
 			},
 			{

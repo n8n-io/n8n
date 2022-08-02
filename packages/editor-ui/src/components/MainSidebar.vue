@@ -259,11 +259,8 @@ export default mixins(
 				'isTemplatesEnabled',
 			]),
 			canUserAccessSettings(): boolean {
-				return [
-					VIEWS.PERSONAL_SETTINGS,
-					VIEWS.USERS_SETTINGS,
-					VIEWS.API_SETTINGS,
-				].some((route) => this.canUserAccessRouteByName(route));
+				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
+				return accessibleRoute !== null;
 			},
 			helpMenuItems (): object[] {
 				return [
@@ -616,18 +613,28 @@ export default mixins(
 				} else if (key === 'executions') {
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (key === 'settings') {
-					if (this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS) || this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS)) {
-						if ((this.currentUser as IUser).isDefaultUser) {
-							this.$router.push('/settings/users');
-						}
-						else {
-							this.$router.push('/settings/personal');
-						}
-					}
-					else if (this.canUserAccessRouteByName(VIEWS.API_SETTINGS)) {
-						this.$router.push('/settings/api');
+					const defaultRoute = this.findFirstAccessibleSettingsRoute();
+					if (defaultRoute) {
+						const routeProps = this.$router.resolve({ name: defaultRoute });
+						this.$router.push(routeProps.route.path);
 					}
 				}
+			},
+			findFirstAccessibleSettingsRoute() {
+				// Get all settings rotes by filtering them by pageCategory property
+				const settingsRoutes = this.$router.getRoutes().filter(
+					category => category.meta.telemetry &&
+						category.meta.telemetry.pageCategory === 'settings',
+				).map(route => route.name || '');
+				let defaultSettingsRoute = null;
+
+				for (const route of settingsRoutes) {
+					if (this.canUserAccessRouteByName(route)) {
+						defaultSettingsRoute = route;
+						break;
+					}
+				}
+				return defaultSettingsRoute;
 			},
 		},
 	});
@@ -640,7 +647,7 @@ export default mixins(
 		height: 35px;
 		line-height: 35px;
 		color: $--custom-dialog-text-color;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.item-title {
 			position: absolute;
@@ -660,7 +667,7 @@ export default mixins(
 	.el-menu {
 		border: none;
 		font-size: 14px;
-		--menu-item-hover-fill: #fff0ef;
+		--menu-item-hover-fill: var(--color-primary-tint-3);
 
 		.el-menu--collapse {
 			width: 75px;
@@ -711,7 +718,7 @@ export default mixins(
 
 	.el-menu-item {
 		a {
-			color: #666;
+			color: var(--color-text-base);
 
 			&.primary-item {
 				color: $--color-primary;
@@ -751,7 +758,7 @@ export default mixins(
 	line-height: 24px;
 	height: 20px;
 	width: 20px;
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	border: none;
 	border-radius: 15px;
 
@@ -782,7 +789,7 @@ export default mixins(
 	top: -3px;
 	left: 5px;
 	font-weight: bold;
-	color: #fff;
+	color: var(--color-foreground-xlight);
 	text-decoration: none;
 }
 

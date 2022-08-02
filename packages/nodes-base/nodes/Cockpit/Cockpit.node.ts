@@ -7,29 +7,17 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	collectionFields,
-	collectionOperations,
-} from './CollectionDescription';
+import { collectionFields, collectionOperations } from './CollectionDescription';
 import {
 	createCollectionEntry,
 	getAllCollectionEntries,
 	getAllCollectionNames,
 } from './CollectionFunctions';
-import {
-	formFields,
-	formOperations
-} from './FormDescription';
+import { formFields, formOperations } from './FormDescription';
 import { submitForm } from './FormFunctions';
 import { createDataFromParameters } from './GenericFunctions';
-import {
-	singletonFields,
-	singletonOperations,
-} from './SingletonDescription';
-import {
-	getAllSingletonNames,
-	getSingleton,
-} from './SingletonFunctions';
+import { singletonFields, singletonOperations } from './SingletonDescription';
+import { getAllSingletonNames, getSingleton } from './SingletonFunctions';
 
 export class Cockpit implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,7 +77,7 @@ export class Cockpit implements INodeType {
 			async getCollections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const collections = await getAllCollectionNames.call(this);
 
-				return collections.map(itemName => {
+				return collections.map((itemName) => {
 					return {
 						name: itemName,
 						value: itemName,
@@ -100,7 +88,7 @@ export class Cockpit implements INodeType {
 			async getSingletons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const singletons = await getAllSingletonNames.call(this);
 
-				return singletons.map(itemName => {
+				return singletons.map((itemName) => {
 					return {
 						name: itemName,
 						value: itemName,

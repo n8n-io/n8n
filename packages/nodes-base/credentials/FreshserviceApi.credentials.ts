@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class FreshserviceApi implements ICredentialType {
 	name = 'freshserviceApi';
@@ -21,7 +18,8 @@ export class FreshserviceApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'n8n',
-			description: 'Domain in the Freshservice org URL. For example, in <code>https://n8n.freshservice.com</code>, the domain is <code>n8n</code>',
+			description:
+				'Domain in the Freshservice org URL. For example, in <code>https://n8n.freshservice.com</code>, the domain is <code>n8n</code>',
 		},
 	];
 }

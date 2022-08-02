@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const searchOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const searchOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
+				resource: ['search'],
 			},
 		},
 		options: [
@@ -45,12 +41,8 @@ export const searchFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['search'],
+				operation: ['query'],
 			},
 		},
 		description: 'Enter a term that will be used for searching entities',
@@ -81,12 +73,8 @@ export const searchFields: INodeProperties[] = [
 		default: [],
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['search'],
+				operation: ['query'],
 			},
 		},
 		description: 'Enter a term that will be used for searching entities',
@@ -98,12 +86,8 @@ export const searchFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['search'],
+				operation: ['query'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -118,15 +102,9 @@ export const searchFields: INodeProperties[] = [
 		default: 25,
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'query',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['search'],
+				operation: ['query'],
+				returnAll: [false],
 			},
 		},
 		description: 'Max number of results to return',
@@ -150,19 +128,16 @@ export const searchFields: INodeProperties[] = [
 			{
 				name: 'Custom Field',
 				value: 'customField',
-				description: 'Only allowed custom fields of type "Text field", "Number", "Dropdown" or "Radio button"',
+				description:
+					'Only allowed custom fields of type "Text field", "Number", "Dropdown" or "Radio button"',
 			},
 		],
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['search'],
+				operation: ['lookup'],
 			},
 		},
 		description: 'Field against which the entities have to be searched',
@@ -175,15 +150,9 @@ export const searchFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'lookup',
-				],
-				searchField: [
-					'customField',
-				],
+				resource: ['search'],
+				operation: ['lookup'],
+				searchField: ['customField'],
 			},
 		},
 	},
@@ -195,15 +164,9 @@ export const searchFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'lookup',
-				],
-				searchField: [
-					'customField',
-				],
+				resource: ['search'],
+				operation: ['lookup'],
+				searchField: ['customField'],
 			},
 		},
 	},
@@ -215,16 +178,9 @@ export const searchFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'lookup',
-				],
-				searchField: [
-					'email',
-					'name',
-				],
+				resource: ['search'],
+				operation: ['lookup'],
+				searchField: ['email', 'name'],
 			},
 		},
 	},
@@ -236,12 +192,8 @@ export const searchFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['search'],
+				operation: ['lookup'],
 			},
 		},
 		options: [
@@ -264,8 +216,8 @@ export const searchFields: INodeProperties[] = [
 						value: 'sales_account',
 					},
 				],
-					// eslint-disable-next-line n8n-nodes-base/node-param-description-unneeded-backticks
-		description: `Use 'entities' to query against related entities. You can include multiple entities at once, provided the field is available in both entities or else you'd receive an error response.`,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-unneeded-backticks
+				description: `Use 'entities' to query against related entities. You can include multiple entities at once, provided the field is available in both entities or else you'd receive an error response.`,
 			},
 		],
 	},

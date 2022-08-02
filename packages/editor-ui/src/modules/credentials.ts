@@ -104,7 +104,7 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			return (credentialTypeName: string) => {
-				const nodeTypes: INodeTypeDescription[] = rootGetters.allNodeTypes;
+				const nodeTypes: INodeTypeDescription[] = rootGetters['nodeTypes/allNodeTypes'];
 
 				return nodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
@@ -152,8 +152,8 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 	},
 	actions: {
-		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>) => {
-			if (context.getters.allCredentialTypes.length > 0) {
+		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>, forceFetch: boolean) => {
+			if (context.getters.allCredentialTypes.length > 0 && forceFetch !== true) {
 				return;
 			}
 			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);
