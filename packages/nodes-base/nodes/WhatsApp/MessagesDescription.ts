@@ -1,4 +1,4 @@
-import { IDataObject, INodeProperties, NodeOperationError } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 import { addTemplateComponents, mediaUploadFromItem } from './MessageFunctions';
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
