@@ -64,7 +64,9 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 			}
 		}
 
-		const foundedMarches = [...data2].filter( (entry2, i) => {
+		const foundedMarches = data2.filter( (entry2, i) => {
+			if (entry2 === undefined) return false;
+
 			let matched = true;
 			for (const key of Object.keys(lookup)) {
 				const excpectedValue = lookup[key];
@@ -81,8 +83,9 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 					break;
 				}
 			}
+
 			if (matched) {
-				data2.splice(i, 1);
+				delete data2[i];
 			}
 			return matched;
 		});
@@ -97,7 +100,7 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 		}
 	}
 
-	filteredData.unmatched2.push(...data2);
+	filteredData.unmatched2.push(...data2.filter( entry => entry !== undefined));
 
 	return filteredData;
 }
@@ -127,7 +130,7 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 			json = mergeEntries({}, ...matches.map(match => match.json), entry.json);
 		}
 
-		if (clashResolveOptions.resolveClash === 'preferInput2') {
+		if (clashResolveOptions.resolveClash === 'preferInput2' || clashResolveOptions.resolveClash === undefined) {
 			json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
 		}
 
