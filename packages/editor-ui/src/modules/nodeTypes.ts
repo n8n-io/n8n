@@ -26,10 +26,22 @@ const module: Module<INodeTypesState, IRootState> = {
 	},
 	getters: {
 		allNodeTypes: (state): INodeTypeDescription[] => {
-			return Object.values(state.nodeTypes);
+			return Object.values(state.nodeTypes).reduce<INodeTypeDescription[]>((allNodeTypes, nodeType) => {
+				const nodeVersions = Object.keys(nodeType).map(Number);
+
+				if (nodeVersions.length === 0) {
+					return [...allNodeTypes, nodeType[DEFAULT_NODETYPE_VERSION]];
+				}
+
+				return [...allNodeTypes, ...nodeVersions.map(version => nodeType[version])];
+			}, []);
 		},
-		getNodeType: (state) => (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
-			const nodeType = state.nodeTypes[nodeTypeName];
+		getNodeType: (state) => (nodeTypeName: string, version = DEFAULT_NODETYPE_VERSION): INodeTypeDescription | null => {
+			const nodeVersions = state.nodeTypes[nodeTypeName];
+
+			if (!nodeVersions) return null;
+
+			const nodeType = nodeVersions[version];
 
 			if (!nodeType || !hasValidVersion(nodeType, version)) return null;
 
@@ -37,14 +49,24 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 	},
 	mutations: {
-		setNodeTypes(state, nodeTypesArray: INodeTypeDescription[]) {
-			state.nodeTypes = toNodeTypesState(nodeTypesArray);
-		},
+		setNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
+			newNodeTypes.forEach((newNodeType) => {
+				const newNodeVersions = getNodeVersions(newNodeType);
 
-		updateNodeTypes(state, newNodeTypes: INodeTypeDescription[]) {
-			newNodeTypes.forEach((node) => Vue.set(state.nodeTypes, node.name, node));
-		},
+				if (newNodeVersions.length === 0) {
+					const singleVersion = { [DEFAULT_NODETYPE_VERSION]: newNodeType };
+					Vue.set(state.nodeTypes, newNodeType.name, singleVersion);
+					return;
+				}
 
+				for (const version of newNodeVersions) {
+					state.nodeTypes[newNodeType.name]
+						? Vue.set(state.nodeTypes[newNodeType.name], version, newNodeType)
+						: Vue.set(state.nodeTypes, newNodeType.name, { [version]: newNodeType });
+
+				}
+			});
+		},
 		removeNodeTypes(state, nodeTypesToRemove: INodeTypeDescription[]) {
 			state.nodeTypes = nodeTypesToRemove.reduce(
 				(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
@@ -64,7 +86,7 @@ const module: Module<INodeTypesState, IRootState> = {
 				nodesToBeFetched,
 			);
 
-			context.commit('updateNodeTypes', nodesInformation);
+			context.commit('setNodeTypes', nodesInformation);
 		},
 		async getNodeTypes(context: ActionContext<INodeTypesState, IRootState>) {
 			const nodeTypes = await getNodeTypes(context.rootGetters.getRestApiContext);
@@ -99,7 +121,7 @@ const module: Module<INodeTypesState, IRootState> = {
 				}
 			});
 
-			context.commit('updateNodeTypes', nodesInformation);
+			context.commit('setNodeTypes', nodesInformation);
 		},
 		async getNodeParameterOptions(
 			context: ActionContext<INodeTypesState, IRootState>,
@@ -117,20 +139,14 @@ const module: Module<INodeTypesState, IRootState> = {
 	},
 };
 
-function toNodeTypesState(nodeTypes: INodeTypeDescription[]) {
-	return nodeTypes.reduce<INodeTypesState['nodeTypes']>((acc, cur) => {
-		acc[cur.name] = cur;
+function hasValidVersion(nodeType: INodeTypeDescription, version?: number) {
+	const validVersion = version || nodeType.defaultVersion || DEFAULT_NODETYPE_VERSION;
 
-		return acc;
-	}, {});
+	return getNodeVersions(nodeType).includes(validVersion);
 }
 
-function hasValidVersion(nodeType: INodeTypeDescription, version?: number) {
-	const nodeTypeVersion = Array.isArray(nodeType.version)
-		? nodeType.version
-		: [nodeType.version];
-
-	return nodeTypeVersion.includes(version || nodeType.defaultVersion || DEFAULT_NODETYPE_VERSION);
+function getNodeVersions(nodeType: INodeTypeDescription) {
+	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
 }
 
 export default module;
