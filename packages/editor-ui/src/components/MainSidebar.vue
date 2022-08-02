@@ -362,7 +362,9 @@ export default mixins(
 			},
 		},
 		mounted() {
-			this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			if (this.$refs.user) {
+				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			}
 		},
 		methods: {
 			trackHelpItemClick (itemType: string) {
