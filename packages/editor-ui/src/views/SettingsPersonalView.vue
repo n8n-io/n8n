@@ -104,7 +104,9 @@ export default mixins(
 			},
 		];
 
-		this.$externalHooks().run('settingsPersonalView.mounted', { userRef: this.$refs.user });
+		if (this.$refs.user) {
+			this.$externalHooks().run('settingsPersonalView.mounted', { userRef: this.$refs.user });
+		}
 	},
 	computed: {
 		currentUser() {
