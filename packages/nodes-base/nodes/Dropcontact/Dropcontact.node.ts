@@ -12,9 +12,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	dropcontactApiRequest,
-} from './GenericFunction';
+import { dropcontactApiRequest } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
 	description: INodeTypeDescription = {
