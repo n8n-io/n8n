@@ -112,7 +112,7 @@ export class WorkflowEntity implements IWorkflowDb {
 			referencedColumnName: 'id',
 		},
 	})
-	tags: TagEntity[];
+	tags?: TagEntity[];
 
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];

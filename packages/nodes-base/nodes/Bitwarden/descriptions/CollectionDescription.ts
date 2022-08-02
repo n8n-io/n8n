@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const collectionOperations: INodeProperties[] = [
 	{
@@ -33,9 +31,7 @@ export const collectionOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
+				resource: ['collection'],
 			},
 		},
 	},
@@ -55,14 +51,8 @@ export const collectionFields: INodeProperties[] = [
 		placeholder: '5e59c8c7-e05a-4d17-8e85-acc301343926',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'delete',
-					'get',
-					'update',
-				],
+				resource: ['collection'],
+				operation: ['delete', 'get', 'update'],
 			},
 		},
 	},
@@ -78,12 +68,8 @@ export const collectionFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -98,15 +84,9 @@ export const collectionFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -126,7 +106,8 @@ export const collectionFields: INodeProperties[] = [
 				displayName: 'Group Names or IDs',
 				name: 'groups',
 				type: 'multiOptions',
-				description: 'The group to assign this collection to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The group to assign this collection to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
@@ -142,12 +123,8 @@ export const collectionFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['collection'],
+				operation: ['update'],
 			},
 		},
 	},

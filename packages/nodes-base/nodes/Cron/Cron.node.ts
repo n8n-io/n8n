@@ -1,9 +1,5 @@
 import { ITriggerFunctions } from 'n8n-core';
-import {
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
 
@@ -16,7 +12,6 @@ interface TriggerTime {
 	[key: string]: string | number;
 }
 
-
 export class Cron implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cron',
@@ -26,7 +21,8 @@ export class Cron implements INodeType {
 		version: 1,
 		description: 'Triggers the workflow at a specific time',
 		eventTriggerDescription: '',
-		activationMessage: 'Your cron trigger will now trigger executions on the schedule you have defined.',
+		activationMessage:
+			'Your cron trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Cron',
 			color: '#00FF00',
@@ -36,7 +32,8 @@ export class Cron implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'This workflow will run on the schedule you define here once you <a data-key="activate">activate</a> it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking ‘execute workflow’',
+				displayName:
+					'This workflow will run on the schedule you define here once you <a data-key="activate">activate</a> it.<br><br>For testing, you can also trigger it manually: by going back to the canvas and clicking ‘execute workflow’',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -105,12 +102,7 @@ export class Cron implements INodeType {
 								},
 								displayOptions: {
 									hide: {
-										mode: [
-											'custom',
-											'everyHour',
-											'everyMinute',
-											'everyX',
-										],
+										mode: ['custom', 'everyHour', 'everyMinute', 'everyX'],
 									},
 								},
 								default: 14,
@@ -126,11 +118,7 @@ export class Cron implements INodeType {
 								},
 								displayOptions: {
 									hide: {
-										mode: [
-											'custom',
-											'everyMinute',
-											'everyX',
-										],
+										mode: ['custom', 'everyMinute', 'everyX'],
 									},
 								},
 								default: 0,
@@ -142,9 +130,7 @@ export class Cron implements INodeType {
 								type: 'number',
 								displayOptions: {
 									show: {
-										mode: [
-											'everyMonth',
-										],
+										mode: ['everyMonth'],
 									},
 								},
 								typeOptions: {
@@ -160,9 +146,7 @@ export class Cron implements INodeType {
 								type: 'options',
 								displayOptions: {
 									show: {
-										mode: [
-											'everyWeek',
-										],
+										mode: ['everyWeek'],
 									},
 								},
 								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
@@ -205,13 +189,12 @@ export class Cron implements INodeType {
 								type: 'string',
 								displayOptions: {
 									show: {
-										mode: [
-											'custom',
-										],
+										mode: ['custom'],
 									},
 								},
 								default: '* * * * * *',
-								description: 'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>.',
+								description:
+									'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>.',
 							},
 							{
 								displayName: 'Value',
@@ -223,9 +206,7 @@ export class Cron implements INodeType {
 								},
 								displayOptions: {
 									show: {
-										mode: [
-											'everyX',
-										],
+										mode: ['everyX'],
 									},
 								},
 								default: 2,
@@ -237,9 +218,7 @@ export class Cron implements INodeType {
 								type: 'options',
 								displayOptions: {
 									show: {
-										mode: [
-											'everyX',
-										],
+										mode: ['everyX'],
 									},
 								},
 								options: [
@@ -262,22 +241,19 @@ export class Cron implements INodeType {
 		],
 	};
 
-
-
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-
 		const triggerTimes = this.getNodeParameter('triggerTimes') as unknown as {
 			item: TriggerTime[];
 		};
 
 		// Define the order the cron-time-parameter appear
 		const parameterOrder = [
-			'second',     // 0 - 59
-			'minute',     // 0 - 59
-			'hour',       // 0 - 23
+			'second', // 0 - 59
+			'minute', // 0 - 59
+			'hour', // 0 - 23
 			'dayOfMonth', // 1 - 31
-			'month',      // 0 - 11(Jan - Dec)
-			'weekday',    // 0 - 6(Sun - Sat)
+			'month', // 0 - 11(Jan - Dec)
+			'weekday', // 0 - 6(Sun - Sat)
 		];
 
 		// Get all the trigger times

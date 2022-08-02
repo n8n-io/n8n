@@ -1,34 +1,37 @@
 <template>
-	<div class="node-icon-wrapper" :style="iconStyleData">
-		<div v-if="nodeIconData !== null" class="icon">
-			<img v-if="nodeIconData.type === 'file'" :src="nodeIconData.fileBuffer || nodeIconData.path" :style="imageStyleData" />
-			<font-awesome-icon v-else :icon="nodeIconData.icon || nodeIconData.path" :style="fontStyleData" />
-		</div>
-		<div v-else class="node-icon-placeholder">
-			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
-		</div>
-	</div>
+	<n8n-node-icon
+		:type="type"
+		:src="iconSource.path || iconSource.fileBuffer"
+		:name="iconSource.icon"
+		:color="color"
+		:disabled="disabled"
+		:size="size"
+		:circle="circle"
+		:nodeTypeName="nodeType ? nodeType.displayName : ''"
+		:showTooltip="showTooltip"
+		@click="(e) => $emit('click')"
+	></n8n-node-icon>
 </template>
 
 <script lang="ts">
-
 import { IVersionNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import Vue from 'vue';
 
-interface NodeIconData {
-	type: string;
-	path?: string;
-	fileExtension?: string;
-	fileBuffer?: string;
+interface NodeIconSource {
+		path?: string;
+		fileBuffer?: string;
+		icon?: string;
 }
 
 export default Vue.extend({
 	name: 'NodeIcon',
 	props: {
-		nodeType: {},
+		nodeType: {
+		},
 		size: {
 			type: Number,
+			required: false,
 		},
 		disabled: {
 			type: Boolean,
@@ -38,106 +41,60 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		showTooltip: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	computed: {
-		iconStyleData (): object {
+		type (): string {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
-			if (!this.size) {
-				return {color};
-			}
-
-			return {
-				color,
-				width: this.size + 'px',
-				height: this.size + 'px',
-				'font-size': this.size + 'px',
-				'line-height': this.size + 'px',
-				'border-radius': this.circle ? '50%': '2px',
-				...(this.disabled && {
-					color: 'var(--color-text-light)',
-					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-					'filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
-				}),
-			};
-		},
-		fontStyleData (): object {
-			return {
-				'max-width': this.size + 'px',
-			};
-		},
-		imageStyleData (): object {
-			return {
-				width: '100%',
-				'max-width': '100%',
-				'max-height': '100%',
-			};
-		},
-		isSvgIcon (): boolean {
-			if (this.nodeIconData && this.nodeIconData.type === 'file' && this.nodeIconData.fileExtension === 'svg') {
-				return true;
-			}
-			return false;
-		},
-		nodeIconData (): null | NodeIconData {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			if (nodeType === null) {
-				return null;
-			}
-
-			if ((nodeType as IVersionNode).iconData) {
-				return (nodeType as IVersionNode).iconData;
-			}
-
-			const restUrl = this.$store.getters.getRestUrl;
-
-			if (nodeType.icon) {
-				let type, path;
-				[type, path] = nodeType.icon.split(':');
-				const returnData: NodeIconData = {
-					type,
-					path,
-				};
-
-				if (type === 'file') {
-					returnData.path = restUrl + '/node-icon/' + nodeType.name;
-					returnData.fileExtension = path.split('.').slice(-1).join();
+			let iconType = 'unknown';
+			if (nodeType) {
+				if ((nodeType as IVersionNode).iconData) {
+					iconType = (nodeType as IVersionNode).iconData.type;
+				} else if (nodeType.icon) {
+					iconType = nodeType.icon.split(':')[0] === 'file' ? 'file' : 'icon';
 				}
-
-				return returnData;
 			}
-			return null;
+			return iconType;
+		},
+		color () : string {
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			if (nodeType && nodeType.defaults && nodeType.defaults.color) {
+				return nodeType.defaults.color.toString();
+			}
+			return '';
+		},
+		iconSource () : NodeIconSource {
+			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const restUrl = this.$store.getters.getRestUrl;
+			const iconSource = {} as NodeIconSource;
+
+			if (nodeType) {
+				// If node type has icon data, use it
+				if ((nodeType as IVersionNode).iconData) {
+					return {
+						icon: (nodeType as IVersionNode).iconData.icon,
+						fileBuffer: (nodeType as IVersionNode).iconData.fileBuffer,
+					};
+				}
+				// Otherwise, extract it from icon prop
+				if (nodeType.icon) {
+					let type, path;
+					[type, path] = nodeType.icon.split(':');
+					if (type === 'file') {
+						iconSource.path = `${restUrl}/node-icon/${nodeType.name}`;
+					} else {
+						iconSource.icon = path;
+					}
+				}
+			}
+			return iconSource;
 		},
 	},
 });
 </script>
 
 <style lang="scss">
-
-.node-icon-wrapper {
-	width: 26px;
-	height: 26px;
-	border-radius: 2px;
-	color: #444;
-	line-height: 26px;
-	font-size: 1.1em;
-	overflow: hidden;
-	text-align: center;
-	font-weight: bold;
-	font-size: 20px;
-
-	.icon {
-		height: 100%;
-		width: 100%;
-
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	.node-icon-placeholder {
-		text-align: center;
-	}
-}
-
 </style>

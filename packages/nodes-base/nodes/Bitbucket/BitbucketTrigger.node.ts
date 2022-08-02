@@ -1,9 +1,6 @@
 import { OptionsWithUri } from 'request';
 
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -17,10 +14,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	bitbucketApiRequest,
-	bitbucketApiRequestAllItems,
-} from './GenericFunctions';
+import { bitbucketApiRequest, bitbucketApiRequestAllItems } from './GenericFunctions';
 
 export class BitbucketTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,10 +69,7 @@ export class BitbucketTrigger implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'workspace',
-							'repository',
-						],
+						resource: ['workspace', 'repository'],
 					},
 				},
 				typeOptions: {
@@ -86,7 +77,8 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Names or IDs',
@@ -94,9 +86,7 @@ export class BitbucketTrigger implements INodeType {
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						resource: [
-							'workspace',
-						],
+						resource: ['workspace'],
 					},
 				},
 				typeOptions: {
@@ -105,7 +95,8 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Repository Name or ID',
@@ -113,20 +104,17 @@ export class BitbucketTrigger implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'repository',
-						],
+						resource: ['repository'],
 					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getRepositories',
-					loadOptionsDependsOn: [
-						'workspace',
-					],
+					loadOptionsDependsOn: ['workspace'],
 				},
 				required: true,
 				default: '',
-				description: 'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Names or IDs',
@@ -134,9 +122,7 @@ export class BitbucketTrigger implements INodeType {
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						resource: [
-							'repository',
-						],
+						resource: ['repository'],
 					},
 				},
 				typeOptions: {
@@ -145,15 +131,18 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: 'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
-
 	};
 
 	methods = {
 		credentialTest: {
-			async bitbucketApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async bitbucketApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data;
 
 				const options: OptionsWithUri = {
@@ -190,7 +179,12 @@ export class BitbucketTrigger implements INodeType {
 		loadOptions: {
 			async getWorkspaceEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const events = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', '/hook_events/workspace');
+				const events = await bitbucketApiRequestAllItems.call(
+					this,
+					'values',
+					'GET',
+					'/hook_events/workspace',
+				);
 				for (const event of events) {
 					returnData.push({
 						name: event.event,
@@ -202,7 +196,12 @@ export class BitbucketTrigger implements INodeType {
 			},
 			async getRepositoriesEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const events = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', '/hook_events/repository');
+				const events = await bitbucketApiRequestAllItems.call(
+					this,
+					'values',
+					'GET',
+					'/hook_events/repository',
+				);
 				for (const event of events) {
 					returnData.push({
 						name: event.event,
@@ -215,7 +214,12 @@ export class BitbucketTrigger implements INodeType {
 			async getRepositories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const workspace = this.getCurrentNodeParameter('workspace') as string;
-				const repositories = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', `/repositories/${workspace}`);
+				const repositories = await bitbucketApiRequestAllItems.call(
+					this,
+					'values',
+					'GET',
+					`/repositories/${workspace}`,
+				);
 				for (const repository of repositories) {
 					returnData.push({
 						name: repository.slug,
@@ -227,7 +231,12 @@ export class BitbucketTrigger implements INodeType {
 			},
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const workspaces = await bitbucketApiRequestAllItems.call(this, 'values', 'GET', `/workspaces`);
+				const workspaces = await bitbucketApiRequestAllItems.call(
+					this,
+					'values',
+					'GET',
+					`/workspaces`,
+				);
 				for (const workspace of workspaces) {
 					returnData.push({
 						name: workspace.name,
@@ -320,9 +329,7 @@ export class BitbucketTrigger implements INodeType {
 			return {};
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

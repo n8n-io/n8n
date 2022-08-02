@@ -172,7 +172,7 @@ export default mixins(
 		},
 		isSingleActiveTriggerNode (): boolean {
 			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
-				const nodeType =  this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+				const nodeType =  this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
@@ -188,7 +188,7 @@ export default mixins(
 			return this.node && this.node.disabled;
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters.nodeType(this.data.type, this.data.typeVersion);
+			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
