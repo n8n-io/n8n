@@ -691,6 +691,7 @@
 	"personalizationModal.connectToOwnProduct": "Connect to own product (or core infrastructure)",
 	"personalizationModal.buildBackendServices": "Build backend services (endpoints)",
 	"personalizationModal.manipulateFiles": "Manipulate/transfer files",
+	"personalizationModal.specifyOtherSalesAndMarketingGoal": "Specify your other Sales and Marketing goals",
 	"pushConnection.nodeExecutedSuccessfully": "Node executed successfully",
 	"pushConnection.workflowExecutedSuccessfully": "Workflow executed successfully",
 	"pushConnectionTracker.cannotConnectToServer": "You have a connection issue or the server is down. <br />n8n should reconnect automatically once the issue is resolved.",

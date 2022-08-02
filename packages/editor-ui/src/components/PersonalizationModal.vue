@@ -382,7 +382,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 				{
 					name: OTHER_MARKETING_AUTOMATION_GOAL_KEY,
 					properties: {
-						placeholder: this.$locale.baseText('personalizationModal.specifyYourCompanysIndustry'),
+						placeholder: this.$locale.baseText('personalizationModal.specifyOtherSalesAndMarketingGoal'),
 					},
 					shouldDisplay(values): boolean {
 						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
