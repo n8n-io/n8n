@@ -35,6 +35,7 @@ import {
 	ICommunityNodesState,
 } from './Interface';
 
+import nodeTypes from './modules/nodeTypes';
 import credentials from './modules/credentials';
 import settings from './modules/settings';
 import tags from './modules/tags';
@@ -79,7 +80,6 @@ const state: IRootState = {
 	lastSelectedNode: null,
 	lastSelectedNodeOutputIndex: null,
 	nodeIndex: [],
-	nodeTypes: [],
 	nodeViewOffsetPosition: [0, 0],
 	nodeViewMoveInProgress: false,
 	selectedNodes: [],
@@ -103,6 +103,7 @@ const state: IRootState = {
 };
 
 const modules = {
+	nodeTypes,
 	credentials,
 	tags,
 	settings,
@@ -214,19 +215,22 @@ export const store = new Vuex.Store({
 
 		// Pin data
 		pinData(state, payload: { node: INodeUi, data: IPinData[string] }) {
-			if (state.workflow.pinData) {
-				Vue.set(state.workflow.pinData, payload.node.name, payload.data);
+			if (!state.workflow.pinData) {
+				Vue.set(state.workflow, 'pinData', {});
 			}
 
+			Vue.set(state.workflow.pinData!, payload.node.name, payload.data);
 			state.stateIsDirty = true;
 
 			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: payload.data });
 		},
 		unpinData(state, payload: { node: INodeUi }) {
-			if (state.workflow.pinData) {
-				Vue.set(state.workflow.pinData, payload.node.name, undefined);
-				delete state.workflow.pinData[payload.node.name];
+			if (!state.workflow.pinData) {
+				Vue.set(state.workflow, 'pinData', {});
 			}
+
+			Vue.set(state.workflow.pinData!, payload.node.name, undefined);
+			delete state.workflow.pinData![payload.node.name];
 
 			state.stateIsDirty = true;
 
@@ -478,7 +482,7 @@ export const store = new Vuex.Store({
 			}
 
 			if (data.removePinData) {
-				state.workflow.pinData = {};
+				Vue.set(state.workflow, 'pinData', {});
 			}
 
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
@@ -548,10 +552,6 @@ export const store = new Vuex.Store({
 			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
-		// Node-Types
-		setNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
-			Vue.set(state, 'nodeTypes', nodeTypes);
-		},
 		// Active Execution
 		setExecutingNode(state, executingNode: string) {
 			state.executingNode = executingNode;
@@ -652,9 +652,9 @@ export const store = new Vuex.Store({
 		},
 
 		setWorkflowPinData(state, pinData: IPinData) {
-			Vue.set(state.workflow, 'pinData', pinData);
+			Vue.set(state.workflow, 'pinData', pinData || {});
 
-			dataPinningEventBus.$emit('pin-data', pinData);
+			dataPinningEventBus.$emit('pin-data', pinData || {});
 		},
 
 		setWorkflowTagIds(state, tags: string[]) {
@@ -697,21 +697,6 @@ export const store = new Vuex.Store({
 			if (!state.workflow.hasOwnProperty('settings')) {
 				Vue.set(state.workflow, 'settings', {});
 			}
-		},
-
-		updateNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
-			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
-			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
-
-			Vue.set(state, 'nodeTypes', newNodesState);
-			state.nodeTypes = newNodesState;
-		},
-
-		removeNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
-			console.log('Store will remove nodes: ', nodeTypes); // eslint-disable-line no-console
-			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
-			Vue.set(state, 'nodeTypes', oldNodesToKeep);
-			state.nodeTypes = oldNodesToKeep;
 		},
 
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
@@ -831,7 +816,7 @@ export const store = new Vuex.Store({
 
 		workflowTriggerNodes: (state, getters) => {
 			return state.workflow.nodes.filter(node => {
-				const nodeType = getters.nodeType(node.type, node.typeVersion);
+				const nodeType = getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				return nodeType && nodeType.group.includes('trigger');
 			});
 		},
@@ -898,9 +883,6 @@ export const store = new Vuex.Store({
 			}
 			return false;
 		},
-		allNodeTypes: (state): INodeTypeDescription[] => {
-			return state.nodeTypes;
-		},
 		/**
 		 * Pin data
 		 */
@@ -909,7 +891,7 @@ export const store = new Vuex.Store({
 			return state.workflow.pinData;
 		},
 		pinDataByNodeName: (state) => (nodeName: string) => {
-			return state.workflow.pinData && state.workflow.pinData[nodeName];
+			return state.workflow.pinData ? state.workflow.pinData[nodeName] : undefined;
 		},
 		pinDataSize: (state) => {
 			return state.workflow.nodes
@@ -926,29 +908,14 @@ export const store = new Vuex.Store({
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */
 		nativelyNumberSuffixedDefaults: (_, getters): string[] => {
-			const {allNodeTypes} = getters as {
-				allNodeTypes: Array<INodeTypeDescription & { defaults: { name: string } }>;
+			const { 'nodeTypes/allNodeTypes': allNodeTypes } = getters as {
+				['nodeTypes/allNodeTypes']: Array<INodeTypeDescription & { defaults: { name: string } }>;
 			};
 
 			return allNodeTypes.reduce<string[]>((acc, cur) => {
 				if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
 				return acc;
 			}, []);
-		},
-
-		nodeType: (state, getters) => (nodeType: string, version?: number): INodeTypeDescription | null => {
-			const foundType = state.nodeTypes.find(typeData => {
-				const typeVersion = Array.isArray(typeData.version)
-					? typeData.version
-					: [typeData.version];
-
-				return typeData.name === nodeType && typeVersion.includes(version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
-			});
-
-			if (foundType === undefined) {
-				return null;
-			}
-			return foundType;
 		},
 		activeNode: (state, getters): INodeUi | null => {
 			return getters.getNodeByName(state.activeNode);

@@ -49,7 +49,7 @@ export class Build extends Command {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			this.log(`\nGOT ERROR: "${error.message}"`);
 			this.log('====================================');
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 			this.log(error.stack);
 		}
 	}

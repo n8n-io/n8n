@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeSimpleField,
-} from './SharedFields';
+import { makeSimpleField } from './SharedFields';
 
 export const signatureOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const signatureOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
+				resource: ['signature'],
 			},
 		},
 		options: [
@@ -58,12 +52,8 @@ export const signatureFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['signature'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -76,12 +66,8 @@ export const signatureFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['signature'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -94,12 +80,8 @@ export const signatureFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['signature'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -125,12 +107,8 @@ export const signatureFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['signature'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -143,12 +121,8 @@ export const signatureFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['signature'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -166,12 +140,8 @@ export const signatureFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['signature'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -183,12 +153,8 @@ export const signatureFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['signature'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -203,15 +169,9 @@ export const signatureFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['signature'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -229,12 +189,8 @@ export const signatureFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['signature'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -247,12 +203,8 @@ export const signatureFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['signature'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -265,12 +217,8 @@ export const signatureFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['signature'],
+				operation: ['update'],
 			},
 		},
 		options: [

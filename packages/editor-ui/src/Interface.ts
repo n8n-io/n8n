@@ -24,6 +24,7 @@ import {
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
 } from 'n8n-workflow';
+import { FAKE_DOOR_FEATURES } from './constants';
 
 export * from 'n8n-design-system/src/types';
 
@@ -172,10 +173,6 @@ export interface IRestApi {
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getCredentialTranslation(credentialType: string): Promise<object>;
-	getNodeTranslationHeaders(): Promise<INodeTranslationHeaders>;
-	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
-	getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(sendData: { nodeTypeAndVersion: INodeTypeNameVersion, path: string, methodName?: string, loadOptions?: ILoadOptions, currentNodeParameters: INodeParameters, credentials?: INodeCredentials }): Promise<INodePropertyOptions[]> ;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -542,6 +539,7 @@ export interface IUserResponse {
 	globalRole?: {
 		name: IRole;
 		id: string;
+		createdAt: Date;
 	};
 	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
 	isPending: boolean;
@@ -552,6 +550,7 @@ export interface IUser extends IUserResponse {
 	isPendingUser: boolean;
 	isOwner: boolean;
 	fullName?: string;
+	createdAt?: Date;
 }
 
 export interface IVersionNotificationSettings {
@@ -701,6 +700,7 @@ export interface IN8nUISettings {
 		latestVersion: number;
 		path: string;
 	};
+	onboardingCallPromptEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -849,7 +849,6 @@ export interface IRootState {
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
 	nodeIndex: Array<string | null>;
-	nodeTypes: INodeTypeDescription[];
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -917,6 +916,7 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
+	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -928,6 +928,19 @@ export interface IUiState {
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
+export type IFakeDoor = {
+	id: FAKE_DOOR_FEATURES,
+	featureName: string,
+	icon?: string,
+	infoText?: string,
+	actionBoxTitle: string,
+	actionBoxDescription: string,
+	linkURL: string,
+	uiLocations: IFakeDoorLocation[],
+};
+
+export type IFakeDoorLocation = 'settings' | 'credentialsModal';
+
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
@@ -938,6 +951,11 @@ export interface ISettingsState {
 		latestVersion: number;
 		path: string;
 	};
+	onboardingCallPromptEnabled: boolean;
+}
+
+export interface INodeTypesState {
+	nodeTypes: { [nodeType: string]: INodeTypeDescription };
 }
 
 export interface ITemplateState {
@@ -1004,6 +1022,16 @@ export interface IInviteResponse {
 		email: string;
 	};
 	error?: string;
+}
+
+export interface IOnboardingCallPromptResponse {
+	nextPrompt: IOnboardingCallPrompt;
+}
+
+export interface IOnboardingCallPrompt {
+	title: string;
+	body: string;
+	index: number;
 }
 
 export interface ITab {

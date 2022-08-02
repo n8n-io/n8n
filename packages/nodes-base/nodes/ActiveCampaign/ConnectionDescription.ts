@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	activeCampaignDefaultGetAllProperties,
-} from './GenericFunctions';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const connectionOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const connectionOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'connection',
-				],
+				resource: ['connection'],
 			},
 		},
 		options: [
@@ -53,7 +47,6 @@ export const connectionOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-
 ];
 
 export const connectionFields: INodeProperties[] = [
@@ -68,12 +61,8 @@ export const connectionFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['create'],
+				resource: ['connection'],
 			},
 		},
 		description: 'The name of the service',
@@ -86,12 +75,8 @@ export const connectionFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['create'],
+				resource: ['connection'],
 			},
 		},
 		description: 'The ID of the account in the external service',
@@ -104,15 +89,12 @@ export const connectionFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['create'],
+				resource: ['connection'],
 			},
 		},
-		description: 'The name associated with the account in the external service. Often this will be a company name (e.g., "My Toystore, Inc.").',
+		description:
+			'The name associated with the account in the external service. Often this will be a company name (e.g., "My Toystore, Inc.").',
 	},
 	{
 		displayName: 'Logo URL',
@@ -122,12 +104,8 @@ export const connectionFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['create'],
+				resource: ['connection'],
 			},
 		},
 		description: 'The URL to a logo image for the external service',
@@ -140,15 +118,12 @@ export const connectionFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['create'],
+				resource: ['connection'],
 			},
 		},
-		description: 'The URL to a page where the integration with the external service can be managed in the third-party\'s website',
+		description:
+			"The URL to a page where the integration with the external service can be managed in the third-party's website",
 	},
 
 	// ----------------------------------
@@ -160,12 +135,8 @@ export const connectionFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['update'],
+				resource: ['connection'],
 			},
 		},
 		default: 0,
@@ -180,12 +151,8 @@ export const connectionFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['update'],
+				resource: ['connection'],
 			},
 		},
 		default: {},
@@ -209,7 +176,8 @@ export const connectionFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name associated with the account in the external service. Often this will be a company name (e.g., "My Toystore, Inc.").',
+				description:
+					'The name associated with the account in the external service. Often this will be a company name (e.g., "My Toystore, Inc.").',
 			},
 			{
 				displayName: 'Logo URL',
@@ -223,7 +191,8 @@ export const connectionFields: INodeProperties[] = [
 				name: 'linkUrl',
 				type: 'string',
 				default: '',
-				description: 'The URL to a page where the integration with the external service can be managed in the third-party\'s website',
+				description:
+					"The URL to a page where the integration with the external service can be managed in the third-party's website",
 			},
 			{
 				displayName: 'Status',
@@ -237,7 +206,8 @@ export const connectionFields: INodeProperties[] = [
 				name: 'syncStatus',
 				type: 'number',
 				default: 1,
-				description: 'The status of a sync triggered on the connection (0 = sync stopped; 1 = sync running)',
+				description:
+					'The status of a sync triggered on the connection (0 = sync stopped; 1 = sync running)',
 			},
 		],
 	},
@@ -251,12 +221,8 @@ export const connectionFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['delete'],
+				resource: ['connection'],
 			},
 		},
 		default: 0,
@@ -273,12 +239,8 @@ export const connectionFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'connection',
-				],
+				operation: ['get'],
+				resource: ['connection'],
 			},
 		},
 		default: 0,
@@ -290,5 +252,4 @@ export const connectionFields: INodeProperties[] = [
 	//         connection:getAll
 	// ----------------------------------
 	...activeCampaignDefaultGetAllProperties('connection', 'getAll'),
-
 ];

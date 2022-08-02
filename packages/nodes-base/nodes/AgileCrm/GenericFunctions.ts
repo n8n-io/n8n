@@ -7,28 +7,28 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-import {
-	IContactUpdate,
-} from './ContactInterface';
+import { IContactUpdate } from './ContactInterface';
 
-import {
-	IFilterRules,
-	ISearchConditions,
-} from './FilterInterface';
+import { IFilterRules, ISearchConditions } from './FilterInterface';
 
-export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string, sendAsForm?: boolean): Promise<any> { // tslint:disable-line:no-any
-
+export async function agileCrmApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	sendAsForm?: boolean,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
 		method,
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 		},
 		auth: {
 			username: credentials.email as string,
@@ -40,7 +40,7 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 	};
 
 	// To send the request as 'content-type': 'application/x-www-form-urlencoded' add form to options instead of body
-	if(sendAsForm) {
+	if (sendAsForm) {
 		options.form = body;
 	}
 	// Only add Body property if method not GET or DELETE to avoid 400 response
@@ -56,38 +56,63 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 }
 
-export async function agileCrmApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
-	method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, sendAsForm?: boolean): Promise<any> { // tslint:disable-line:no-any
+export async function agileCrmApiRequestAllItems(
+	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	sendAsForm?: boolean,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	// https://github.com/agilecrm/rest-api#11-listing-contacts-
 
 	const returnData: IDataObject[] = [];
 	let responseData;
 	do {
-		responseData = await agileCrmApiRequest.call(this, method, resource, body, query, uri, sendAsForm);
+		responseData = await agileCrmApiRequest.call(
+			this,
+			method,
+			resource,
+			body,
+			query,
+			uri,
+			sendAsForm,
+		);
 		if (responseData.length !== 0) {
 			returnData.push.apply(returnData, responseData);
 			if (sendAsForm) {
-				body.cursor = responseData[responseData.length-1].cursor;
+				body.cursor = responseData[responseData.length - 1].cursor;
 			} else {
-				query.cursor = responseData[responseData.length-1].cursor;
+				query.cursor = responseData[responseData.length - 1].cursor;
 			}
 		}
 	} while (
-			responseData.length !== 0 &&
-			responseData[responseData.length-1].hasOwnProperty('cursor')
-		);
+		responseData.length !== 0 &&
+		responseData[responseData.length - 1].hasOwnProperty('cursor')
+	);
 
 	return returnData;
 }
 
-export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function agileCrmApiRequestUpdate(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method = 'PUT',
+	endpoint?: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
 	const baseUri = `https://${credentials.subdomain}.agilecrm.com/dev/`;
 	const options: OptionsWithUri = {
 		method,
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 		},
 		body: { id: body.id },
 		auth: {
@@ -110,7 +135,8 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
 			// Iterate trough properties and show them as individial updates instead of only vague "properties"
-			payload.properties?.map((property: any) => { // tslint:disable-line:no-any
+			// tslint:disable-next-line:no-any
+			payload.properties?.map((property: any) => {
 				successfulUpdates.push(`${property.name}`);
 			});
 
@@ -147,18 +173,21 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 		}
 
 		return lastSuccesfulUpdateReturn;
-
 	} catch (error) {
 		if (successfulUpdates.length === 0) {
 			throw new NodeApiError(this.getNode(), error);
 		} else {
-			throw new NodeApiError(this.getNode(), error, { message: `Not all properties updated. Updated properties: ${successfulUpdates.join(', ')}`, description: error.message, httpCode: error.statusCode });
+			throw new NodeApiError(this.getNode(), error, {
+				message: `Not all properties updated. Updated properties: ${successfulUpdates.join(', ')}`,
+				description: error.message,
+				httpCode: error.statusCode,
+			});
 		}
 	}
-
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -168,7 +197,7 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	return result;
 }
 
-export function getFilterRules(conditions: ISearchConditions[], matchType: string): IDataObject { // tslint:disable-line:no-any
+export function getFilterRules(conditions: ISearchConditions[], matchType: string): IDataObject {
 	const rules = [];
 
 	for (const key in conditions) {
@@ -180,7 +209,7 @@ export function getFilterRules(conditions: ISearchConditions[], matchType: strin
 				RHS: searchConditions.value as string,
 				RHS_NEW: searchConditions.value2 as string,
 			};
-		rules.push(rule);
+			rules.push(rule);
 		}
 	}
 
@@ -188,18 +217,24 @@ export function getFilterRules(conditions: ISearchConditions[], matchType: strin
 		return {
 			or_rules: rules,
 		};
-	}
-	else {
+	} else {
 		return {
 			rules,
 		};
 	}
 }
 
-export function simplifyResponse(records: [{ id: string, properties: [{ name: string, value: string }] } ]) {
+export function simplifyResponse(
+	records: [{ id: string; properties: [{ name: string; value: string }] }],
+) {
 	const results = [];
 	for (const record of records) {
-		results.push(record.properties.reduce((obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }), { id: record.id }));
+		results.push(
+			record.properties.reduce(
+				(obj, value) => Object.assign(obj, { [`${value.name}`]: value.value }),
+				{ id: record.id },
+			),
+		);
 	}
 	return results;
 }

@@ -4,14 +4,26 @@
 			<component :is="$options.components.N8nHeading" size="xlarge" align="center">{{ props.heading }}</component>
 		</div>
 		<div :class="$style.description" @click="(e) => listeners.descriptionClick && listeners.descriptionClick(e)">
-			<n8n-text color="text-base"><span v-html="props.description"></span></n8n-text>
+			<component :is="$options.components.N8nText" color="text-base">
+				<span v-html="props.description"></span>
+			</component>
 		</div>
 		<component v-if="props.buttonText" :is="$options.components.N8nButton" :label="props.buttonText" size="large"
 			@click="(e) => listeners.click && listeners.click(e)"
 		/>
-		<component v-if="props.calloutText" :is="$options.components.N8nCallout"
-			:theme="props.calloutTheme" :message="props.calloutText" :icon="props.calloutIcon"
-		/>
+		<component
+			v-if="props.calloutText"
+			:is="$options.components.N8nCallout"
+			:theme="props.calloutTheme"
+			:icon="props.calloutIcon"
+			:class="$style.callout"
+		>
+			<template>
+				<component :is="$options.components.N8nText" color="text-base">
+					<span size="small" v-html="props.calloutText"></span>
+				</component>
+			</template>
+		</component>
 	</div>
 </template>
 
@@ -23,6 +35,12 @@ import N8nCallout from '../N8nCallout';
 
 export default {
 	name: 'n8n-action-box',
+	components: {
+		N8nButton,
+		N8nHeading,
+		N8nText,
+		N8nCallout,
+	},
 	props: {
 		heading: {
 			type: String,
@@ -43,12 +61,6 @@ export default {
 		calloutIcon: {
 			type: String,
 		},
-	},
-	components: {
-		N8nButton,
-		N8nHeading,
-		N8nText,
-		N8nCallout,
 	},
 };
 </script>
@@ -79,4 +91,10 @@ export default {
 	color: var(--color-text-base);
 	margin-bottom: var(--spacing-xl);
 }
+
+.callout {
+	width: 100%;
+	text-align: left;
+}
+
 </style>

@@ -1,7 +1,4 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -11,9 +8,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an authenticated API request to Bubble.
@@ -25,9 +20,8 @@ export async function dropcontactApiRequest(
 	body: IDataObject,
 	qs: IDataObject,
 ) {
-
-	const { apiKey } = await this.getCredentials('dropcontactApi') as {
-		apiKey: string,
+	const { apiKey } = (await this.getCredentials('dropcontactApi')) as {
+		apiKey: string;
 	};
 
 	const options: OptionsWithUri = {
@@ -57,11 +51,15 @@ export async function dropcontactApiRequest(
 	}
 }
 
-export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = decryptedCredentials;
 
 	const { apiKey } = credentials as {
-		apiKey: string,
+		apiKey: string;
 	};
 
 	const options: OptionsWithUri = {
@@ -79,4 +77,3 @@ export async function validateCredentials(this: ICredentialTestFunctions, decryp
 
 	return this.helpers.request!(options);
 }
-
