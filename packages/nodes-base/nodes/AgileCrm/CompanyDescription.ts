@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const companyOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const companyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -62,12 +58,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -83,12 +75,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -103,15 +91,9 @@ export const companyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 20,
@@ -138,12 +120,8 @@ export const companyFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: 'none',
@@ -164,15 +142,9 @@ export const companyFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				filterType: [
-					'manual',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				filterType: ['manual'],
 			},
 		},
 		default: 'anyFilter',
@@ -183,12 +155,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
@@ -204,15 +172,9 @@ export const companyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				filterType: [
-					'manual',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				filterType: ['manual'],
 			},
 		},
 		default: {},
@@ -277,9 +239,7 @@ export const companyFields: INodeProperties[] = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								condition_type: [
-									'BETWEEN',
-								],
+								condition_type: ['BETWEEN'],
 							},
 						},
 						default: '',
@@ -289,20 +249,15 @@ export const companyFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'See <a href="https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter" target="_blank">Agile CRM guide</a> to creating filters',
+		displayName:
+			'See <a href="https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter" target="_blank">Agile CRM guide</a> to creating filters',
 		name: 'jsonNotice',
 		type: 'notice',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				filterType: [
-					'json',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				filterType: ['json'],
 			},
 		},
 		default: '',
@@ -316,15 +271,9 @@ export const companyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				filterType: [
-					'json',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				filterType: ['json'],
 			},
 		},
 		default: '',
@@ -337,12 +286,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -398,12 +343,8 @@ export const companyFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -417,18 +358,13 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['company'],
+				operation: ['create'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
+		description:
+			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -438,15 +374,9 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -522,7 +452,8 @@ export const companyFields: INodeProperties[] = [
 					multipleValueButtonText: 'Add Tag',
 				},
 				default: [],
-				description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
+				description:
+					'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
 			},
 			{
 				displayName: 'Website',
@@ -656,12 +587,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['company'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -678,12 +605,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -696,12 +619,8 @@ export const companyFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -715,18 +634,13 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['company'],
+				operation: ['update'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
+		description:
+			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -736,15 +650,9 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['update'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -806,7 +714,8 @@ export const companyFields: INodeProperties[] = [
 					multipleValueButtonText: 'Add Tag',
 				},
 				default: [],
-				description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
+				description:
+					'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
 			},
 			{
 				displayName: 'Name',
@@ -943,5 +852,4 @@ export const companyFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

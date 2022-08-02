@@ -81,7 +81,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters.nodeType(this.data.type, this.data.typeVersion);
+			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;

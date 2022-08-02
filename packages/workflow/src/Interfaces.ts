@@ -261,8 +261,34 @@ export interface IAuthenticateRuleResponseSuccessBody extends IAuthenticateRuleB
 		value: any;
 	};
 }
+
+type Override<A extends object, B extends object> = Omit<A, keyof B> & B;
+
+export namespace DeclarativeRestApiSettings {
+	// The type below might be extended
+	// with new options that need to be parsed as expressions
+	export type HttpRequestOptions = Override<
+		IHttpRequestOptions,
+		{ skipSslCertificateValidation?: string | boolean; url?: string }
+	>;
+
+	export type ResultOptions = {
+		maxResults?: number | string;
+		options: HttpRequestOptions;
+		paginate?: boolean | string;
+		preSend: PreSendAction[];
+		postReceive: Array<{
+			data: {
+				parameterValue: string | IDataObject | undefined;
+			};
+			actions: PostReceiveAction[];
+		}>;
+		requestOperations?: IN8nRequestOperations;
+	};
+}
+
 export interface ICredentialTestRequest {
-	request: IHttpRequestOptions;
+	request: DeclarativeRestApiSettings.HttpRequestOptions;
 	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
@@ -487,7 +513,7 @@ export interface IN8nRequestOperations {
 		| IN8nRequestOperationPaginationOffset
 		| ((
 				this: IExecutePaginationFunctions,
-				requestOptions: IRequestOptionsFromParameters,
+				requestOptions: DeclarativeRestApiSettings.ResultOptions,
 		  ) => Promise<INodeExecutionData[]>);
 }
 
@@ -600,7 +626,7 @@ export interface IExecuteSingleFunctions {
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	makeRoutingRequest(
 		this: IAllExecuteFunctions,
-		requestOptions: IRequestOptionsFromParameters,
+		requestOptions: DeclarativeRestApiSettings.ResultOptions,
 	): Promise<INodeExecutionData[]>;
 }
 export interface IExecuteWorkflowInfo {
@@ -815,6 +841,10 @@ export interface INode {
 	webhookId?: string;
 }
 
+export interface IPinData {
+	[nodeName: string]: IDataObject[];
+}
+
 export interface INodes {
 	[key: string]: INode;
 }
@@ -889,7 +919,7 @@ export interface ILoadOptions {
 	routing?: {
 		operations?: IN8nRequestOperations;
 		output?: INodeRequestOutput;
-		request?: IHttpRequestOptionsFromParameters;
+		request?: DeclarativeRestApiSettings.HttpRequestOptions;
 	};
 }
 
@@ -1069,7 +1099,7 @@ export interface INodeTypeBaseDescription {
 export interface INodePropertyRouting {
 	operations?: IN8nRequestOperations; // Should be changed, does not sound right
 	output?: INodeRequestOutput;
-	request?: IHttpRequestOptionsFromParameters;
+	request?: DeclarativeRestApiSettings.HttpRequestOptions;
 	send?: INodeRequestSend;
 }
 
@@ -1106,6 +1136,7 @@ export interface INodeRequestSend {
 
 export interface IPostReceiveBase {
 	type: string;
+	enabled?: boolean | string;
 	properties: {
 		[key: string]: string | number | IDataObject;
 	};
@@ -1147,24 +1178,6 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export interface IHttpRequestOptionsFromParameters extends Partial<IHttpRequestOptions> {
-	url?: string;
-}
-
-export interface IRequestOptionsFromParameters {
-	maxResults?: number | string;
-	options: IHttpRequestOptionsFromParameters;
-	paginate?: boolean | string;
-	preSend: PreSendAction[];
-	postReceive: Array<{
-		data: {
-			parameterValue: string | IDataObject | undefined;
-		};
-		actions: PostReceiveAction[];
-	}>;
-	requestOperations?: IN8nRequestOperations;
-}
-
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
@@ -1178,7 +1191,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
-	requestDefaults?: IHttpRequestOptionsFromParameters;
+	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;
@@ -1315,6 +1328,7 @@ export interface IRunExecutionData {
 	resultData: {
 		error?: ExecutionError;
 		runData: IRunData;
+		pinData?: IPinData;
 		lastNodeExecuted?: string;
 	};
 	executionData?: {
@@ -1388,6 +1402,7 @@ export interface IWorkflowBase {
 	connections: IConnections;
 	settings?: IWorkflowSettings;
 	staticData?: IDataObject;
+	pinData?: IPinData;
 }
 
 export interface IWorkflowCredentials {
@@ -1508,6 +1523,7 @@ export interface INodesGraph {
 	node_connections: IDataObject[];
 	nodes: INodesGraphNode;
 	notes: INotesGraphNode;
+	is_pinned: boolean;
 }
 
 export interface INodesGraphNode {
@@ -1580,3 +1596,22 @@ export interface IOAuth2Credentials {
 	scope: string;
 	oauthTokenData?: IDataObject;
 }
+
+export type PublicInstalledPackage = {
+	packageName: string;
+	installedVersion: string;
+	authorName?: string;
+	authorEmail?: string;
+	installedNodes: PublicInstalledNode[];
+	createdAt: Date;
+	updatedAt: Date;
+	updateAvailable?: string;
+	failedLoading?: boolean;
+};
+
+export type PublicInstalledNode = {
+	name: string;
+	type: string;
+	latestVersion: string;
+	package: PublicInstalledPackage;
+};

@@ -1,5 +1,5 @@
 <template>
-	<Draggable @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd">
+	<Draggable type="panel-resize" @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd">
 		<template v-slot="{ isDragging }">
 			<div
 				:class="{ [$style.dragButton]: true }"

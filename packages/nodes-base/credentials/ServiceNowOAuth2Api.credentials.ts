@@ -1,13 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ServiceNowOAuth2Api implements ICredentialType {
 	name = 'serviceNowOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'ServiceNow OAuth2 API';
 	documentationUrl = 'serviceNow';
 	properties: INodeProperties[] = [

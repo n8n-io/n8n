@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -1060,12 +1061,13 @@ export function getNodeWebhookUrl(
 export function getNodeParametersIssues(
 	nodePropertiesArray: INodeProperties[],
 	node: INode,
+	pinDataNodeNames?: string[],
 ): INodeIssues | null {
 	const foundIssues: INodeIssues = {};
 	let propertyIssues: INodeIssues;
 
-	if (node.disabled === true) {
-		// Ignore issues on disabled nodes
+	if (node.disabled === true || pinDataNodeNames?.includes(node.name)) {
+		// Ignore issues on disabled and pindata nodes
 		return null;
 	}
 
