@@ -1316,9 +1316,8 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  *
  * @export
  * @param {(IDataObject | IDataObject[] | IBinaryKeyData)} data
- * @param {(number)} itemIndex
- * @param {(number)} inputIndex
  * @param {(boolean)} isBinary
+ * @param {(IPairedItemData)} pairedItem
  * @returns {INodeExecutionPairedData[]}
  */
 export function preparePairedOutputData(
