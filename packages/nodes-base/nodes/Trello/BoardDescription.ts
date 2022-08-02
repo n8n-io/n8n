@@ -332,7 +332,7 @@ export const boardFields: INodeProperties[] = [
 			// TODO: This rule should only apply for direct node properties, not their children
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
-				displayName: 'ID',
+				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
 				hint: 'Enter Board Id',
@@ -341,14 +341,14 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'The ID is not valid, it has to start with a lower case character followed by 5 numbers',
-						}
+							errorMessage: 'ID value cannot be empty',
+						},
 					},
 				],
-				placeholder: 'a12345',
+				placeholder: '45g950pa5n24054o43t453fe5',
 				url: '=https://api.trello.com/1/boards/{{$value}}',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -356,7 +356,7 @@ export const boardFields: INodeProperties[] = [
 	// ----------------------------------
 	{
 		displayName: 'Board',
-		name: 'boardId',
+		name: 'id',
 		type: 'resourceLocator',
 		default: '',
 		required: true,
@@ -384,16 +384,16 @@ export const boardFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[a-zA-Z0-9]+',
-							errorMessage: 'The ID is not valid, it has to start with a lower case character followed by 5 numbers',
-						}
+							errorMessage: 'ID value cannot be empty',
+						},
 					},
 				],
-				placeholder: 'a12345',
+				placeholder: '45g950pa5n24054o43t453fe5',
 				url: '=https://api.trello.com/1/boards/{{$value}}',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
-				displayName: 'URL',
+				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
 				hint: 'Enter board URL',
@@ -409,8 +409,44 @@ export const boardFields: INodeProperties[] = [
 					type: 'regex',
 					regex: 'https:\/\/api\.trello\.com\/1\/boards\/([a-zA-Z0-9]+)',
 				},
-			}
-		]
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: "From List",
+				name: "list",
+				type: "list",
+				hint: "Select a board from the list",
+				placeholder: "Choose...",
+				initType: "board",
+				entryTypes: {
+					board: {
+						selectable: true,
+						queryable: true,
+						data: {
+							request: {
+								baseURL: "https://api.trello.com/1",
+								url: "/members/me/boards",
+								method: "GET",
+							},
+						},
+					},
+				},
+				search: {
+					send: {
+						paginate: true,
+					},
+					request: {
+						baseURL: "https://api.trello.com/1",
+						url: "/search",
+						qs: {
+							query: "={{$value}}", // TODO: See what goes here
+							modelTypes: "=boards", // Search only boards
+							idBoards: "=mine",	  // That belong to current user
+						},
+					},
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Additional Fields',
