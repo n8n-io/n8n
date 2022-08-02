@@ -858,7 +858,6 @@ export interface IRootState {
 	workflowExecutionData: IExecutionResponse | null;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
-	nodeIndex: Array<string | null>;
 	nodeTypes: INodeTypeDescription[];
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;

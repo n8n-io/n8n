@@ -1,5 +1,5 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition">
+	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId">
 		<div
 			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
 			:style="stickySize"
@@ -18,7 +18,7 @@
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:id="nodeIndex"
+					:id="node.id"
 					:readOnly="isReadOnly"
 					:defaultText="defaultText"
 					:editMode="isActive && !isReadOnly"
@@ -165,9 +165,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (!this.isSelected && this.node) {
 				this.$emit('nodeSelected', this.node.name, false, true);
 			}
-			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
-			const nodeIdName = `node-${nodeIndex}`;
-			this.instance.destroyDraggable(nodeIdName); // todo
+			if (this.node) {
+				this.instance.destroyDraggable(this.node.id); // todo avoid destroying if possible
+			}
 		},
 		onResize({height, width, dX, dY}:  { width: number, height: number, dX: number, dY: number }) {
 			if (!this.node) {

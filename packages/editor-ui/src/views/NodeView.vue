@@ -21,7 +21,7 @@
 				class="node-view"
 				:style="workflowStyle"
 			>
-				<div v-for="nodeData in nodes" :key="getNodeIndex(nodeData.name)">
+				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node
 						v-if="nodeData.type !== STICKY_NODE_TYPE"
 						@duplicateNode="duplicateNode"
@@ -32,8 +32,7 @@
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						:id="'node-' + getNodeIndex(nodeData.name)"
-						:key="getNodeIndex(nodeData.name)"
+						:key="nodeData.id"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
 						:instance="instance"
@@ -46,7 +45,7 @@
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						:id="'node-' + getNodeIndex(nodeData.name)"
+						:key="nodeData.id"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
 						:instance="instance"
@@ -161,7 +160,6 @@ import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRMED,
-	NODE_NAME_PREFIX,
 	NODE_OUTPUT_DEFAULT_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	ONBOARDING_PROMPT_TIMEBOX,
@@ -1714,8 +1712,12 @@ export default mixins(
 					// Get the node and set it as active that new nodes
 					// which get created get automatically connected
 					// to it.
-					const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.sourceId.slice(NODE_NAME_PREFIX.length));
-					this.$store.commit('setLastSelectedNode', sourceNodeName);
+					const sourceNode = this.$store.getters.getNodeById(info.sourceId) as INodeUi | null;
+					if (!sourceNode) {
+						return;
+					}
+
+					this.$store.commit('setLastSelectedNode', sourceNode.name);
 					this.$store.commit('setLastSelectedNodeOutputIndex', info.index);
 					this.newNodeInsertPosition = null;
 
@@ -1734,7 +1736,8 @@ export default mixins(
 						}
 
 						if (this.pullConnActiveNodeName) {
-							const sourceNodeName = this.$store.getters.getNodeNameByIndex(connection.sourceId.slice(NODE_NAME_PREFIX.length));
+							const sourceNode = this.$store.getters.getNodeById(connection.sourceId);
+							const sourceNodeName = sourceNode.name;
 							const outputIndex = connection.getParameters().index;
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
@@ -1758,8 +1761,8 @@ export default mixins(
 						// @ts-ignore
 						const targetInfo = info.dropEndpoint.getParameters();
 
-						const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
-						const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+						const sourceNodeName = this.$store.getters.getNodeById(sourceInfo.nodeId).name;
+						const targetNodeName = this.$store.getters.getNodeById(targetInfo.nodeId).name;
 
 						// check for duplicates
 						if (this.getConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
@@ -1783,8 +1786,8 @@ export default mixins(
 						const sourceInfo = info.sourceEndpoint.getParameters();
 						const targetInfo = info.targetEndpoint.getParameters();
 
-						const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
-						const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+						const sourceNodeName = this.$store.getters.getNodeById(sourceInfo.nodeId).name;
+						const targetNodeName = this.$store.getters.getNodeById(targetInfo.nodeId).name;
 
 						info.connection.__meta = {
 							sourceNodeName,
@@ -1910,12 +1913,12 @@ export default mixins(
 
 						const connectionInfo = [
 							{
-								node: this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex),
+								node: this.$store.getters.getNodeById(sourceInfo.nodeId).name,
 								type: sourceInfo.type,
 								index: sourceInfo.index,
 							},
 							{
-								node: this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex),
+								node: this.$store.getters.getNodeById(targetInfo.nodeId).name,
 								type: targetInfo.type,
 								index: targetInfo.index,
 							},
@@ -1934,7 +1937,8 @@ export default mixins(
 						this.__removeConnectionByConnectionInfo(info, false);
 
 						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
-							const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.connection.sourceId.slice(NODE_NAME_PREFIX.length));
+							const sourceNode = this.$store.getters.getNodeById(info.connection.sourceId);
+							const sourceNodeName = sourceNode.name;
 							const outputIndex = info.connection.getParameters().index;
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
@@ -2150,17 +2154,33 @@ export default mixins(
 					}
 				});
 			},
-			getOutputEndpointUUID(nodeName: string, index: number) {
-				return CanvasHelpers.getOutputEndpointUUID(this.getNodeIndex(nodeName), index);
+			getOutputEndpointUUID(nodeName: string, index: number): string | null {
+				const node = this.$store.getters.getNodeByName(nodeName);
+				if (!node) {
+					return null;
+				}
+
+				return CanvasHelpers.getOutputEndpointUUID(node.id, index);
 			},
 			getInputEndpointUUID(nodeName: string, index: number) {
-				return CanvasHelpers.getInputEndpointUUID(this.getNodeIndex(nodeName), index);
+				const node = this.$store.getters.getNodeByName(nodeName);
+				if (!node) {
+					return null;
+				}
+
+				return CanvasHelpers.getInputEndpointUUID(node.id, index);
 			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
+					const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
+					const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
+					if (!outputUuid || !inputUuid) {
+						return;
+					}
+
 					const uuid: [string, string] = [
-						this.getOutputEndpointUUID(connection[0].node, connection[0].index),
-						this.getInputEndpointUUID(connection[1].node, connection[1].index),
+						outputUuid,
+						inputUuid,
 					];
 
 					// Create connections in DOM
@@ -2182,10 +2202,12 @@ export default mixins(
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
 				if (removeVisualConnection === true) {
+					const sourceId = this.$store.getters.getNodeByName(connection[0].node);
+					const targetId = this.$store.getters.getNodeByName(connection[1].node);
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: NODE_NAME_PREFIX + this.getNodeIndex(connection[0].node),
-						target: NODE_NAME_PREFIX + this.getNodeIndex(connection[1].node),
+						source: sourceId,
+						target: targetId,
 					});
 
 					// @ts-ignore
@@ -2217,12 +2239,12 @@ export default mixins(
 
 				const connectionInfo = [
 					{
-						node: this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex),
+						node: this.$store.getters.getNodeById(sourceInfo.nodeId).name,
 						type: sourceInfo.type,
 						index: sourceInfo.index,
 					},
 					{
-						node: this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex),
+						node: this.$store.getters.getNodeById(targetInfo.nodeId).name,
 						type: targetInfo.type,
 						index: targetInfo.index,
 					},
@@ -2291,14 +2313,17 @@ export default mixins(
 				this.$telemetry.track('User duplicated node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
 			},
 			getJSPlumbConnection (sourceNodeName: string, sourceOutputIndex: number, targetNodeName: string, targetInputIndex: number): Connection | undefined {
-				const sourceIndex = this.getNodeIndex(sourceNodeName);
-				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
+				const sourceNode = this.$store.getters.getNodeByName(sourceNodeName) as INodeUi;
+				const targetNode = this.$store.getters.getNodeByName(targetNodeName) as INodeUi;
+				if (!sourceNode || !targetNode) {
+					return;
+				}
 
-				const targetIndex = this.getNodeIndex(targetNodeName);
-				const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
+				const sourceId = sourceNode.id;
+				const targetId = targetNode.id;
 
-				const sourceEndpoint = CanvasHelpers.getOutputEndpointUUID(sourceIndex, sourceOutputIndex);
-				const targetEndpoint = CanvasHelpers.getInputEndpointUUID(targetIndex, targetInputIndex);
+				const sourceEndpoint = CanvasHelpers.getOutputEndpointUUID(sourceId, sourceOutputIndex);
+				const targetEndpoint = CanvasHelpers.getInputEndpointUUID(targetId, targetInputIndex);
 
 				// @ts-ignore
 				const connections = this.instance.getConnections({
@@ -2312,9 +2337,8 @@ export default mixins(
 				});
 			},
 			getJSPlumbEndpoints (nodeName: string): Endpoint[] {
-				const nodeIndex = this.getNodeIndex(nodeName);
-				const nodeId = `${NODE_NAME_PREFIX}${nodeIndex}`;
-				return this.instance.getEndpoints(nodeId);
+				const node = this.$store.getters.getNodeByName(nodeName);
+				return this.instance.getEndpoints(node.id);
 			},
 			getPlusEndpoint (nodeName: string, outputIndex: number): Endpoint | undefined {
 				const endpoints = this.getJSPlumbEndpoints(nodeName);
@@ -2322,15 +2346,15 @@ export default mixins(
 				return endpoints.find((endpoint: Endpoint) => endpoint.type === 'N8nPlus' && endpoint.__meta && endpoint.__meta.index === outputIndex);
 			},
 			getIncomingOutgoingConnections(nodeName: string): {incoming: Connection[], outgoing: Connection[]} {
-				const name = `${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(nodeName)}`;
+				const node = this.$store.getters.getNodeByName(nodeName);
 				// @ts-ignore
 				const outgoing = this.instance.getConnections({
-					source: name,
+					source: node.id,
 				}) as Connection[];
 
 				// @ts-ignore
 				const incoming = this.instance.getConnections({
-					target: name,
+					target: node.id,
 				}) as Connection[];
 
 				return {
@@ -2348,8 +2372,8 @@ export default mixins(
 			},
 			onNodeRun ({name, data, waiting}: {name: string, data: ITaskData[] | null, waiting: boolean}) {
 				const sourceNodeName = name;
-				const sourceIndex = this.$store.getters.getNodeIndex(sourceNodeName);
-				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
+				const sourceNode = this.$store.getters.getNodeByName(sourceNodeName);
+				const sourceId = sourceNode.id;
 
 				if (data === null || data.length === 0 || waiting) {
 					// @ts-ignore
@@ -2481,18 +2505,15 @@ export default mixins(
 				}
 
 				setTimeout(() => {
-					const nodeIndex = this.$store.getters.getNodeIndex(nodeName);
-					const nodeIdName = `node-${nodeIndex}`;
-
 					// Suspend drawing
 					this.instance.setSuspendDrawing(true);
 
 					// Remove all endpoints and the connections in jsplumb
-					this.instance.removeAllEndpoints(nodeIdName);
+					this.instance.removeAllEndpoints(node.id);
 
 					// Remove the draggable
 					// @ts-ignore
-					this.instance.destroyDraggable(nodeIdName);
+					this.instance.destroyDraggable(node.id);
 
 					// Remove the connections in data
 					this.$store.commit('removeAllNodeConnection', node);
@@ -2508,10 +2529,6 @@ export default mixins(
 					// Remove node from selected index if found in it
 					this.$store.commit('removeNodeFromSelection', node);
 
-					// Remove from node index
-					if (nodeIndex !== -1) {
-						this.$store.commit('setNodeIndex', { index: nodeIndex, name: null });
-					}
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged (parameterData: IUpdateInformation) {
@@ -2600,7 +2617,7 @@ export default mixins(
 					try {
 						const nodes = this.$store.getters.allNodes as INodeUi[];
 						// @ts-ignore
-						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(node.id));
 
 						this.instance.deleteEveryEndpoint();
 					} catch (e) {}
@@ -2966,7 +2983,6 @@ export default mixins(
 				this.$store.commit('removeActiveAction', 'workflowRunning');
 				this.$store.commit('setExecutionWaitingForWebhook', false);
 
-				this.$store.commit('resetNodeIndex');
 				this.$store.commit('resetSelectedNodes');
 
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0], setStateDirty: false});
@@ -3055,9 +3071,14 @@ export default mixins(
 			},
 			addPinDataConnections(pinData: IPinData) {
 				Object.keys(pinData).forEach((nodeName) => {
+					const node = this.$store.getters.getNodeByName(nodeName);
+					if (!node) {
+						return;
+					}
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+						source: node.id,
 					}) as Connection[];
 
 					connections.forEach((connection) => {
@@ -3070,9 +3091,14 @@ export default mixins(
 			},
 			removePinDataConnections(pinData: IPinData) {
 				Object.keys(pinData).forEach((nodeName) => {
+					const node = this.$store.getters.getNodeByName(nodeName);
+					if (!node) {
+						return;
+					}
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+						source: node.id,
 					}) as Connection[];
 
 					connections.forEach(CanvasHelpers.resetConnection);
