@@ -3,6 +3,10 @@ import { addTemplateComponents, mediaUploadFromItem } from './MessageFunctions';
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
+let currencies = require('currency-codes/data');
+currencies = currencies.map(({ code, currency }: { code: string, currency: string }) =>
+({ name: `${code} - ${currency}`, value: code }));
+
 export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -475,6 +479,7 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
+		// Search for ISO6391.getCode(language) in the Twitter node. Pehaps, we can use the same library?
 		//TODO: would be nice to change this to a searchable dropdown with all the possible language codes
 		displayName: 'Language Code',
 		name: 'templateLanguageCode',
@@ -496,58 +501,319 @@ export const messageTypeFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Template Parameters',
-		name: 'templateParameters',
+		displayName: 'Components',
+		name: 'components',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Parameter',
+		placeholder: 'Add Component',
 		displayOptions: {
 			show: {
 				operation: ['template'],
 				resource: ['messages'],
 			},
 		},
-		routing: {
-			send: {
-				preSend: [addTemplateComponents],
-			},
-		},
 		options: [
 			{
-				displayName: 'Parameter',
-				name: 'parameter',
+				name: 'Component',
+				displayName: 'Component',
 				values: [
-					// TODO: Multiple types
-					// {
-					// 	displayName: 'Type',
-					// 	name: 'type',
-					// 	type: 'options',
-					// 	options: [
-					// 		{
-					// 			name: 'Text',
-					// 			value: 'text',
-					// 		},
-					// 		{
-					// 			name: 'Currency',
-					// 			value: 'currency',
-					// 		},
-					// 	],
-					// 	default: 'text',
-					// },
 					{
-						displayName: 'Type',
-						type: 'hidden',
-						name: 'type',
-						default: 'text',
+					displayName: 'Type',
+					name: 'type',
+					type: 'options',
+					options: [
+						{
+							name: 'Body',
+							value: 'body',
+						},
+						{
+							name: 'Button',
+							value: 'button',
+						},
+						{
+							name: 'Header',
+							value: 'header',
+						},
+					],
+					default: 'body',
 					},
 					{
-						displayName: 'Text',
-						name: 'text',
-						default: '',
-						type: 'string',
+						displayName: 'Parameters',
+						name: 'bodyParameters',
+						type: 'fixedCollection',
+						typeOptions: {
+							sortable: true,
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'body',
+								],
+							},
+						},
+						placeholder: 'Add Parameter',
+						default: {},
+						options: [
+							{
+								displayName: 'Parameter',
+								name: 'parameter',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Text',
+												value: 'text',
+											},
+											{
+												name: 'Currency',
+												value: 'currency',
+											},
+											{
+												name: 'Date Time',
+												value: 'date_time',
+											},
+										],
+										default: 'text',
+									},
+									{
+										displayName: 'Text',
+										name: 'text',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'text',
+												],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Currency Code',
+										name: 'code',
+										type: 'options',
+										options: currencies,
+										displayOptions: {
+											show: {
+												type: [
+													'currency',
+												],
+											},
+										},
+										default: '',
+										placeholder: 'USD',
+									},
+									{
+										displayName: 'Amount',
+										name: 'amount_1000',
+										type: 'number',
+										displayOptions: {
+											show: {
+												type: [
+													'currency',
+												],
+											},
+										},
+										default: '',
+										placeholder: '',
+									},
+									{
+										displayName: 'Date',
+										name: 'timestamp',
+										type: 'dateTime',
+										displayOptions: {
+											show: {
+												type: [
+													'date_time',
+												],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Fallback Value',
+										name: 'fallback_value',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'currency',
+													'date_time',
+												],
+											},
+										},
+										default: '',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Sub Type',
+						name: 'sub_type',
+						type: 'options',
+						displayOptions: {
+							show: {
+								type: [
+									'button',
+								],
+							},
+						},
+						options: [
+							{
+								name: 'Quick Reply',
+								value: 'quick_reply',
+								description: 'Allows your customer to call a phone number and visit a website',
+							},
+							{
+								name: 'URL',
+								value: 'url',
+							},
+						],
+						default: 'quick_reply',
+					},
+					{
+						displayName: 'Index',
+						name: 'index',
+						type: 'number',
+						typeOptions: {
+							maxValue: 2,
+							minValue: 0,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'button',
+								],
+							},
+						},
+						default: 0,
+					},
+					{
+						displayName: 'Parameters',
+						name: 'ButtonParameters',
+						type: 'fixedCollection',
+						typeOptions: {
+							sortable: true,
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'button',
+								],
+							},
+						},
+						placeholder: 'Add Parameter',
+						default: {},
+						options: [
+							{
+								displayName: 'Parameter',
+								name: 'parameter',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Payload',
+												value: 'payload',
+											},
+											{
+												name: 'Text',
+												value: 'text',
+											},
+										],
+										default: 'payload',
+									},
+									{
+										displayName: 'Payload',
+										name: 'payload',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'payload',
+												],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Text',
+										name: 'text',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'text',
+												],
+											},
+										},
+										default: '',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Parameters',
+						name: 'HeaderParameters',
+						type: 'fixedCollection',
+						typeOptions: {
+							sortable: true,
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'header',
+								],
+							},
+						},
+						placeholder: 'Add Parameter',
+						default: {},
+						options: [
+							{
+								displayName: 'Parameter',
+								name: 'parameter',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Image',
+												value: 'image',
+											},
+										],
+										default: 'image',
+									},
+									{
+										displayName: 'Image Link',
+										name: 'imageLink',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'image',
+												],
+											},
+										},
+										default: '',
+									},
+								],
+							},
+						],
 					},
 				],
 			},
