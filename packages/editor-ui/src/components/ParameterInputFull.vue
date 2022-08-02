@@ -18,57 +18,33 @@
 			/>
 		</template>
 		<template>
-			<div
-				:class="{
-					[$style['resource-locator']]: isResourceLocatorParameter,
-					[$style['multiple-modes']]: hasMultipleModes,
-				}"
-			>
-				<div
-					v-if="hasMultipleModes"
-					:class="$style['mode-selector']"
+				<DraggableTarget
+					type="mapping"
+					:disabled="isDropDisabled"
+					:sticky="!isResourceLocator"
+					:stickyOffset="4"
+					@drop="onDrop"
 				>
-					<n8n-select
-						v-model="selectedMode"
-						size="small"
-						@change="onModeSelected"
-						filterable
-					>
-						<n8n-option
-							v-for="mode in parameter.modes"
-							:key="mode.name"
-							:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
-							:value="mode.name">
-						</n8n-option>
-					</n8n-select>
-				</div>
-				<div
-					:class="{ [$style['input-container']]: true }"
-				>
-					<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly" :sticky="true" :stickyOffset="4" @drop="onDrop">
-						<template v-slot="{ droppable, activeDrop }">
-							<parameter-input
-								ref="param"
-								:parameter="parameter"
-								:value="value"
-								:displayOptions="displayOptions"
-								:path="path"
-								:isReadOnly="isReadOnly"
-								:droppable="droppable"
-								:activeDrop="activeDrop"
-								:forceShowExpression="forceShowExpression"
-								:currentMode="currentMode"
-								@valueChanged="valueChanged"
-								@focus="onFocus"
-								@blur="onBlur"
-								inputSize="small" />
-						</template>
-					</DraggableTarget>
-				</div>
-			</div>
+					<template v-slot="{ droppable, activeDrop }">
+						<parameter-input
+							ref="param"
+							:parameter="parameter"
+							:value="value"
+							:displayOptions="displayOptions"
+							:path="path"
+							:isReadOnly="isReadOnly"
+							:droppable="droppable"
+							:activeDrop="activeDrop"
+							:forceShowExpression="forceShowExpression"
+							@valueChanged="valueChanged"
+							@focus="onFocus"
+							@blur="onBlur"
+							@drop="onDrop"
+							inputSize="small" />
+					</template>
+				</DraggableTarget>
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
-		<n8n-text v-if="parameter.type === 'resourceLocator' && infoText" size="small">{{ infoText }}</n8n-text>
 	</n8n-input-label>
 </template>
 
@@ -79,7 +55,6 @@ import {
 	INodeUi,
 	IUpdateInformation,
 } from '@/Interface';
-import { INodePropertyMode } from 'n8n-workflow';
 
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
@@ -89,7 +64,6 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { hasExpressionMapping } from './helpers';
-import { getParameterModeLabel } from './ResourceLocator/helpers';
 
 export default mixins(
 	showMessage,
@@ -107,7 +81,6 @@ export default mixins(
 				focused: false,
 				menuExpanded: false,
 				forceShowExpression: false,
-				selectedMode: '',
 			};
 		},
 		props: [
@@ -118,28 +91,15 @@ export default mixins(
 			'value',
 			'hideLabel',
 		],
-		mounted() {
-			if (this.parameter.modes) {
-				// List mode is selected by default if it's available
-				const listMode = this.parameter.modes.find((mode : INodePropertyMode) => mode.name === 'list');
-				this.selectedMode = listMode ? listMode.name : this.parameter.modes[0].name;
-			}
-		},
 		computed: {
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
-			isResourceLocatorParameter (): boolean {
-				return this.parameter.type === 'resourceLocator';
+			isResourceLocator (): boolean {
+				return  this.parameter.type === 'resourceLocator';
 			},
-			infoText (): string {
-				return this.currentMode.hint ?  this.currentMode.hint : this.parameter.description || '';
-			},
-			currentMode (): INodePropertyMode {
-				return this.findModeByName(this.selectedMode) || {} as INodePropertyMode;
-			},
-			hasMultipleModes (): boolean {
-				return this.parameter.modes && this.parameter.modes.length > 1;
+			isDropDisabled (): boolean {
+				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
 			},
 		},
 		methods: {
@@ -209,18 +169,6 @@ export default mixins(
 					this.forceShowExpression = false;
 				}, 200);
 			},
-			onModeSelected (value: string): void {
-				this.selectedMode = value;
-			},
-			findModeByName (name: string): INodePropertyMode | null {
-				if (this.parameter.modes) {
-					return this.parameter.modes.find((mode: INodePropertyMode) => mode.name === name) || null;
-				}
-				return null;
-			},
-			getModeLabel (name: string): string | null {
-				return getParameterModeLabel(name);
-			},
 		},
 	});
 </script>
@@ -228,39 +176,5 @@ export default mixins(
 <style lang="scss" module>
 	.hint {
 		margin-top: var(--spacing-4xs);
-	}
-
-	.resource-locator {
-		display: flex;
-
-		.input-container {
-			width: 100%;
-			input {
-				border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
-			}
-		}
-
-		&.multiple-modes {
-			.input-container {
-				flex-basis: calc(100% - 100px);
-				flex-grow: 1;
-			}
-		}
-
-	}
-
-	.mode-selector {
-		flex-basis: 100px;
-
-		input {
-			border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
-			border-right: none;
-			overflow: hidden;
-			text-overflow: ellipsis;
-
-			&:focus {
-				border-right: var(--color-secondary) var(--border-style-base) var(--border-width-base);
-			}
-		}
 	}
 </style>
