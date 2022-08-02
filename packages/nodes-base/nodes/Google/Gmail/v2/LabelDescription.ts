@@ -18,9 +18,9 @@ export const labelOperations: INodeProperties[] = [
 
 		options: [
 			{
-				name: 'Add Labels',
+				name: 'Add to Message (or Thread)',
 				value: 'addLabels',
-				action: 'Add labels',
+				action: 'Add to Message (or Thread)',
 			},
 			{
 				name: 'Create',
@@ -43,9 +43,10 @@ export const labelOperations: INodeProperties[] = [
 				action: 'Get a label info',
 			},
 			{
-				name: 'Remove Labels',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Remove from Message (or Thread)',
 				value: 'removeLabels',
-				action: 'Remove labels',
+				action: 'Remove from Message (or Thread)',
 			},
 		],
 		default: 'getAll',

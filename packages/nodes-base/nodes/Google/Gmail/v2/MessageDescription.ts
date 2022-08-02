@@ -52,7 +52,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Send a message',
 			},
 		],
-		default: 'getAll',
+		default: 'send',
 	},
 ];
 

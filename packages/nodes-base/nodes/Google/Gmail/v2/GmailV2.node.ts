@@ -97,7 +97,8 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'OAuth2 (Recommended)',
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'OAuth2 (recommended)',
 					value: 'oAuth2',
 				},
 				{
@@ -118,10 +119,6 @@ const versionDescription: INodeTypeDescription = {
 					value: 'message',
 				},
 				{
-					name: 'Thread',
-					value: 'thread',
-				},
-				{
 					name: 'Label',
 					value: 'label',
 				},
@@ -129,8 +126,12 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Draft',
 					value: 'draft',
 				},
+				{
+					name: 'Thread',
+					value: 'thread',
+				},
 			],
-			default: 'draft',
+			default: 'message',
 		},
 		//-------------------------------
 		// Draft Operations

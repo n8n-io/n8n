@@ -26,6 +26,7 @@ import jwt from 'jsonwebtoken';
 import {
 	DateTime,
 } from 'luxon';
+import { message } from 'rhea';
 
 interface IGoogleAuthCredentials {
 	delegatedEmail?: string;
@@ -96,6 +97,15 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
+		}
+
+		if (error.code === 'EAUTH') {
+			const errorOptions = {
+				message: error?.body?.error_description || 'Authorization error',
+				description: (error as Error).message,
+
+			};
+			throw new NodeApiError(this.getNode(), error.stack, errorOptions);
 		}
 
 		throw new NodeApiError(this.getNode(), error);
