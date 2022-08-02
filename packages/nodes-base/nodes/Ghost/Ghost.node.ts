@@ -5,11 +5,11 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
+	INodeExecutionPairedData
 } from 'n8n-workflow';
 
 import {
@@ -145,9 +145,9 @@ export class Ghost implements INodeType {
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionPairedData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionPairedData[] = [];
 		const length = items.length;
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
@@ -155,6 +155,7 @@ export class Ghost implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const source = this.getNodeParameter('source', 0) as string;
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -176,10 +177,10 @@ export class Ghost implements INodeType {
 							} else {
 								endpoint = `/content/posts/${identifier}`;
 							}
+
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
-
+							responseData = responseData.posts;
+							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
 						}
 
 						if (operation === 'getAll') {
@@ -198,8 +199,7 @@ export class Ghost implements INodeType {
 								responseData = responseData.posts;
 							}
 
-							returnData.push.apply(returnData, responseData);
-
+							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
 						}
 					}
 				}
@@ -244,9 +244,8 @@ export class Ghost implements INodeType {
 							}
 
 							responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
-
+							responseData = responseData.posts;
+							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
 						}
 
 						if (operation === 'delete') {
@@ -255,7 +254,7 @@ export class Ghost implements INodeType {
 
 							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
 
-							returnData.push({ success: true });
+							returnData.push.apply(this.helpers.preparePairedOutputData({ success: true }, false, { item: i }));
 
 						}
 
@@ -277,9 +276,8 @@ export class Ghost implements INodeType {
 								endpoint = `/admin/posts/${identifier}`;
 							}
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
-
+							responseData = responseData.posts;
+							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
 						}
 
 						if (operation === 'getAll') {
@@ -299,8 +297,7 @@ export class Ghost implements INodeType {
 								responseData = responseData.posts;
 							}
 
-							returnData.push.apply(returnData, responseData);
-
+							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
 						}
 
 						if (operation === 'update') {
@@ -341,20 +338,20 @@ export class Ghost implements INodeType {
 							post.updated_at = posts[0].updated_at;
 
 							responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
-
+							responseData = responseData.posts;
+							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
 						}
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push.apply(returnData, this.helpers.preparePairedOutputData({ error: error.message, $json: this.getInputData(i) }, false, { item: i }));
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return [returnData];
 	}
 }
