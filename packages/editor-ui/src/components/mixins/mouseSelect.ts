@@ -169,12 +169,13 @@ export const mouseSelect = mixins(
 
 			this.updateSelectBox(e);
 		},
-
 		nodeDeselected (node: INodeUi) {
+			this.$store.commit('removeNodeFromSelection', node);
 			// @ts-ignore
 			this.instance.removeFromDragSelection(node.id);
 		},
 		nodeSelected (node: INodeUi) {
+			this.$store.commit('addSelectedNode', node);
 			// @ts-ignore
 			this.instance.addToDragSelection(node.id);
 		},
