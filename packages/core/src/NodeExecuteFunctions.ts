@@ -59,6 +59,9 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	INodeExecutionPairedData,
+	IBinaryKeyData,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1309,6 +1312,66 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 }
 
 /**
+ * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
+ *
+ * @export
+ * @param {(IDataObject | IDataObject[] | IBinaryKeyData)} data
+ * @param {(boolean)} isBinary
+ * @param {(IPairedItemData)} pairedItem
+ * @returns {INodeExecutionPairedData[]}
+ */
+export function preparePairedOutputData(
+	data: IDataObject | IDataObject[] | IBinaryKeyData,
+	isBinary = false,
+	pairedItem?: IPairedItemData,
+): INodeExecutionPairedData[] {
+	const returnData: INodeExecutionPairedData[] = [];
+
+	if (!Array.isArray(data)) {
+		data = [data];
+	}
+
+	data.forEach((data, itemIndex) => {
+		const { item = itemIndex, input = 0 } =
+			(data.pairedItem as IPairedItemData) || pairedItem || {};
+
+		if (!isBinary) {
+			const { json } = data;
+			if (json !== undefined) {
+				returnData.push({
+					json: json as IDataObject,
+					pairedItem: { item, input },
+				});
+			} else {
+				returnData.push({
+					json: data,
+					pairedItem: { item, input },
+				});
+			}
+		}
+
+		if (isBinary) {
+			const { json, binary } = data;
+			if (json !== undefined && binary !== undefined) {
+				returnData.push({
+					json: json as IDataObject,
+					binary: binary as IBinaryKeyData,
+					pairedItem: { item, input },
+				});
+			} else {
+				returnData.push({
+					json: data,
+					binary: data as IBinaryKeyData,
+					pairedItem: { item, input },
+				});
+			}
+		}
+	});
+
+	return returnData;
+}
+
+/**
  * Automatically put the objects under a 'json' key and don't error,
  * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
  *
@@ -2408,6 +2471,7 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
+				preparePairedOutputData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);
