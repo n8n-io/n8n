@@ -3,7 +3,7 @@
 const LOGGING_ENABLED = true; // @TODO_ON_COMPLETION: Disable logging
 const POSTHOG_NO_CAPTURE_CLASS = 'ph-no-capture';
 
-const utils = {
+const postHogUtils = {
 	log(name, { isMethod } = { isMethod: false }, loggingEnabled = LOGGING_ENABLED) {
 		if (!loggingEnabled) return;
 
@@ -71,7 +71,7 @@ const utils = {
 	}
 }
 
-const userNodesPanelSession = {
+const postHogUserNodesPanelSession = {
 	sessionId: '',
 	data: {
 		nodeFilter: '',
@@ -81,8 +81,8 @@ const userNodesPanelSession = {
 };
 
 function resetNodesPanelSession() {
-	userNodesPanelSession.sessionId = `nodes_panel_session_${(new Date()).valueOf()}`;
-	userNodesPanelSession.data = {
+	postHogUserNodesPanelSession.sessionId = `nodes_panel_session_${(new Date()).valueOf()}`;
+	postHogUserNodesPanelSession.data = {
 		nodeFilter: '',
 		resultsNodes: [],
 		filterMode: 'Regular',
@@ -93,10 +93,10 @@ window.n8nExternalHooks = {
 	copyInput: {
 		mounted: [
 			function (_, meta) {
-				utils.log('copyInput.mounted');
+				postHogUtils.log('copyInput.mounted');
 
 				const { value } = meta.copyInputValueRef.classList;
-				meta.copyInputValueRef.classList.value = utils.appendNoCapture(value);
+				meta.copyInputValueRef.classList.value = postHogUtils.appendNoCapture(value);
 			}
 		],
 	},
@@ -104,10 +104,10 @@ window.n8nExternalHooks = {
 	userInfo: {
 		mounted: [
 			function (_, meta) {
-				utils.log('userInfo.mounted');
+				postHogUtils.log('userInfo.mounted');
 
 				const { value } = meta.userInfoRef.classList;
-				meta.userInfoRef.classList.value = utils.appendNoCapture(value);
+				meta.userInfoRef.classList.value = postHogUtils.appendNoCapture(value);
 			}
 		],
 	},
@@ -115,10 +115,10 @@ window.n8nExternalHooks = {
 	mainSidebar: {
 		mounted: [
 			function (_, meta) {
-				utils.log('mainSidebar.mounted');
+				postHogUtils.log('mainSidebar.mounted');
 
 				const { value } = meta.userRef.classList;
-				meta.userRef.classList.value = utils.appendNoCapture(value);
+				meta.userRef.classList.value = postHogUtils.appendNoCapture(value);
 			}
 		],
 	},
@@ -126,10 +126,10 @@ window.n8nExternalHooks = {
 	settingsPersonalView: {
 		mounted: [
 			function (_, meta) {
-				utils.log('settingsPersonalView.mounted');
+				postHogUtils.log('settingsPersonalView.mounted');
 
 				const { value } = meta.userRef.classList;
-				meta.userRef.classList.value = utils.appendNoCapture(value);
+				meta.userRef.classList.value = postHogUtils.appendNoCapture(value);
 			}
 		],
 	},
@@ -137,12 +137,12 @@ window.n8nExternalHooks = {
 	workflowOpen: {
 		mounted: [
 			function (_, meta) {
-				utils.log('workflowOpen.mounted');
+				postHogUtils.log('workflowOpen.mounted');
 
 				// workflow names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper;
 				for (const item of tableBody.querySelectorAll('.name')) {
-					item.classList.value = utils.appendNoCapture(item.classList.value);
+					item.classList.value = postHogUtils.appendNoCapture(item.classList.value);
 				};
 			}
 		],
@@ -151,12 +151,12 @@ window.n8nExternalHooks = {
 	credentialsList: {
 		mounted: [
 			function (_, meta) {
-				utils.log('credentialsList.mounted');
+				postHogUtils.log('credentialsList.mounted');
 
 				// credential names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper;
 				for (const item of tableBody.querySelectorAll('.el-table_1_column_1 > .cell')) {
-					item.classList.value = utils.appendNoCapture(item.classList.value);
+					item.classList.value = postHogUtils.appendNoCapture(item.classList.value);
 				};
 			}
 		],
@@ -165,9 +165,9 @@ window.n8nExternalHooks = {
 	sticky: {
 		mounted: [
 			function (_, meta) {
-				utils.log('sticky.mounted');
+				postHogUtils.log('sticky.mounted');
 
-				meta.stickyRef.classList.value = utils.appendNoCapture(meta.stickyRef.classList.value);
+				meta.stickyRef.classList.value = postHogUtils.appendNoCapture(meta.stickyRef.classList.value);
 			}
 		],
 	},
@@ -175,19 +175,19 @@ window.n8nExternalHooks = {
 	executionsList: {
 		created: [
 			function (_, meta) {
-				utils.log('executionsList.created');
+				postHogUtils.log('executionsList.created');
 
 				const { filtersRef, tableRef } = meta;
 
 				// workflow names in filters dropdown
 				for (const item of filtersRef.querySelectorAll('li')) {
-					item.classList.value = utils.appendNoCapture(item.classList.value);
+					item.classList.value = postHogUtils.appendNoCapture(item.classList.value);
 				}
 
 				// workflow names in table body
 				const tableBody = tableRef.$refs.bodyWrapper;
 				for (const item of tableBody.querySelectorAll('.workflow-name')) {
-					item.classList.value = utils.appendNoCapture(item.classList.value);
+					item.classList.value = postHogUtils.appendNoCapture(item.classList.value);
 				};
 			}
 		],
@@ -199,7 +199,7 @@ window.n8nExternalHooks = {
 				log('runData.updated');
 
 				for (const element of meta.elements) {
-					element.classList.value = utils.appendNoCapture(element.classList.value)
+					element.classList.value = postHogUtils.appendNoCapture(element.classList.value)
 				}
 			}
 		],
@@ -213,7 +213,7 @@ window.n8nExternalHooks = {
 		 */
 		createNodeActiveChanged: [
 			function () {
-				utils.log('nodeView.createNodeActiveChanged');
+				postHogUtils.log('nodeView.createNodeActiveChanged');
 
 				resetNodesPanelSession();
 			}
@@ -221,43 +221,43 @@ window.n8nExternalHooks = {
 
 		onRunNode: [
 			function (_, meta) {
-				utils.log('nodeView.onRunNode');
+				postHogUtils.log('nodeView.onRunNode');
 
 				const eventData = {
 					eventName: 'User clicked execute node button',
 					properties: meta,
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		],
 
 		addNodeButton: [
 			function (_, meta) {
-				utils.log('nodeView.addNodeButton');
+				postHogUtils.log('nodeView.addNodeButton');
 
 				const eventData = {
 					eventName: "User added node to workflow canvas",
 					properties: {
 						node_type: meta.nodeTypeName.split('.')[1],
-						nodes_panel_session_id: userNodesPanelSession.sessionId,
+						nodes_panel_session_id: postHogUserNodesPanelSession.sessionId,
 					}
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		],
 
 		onRunWorkflow: [
 			function (_, meta) {
-				utils.log('nodeView.onRunWorkflow');
+				postHogUtils.log('nodeView.onRunWorkflow');
 
 				const eventData = {
 					eventName: "User clicked execute workflow button",
 					properties: meta,
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		],
 	},
@@ -265,14 +265,14 @@ window.n8nExternalHooks = {
 	credentialsSelectModal: {
 		openCredentialType: [
 			function (_, meta) {
-				utils.log('credentialsSelectModal.openCredentialType');
+				postHogUtils.log('credentialsSelectModal.openCredentialType');
 
 				const eventData = {
 					eventName: "User opened Credential modal",
 					properties: meta,
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		]
 	},
@@ -280,14 +280,14 @@ window.n8nExternalHooks = {
 	nodeExecuteButton: {
 		onClick: [
 			function (_, meta) {
-				utils.log('nodeExecuteButton.onClick');
+				postHogUtils.log('nodeExecuteButton.onClick');
 
 				const eventData = {
 					eventName: 'User clicked execute node button',
 					properties: meta,
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		]
 	},
@@ -295,14 +295,14 @@ window.n8nExternalHooks = {
 	credentialEdit: {
 		saveCredential: [
 			function (_, meta) {
-				utils.log('credentialEdit.saveCredential');
+				postHogUtils.log('credentialEdit.saveCredential');
 
 				const eventData = {
 					eventName: "User saved credentials",
 					properties: meta,
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		]
 	},
@@ -310,11 +310,11 @@ window.n8nExternalHooks = {
 	variableSelectorItem: {
 		mounted: [
 			function (_, meta) {
-				utils.log('variableSelectorItem.mounted');
+				postHogUtils.log('variableSelectorItem.mounted');
 
 				const { value } = meta.variableSelectorItemRef.classList;
 
-				meta.variableSelectorItemRef.classList.value = utils.appendNoCapture(value);
+				meta.variableSelectorItemRef.classList.value = postHogUtils.appendNoCapture(value);
 			}
 		]
 	},
@@ -322,23 +322,23 @@ window.n8nExternalHooks = {
 	expressionEdit: {
 		closeDialog: [
 			function (_, meta) {
-				utils.log('expressionEdit.closeDialog');
+				postHogUtils.log('expressionEdit.closeDialog');
 
 				const eventData = {
 					eventName: "User closed Expression Editor",
 					properties: meta,
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		],
 
 		mounted: [
 			function (_, meta) {
-				utils.log('expressionEdit.mounted');
+				postHogUtils.log('expressionEdit.mounted');
 
-				meta.expressionInputRef.classList.value = utils.appendNoCapture(meta.expressionInputRef.classList.value)
-				meta.expressionOutputRef.classList.value = utils.appendNoCapture(meta.expressionOutputRef.classList.value)
+				meta.expressionInputRef.classList.value = postHogUtils.appendNoCapture(meta.expressionInputRef.classList.value)
+				meta.expressionOutputRef.classList.value = postHogUtils.appendNoCapture(meta.expressionOutputRef.classList.value)
 			}
 		],
 	},
@@ -346,14 +346,14 @@ window.n8nExternalHooks = {
 	parameterInput: {
 		modeSwitch: [
 			function (_, meta) {
-				utils.log('parameterInput.modeSwitch');
+				postHogUtils.log('parameterInput.modeSwitch');
 
 				const eventData = {
 					eventName: "User switched parameter mode",
 					properties: meta,
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		]
 	},
@@ -361,9 +361,9 @@ window.n8nExternalHooks = {
 	personalizationModal: {
 		onSubmit: [
 			function (_, meta) {
-				utils.log('personalizationModal.onSubmit');
+				postHogUtils.log('personalizationModal.onSubmit');
 
-				utils.setMetadata(meta, 'user');
+				postHogUtils.setMetadata(meta, 'user');
 			}
 		]
 	},
@@ -371,9 +371,9 @@ window.n8nExternalHooks = {
 	telemetry: {
 		currentUserIdChanged: [
 			function (_, meta) {
-				utils.log('telemetry.currentUserIdChanged');
+				postHogUtils.log('telemetry.currentUserIdChanged');
 
-				utils.identify(meta);
+				postHogUtils.identify(meta);
 			}
 		]
 	},
@@ -381,10 +381,10 @@ window.n8nExternalHooks = {
 	parameterInput: {
 		updated: [
 			function (_, meta) {
-				utils.log('parameterInput.updated');
+				postHogUtils.log('parameterInput.updated');
 
 				for (const option of meta.remoteParameterOptions) {
-					option.classList.value = utils.appendNoCapture(option.classList.value)
+					option.classList.value = postHogUtils.appendNoCapture(option.classList.value)
 				}
 			}
 		]
@@ -393,14 +393,14 @@ window.n8nExternalHooks = {
 	workflowActivate: {
 		updateWorkflowActivation: [
 			function (_, meta) {
-				utils.log('workflowActivate.updateWorkflowActivation');
+				postHogUtils.log('workflowActivate.updateWorkflowActivation');
 
 				const eventData = {
 					eventName: "User set workflow active status",
 					properties: meta,
 				};
 
-				utils.track(eventData);
+				postHogUtils.track(eventData);
 			}
 		]
 	},
