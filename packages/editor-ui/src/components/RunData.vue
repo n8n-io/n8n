@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<n8n-panel-callout
+		<n8n-callout
 			v-if="canPinData && hasPinData && !editMode.enabled"
 			theme="secondary"
 			icon="thumbtack"
@@ -30,7 +30,7 @@
 					{{ $locale.baseText('runData.pindata.learnMore') }}
 				</n8n-link>
 			</template>
-		</n8n-panel-callout>
+		</n8n-callout>
 
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
