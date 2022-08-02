@@ -2116,10 +2116,11 @@ export class Github implements INodeType {
 						body,
 						qs,
 					);
-					responseData = this.helpers.preparePairedOutputData(allItems);
+					responseData = this.helpers.preparePairedOutputData(allItems, false, {item: i});
 				} else {
+					const isBinaryData = this.getNodeParameter('asBinaryProperty', i) as boolean;
 					const data = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
-					responseData = this.helpers.preparePairedOutputData(data);
+					responseData = this.helpers.preparePairedOutputData(data, isBinaryData, {item: i});
 				}
 
 				if (fullOperation === 'file:get') {
@@ -2133,7 +2134,7 @@ export class Github implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						const newItem: INodeExecutionData = {
-							json: items[i].json,
+							json: items[i].json, // IS THIS CORRECT? Should it be returnData[i].json?
 							binary: {},
 						};
 
@@ -2151,7 +2152,7 @@ export class Github implements INodeType {
 
 						items[i] = newItem;
 
-						return this.helpers.preparePairedOutputData(items, asBinaryProperty);
+						return [this.helpers.preparePairedOutputData(items, asBinaryProperty)];
 					}
 				}
 
@@ -2168,7 +2169,8 @@ export class Github implements INodeType {
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)
 					) {
-						returnData.push({ error: error.message, pairedItem: i, json: { error: error.message } });
+						const errorData = { error: error.message, json: { error: error.message } };
+						returnData.push(...this.helpers.preparePairedOutputData({...errorData} as IDataObject, false, {item: i}));
 					} else {
 						items[i].json = { error: error.message };
 					}
@@ -2183,10 +2185,10 @@ export class Github implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return [returnData];
+			return [this.helpers.preparePairedOutputData(returnData)];
 		} else {
 			// For all other ones simply return the unchanged items
-			return this.helpers.preparePairedOutputData(items);
+			return [this.helpers.preparePairedOutputData(items)];
 		}
 	}
 }
