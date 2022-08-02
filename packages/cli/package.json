@@ -88,6 +88,7 @@
     "@types/validator": "^13.7.0",
     "concurrently": "^5.1.0",
     "jest": "^27.4.7",
+    "jest-mock": "^28.1.3",
     "nodemon": "^2.0.2",
     "run-script-os": "^1.0.7",
     "supertest": "^6.2.2",
@@ -96,9 +97,9 @@
     "typescript": "~4.6.0"
   },
   "dependencies": {
-    "@oclif/core": "^1.9.3",
     "@apidevtools/swagger-cli": "4.0.0",
     "@oclif/command": "^1.5.18",
+    "@oclif/core": "^1.9.3",
     "@oclif/errors": "^1.2.2",
     "@rudderstack/rudder-sdk-node": "1.0.6",
     "@types/json-diff": "^0.5.1",
