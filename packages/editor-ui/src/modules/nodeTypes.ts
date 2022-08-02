@@ -29,16 +29,17 @@ const module: Module<INodeTypesState, IRootState> = {
 			return Object.values(state.nodeTypes).reduce<INodeTypeDescription[]>((allNodeTypes, nodeType) => {
 				const nodeVersions = Object.keys(nodeType).map(Number);
 
-
 				return [...allNodeTypes, ...nodeVersions.map(version => nodeType[version])];
 			}, []);
 		},
-		getNodeType: (state) => (nodeTypeName: string, version = DEFAULT_NODETYPE_VERSION): INodeTypeDescription | null => {
+		getNodeType: (state) => (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 			const nodeVersions = state.nodeTypes[nodeTypeName];
 
-			if (!nodeVersions) return null;
+			if (!nodeVersions || Object.keys(nodeVersions).length === 0) return null;
 
-			const nodeType = nodeVersions[version];
+			const nodeType = nodeVersions[
+				version || Math.max(...Object.keys(nodeVersions).map(Number))
+			];
 
 			if (!nodeType || !hasValidVersion(nodeType, version)) return null;
 
