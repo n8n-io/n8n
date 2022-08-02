@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactJourneyOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const contactJourneyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactJourney',
-				],
+				resource: ['contactJourney'],
 			},
 		},
 		options: [
@@ -28,7 +24,6 @@ export const contactJourneyOperations: INodeProperties[] = [
 ];
 
 export const contactJourneyFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 contactJourney:add                         */
 	/* -------------------------------------------------------------------------- */
@@ -42,16 +37,13 @@ export const contactJourneyFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'contactJourney',
-				],
+				operation: ['add'],
+				resource: ['contactJourney'],
 			},
 		},
 		default: '',
-		description: 'List ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'List ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -60,12 +52,8 @@ export const contactJourneyFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'contactJourney',
-				],
+				operation: ['add'],
+				resource: ['contactJourney'],
 			},
 		},
 		default: '',

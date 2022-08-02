@@ -144,7 +144,7 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
-	tags: ITagDb[];
+	tags?: ITagDb[];
 }
 
 export interface IWorkflowToImport extends IWorkflowBase {
@@ -714,30 +714,32 @@ export interface IWorkflowExecuteProcess {
 
 export type WhereClause = Record<string, { id: string }>;
 
-/** ********************************
- * Commuinity nodes
- ******************************** */
+// ----------------------------------
+//          community nodes
+// ----------------------------------
 
-export type ParsedNpmPackageName = {
-	packageName: string;
-	originalString: string;
-	scope?: string;
-	version?: string;
-};
-
-export type NpmUpdatesAvailable = {
-	[packageName: string]: {
-		current: string;
-		wanted: string;
-		latest: string;
-		location: string;
+export namespace CommunityPackages {
+	export type ParsedPackageName = {
+		packageName: string;
+		rawString: string;
+		scope?: string;
+		version?: string;
 	};
-};
 
-export type NpmPackageStatusCheck = {
-	status: 'OK' | 'Banned';
-	reason?: string;
-};
+	export type AvailableUpdates = {
+		[packageName: string]: {
+			current: string;
+			wanted: string;
+			latest: string;
+			location: string;
+		};
+	};
+
+	export type PackageStatusCheck = {
+		status: 'OK' | 'Banned';
+		reason?: string;
+	};
+}
 
 // ----------------------------------
 //               telemetry

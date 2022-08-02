@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const eventOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -40,7 +36,6 @@ export const eventOperations: INodeProperties[] = [
 ];
 
 export const eventFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                   event:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -50,12 +45,8 @@ export const eventFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['getAll'],
+				resource: ['event'],
 			},
 		},
 		default: false,
@@ -67,15 +58,9 @@ export const eventFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['event'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -93,12 +78,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['event'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -136,12 +117,8 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['event'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -153,12 +130,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['event'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -186,18 +159,15 @@ export const eventFields: INodeProperties[] = [
 		displayName: 'Event Name or ID',
 		name: 'eventId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getEvents',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'register',
-				],
+				resource: ['event'],
+				operation: ['register'],
 			},
 		},
 		default: '',
@@ -208,15 +178,11 @@ export const eventFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The registrant\'s first name',
+		description: "The registrant's first name",
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'register',
-				],
+				resource: ['event'],
+				operation: ['register'],
 			},
 		},
 	},
@@ -227,15 +193,11 @@ export const eventFields: INodeProperties[] = [
 		placeholder: 'name@email.com',
 		default: '',
 		required: true,
-		description: 'The registrant\'s email address',
+		description: "The registrant's email address",
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'register',
-				],
+				resource: ['event'],
+				operation: ['register'],
 			},
 		},
 	},
@@ -247,12 +209,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'register',
-				],
+				resource: ['event'],
+				operation: ['register'],
 			},
 		},
 		options: [
@@ -282,7 +240,8 @@ export const eventFields: INodeProperties[] = [
 								name: 'fieldId',
 								type: 'string',
 								default: '',
-								description: 'Each custom field\'s unique identifier can be found within the Event\'s Registration block in the Customize tab',
+								description:
+									"Each custom field's unique identifier can be found within the Event's Registration block in the Customize tab",
 							},
 							{
 								displayName: 'Value',
@@ -300,7 +259,8 @@ export const eventFields: INodeProperties[] = [
 				name: 'ref_url',
 				type: 'string',
 				default: '',
-				description: 'Event Registration page URL. It can be useful when you do not know Event ID, but have Event link.',
+				description:
+					'Event Registration page URL. It can be useful when you do not know Event ID, but have Event link.',
 			},
 			{
 				displayName: 'GDPR',
@@ -329,12 +289,11 @@ export const eventFields: INodeProperties[] = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getEventSessions',
-					loadOptionsDependsOn: [
-						'eventId',
-					],
+					loadOptionsDependsOn: ['eventId'],
 				},
 				default: '',
-				description: 'Event Session ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Event Session ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Website',

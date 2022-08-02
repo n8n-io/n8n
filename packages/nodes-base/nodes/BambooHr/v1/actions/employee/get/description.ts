@@ -1,6 +1,4 @@
-import {
-	EmployeeProperties,
-} from '../../Interfaces';
+import { EmployeeProperties } from '../../Interfaces';
 
 export const employeeGetDescription: EmployeeProperties = [
 	{
@@ -10,12 +8,8 @@ export const employeeGetDescription: EmployeeProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['get'],
+				resource: ['employee'],
 			},
 		},
 		default: '',
@@ -28,12 +22,8 @@ export const employeeGetDescription: EmployeeProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'employee',
-				],
+				operation: ['get'],
+				resource: ['employee'],
 			},
 		},
 		options: [
@@ -44,10 +34,9 @@ export const employeeGetDescription: EmployeeProperties = [
 				typeOptions: {
 					loadOptionsMethod: 'getEmployeeFields',
 				},
-				default: [
-					'all',
-				],
-				description: 'Set of fields to get from employee data. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				default: ['all'],
+				description:
+					'Set of fields to get from employee data. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

@@ -1,18 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	contenfulApiRequestAllItems,
-	contentfulApiRequest,
-} from './GenericFunctions';
+import { contenfulApiRequestAllItems, contentfulApiRequest } from './GenericFunctions';
 
 import * as SpaceDescription from './SpaceDescription';
 import * as ContentTypeDescription from './ContentTypeDescription';
@@ -104,15 +94,17 @@ export class Contentful implements INodeType {
 			try {
 				if (resource === 'space') {
 					if (operation === 'get') {
-
 						const credentials = await this.getCredentials('contentfulApi');
 
-						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}`);
+						responseData = await contentfulApiRequest.call(
+							this,
+							'GET',
+							`/spaces/${credentials?.spaceId}`,
+						);
 					}
 				}
 				if (resource === 'contentType') {
 					if (operation === 'get') {
-
 						const credentials = await this.getCredentials('contentfulApi');
 
 						const env = this.getNodeParameter('environmentId', 0) as string;
@@ -121,7 +113,11 @@ export class Contentful implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/content_types/${id}`);
+						responseData = await contentfulApiRequest.call(
+							this,
+							'GET',
+							`/spaces/${credentials?.spaceId}/environments/${env}/content_types/${id}`,
+						);
 
 						if (!additionalFields.rawData) {
 							responseData = responseData.fields;
@@ -129,9 +125,7 @@ export class Contentful implements INodeType {
 					}
 				}
 				if (resource === 'entry') {
-
 					if (operation === 'get') {
-
 						const credentials = await this.getCredentials('contentfulApi');
 
 						const env = this.getNodeParameter('environmentId', 0) as string;
@@ -140,12 +134,17 @@ export class Contentful implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries/${id}`, {}, qs);
+						responseData = await contentfulApiRequest.call(
+							this,
+							'GET',
+							`/spaces/${credentials?.spaceId}/environments/${env}/entries/${id}`,
+							{},
+							qs,
+						);
 
 						if (!additionalFields.rawData) {
 							responseData = responseData.fields;
 						}
-
 					} else if (operation === 'getAll') {
 						const credentials = await this.getCredentials('contentfulApi');
 
@@ -184,12 +183,19 @@ export class Contentful implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
+							responseData = await contenfulApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								`/spaces/${credentials?.spaceId}/environments/${env}/entries`,
+								{},
+								qs,
+							);
 
 							if (!rawData) {
-								const assets : IDataObject[] = [];
+								const assets: IDataObject[] = [];
 								// tslint:disable-next-line: no-any
-								responseData.map((asset : any) => {
+								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
 								responseData = assets;
@@ -197,13 +203,19 @@ export class Contentful implements INodeType {
 						} else {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							qs.limit = limit;
-							responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
+							responseData = await contentfulApiRequest.call(
+								this,
+								'GET',
+								`/spaces/${credentials?.spaceId}/environments/${env}/entries`,
+								{},
+								qs,
+							);
 							responseData = responseData.items;
 
 							if (!rawData) {
-								const assets : IDataObject[] = [];
+								const assets: IDataObject[] = [];
 								// tslint:disable-next-line: no-any
-								responseData.map((asset : any) => {
+								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
 								responseData = assets;
@@ -213,7 +225,6 @@ export class Contentful implements INodeType {
 				}
 				if (resource === 'asset') {
 					if (operation === 'get') {
-
 						const credentials = await this.getCredentials('contentfulApi');
 
 						const env = this.getNodeParameter('environmentId', 0) as string;
@@ -222,14 +233,18 @@ export class Contentful implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets/${id}`, {}, qs);
+						responseData = await contentfulApiRequest.call(
+							this,
+							'GET',
+							`/spaces/${credentials?.spaceId}/environments/${env}/assets/${id}`,
+							{},
+							qs,
+						);
 
 						if (!additionalFields.rawData) {
 							responseData = responseData.fields;
 						}
-
 					} else if (operation === 'getAll') {
-
 						const credentials = await this.getCredentials('contentfulApi');
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
@@ -267,12 +282,19 @@ export class Contentful implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets`, {}, qs);
+							responseData = await contenfulApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								`/spaces/${credentials?.spaceId}/environments/${env}/assets`,
+								{},
+								qs,
+							);
 
 							if (!rawData) {
-								const assets : IDataObject[] = [];
+								const assets: IDataObject[] = [];
 								// tslint:disable-next-line: no-any
-								responseData.map((asset : any) => {
+								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
 								responseData = assets;
@@ -280,13 +302,19 @@ export class Contentful implements INodeType {
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
 							qs.limit = limit;
-							responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets`, {}, qs);
+							responseData = await contentfulApiRequest.call(
+								this,
+								'GET',
+								`/spaces/${credentials?.spaceId}/environments/${env}/assets`,
+								{},
+								qs,
+							);
 							responseData = responseData.items;
 
 							if (!rawData) {
-								const assets : IDataObject[] = [];
+								const assets: IDataObject[] = [];
 								// tslint:disable-next-line: no-any
-								responseData.map((asset : any) => {
+								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
 								responseData = assets;
@@ -295,9 +323,7 @@ export class Contentful implements INodeType {
 					}
 				}
 				if (resource === 'locale') {
-
 					if (operation === 'getAll') {
-
 						const credentials = await this.getCredentials('contentfulApi');
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
@@ -305,14 +331,25 @@ export class Contentful implements INodeType {
 						const env = this.getNodeParameter('environmentId', i) as string;
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
-
+							responseData = await contenfulApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								`/spaces/${credentials?.spaceId}/environments/${env}/locales`,
+								{},
+								qs,
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							qs.limit = limit;
-							responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
+							responseData = await contentfulApiRequest.call(
+								this,
+								'GET',
+								`/spaces/${credentials?.spaceId}/environments/${env}/locales`,
+								{},
+								qs,
+							);
 							responseData = responseData.items;
-
 						}
 					}
 				}

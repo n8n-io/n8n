@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,38 +9,19 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	affinityApiRequest,
-	affinityApiRequestAllItems,
-} from './GenericFunctions';
+import { affinityApiRequest, affinityApiRequestAllItems } from './GenericFunctions';
 
-import {
-	organizationFields,
-	organizationOperations,
-} from './OrganizationDescription';
+import { organizationFields, organizationOperations } from './OrganizationDescription';
 
-import {
-	personFields,
-	personOperations,
-} from './PersonDescription';
+import { personFields, personOperations } from './PersonDescription';
 
-import {
-	listFields,
-	listOperations,
-} from './ListDescription';
+import { listFields, listOperations } from './ListDescription';
 
-import {
-	listEntryFields,
-	listEntryOperations,
-} from './ListEntryDescription';
+import { listEntryFields, listEntryOperations } from './ListEntryDescription';
 
-import {
-	IOrganization,
-} from './OrganizationInterface';
+import { IOrganization } from './OrganizationInterface';
 
-import {
-	IPerson,
-} from './PersonInterface';
+import { IPerson } from './PersonInterface';
 
 export class Affinity implements INodeType {
 	description: INodeTypeDescription = {
@@ -108,7 +87,13 @@ export class Affinity implements INodeType {
 			// select them easily
 			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const organizations = await affinityApiRequestAllItems.call(this, 'organizations', 'GET', '/organizations', {});
+				const organizations = await affinityApiRequestAllItems.call(
+					this,
+					'organizations',
+					'GET',
+					'/organizations',
+					{},
+				);
 				for (const organization of organizations) {
 					const organizationName = organization.name;
 					const organizationId = organization.id;
@@ -123,7 +108,13 @@ export class Affinity implements INodeType {
 			// select them easily
 			async getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const persons = await affinityApiRequestAllItems.call(this, 'persons', 'GET', '/persons', {});
+				const persons = await affinityApiRequestAllItems.call(
+					this,
+					'persons',
+					'GET',
+					'/persons',
+					{},
+				);
 				for (const person of persons) {
 					let personName = `${person.first_name} ${person.last_name}`;
 					if (person.primary_email !== null) {
@@ -189,23 +180,47 @@ export class Affinity implements INodeType {
 							entity_id: parseInt(entityId, 10),
 						};
 						Object.assign(body, additionalFields);
-						responseData = await affinityApiRequest.call(this, 'POST', `/lists/${listId}/list-entries`, body);
+						responseData = await affinityApiRequest.call(
+							this,
+							'POST',
+							`/lists/${listId}/list-entries`,
+							body,
+						);
 					}
 					//https://api-docs.affinity.co/#get-a-specific-list-entry
 					if (operation === 'get') {
 						const listId = this.getNodeParameter('listId', i) as string;
 						const listEntryId = this.getNodeParameter('listEntryId', i) as string;
-						responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}/list-entries/${listEntryId}`, {}, qs);
+						responseData = await affinityApiRequest.call(
+							this,
+							'GET',
+							`/lists/${listId}/list-entries/${listEntryId}`,
+							{},
+							qs,
+						);
 					}
 					//https://api-docs.affinity.co/#get-all-list-entries
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const listId = this.getNodeParameter('listId', i) as string;
 						if (returnAll === true) {
-							responseData = await affinityApiRequestAllItems.call(this, 'list_entries', 'GET', `/lists/${listId}/list-entries`, {}, qs);
+							responseData = await affinityApiRequestAllItems.call(
+								this,
+								'list_entries',
+								'GET',
+								`/lists/${listId}/list-entries`,
+								{},
+								qs,
+							);
 						} else {
 							qs.page_size = this.getNodeParameter('limit', i) as number;
-							responseData = await affinityApiRequest.call(this, 'GET', `/lists/${listId}/list-entries`, {}, qs);
+							responseData = await affinityApiRequest.call(
+								this,
+								'GET',
+								`/lists/${listId}/list-entries`,
+								{},
+								qs,
+							);
 							responseData = responseData.list_entries;
 						}
 					}
@@ -213,7 +228,13 @@ export class Affinity implements INodeType {
 					if (operation === 'delete') {
 						const listId = this.getNodeParameter('listId', i) as string;
 						const listEntryId = this.getNodeParameter('listEntryId', i) as string;
-						responseData = await affinityApiRequest.call(this, 'DELETE', `/lists/${listId}/list-entries/${listEntryId}`, {}, qs);
+						responseData = await affinityApiRequest.call(
+							this,
+							'DELETE',
+							`/lists/${listId}/list-entries/${listEntryId}`,
+							{},
+							qs,
+						);
 					}
 				}
 				if (resource === 'person') {
@@ -259,7 +280,13 @@ export class Affinity implements INodeType {
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
-						responseData = await affinityApiRequest.call(this, 'GET', `/persons/${personId}`, {}, qs);
+						responseData = await affinityApiRequest.call(
+							this,
+							'GET',
+							`/persons/${personId}`,
+							{},
+							qs,
+						);
 					}
 					//https://api-docs.affinity.co/#search-for-persons
 					if (operation === 'getAll') {
@@ -272,7 +299,14 @@ export class Affinity implements INodeType {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
 						if (returnAll === true) {
-							responseData = await affinityApiRequestAllItems.call(this, 'persons', 'GET', '/persons', {}, qs);
+							responseData = await affinityApiRequestAllItems.call(
+								this,
+								'persons',
+								'GET',
+								'/persons',
+								{},
+								qs,
+							);
 						} else {
 							qs.page_size = this.getNodeParameter('limit', i) as number;
 							responseData = await affinityApiRequest.call(this, 'GET', '/persons', {}, qs);
@@ -282,7 +316,13 @@ export class Affinity implements INodeType {
 					//https://api-docs.affinity.co/#delete-a-person
 					if (operation === 'delete') {
 						const personId = this.getNodeParameter('personId', i) as number;
-						responseData = await affinityApiRequest.call(this, 'DELETE', `/persons/${personId}`, {}, qs);
+						responseData = await affinityApiRequest.call(
+							this,
+							'DELETE',
+							`/persons/${personId}`,
+							{},
+							qs,
+						);
 					}
 				}
 				if (resource === 'organization') {
@@ -314,7 +354,12 @@ export class Affinity implements INodeType {
 						if (updateFields.persons) {
 							body.person_ids = updateFields.persons as number[];
 						}
-						responseData = await affinityApiRequest.call(this, 'PUT', `/organizations/${organizationId}`, body);
+						responseData = await affinityApiRequest.call(
+							this,
+							'PUT',
+							`/organizations/${organizationId}`,
+							body,
+						);
 					}
 					//https://api-docs.affinity.co/#get-a-specific-organization
 					if (operation === 'get') {
@@ -323,7 +368,13 @@ export class Affinity implements INodeType {
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
-						responseData = await affinityApiRequest.call(this, 'GET', `/organizations/${organizationId}`, {}, qs);
+						responseData = await affinityApiRequest.call(
+							this,
+							'GET',
+							`/organizations/${organizationId}`,
+							{},
+							qs,
+						);
 					}
 					//https://api-docs.affinity.co/#search-for-organizations
 					if (operation === 'getAll') {
@@ -336,7 +387,14 @@ export class Affinity implements INodeType {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
 						if (returnAll === true) {
-							responseData = await affinityApiRequestAllItems.call(this, 'organizations', 'GET', '/organizations', {}, qs);
+							responseData = await affinityApiRequestAllItems.call(
+								this,
+								'organizations',
+								'GET',
+								'/organizations',
+								{},
+								qs,
+							);
 						} else {
 							qs.page_size = this.getNodeParameter('limit', i) as number;
 							responseData = await affinityApiRequest.call(this, 'GET', '/organizations', {}, qs);
@@ -346,7 +404,13 @@ export class Affinity implements INodeType {
 					//https://api-docs.affinity.co/#delete-an-organization
 					if (operation === 'delete') {
 						const organizationId = this.getNodeParameter('organizationId', i) as number;
-						responseData = await affinityApiRequest.call(this, 'DELETE', `/organizations/${organizationId}`, {}, qs);
+						responseData = await affinityApiRequest.call(
+							this,
+							'DELETE',
+							`/organizations/${organizationId}`,
+							{},
+							qs,
+						);
 					}
 				}
 				if (Array.isArray(responseData)) {

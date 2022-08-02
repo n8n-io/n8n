@@ -287,10 +287,10 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
-			let nodeTypeData = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+			let nodeTypeData = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
-				nodeTypeData = this.$store.getters.nodeType(NO_OP_NODE_TYPE) as INodeTypeDescription;
+				nodeTypeData = this.$store.getters['nodeTypes/getNodeType'](NO_OP_NODE_TYPE) as INodeTypeDescription;
 			}
 
 			this.__addInputEndpoints(node, nodeTypeData);

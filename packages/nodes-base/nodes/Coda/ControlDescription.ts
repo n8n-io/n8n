@@ -8,9 +8,7 @@ export const controlOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'control',
-				],
+				resource: ['control'],
 			},
 		},
 		options: [
@@ -32,10 +30,9 @@ export const controlOperations: INodeProperties[] = [
 ];
 
 export const controlFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                   control:get                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   control:get                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -47,15 +44,12 @@ export const controlFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'control',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['control'],
+				operation: ['get'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Control ID',
@@ -65,19 +59,15 @@ export const controlFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'control',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['control'],
+				operation: ['get'],
 			},
 		},
 		description: 'The control to get the row from',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   control:getAll                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   control:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -89,15 +79,12 @@ export const controlFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'control',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['control'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -105,12 +92,8 @@ export const controlFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'control',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['control'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -122,15 +105,9 @@ export const controlFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'control',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['control'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
