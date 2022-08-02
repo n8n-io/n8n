@@ -1982,11 +1982,14 @@ export default mixins(
 										const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 										if (nodeType && nodeType.inputs && nodeType.inputs.length === 1) {
 											this.pullConnActiveNodeName = node.name;
-											const endpoint = this.instance.getEndpoint(this.getInputEndpointUUID(nodeName, 0));
+											const endpointUUID = this.getInputEndpointUUID(nodeName, 0);
+											if (endpointUUID) {
+												const endpoint = this.instance.getEndpoint(endpointUUID);
 
-											CanvasHelpers.showDropConnectionState(connection, endpoint);
+												CanvasHelpers.showDropConnectionState(connection, endpoint);
 
-											return true;
+												return true;
+											}
 										}
 									}
 								}
