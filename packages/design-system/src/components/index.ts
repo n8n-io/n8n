@@ -41,7 +41,6 @@ import N8nBadge from './N8nBadge';
 import N8nButton from './N8nButton';
 import { N8nElButton } from './N8nButton/overrides';
 import N8nCallout from './N8nCallout';
-import N8nPanelCallout from './N8nPanelCallout';
 import N8nCard from './N8nCard';
 import N8nFormBox from './N8nFormBox';
 import N8nFormInput from './N8nFormInput';
@@ -86,7 +85,6 @@ export {
 	N8nButton,
 	N8nElButton,
 	N8nCallout,
-	N8nPanelCallout,
 	N8nCard,
 	N8nHeading,
 	N8nFormBox,
