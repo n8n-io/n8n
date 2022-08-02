@@ -209,7 +209,7 @@ export default mixins(
 		},
 		activeNodeType(): INodeTypeDescription | null {
 			if (this.activeNode) {
-				return this.$store.getters.nodeType(this.activeNode.type, this.activeNode.typeVersion);
+				return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
 		},

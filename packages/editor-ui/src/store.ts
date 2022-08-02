@@ -35,6 +35,7 @@ import {
 	ICommunityNodesState,
 } from './Interface';
 
+import nodeTypes from './modules/nodeTypes';
 import credentials from './modules/credentials';
 import settings from './modules/settings';
 import tags from './modules/tags';
@@ -78,7 +79,6 @@ const state: IRootState = {
 	workflowExecutionData: null,
 	lastSelectedNode: null,
 	lastSelectedNodeOutputIndex: null,
-	nodeTypes: [],
 	nodeViewOffsetPosition: [0, 0],
 	nodeViewMoveInProgress: false,
 	selectedNodes: [],
@@ -102,6 +102,7 @@ const state: IRootState = {
 };
 
 const modules = {
+	nodeTypes,
 	credentials,
 	tags,
 	settings,
@@ -539,10 +540,6 @@ export const store = new Vuex.Store({
 			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
-		// Node-Types
-		setNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
-			Vue.set(state, 'nodeTypes', nodeTypes);
-		},
 		// Active Execution
 		setExecutingNode(state, executingNode: string) {
 			state.executingNode = executingNode;
@@ -690,21 +687,6 @@ export const store = new Vuex.Store({
 			}
 		},
 
-		updateNodeTypes(state, nodeTypes: INodeTypeDescription[]) {
-			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version.toString() === node.version.toString()));
-			const newNodesState = [...oldNodesToKeep, ...nodeTypes];
-
-			Vue.set(state, 'nodeTypes', newNodesState);
-			state.nodeTypes = newNodesState;
-		},
-
-		removeNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
-			console.log('Store will remove nodes: ', nodeTypes); // eslint-disable-line no-console
-			const oldNodesToKeep = state.nodeTypes.filter(node => !nodeTypes.find(n => n.name === node.name && n.version === node.version));
-			Vue.set(state, 'nodeTypes', oldNodesToKeep);
-			state.nodeTypes = oldNodesToKeep;
-		},
-
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
 			const updated = state.sidebarMenuItems.concat(menuItems);
 			Vue.set(state, 'sidebarMenuItems', updated);
@@ -822,7 +804,7 @@ export const store = new Vuex.Store({
 
 		workflowTriggerNodes: (state, getters) => {
 			return state.workflow.nodes.filter(node => {
-				const nodeType = getters.nodeType(node.type, node.typeVersion);
+				const nodeType = getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				return nodeType && nodeType.group.includes('trigger');
 			});
 		},
@@ -893,9 +875,6 @@ export const store = new Vuex.Store({
 			}
 			return false;
 		},
-		allNodeTypes: (state): INodeTypeDescription[] => {
-			return state.nodeTypes;
-		},
 		/**
 		 * Pin data
 		 */
@@ -921,29 +900,14 @@ export const store = new Vuex.Store({
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */
 		nativelyNumberSuffixedDefaults: (_, getters): string[] => {
-			const {allNodeTypes} = getters as {
-				allNodeTypes: Array<INodeTypeDescription & { defaults: { name: string } }>;
+			const { 'nodeTypes/allNodeTypes': allNodeTypes } = getters as {
+				['nodeTypes/allNodeTypes']: Array<INodeTypeDescription & { defaults: { name: string } }>;
 			};
 
 			return allNodeTypes.reduce<string[]>((acc, cur) => {
 				if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
 				return acc;
 			}, []);
-		},
-
-		nodeType: (state, getters) => (nodeType: string, version?: number): INodeTypeDescription | null => {
-			const foundType = state.nodeTypes.find(typeData => {
-				const typeVersion = Array.isArray(typeData.version)
-					? typeData.version
-					: [typeData.version];
-
-				return typeData.name === nodeType && typeVersion.includes(version || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
-			});
-
-			if (foundType === undefined) {
-				return null;
-			}
-			return foundType;
 		},
 		activeNode: (state, getters): INodeUi | null => {
 			return getters.getNodeByName(state.activeNode);

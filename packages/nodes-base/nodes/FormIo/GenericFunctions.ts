@@ -1,14 +1,6 @@
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
-} from 'n8n-workflow';
-
+import { IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
 interface IFormIoCredentials {
 	environment: 'cloudHosted' | ' selfHosted';
@@ -21,7 +13,10 @@ interface IFormIoCredentials {
  * Method has the logic to get jwt token from Form.io
  * @param this
  */
-async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, credentials: IFormIoCredentials) {
+async function getToken(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	credentials: IFormIoCredentials,
+) {
 	const base = credentials.domain || 'https://formio.form.io';
 	const options = {
 		headers: {
@@ -43,7 +38,9 @@ async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunct
 		const responseObject = await this.helpers.request!(options);
 		return responseObject.headers['x-jwt-token'];
 	} catch (error) {
-		throw new Error(`Authentication Failed for Form.io. Please provide valid credentails/ endpoint details`);
+		throw new Error(
+			`Authentication Failed for Form.io. Please provide valid credentails/ endpoint details`,
+		);
 	}
 }
 
@@ -52,9 +49,15 @@ async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunct
  * @param this
  * @param method
  */
-export async function formIoApiRequest(this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body = {}, qs = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const credentials = await this.getCredentials('formIoApi') as unknown as IFormIoCredentials;
+export async function formIoApiRequest(
+	this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: string,
+	endpoint: string,
+	body = {},
+	qs = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const credentials = (await this.getCredentials('formIoApi')) as unknown as IFormIoCredentials;
 
 	const token = await getToken.call(this, credentials);
 

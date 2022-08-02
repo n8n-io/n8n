@@ -1515,7 +1515,7 @@ export default mixins(
 				});
 			},
 			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
-				const nodeTypeData: INodeTypeDescription | null = this.$store.getters.nodeType(nodeTypeName);
+				const nodeTypeData: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](nodeTypeName);
 
 				if (nodeTypeData === null) {
 					this.$showMessage({
@@ -1570,7 +1570,7 @@ export default mixins(
 						let yOffset = 0;
 
 						if (lastSelectedConnection) {
-							const sourceNodeType = this.$store.getters.nodeType(lastSelectedNode.type, lastSelectedNode.typeVersion) as INodeTypeDescription | null;
+							const sourceNodeType = this.$store.getters['nodeTypes/getNodeType'](lastSelectedNode.type, lastSelectedNode.typeVersion) as INodeTypeDescription | null;
 							const offsets = [[-100, 100], [-140, 0, 140], [-240, -100, 100, 240]];
 							if (sourceNodeType && sourceNodeType.outputs.length > 1) {
 								const offset = offsets[sourceNodeType.outputs.length - 2];
@@ -1979,7 +1979,7 @@ export default mixins(
 									const nodeName = (element as HTMLElement).dataset['name'] as string;
 									const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
 									if (node) {
-										const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+										const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 										if (nodeType && nodeType.inputs && nodeType.inputs.length === 1) {
 											this.pullConnActiveNodeName = node.name;
 											const endpoint = this.instance.getEndpoint(this.getInputEndpointUUID(nodeName, 0));
@@ -2263,7 +2263,7 @@ export default mixins(
 
 				const node = this.$store.getters.getNodeByName(nodeName);
 
-				const nodeTypeData: INodeTypeDescription | null= this.$store.getters.nodeType(node.type, node.typeVersion);
+				const nodeTypeData: INodeTypeDescription | null= this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				if (nodeTypeData && nodeTypeData.maxNodes !== undefined && this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes) {
 					this.showMaxNodeTypeError(nodeTypeData);
 					return;
@@ -2478,7 +2478,7 @@ export default mixins(
 
 				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
-				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);
+				const nodeType: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				if (nodeType && nodeType.outputs.length === 1
 					&& nodeType.inputs.length === 1) {
 					const {incoming, outgoing} = this.getIncomingOutgoingConnections(node.name);
@@ -2685,7 +2685,7 @@ export default mixins(
 						node.id = uuid();
 					}
 
-					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {
@@ -2994,8 +2994,7 @@ export default mixins(
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
 			async loadNodeTypes (): Promise<void> {
-				const nodeTypes = await this.restApi().getNodeTypes();
-				this.$store.commit('setNodeTypes', nodeTypes);
+				this.$store.dispatch('nodeTypes/getNodeTypes');
 			},
 			async loadCredentialTypes (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
@@ -3004,7 +3003,7 @@ export default mixins(
 				await this.$store.dispatch('credentials/fetchAllCredentials');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
+				const allNodes:INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
 
 				const nodesToBeFetched:INodeTypeNameVersion[] = [];
 				allNodes.forEach(node => {
@@ -3022,21 +3021,7 @@ export default mixins(
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
-
-					const nodesInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
-
-					nodesInfo.forEach(nodeInfo => {
-						if (nodeInfo.translation) {
-							const nodeType = this.$locale.shortNodeType(nodeInfo.name);
-
-							addNodeTranslation(
-								{ [nodeType]: nodeInfo.translation },
-								this.$store.getters.defaultLocale,
-							);
-						}
-					});
-
-					this.$store.commit('updateNodeTypes', nodesInfo);
+					await this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
 					this.stopLoading();
 				}
 			},

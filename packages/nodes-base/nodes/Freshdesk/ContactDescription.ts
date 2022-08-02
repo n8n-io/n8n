@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const contactOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -53,7 +49,6 @@ export const contactOperations: INodeProperties[] = [
 ];
 
 export const contactFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create/update                       */
 	/* -------------------------------------------------------------------------- */
@@ -64,12 +59,8 @@ export const contactFields: INodeProperties[] = [
 		placeholder: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -84,15 +75,12 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
-		description: 'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
+		description:
+			'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -101,12 +89,8 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -118,13 +102,8 @@ export const contactFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create', 'update'],
+				resource: ['contact'],
 			},
 		},
 		default: {},
@@ -159,7 +138,8 @@ export const contactFields: INodeProperties[] = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Key value pairs containing the name and value of the custom field. Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.',
+				description:
+					'Key value pairs containing the name and value of the custom field. Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.',
 				default: [],
 				options: [
 					{
@@ -171,14 +151,14 @@ export const contactFields: INodeProperties[] = [
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Custom Field\'s name',
+								description: "Custom Field's name",
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Custom Field\'s values',
+								description: "Custom Field's values",
 							},
 						],
 					},
@@ -199,12 +179,11 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
+						'/operation': ['update'],
 					},
 				},
-				description: 'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
+				description:
+					'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
 			},
 			{
 				displayName: 'Job Title',
@@ -218,7 +197,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'language',
 				type: 'string',
 				default: '',
-				description: 'Language of the contact. Default language is "en". This attribute can only be set if the Multiple Language feature is enabled (Garden plan and above).',
+				description:
+					'Language of the contact. Default language is "en". This attribute can only be set if the Multiple Language feature is enabled (Garden plan and above).',
 			},
 			{
 				displayName: 'Mobile',
@@ -234,9 +214,7 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
+						'/operation': ['update'],
 					},
 				},
 				description: 'Name of the contact',
@@ -250,7 +228,8 @@ export const contactFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Company',
-				description: 'Additional companies associated with the contact. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
+				description:
+					'Additional companies associated with the contact. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
 			},
 			{
 				displayName: 'Other Emails',
@@ -285,7 +264,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'time_zone',
 				type: 'string',
 				default: '',
-				description: 'Time zone of the contact. Default value is the time zone of the domain. This attribute can only be set if the Multiple Time Zone feature is enabled (Garden plan and above).',
+				description:
+					'Time zone of the contact. Default value is the time zone of the domain. This attribute can only be set if the Multiple Time Zone feature is enabled (Garden plan and above).',
 			},
 			{
 				displayName: 'Twitter ID',
@@ -306,7 +286,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'view_all_tickets',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the contact can see all the tickets that are associated with the company to which they belong',
+				description:
+					'Whether the contact can see all the tickets that are associated with the company to which they belong',
 			},
 		],
 	},
@@ -320,12 +301,8 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -340,12 +317,8 @@ export const contactFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -361,12 +334,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
 			},
 		},
 		options: [

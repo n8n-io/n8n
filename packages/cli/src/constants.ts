@@ -12,6 +12,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 	PACKAGE_NAME_NOT_PROVIDED: 'Package name is required',
 	PACKAGE_NAME_NOT_VALID: `Package name is not valid - it must start with "${NODE_PACKAGE_PREFIX}"`,
 	PACKAGE_NOT_INSTALLED: 'This package is not installed - you must install it first',
+	PACKAGE_FAILED_TO_INSTALL: 'Package could not be installed - check logs for details',
 	PACKAGE_NOT_FOUND: 'Package not found in npm',
 	PACKAGE_VERSION_NOT_FOUND: 'The specified package version was not found',
 	PACKAGE_DOES_NOT_CONTAIN_NODES: 'The specified package does not contain any nodes',
@@ -29,3 +30,5 @@ export const NPM_COMMAND_TOKENS = {
 };
 
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';
+
+export const UNKNOWN_FAILURE_REASON = 'Unknown failure reason';

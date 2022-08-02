@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const commentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const commentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
+				resource: ['comment'],
 			},
 		},
 		options: [
@@ -46,7 +42,6 @@ export const commentOperations: INodeProperties[] = [
 ];
 
 export const commentFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                comment:create                              */
 	/* -------------------------------------------------------------------------- */
@@ -71,12 +66,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['comment'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -87,12 +78,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['comment'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -104,12 +91,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['comment'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -121,12 +104,8 @@ export const commentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['comment'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -141,7 +120,8 @@ export const commentFields: INodeProperties[] = [
 				name: 'notifyAll',
 				type: 'boolean',
 				default: false,
-				description: 'Whether creation notifications will be sent to everyone including the creator of the comment',
+				description:
+					'Whether creation notifications will be sent to everyone including the creator of the comment',
 			},
 		],
 	},
@@ -156,12 +136,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['comment'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -191,12 +167,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['comment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -207,12 +179,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['comment'],
+				operation: ['getAll'],
 			},
 		},
 		required: true,
@@ -223,12 +191,8 @@ export const commentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['comment'],
+				operation: ['getAll'],
 			},
 		},
 		typeOptions: {
@@ -249,12 +213,8 @@ export const commentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['comment'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -267,12 +227,8 @@ export const commentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'comment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['comment'],
+				operation: ['update'],
 			},
 		},
 		options: [
