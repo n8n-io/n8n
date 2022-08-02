@@ -439,6 +439,22 @@ window.n8nExternalHooks = {
 		]
 	},
 
+	parameterInput: {
+
+		/**
+		 * parameterInput.updated
+		 */
+		 updated: [
+			function(_, meta) {
+				if (LOGGING_ENABLED) console.log('n8nExternalHooks: parameterInput.updated');
+
+				for (const option of meta.remoteParameterOptions) {
+					option.classList.value = appendNoCapture(option.classList.value)
+				}
+			}
+		]
+	},
+
 	workflowActivate: {
 
 		/**
