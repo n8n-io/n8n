@@ -151,7 +151,7 @@ window.n8nExternalHooks = {
 	credentialsList: {
 		mounted: [
 			function (_, meta) {
-				postHogUtils.log('credentialsList.mounted');
+				postHogUtils.log('credentialsList.mounted'); // @TODO: Overlaps with cloud hook
 
 				// credential names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper;
@@ -211,7 +211,7 @@ window.n8nExternalHooks = {
 		 * This hook is used only for calling `resetNodesPanelSession()`,
 		 * to set `sessionId` needed by `nodeView.addNodeButton`.
 		 */
-		createNodeActiveChanged: [
+		createNodeActiveChanged: [ // @TODO: Overlaps with cloud hook
 			function () {
 				postHogUtils.log('nodeView.createNodeActiveChanged');
 
@@ -234,7 +234,7 @@ window.n8nExternalHooks = {
 
 		addNodeButton: [
 			function (_, meta) {
-				postHogUtils.log('nodeView.addNodeButton');
+				postHogUtils.log('nodeView.addNodeButton'); // @TODO: Overlaps with cloud hook
 
 				const eventData = {
 					eventName: "User added node to workflow canvas",
