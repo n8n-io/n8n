@@ -12,14 +12,17 @@ export const mediaFields: INodeProperties[] = [
 			{
 				name: 'Upload',
 				value: 'mediaUpload',
+				action: 'Upload media',
 			},
 			{
 				name: 'Get',
 				value: 'mediaUrlGet',
+				action: 'Get media',
 			},
 			{
 				name: 'Delete',
 				value: 'mediaDelete',
+				action: 'Delete media',
 			},
 		],
 		default: 'mediaUpload',

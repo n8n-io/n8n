@@ -14,26 +14,32 @@ export const messageFields: INodeProperties[] = [
 			{
 				name: 'Send Audio',
 				value: 'audio',
+				action: 'Send audio',
 			},
 			{
 				name: 'Send Document',
 				value: 'document',
+				action: 'Send document',
 			},
 			{
 				name: 'Send Image',
 				value: 'image',
+				action: 'Send image',
 			},
 			{
 				name: 'Send Template',
 				value: 'template',
+				action: 'Send template',
 			},
 			{
 				name: 'Send Text',
 				value: 'text',
+				action: 'Send text',
 			},
 			{
 				name: 'Send Video',
 				value: 'video',
+				action: 'Send video',
 			},
 		],
 		default: 'template',
