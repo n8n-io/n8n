@@ -69,9 +69,42 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Phone Number ID',
+		displayName: 'Phone Number or ID',
 		name: 'phoneNumberId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						url: '={{$credentials.businessAccountId}}/phone_numbers',
+						method: 'GET',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.display_phone_number}} - {{$responseItem.verified_name}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+		},
 		default: '',
 		placeholder: '',
 		required: true,
@@ -383,14 +416,47 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: template
 	// ----------------------------------
 	{
-		displayName: 'Name',
+		displayName: 'Template Name',
 		name: 'templateName',
 		default: '',
-		type: 'string',
+		type: 'options',
 		displayOptions: {
 			show: {
 				operation: ['template'],
 				resource: ['messages'],
+			},
+		},
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						url: '={{$credentials.businessAccountId}}/message_templates',
+						method: 'GET',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.name}}',
+									value: '={{$responseItem.name}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
 			},
 		},
 		required: true,

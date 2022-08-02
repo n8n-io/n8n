@@ -20,6 +20,13 @@ export class WhatsAppApi implements ICredentialType {
 			default: '',
 			required: true,
 		},
+		{
+			displayName: 'Bussiness Account ID',
+			type: 'string',
+			name: 'businessAccountId',
+			default: '',
+			required: true,
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
