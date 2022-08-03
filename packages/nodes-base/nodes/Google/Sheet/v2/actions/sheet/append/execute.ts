@@ -46,5 +46,6 @@ export async function append(this: IExecuteFunctions, index: number): Promise<IN
 
 	// Convert data into array format
 	const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode, usePathForKeyRow);
-	return this.helpers.returnJsonArray(data.updates);
+	// data.updates returns some good information
+	return this.helpers.returnJsonArray(items[index]);
 }

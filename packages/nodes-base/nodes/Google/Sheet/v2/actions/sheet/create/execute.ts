@@ -31,9 +31,11 @@ export async function create(this: IExecuteFunctions, index: number): Promise<IN
 	}
 	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue);
 
+	const sheetTitle = this.getNodeParameter('title', index, {}) as string;
 	const options = this.getNodeParameter('options', index, {}) as IDataObject;
 	const simple = this.getNodeParameter('simple', 0) as boolean;
 	const properties = { ...options };
+	properties.title = sheetTitle;
 
 	if (options.tabColor) {
 		const { red, green, blue } = hexToRgb(options.tabColor as string)!;

@@ -10,11 +10,23 @@ import {
 } from '../transport';
 
 import {
+	getSpreadsheetId,
 	GoogleSheet,
 } from '../helper';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const spreadsheetId = this.getCurrentNodeParameter('sheetId') as string;
+	const resourceType = this.getCurrentNodeParameter('resourceLocator') as string;
+	let resourceValue: string = '';
+	if (resourceType === 'byId') {
+		resourceValue = this.getCurrentNodeParameter('spreadsheetId') as string;
+	} else if (resourceType === 'byUrl') {
+		resourceValue = this.getCurrentNodeParameter('spreadsheetUrl') as string;
+	} else if (resourceType === 'fromList') {
+		resourceValue = this.getCurrentNodeParameter('spreadsheetName') as string;
+	}
+	const spreadsheetId = getSpreadsheetId(resourceType, resourceValue) as string;
+
+	//const spreadsheetId = this.getCurrentNodeParameter('sheetId') as string;
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
 	const responseData = await sheet.spreadsheetGetSheets();

@@ -131,6 +131,33 @@ export class GoogleSheet {
 		return response;
 	}
 
+	/**
+	 *  Returns the name of a sheet from a sheet id
+	 */
+	async spreadsheetGetSheetNameById(sheetId: string) {
+
+		const query = {
+			fields: 'sheets.properties',
+		};
+
+		const response = await apiRequest.call(this.executeFunctions, 'GET', `/v4/spreadsheets/${this.id}`, {}, query);
+		let foundItem = response.sheets.find((item: { properties: { sheetId: string; }; }) => item.properties.sheetId == sheetId);
+		return foundItem.properties.title;
+	}
+
+	/**
+	 *  Returns the grid properties of a sheet
+	 */
+	async getDataRange(sheetId: string) {
+		const query = {
+			fields: 'sheets.properties',
+		};
+
+		const response = await apiRequest.call(this.executeFunctions, 'GET', `/v4/spreadsheets/${this.id}`, {}, query);
+		let foundItem = response.sheets.find((item: { properties: { sheetId: string; }; }) => item.properties.sheetId == sheetId);
+		return foundItem.properties.gridProperties;
+	}
+
 
 	/**
 	 * Sets values in one or more ranges of a spreadsheet.

@@ -4,6 +4,24 @@ import {
 
 export const sheetCreateDescription: SheetProperties = [
 	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		default: 'n8n-sheet',
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The name of the sheet',
+	},
+	{
 		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
@@ -131,13 +149,6 @@ export const sheetCreateDescription: SheetProperties = [
 				type: 'color',
 				default: '0aa55c',
 				description: 'The color of the tab in the UI',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'The Sheet name',
 			},
 		],
 	},

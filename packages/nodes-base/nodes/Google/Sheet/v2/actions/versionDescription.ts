@@ -67,11 +67,11 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Spreadsheet',
+					name: 'Document',
 					value: 'spreadsheet',
 				},
 				{
-					name: 'Sheet',
+					name: 'Sheet Within Document',
 					value: 'sheet',
 				},
 			],

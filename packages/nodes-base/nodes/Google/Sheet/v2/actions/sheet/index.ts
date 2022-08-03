@@ -3,7 +3,7 @@ import * as clear from './clear';
 import * as create from './create';
 import * as del from './del';
 import * as lookup from './lookup';
-import * as read from './read';
+import * as readAllRows from './readAllRows';
 import * as remove from './remove';
 import * as update from './update';
 import * as upsert from './upsert';
@@ -16,7 +16,7 @@ export {
 	create,
 	del as delete,
 	lookup,
-	read,
+	readAllRows,
 	remove,
 	update,
 	upsert,
@@ -74,10 +74,10 @@ export const descriptions: INodeProperties[] = [
 				action: 'Look up a column value in a sheet',
 			},
 			{
-				name: 'Read',
-				value: 'read',
-				description: 'Read data from a sheet',
-				action: 'Read a sheet',
+				name: 'Read All Rows',
+				value: 'readAllRows',
+				description: 'Read all rows in a sheet',
+				action: 'Read all rows',
 			},
 			{
 				name: 'Remove',
@@ -92,7 +92,7 @@ export const descriptions: INodeProperties[] = [
 				action: 'Update a sheet',
 			},
 		],
-		default: 'read',
+		default: 'readAllRows',
 	},
 	{
 		displayName: 'Resource Locator',
@@ -127,7 +127,7 @@ export const descriptions: INodeProperties[] = [
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Spreadsheet Name',
+		displayName: 'Document Name',
 		name: 'spreadsheetName',
 		type: 'options',
 		default: '',
@@ -149,7 +149,7 @@ export const descriptions: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Spreadsheet ID',
+		displayName: 'Document ID',
 		name: 'spreadsheetId',
 		type: 'string',
 		displayOptions: {
@@ -167,7 +167,7 @@ export const descriptions: INodeProperties[] = [
 		description: 'The ID of the Google Sheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.',
 	},
 	{
-		displayName: 'Spreadsheet URL',
+		displayName: 'Document URL',
 		name: 'spreadsheetUrl',
 		type: 'string',
 		displayOptions: {
@@ -184,12 +184,38 @@ export const descriptions: INodeProperties[] = [
 		required: true,
 		description: 'The URL of the Google Sheet',
 	},
+	// getSheets
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Sheet Name or ID',
+		name: 'sheetName',
+		type: 'options',
+		default: '',
+		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+		description: 'Google Sheet to operate on. Choose from the list.',
+		typeOptions: {
+			loadOptionsMethod: 'getSheets',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'sheet',
+				],
+			},
+			hide: {
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 	...append.description,
 	...clear.description,
 	...create.description,
 	...del.description,
 	...lookup.description,
-	...read.description,
+	...readAllRows.description,
 	...remove.description,
 	...update.description,
 	...upsert.description,
