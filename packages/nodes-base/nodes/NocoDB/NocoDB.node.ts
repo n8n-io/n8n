@@ -334,7 +334,6 @@ export class NocoDB implements INodeType {
 					}
 					throw new NodeApiError(this.getNode(), error);
 				}
-
 			}
 
 			if (operation === 'delete') {
@@ -354,7 +353,23 @@ export class NocoDB implements INodeType {
 
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
-					returnData.push(...items.map(item => item.json));
+					if (version === 1) {
+						returnData.push(...items.map(item => item.json));
+					} else if (version === 2 ) {
+
+						returnData.push(...responseData.map((result: number, index: number) => {
+							if (result === 0) {
+								const errorMessage = `The row with the ID "${body[index].id}" could not be deleted. It probably doesn't exist.`;
+								if (this.continueOnFail()) {
+									return { error: errorMessage };
+								}
+								throw new NodeApiError(this.getNode(), { message: errorMessage }, { message: errorMessage, itemIndex: index });
+							}
+							return {
+								success: true,
+							};
+						}));
+					}
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
@@ -434,7 +449,28 @@ export class NocoDB implements INodeType {
 						}
 
 						responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
-						const newItem: INodeExecutionData = { json: responseData };
+
+						let newItem: INodeExecutionData = { json: {} };
+
+						if (version === 1) {
+							newItem = { json: responseData };
+						} else if (version === 2 ) {
+							if (Object.keys(responseData).length === 0) {
+								// Get did fail
+								const errorMessage = `The row with the ID "${id}" could not be queried. It probably doesn't exist.`;
+								if (this.continueOnFail()) {
+									newItem = {
+										json: { error: errorMessage },
+									};
+								}
+								throw new NodeApiError(this.getNode(), { message: errorMessage }, { message: errorMessage, itemIndex: i });
+							} else {
+								// Get did work
+								newItem = { json: responseData };
+							}
+						}
+
+						// const newItem: INodeExecutionData = { json: responseData };
 						const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
 
 						if (downloadAttachments === true) {
@@ -535,7 +571,23 @@ export class NocoDB implements INodeType {
 
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
-					returnData.push(...body);
+
+					if (version === 1) {
+						returnData.push(...body);
+					} else if (version === 2 ) {
+						returnData.push(...responseData.map((result: number, index: number) => {
+							if (result === 0) {
+								const errorMessage = `The row with the ID "${body[index].id}" could not be updated. It probably doesn't exist.`;
+								if (this.continueOnFail()) {
+									return { error: errorMessage };
+								}
+								throw new NodeApiError(this.getNode(), { message: errorMessage }, { message: errorMessage, itemIndex: index });
+							}
+							return {
+								success: true,
+							};
+						}));
+					}
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.toString() });
