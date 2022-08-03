@@ -28,7 +28,6 @@ const module: Module<INodeTypesState, IRootState> = {
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return Object.values(state.nodeTypes).reduce<INodeTypeDescription[]>((allNodeTypes, nodeType) => {
 				const versionNumbers = Object.keys(nodeType).map(Number);
-
 				const allNodeVersions = versionNumbers.map(version => nodeType[version]);
 
 				return [...allNodeTypes, ...allNodeVersions];
@@ -37,7 +36,6 @@ const module: Module<INodeTypesState, IRootState> = {
 		allLatestNodeTypes: (state): INodeTypeDescription[] => {
 			return Object.values(state.nodeTypes).reduce<INodeTypeDescription[]>((allLatestNodeTypes, nodeVersions) => {
 				const versionNumbers = Object.keys(nodeVersions).map(Number);
-
 				const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
 
 				return [...allLatestNodeTypes, latestNodeVersion];
@@ -45,16 +43,10 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 		getNodeType: (state) => (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 			const nodeVersions = state.nodeTypes[nodeTypeName];
+			const versionNumbers = Object.keys(nodeVersions).map(Number);
+			const nodeType = nodeVersions[version || Math.max(...versionNumbers)];
 
-			if (!nodeVersions || Object.keys(nodeVersions).length === 0) return null;
-
-			const nodeType = nodeVersions[
-				version || Math.max(...Object.keys(nodeVersions).map(Number))
-			];
-
-			if (!nodeType || !hasValidVersion(nodeType, version)) return null;
-
-			return nodeType;
+			return nodeType ? nodeType : null;
 		},
 	},
 	mutations: {
@@ -147,12 +139,6 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 	},
 };
-
-function hasValidVersion(nodeType: INodeTypeDescription, version?: number) {
-	const validVersion = version || nodeType.defaultVersion || DEFAULT_NODETYPE_VERSION;
-
-	return getNodeVersions(nodeType).includes(validVersion);
-}
 
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
