@@ -43,6 +43,8 @@ workflowsController.post(
 
 		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
 
+		WorkflowHelpers.addNodeIds(newWorkflow);
+
 		let savedWorkflow: undefined | WorkflowEntity;
 
 		await Db.transaction(async (transactionManager) => {
