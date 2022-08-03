@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const opportunityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
@@ -59,12 +55,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -76,12 +68,8 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'ID of the customer source that generated this opportunity',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -93,12 +81,8 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'ID of the primary company associated with this opportunity',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -115,12 +99,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['opportunity'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -137,12 +117,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['opportunity'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -158,12 +134,8 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -179,15 +151,9 @@ export const opportunityFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -199,12 +165,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -237,12 +199,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -254,12 +212,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		options: [

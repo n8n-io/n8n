@@ -1,11 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	Operation,
-	Resource,
-} from '../types';
+import { Operation, Resource } from '../types';
 
 export const languageOptions: INodeProperties['options'] = [
 	{
@@ -80,21 +75,22 @@ const postalAddressesFields: INodeProperties[] = [
 		name: 'primary',
 		type: 'boolean',
 		default: false,
-		description: 'Whether this is the person\'s primary address',
+		description: "Whether this is the person's primary address",
 	},
 	{
 		displayName: 'Address Line',
 		name: 'address_lines',
 		type: 'string', // The Action Network API expects a string array but ignores any string beyond the first, so this input field is simplified to string.
 		default: '',
-		description: 'Line for a person\'s address',
+		description: "Line for a person's address",
 	},
 	{
 		displayName: 'Locality',
 		name: 'locality',
 		type: 'string',
 		default: '',
-		description: 'City or other local administrative area. If blank, this will be filled in based on Action Network\'s geocoding.',
+		description:
+			"City or other local administrative area. If blank, this will be filled in based on Action Network's geocoding.",
 	},
 	{
 		displayName: 'Region',
@@ -188,7 +184,7 @@ export const eventAdditionalFieldsOptions: INodeProperties['options'] = [
 		name: 'instructions',
 		type: 'string',
 		default: '',
-		description: 'Event\'s instructions for activists, visible after they RSVP. HTML supported.',
+		description: "Event's instructions for activists, visible after they RSVP. HTML supported.",
 	},
 	{
 		displayName: 'Location',
@@ -265,14 +261,14 @@ export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 						name: 'number',
 						type: 'string',
 						default: '',
-						description: 'Person\'s mobile number, in international format without the plus sign',
+						description: "Person's mobile number, in international format without the plus sign",
 					},
 					{
 						displayName: 'Primary',
 						name: 'primary',
 						type: 'hidden',
 						default: true,
-						description: 'Whether this is the person\'s primary phone number',
+						description: "Whether this is the person's primary phone number",
 					},
 					{
 						displayName: 'Status',
@@ -367,12 +363,8 @@ export const makeSimpleField = (resource: Resource, operation: Operation): INode
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource: [
-				resource,
-			],
-			operation: [
-				operation,
-			],
+			resource: [resource],
+			operation: [operation],
 		},
 	},
 	default: true,

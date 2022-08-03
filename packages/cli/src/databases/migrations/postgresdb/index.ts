@@ -15,6 +15,7 @@ import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { CommunityNodes1652254514002 } from './1652254514002-CommunityNodes';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654090467022 } from './1654090467022-IntroducePinData';
+import { AddNodeIds1658932090381 } from './1658932090381-AddNodeIds';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -34,4 +35,5 @@ export const postgresMigrations = [
 	CommunityNodes1652254514002,
 	AddAPIKeyColumn1652905585850,
 	IntroducePinData1654090467022,
+	AddNodeIds1658932090381,
 ];

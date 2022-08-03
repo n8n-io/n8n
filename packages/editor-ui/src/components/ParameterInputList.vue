@@ -153,7 +153,7 @@ export default mixins(
 		methods: {
 			getCredentialsDependencies() {
 				const dependencies = new Set();
-				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+				const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
 
 				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
 				if(nodeType && nodeType.credentials) {

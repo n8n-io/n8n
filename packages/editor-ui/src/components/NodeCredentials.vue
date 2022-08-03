@@ -117,7 +117,7 @@ export default mixins(
 
 			if (credType) return [credType];
 
-			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+			const activeNodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}

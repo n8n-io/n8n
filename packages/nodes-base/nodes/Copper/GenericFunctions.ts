@@ -1,10 +1,6 @@
-import {
-	createHash,
-} from 'crypto';
+import { createHash } from 'crypto';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -14,16 +10,9 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
 
-import {
-	flow,
-	omit,
-} from 'lodash';
+import { flow, omit } from 'lodash';
 
 import {
 	AddressFixedCollection,
@@ -36,7 +25,12 @@ import {
  * Make an authenticated API request to Copper.
  */
 export async function copperApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},
@@ -44,7 +38,7 @@ export async function copperApiRequest(
 	uri = '',
 	option: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('copperApi') as { apiKey: string, email: string };
+	const credentials = (await this.getCredentials('copperApi')) as { apiKey: string; email: string };
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -76,7 +70,6 @@ export async function copperApiRequest(
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
-
 
 /**
  * Creates a secret from the credentials
