@@ -10,6 +10,7 @@ describe('WorkflowDataProxy', () => {
 				name: 'Start',
 				type: 'test.set',
 				typeVersion: 1,
+				id: 'uuid-1',
 				position: [100, 200],
 			},
 			{
@@ -20,6 +21,7 @@ describe('WorkflowDataProxy', () => {
 				name: 'Function',
 				type: 'test.set',
 				typeVersion: 1,
+				id: 'uuid-2',
 				position: [280, 200],
 			},
 			{
@@ -36,6 +38,7 @@ describe('WorkflowDataProxy', () => {
 				name: 'Rename',
 				type: 'test.set',
 				typeVersion: 1,
+				id: 'uuid-3',
 				position: [460, 200],
 			},
 		];
