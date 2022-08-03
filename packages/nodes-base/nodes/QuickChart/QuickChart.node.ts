@@ -124,27 +124,6 @@ export class QuickChart implements INodeType {
 				},
 			},
 			{
-				displayName: 'JSON Labels',
-				name: 'jsonLabels',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to use JSON data for chart labels',
-			},
-			{
-				displayName: 'X Labels',
-				name: 'labelsJson',
-				type: 'json',
-				default: '',
-				required: true,
-				description: 'Labels to use for the X Axis of the chart',
-				placeholder: '["Apples", "Bananas", "Oranges"]',
-				displayOptions: {
-					show: {
-						jsonLabels: [true],
-					},
-				},
-			},
-			{
 				displayName: 'X Labels',
 				name: 'labelsUi',
 				type: 'fixedCollection',
@@ -154,11 +133,6 @@ export class QuickChart implements INodeType {
 				default: {},
 				required: true,
 				description: 'Labels to use for the X Axis of the chart',
-				displayOptions: {
-					show: {
-						jsonLabels: [false],
-					},
-				},
 				placeholder: 'Add Label',
 				options: [
 					{
@@ -383,14 +357,16 @@ export class QuickChart implements INodeType {
 		}
 
 		// tslint:disable-next-line:no-any
-		let labels: any[] | undefined;
-		const jsonActive = this.getNodeParameter('jsonLabels', 0) as boolean;
-		if (jsonActive) {
-			labels = validateJSON(this.getNodeParameter('labelsJson', 0) as string);
-		} else {
-			const labelsUi = this.getNodeParameter('labelsUi', 0) as IDataObject;
-			if (!_.isEmpty(labelsUi)) {
-				labels = (labelsUi.labelsValues! as IDataObject[]).map((l: IDataObject) => l.label);
+		let labels: string[] = [];
+
+		const labelsUi = this.getNodeParameter('labelsUi', 0) as IDataObject;
+		if (!_.isEmpty(labelsUi)) {
+			for (const labelValue of labelsUi.labelsValues as [{ label: string[] | string }]) {
+				if (Array.isArray(labelValue.label)) {
+					labels?.push(...labelValue.label)
+				} else {
+					labels?.push(labelValue.label);
+				}
 			}
 		}
 
@@ -449,6 +425,7 @@ export class QuickChart implements INodeType {
 			encoding: 'arraybuffer',
 			json: false,
 		};
+
 		const response = (await this.helpers.httpRequest(options)) as IN8nHttpFullResponse;
 		let mimeType = response.headers['content-type'] as string | undefined;
 		mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
