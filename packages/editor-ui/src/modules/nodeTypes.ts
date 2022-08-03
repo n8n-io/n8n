@@ -38,6 +38,8 @@ const module: Module<INodeTypesState, IRootState> = {
 				const versionNumbers = Object.keys(nodeVersions).map(Number);
 				const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
 
+				if (!latestNodeVersion) return allLatestNodeTypes;
+
 				return [...allLatestNodeTypes, latestNodeVersion];
 			}, []);
 		},
