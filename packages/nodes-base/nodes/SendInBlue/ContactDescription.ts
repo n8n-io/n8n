@@ -470,7 +470,7 @@ const upsertOperations: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		default: '',
-		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
+		description: 'Email of the contact',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
