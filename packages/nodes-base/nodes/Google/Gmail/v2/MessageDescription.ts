@@ -382,6 +382,108 @@ export const messageFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
+		name: 'filtersNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Spam and Trash',
+				name: 'includeSpamTrash',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include messages from SPAM and TRASH in the results',
+			},
+			{
+				displayName: 'Label Names or IDs',
+				name: 'labelIds',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getLabels',
+				},
+				default: [],
+				description: 'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Matches Search Query',
+				name: 'q',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+
+				},
+				default: '',
+				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, \'from:name@email.com is:unread\'. See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
+			},
+			{
+				displayName: 'Read Status',
+				name: 'readStatus',
+				type: 'options',
+				default: 'unread',
+				description: 'Filter emails by their read status',
+				options: [
+					{
+						name: 'Only Read Emails',
+						value: 'read',
+					},
+					{
+						name: 'Only Unread Emails',
+						value: 'unread',
+					},
+				],
+			},
+			{
+				displayName: 'Received After',
+				name: 'receivedAfter',
+				type: 'dateTime',
+				default: '',
+				description: 'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+			},
+			{
+				displayName: 'Received Before',
+				name: 'receivedBefore',
+				type: 'dateTime',
+				default: '',
+				description: 'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+			},
+			{
+				displayName: 'Sender',
+				name: 'sender',
+				type: 'string',
+				default: '',
+				description: 'Sender name or email to filter by',
+				hint: 'Enter an email or part of a sender name',
+			},
+		],
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -454,71 +556,6 @@ export const messageFields: INodeProperties[] = [
 				],
 				default: 'resolved',
 				description: 'The format to return the message in',
-			},
-			{
-				displayName: 'Include Spam and Trash',
-				name: 'includeSpamTrash',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include messages from SPAM and TRASH in the results',
-			},
-			{
-				displayName: 'Label Names or IDs',
-				name: 'labelIds',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLabels',
-				},
-				default: [],
-				description: 'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Matches Search Query',
-				name: 'q',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, \'from:name@email.com is:unread\'. See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
-			},
-			{
-				displayName: 'Read Status',
-				name: 'readStatus',
-				type: 'options',
-				default: 'unread',
-				description: 'Filter emails by their read status',
-				options: [
-					{
-						name: 'Only Read Emails',
-						value: 'read',
-					},
-					{
-						name: 'Only Unread Emails',
-						value: 'unread',
-					},
-				],
-			},
-			{
-				displayName: 'Received After',
-				name: 'receivedAfter',
-				type: 'dateTime',
-				default: '',
-				description: 'Get all emails received after the specified date, in an expression you can set date using string in ISO format or a timestamp in miliseconds',
-			},
-			{
-				displayName: 'Received Before',
-				name: 'receivedBefore',
-				type: 'dateTime',
-				default: '',
-				description: 'Get all emails received after the specified date, in an expression you can set date using string in ISO format or a timestamp in miliseconds',
-			},
-			{
-				displayName: 'Sender',
-				name: 'sender',
-				type: 'string',
-				default: '',
-				description: 'Sender name or email to filter by',
 			},
 		],
 	},

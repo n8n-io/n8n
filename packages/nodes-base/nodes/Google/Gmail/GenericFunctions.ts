@@ -311,7 +311,7 @@ function getAccessToken(
 	return this.helpers.request(options);
 }
 
-export function prepareQuery(fields: IDataObject) {
+export function prepareQuery(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, fields: IDataObject) {
 	const qs: IDataObject = { ...fields };
 	if (qs.labelIds) {
 		if (qs.labelIds === '') {
@@ -341,15 +341,21 @@ export function prepareQuery(fields: IDataObject) {
 
 	if (qs.receivedAfter) {
 		let timestamp = DateTime.fromISO(qs.receivedAfter as string).toSeconds();
+		const timestampLengthInMilliseconds1990 = 12;
 
-		if (!timestamp) {
-			timestamp = DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds();
+		if (!timestamp && (qs.receivedAfter as string).length < timestampLengthInMilliseconds1990) {
+			timestamp = parseInt(qs.receivedAfter as string, 10);
 		}
 
 		if (!timestamp) {
-			throw new Error(
-				`Datetime ${qs.receivedAfter} provided in "Received After" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`,
-			);
+			timestamp = Math.floor(DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds());
+		}
+
+		if (!timestamp) {
+			const description = `'${qs.receivedAfter}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
+			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received After' field`, {
+				description,
+			});
 		}
 
 		if (qs.q) {
@@ -362,15 +368,21 @@ export function prepareQuery(fields: IDataObject) {
 
 	if (qs.receivedBefore) {
 		let timestamp = DateTime.fromISO(qs.receivedBefore as string).toSeconds();
+		const timestampLengthInMilliseconds1990 = 12;
 
-		if (!timestamp) {
-			timestamp = DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds();
+		if (!timestamp && (qs.receivedBefore as string).length < timestampLengthInMilliseconds1990) {
+			timestamp = parseInt(qs.receivedBefore as string, 10);
 		}
 
 		if (!timestamp) {
-			throw new Error(
-				`Datetime ${qs.receivedBefore} provided in "Received Before" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`,
-			);
+			timestamp = Math.floor(DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds());
+		}
+
+		if (!timestamp) {
+			const description = `'${qs.receivedBefore}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
+			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received Before' field`, {
+				description,
+			});
 		}
 
 		if (qs.q) {
@@ -387,7 +399,7 @@ export function prepareQuery(fields: IDataObject) {
 export function prepareEmailsInput(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	input: string,
-	field: string,
+	fieldName: string,
 	itemIndex: number,
 ) {
 	let emails = '';
@@ -396,7 +408,7 @@ export function prepareEmailsInput(
 		const email = entry.trim();
 
 		if (email.indexOf('@') === -1) {
-			const description = `The email address '${email}' in the '${field}' field isn't valid`;
+			const description = `The email address '${email}' in the '${fieldName}' field isn't valid`;
 			throw new NodeOperationError(this.getNode(), `Invalid email address`, {
 				description,
 				itemIndex,

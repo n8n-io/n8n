@@ -338,8 +338,24 @@ export const threadFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
+		name: 'filtersNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'thread',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -403,14 +419,14 @@ export const threadFields: INodeProperties[] = [
 				name: 'receivedAfter',
 				type: 'dateTime',
 				default: '',
-				description: 'Get all emails received after the specified date, in an expression you can set date using string in ISO format or a timestamp in miliseconds',
+				description: 'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 			{
 				displayName: 'Received Before',
 				name: 'receivedBefore',
 				type: 'dateTime',
 				default: '',
-				description: 'Get all emails received after the specified date, in an expression you can set date using string in ISO format or a timestamp in miliseconds',
+				description: 'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 		],
 	},
