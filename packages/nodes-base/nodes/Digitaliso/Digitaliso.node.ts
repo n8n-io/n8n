@@ -387,6 +387,7 @@ export class Digitaliso implements INodeType {
 							break;
 						case 'post':
 							endpoint = url;
+							break;
 						default:
 							perPage = this.getNodeParameter('perPage', i);
 							page = this.getNodeParameter('page', i);
