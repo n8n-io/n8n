@@ -44,48 +44,16 @@ export default Vue.extend({
 	],
 	data() {
 		return {
-			allNodeTypes: [],
+			allLatestNodeTypes: [] as INodeTypeDescription[],
 		};
 	},
 	computed: {
 		...mapGetters('users', ['personalizedNodeTypes']),
 		nodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters['nodeTypes/allNodeTypes'];
+			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.allNodeTypes
-				.reduce((visibleNodeTypes: INodeTypeDescription[], nodeType: INodeTypeDescription) => {
-					if (HIDDEN_NODES.includes(nodeType.name)) return visibleNodeTypes;
-
-					const seenIndex = visibleNodeTypes.findIndex(node => node.name === nodeType.name);
-
-					const seen = seenIndex >= 0;
-
-					if (!seen) {
-						visibleNodeTypes.push(nodeType);
-						return visibleNodeTypes;
-					}
-
-					if (
-						seen &&
-						Number.isInteger(nodeType.version) &&
-						visibleNodeTypes[seenIndex].version < nodeType.version
-					) {
-						visibleNodeTypes[seenIndex] = nodeType;
-						return visibleNodeTypes;
-					}
-
-					if (
-						seen &&
-						Array.isArray(nodeType.version) &&
-						visibleNodeTypes[seenIndex].version < Math.max(...nodeType.version)
-					) {
-						visibleNodeTypes[seenIndex] = nodeType;
-						return visibleNodeTypes;
-					}
-
-					return visibleNodeTypes;
-				}, []);
+			return this.allLatestNodeTypes.filter((nodeType) => !HIDDEN_NODES.includes(nodeType.name));
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);
@@ -142,8 +110,8 @@ export default Vue.extend({
 	},
 	watch: {
 		nodeTypes(newList) {
-			if (newList.length !== this.allNodeTypes.length) {
-				this.allNodeTypes = newList;
+			if (newList.length !== this.allLatestNodeTypes.length) {
+				this.allLatestNodeTypes = newList;
 			}
 		},
 	},

@@ -27,9 +27,20 @@ const module: Module<INodeTypesState, IRootState> = {
 	getters: {
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return Object.values(state.nodeTypes).reduce<INodeTypeDescription[]>((allNodeTypes, nodeType) => {
-				const nodeVersions = Object.keys(nodeType).map(Number);
+				const versionNumbers = Object.keys(nodeType).map(Number);
 
-				return [...allNodeTypes, ...nodeVersions.map(version => nodeType[version])];
+				const allNodeVersions = versionNumbers.map(version => nodeType[version]);
+
+				return [...allNodeTypes, ...allNodeVersions];
+			}, []);
+		},
+		allLatestNodeTypes: (state): INodeTypeDescription[] => {
+			return Object.values(state.nodeTypes).reduce<INodeTypeDescription[]>((allLatestNodeTypes, nodeVersions) => {
+				const versionNumbers = Object.keys(nodeVersions).map(Number);
+
+				const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
+
+				return [...allLatestNodeTypes, latestNodeVersion];
 			}, []);
 		},
 		getNodeType: (state) => (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
