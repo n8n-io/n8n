@@ -1,12 +1,23 @@
 <template>
 	<div :class="{[$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
-		<n8n-tooltip :placement="tooltipPlacement" :popper-class="$style.tooltipPopper" :disabled="type !== 'tooltip'">
+		<n8n-tooltip
+			v-if="type === 'tooltip'"
+			:placement="tooltipPlacement"
+			:popper-class="$style.tooltipPopper"
+		>
 			<span :class="$style.iconText">
 				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
-				<span v-if="type === 'note'"><slot></slot></span>
 			</span>
-			<span v-if="type === 'tooltip'" slot="content"><slot></slot></span>
+			<span slot="content">
+				<slot />
+			</span>
 		</n8n-tooltip>
+		<span :class="$style.iconText" v-else>
+			<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
+			<span>
+				<slot />
+			</span>
+		</span>
 	</div>
 </template>
 
@@ -77,6 +88,7 @@ export default {
 
 .iconText {
 	display: inline-flex;
+  	align-items: center;
 }
 
 .info-light {
