@@ -324,7 +324,7 @@ const getOperations: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'GET',
-				url: '=/v3/contacts/{{$value}}',
+				url: '=/v3/contacts/{{encodeURIComponent($value)}}',
 			},
 		},
 		required: true,
@@ -455,7 +455,7 @@ const updateOperations: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'PUT',
-				url: '=/v3/contacts/{{$parameter.identifier}}',
+				url: '=/v3/contacts/{{encodeURIComponent($parameter.identifier)}}',
 			},
 		},
 		type: 'fixedCollection',
@@ -467,8 +467,8 @@ const updateOperations: INodeProperties[] = [
 
 const upsertOperations: INodeProperties[] = [
 	{
-		displayName: 'Contact Identifier',
-		name: 'identifier',
+		displayName: 'Email',
+		name: 'email',
 		default: '',
 		description: 'Email (urlencoded) OR ID of the contact OR its SMS attribute value',
 		displayOptions: {
@@ -478,6 +478,7 @@ const upsertOperations: INodeProperties[] = [
 			},
 		},
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		routing: {
 			send: {
