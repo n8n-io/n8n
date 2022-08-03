@@ -1335,6 +1335,7 @@ export function constructExecutionMetaData(
 }
 
 /**
+>>>>>>> fa57b0025 (:recycle: Introduce buildJsonArray)
  * Automatically put the objects under a 'json' key and don't error,
  * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
  *
