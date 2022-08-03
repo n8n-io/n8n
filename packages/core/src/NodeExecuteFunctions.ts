@@ -59,6 +59,10 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	INodeExecutionPairedData,
+	IBinaryKeyData,
+	IPairedItemData,
+	PrepairOptions,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1308,6 +1312,112 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 	return returnData;
 }
 
+type BinaryPairable = Pick<INodeExecutionPairedData, 'binary'>;
+type JsonPairable = Pick<INodeExecutionPairedData, 'json'>;
+// type Pairable = Pick<
+// 	BinaryPairable & JsonPairable & IPairedItemData,
+// 	'json' | 'binary' | 'pairedItem'
+// >;
+
+/**
+ * Takes generic input data and brings it into the json format n8n uses.
+ *
+ * @export
+ * @param {(IDataObject | IDataObject[])} jsonData
+ * @returns {JsonPairable[]}
+ */
+export function buildJsonArray(jsonData: IDataObject | IDataObject[]): JsonPairable[] {
+	const returnData: JsonPairable[] = [];
+
+	if (!Array.isArray(jsonData)) {
+		jsonData = [jsonData];
+	}
+
+	jsonData.forEach((data: IDataObject) => {
+		returnData.push({ json: data });
+	});
+
+	return returnData;
+}
+
+/**
+ * Takes input data and transforms it into a binary format n8n uses.
+ * @param {(IBinaryKeyData | IBinaryKeyData[])} binaryData
+ * @returns {BinaryPairable[]}
+ */
+function buildBinaryArray(binaryData: IBinaryKeyData | IBinaryKeyData[]): BinaryPairable[] {
+	const returnData: BinaryPairable[] = [];
+
+	if (!Array.isArray(binaryData)) {
+		binaryData = [binaryData];
+	}
+
+	binaryData.forEach((data: IBinaryKeyData) => {
+		returnData.push({ binary: data });
+	});
+
+	return returnData;
+}
+
+/**
+ * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
+ * @param {(IPairedItemData)} setPairedItemData
+ * @param {(Pairable[])} inputData
+ * @param {(PrepairOptions)} options
+ * @returns {(INodeExecutionPairedData[])}
+ */
+function preparePairedOutputData(
+	setPairedItemData: IPairedItemData,
+	inputData: JsonPairable[] | BinaryPairable[],
+	options: PrepairOptions,
+): INodeExecutionPairedData[] {
+	const { setBinaryData } = options;
+	const pairedItem: IPairedItemData = { ...setPairedItemData };
+
+	return inputData.map((data) => {
+		const { json = {} } = data as JsonPairable;
+
+		const executionPairedData = { json, pairedItem } as INodeExecutionPairedData;
+
+		if (setBinaryData) {
+			const { binary } = data as BinaryPairable;
+			Object.assign(executionPairedData, { binary });
+		}
+
+		return executionPairedData;
+	});
+}
+
+/**
+ * Takes generic input json data and brings it into (json, pairedItem) format.
+ * @export
+ * @param {(IPairedItemData)} setPairedItemData
+ * @param {(IDataObject | IDataObject[] )} jsonData
+ * @returns {(INodeExecutionPairedData[])}
+ */
+export function preparePairedJsonOutputData(
+	setPairedItemData: IPairedItemData,
+	jsonData: IDataObject | IDataObject[],
+): INodeExecutionPairedData[] {
+	const data = buildJsonArray(jsonData);
+	return preparePairedOutputData(setPairedItemData, data, { setBinaryData: false });
+}
+
+/**
+ * Takes generic input binary data and brings it into (binary, pairedItem) format.
+ * @export
+ * @param {(IPairedItemData)} setPairedItemData
+ * @param {(IBinaryKeyData | IBinaryKeyData[])} binaryData
+ * @returns {(INodeExecutionPairedData[])}
+ */
+export function preparePairedBinaryOutputData(
+	setPairedItemData: IPairedItemData,
+	binaryData: IBinaryKeyData | IBinaryKeyData[],
+): INodeExecutionPairedData[] {
+	const data = buildBinaryArray(binaryData);
+	return preparePairedOutputData(setPairedItemData, data, { setBinaryData: true });
+}
+
 /**
  * Automatically put the objects under a 'json' key and don't error,
  * if some objects contain json/binary keys and others don't, throws error 'Inconsistent item format'
@@ -2408,6 +2518,8 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
+				preparePairedJsonOutputData,
+				preparePairedBinaryOutputData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);

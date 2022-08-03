@@ -3,6 +3,7 @@ import {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IBinaryData,
+	IBinaryKeyData,
 	ICredentialTestFunctions as ICredentialTestFunctionsBase,
 	ICredentialType,
 	IDataObject,
@@ -12,8 +13,10 @@ import {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
+	INodeExecutionPairedData,
 	INodeType,
 	IOAuth2Options,
+	IPairedItemData,
 	IPollFunctions as IPollFunctionsBase,
 	IPollResponse,
 	ITriggerFunctions as ITriggerFunctionsBase,
@@ -68,6 +71,14 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
 		): Promise<any>;
+		preparePairedJsonOutputData(
+			setPairedItemData: IPairedItemData,
+			jsonData: IDataObject | IDataObject[],
+		): INodeExecutionPairedData[];
+		preparePairedBinaryOutputData(
+			setPairedItemData: IPairedItemData,
+			binaryData: IBinaryKeyData | IBinaryKeyData[],
+		): INodeExecutionPairedData[];
 	};
 }
 
