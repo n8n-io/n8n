@@ -9,7 +9,6 @@ declare module 'vue/types/vue' {
 declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
-		posthog: posthog;
 		featureFlag: FeatureFlag;
 	}
 }
@@ -23,40 +22,6 @@ interface IUserNodesPanelSessionData {
 	nodeFilter: string;
 	resultsNodes: string[];
 	filterMode: string;
-}
-
-/**
- * Simplified version of:
- * https://github.com/PostHog/posthog-js/blob/master/src/module.d.ts
- */
-
-/* tslint:disable-next-line */
-interface posthog {
-	identify(
-		uniqueId?: string,
-		userPropertiesToSet?: object,
-		userPropertiesToSetOnce?: object,
-	): void;
-
-	reset(resetDeviceId?: boolean): void;
-
-	capture(
-		eventName: string,
-		properties?: object,
-		options?: object,
-	): unknown;
-
-	isFeatureEnabled(key: string, options?: object): boolean;
-
-	register(properties: object, days?: number): void;
-
-	people: {
-		set(
-			prop: object | string,
-			to?: object,
-			callback?: Function,
-		): unknown;
-	};
 }
 
 interface FeatureFlag {
