@@ -45,6 +45,9 @@ const module: Module<INodeTypesState, IRootState> = {
 		},
 		getNodeType: (state) => (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 			const nodeVersions = state.nodeTypes[nodeTypeName];
+
+			if (!nodeVersions) return null;
+
 			const versionNumbers = Object.keys(nodeVersions).map(Number);
 			const nodeType = nodeVersions[version || Math.max(...versionNumbers)];
 
