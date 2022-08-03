@@ -2608,32 +2608,32 @@ class App {
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-			// @TODO_PART_3: Re-enable, for now injecting in editor-ui/public/index.html
-			if (false && this.frontendSettings.telemetry.enabled) {
-				// @TODO_PART_3:
-				// Confirm if `autocapture` is needed for session recording, if so enable
+			// @TODO_ON_COMPLETION: Re-enable, for now injecting in
+			// editor-ui/public/index.html only for using editor-ui dev mode
 
-				// @TODO_ON_COMPLETION:
-				// Set `disableSessionRecording` to `!['desktop_mac', 'desktop_win', 'cloud'].includes(deploymentType)`
-				// Set `debug` to `config.getEnv('logs.level') === 'debug'`
+			// @TODO_ON_COMPLETION: Set `disableSessionRecording` to
+			// `!['desktop_mac', 'desktop_win', 'cloud'].includes(deploymentType)`
 
-				const { createPostHogLoadingScript, postHogHooksScript } = telemetryScripts;
+			// @TODO_ON_COMPLETION: Set `debug` to `config.getEnv('logs.level') === 'debug'`
 
-				const postHogLoadingScript = createPostHogLoadingScript({
-					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
-					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-					autocapture: false,
-					disableSessionRecording: false,
-					debug: true,
-				});
+			// if (this.frontendSettings.telemetry.enabled) {
+			// 	const { createPostHogLoadingScript, postHogHooksScript } = telemetryScripts;
 
-				const firstLinkedScriptSegment = '<link href="/js/';
+			// 	const postHogLoadingScript = createPostHogLoadingScript({
+			// 		apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+			// 		apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+			// 		autocapture: false,
+			// 		disableSessionRecording: false,
+			// 		debug: true,
+			// 	});
 
-				readIndexFile = readIndexFile.replace(
-					firstLinkedScriptSegment,
-					postHogLoadingScript + postHogHooksScript + firstLinkedScriptSegment,
-				);
-			}
+			// 	const firstLinkedScriptSegment = '<link href="/js/';
+
+			// 	readIndexFile = readIndexFile.replace(
+			// 		firstLinkedScriptSegment,
+			// 		postHogLoadingScript + postHogHooksScript + firstLinkedScriptSegment,
+			// 	);
+			// }
 
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
