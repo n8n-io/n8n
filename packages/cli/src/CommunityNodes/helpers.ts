@@ -89,6 +89,7 @@ export const executeCommand = async (
 		env: {
 			NODE_PATH: process.env.NODE_PATH,
 			PATH: process.env.PATH,
+			APPDATA: process.env.APPDATA,
 		},
 	};
 
