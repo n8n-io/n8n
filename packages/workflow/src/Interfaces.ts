@@ -1621,3 +1621,7 @@ export type PublicInstalledNode = {
 	latestVersion: string;
 	package: PublicInstalledPackage;
 };
+
+export type PrepairOptions = {
+	setBinaryData: boolean;
+};
