@@ -64,7 +64,7 @@ class LoadNodesAndCredentialsClass {
 		LoggerProxy.init(this.logger);
 
 		// Make sure the imported modules can resolve dependencies fine.
-		const delimiter = process.platform === "win32" ? ";" : ":";
+		const delimiter = process.platform === 'win32' ? ';' : ':';
 		process.env.NODE_PATH = module.paths.join(delimiter);
 		// @ts-ignore
 		module.constructor._initPaths();

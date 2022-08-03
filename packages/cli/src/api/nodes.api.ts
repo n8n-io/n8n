@@ -5,7 +5,11 @@ import { PublicInstalledPackage } from 'n8n-workflow';
 import config from '../../config';
 import { ResponseHelper, LoadNodesAndCredentials, Push, InternalHooksManager } from '..';
 
-import { RESPONSE_ERROR_MESSAGES, UNKNOWN_FAILURE_REASON, STARTER_TEMPLATE_NAME } from '../constants';
+import {
+	RESPONSE_ERROR_MESSAGES,
+	UNKNOWN_FAILURE_REASON,
+	STARTER_TEMPLATE_NAME,
+} from '../constants';
 import {
 	matchMissingPackages,
 	matchPackagesWithUpdates,
