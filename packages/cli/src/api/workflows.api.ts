@@ -69,7 +69,7 @@ workflowsController.post(
 			throw new ResponseHelper.ResponseError('Failed to save workflow');
 		}
 
-		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
+		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
 			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
 			});
