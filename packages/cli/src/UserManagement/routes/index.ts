@@ -4,21 +4,10 @@
 /* eslint-disable import/no-cycle */
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
-import { Strategy } from 'passport-jwt';
 import { NextFunction, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import { LoggerProxy as Logger } from 'n8n-workflow';
-
-import { JwtPayload, N8nApp } from '../Interfaces';
-import { authenticationMethods } from './auth';
-import * as config from '../../../config';
-import { AUTH_COOKIE_NAME } from '../../constants';
-import { issueCookie, resolveJwtContent } from '../auth/jwt';
-import { meNamespace } from './me';
-import { usersNamespace } from './users';
-import { passwordResetNamespace } from './passwordReset';
+import { N8nApp } from '../Interfaces';
 import { AuthenticatedRequest } from '../../requests';
-import { ownerNamespace } from './owner';
 import {
 	isAuthExcluded,
 	isPostUsersId,
@@ -26,32 +15,20 @@ import {
 	isUserManagementDisabled,
 } from '../UserManagementHelper';
 import { Db } from '../..';
+import { registerController } from '../decorators';
+import {
+	AuthController,
+	MeController,
+	OwnerController,
+	PasswordResetController,
+	UserController,
+} from '../controllers';
+import { jwtAuth, refreshExpiringCookie } from '../middlewares';
 
 export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint: string): void {
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
 	this.app.use(cookieParser());
-
-	const options = {
-		jwtFromRequest: (req: Request) => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			return (req.cookies?.[AUTH_COOKIE_NAME] as string | undefined) ?? null;
-		},
-		secretOrKey: config.getEnv('userManagement.jwtSecret'),
-	};
-
-	passport.use(
-		new Strategy(options, async function validateCookieContents(jwtPayload: JwtPayload, done) {
-			try {
-				const user = await resolveJwtContent(jwtPayload);
-				return done(null, user);
-			} catch (error) {
-				Logger.debug('Failed to extract user from JWT payload', { jwtPayload });
-				return done(null, false, { message: 'User not found' });
-			}
-		}),
-	);
-
-	this.app.use(passport.initialize());
+	this.app.use(jwtAuth());
 
 	this.app.use(async (req: Request, res: Response, next: NextFunction) => {
 		if (
@@ -124,22 +101,11 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		next();
 	});
 
-	// middleware to refresh cookie before it expires
-	this.app.use(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-		const cookieAuth = options.jwtFromRequest(req);
-		if (cookieAuth && req.user) {
-			const cookieContents = jwt.decode(cookieAuth) as JwtPayload & { exp: number };
-			if (cookieContents.exp * 1000 - Date.now() < 259200000) {
-				// if cookie expires in < 3 days, renew it.
-				await issueCookie(res, req.user);
-			}
-		}
-		next();
-	});
+	this.app.use(refreshExpiringCookie);
 
-	authenticationMethods.apply(this);
-	ownerNamespace.apply(this);
-	meNamespace.apply(this);
-	passwordResetNamespace.apply(this);
-	usersNamespace.apply(this);
+	registerController(this.app, AuthController);
+	registerController(this.app, MeController);
+	registerController(this.app, OwnerController);
+	registerController(this.app, PasswordResetController);
+	registerController(this.app, UserController);
 }

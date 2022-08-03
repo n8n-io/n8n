@@ -34,11 +34,6 @@ import {
 	InternalHooksManager,
 	NodeTypes,
 } from '../../../src';
-import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
-import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
-import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { issueJWT } from '../../../src/UserManagement/auth/jwt';
 import { getLogger } from '../../../src/Logger';
 import { credentialsController } from '../../../src/credentials/credentials.controller';
@@ -56,6 +51,14 @@ import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import { workflowsController } from '../../../src/api/workflows.api';
 import { nodesController } from '../../../src/api/nodes.api';
 import { randomName } from './random';
+import { registerController } from '../../../src/UserManagement/decorators';
+import {
+	AuthController,
+	MeController,
+	OwnerController,
+	PasswordResetController,
+} from '../../../src/UserManagement/controllers';
+import { UserController } from '../../../src/UserManagement/controllers/UserController';
 
 /**
  * Initialize a test server.
@@ -114,17 +117,11 @@ export async function initTestServer({
 	}
 
 	if (functionEndpoints.length) {
-		const map: Record<string, (this: N8nApp) => void> = {
-			me: meEndpoints,
-			users: usersEndpoints,
-			auth: authEndpoints,
-			owner: ownerEndpoints,
-			passwordReset: passwordResetEndpoints,
-		};
-
-		for (const group of functionEndpoints) {
-			map[group].apply(testServer);
-		}
+		registerController(testServer.app, MeController);
+		registerController(testServer.app, UserController);
+		registerController(testServer.app, AuthController);
+		registerController(testServer.app, OwnerController);
+		registerController(testServer.app, PasswordResetController);
 	}
 
 	return testServer.app;
