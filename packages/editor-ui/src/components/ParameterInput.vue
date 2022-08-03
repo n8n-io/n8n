@@ -1,302 +1,279 @@
 <template>
-	<div
-		:class="{
-			[$style['resource-locator']]: isResourceLocatorParameter,
-			[$style['multiple-modes']]: hasMultipleModes,
-		}"
-	>
+	<div @keydown.stop :class="parameterInputClasses">
+		<expression-edit
+			:dialogVisible="expressionEditDialogVisible"
+			:value="value"
+			:parameter="parameter"
+			:path="path"
+			:eventSource="eventSource || 'ndv'"
+			@closeDialog="closeExpressionEditDialog"
+			@valueChanged="expressionUpdated"
+		></expression-edit>
 		<div
-			v-if="isResourceLocatorParameter && hasMultipleModes"
-			:class="$style['mode-selector']"
+			class="parameter-input ignore-key-press"
+			:style="parameterInputWrapperStyle"
+			@click="openExpressionEdit"
 		>
-			<n8n-select
-				v-model="selectedMode"
-				size="small"
-				@change="onModeSelected"
-				filterable
-			>
-				<n8n-option
-					v-for="mode in parameter.modes"
-					:key="mode.name"
-					:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
-					:value="mode.name">
-				</n8n-option>
-			</n8n-select>
-		</div>
-		<div @keydown.stop :class="{...parameterInputClasses, [$style['input-container']]: true}">
-			<expression-edit
-				:dialogVisible="expressionEditDialogVisible"
-				:value="value"
-				:parameter="parameter"
-				:path="path"
-				:eventSource="eventSource || 'ndv'"
-				@closeDialog="closeExpressionEditDialog"
-				@valueChanged="expressionUpdated"
-			></expression-edit>
+			<resource-locator
+				v-if="isResourceLocatorParameter"
+				ref="resourceLocator"
+				v-bind="$props"
+				v-model="tempValue"
+				:stringInputType="getStringInputType"
+				:rows="getArgument('rows')"
+				:displayValue="displayValue"
+				:displayTitle="displayTitle"
+				:issues="getIssues"
+				:parameterInputClasses="parameterInputClasses"
+				@textInputChange="onTextInputChange"
+				@change="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
+				@editIconClick="displayEditDialog()"
+			></resource-locator>
+			<n8n-input
+				v-else-if="isValueExpression || droppable || forceShowExpression"
+				:size="inputSize"
+				:type="getStringInputType"
+				:rows="getArgument('rows')"
+				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
+				:title="displayTitle"
+				@keydown.stop
+			/>
+
 			<div
-				class="parameter-input ignore-key-press"
-				:style="parameterInputWrapperStyle"
-				@click="openExpressionEdit"
+				v-else-if="
+					['json', 'string'].includes(parameter.type) ||
+					remoteParameterOptionsLoadingIssues !== null
+				"
 			>
+				<code-edit
+					v-if="codeEditDialogVisible"
+					:value="value"
+					:parameter="parameter"
+					:type="editorType"
+					:codeAutocomplete="codeAutocomplete"
+					:path="path"
+					@closeDialog="closeCodeEditDialog"
+					@valueChanged="expressionUpdated"
+				></code-edit>
+				<text-edit
+					:dialogVisible="textEditDialogVisible"
+					:value="value"
+					:parameter="parameter"
+					:path="path"
+					@closeDialog="closeTextEditDialog"
+					@valueChanged="expressionUpdated"
+				></text-edit>
+
+				<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
+					<prism-editor
+						v-if="!codeEditDialogVisible"
+						:lineNumbers="true"
+						:readonly="true"
+						:code="displayValue"
+						language="js"
+					></prism-editor>
+				</div>
+
 				<n8n-input
-					v-if="isValueExpression || droppable || forceShowExpression"
+					v-else
+					v-model="tempValue"
+					ref="inputField"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
-					:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
-					:title="displayTitle"
-					@keydown.stop
-				/>
-
-				<div
-					v-else-if="
-						['json', 'string', 'resourceLocator'].includes(parameter.type) ||
-						remoteParameterOptionsLoadingIssues !== null
-					"
-				>
-					<code-edit
-						v-if="codeEditDialogVisible"
-						:value="value"
-						:parameter="parameter"
-						:type="editorType"
-						:codeAutocomplete="codeAutocomplete"
-						:path="path"
-						@closeDialog="closeCodeEditDialog"
-						@valueChanged="expressionUpdated"
-					></code-edit>
-					<text-edit
-						:dialogVisible="textEditDialogVisible"
-						:value="value"
-						:parameter="parameter"
-						:path="path"
-						@closeDialog="closeTextEditDialog"
-						@valueChanged="expressionUpdated"
-					></text-edit>
-
-					<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
-						<prism-editor
-							v-if="!codeEditDialogVisible"
-							:lineNumbers="true"
-							:readonly="true"
-							:code="displayValue"
-							language="js"
-						></prism-editor>
-					</div>
-
-					<DraggableTarget
-						v-else
-						type="mapping"
-						:disabled="!isResourceLocatorParameter"
-						:sticky="true"
-						:stickyOffset="4"
-						@drop="onDrop"
-					>
-						<n8n-input
-							v-model="tempValue"
-							ref="inputField"
-							:size="inputSize"
-							:type="getStringInputType"
-							:rows="getArgument('rows')"
-							:value="displayValue"
-							:disabled="isReadOnly"
-							@input="onTextInputChange"
-							@change="valueChanged"
-							@keydown.stop
-							@focus="setFocus"
-							@blur="onBlur"
-							:title="displayTitle"
-							:placeholder="getPlaceholder()"
-						>
-							<div slot="suffix" class="expand-input-icon-container">
-								<font-awesome-icon
-									v-if="!isReadOnly"
-									icon="expand-alt"
-									class="edit-window-button clickable"
-									:title="$locale.baseText('parameterInput.openEditWindow')"
-									@click="displayEditDialog()"
-								/>
-							</div>
-						</n8n-input>
-					</DraggableTarget>
-				</div>
-
-				<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-					<el-color-picker
-						size="small"
-						class="color-picker"
-						:value="displayValue"
-						:disabled="isReadOnly"
-						@focus="setFocus"
-						@blur="onBlur"
-						@change="valueChanged"
-						:title="displayTitle"
-						:show-alpha="getArgument('showAlpha')"
-					/>
-					<n8n-input
-						v-model="tempValue"
-						:size="inputSize"
-						type="text"
-						:value="tempValue"
-						:disabled="isReadOnly"
-						@change="valueChanged"
-						@keydown.stop
-						@focus="setFocus"
-						@blur="onBlur"
-						:title="displayTitle"
-					/>
-				</div>
-
-				<el-date-picker
-					v-else-if="parameter.type === 'dateTime'"
-					v-model="tempValue"
-					ref="inputField"
-					type="datetime"
-					:size="inputSize"
 					:value="displayValue"
-					:title="displayTitle"
 					:disabled="isReadOnly"
-					:placeholder="
-						parameter.placeholder
-							? getPlaceholder()
-							: $locale.baseText('parameterInput.selectDateAndTime')
-					"
-					:picker-options="dateTimePickerOptions"
-					@change="valueChanged"
-					@focus="setFocus"
-					@blur="onBlur"
-					@keydown.stop
-				/>
-
-				<n8n-input-number
-					v-else-if="parameter.type === 'number'"
-					ref="inputField"
-					:size="inputSize"
-					:value="displayValue"
-					:controls="false"
-					:max="getArgument('maxValue')"
-					:min="getArgument('minValue')"
-					:precision="getArgument('numberPrecision')"
-					:disabled="isReadOnly"
-					@change="valueChanged"
 					@input="onTextInputChange"
-					@focus="setFocus"
-					@blur="onBlur"
-					@keydown.stop
-					:title="displayTitle"
-					:placeholder="parameter.placeholder"
-				/>
-
-				<credentials-select
-					v-else-if="
-						parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'
-					"
-					ref="inputField"
-					:parameter="parameter"
-					:node="node"
-					:activeCredentialType="activeCredentialType"
-					:inputSize="inputSize"
-					:displayValue="displayValue"
-					:isReadOnly="isReadOnly"
-					:displayTitle="displayTitle"
-					@credentialSelected="credentialSelected"
-					@valueChanged="valueChanged"
-					@setFocus="setFocus"
-					@onBlur="onBlur"
-				>
-					<template v-slot:issues-and-options>
-						<parameter-issues :issues="getIssues" />
-					</template>
-				</credentials-select>
-
-				<n8n-select
-					v-else-if="parameter.type === 'options'"
-					ref="inputField"
-					:size="inputSize"
-					filterable
-					:value="displayValue"
-					:placeholder="
-						parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
-					"
-					:loading="remoteParameterOptionsLoading"
-					:disabled="isReadOnly || remoteParameterOptionsLoading"
-					:title="displayTitle"
 					@change="valueChanged"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
-				>
-					<n8n-option
-						v-for="option in parameterOptions"
-						:value="option.value"
-						:key="option.value"
-						:label="getOptionsOptionDisplayName(option)"
-					>
-						<div class="list-option">
-							<div class="option-headline">
-								{{ getOptionsOptionDisplayName(option) }}
-							</div>
-							<div
-								v-if="option.description"
-								class="option-description"
-								v-html="getOptionsOptionDescription(option)"
-							></div>
-						</div>
-					</n8n-option>
-				</n8n-select>
-
-				<n8n-select
-					v-else-if="parameter.type === 'multiOptions'"
-					ref="inputField"
-					:size="inputSize"
-					filterable
-					multiple
-					:value="displayValue"
-					:loading="remoteParameterOptionsLoading"
-					:disabled="isReadOnly || remoteParameterOptionsLoading"
 					:title="displayTitle"
-					:placeholder="$locale.baseText('parameterInput.select')"
-					@change="valueChanged"
-					@keydown.stop
-					@focus="setFocus"
-					@blur="onBlur"
+					:placeholder="getPlaceholder()"
 				>
-					<n8n-option
-						v-for="option in parameterOptions"
-						:value="option.value"
-						:key="option.value"
-						:label="getOptionsOptionDisplayName(option)"
-					>
-						<div class="list-option">
-							<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
-							<div
-								v-if="option.description"
-								class="option-description"
-								v-html="getOptionsOptionDescription(option)"
-							></div>
-						</div>
-					</n8n-option>
-				</n8n-select>
+					<div slot="suffix" class="expand-input-icon-container">
+						<font-awesome-icon
+							v-if="!isReadOnly"
+							icon="external-link-alt"
+							class="edit-window-button clickable"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</div>
+				</n8n-input>
+			</div>
 
-				<el-switch
-					v-else-if="parameter.type === 'boolean'"
-					class="switch-input"
-					ref="inputField"
-					active-color="#13ce66"
+			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
+				<el-color-picker
+					size="small"
+					class="color-picker"
 					:value="displayValue"
 					:disabled="isReadOnly"
+					@focus="setFocus"
+					@blur="onBlur"
 					@change="valueChanged"
+					:title="displayTitle"
+					:show-alpha="getArgument('showAlpha')"
+				/>
+				<n8n-input
+					v-model="tempValue"
+					:size="inputSize"
+					type="text"
+					:value="tempValue"
+					:disabled="isReadOnly"
+					@change="valueChanged"
+					@keydown.stop
+					@focus="setFocus"
+					@blur="onBlur"
+					:title="displayTitle"
 				/>
 			</div>
 
-			<parameter-issues v-if="parameter.type !== 'credentialsSelect'" :issues="getIssues" />
+			<el-date-picker
+				v-else-if="parameter.type === 'dateTime'"
+				v-model="tempValue"
+				ref="inputField"
+				type="datetime"
+				:size="inputSize"
+				:value="displayValue"
+				:title="displayTitle"
+				:disabled="isReadOnly"
+				:placeholder="
+					parameter.placeholder
+						? getPlaceholder()
+						: $locale.baseText('parameterInput.selectDateAndTime')
+				"
+				:picker-options="dateTimePickerOptions"
+				@change="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+			/>
+
+			<n8n-input-number
+				v-else-if="parameter.type === 'number'"
+				ref="inputField"
+				:size="inputSize"
+				:value="displayValue"
+				:controls="false"
+				:max="getArgument('maxValue')"
+				:min="getArgument('minValue')"
+				:precision="getArgument('numberPrecision')"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+				@input="onTextInputChange"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+				:title="displayTitle"
+				:placeholder="parameter.placeholder"
+			/>
+
+			<credentials-select
+				v-else-if="
+					parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'
+				"
+				ref="inputField"
+				:parameter="parameter"
+				:node="node"
+				:activeCredentialType="activeCredentialType"
+				:inputSize="inputSize"
+				:displayValue="displayValue"
+				:isReadOnly="isReadOnly"
+				:displayTitle="displayTitle"
+				@credentialSelected="credentialSelected"
+				@valueChanged="valueChanged"
+				@setFocus="setFocus"
+				@onBlur="onBlur"
+			>
+				<template v-slot:issues-and-options>
+					<parameter-issues :issues="getIssues" />
+				</template>
+			</credentials-select>
+
+			<n8n-select
+				v-else-if="parameter.type === 'options'"
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				:value="displayValue"
+				:placeholder="
+					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
+				"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="option in parameterOptions"
+					:value="option.value"
+					:key="option.value"
+					:label="getOptionsOptionDisplayName(option)"
+				>
+					<div class="list-option">
+						<div class="option-headline">
+							{{ getOptionsOptionDisplayName(option) }}
+						</div>
+						<div
+							v-if="option.description"
+							class="option-description"
+							v-html="getOptionsOptionDescription(option)"
+						></div>
+					</div>
+				</n8n-option>
+			</n8n-select>
+
+			<n8n-select
+				v-else-if="parameter.type === 'multiOptions'"
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				multiple
+				:value="displayValue"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				:placeholder="$locale.baseText('parameterInput.select')"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="option in parameterOptions"
+					:value="option.value"
+					:key="option.value"
+					:label="getOptionsOptionDisplayName(option)"
+				>
+					<div class="list-option">
+						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
+						<div
+							v-if="option.description"
+							class="option-description"
+							v-html="getOptionsOptionDescription(option)"
+						></div>
+					</div>
+				</n8n-option>
+			</n8n-select>
+
+			<el-switch
+				v-else-if="parameter.type === 'boolean'"
+				class="switch-input"
+				ref="inputField"
+				active-color="#13ce66"
+				:value="displayValue"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+			/>
 		</div>
-		<n8n-text
-			v-if="parameter.type === 'resourceLocator' && infoText"
-			size="small"
-			:class="$style['info-text']"
-		>
-				{{ infoText }}
-		</n8n-text>
+
+		<parameter-issues v-if="parameter.type !== 'credentialsSelect'" :issues="getIssues" />
 	</div>
 </template>
 
@@ -314,7 +291,6 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
-	INodePropertyMode,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
@@ -324,7 +300,7 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -337,7 +313,6 @@ import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 import { hasExpressionMapping } from './helpers';
-import { getParameterModeLabel, validateResourceLocatorParameter } from './ResourceLocator/helpers';
 
 export default mixins(
 	externalHooks,
@@ -349,7 +324,6 @@ export default mixins(
 		name: 'ParameterInput',
 		components: {
 			CodeEdit,
-			DraggableTarget,
 			ExpressionEdit,
 			NodeCredentials,
 			CredentialsSelect,
@@ -357,6 +331,7 @@ export default mixins(
 			ScopesNotice,
 			ParameterOptions,
 			ParameterIssues,
+			ResourceLocator,
 			TextEdit,
 		},
 		props: [
@@ -416,7 +391,6 @@ export default mixins(
 						},
 					],
 				},
-				selectedMode: '',
 			};
 		},
 		watch: {
@@ -605,13 +579,6 @@ export default mixins(
 					const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
 
 					issues.parameters[this.parameter.name] = [issue];
-				} else if (this.parameter.type === 'resourceLocator' && this.displayValue !== null && this.displayValue !== undefined) {
-					// Perform front-end validation of the resource locator value
-					issues.parameters = issues.parameters || {};
-					const validationErrors: string[] = validateResourceLocatorParameter(this.displayValue.toString(), this.currentMode);
-					for (const error of validationErrors) {
-						issues.parameters[this.parameter.name] = [error];
-					}
 				} else if (
 					['options', 'multiOptions'].includes(this.parameter.type) &&
 					this.remoteParameterOptionsLoading === false &&
@@ -738,20 +705,8 @@ export default mixins(
 			workflow (): Workflow {
 				return this.getWorkflow();
 			},
-			inputPlaceholder (): string {
-				return this.currentMode.placeholder ? this.currentMode.placeholder : '';
-			},
 			isResourceLocatorParameter (): boolean {
 				return this.parameter.type === 'resourceLocator';
-			},
-			infoText (): string {
-				return this.currentMode.hint ?  this.currentMode.hint : this.parameter.description || '';
-			},
-			currentMode (): INodePropertyMode {
-				return this.findModeByName(this.selectedMode) || {} as INodePropertyMode;
-			},
-			hasMultipleModes (): boolean {
-				return this.parameter.modes && this.parameter.modes.length > 1;
 			},
 		},
 		methods: {
@@ -775,9 +730,7 @@ export default mixins(
 			getPlaceholder(): string {
 				return this.isForCredential
 					? this.$locale.credText().placeholder(this.parameter)
-					: this.inputPlaceholder
-						? this.inputPlaceholder
-						: this.$locale.nodeText().placeholder(this.parameter, this.path);
+					: this.$locale.nodeText().placeholder(this.parameter, this.path);
 			},
 			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
 				return this.isForCredential
@@ -913,7 +866,7 @@ export default mixins(
 				// Set focus on field
 				setTimeout(() => {
 					// @ts-ignore
-					if (this.$refs.inputField.$el) {
+					if (this.$refs.inputField && this.$refs.inputField.$el) {
 						// @ts-ignore
 						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
 					}
@@ -1020,21 +973,6 @@ export default mixins(
 					});
 				}
 			},
-			onModeSelected (value: string): void {
-				this.selectedMode = value;
-			},
-			findModeByName (name: string): INodePropertyMode | null {
-				if (this.parameter.modes) {
-					return this.parameter.modes.find((mode: INodePropertyMode) => mode.name === name) || null;
-				}
-				return null;
-			},
-			getModeLabel (name: string): string | null {
-				return getParameterModeLabel(name);
-			},
-			onDrop(data: string) {
-				this.$emit('drop', data);
-			},
 		},
 		mounted () {
 			this.$on('optionSelected', this.optionSelected);
@@ -1083,12 +1021,6 @@ export default mixins(
 						}
 					}
 				}
-			}
-
-			if (this.parameter.modes) {
-				// List mode is selected by default if it's available
-				const listMode = this.parameter.modes.find((mode : INodePropertyMode) => mode.name === 'list');
-				this.selectedMode = listMode ? listMode.name : this.parameter.modes[0].name;
 			}
 
 			this.$externalHooks().run('parameterInput.mount', { parameter: this.parameter, inputFieldRef: this.$refs['inputField'] });
@@ -1207,41 +1139,4 @@ export default mixins(
 	align-items: center;
 }
 
-</style>
-
-<style lang="scss" module>
-.mode-selector {
-	flex-basis: 100px;
-
-	input {
-		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
-		border-right: none;
-		overflow: hidden;
-		text-overflow: ellipsis;
-
-		&:focus {
-			border-right: var(--color-secondary) var(--border-style-base) var(--border-width-base);
-		}
-	}
-}
-
-.resource-locator {
-	display: flex;
-	flex-wrap: wrap;
-
-	.input-container {
-		width: 100%;
-		input {
-			border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
-		}
-	}
-
-	&.multiple-modes {
-		.input-container {
-			flex-basis: calc(100% - 100px);
-			flex-grow: 1;
-		}
-	}
-
-}
 </style>
