@@ -3,6 +3,7 @@ import {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IBinaryData,
+	IBinaryKeyData,
 	ICredentialTestFunctions as ICredentialTestFunctionsBase,
 	ICredentialType,
 	IDataObject,
@@ -22,6 +23,7 @@ import {
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	PrepairOptions,
 } from 'n8n-workflow';
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';

@@ -61,6 +61,7 @@ import {
 	OAuth2GrantType,
 	INodeExecutionMetaData,
 	IPairedItemData,
+	PrepairOptions,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
