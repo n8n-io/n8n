@@ -59,6 +59,9 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1647,6 +1650,81 @@ function cleanupParameterData(
 	return inputData;
 }
 
+function extractValue(
+	value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object,
+	parameterName: string,
+	node: INode,
+	nodeType: INodeType,
+): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
+	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection;
+	const paramParts = parameterName.split('.');
+	const findProp = (
+		name: string,
+		options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	): INodePropertyOptions | INodeProperties | INodePropertyCollection => {
+		const prop = options.find((i) => i.name === name);
+		if (!prop) {
+			throw new NodeOperationError(node, `Couldn't not find property "${parameterName}"`);
+		}
+		return prop;
+	};
+	property = findProp(paramParts.shift()!, nodeType.description.properties);
+
+	// eslint-disable-next-line no-restricted-syntax
+	for (const p of paramParts) {
+		const param = p.split('[')[0];
+		if ('options' in property && property.options) {
+			property = findProp(param, property.options);
+		} else if ('values' in property) {
+			property = findProp(param, property.values);
+		} else {
+			throw new NodeOperationError(node, `Couldn't not find property "${parameterName}"`);
+		}
+	}
+
+	if (!('extractValue' in property) || !property.extractValue) {
+		return value;
+	}
+
+	if (typeof value !== 'string') {
+		let typeName = value?.constructor.name;
+		if (value === null) {
+			typeName = 'null';
+		} else if (typeName === undefined) {
+			typeName = 'undefined';
+		}
+		throw new NodeOperationError(
+			node,
+			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
+		);
+	}
+
+	if (property.extractValue.type !== 'regex') {
+		throw new NodeOperationError(
+			node,
+			`Property "${parameterName}" has an unknown extractValue type "${
+				property.extractValue.type as string
+			}"`,
+		);
+	}
+	const regex = new RegExp(property.extractValue.regex);
+	const extracted = regex.exec(value);
+	if (!extracted) {
+		throw new NodeOperationError(
+			node,
+			`extractValue for "${parameterName}" could not extract value. This likely means that the supplied value doesn't match the extractor regex.`,
+		);
+	}
+	if (extracted.length < 2 || extracted.length > 2) {
+		throw new NodeOperationError(
+			node,
+			`Property "${parameterName}" has an invalid extractValue regex "${regex.source}". extractValue expects exactly one group to be returned.`,
+		);
+	}
+
+	return extracted[1];
+}
+
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
@@ -1702,6 +1780,7 @@ export function getNodeParameter(
 		);
 
 		returnData = cleanupParameterData(returnData);
+		returnData = extractValue(returnData, parameterName, node, nodeType);
 	} catch (e) {
 		if (e.context) e.context.parameter = parameterName;
 		e.cause = value;
