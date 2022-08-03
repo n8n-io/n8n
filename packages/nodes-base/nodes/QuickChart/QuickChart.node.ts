@@ -4,98 +4,22 @@ import {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { CHART_TYPE_OPTIONS, HORIZONTAL_CHARTS, ITEM_STYLE_CHARTS } from './constants';
+import { IDataset } from './types';
+
 import _ from 'lodash';
-
-interface IDataset {
-	label?: string;
-	// tslint:disable-next-line:no-any
-	data: any;
-	backgroundColor?: string;
-	borderColor?: string;
-	color?: string;
-	type?: string;
-	fill?: boolean;
-	pointStyle?: string;
-}
-
-function validateJSON(json: string | undefined) {
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = [];
-	}
-	return result;
-}
-
-const CHART_TYPE_OPTIONS: INodePropertyOptions[] = [
-	{
-		name: 'Bar Chart',
-		value: 'bar',
-	},
-	{
-		name: 'Boxplot',
-		value: 'boxplot',
-	},
-	{
-		name: 'Bubble Chart',
-		value: 'bubble',
-	},
-	{
-		name: 'Doughnut Chart',
-		value: 'doughnut',
-	},
-	{
-		name: 'Line Chart',
-		value: 'line',
-	},
-	{
-		name: 'Pie Chart',
-		value: 'pie',
-	},
-	{
-		name: 'Polar Chart',
-		value: 'polar',
-	},
-	{
-		name: 'Radar Chart',
-		value: 'radar',
-	},
-	{
-		name: 'Radial Gauge',
-		value: 'radialGauge',
-	},
-	{
-		name: 'Scatter Chart',
-		value: 'scatter',
-	},
-	{
-		name: 'Sparkline',
-		value: 'sparkline',
-	},
-	{
-		name: 'Violin Chart',
-		value: 'violin',
-	},
-];
-
-const HORIZONTAL_CHARTS = ['bar', 'boxplot', 'violin'];
-const ITEM_STYLE_CHARTS = ['boxplot', 'horizontalBoxplot', 'violin', 'horizontalViolin'];
-
 export class QuickChart implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'QuickChart',
 		name: 'quickChart',
 		icon: 'file:quickChart.svg',
 		group: ['output'],
-		description: 'Creates a chart via QuickChart',
+		description: 'Create a chart via QuickChart',
 		version: 1,
-
 		defaults: {
 			name: 'QuickChart',
 		},
@@ -176,10 +100,10 @@ export class QuickChart implements INodeType {
 						displayName: 'Background Color',
 						name: 'backgroundColor',
 						type: 'color',
+						default: '',
 						typeOptions: {
 							showAlpha: true,
 						},
-						default: '',
 						description:
 							'Color used for the background the dataset (area of a line graph, fill of a bar chart, etc.)',
 					},
@@ -192,16 +116,6 @@ export class QuickChart implements INodeType {
 						},
 						default: '',
 						description: 'Color used for lines of the dataset',
-					},
-					{
-						displayName: 'Font Color',
-						name: 'fontColor',
-						type: 'color',
-						typeOptions: {
-							showAlpha: true,
-						},
-						default: '',
-						description: 'Color used for the text the dataset',
 					},
 					{
 						displayName: 'Chart Type',
@@ -217,6 +131,16 @@ export class QuickChart implements INodeType {
 						type: 'boolean',
 						default: true,
 						description: 'Whether to fill area of the dataset',
+					},
+					{
+						displayName: 'Font Color',
+						name: 'fontColor',
+						type: 'color',
+						typeOptions: {
+							showAlpha: true,
+						},
+						default: '',
+						description: 'Color used for the text the dataset',
 					},
 					{
 						displayName: 'Label',
@@ -284,18 +208,14 @@ export class QuickChart implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Width',
-						name: 'width',
-						type: 'number',
-						default: 500,
-						description: 'Width of the chart',
-					},
-					{
-						displayName: 'Height',
-						name: 'height',
-						type: 'number',
-						default: 300,
-						description: 'Height of the chart',
+						displayName: 'Background Color',
+						name: 'backgroundColor',
+						type: 'color',
+						typeOptions: {
+							showAlpha: true,
+						},
+						default: '',
+						description: 'Background color of the chart',
 					},
 					{
 						displayName: 'Device Pixel Ratio',
@@ -319,6 +239,10 @@ export class QuickChart implements INodeType {
 								value: 'png',
 							},
 							{
+								name: 'PDF',
+								value: 'pdf',
+							},
+							{
 								name: 'SVG',
 								value: 'svg',
 							},
@@ -326,18 +250,21 @@ export class QuickChart implements INodeType {
 								name: 'WebP',
 								value: 'webp',
 							},
-							{
-								name: 'PDF',
-								value: 'pdf',
-							},
 						],
 					},
 					{
-						displayName: 'Background Color',
-						name: 'backgroundColor',
-						type: 'color',
-						default: '',
-						description: 'Background color of the chart',
+						displayName: 'Height',
+						name: 'height',
+						type: 'number',
+						default: 300,
+						description: 'Height of the chart',
+					},
+					{
+						displayName: 'Width',
+						name: 'width',
+						type: 'number',
+						default: 500,
+						description: 'Width of the chart',
 					},
 				],
 			},
@@ -352,18 +279,18 @@ export class QuickChart implements INodeType {
 		if (HORIZONTAL_CHARTS.includes(chartType)) {
 			const horizontal = this.getNodeParameter('horizontal', 0) as boolean;
 			if (horizontal) {
-				chartType = 'horizontal' + chartType[0].toUpperCase() + chartType.substr(1);
+				chartType = 'horizontal' + chartType[0].toUpperCase() + chartType.substring(1, chartType.length);
 			}
 		}
 
 		// tslint:disable-next-line:no-any
-		let labels: string[] = [];
+		const labels: string[] = [];
+		const labelsUi = this.getNodeParameter('labelsUi.labelsValues', 0, []) as IDataObject[];
 
-		const labelsUi = this.getNodeParameter('labelsUi', 0) as IDataObject;
-		if (!_.isEmpty(labelsUi)) {
-			for (const labelValue of labelsUi.labelsValues as [{ label: string[] | string }]) {
+		if (labelsUi.length) {
+			for (const labelValue of labelsUi as [{ label: string[] | string }]) {
 				if (Array.isArray(labelValue.label)) {
-					labels?.push(...labelValue.label)
+					labels?.push(...labelValue.label);
 				} else {
 					labels?.push(labelValue.label);
 				}
@@ -374,13 +301,12 @@ export class QuickChart implements INodeType {
 			// tslint:disable-next-line:no-any
 			const data = this.getNodeParameter('data', i) as any;
 			const datasetOptions = this.getNodeParameter('datasetOptions', i) as IDataObject;
-			const backgroundColor = datasetOptions.backgroundColor as string | undefined;
+			const backgroundColor = datasetOptions.backgroundColor as string;
 			const borderColor = datasetOptions.borderColor as string | undefined;
 			const fontColor = datasetOptions.fontColor as string | undefined;
 			const datasetChartType = datasetOptions.chartType as string | undefined;
 			const fill = datasetOptions.fill as boolean | undefined;
 			const label = datasetOptions.label as string | undefined;
-
 			const pointStyle = datasetOptions.pointStyle as string | undefined;
 
 			// Boxplots and Violins are an addon that uses the name 'itemStyle'
