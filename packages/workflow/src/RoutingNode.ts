@@ -44,7 +44,6 @@ import {
 	IN8nRequestOperations,
 	INodeProperties,
 	INodePropertyCollection,
-	INodePropertyValueExtractor,
 	PostReceiveAction,
 } from './Interfaces';
 
@@ -186,17 +185,7 @@ export class RoutingNode {
 						true,
 					) as string | NodeParameterValue;
 
-					if (property.extractValue) {
-						value = await this.extractParameterValue(
-							thisArgs,
-							value,
-							property.extractValue,
-							i,
-							runIndex,
-						);
-					}
-
-					const tempOptions = await this.getRequestOptionsFromParameters(
+					const tempOptions = this.getRequestOptionsFromParameters(
 						thisArgs,
 						property,
 						i,
@@ -578,55 +567,6 @@ export class RoutingNode {
 		return responseData;
 	}
 
-	async extractParameterValue(
-		executeSingleFunctions: IExecuteSingleFunctions,
-		value: NodeParameterValue | string,
-		extractor: INodePropertyValueExtractor,
-		itemIndex: number,
-		runIndex: number,
-	): Promise<string | NodeParameterValue> {
-		let retValue: string | NodeParameterValue;
-		if (typeof extractor === 'function') {
-			retValue = await extractor.call(executeSingleFunctions, value);
-		} else if (typeof extractor === 'object') {
-			if (typeof value !== 'string') {
-				throw new NodeOperationError(
-					this.node,
-					`Node value extractor was given value of type "${typeof value}". Expected type "string".`,
-					{ itemIndex, runIndex },
-				);
-			}
-			if (extractor.type === 'regex') {
-				const regex = new RegExp(extractor.regex);
-				const extracted = regex.exec(value);
-				if (!extracted) {
-					throw new NodeOperationError(this.node, 'Could not extract value for given property.', {
-						itemIndex,
-						runIndex,
-					});
-				} else if (extracted.length === 1) {
-					throw new NodeOperationError(
-						this.node,
-						'Value extractor regex is requires a group to extract the value.',
-						{ itemIndex, runIndex },
-					);
-				} else {
-					// eslint-disable-next-line prefer-destructuring
-					retValue = extracted[1];
-				}
-			} else {
-				throw new NodeOperationError(this.node, 'Unknown extractValue type', {
-					itemIndex,
-					runIndex,
-				});
-			}
-		} else {
-			throw new NodeOperationError(this.node, 'Unknown extractValue type', { itemIndex, runIndex });
-		}
-
-		return retValue;
-	}
-
 	getParameterValue(
 		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 		itemIndex: number,
@@ -657,14 +597,14 @@ export class RoutingNode {
 		return parameterValue;
 	}
 
-	async getRequestOptionsFromParameters(
+	getRequestOptionsFromParameters(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		nodeProperties: INodeProperties | INodePropertyOptions,
 		itemIndex: number,
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
-	): Promise<DeclarativeRestApiSettings.ResultOptions | undefined> {
+	): DeclarativeRestApiSettings.ResultOptions | undefined {
 		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
 				qs: {},
@@ -693,15 +633,6 @@ export class RoutingNode {
 				parameterValue = executeSingleFunctions.getNodeParameter(
 					basePath + nodeProperties.name,
 				) as string;
-				if (nodeProperties.extractValue) {
-					parameterValue = (await this.extractParameterValue(
-						executeSingleFunctions,
-						parameterValue,
-						nodeProperties.extractValue,
-						itemIndex,
-						runIndex,
-					)) as string;
-				}
 			}
 
 			if (nodeProperties.routing.operations) {
@@ -872,7 +803,7 @@ export class RoutingNode {
 
 			if (selectedOption.length) {
 				// Check only if option is set and if of type INodeProperties
-				const tempOptions = await this.getRequestOptionsFromParameters(
+				const tempOptions = this.getRequestOptionsFromParameters(
 					executeSingleFunctions,
 					selectedOption[0],
 					itemIndex,
@@ -896,7 +827,7 @@ export class RoutingNode {
 					propertyOption.type !== undefined
 				) {
 					// Check only if option is set and if of type INodeProperties
-					const tempOptions = await this.getRequestOptionsFromParameters(
+					const tempOptions = this.getRequestOptionsFromParameters(
 						executeSingleFunctions,
 						propertyOption,
 						itemIndex,
@@ -939,7 +870,7 @@ export class RoutingNode {
 				const loopBasePath = `${basePath}${propertyOptions.name}`;
 				for (let i = 0; i < value.length; i++) {
 					for (const option of propertyOptions.values) {
-						const tempOptions = await this.getRequestOptionsFromParameters(
+						const tempOptions = this.getRequestOptionsFromParameters(
 							executeSingleFunctions,
 							option,
 							itemIndex,

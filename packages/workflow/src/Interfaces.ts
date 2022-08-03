@@ -1042,9 +1042,7 @@ export interface INodePropertyValueExtractorFunction {
 		| (string | NodeParameterValue);
 }
 
-export type INodePropertyValueExtractor =
-	| INodePropertyValueExtractorRegex
-	| INodePropertyValueExtractorFunction;
+export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 
 export interface IParameterDependencies {
 	[key: string]: string[];
