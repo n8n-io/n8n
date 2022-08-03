@@ -62,6 +62,7 @@ import {
 	INodeExecutionPairedData,
 	IBinaryKeyData,
 	IPairedItemData,
+	PrepairOptions,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1313,62 +1314,63 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
- *
  * @export
- * @param {(IDataObject | IDataObject[] | IBinaryKeyData)} data
- * @param {(boolean)} isBinary
- * @param {(IPairedItemData)} pairedItem
- * @returns {INodeExecutionPairedData[]}
+ * @param {(IPairedItemData)} setPairedItemData
+ * @param {(IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[])} inputData
+ * @param {(PrepairOptions)} options
+ * @returns {(INodeExecutionPairedData[])}
  */
 export function preparePairedOutputData(
-	data: IDataObject | IDataObject[] | IBinaryKeyData,
-	isBinary = false,
-	pairedItem?: IPairedItemData,
+	setPairedItemData: IPairedItemData,
+	inputData: IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[],
+	options?: PrepairOptions,
 ): INodeExecutionPairedData[] {
-	const returnData: INodeExecutionPairedData[] = [];
-
-	if (!Array.isArray(data)) {
-		data = [data];
+	if (!Array.isArray(inputData)) {
+		inputData = [inputData];
 	}
+	const { setBinaryData = false } = options || {};
+	const pairedItem = { ...setPairedItemData };
 
-	data.forEach((data, itemIndex) => {
-		const { item = itemIndex, input = 0 } =
-			(data.pairedItem as IPairedItemData) || pairedItem || {};
+	return inputData.map((data) => {
+		const { json = {} } = data as IDataObject;
 
-		if (!isBinary) {
-			const { json } = data;
-			if (json !== undefined) {
-				returnData.push({
-					json: json as IDataObject,
-					pairedItem: { item, input },
-				});
-			} else {
-				returnData.push({
-					json: data,
-					pairedItem: { item, input },
-				});
-			}
+		const executionPairedData = { json, pairedItem } as INodeExecutionPairedData;
+
+		if (setBinaryData) {
+			const binary = data as IBinaryKeyData;
+			Object.assign(executionPairedData, { binary });
 		}
 
-		if (isBinary) {
-			const { json, binary } = data;
-			if (json !== undefined && binary !== undefined) {
-				returnData.push({
-					json: json as IDataObject,
-					binary: binary as IBinaryKeyData,
-					pairedItem: { item, input },
-				});
-			} else {
-				returnData.push({
-					json: data,
-					binary: data as IBinaryKeyData,
-					pairedItem: { item, input },
-				});
-			}
-		}
+		return executionPairedData;
 	});
+}
 
-	return returnData;
+/**
+ * Takes generic input json data and brings it into (json, pairedItem) format.
+ * @export
+ * @param {(IPairedItemData)} setPairedItemData
+ * @param {(IDataObject | IDataObject[] | IBinaryKeyData)} jsonData
+ * @returns {(INodeExecutionPairedData[])}
+ */
+export function preparePairedJsonOutputData(
+	setPairedItemData: IPairedItemData,
+	jsonData: IDataObject | IDataObject[],
+): INodeExecutionPairedData[] {
+	return preparePairedOutputData(setPairedItemData, jsonData, { setBinaryData: false });
+}
+
+/**
+ * Takes generic input json data and brings it into (binary, pairedItem) format.
+ * @export
+ * @param {(IPairedItemData)} setPairedItemData
+ * @param {(IBinaryKeyData | IBinaryKeyData[])} binaryData
+ * @returns {(INodeExecutionPairedData[])}
+ */
+export function preparePairedBinaryOutputData(
+	setPairedItemData: IPairedItemData,
+	binaryData: IBinaryKeyData | IBinaryKeyData[],
+): INodeExecutionPairedData[] {
+	return preparePairedOutputData(setPairedItemData, binaryData, { setBinaryData: true });
 }
 
 /**
@@ -2472,6 +2474,8 @@ export function getExecuteFunctions(
 				returnJsonArray,
 				normalizeItems,
 				preparePairedOutputData,
+				preparePairedJsonOutputData,
+				preparePairedBinaryOutputData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);
