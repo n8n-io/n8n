@@ -978,7 +978,11 @@ export interface ISettingsState {
 }
 
 export interface INodeTypesState {
-	nodeTypes: { [nodeType: string]: INodeTypeDescription };
+	nodeTypes: {
+		[nodeType: string]: {
+			[version: number]: INodeTypeDescription;
+		}
+	};
 }
 
 export interface ITemplateState {
