@@ -21,6 +21,7 @@ describe('Expression', () => {
 				name: 'node',
 				typeVersion: 1,
 				type: 'test.set',
+				id: 'uuid-1234',
 				position: [0, 0],
 				parameters: {}
 			}
