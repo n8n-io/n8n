@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const tagOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const tagOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
+				resource: ['tag'],
 			},
 		},
 		options: [
@@ -41,12 +37,8 @@ export const tagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['tag'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -58,12 +50,8 @@ export const tagFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['getAll'],
+				resource: ['tag'],
 			},
 		},
 		default: false,
@@ -75,15 +63,9 @@ export const tagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'tag',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['tag'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

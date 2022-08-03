@@ -1,15 +1,11 @@
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../transport';
+import { apiRequest } from '../transport';
 
 // Get all the available channels
-export async function getTimeOffTypeID(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getTimeOffTypeID(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
@@ -27,7 +23,9 @@ export async function getTimeOffTypeID(this: ILoadOptionsFunctions): Promise<INo
 	return returnData;
 }
 
-export async function getCompanyFileCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getCompanyFileCategories(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
@@ -42,18 +40,20 @@ export async function getCompanyFileCategories(this: ILoadOptionsFunctions): Pro
 			value: category.id,
 		});
 	}
-	
+
 	returnData.sort(sort);
 
 	return returnData;
 }
 
-export async function getEmployeeDocumentCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getEmployeeDocumentCategories(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
 	const id = this.getCurrentNodeParameter('employeeId') as string;
-	
+
 	const endPoint = `employees/${id}/files/view/`;
 
 	const response = await apiRequest.call(this, requestMethod, endPoint, body);
@@ -71,16 +71,20 @@ export async function getEmployeeDocumentCategories(this: ILoadOptionsFunctions)
 	return returnData;
 }
 
-export async function getEmployeeLocations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getEmployeeLocations(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
 	const endPoint = 'meta/lists/';
 
-	//do not request all data? 
-	const fields = await apiRequest.call(this, requestMethod, endPoint, body, {}) as [{ fieldId: number, options: [{ id: number, name: string }] }];
+	//do not request all data?
+	const fields = (await apiRequest.call(this, requestMethod, endPoint, body, {})) as [
+		{ fieldId: number; options: [{ id: number; name: string }] },
+	];
 
-	const options = fields.filter(field => field.fieldId === 18)[0].options;
+	const options = fields.filter((field) => field.fieldId === 18)[0].options;
 
 	for (const option of options) {
 		returnData.push({
@@ -100,10 +104,12 @@ export async function getDepartments(this: ILoadOptionsFunctions): Promise<INode
 	const requestMethod = 'GET';
 	const endPoint = 'meta/lists/';
 
-	//do not request all data? 
-	const fields = await apiRequest.call(this, requestMethod, endPoint, body, {}) as [{ fieldId: number, options: [{ id: number, name: string }] }];
+	//do not request all data?
+	const fields = (await apiRequest.call(this, requestMethod, endPoint, body, {})) as [
+		{ fieldId: number; options: [{ id: number; name: string }] },
+	];
 
-	const options = fields.filter(field => field.fieldId === 4)[0].options;
+	const options = fields.filter((field) => field.fieldId === 4)[0].options;
 
 	for (const option of options) {
 		returnData.push({
@@ -123,10 +129,12 @@ export async function getDivisions(this: ILoadOptionsFunctions): Promise<INodePr
 	const requestMethod = 'GET';
 	const endPoint = 'meta/lists/';
 
-	//do not request all data? 
-	const fields = await apiRequest.call(this, requestMethod, endPoint, body, {}) as [{ fieldId: number, options: [{ id: number, name: string }] }];
+	//do not request all data?
+	const fields = (await apiRequest.call(this, requestMethod, endPoint, body, {})) as [
+		{ fieldId: number; options: [{ id: number; name: string }] },
+	];
 
-	const options = fields.filter(field => field.fieldId === 1355)[0].options;
+	const options = fields.filter((field) => field.fieldId === 1355)[0].options;
 
 	for (const option of options) {
 		returnData.push({
@@ -140,7 +148,9 @@ export async function getDivisions(this: ILoadOptionsFunctions): Promise<INodePr
 	return returnData;
 }
 
-export async function getEmployeeFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getEmployeeFields(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
@@ -167,10 +177,11 @@ export async function getEmployeeFields(this: ILoadOptionsFunctions): Promise<IN
 
 //@ts-ignore
 const sort = (a, b) => {
-	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
-	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
+	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+		return -1;
+	}
+	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+		return 1;
+	}
 	return 0;
 };
-
-
-

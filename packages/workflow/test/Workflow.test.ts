@@ -548,6 +548,7 @@ describe('Workflow', () => {
 				parameters: stubData.parameters,
 				type: 'test.set',
 				typeVersion: 1,
+				id: 'uuid-1234',
 				position: [100, 100],
 			};
 		}
@@ -1008,6 +1009,7 @@ describe('Workflow', () => {
 						parameters: testData.input.Node1.parameters,
 						type: 'test.set',
 						typeVersion: 1,
+						id: 'uuid-1',
 						position: [100, 100],
 					},
 					{
@@ -1015,6 +1017,7 @@ describe('Workflow', () => {
 						parameters: testData.input.Node2.parameters,
 						type: 'test.set',
 						typeVersion: 1,
+						id: 'uuid-2',
 						position: [100, 200],
 					},
 					{
@@ -1026,6 +1029,7 @@ describe('Workflow', () => {
 							: {},
 						type: 'test.set',
 						typeVersion: 1,
+						id: 'uuid-3',
 						position: [100, 300],
 					},
 					{
@@ -1037,6 +1041,7 @@ describe('Workflow', () => {
 							: {},
 						type: 'test.set',
 						typeVersion: 1,
+						id: 'uuid-4',
 						position: [100, 400],
 					},
 				];
@@ -1219,6 +1224,7 @@ describe('Workflow', () => {
 					},
 					type: 'test.setMulti',
 					typeVersion: 1,
+					id: 'uuid-1234',
 					position: [100, 100],
 				},
 			];
@@ -1296,6 +1302,7 @@ describe('Workflow', () => {
 					name: 'Start',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-1',
 					position: [240, 300],
 				},
 				{
@@ -1305,6 +1312,7 @@ describe('Workflow', () => {
 					name: 'Set',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-2',
 					position: [460, 300],
 				},
 				{
@@ -1314,6 +1322,7 @@ describe('Workflow', () => {
 					name: 'Set1',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-3',
 					position: [680, 300],
 				},
 			],
@@ -1353,6 +1362,7 @@ describe('Workflow', () => {
 					name: 'Switch',
 					type: 'test.switch',
 					typeVersion: 1,
+					id: 'uuid-1',
 					position: [460, 300],
 				},
 				{
@@ -1362,6 +1372,7 @@ describe('Workflow', () => {
 					name: 'Set',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-2',
 					position: [740, 300],
 				},
 				{
@@ -1371,6 +1382,7 @@ describe('Workflow', () => {
 					name: 'Set1',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-3',
 					position: [780, 100],
 				},
 				{
@@ -1380,6 +1392,7 @@ describe('Workflow', () => {
 					name: 'Set2',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-4',
 					position: [1040, 260],
 				},
 			],
@@ -1443,6 +1456,7 @@ describe('Workflow', () => {
 					name: 'Switch',
 					type: 'test.switch',
 					typeVersion: 1,
+					id: 'uuid-1',
 					position: [920, 340],
 				},
 				{
@@ -1450,6 +1464,7 @@ describe('Workflow', () => {
 					name: 'Start',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-2',
 					position: [240, 300],
 				},
 				{
@@ -1459,6 +1474,7 @@ describe('Workflow', () => {
 					name: 'Set1',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-3',
 					position: [700, 340],
 				},
 				{
@@ -1468,6 +1484,7 @@ describe('Workflow', () => {
 					name: 'Set',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-4',
 					position: [1220, 300],
 				},
 				{
@@ -1475,6 +1492,7 @@ describe('Workflow', () => {
 					name: 'Switch',
 					type: 'test.switch',
 					typeVersion: 1,
+					id: 'uuid-5',
 					position: [920, 340],
 				},
 			],

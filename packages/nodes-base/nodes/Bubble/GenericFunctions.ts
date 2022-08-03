@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an authenticated API request to Bubble.
@@ -23,13 +14,14 @@ export async function bubbleApiRequest(
 	body: IDataObject,
 	qs: IDataObject,
 ) {
-
-	const { apiToken, appName, domain, environment, hosting } = await this.getCredentials('bubbleApi') as {
-		apiToken: string,
-		appName: string,
-		domain: string,
-		environment: 'development' | 'live',
-		hosting: 'bubbleHosted' | 'selfHosted',
+	const { apiToken, appName, domain, environment, hosting } = (await this.getCredentials(
+		'bubbleApi',
+	)) as {
+		apiToken: string;
+		appName: string;
+		domain: string;
+		environment: 'development' | 'live';
+		hosting: 'bubbleHosted' | 'selfHosted';
 	};
 
 	const rootUrl = hosting === 'bubbleHosted' ? `https://${appName}.bubbleapps.io` : domain;
@@ -38,7 +30,7 @@ export async function bubbleApiRequest(
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
-			'Authorization': `Bearer ${apiToken}`,
+			Authorization: `Bearer ${apiToken}`,
 		},
 		method,
 		uri: `${rootUrl}${urlSegment}${endpoint}`,
@@ -80,14 +72,13 @@ export async function bubbleApiRequestAllItems(
 		responseData = await bubbleApiRequest.call(this, method, endpoint, body, qs);
 		qs.cursor = responseData.cursor;
 		returnData.push.apply(returnData, responseData['response']['results']);
-	} while (
-		responseData.response.remaining !== 0
-	);
+	} while (responseData.response.remaining !== 0);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
