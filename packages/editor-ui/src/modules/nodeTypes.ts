@@ -46,7 +46,7 @@ const module: Module<INodeTypesState, IRootState> = {
 			const versionNumbers = Object.keys(nodeVersions).map(Number);
 			const nodeType = nodeVersions[version || Math.max(...versionNumbers)];
 
-			return nodeType ? nodeType : null;
+			return nodeType || null;
 		},
 	},
 	mutations: {
