@@ -210,6 +210,7 @@
       "dist/credentials/NextCloudApi.credentials.js",
       "dist/credentials/NextCloudOAuth2Api.credentials.js",
       "dist/credentials/NocoDb.credentials.js",
+      "dist/credentials/NocoDbApiToken.credentials.js",
       "dist/credentials/NotionApi.credentials.js",
       "dist/credentials/NotionOAuth2Api.credentials.js",
       "dist/credentials/OAuth1Api.credentials.js",
