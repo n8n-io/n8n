@@ -11,14 +11,67 @@ export const operationFields: INodeProperties[] = [
 		name: 'projectId',
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					1,
+				],
+			},
+		},
 		required: true,
 		description: 'The ID of the project',
+	},
+	{
+		displayName: 'Project Name or ID',
+		name: 'projectId',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+			},
+		},
+		required: true,
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+	},
+	{
+		displayName: 'Table Name or ID',
+		name: 'table',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					2,
+				],
+			},
+		},
+		required: true,
+		description: 'The table to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'projectId',
+			],
+			loadOptionsMethod: 'getTables',
+		},
 	},
 	{
 		displayName: 'Table',
 		name: 'table',
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				version: [
+					1,
+				],
+			},
+		},
 		required: true,
 		description: 'The name of the table',
 	},
@@ -75,7 +128,7 @@ export const operationFields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 100,
 		},
-		default: 100,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
