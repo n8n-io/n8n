@@ -10,6 +10,7 @@ declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
 		posthog: posthog;
+		featureFlag: FeatureFlag;
 	}
 }
 
@@ -56,6 +57,13 @@ interface posthog {
 			callback?: Function,
 		): unknown;
 	};
+}
+
+interface FeatureFlag {
+	getAll(): string[];
+	get(flagName: string): boolean | undefined;
+	isEnabled(flagName: string): boolean | undefined;
+	reload(): void;
 }
 
 /**
