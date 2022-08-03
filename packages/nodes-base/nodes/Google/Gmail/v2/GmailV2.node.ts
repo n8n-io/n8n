@@ -13,16 +13,16 @@ import {
 } from 'n8n-workflow';
 
 import {
-	prepareQuery,
 	encodeEmail,
 	extractEmail,
-	prepareEmailAttachments,
-	prepareEmailBody,
 	googleApiRequest,
 	googleApiRequestAllItems,
 	IEmail,
 	parseRawEmail,
+	prepareEmailAttachments,
+	prepareEmailBody,
 	prepareEmailsInput,
+	prepareQuery,
 } from '../GenericFunctions';
 
 import { messageFields, messageOperations } from './MessageDescription';
