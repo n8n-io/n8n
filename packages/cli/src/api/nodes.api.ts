@@ -5,7 +5,11 @@ import { PublicInstalledPackage } from 'n8n-workflow';
 import config from '../../config';
 import { ResponseHelper, LoadNodesAndCredentials, Push, InternalHooksManager } from '..';
 
-import { RESPONSE_ERROR_MESSAGES, UNKNOWN_FAILURE_REASON } from '../constants';
+import {
+	RESPONSE_ERROR_MESSAGES,
+	UNKNOWN_FAILURE_REASON,
+	STARTER_TEMPLATE_NAME,
+} from '../constants';
 import {
 	matchMissingPackages,
 	matchPackagesWithUpdates,
@@ -75,6 +79,17 @@ nodesController.post(
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
 				error instanceof Error ? error.message : 'Failed to parse package name',
+				undefined,
+				400,
+			);
+		}
+
+		if (parsed.packageName === STARTER_TEMPLATE_NAME) {
+			throw new ResponseHelper.ResponseError(
+				[
+					`Package "${parsed.packageName}" is only a template`,
+					'Please enter an actual package to install',
+				].join('.'),
 				undefined,
 				400,
 			);
