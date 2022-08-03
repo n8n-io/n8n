@@ -953,7 +953,6 @@ export default mixins(
 				const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
 				if (remoteParameterOptions.length > 0) {
-					console.log('remoteParameterOptions', remoteParameterOptions);
 					this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
 				}
 			});
