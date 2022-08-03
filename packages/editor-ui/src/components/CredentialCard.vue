@@ -4,7 +4,7 @@
 		@click="onClick"
 	>
 			<template #prepend>
-				<NodeIcon class="node-icon" :nodeType="nodeType" :size="24" :shrink="false" />
+				<credential-icon :credential-type-name="credentialType.name" />
 			</template>
 			<template #header>
 				<n8n-heading tag="h2" bold>
@@ -13,8 +13,8 @@
 			</template>
 			<n8n-text color="text-light" size="small" class="mt-4xs">
 				<span v-show="credentialType">{{ credentialType.displayName }} | </span>
-				<span v-show="data"><time-ago :date="data.updatedAt" /> | </span>
-				<span v-show="data"><time-ago :date="data.createdAt" /></span>
+				<span v-show="data">{{$locale.baseText('credentials.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
+				<span v-show="data">{{$locale.baseText('credentials.item.created')}} <time-ago :date="data.createdAt" /></span>
 			</n8n-text>
 			<template #append>
 				<n8n-text color="text-light" size="medium" class="mr-s">
@@ -31,13 +31,17 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import {ICredentialsResponse} from "@/Interface";
-import {ICredentialType, INodeTypeDescription} from "n8n-workflow";
-import {CREDENTIAL_LIST_ITEM_ACTIONS, DEFAULT_NODETYPE_VERSION} from '@/constants';
+import {ICredentialType} from "n8n-workflow";
+import {CREDENTIAL_LIST_ITEM_ACTIONS} from '@/constants';
 import {showMessage} from "@/components/mixins/showMessage";
+import CredentialIcon from '@/components/CredentialIcon.vue';
 
 export default mixins(
 	showMessage,
 ).extend({
+	components: {
+		CredentialIcon,
+	},
 	props: {
 		data: {
 			type: Object,
@@ -56,16 +60,13 @@ export default mixins(
 		return {
 			actions: [
 				{
-					label: this.$locale.baseText('credentials.list.remove'),
+					label: this.$locale.baseText('credentials.item.remove'),
 					value: CREDENTIAL_LIST_ITEM_ACTIONS.REMOVE,
 				},
 			],
 		};
 	},
 	computed: {
-		nodeType (): INodeTypeDescription {
-			return this.$store.getters.nodeType(this.data.nodesAccess[0].nodeType, DEFAULT_NODETYPE_VERSION);
-		},
 		credentialType(): ICredentialType {
 			return this.$store.getters['credentials/getCredentialTypeByName'](this.data.type);
 		},

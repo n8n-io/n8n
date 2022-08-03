@@ -12,6 +12,7 @@ import {
 	faBook,
 	faBoxOpen,
 	faBug,
+	faBan,
 	faCalendar,
 	faCheck,
 	faCheckCircle,
@@ -46,6 +47,7 @@ import {
 	faFileExport,
 	faFileImport,
 	faFilePdf,
+	faFilter,
 	faFolderOpen,
 	faGlobeAmericas,
 	faGift,
@@ -122,6 +124,7 @@ addIcon(faAngleUp);
 addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
+addIcon(faBan);
 addIcon(faBook);
 addIcon(faBoxOpen);
 addIcon(faBug);
@@ -160,6 +163,7 @@ addIcon(faFileDownload);
 addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
+addIcon(faFilter);
 addIcon(faFolderOpen);
 addIcon(faGift);
 addIcon(faGlobeAmericas);
