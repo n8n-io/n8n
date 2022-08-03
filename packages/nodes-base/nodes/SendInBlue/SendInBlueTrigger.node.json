@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.sendInBlueTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Marketing & Content",
+		"Communication"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/sendInBlue"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.sendInBlueTrigger/"
+			}
+		],
+		"generic": []
+	}
+}
