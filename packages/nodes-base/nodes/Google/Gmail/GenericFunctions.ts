@@ -1,32 +1,24 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	simpleParser,
-} from 'mailparser';
+import { simpleParser } from 'mailparser';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
 
-import {
-	DateTime,
-} from 'luxon';
-import { message } from 'rhea';
+import { DateTime } from 'luxon';
+
+import { isEmpty } from 'lodash';
 
 interface IGoogleAuthCredentials {
 	delegatedEmail?: string;
@@ -56,12 +48,25 @@ export interface IAttachments {
 
 const mailComposer = require('nodemailer/lib/mail-composer');
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
-	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
+export async function googleApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const authenticationMethod = this.getNodeParameter(
+		'authentication',
+		0,
+		'serviceAccount',
+	) as string;
 	let options: OptionsWithUri = {
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -84,7 +89,10 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
+			const { access_token } = await getAccessToken.call(
+				this,
+				credentials as unknown as IGoogleAuthCredentials,
+			);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			//@ts-ignore
@@ -93,28 +101,29 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'gmailOAuth2', options);
 		}
-
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
 		}
 
 		if (error.code === 'EAUTH') {
-			const errorOptions = {
+			const options = {
 				message: error?.body?.error_description || 'Authorization error',
 				description: (error as Error).message,
-
 			};
-			throw new NodeApiError(this.getNode(), error.stack, errorOptions);
+			throw new NodeApiError(this.getNode(), error, options);
 		}
 
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-
-export async function parseRawEmail(this: IExecuteFunctions, messageData: any, dataPropertyNameDownload: string): Promise<INodeExecutionData> { // tslint:disable-line:no-any
-
+export async function parseRawEmail(
+	this: IExecuteFunctions,
+	// tslint:disable-next-line:no-any
+	messageData: any,
+	dataPropertyNameDownload: string,
+): Promise<INodeExecutionData> {
 	const messageEncoded = Buffer.from(messageData.raw, 'base64').toString('utf8');
 	let responseData = await simpleParser(messageEncoded);
 
@@ -131,10 +140,13 @@ export async function parseRawEmail(this: IExecuteFunctions, messageData: any, d
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
-
 		for (let i = 0; i < responseData.attachments.length; i++) {
 			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(attachment.content, attachment.filename, attachment.contentType);
+			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+				attachment.content,
+				attachment.filename,
+				attachment.contentType,
+			);
 		}
 		// @ts-ignore
 		responseData.attachments = undefined;
@@ -142,12 +154,7 @@ export async function parseRawEmail(this: IExecuteFunctions, messageData: any, d
 
 	const mailBaseData: IDataObject = {};
 
-	const resolvedModeAddProperties = [
-		'id',
-		'threadId',
-		'labelIds',
-		'sizeEstimate',
-	];
+	const resolvedModeAddProperties = ['id', 'threadId', 'labelIds', 'sizeEstimate'];
 
 	for (const key of resolvedModeAddProperties) {
 		// @ts-ignore
@@ -161,7 +168,6 @@ export async function parseRawEmail(this: IExecuteFunctions, messageData: any, d
 		binary: Object.keys(binaryData).length ? binaryData : undefined,
 	} as INodeExecutionData;
 }
-
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 // This function converts an email object into a MIME encoded email and then converts that string into base64 encoding
@@ -188,7 +194,11 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.html = email.htmlBody;
 	}
 
-	if (email.attachments !== undefined && Array.isArray(email.attachments) && email.attachments.length > 0) {
+	if (
+		email.attachments !== undefined &&
+		Array.isArray(email.attachments) &&
+		email.attachments.length > 0
+	) {
 		const attachments = email.attachments.map((attachment) => ({
 			filename: attachment.name,
 			content: attachment.content,
@@ -212,8 +222,16 @@ export async function encodeEmail(email: IEmail) {
 	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function googleApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -223,10 +241,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 		query.pageToken = responseData['nextPageToken'];
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['nextPageToken'] !== undefined &&
-		responseData['nextPageToken'] !== ''
-	);
+	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
 
 	return returnData;
 }
@@ -239,7 +254,10 @@ export function extractEmail(s: string) {
 	return s;
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
+function getAccessToken(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	credentials: IGoogleAuthCredentials,
+): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -258,20 +276,20 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const signature = jwt.sign(
 		{
-			'iss': credentials.email as string,
-			'sub': credentials.delegatedEmail || credentials.email as string,
-			'scope': scopes.join(' '),
-			'aud': `https://oauth2.googleapis.com/token`,
-			'iat': now,
-			'exp': now + 3600,
+			iss: credentials.email as string,
+			sub: credentials.delegatedEmail || (credentials.email as string),
+			scope: scopes.join(' '),
+			aud: `https://oauth2.googleapis.com/token`,
+			iat: now,
+			exp: now + 3600,
 		},
 		privateKey,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': privateKey,
-				'typ': 'JWT',
-				'alg': 'RS256',
+				kid: privateKey,
+				typ: 'JWT',
+				alg: 'RS256',
 			},
 		},
 	);
@@ -294,7 +312,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 }
 
 export function buildQuery(fields: IDataObject) {
-	const qs: IDataObject = {...fields};
+	const qs: IDataObject = { ...fields };
 	if (qs.labelIds) {
 		if (qs.labelIds === '') {
 			delete qs.labelIds;
@@ -322,14 +340,16 @@ export function buildQuery(fields: IDataObject) {
 	}
 
 	if (qs.receivedAfter) {
-		let timestamp =	DateTime.fromISO(qs.receivedAfter as string).toSeconds();
+		let timestamp = DateTime.fromISO(qs.receivedAfter as string).toSeconds();
 
 		if (!timestamp) {
 			timestamp = DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds();
 		}
 
 		if (!timestamp) {
-			throw new Error(`Datetime ${qs.receivedAfter} provided in "Received After" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`);
+			throw new Error(
+				`Datetime ${qs.receivedAfter} provided in "Received After" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`,
+			);
 		}
 
 		if (qs.q) {
@@ -341,14 +361,16 @@ export function buildQuery(fields: IDataObject) {
 	}
 
 	if (qs.receivedBefore) {
-		let timestamp =	DateTime.fromISO(qs.receivedBefore as string).toSeconds();
+		let timestamp = DateTime.fromISO(qs.receivedBefore as string).toSeconds();
 
 		if (!timestamp) {
 			timestamp = DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds();
 		}
 
 		if (!timestamp) {
-			throw new Error(`Datetime ${qs.receivedBefore} provided in "Received Before" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`);
+			throw new Error(
+				`Datetime ${qs.receivedBefore} provided in "Received Before" option is invalid, please choose datetime from a date picker or in expression set an ISO string or a timestamp in miliseconds`,
+			);
 		}
 
 		if (qs.q) {
@@ -360,4 +382,92 @@ export function buildQuery(fields: IDataObject) {
 	}
 
 	return qs;
+}
+
+export function processEmailsInput(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	input: string,
+	field: string,
+	itemIndex: number,
+) {
+	let emails = '';
+
+	input.split(',').forEach((entry) => {
+		const email = entry.trim();
+
+		if (email.indexOf('@') === -1) {
+			const description = `The email address '${email}' in the '${field}' field isn't valid`;
+			throw new NodeOperationError(this.getNode(), `Invalid email address`, {
+				description,
+				itemIndex,
+			});
+		}
+		if (email.includes('<') && email.includes('>')) {
+			emails += `${email},`;
+		} else {
+			emails += `<${email}>, `;
+		}
+	});
+
+	return emails;
+}
+
+export function getEmailBody(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	itemIndex: number,
+) {
+	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
+
+	let body = '';
+	let htmlBody = '';
+
+	if (emailType === 'html') {
+		htmlBody = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	} else {
+		body = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	}
+
+	return { body, htmlBody };
+}
+
+export async function getEmailAttachments(
+	this: IExecuteFunctions,
+	options: IDataObject,
+	items: INodeExecutionData[],
+	itemIndex: number,
+) {
+	const attachmentsList: IDataObject[] = [];
+	const attachments = (options as IDataObject).attachmentsBinary as IDataObject[];
+
+	if (attachments && !isEmpty(attachments) && items[itemIndex].binary) {
+		for (const { property } of attachments) {
+			for (const name of (property as string).split(',')) {
+				if (items[itemIndex].binary![name] === undefined) {
+					const description = `This node has no input field called '${name}' `;
+					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+						description,
+						itemIndex,
+					});
+				}
+
+				const binaryData = items[itemIndex].binary![name];
+				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, name);
+
+				if (!Buffer.isBuffer(binaryDataBuffer)) {
+					const description = `The input field '${name}' doesn't contain an attachment. Please make sure you specify a field containing binary data`;
+					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+						description,
+						itemIndex,
+					});
+				}
+
+				attachmentsList.push({
+					name: binaryData.fileName || 'unknown',
+					content: binaryDataBuffer,
+					type: binaryData.mimeType,
+				});
+			}
+		}
+	}
+	return attachmentsList;
 }
