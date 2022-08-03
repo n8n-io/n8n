@@ -13,16 +13,16 @@ import {
 } from 'n8n-workflow';
 
 import {
-	buildQuery,
+	prepareQuery,
 	encodeEmail,
 	extractEmail,
-	getEmailAttachments,
-	getEmailBody,
+	prepareEmailAttachments,
+	prepareEmailBody,
 	googleApiRequest,
 	googleApiRequestAllItems,
 	IEmail,
 	parseRawEmail,
-	processEmailsInput,
+	prepareEmailsInput,
 } from '../GenericFunctions';
 
 import { messageFields, messageOperations } from './MessageDescription';
@@ -304,22 +304,22 @@ export class GmailV2 implements INodeType {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const sendTo = this.getNodeParameter('sendTo', i) as string;
 
-						const to = processEmailsInput.call(this, sendTo, 'To', i);
+						const to = prepareEmailsInput.call(this, sendTo, 'To', i);
 						let cc = '';
 						let bcc = '';
 
 						if (options.ccList) {
-							cc = processEmailsInput.call(this, options.ccList as string, 'CC', i);
+							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
 						}
 
 						if (options.bccList) {
-							bcc = processEmailsInput.call(this, options.bccList as string, 'BCC', i);
+							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
 						}
 
 						let attachments: IDataObject[] = [];
 
 						if (options.attachmentsUi) {
-							attachments = await getEmailAttachments.call(
+							attachments = await prepareEmailAttachments.call(
 								this,
 								options.attachmentsUi as IDataObject,
 								items,
@@ -349,7 +349,7 @@ export class GmailV2 implements INodeType {
 							cc,
 							bcc,
 							subject: this.getNodeParameter('subject', i) as string,
-							...getEmailBody.call(this, i),
+							...prepareEmailBody.call(this, i),
 							attachments,
 						};
 
@@ -387,7 +387,7 @@ export class GmailV2 implements INodeType {
 
 						let attachments: IDataObject[] = [];
 						if (options.attachmentsUi) {
-							attachments = await getEmailAttachments.call(
+							attachments = await prepareEmailAttachments.call(
 								this,
 								options.attachmentsUi as IDataObject,
 								items,
@@ -423,7 +423,7 @@ export class GmailV2 implements INodeType {
 
 						if (options.sendTo) {
 							const sendTo = options.sendTo as string;
-							to += processEmailsInput.call(this, sendTo, 'To', i);
+							to += prepareEmailsInput.call(this, sendTo, 'To', i);
 						}
 
 						const subject =
@@ -457,7 +457,7 @@ export class GmailV2 implements INodeType {
 							attachments,
 							inReplyTo: messageIdGlobal,
 							reference: messageIdGlobal,
-							...getEmailBody.call(this, i),
+							...prepareEmailBody.call(this, i),
 						};
 
 						endpoint = '/gmail/v1/users/me/messages/send';
@@ -510,7 +510,7 @@ export class GmailV2 implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						Object.assign(qs, buildQuery(options));
+						Object.assign(qs, prepareQuery(options));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -622,7 +622,7 @@ export class GmailV2 implements INodeType {
 						let bccStr = '';
 
 						if (options.sendTo) {
-							to += processEmailsInput.call(this, options.sendTo as string, 'To', i);
+							to += prepareEmailsInput.call(this, options.sendTo as string, 'To', i);
 						}
 
 						if (options.ccList) {
@@ -643,7 +643,7 @@ export class GmailV2 implements INodeType {
 
 						let attachments: IDataObject[] = [];
 						if (options.attachmentsUi) {
-							attachments = await getEmailAttachments.call(
+							attachments = await prepareEmailAttachments.call(
 								this,
 								options.attachmentsUi as IDataObject,
 								items,
@@ -662,7 +662,7 @@ export class GmailV2 implements INodeType {
 							cc: ccStr,
 							bcc: bccStr,
 							subject: this.getNodeParameter('subject', i) as string,
-							...getEmailBody.call(this, i),
+							...prepareEmailBody.call(this, i),
 							attachments,
 						};
 
@@ -838,7 +838,7 @@ export class GmailV2 implements INodeType {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/list
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						Object.assign(qs, buildQuery(options));
+						Object.assign(qs, prepareQuery(options));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -891,7 +891,7 @@ export class GmailV2 implements INodeType {
 
 						let attachments: IDataObject[] = [];
 						if (options.attachmentsUi) {
-							attachments = await getEmailAttachments.call(
+							attachments = await prepareEmailAttachments.call(
 								this,
 								options.attachmentsUi as IDataObject,
 								items,
@@ -927,7 +927,7 @@ export class GmailV2 implements INodeType {
 
 						if (options.sendTo) {
 							const sendTo = options.sendTo as string;
-							to += processEmailsInput.call(this, sendTo, 'To', i);
+							to += prepareEmailsInput.call(this, sendTo, 'To', i);
 						}
 
 						const subject =
@@ -961,7 +961,7 @@ export class GmailV2 implements INodeType {
 							attachments,
 							inReplyTo: messageIdGlobal,
 							reference: messageIdGlobal,
-							...getEmailBody.call(this, i),
+							...prepareEmailBody.call(this, i),
 						};
 
 						body = {

@@ -311,7 +311,7 @@ function getAccessToken(
 	return this.helpers.request(options);
 }
 
-export function buildQuery(fields: IDataObject) {
+export function prepareQuery(fields: IDataObject) {
 	const qs: IDataObject = { ...fields };
 	if (qs.labelIds) {
 		if (qs.labelIds === '') {
@@ -384,7 +384,7 @@ export function buildQuery(fields: IDataObject) {
 	return qs;
 }
 
-export function processEmailsInput(
+export function prepareEmailsInput(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	input: string,
 	field: string,
@@ -412,7 +412,7 @@ export function processEmailsInput(
 	return emails;
 }
 
-export function getEmailBody(
+export function prepareEmailBody(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
 ) {
@@ -430,7 +430,7 @@ export function getEmailBody(
 	return { body, htmlBody };
 }
 
-export async function getEmailAttachments(
+export async function prepareEmailAttachments(
 	this: IExecuteFunctions,
 	options: IDataObject,
 	items: INodeExecutionData[],
