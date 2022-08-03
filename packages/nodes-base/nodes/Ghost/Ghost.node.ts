@@ -180,7 +180,7 @@ export class Ghost implements INodeType {
 
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.posts;
-							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
+							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 
 						if (operation === 'getAll') {
@@ -199,7 +199,7 @@ export class Ghost implements INodeType {
 								responseData = responseData.posts;
 							}
 
-							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
+							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 					}
 				}
@@ -245,7 +245,7 @@ export class Ghost implements INodeType {
 
 							responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
 							responseData = responseData.posts;
-							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
+							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 
 						if (operation === 'delete') {
@@ -254,7 +254,7 @@ export class Ghost implements INodeType {
 
 							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
 
-							returnData.push.apply(this.helpers.preparePairedOutputData({ success: true }, false, { item: i }));
+							returnData.push.apply(this.helpers.preparePairedJsonOutputData({ item: i }, { success: true }));
 
 						}
 
@@ -277,7 +277,7 @@ export class Ghost implements INodeType {
 							}
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.posts;
-							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
+							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 
 						if (operation === 'getAll') {
@@ -297,7 +297,7 @@ export class Ghost implements INodeType {
 								responseData = responseData.posts;
 							}
 
-							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
+							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 
 						if (operation === 'update') {
@@ -339,13 +339,13 @@ export class Ghost implements INodeType {
 
 							responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
 							responseData = responseData.posts;
-							returnData.push.apply(returnData, this.helpers.preparePairedOutputData(responseData, false, { item: i }));
+							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push.apply(returnData, this.helpers.preparePairedOutputData({ error: error.message, $json: this.getInputData(i) }, false, { item: i }));
+					returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, { error: error.message, $json: this.getInputData(i) }));
 					continue;
 				}
 				throw error;
