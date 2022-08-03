@@ -52,7 +52,6 @@ export class SendInBlueTrigger implements INodeType {
 				type: 'options',
 			},
 			{
-				default: [],
 				displayName: 'Trigger On',
 				displayOptions: {
 					show: {
@@ -123,11 +122,11 @@ export class SendInBlueTrigger implements INodeType {
 						description: 'Triggers when transactional email is unsubscribed',
 					},
 				],
+				default: [],
 				required: true,
 				type: 'multiOptions',
 			},
 			{
-				default: [],
 				displayName: 'Trigger On',
 				displayOptions: {
 					show: {
@@ -178,11 +177,11 @@ export class SendInBlueTrigger implements INodeType {
 						description: 'Triggers when marketing email is unsubscribed',
 					},
 				],
+				default: [],
 				required: true,
 				type: 'multiOptions',
 			},
 			{
-				default: [],
 				displayName: 'Trigger On',
 				displayOptions: {
 					show: {
@@ -198,6 +197,7 @@ export class SendInBlueTrigger implements INodeType {
 						description: 'Triggers when inbound email is processed',
 					},
 				],
+				default: [],
 				required: true,
 				type: 'multiOptions',
 			},

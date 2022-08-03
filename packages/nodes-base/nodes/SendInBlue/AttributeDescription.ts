@@ -107,19 +107,6 @@ export const attributeOperations: INodeProperties[] = [
 									property: 'attributes',
 								},
 							},
-							async function (
-								this: IExecuteSingleFunctions,
-								items: INodeExecutionData[],
-							): Promise<INodeExecutionData[]> {
-								const returnAll = this.getNodeParameter('returnAll') as boolean;
-								if (returnAll === false) {
-									const limit = this.getNodeParameter('limit') as number;
-
-									items = items.slice(0, limit);
-								}
-
-								return items;
-							},
 						],
 					},
 				},
@@ -519,6 +506,18 @@ const getAllAttributeOperations: INodeProperties[] = [
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
+		},
+		routing: {
+			output: {
+				postReceive: [
+					{
+						type: 'limit',
+						properties: {
+							maxResults: '={{$value}}',
+						},
+					},
+				],
+			},
 		},
 		default: 50,
 		description: 'Max number of results to return',
