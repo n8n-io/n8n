@@ -14,6 +14,11 @@ const postHogUtils = {
 
 		console.log(`Hook fired: ${name}`);
 	},
+
+	/**
+	 * https://github.com/rudderlabs/rudder-sdk-js/blob/master/dist/rudder-sdk-js/index.d.ts
+	 */
+
 	identify(meta) {
 		this.log('identify', { isMethod: true });
 
@@ -70,6 +75,42 @@ const postHogUtils = {
 		return [originalClasses, noCaptureClass].join(' ');
 	}
 }
+
+window.featureFlag = {
+	/**
+	 * @returns string[]
+	 */
+	getAll() {
+		return window.posthog.feature_flags.getFlags();
+	},
+
+	/**
+	 * @returns boolean | undefined
+	 */
+	get(flagName) {
+		return window.posthog.getFeatureFlag(flagName);
+	},
+
+	/**
+	 * By default, this function will send a `$feature_flag_called` event
+	 * to your instance every time it's called so you're able to do analytics.
+	 * You can disable this by passing `{ send_event: false }` as second arg.
+	 *
+	 * https://posthog.com/docs/integrate/client/js
+	 *
+	 * @returns boolean | undefined
+	 */
+	isEnabled(flagName) {
+		// natively `isFeatureEnabled` returns `false` for non-existent
+		if (this.get(flagName) === undefined) return undefined;
+
+		return window.posthog.isFeatureEnabled(flagName);
+	},
+
+	reload() {
+		window.posthog.reloadFeatureFlags();
+	}
+};
 
 const postHogUserNodesPanelSession = {
 	sessionId: '',
