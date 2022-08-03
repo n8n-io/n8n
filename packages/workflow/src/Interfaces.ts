@@ -1111,6 +1111,7 @@ export type PostReceiveAction =
 			response: IN8nHttpFullResponse,
 	  ) => Promise<INodeExecutionData[]>)
 	| IPostReceiveBinaryData
+	| IPostReceiveLimit
 	| IPostReceiveRootProperty
 	| IPostReceiveSet
 	| IPostReceiveSetKeyValue
@@ -1148,6 +1149,13 @@ export interface IPostReceiveBinaryData extends IPostReceiveBase {
 	type: 'binaryData';
 	properties: {
 		destinationProperty: string;
+	};
+}
+
+export interface IPostReceiveLimit extends IPostReceiveBase {
+	type: 'limit';
+	properties: {
+		maxResults: number | string;
 	};
 }
 
