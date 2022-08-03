@@ -10,6 +10,7 @@ import {
 	NodeInputConnections,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
@@ -705,12 +706,12 @@ export const addConnectionActionsOverlay = (connection: Connection, onDelete: Fu
 	]);
 };
 
-export const getOutputEndpointUUID = (nodeIndex: string, outputIndex: number) => {
-	return `${nodeIndex}${OUTPUT_UUID_KEY}${outputIndex}`;
+export const getOutputEndpointUUID = (nodeId: string, outputIndex: number) => {
+	return `${nodeId}${OUTPUT_UUID_KEY}${outputIndex}`;
 };
 
-export const getInputEndpointUUID = (nodeIndex: string, inputIndex: number) => {
-	return `${nodeIndex}${INPUT_UUID_KEY}${inputIndex}`;
+export const getInputEndpointUUID = (nodeId: string, inputIndex: number) => {
+	return `${nodeId}${INPUT_UUID_KEY}${inputIndex}`;
 };
 
 export const getFixedNodesList = (workflowNodes: INode[]) => {
@@ -728,7 +729,7 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	});
 
 	if (!hasStartNode) {
-		nodes.push({...DEFAULT_START_NODE});
+		nodes.push({...DEFAULT_START_NODE, id: uuid() });
 	}
 	return nodes;
 };

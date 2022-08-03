@@ -259,6 +259,12 @@ export interface IWorkflowDataUpdate {
 	pinData?: IPinData;
 }
 
+export interface IWorkflowToShare extends IWorkflowDataUpdate {
+	meta?: {
+		instanceId: string;
+	};
+}
+
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
@@ -866,7 +872,6 @@ export interface IRootState {
 	workflowExecutionData: IExecutionResponse | null;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
-	nodeIndex: Array<string | null>;
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];

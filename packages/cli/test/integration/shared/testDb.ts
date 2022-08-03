@@ -522,6 +522,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
 			{
+				id: 'uuid-1234',
 				name: 'Start',
 				parameters: {},
 				position: [-20, 260],
@@ -555,6 +556,7 @@ export async function createWorkflowWithTrigger(
 		{
 			nodes: [
 				{
+					id: 'uuid-1',
 					parameters: {},
 					name: 'Start',
 					type: 'n8n-nodes-base.start',
@@ -562,6 +564,7 @@ export async function createWorkflowWithTrigger(
 					position: [240, 300],
 				},
 				{
+					id: 'uuid-2',
 					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -569,6 +572,7 @@ export async function createWorkflowWithTrigger(
 					position: [500, 300],
 				},
 				{
+					id: 'uuid-3',
 					parameters: { options: {} },
 					name: 'Set',
 					type: 'n8n-nodes-base.set',
