@@ -21,6 +21,7 @@ import {
 	LoggerProxy as Logger,
 	Workflow,
 } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import/no-cycle
 import {
 	CredentialTypes,
@@ -39,7 +40,6 @@ import config from '../config';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
-import { v4 as uuid } from 'uuid';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 

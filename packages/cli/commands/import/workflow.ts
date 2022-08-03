@@ -17,6 +17,7 @@ import fs from 'fs';
 import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDb, IWorkflowToImport } from '../../src';
 import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
@@ -24,7 +25,6 @@ import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { Role } from '../../src/databases/entities/Role';
 import { User } from '../../src/databases/entities/User';
 import { setTagsForImport } from '../../src/TagHelpers';
-import { v4 as uuid } from 'uuid';
 
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -132,6 +132,7 @@ export class ImportWorkflowsCommand extends Command {
 								this.transformCredentials(node, credentials);
 
 								if (!node.id) {
+									// eslint-disable-next-line no-param-reassign
 									node.id = uuid();
 								}
 							});
@@ -164,6 +165,7 @@ export class ImportWorkflowsCommand extends Command {
 							this.transformCredentials(node, credentials);
 
 							if (!node.id) {
+								// eslint-disable-next-line no-param-reassign
 								node.id = uuid();
 							}
 						});
