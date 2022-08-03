@@ -116,7 +116,7 @@ export function generateNodesGraph(
 	nodeTypes: INodeTypes,
 	options?: {
 		sourceInstanceId?: string;
-		nodeIdMap?: {[curr: string]: string};
+		nodeIdMap?: { [curr: string]: string };
 	},
 ): INodesGraphResult {
 	const nodesGraph: INodesGraph = {
