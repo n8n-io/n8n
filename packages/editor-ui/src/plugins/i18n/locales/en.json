@@ -582,7 +582,7 @@
 	"onboardingCallSignupFailed.title": "Something went wrong",
 	"onboardingCallSignupFailed.message": "Your request could not be sent",
 	"onboardingCallSignupModal.confirmExit.title": "Are you sure?",
-	"onboardingWorkflow.stickyContent": "## 👇 Get started faster \nLightning tour of the key concepts \n\n[![n8n quickstart video](/static/quickstart_thumbnail.png#full-width)](https://www.youtube.com/watch?v=RpjQTGKm-ok)",
+	"onboardingWorkflow.stickyContent": "## 👇 Get started faster \nLightning tour of the key concepts [3 min] \n\n[![n8n quickstart video](/static/quickstart_thumbnail.png#full-width)](https://www.youtube.com/watch?v=RpjQTGKm-ok)",
 	"openWorkflow.workflowImportError": "Could not import workflow",
 	"openWorkflow.workflowNotFoundError": "Could not find workflow",
 	"parameterInput.customApiCall": "Custom API Call",
