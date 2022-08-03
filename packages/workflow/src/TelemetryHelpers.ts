@@ -115,8 +115,8 @@ export function generateNodesGraph(
 	workflow: IWorkflowBase,
 	nodeTypes: INodeTypes,
 	options?: {
-		sourceInstanceId?: string,
-		nodeIdMap?: {[curr: string]: string}
+		sourceInstanceId?: string;
+		nodeIdMap?: {[curr: string]: string};
 	},
 ): INodesGraphResult {
 	const nodesGraph: INodesGraph = {
