@@ -1,14 +1,19 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
-
-import jwt from 'jsonwebtoken';
-import { Response } from 'express';
 import { createHash } from 'crypto';
+import type { NextFunction, Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { Db } from '../..';
+import config from '../../../config';
 import { AUTH_COOKIE_NAME } from '../../constants';
-import { JwtPayload, JwtToken } from '../Interfaces';
 import { User } from '../../databases/entities/User';
-import * as config from '../../../config';
+import { AuthenticatedRequest } from '../../requests';
+import { JwtPayload, JwtToken } from '../Interfaces';
+
+export function jwtFromRequest(req: Request): string | null {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	return (req.cookies?.[AUTH_COOKIE_NAME] as string | undefined) ?? null;
+}
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -64,4 +69,21 @@ export async function resolveJwt(token: string): Promise<User> {
 export async function issueCookie(res: Response, user: User): Promise<void> {
 	const userData = issueJWT(user);
 	res.cookie(AUTH_COOKIE_NAME, userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+}
+
+// middleware to refresh cookie before it expires
+export async function refreshCookie(
+	req: AuthenticatedRequest,
+	res: Response,
+	next: NextFunction,
+): Promise<void> {
+	const cookieAuth = jwtFromRequest(req);
+	if (cookieAuth && req.user) {
+		const cookieContents = jwt.decode(cookieAuth) as JwtPayload & { exp: number };
+		if (cookieContents.exp * 1000 - Date.now() < 259200000) {
+			// if cookie expires in < 3 days, renew it.
+			await issueCookie(res, req.user);
+		}
+	}
+	next();
 }

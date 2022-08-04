@@ -3,14 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Request, Response } from 'express';
 import { IDataObject } from 'n8n-workflow';
+import passport from 'passport';
 import { Db, ResponseHelper } from '../..';
+import config from '../../../config';
 import { AUTH_COOKIE_NAME } from '../../constants';
+import { User } from '../../databases/entities/User';
+import type { LoginRequest } from '../../requests';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { compareHash, sanitizeUser } from '../UserManagementHelper';
-import { User } from '../../databases/entities/User';
-import type { LoginRequest } from '../../requests';
-import config = require('../../../config');
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -121,4 +122,34 @@ export function authenticationMethods(this: N8nApp): void {
 			};
 		}),
 	);
+
+	/**
+	 * Redirect User to OpenID login.
+	 *
+	 * Authless endpoint.
+	 */
+	this.app.get(`/${this.restEndpoint}/login/openid`, passport.authenticate('openid'));
+
+	/**
+	 * Callback route for Login with OpenID.
+	 *
+	 * Authless endpoint.
+	 */
+	this.app.get(`/${this.restEndpoint}/login/openid/callback`, async (req, res, next) => {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		passport.authenticate(
+			'openid',
+			{
+				failureRedirect: `/${this.restEndpoint}/login/openid`,
+				failureFlash: 'Failed to authenticate',
+			},
+			async (error, user, { message }: { message: string }) => {
+				if (!user) {
+					return res.redirect(`/signin?error=${message}`);
+				}
+				await issueCookie(res, user);
+				return res.redirect('/');
+			},
+		)(req, res, next);
+	});
 }
