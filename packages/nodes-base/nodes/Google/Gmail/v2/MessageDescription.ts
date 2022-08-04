@@ -382,6 +382,23 @@ export const messageFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'Download Attachments',
+		name: 'downloadAttachments',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		default: false,
+		description: "Whether the emaail's attachments will be downloaded",
+	},
+	{
 		displayName: 'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
 		name: 'filtersNotice',
 		type: 'notice',

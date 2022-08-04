@@ -310,6 +310,23 @@ export const draftFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'Download Attachments',
+		name: 'downloadAttachments',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'draft',
+				],
+			},
+		},
+		default: false,
+		description: "Whether the draft's attachments will be downloaded",
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',

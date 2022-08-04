@@ -130,13 +130,16 @@ export async function parseRawEmail(
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
+		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0, false) as boolean;
+		if (downloadAttachments) {
+			for (let i = 0; i < responseData.attachments.length; i++) {
+				const attachment = responseData.attachments[i];
+				binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+					attachment.content,
+					attachment.filename,
+					attachment.contentType,
+				);
+			}
 		}
 		// @ts-ignore
 		responseData.attachments = undefined;
