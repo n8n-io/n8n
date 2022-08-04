@@ -993,12 +993,7 @@ export const store = new Vuex.Store({
 		},
 
 		getNodeParameterLocatorMode: (state, getters) => (nodeName: string, paramName: string): string => {
-			console.log(`GETTER : ${nodeName} / ${paramName}`);
-
 			const node: INodeUi = getters.nodesByName[nodeName];
-
-			console.log(node);
-
 			if (node && node.parameterModes) {
 				return node.parameterModes[paramName] || '';
 			}

@@ -1,6 +1,7 @@
 <template>
 	<div
 		:class="{
+			['resource-locator']: true,
 			[$style['resource-locator']]: true,
 			[$style['multiple-modes']]: hasMultipleModes,
 		}"
@@ -12,7 +13,7 @@
 			<n8n-select
 				v-model="selectedMode"
 				@change="onModeSelected"
-				size="small"
+				:size="inputSize"
 				filterable
 			>
 				<n8n-option
@@ -91,7 +92,6 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { PropType } from 'vue';
 import { INodeUi } from '@/Interface';
-import { mapGetters } from 'vuex';
 
 export default mixins().extend({
 	name: 'ResourceLocator',
