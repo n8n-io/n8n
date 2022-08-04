@@ -63,6 +63,8 @@ import {
 	IBinaryKeyData,
 	IPairedItemData,
 	PrepairOptions,
+	JsonExecutionData,
+	BinaryExecutionData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1311,33 +1313,68 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 
 	return returnData;
 }
+/**
+ * Takes generic input data and brings it into the json format n8n uses.
+ *
+ * @export
+ * @param {(IDataObject | IDataObject[])} jsonData
+ * @returns {JsonPairable[]}
+ */
+export function buildJsonArray(jsonData: IDataObject | IDataObject[]): JsonExecutionData[] {
+	const returnData: JsonExecutionData[] = [];
+
+	if (!Array.isArray(jsonData)) {
+		jsonData = [jsonData];
+	}
+
+	jsonData.forEach((data: IDataObject) => {
+		returnData.push({ json: data });
+	});
+
+	return returnData;
+}
+
+/**
+ * Takes input data and transforms it into a binary format n8n uses.
+ * @param {(IBinaryKeyData | IBinaryKeyData[])} binaryData
+ * @returns {BinaryPairable[]}
+ */
+function buildBinaryArray(binaryData: IBinaryKeyData | IBinaryKeyData[]): BinaryExecutionData[] {
+	const returnData: BinaryExecutionData[] = [];
+
+	if (!Array.isArray(binaryData)) {
+		binaryData = [binaryData];
+	}
+
+	binaryData.forEach((data: IBinaryKeyData) => {
+		returnData.push({ binary: data });
+	});
+
+	return returnData;
+}
 
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
- * @export
  * @param {(IPairedItemData)} setPairedItemData
- * @param {(IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[])} inputData
+ * @param {(JsonPairable[] | BinaryPairable[])} inputData
  * @param {(PrepairOptions)} options
  * @returns {(INodeExecutionPairedData[])}
  */
-export function preparePairedOutputData(
+function preparePairedOutputData(
 	setPairedItemData: IPairedItemData,
-	inputData: IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[],
-	options?: PrepairOptions,
+	inputData: JsonExecutionData[] | BinaryExecutionData[],
+	options: PrepairOptions,
 ): INodeExecutionPairedData[] {
-	if (!Array.isArray(inputData)) {
-		inputData = [inputData];
-	}
-	const { setBinaryData = false } = options || {};
-	const pairedItem = { ...setPairedItemData };
+	const { setBinaryData } = options;
+	const pairedItem: IPairedItemData = { ...setPairedItemData };
 
-	return inputData.map((data) => {
-		const { json = {} } = data as IDataObject;
+	return inputData.map((data: JsonExecutionData | BinaryExecutionData) => {
+		const { json = {} } = data as JsonExecutionData;
 
 		const executionPairedData = { json, pairedItem } as INodeExecutionPairedData;
 
 		if (setBinaryData) {
-			const binary = data as IBinaryKeyData;
+			const { binary } = data as BinaryExecutionData;
 			Object.assign(executionPairedData, { binary });
 		}
 
@@ -1349,18 +1386,19 @@ export function preparePairedOutputData(
  * Takes generic input json data and brings it into (json, pairedItem) format.
  * @export
  * @param {(IPairedItemData)} setPairedItemData
- * @param {(IDataObject | IDataObject[] | IBinaryKeyData)} jsonData
+ * @param {(IDataObject | IDataObject[] )} jsonData
  * @returns {(INodeExecutionPairedData[])}
  */
 export function preparePairedJsonOutputData(
 	setPairedItemData: IPairedItemData,
 	jsonData: IDataObject | IDataObject[],
 ): INodeExecutionPairedData[] {
-	return preparePairedOutputData(setPairedItemData, jsonData, { setBinaryData: false });
+	const data = buildJsonArray(jsonData);
+	return preparePairedOutputData(setPairedItemData, data, { setBinaryData: false });
 }
 
 /**
- * Takes generic input json data and brings it into (binary, pairedItem) format.
+ * Takes generic input binary data and brings it into (binary, pairedItem) format.
  * @export
  * @param {(IPairedItemData)} setPairedItemData
  * @param {(IBinaryKeyData | IBinaryKeyData[])} binaryData
@@ -1370,7 +1408,8 @@ export function preparePairedBinaryOutputData(
 	setPairedItemData: IPairedItemData,
 	binaryData: IBinaryKeyData | IBinaryKeyData[],
 ): INodeExecutionPairedData[] {
-	return preparePairedOutputData(setPairedItemData, binaryData, { setBinaryData: true });
+	const data = buildBinaryArray(binaryData);
+	return preparePairedOutputData(setPairedItemData, data, { setBinaryData: true });
 }
 
 /**

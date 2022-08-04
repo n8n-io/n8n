@@ -1625,3 +1625,7 @@ export type PublicInstalledNode = {
 export type PrepairOptions = {
 	setBinaryData: boolean;
 };
+
+export type JsonExecutionData = Pick<INodeExecutionPairedData, 'json'>;
+
+export type BinaryExecutionData = Pick<INodeExecutionPairedData, 'binary'>;
