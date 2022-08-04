@@ -18,18 +18,18 @@
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				v-bind="$props"
-				v-model="tempValue"
-				:stringInputType="getStringInputType"
 				:rows="getArgument('rows')"
 				:displayValue="displayValue"
 				:displayTitle="displayTitle"
-				:issues="getIssues"
 				:parameterInputClasses="parameterInputClasses"
+				:expressionDisplayValue="expressionDisplayValue"
+				:isValueExpression="isValueExpression"
+				:issues="getIssues"
 				@textInputChange="onTextInputChange"
 				@change="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
-				@editIconClick="displayEditDialog()"
+				@drop="onDrop"
 			></resource-locator>
 			<n8n-input
 				v-else-if="isValueExpression || droppable || forceShowExpression"
@@ -40,7 +40,6 @@
 				:title="displayTitle"
 				@keydown.stop
 			/>
-
 			<div
 				v-else-if="
 					['json', 'string'].includes(parameter.type) ||
@@ -840,6 +839,9 @@ export default mixins(
 			},
 			onBlur () {
 				this.$emit('blur');
+			},
+			onDrop(data: string) {
+				this.$emit('drop', data);
 			},
 			setFocus () {
 				if (this.isValueExpression) {

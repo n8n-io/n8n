@@ -32,10 +32,20 @@
 				@drop="onDrop"
 			>
 				<n8n-input
+					v-if="isValueExpression || droppable || forceShowExpression"
+					:size="inputSize"
+					type="text"
+					:rows="rows"
+					:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
+					:title="displayTitle"
+					@keydown.stop
+				/>
+				<n8n-input
+					v-else
 					ref="inputField"
 					v-model="tempValue"
 					:size="inputSize"
-					:type="stringInputType"
+					type="text"
 					:rows="rows"
 					:value="displayValue"
 					:disabled="isReadOnly"
@@ -71,39 +81,45 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+
 import { INodePropertyMode } from 'n8n-workflow';
 import { getParameterModeLabel, validateResourceLocatorParameter } from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
+import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 
-export default Vue.extend({
+export default mixins().extend({
 	name: 'ResourceLocator',
 	components: {
 		DraggableTarget,
+		ExpressionEdit,
 		ParameterIssues,
 	},
-	props: [ // TODO: Clean this...
-		'inputSize',
-		'isReadOnly',
-		'documentationUrl',
+	props: [ // TODO: Clean this and order alphabetically
 		'parameter', // NodeProperties
-		'path', // string
 		'value',
-		'hideIssues', // boolean
-		'errorHighlight',
-		'isForCredential', // boolean
-		'eventSource', // string
-		'activeDrop',
+		'inputSize',
+		'path', // string
+		'isReadOnly',
 		'droppable',
+		'activeDrop',
 		'forceShowExpression',
-		'stringInputType',
+		'eventSource', // string
+		'errorHighlight',
+		// ---------------- FROM PARAM ↓
+		'issues',
+		'hideIssues', // boolean
+		'parameterInputClasses',
 		'rows',
+		'isValueExpression',
+		// ---------------- COMPUTED ↓
 		'displayValue',
 		'displayTitle',
-		'parameterInputClasses',
-		'issues',
+		'expressionDisplayValue',
+		// --------------- DATA ↓
+		'expressionEditDialogVisible',
 	],
 	data() {
 		return {
@@ -125,6 +141,9 @@ export default Vue.extend({
 		hasMultipleModes (newValue: boolean) {
 			// TODO: Only do this if there is no mode selected...
 			this.setDefaultMode();
+		},
+		value (newValue: string) {
+			this.tempValue = this.displayValue as string;
 		},
 	},
 	computed: {
@@ -161,7 +180,8 @@ export default Vue.extend({
 			this.validate();
 		},
 		validate (): void {
-			const validationErrors: string[] = validateResourceLocatorParameter(this.displayValue.toString(), this.currentMode);
+			const valueToValidate = this.displayValue ? this.displayValue.toString() : this.expressionDisplayValue ? this.expressionDisplayValue.toString() : '';
+			const validationErrors: string[] = validateResourceLocatorParameter(valueToValidate, this.currentMode);
 			this.resourceIssues = this.issues.concat(validationErrors);
 		},
 		onEditIconClick (): void {
@@ -180,7 +200,12 @@ export default Vue.extend({
 			this.$emit('change', value);
 		},
 		onModeSelected (value: string): void {
-			this.$emit('change', this.tempValue);
+			// this.$emit('change', this.tempValue);
+			this.validate();
+		},
+		onExpressionValueChanged (latestValue: string): void {
+			this.tempValue = latestValue;
+			this.$emit('valueChanged', latestValue);
 		},
 		findModeByName (name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -201,6 +226,7 @@ export default Vue.extend({
 <style lang="scss" module>
 .mode-selector {
 	flex-basis: 100px;
+	--input-background-color: initial;
 
 	input {
 		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
