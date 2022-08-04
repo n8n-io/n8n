@@ -1314,10 +1314,6 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 
 type BinaryPairable = Pick<INodeExecutionPairedData, 'binary'>;
 type JsonPairable = Pick<INodeExecutionPairedData, 'json'>;
-// type Pairable = Pick<
-// 	BinaryPairable & JsonPairable & IPairedItemData,
-// 	'json' | 'binary' | 'pairedItem'
-// >;
 
 /**
  * Takes generic input data and brings it into the json format n8n uses.
@@ -1362,7 +1358,7 @@ function buildBinaryArray(binaryData: IBinaryKeyData | IBinaryKeyData[]): Binary
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
  * @param {(IPairedItemData)} setPairedItemData
- * @param {(Pairable[])} inputData
+ * @param {(JsonPairable[] | BinaryPairable[])} inputData
  * @param {(PrepairOptions)} options
  * @returns {(INodeExecutionPairedData[])}
  */
