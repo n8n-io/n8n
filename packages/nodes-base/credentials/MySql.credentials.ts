@@ -52,7 +52,7 @@ export class MySql implements ICredentialType {
 			type: 'boolean',
 			default: false,
 			description:
-				'Allow multiple mysql statements per query. Be careful with this, it could increase the scope of SQL injection attacks. (Default: false)',
+				'Allow multiple mysql statements per query. Be careful with this, it could increase the scope of SQL injection attacks.',
 		},
 		{
 			displayName: 'SSL',
