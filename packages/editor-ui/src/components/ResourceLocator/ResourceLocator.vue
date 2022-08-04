@@ -213,6 +213,7 @@ export default mixins().extend({
 		},
 		value (newValue: string) {
 			this.tempValue = this.displayValue as string;
+			this.validate();
 		},
 	},
 	mounted () {
@@ -232,7 +233,7 @@ export default mixins().extend({
 			this.validate();
 		},
 		validate (): void {
-			const valueToValidate = this.displayValue ? this.displayValue.toString() : this.expressionDisplayValue ? this.expressionDisplayValue.toString() : '';
+			const valueToValidate = this.displayValue ? this.displayValue.toString() : this.value ? this.value.toString() : '';
 			const validationErrors: string[] = validateResourceLocatorParameter(valueToValidate, this.currentMode);
 			this.resourceIssues = this.parameterIssues.concat(validationErrors);
 		},
