@@ -1,5 +1,5 @@
 import { parse } from 'flatted';
-import { In, Not, ObjectLiteral, LessThan, IsNull } from 'typeorm';
+import { In, Not, Raw, ObjectLiteral, LessThan, IsNull } from 'typeorm';
 
 import { Db, IExecutionFlattedDb, IExecutionResponseApi } from '../../../..';
 import { ExecutionStatus } from '../../../types';
@@ -59,14 +59,23 @@ export async function getExecutions(data: {
 	status?: ExecutionStatus;
 	excludedExecutionsIds?: number[];
 }): Promise<IExecutionResponseApi[]> {
+	const where = {
+		...(data.lastId && { id: LessThan(data.lastId) }),
+		...(data.status && { ...getStatusCondition(data.status) }),
+		...(data.workflowIds && { workflowId: In(data.workflowIds.map(String)) }),
+		...(data.excludedExecutionsIds && { id: Not(In(data.excludedExecutionsIds)) }),
+	};
+
+	if (data.lastId && data.excludedExecutionsIds) {
+		where.id = Raw((id) => `${id} < :lastId AND ${id} NOT IN (:...excludedExecutionsIds)`, {
+			lastId: data.lastId,
+			excludedExecutionsIds: data.excludedExecutionsIds,
+		});
+	}
+
 	const executions = await Db.collections.Execution.find({
 		select: getExecutionSelectableProperties(data.includeData),
-		where: {
-			...(data.lastId && { id: LessThan(data.lastId) }),
-			...(data.status && { ...getStatusCondition(data.status) }),
-			...(data.workflowIds && { workflowId: In(data.workflowIds.map(String)) }),
-			...(data.excludedExecutionsIds && { id: Not(In(data.excludedExecutionsIds)) }),
-		},
+		where,
 		order: { id: 'DESC' },
 		take: data.limit,
 	});
