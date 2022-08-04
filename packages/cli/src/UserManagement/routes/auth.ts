@@ -123,33 +123,35 @@ export function authenticationMethods(this: N8nApp): void {
 		}),
 	);
 
-	/**
-	 * Redirect User to OpenID login.
-	 *
-	 * Authless endpoint.
-	 */
-	this.app.get(`/${this.restEndpoint}/login/openid`, passport.authenticate('openid'));
+	if (config.getEnv('security.oidc.enabled')) {
+		/**
+		 * Redirect User to OpenID login.
+		 *
+		 * Authless endpoint.
+		 */
+		this.app.get(`/${this.restEndpoint}/login/openid`, passport.authenticate('openid'));
 
-	/**
-	 * Callback route for Login with OpenID.
-	 *
-	 * Authless endpoint.
-	 */
-	this.app.get(`/${this.restEndpoint}/login/openid/callback`, async (req, res, next) => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		passport.authenticate(
-			'openid',
-			{
-				failureRedirect: `/${this.restEndpoint}/login/openid`,
-				failureFlash: 'Failed to authenticate',
-			},
-			async (error, user, { message }: { message: string }) => {
-				if (!user) {
-					return res.redirect(`/signin?error=${message}`);
-				}
-				await issueCookie(res, user);
-				return res.redirect('/');
-			},
-		)(req, res, next);
-	});
+		/**
+		 * Callback route for Login with OpenID.
+		 *
+		 * Authless endpoint.
+		 */
+		this.app.get(`/${this.restEndpoint}/login/openid/callback`, async (req, res, next) => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			passport.authenticate(
+				'openid',
+				{
+					failureRedirect: `/${this.restEndpoint}/login/openid`,
+					failureFlash: 'Failed to authenticate',
+				},
+				async (error, user, { message }: { message: string }) => {
+					if (!user) {
+						return res.redirect(`/signin?error=${message}`);
+					}
+					await issueCookie(res, user);
+					return res.redirect('/');
+				},
+			)(req, res, next);
+		});
+	}
 }
