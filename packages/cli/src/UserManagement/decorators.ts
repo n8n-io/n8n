@@ -6,11 +6,7 @@ import { posix } from 'path';
 import { ResponseHelper } from '..';
 import config from '../../config';
 
-interface RequestHandler<ReqBody, ResBody> extends Function {
-	async(req: Request<unknown, ResBody, ReqBody>, res: Response<ResBody>): Promise<ReqBody>;
-}
-
-export interface IRouter {
+export interface RouteMetadata {
 	method: Method;
 	path: string;
 	handlerName: string | symbol;
@@ -21,12 +17,7 @@ const Keys = {
 	BASE_PATH: Symbol('base_path'),
 } as const;
 
-export enum Method {
-	GET = 'get',
-	POST = 'post',
-	PATCH = 'patch',
-	DELETE = 'delete',
-}
+type Method = 'get' | 'post' | 'patch' | 'delete';
 
 export const RestController =
 	(basePath = '/'): ClassDecorator =>
@@ -39,37 +30,37 @@ const RouteFactory =
 	(path = '/'): MethodDecorator =>
 	(target, handlerName) => {
 		const ControllerClass = target.constructor;
-		const routers: IRouter[] = Reflect.hasMetadata(Keys.ROUTES, ControllerClass)
-			? (Reflect.getMetadata(Keys.ROUTES, ControllerClass) as IRouter[])
-			: [];
+		const routes: RouteMetadata[] = Reflect.getMetadata(Keys.ROUTES, ControllerClass) ?? [];
 		methods.forEach((method) => {
-			routers.push({ method, path, handlerName });
+			routes.push({ method, path, handlerName });
 		});
 
-		Reflect.defineMetadata(Keys.ROUTES, routers, ControllerClass);
+		Reflect.defineMetadata(Keys.ROUTES, routes, ControllerClass);
 	};
 
-export const Get = RouteFactory(Method.GET);
-export const Post = RouteFactory(Method.POST);
-export const Patch = RouteFactory(Method.PATCH);
-export const Delete = RouteFactory(Method.DELETE);
+export const Get = RouteFactory('get');
+export const Post = RouteFactory('post');
+export const Patch = RouteFactory('patch');
+export const Delete = RouteFactory('delete');
 
-export interface Controller<T> extends Function {
-	new (...args: unknown[]): T;
+interface RequestHandler<ReqBody = unknown, ResBody = unknown> extends Function {
+	async(req: Request<unknown, ResBody, ReqBody>, res: Response<ResBody>): Promise<ReqBody>;
 }
 
-export const registerController = <T>(
+interface Controller extends Function {
+	new (...args: unknown[]): Record<string, RequestHandler>;
+}
+
+export const registerController = (
 	app: Application,
-	ControllerClass: Controller<T>,
+	ControllerClass: Controller,
 	...middlewares: Middleware[]
 ): void => {
-	const instance = new ControllerClass() as unknown as {
-		[handleName: string]: RequestHandler<unknown, unknown>;
-	};
-	const routes: IRouter[] = Reflect.getMetadata(Keys.ROUTES, ControllerClass);
+	const instance = new ControllerClass();
+	const routes: RouteMetadata[] = Reflect.getMetadata(Keys.ROUTES, ControllerClass);
 	if (routes.length > 0) {
 		const router = Router({ mergeParams: true });
-		const restEndpoint: string = config.get('endpoints.rest');
+		const restEndpoint: string = config.getEnv('endpoints.rest');
 		const basePath: string = Reflect.getMetadata(Keys.BASE_PATH, ControllerClass);
 		const prefix = `/${posix.join(restEndpoint, basePath)}`;
 

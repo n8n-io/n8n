@@ -150,7 +150,6 @@ export function send<T, R extends Request, S extends Response>(
 	processFunction: (req: R, res: S) => Promise<T>,
 	raw = false,
 ) {
-	// eslint-disable-next-line consistent-return
 	return async (req: R, res: S) => {
 		try {
 			const data = await processFunction(req, res);

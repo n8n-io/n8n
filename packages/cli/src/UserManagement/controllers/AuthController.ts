@@ -4,7 +4,6 @@
 import type { Request, Response } from 'express';
 import { In } from 'typeorm';
 import validator from 'validator';
-import type { IDataObject } from 'n8n-workflow';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { issueCookie, resolveJwt } from '../auth/jwt';
@@ -185,7 +184,7 @@ export class AuthController {
 	 * Authless endpoint.
 	 */
 	@Post('/logout')
-	logout(req: Request, res: Response): IDataObject {
+	logout(req: Request, res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
 		return { loggedOut: true };
 	}
