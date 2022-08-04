@@ -206,8 +206,6 @@ export class GmailV2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		// let body: IDataObject = {};
-		// let qs: IDataObject = {};
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
@@ -363,23 +361,15 @@ export class GmailV2 implements INodeType {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						let qs: IDataObject = {};
 
-						let ccStr = '';
-						let bccStr = '';
+						let cc = '';
+						let bcc = '';
 
 						if (options.ccList) {
-							const ccList = options.ccList as IDataObject[];
-
-							ccList.forEach((email) => {
-								ccStr += `<${email}>, `;
-							});
+							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
 						}
 
 						if (options.bccList) {
-							const bccList = options.bccList as IDataObject[];
-
-							bccList.forEach((email) => {
-								bccStr += `<${email}>, `;
-							});
+							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
 						}
 
 						let attachments: IDataObject[] = [];
@@ -448,8 +438,8 @@ export class GmailV2 implements INodeType {
 						const email: IEmail = {
 							from,
 							to,
-							cc: ccStr,
-							bcc: bccStr,
+							cc,
+							bcc,
 							subject,
 							attachments,
 							inReplyTo: messageIdGlobal,
@@ -575,7 +565,6 @@ export class GmailV2 implements INodeType {
 					if (operation === 'delete') {
 						// https://developers.google.com/gmail/api/v1/reference/users/messages/delete
 						const id = this.getNodeParameter('messageId', i);
-
 						const endpoint = `/gmail/v1/users/me/messages/${id}`;
 
 						responseData = await googleApiRequest.call(this, 'DELETE', endpoint);
@@ -585,7 +574,6 @@ export class GmailV2 implements INodeType {
 					if (operation === 'markAsRead') {
 						// https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
 						const id = this.getNodeParameter('messageId', i);
-
 						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
 
 						const body = {
