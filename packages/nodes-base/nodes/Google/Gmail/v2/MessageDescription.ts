@@ -38,7 +38,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Mark a message as unread',
 			},
 			{
-				name: 'Reply to Sender',
+				name: 'Reply',
 				value: 'reply',
 				action: 'Reply to a message',
 			},
@@ -232,6 +232,35 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['message'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	{
+		displayName: 'Download Attachments',
+		name: 'downloadAttachments',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['message'],
+			},
+			hide: {
+				simple: [true],
+			},
+		},
+		default: false,
+		description: "Whether the emaail's attachments will be downloaded",
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -241,9 +270,25 @@ export const messageFields: INodeProperties[] = [
 				resource: ['message'],
 				operation: ['get'],
 			},
+			hide: {
+				simple: [true],
+			},
 		},
 		default: {},
 		options: [
+			{
+				displayName: 'Attachment Prefix',
+				name: 'dataPropertyAttachmentsPrefixName',
+				type: 'string',
+				default: 'attachment_',
+				displayOptions: {
+					hide: {
+						format: ['full', 'metadata', 'minimal', 'raw'],
+					},
+				},
+				description:
+					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
+			},
 			{
 				displayName: 'Format',
 				name: 'format',
@@ -281,19 +326,6 @@ export const messageFields: INodeProperties[] = [
 				],
 				default: 'resolved',
 				description: 'The format to return the message in',
-			},
-			{
-				displayName: 'Attachment Prefix',
-				name: 'dataPropertyAttachmentsPrefixName',
-				type: 'string',
-				default: 'attachment_',
-				displayOptions: {
-					hide: {
-						format: ['full', 'metadata', 'minimal', 'raw'],
-					},
-				},
-				description:
-					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 		],
 	},

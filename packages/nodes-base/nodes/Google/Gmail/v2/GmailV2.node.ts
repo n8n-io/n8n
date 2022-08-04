@@ -466,10 +466,24 @@ export class GmailV2 implements INodeType {
 						const endpoint = `/gmail/v1/users/me/messages/${id}`;
 						const qs: IDataObject = {};
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 						const format = options.format || 'resolved';
+						const simple = this.getNodeParameter('simple', i) as boolean;
+						let labels: IDataObject[] = [];
 
-						if (format === 'resolved') {
+						if (simple) {
+							qs.format = 'metadata';
+							qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
+							const labelsData = await googleApiRequest.call(
+								this,
+								'GET',
+								`/gmail/v1/users/me/labels`,
+							);
+							labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
+								id,
+								name,
+							}));
+						} else if (format === 'resolved') {
 							qs.format = 'raw';
 						} else {
 							qs.format = format;
@@ -477,8 +491,18 @@ export class GmailV2 implements INodeType {
 
 						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 
+						if (simple) {
+							const labelIds = (responseData.labelIds as string[]) || [];
+							if (labelIds.length) {
+								responseData.labels = labels.filter((label) =>
+									labelIds.includes(label.id as string),
+								);
+								delete responseData.labelIds;
+							}
+						}
+
 						let nodeExecutionData: INodeExecutionData;
-						if (format === 'resolved') {
+						if (format === 'resolved' && !simple) {
 							const dataPropertyNameDownload =
 								(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
 
@@ -1014,7 +1038,6 @@ export class GmailV2 implements INodeType {
 			['get', 'getAll'].includes(operation)
 		) {
 			return this.prepareOutputData(unescapeSnippets(returnData) as INodeExecutionData[]);
-			// return this.prepareOutputData(returnData as INodeExecutionData[]);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

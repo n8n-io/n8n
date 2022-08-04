@@ -96,6 +96,15 @@ export async function googleApiRequest(
 			error.statusCode = '401';
 		}
 
+		if (error.httpCode === '404') {
+			const resource = this.getNodeParameter('resource', 0) as string;
+			const options = {
+				message: `${resource.charAt(0).toUpperCase() + resource.slice(1)} not found`,
+				description: '',
+			};
+			throw new NodeApiError(this.getNode(), error, options);
+		}
+
 		if (error.code === 'EAUTH') {
 			const options = {
 				message: error?.body?.error_description || 'Authorization error',

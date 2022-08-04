@@ -28,7 +28,7 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Get all threads',
 			},
 			{
-				name: 'Reply to Sender',
+				name: 'Reply',
 				value: 'reply',
 				action: 'Reply to a message',
 			},
