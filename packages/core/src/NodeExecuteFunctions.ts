@@ -61,6 +61,10 @@ import {
 	OAuth2GrantType,
 	INodeExecutionPairedData,
 	IBinaryKeyData,
+	IPairedItemData,
+	PrepairOptions,
+	JsonExecutionData,
+	BinaryExecutionData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1312,66 +1316,35 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
- *
  * @export
- * @param {(IDataObject | IDataObject[] | IBinaryKeyData)} data
- * @param {(number)} itemIndex
- * @param {(number)} inputIndex
- * @param {(boolean)} isBinary
- * @returns {INodeExecutionPairedData[]}
+ * @param {(IPairedItemData)} setPairedItemData
+ * @param {(IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[])} inputData
+ * @param {(PrepairOptions)} options
+ * @returns {(INodeExecutionPairedData[])}
  */
 export function preparePairedOutputData(
-	data: IDataObject | IDataObject[] | IBinaryKeyData,
-	itemIndex = 0,
-	inputIndex = 0,
-	isBinary = false,
+	setPairedItemData: IPairedItemData,
+	inputData: IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[],
+	options?: PrepairOptions,
 ): INodeExecutionPairedData[] {
-	const returnData: INodeExecutionPairedData[] = [];
-
-	if (!Array.isArray(data)) {
-		data = [data];
+	if (!Array.isArray(inputData)) {
+		inputData = [inputData];
 	}
+	const { setBinaryData = false } = options || {};
+	const pairedItem: IPairedItemData = { ...setPairedItemData };
 
-	const pairedItem = {
-		input: inputIndex,
-		item: itemIndex,
-	};
+	return inputData.map((data) => {
+		const { json = {} } = data as JsonExecutionData;
 
-	data.forEach((data) => {
-		if (!isBinary) {
-			const { json } = data;
-			if (json !== undefined) {
-				returnData.push({
-					json: json as IDataObject,
-					pairedItem,
-				});
-			} else {
-				returnData.push({
-					json: data,
-					pairedItem,
-				});
-			}
+		const executionPairedData = { json, pairedItem } as INodeExecutionPairedData;
+
+		if (setBinaryData) {
+			const { binary } = data as BinaryExecutionData;
+			Object.assign(executionPairedData, { binary });
 		}
 
-		if (isBinary) {
-			const { json, binary } = data;
-			if (json !== undefined && binary !== undefined) {
-				returnData.push({
-					json: json as IDataObject,
-					binary: binary as IBinaryKeyData,
-					pairedItem,
-				});
-			} else {
-				returnData.push({
-					json: data,
-					binary: data as IBinaryKeyData,
-					pairedItem,
-				});
-			}
-		}
+		return executionPairedData;
 	});
-
-	return returnData;
 }
 
 /**
