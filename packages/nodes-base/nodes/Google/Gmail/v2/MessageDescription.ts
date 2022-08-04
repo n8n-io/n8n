@@ -432,30 +432,38 @@ export const messageFields: INodeProperties[] = [
 				description: 'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Matches Search Query',
+				displayName: 'Search',
 				name: 'q',
 				type: 'string',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
-
 				},
 				default: '',
-				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, \'from:name@email.com is:unread\'. See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
+				placeholder: 'has:attachment',
+				hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
+				description: 'Only return messages matching the specified query',
 			},
 			{
 				displayName: 'Read Status',
 				name: 'readStatus',
 				type: 'options',
 				default: 'unread',
-				description: 'Filter emails by their read status',
+				hint: 'Filter emails by whether they have been read or not',
 				options: [
 					{
-						name: 'Only Read Emails',
-						value: 'read',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Unread and read emails',
+						value: 'both',
 					},
 					{
-						name: 'Only Unread Emails',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Unread emails only',
 						value: 'unread',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Read emails only',
+						value: 'read',
 					},
 				],
 			},

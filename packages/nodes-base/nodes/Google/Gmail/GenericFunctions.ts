@@ -330,7 +330,7 @@ export function prepareQuery(this: IExecuteFunctions | IExecuteSingleFunctions |
 		delete qs.sender;
 	}
 
-	if (qs.readStatus) {
+	if (qs.readStatus && qs.readStatus !== 'both') {
 		if (qs.q) {
 			qs.q += ` is:${qs.readStatus}`;
 		} else {
