@@ -206,7 +206,7 @@ export class GmailV2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		let method = '';
+		// let method = '';
 		let body: IDataObject = {};
 		let qs: IDataObject = {};
 		let endpoint = '';
@@ -227,34 +227,28 @@ export class GmailV2 implements INodeType {
 							i,
 						) as string;
 
-						method = 'POST';
-						endpoint = '/gmail/v1/users/me/labels';
-
 						body = {
 							labelListVisibility,
 							messageListVisibility,
 							name: labelName,
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/labels', body, qs);
 					}
 					if (operation === 'delete') {
 						//https://developers.google.com/gmail/api/v1/reference/users/labels/delete
 						const labelId = this.getNodeParameter('labelId', i) as string[];
+						const endpoint = `/gmail/v1/users/me/labels/${labelId}`;
 
-						method = 'DELETE';
-						endpoint = `/gmail/v1/users/me/labels/${labelId}`;
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'DELETE', endpoint, body, qs);
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						// https://developers.google.com/gmail/api/v1/reference/users/labels/get
 						const labelId = this.getNodeParameter('labelId', i);
+						const endpoint = `/gmail/v1/users/me/labels/${labelId}`;
 
-						method = 'GET';
-						endpoint = `/gmail/v1/users/me/labels/${labelId}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, body, qs);
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -279,27 +273,25 @@ export class GmailV2 implements INodeType {
 						const labelIds = this.getNodeParameter('labelIds', i) as string[];
 						const resourceAPI = this.getNodeParameter('operateOn', i) as string;
 
-						method = 'POST';
-						endpoint = `/gmail/v1/users/me/${resourceAPI}/${id}/modify`;
+						const endpoint = `/gmail/v1/users/me/${resourceAPI}/${id}/modify`;
 
 						body = {
 							addLabelIds: labelIds,
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body, qs);
 					}
 					if (operation === 'removeLabels') {
 						const id = this.getNodeParameter('resourceId', i);
 						const labelIds = this.getNodeParameter('labelIds', i) as string[];
 						const resourceAPI = this.getNodeParameter('operateOn', i) as string;
 
-						method = 'POST';
-						endpoint = `/gmail/v1/users/me/${resourceAPI}/${id}/modify`;
+						const endpoint = `/gmail/v1/users/me/${resourceAPI}/${id}/modify`;
 
 						body = {
 							removeLabelIds: labelIds,
 						};
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body, qs);
 					}
 				}
 				//------------------------------------------------------------------//
@@ -360,14 +352,13 @@ export class GmailV2 implements INodeType {
 							attachments,
 						};
 
-						endpoint = '/gmail/v1/users/me/messages/send';
-						method = 'POST';
+						const endpoint = '/gmail/v1/users/me/messages/send';
 
 						body = {
 							raw: await encodeEmail(email),
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body, qs);
 					}
 					if (operation === 'reply') {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
@@ -408,13 +399,13 @@ export class GmailV2 implements INodeType {
 							}
 						}
 
-						endpoint = `/gmail/v1/users/me/messages/${messageIdGmail}`;
+						const endpoint = `/gmail/v1/users/me/messages/${messageIdGmail}`;
 
 						qs.format = 'metadata';
 
 						const { payload, threadId } = await googleApiRequest.call(
 							this,
-							method,
+							'GET',
 							endpoint,
 							body,
 							qs,
@@ -467,21 +458,17 @@ export class GmailV2 implements INodeType {
 							...prepareEmailBody.call(this, i),
 						};
 
-						endpoint = '/gmail/v1/users/me/messages/send';
-						method = 'POST';
-
 						body = {
 							raw: await encodeEmail(email),
 							threadId,
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
-						method = 'GET';
-
 						const id = this.getNodeParameter('messageId', i);
+						const endpoint = `/gmail/v1/users/me/messages/${id}`;
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const format = options.format || 'resolved';
@@ -492,9 +479,7 @@ export class GmailV2 implements INodeType {
 							qs.format = format;
 						}
 
-						endpoint = `/gmail/v1/users/me/messages/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, body, qs);
 
 						let nodeExecutionData: INodeExecutionData;
 						if (format === 'resolved') {
@@ -582,41 +567,37 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'delete') {
 						// https://developers.google.com/gmail/api/v1/reference/users/messages/delete
-						method = 'DELETE';
 						const id = this.getNodeParameter('messageId', i);
 
-						endpoint = `/gmail/v1/users/me/messages/${id}`;
+						const endpoint = `/gmail/v1/users/me/messages/${id}`;
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'DELETE', endpoint, body, qs);
 
 						responseData = { success: true };
 					}
 					if (operation === 'markAsRead') {
 						// https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
-						method = 'POST';
 						const id = this.getNodeParameter('messageId', i);
 
-						endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
 
 						const body = {
 							removeLabelIds: ['UNREAD'],
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
 					}
 
 					if (operation === 'markAsUnread') {
 						// https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
-						method = 'POST';
 						const id = this.getNodeParameter('messageId', i);
-
-						endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
 
 						const body = {
 							addLabelIds: ['UNREAD'],
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}
 				//------------------------------------------------------------------//
@@ -629,27 +610,19 @@ export class GmailV2 implements INodeType {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						let to = '';
-						let ccStr = '';
-						let bccStr = '';
+						let cc = '';
+						let bcc = '';
 
 						if (options.sendTo) {
 							to += prepareEmailsInput.call(this, options.sendTo as string, 'To', i);
 						}
 
 						if (options.ccList) {
-							const ccList = options.ccList as IDataObject[];
-
-							ccList.forEach((email) => {
-								ccStr += `<${email}>, `;
-							});
+							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
 						}
 
 						if (options.bccList) {
-							const bccList = options.bccList as IDataObject[];
-
-							bccList.forEach((email) => {
-								bccStr += `<${email}>, `;
-							});
+							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
 						}
 
 						let attachments: IDataObject[] = [];
@@ -670,15 +643,12 @@ export class GmailV2 implements INodeType {
 
 						const email: IEmail = {
 							to,
-							cc: ccStr,
-							bcc: bccStr,
+							cc,
+							bcc,
 							subject: this.getNodeParameter('subject', i) as string,
 							...prepareEmailBody.call(this, i),
 							attachments,
 						};
-
-						endpoint = '/gmail/v1/users/me/drafts';
-						method = 'POST';
 
 						body = {
 							message: {
@@ -686,12 +656,12 @@ export class GmailV2 implements INodeType {
 							},
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/drafts', body, qs);
 					}
 					if (operation === 'get') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/get
-						method = 'GET';
 						const id = this.getNodeParameter('messageId', i);
+						const endpoint = `/gmail/v1/users/me/drafts/${id}`;
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const format = options.format || 'resolved';
@@ -702,9 +672,7 @@ export class GmailV2 implements INodeType {
 							qs.format = format;
 						}
 
-						endpoint = `/gmail/v1/users/me/drafts/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, body, qs);
 
 						const binaryData: IBinaryKeyData = {};
 
@@ -733,12 +701,10 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'delete') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/delete
-						method = 'DELETE';
 						const id = this.getNodeParameter('messageId', i);
+						const endpoint = `/gmail/v1/users/me/drafts/${id}`;
 
-						endpoint = `/gmail/v1/users/me/drafts/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'DELETE', endpoint, body, qs);
 
 						responseData = { success: true };
 					}
@@ -818,21 +784,17 @@ export class GmailV2 implements INodeType {
 				if (resource === 'thread') {
 					if (operation === 'delete') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/delete
-						method = 'DELETE';
-
 						const id = this.getNodeParameter('threadId', i);
+						const endpoint = `/gmail/v1/users/me/threads/${id}`;
 
-						endpoint = `/gmail/v1/users/me/threads/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'DELETE', endpoint, body, qs);
 
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/get
-						method = 'GET';
-
 						const id = this.getNodeParameter('threadId', i);
+						const endpoint = `/gmail/v1/users/me/threads/${id}`;
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const format = options.format || 'minimal';
@@ -840,9 +802,7 @@ export class GmailV2 implements INodeType {
 
 						qs.format = format;
 
-						endpoint = `/gmail/v1/users/me/threads/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, body, qs);
 
 						if (onlyMessages) {
 							responseData = responseData.messages;
@@ -887,23 +847,15 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						let ccStr = '';
-						let bccStr = '';
+						let cc = '';
+						let bcc = '';
 
 						if (options.ccList) {
-							const ccList = options.ccList as IDataObject[];
-
-							ccList.forEach((email) => {
-								ccStr += `<${email}>, `;
-							});
+							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
 						}
 
 						if (options.bccList) {
-							const bccList = options.bccList as IDataObject[];
-
-							bccList.forEach((email) => {
-								bccStr += `<${email}>, `;
-							});
+							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
 						}
 
 						let attachments: IDataObject[] = [];
@@ -922,13 +874,13 @@ export class GmailV2 implements INodeType {
 							}
 						}
 
-						endpoint = `/gmail/v1/users/me/messages/${messageIdGmail}`;
+						const endpoint = `/gmail/v1/users/me/messages/${messageIdGmail}`;
 
 						qs.format = 'metadata';
 
 						const { payload, threadId } = await googleApiRequest.call(
 							this,
-							method,
+							'GET',
 							endpoint,
 							body,
 							qs,
@@ -972,8 +924,8 @@ export class GmailV2 implements INodeType {
 						const email: IEmail = {
 							from,
 							to,
-							cc: ccStr,
-							bcc: bccStr,
+							cc,
+							bcc,
 							subject,
 							attachments,
 							inReplyTo: messageIdGlobal,
@@ -986,30 +938,22 @@ export class GmailV2 implements INodeType {
 							threadId,
 						};
 
-						endpoint = '/gmail/v1/users/me/messages/send';
-						method = 'POST';
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
-						method = 'POST';
-
 						const id = this.getNodeParameter('threadId', i);
+						const endpoint = `/gmail/v1/users/me/threads/${id}/trash`;
 
-						endpoint = `/gmail/v1/users/me/threads/${id}/trash`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, {}, qs);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, {}, qs);
 					}
 					if (operation === 'untrash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/untrash
-						method = 'POST';
-
 						const id = this.getNodeParameter('threadId', i);
 
-						endpoint = `/gmail/v1/users/me/threads/${id}/untrash`;
+						const endpoint = `/gmail/v1/users/me/threads/${id}/untrash`;
 
-						responseData = await googleApiRequest.call(this, method, endpoint, {}, qs);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, {}, qs);
 					}
 				}
 				//------------------------------------------------------------------//
