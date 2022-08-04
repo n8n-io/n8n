@@ -279,7 +279,7 @@ test('GET /executions should retrieve all successfull executions', async () => {
 	expect(waitTill).toBeNull();
 });
 
-test.only('GET /executions should paginate two executions', async () => {
+test('GET /executions should paginate two executions', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
 	const authOwnerAgent = utils.createAgent(app, {
