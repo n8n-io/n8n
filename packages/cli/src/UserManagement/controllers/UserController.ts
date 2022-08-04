@@ -27,7 +27,7 @@ export class UserController {
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
-	@Post()
+	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
 		if (config.getEnv('userManagement.emails.mode') === '') {
 			Logger.debug(
@@ -288,7 +288,7 @@ export class UserController {
 		return sanitizeUser(updatedUser);
 	}
 
-	@Get()
+	@Get('/')
 	async listUsers() {
 		const users = await Db.collections.User.find({ relations: ['globalRole'] });
 		return users.map((user) => sanitizeUser(user, ['personalizationAnswers']));

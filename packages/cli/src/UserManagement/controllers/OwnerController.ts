@@ -16,7 +16,7 @@ export class OwnerController {
 	 * Promote a shell into the owner of the n8n instance,
 	 * and enable `isInstanceOwnerSetUp` setting.
 	 */
-	@Post()
+	@Post('/')
 	async promoteOwner(req: OwnerRequest.Post, res: Response) {
 		const { email, firstName, lastName, password } = req.body;
 		const { id: userId } = req.user;

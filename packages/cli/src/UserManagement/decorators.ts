@@ -16,7 +16,7 @@ const Keys = {
 	BASE_PATH: Symbol('base_path'),
 } as const;
 
-type Method = 'get' | 'post' | 'patch' | 'delete';
+type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
 export const RestController =
 	(basePath: `/${string}` = '/'): ClassDecorator =>
@@ -26,7 +26,7 @@ export const RestController =
 
 const RouteFactory =
 	(...methods: Method[]) =>
-	(path: `/${string}` = '/'): MethodDecorator =>
+	(path: `/${string}`): MethodDecorator =>
 	(target, handlerName) => {
 		const ControllerClass = target.constructor;
 		const routes: RouteMetadata[] = Reflect.getMetadata(Keys.ROUTES, ControllerClass) ?? [];
@@ -40,6 +40,7 @@ const RouteFactory =
 export const Get = RouteFactory('get');
 export const Post = RouteFactory('post');
 export const Patch = RouteFactory('patch');
+export const Put = RouteFactory('put');
 export const Delete = RouteFactory('delete');
 
 type RequestHandler = (req: Request, res: Response) => Promise<unknown>;
@@ -55,7 +56,7 @@ export const registerController = <T>(
 ): void => {
 	const instance = new ControllerClass() as unknown as Record<string, RequestHandler>;
 	const routes: RouteMetadata[] = Reflect.getMetadata(Keys.ROUTES, ControllerClass);
-	if (routes.length > 0) {
+	if (routes.length) {
 		const router = Router({ mergeParams: true });
 		const restEndpoint: string = config.getEnv('endpoints.rest');
 		const basePath: string = Reflect.getMetadata(Keys.BASE_PATH, ControllerClass);

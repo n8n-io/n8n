@@ -96,7 +96,7 @@ export async function initTestServer({
 		testServer.externalHooks = ExternalHooks();
 	}
 
-	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
+	const [routerEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
 		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
@@ -116,13 +116,11 @@ export async function initTestServer({
 		}
 	}
 
-	if (functionEndpoints.length) {
-		registerController(testServer.app, MeController);
-		registerController(testServer.app, UserController);
-		registerController(testServer.app, AuthController);
-		registerController(testServer.app, OwnerController);
-		registerController(testServer.app, PasswordResetController);
-	}
+	registerController(testServer.app, MeController);
+	registerController(testServer.app, UserController);
+	registerController(testServer.app, AuthController);
+	registerController(testServer.app, OwnerController);
+	registerController(testServer.app, PasswordResetController);
 
 	return testServer.app;
 }
@@ -137,20 +135,18 @@ export function initTestTelemetry() {
 }
 
 /**
- * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
- * and `functionEndpoints` (legacy, namespaced inside a function).
+ * Identify endpoint groups as `routerEndpoints` (newest, using `express.Router`)
  */
 const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
-	const functionEndpoints: string[] = [];
 
 	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
 
 	endpointGroups.forEach((group) =>
-		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
+		ROUTER_GROUP.includes(group) && routerEndpoints.push(group),
 	);
 
-	return [routerEndpoints, functionEndpoints];
+	return [routerEndpoints];
 };
 
 // ----------------------------------

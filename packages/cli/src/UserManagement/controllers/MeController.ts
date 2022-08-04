@@ -17,7 +17,7 @@ export class MeController {
 	/**
 	 * Return the logged-in user.
 	 */
-	@Get()
+	@Get('/')
 	async getCurrentUser(req: AuthenticatedRequest): Promise<PublicUser> {
 		return sanitizeUser(req.user);
 	}
@@ -25,7 +25,7 @@ export class MeController {
 	/**
 	 * Update the logged-in user's settings, except password.
 	 */
-	@Patch()
+	@Patch('/')
 	async updateCurrentUser(req: MeRequest.Settings, res: Response): Promise<PublicUser> {
 		const { email } = req.body;
 		if (!email) {
