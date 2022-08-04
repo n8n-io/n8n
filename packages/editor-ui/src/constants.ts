@@ -2,7 +2,6 @@ export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
-export const NODE_NAME_PREFIX = 'node-';
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
 
@@ -147,6 +146,7 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
+/** PERSONALIZATION SURVEY */
 export const WORK_AREA_KEY = 'workArea';
 export const FINANCE_WORK_AREA = 'finance';
 export const IT_ENGINEERING_WORK_AREA = 'IT-Engineering';
@@ -157,30 +157,15 @@ export const SECURITY_WORK_AREA = 'security';
 export const COMPANY_TYPE_KEY = 'companyType';
 export const SAAS_COMPANY_TYPE = 'saas';
 export const ECOMMERCE_COMPANY_TYPE = 'ecommerce';
+export const EDUCATION_TYPE = 'education';
 export const MSP_COMPANY_TYPE = 'msp';
 export const DIGITAL_AGENCY_COMPANY_TYPE = 'digital-agency';
-export const AUTOMATION_AGENCY_COMPANY_TYPE = 'automation-agency';
 export const SYSTEMS_INTEGRATOR_COMPANY_TYPE = 'systems-integrator';
 export const OTHER_COMPANY_TYPE = 'other';
 export const PERSONAL_COMPANY_TYPE = 'personal';
 
-export const CUSTOMER_TYPE_KEY = 'customerType';
-export const INDIVIDUAL_CUSTOMER_TYPE = 'individual';
-export const SMALL_CUSTOMER_TYPE = 'small';
-export const MEDIUM_CUSTOMER_TYPE = 'medium';
-export const LARGE_CUSTOMER_TYPE = 'large';
-
-export const MSP_FOCUS_KEY = 'mspFocus';
-export const MSP_FOCUS_OTHER_KEY = 'mspFocusOther';
-export const CLOUD_INFRA_FOCUS = 'cloud-infra';
-export const IT_SUPPORT_FOCUS = 'it-support';
-export const NETWORKING_COMMUNICATION_FOCUS = 'networking-communication';
-export const SECURITY_FOCUS = 'security';
-export const OTHER_FOCUS = 'other';
-
 export const COMPANY_INDUSTRY_EXTENDED_KEY = 'companyIndustryExtended';
 export const OTHER_COMPANY_INDUSTRY_EXTENDED_KEY = 'otherCompanyIndustryExtended';
-export const EDUCATION_INDUSTRY = 'education';
 export const PHYSICAL_RETAIL_OR_SERVICES = 'physical-retail-or-services';
 export const REAL_ESTATE_OR_CONSTRUCTION = 'real-estate-or-construction';
 export const GOVERNMENT_INDUSTRY = 'government';
@@ -188,6 +173,7 @@ export const LEGAL_INDUSTRY = 'legal-industry';
 export const MARKETING_INDUSTRY = 'marketing-industry';
 export const MEDIA_INDUSTRY = 'media-industry';
 export const MANUFACTURING_INDUSTRY = 'manufacturing-industry';
+export const MSP_INDUSTRY = 'msp';
 export const HEALTHCARE_INDUSTRY= 'healthcare';
 export const FINANCE_INSURANCE_INDUSTRY = 'finance-insurance-industry';
 export const IT_INDUSTRY = 'it-industry';
@@ -203,12 +189,29 @@ export const COMPANY_SIZE_500_999 = '500-999';
 export const COMPANY_SIZE_1000_OR_MORE = '1000+';
 export const COMPANY_SIZE_PERSONAL_USE = 'personalUser';
 
+export const MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSm';
+export const MARKETING_AUTOMATION_LEAD_GENERATION_GOAL = 'lead-generation';
+export const MARKETING_AUTOMATION_CUSTOMER_COMMUNICATION = 'customer-communication';
+export const MARKETING_AUTOMATION_ACTIONS = 'actions';
+export const MARKETING_AUTOMATION_AD_CAMPAIGN = 'ad-campaign';
+export const MARKETING_AUTOMATION_REPORTING = 'reporting';
+export const MARKETING_AUTOMATION_DATA_SYNCHING = 'data-syncing';
+export const MARKETING_AUTOMATION_OTHER = 'other';
+
+export const OTHER_MARKETING_AUTOMATION_GOAL_KEY = 'automationGoalSmOther';
+
 export const CODING_SKILL_KEY = 'codingSkill';
+
+export const USAGE_MODE_KEY = 'usageModes';
+export const USAGE_MODE_CONNECT_TO_PRODUCT = 'connect-to-Product';
+export const USAGE_MODE_BUILD_BE_SERVICES = 'build-be-services';
+export const USAGE_MODE_MANIPULATE_FILES = 'manipulate-files';
 
 export const AUTOMATION_GOAL_KEY = 'automationGoal';
 export const AUTOMATION_GOAL_OTHER_KEY = 'otherAutomationGoal';
 export const CUSTOMER_INTEGRATIONS_GOAL = 'customer-integrations';
 export const CUSTOMER_SUPPORT_GOAL = 'customer-support';
+export const ENGINEERING_GOAL = 'engineering';
 export const FINANCE_ACCOUNTING_GOAL = 'finance-accounting';
 export const HR_GOAL = 'hr';
 export const OPERATIONS_GOAL = 'operations';
@@ -217,6 +220,8 @@ export const SALES_MARKETING_GOAL = 'sales-marketing';
 export const SECURITY_GOAL = 'security';
 export const OTHER_AUTOMATION_GOAL = 'other';
 export const NOT_SURE_YET_GOAL = 'not-sure-yet';
+
+/** END OF PERSONALIZATION SURVEY */
 
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CLOSE = 'close';

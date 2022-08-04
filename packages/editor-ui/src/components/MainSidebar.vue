@@ -183,7 +183,7 @@ import {
 	IExecutionResponse,
 	IWorkflowDataUpdate,
 	IMenuItem,
-	IUser,
+	IWorkflowToShare,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';
@@ -442,7 +442,6 @@ export default mixins(
 						return;
 					}
 
-					this.$telemetry.track('User imported workflow', { source: 'file', workflow_id: this.$store.getters.workflowId });
 					this.$root.$emit('importWorkflowData', { data: worflowData });
 				};
 
@@ -513,8 +512,11 @@ export default mixins(
 						data.id = parseInt(data.id, 10);
 					}
 
-					const exportData: IWorkflowDataUpdate = {
+					const exportData: IWorkflowToShare = {
 						...data,
+						meta: {
+							instanceId: this.$store.getters.instanceId,
+						},
 						tags: (tags || []).map(tagId => {
 							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
 
