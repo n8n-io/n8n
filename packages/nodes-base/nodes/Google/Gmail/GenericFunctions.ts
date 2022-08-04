@@ -6,6 +6,7 @@ import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } fro
 
 import {
 	IBinaryKeyData,
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	NodeApiError,
@@ -19,13 +20,6 @@ import jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
 
 import { isEmpty } from 'lodash';
-
-interface IGoogleAuthCredentials {
-	delegatedEmail?: string;
-	email: string;
-	inpersonate: boolean;
-	privateKey: string;
-}
 
 export interface IEmail {
 	from?: string;
@@ -52,18 +46,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
-	const authenticationMethod = this.getNodeParameter(
-		'authentication',
-		0,
-		'serviceAccount',
-	) as string;
+) {
 	let options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
@@ -86,21 +73,24 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 
-		if (authenticationMethod === 'serviceAccount') {
+		let credentialType = 'gmailOAuth2';
+		const authentication = this.getNodeParameter('authentication', 0) as string;
+
+		if (authentication === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
+			credentialType = 'googleApi';
 
-			const { access_token } = await getAccessToken.call(
-				this,
-				credentials as unknown as IGoogleAuthCredentials,
-			);
+			const { access_token } = await getAccessToken.call(this, credentials);
 
-			options.headers!.Authorization = `Bearer ${access_token}`;
-			//@ts-ignore
-			return await this.helpers.request(options);
-		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'gmailOAuth2', options);
+			(options.headers as IDataObject)['Authorization'] = `Bearer ${access_token}`;
 		}
+
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		);
+		return response;
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
 			error.statusCode = '401';
@@ -256,7 +246,7 @@ export function extractEmail(s: string) {
 
 function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	credentials: IGoogleAuthCredentials,
+	credentials: ICredentialDataDecryptedObject,
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
@@ -271,7 +261,7 @@ function getAccessToken(
 
 	const now = moment().unix();
 
-	credentials.email = credentials.email.trim();
+	credentials.email = (credentials.email as string).trim();
 	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
@@ -311,7 +301,10 @@ function getAccessToken(
 	return this.helpers.request(options);
 }
 
-export function prepareQuery(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, fields: IDataObject) {
+export function prepareQuery(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	fields: IDataObject,
+) {
 	const qs: IDataObject = { ...fields };
 	if (qs.labelIds) {
 		if (qs.labelIds === '') {
@@ -348,7 +341,9 @@ export function prepareQuery(this: IExecuteFunctions | IExecuteSingleFunctions |
 		}
 
 		if (!timestamp) {
-			timestamp = Math.floor(DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds());
+			timestamp = Math.floor(
+				DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds(),
+			);
 		}
 
 		if (!timestamp) {
@@ -375,7 +370,9 @@ export function prepareQuery(this: IExecuteFunctions | IExecuteSingleFunctions |
 		}
 
 		if (!timestamp) {
-			timestamp = Math.floor(DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds());
+			timestamp = Math.floor(
+				DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds(),
+			);
 		}
 
 		if (!timestamp) {
@@ -482,4 +479,33 @@ export async function prepareEmailAttachments(
 		}
 	}
 	return attachmentsList;
+}
+
+export function unescapeSnippets(items: IDataObject[]) {
+	const result = items.map((item) => {
+		const snippet = (item.json as IDataObject).snippet as string;
+		if (snippet) {
+			(item.json as IDataObject).snippet = snippet.replace(
+				/&amp;|&lt;|&gt;|&#39;|&quot;/g,
+				(match) => {
+					switch (match) {
+						case '&amp;':
+							return '&';
+						case '&lt;':
+							return '<';
+						case '&gt;':
+							return '>';
+						case '&#39;':
+							return "'";
+						case '&quot;':
+							return '"';
+						default:
+							return match;
+					}
+				},
+			);
+		}
+		return item;
+	});
+	return result;
 }

@@ -23,6 +23,7 @@ import {
 	prepareEmailBody,
 	prepareEmailsInput,
 	prepareQuery,
+	unescapeSnippets,
 } from '../GenericFunctions';
 
 import { messageFields, messageOperations } from './MessageDescription';
@@ -213,6 +214,9 @@ export class GmailV2 implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
+				//------------------------------------------------------------------//
+				//                            labels                                //
+				//------------------------------------------------------------------//
 				if (resource === 'label') {
 					if (operation === 'create') {
 						//https://developers.google.com/gmail/api/v1/reference/users/labels/create
@@ -298,6 +302,9 @@ export class GmailV2 implements INodeType {
 						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 					}
 				}
+				//------------------------------------------------------------------//
+				//                            messages                              //
+				//------------------------------------------------------------------//
 				if (resource === 'message') {
 					if (operation === 'send') {
 						// https://developers.google.com/gmail/api/v1/reference/users/messages/send
@@ -612,6 +619,9 @@ export class GmailV2 implements INodeType {
 						responseData = await googleApiRequest.call(this, method, endpoint, body);
 					}
 				}
+				//------------------------------------------------------------------//
+				//                            drafts                                //
+				//------------------------------------------------------------------//
 				if (resource === 'draft') {
 					if (operation === 'create') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/create
@@ -802,6 +812,9 @@ export class GmailV2 implements INodeType {
 						}
 					}
 				}
+				//------------------------------------------------------------------//
+				//                           threads                                //
+				//------------------------------------------------------------------//
 				if (resource === 'thread') {
 					if (operation === 'delete') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/delete
@@ -834,6 +847,8 @@ export class GmailV2 implements INodeType {
 						if (onlyMessages) {
 							responseData = responseData.messages;
 						}
+
+						responseData = { json: responseData };
 					}
 					if (operation === 'getAll') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/list
@@ -865,6 +880,8 @@ export class GmailV2 implements INodeType {
 						if (responseData === undefined) {
 							responseData = [];
 						}
+
+						responseData = this.helpers.returnJsonArray(responseData);
 					}
 					if (operation === 'reply') {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
@@ -995,11 +1012,12 @@ export class GmailV2 implements INodeType {
 						responseData = await googleApiRequest.call(this, method, endpoint, {}, qs);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
+				//------------------------------------------------------------------//
+
+				if (!Array.isArray(responseData)) {
+					responseData = [responseData];
 				}
+				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
@@ -1008,9 +1026,12 @@ export class GmailV2 implements INodeType {
 				throw error;
 			}
 		}
-		if (['draft', 'message'].includes(resource) && ['get', 'getAll'].includes(operation)) {
-			//@ts-ignore
-			return this.prepareOutputData(returnData);
+
+		if (
+			['draft', 'message', 'thread'].includes(resource) &&
+			['get', 'getAll'].includes(operation)
+		) {
+			return this.prepareOutputData(unescapeSnippets(returnData) as INodeExecutionData[]);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
