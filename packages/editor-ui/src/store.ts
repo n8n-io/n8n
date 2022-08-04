@@ -533,6 +533,15 @@ export const store = new Vuex.Store({
 			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
+		// Selected resource locator modes for each parameter
+		setNodeParameterMode(state, payload: { nodeName: string, paramName: string, mode: string }) {
+			const node = state.workflow.nodes.find(node => {
+				return node.name === payload.nodeName;
+			});
+			if (node) {
+				Vue.set(node, 'parameterModes', { [payload.paramName] : payload.mode });
+			}
+		},
 		// Node-Index
 		addToNodeIndex(state, nodeName: string) {
 			state.nodeIndex.push(nodeName);
@@ -981,6 +990,19 @@ export const store = new Vuex.Store({
 
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
+		},
+
+		getNodeParameterLocatorMode: (state, getters) => (nodeName: string, paramName: string): string => {
+			console.log(`GETTER : ${nodeName} / ${paramName}`);
+
+			const node: INodeUi = getters.nodesByName[nodeName];
+
+			console.log(node);
+
+			if (node && node.parameterModes) {
+				return node.parameterModes[paramName] || '';
+			}
+			return '';
 		},
 	},
 });

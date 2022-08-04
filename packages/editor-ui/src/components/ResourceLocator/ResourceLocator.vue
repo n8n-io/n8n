@@ -90,6 +90,8 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { PropType } from 'vue';
+import { INodeUi } from '@/Interface';
+import { mapGetters } from 'vuex';
 
 export default mixins().extend({
 	name: 'ResourceLocator',
@@ -107,16 +109,18 @@ export default mixins().extend({
 			type: String,
 			default: '',
 		},
+		node: {
+			type: Object as () => INodeUi,
+			default() {
+				return this.$store.getters.activeNode;
+			},
+		},
 		inputSize: {
 			type: String,
 			default: 'small',
 			validator: size => {
 				return ['mini', 'small', 'medium', 'large', 'xlarge'].includes(size);
 			},
-		},
-		eventSource: {
-			type: String,
-			default: 'ndv',
 		},
 		parameterIssues: {
 			type: Array as PropType<string[]>,
@@ -205,7 +209,6 @@ export default mixins().extend({
 			this.validate();
 		},
 		hasMultipleModes (newValue: boolean) {
-			// TODO: Only do this if there is no mode selected...
 			this.setDefaultMode();
 		},
 		value (newValue: string) {
@@ -213,14 +216,15 @@ export default mixins().extend({
 		},
 	},
 	mounted () {
+		const storedMode = this.$store.getters.getNodeParameterLocatorMode(this.node.name, this.parameter.name);
+		this.selectedMode = storedMode;
 		this.tempValue = this.displayValue as string;
-		if (this.selectedMode === '') {
-			this.setDefaultMode();
-		}
+
+		this.setDefaultMode();
 	},
 	methods: {
 		setDefaultMode (): void {
-			if (this.parameter.modes) {
+			if (this.parameter.modes && this.selectedMode === '') {
 				// List mode is selected by default if it's available
 				const listMode = this.parameter.modes.find((mode : INodePropertyMode) => mode.name === 'list');
 				this.selectedMode = listMode ? listMode.name : this.parameter.modes[0].name;
@@ -249,6 +253,11 @@ export default mixins().extend({
 		},
 		onModeSelected (value: string): void {
 			this.validate();
+			this.$store.commit('setNodeParameterMode', {
+				nodeName: this.node.name,
+				paramName: this.parameter.name,
+				mode: this.selectedMode,
+			});
 		},
 		onExpressionValueChanged (latestValue: string): void {
 			this.tempValue = latestValue;
