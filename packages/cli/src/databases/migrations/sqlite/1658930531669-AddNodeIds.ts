@@ -24,10 +24,6 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 		await runChunked(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = JSON.parse(workflow.nodes);
-				if (!Array.isArray(nodes)) {
-					return;
-				}
-
 				nodes.forEach((node: INode) => {
 					if (!node.id) {
 						node.id = uuid();
@@ -65,10 +61,6 @@ export class AddNodeIds1658930531669 implements MigrationInterface {
 		await runChunked(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = JSON.parse(workflow.nodes);
-				if (!Array.isArray(nodes)) {
-					return;
-				}
-
 				// @ts-ignore
 				nodes.forEach((node) => delete node.id );
 
