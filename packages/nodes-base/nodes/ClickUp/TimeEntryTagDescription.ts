@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const timeEntryTagOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const timeEntryTagOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
+				resource: ['timeEntryTag'],
 			},
 		},
 		options: [
@@ -40,7 +36,6 @@ export const timeEntryTagOperations: INodeProperties[] = [
 ];
 
 export const timeEntryTagFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                timeEntryTag:getAll                         */
 	/* -------------------------------------------------------------------------- */
@@ -48,16 +43,13 @@ export const timeEntryTagFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['timeEntryTag'],
+				operation: ['getAll'],
 			},
 		},
 		typeOptions: {
@@ -71,12 +63,8 @@ export const timeEntryTagFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['timeEntryTag'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -88,15 +76,9 @@ export const timeEntryTagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['timeEntryTag'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -114,16 +96,13 @@ export const timeEntryTagFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['timeEntryTag'],
+				operation: ['add'],
 			},
 		},
 		typeOptions: {
@@ -138,12 +117,8 @@ export const timeEntryTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['timeEntryTag'],
+				operation: ['add'],
 			},
 		},
 		required: true,
@@ -159,12 +134,8 @@ export const timeEntryTagFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['timeEntryTag'],
+				operation: ['add'],
 			},
 		},
 		options: [
@@ -202,16 +173,13 @@ export const timeEntryTagFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['timeEntryTag'],
+				operation: ['remove'],
 			},
 		},
 		typeOptions: {
@@ -226,12 +194,8 @@ export const timeEntryTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['timeEntryTag'],
+				operation: ['remove'],
 			},
 		},
 		required: true,
@@ -240,22 +204,17 @@ export const timeEntryTagFields: INodeProperties[] = [
 		displayName: 'Tag Names or IDs',
 		name: 'tagNames',
 		type: 'multiOptions',
-		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTimeEntryTags',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
+			loadOptionsDependsOn: ['teamId'],
 		},
 		default: [],
 		displayOptions: {
 			show: {
-				resource: [
-					'timeEntryTag',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['timeEntryTag'],
+				operation: ['remove'],
 			},
 		},
 		required: true,

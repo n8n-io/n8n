@@ -586,6 +586,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const node: INode = {
+			id: 'temp',
 			parameters: {},
 			name: 'Temp-Node',
 			type: nodeType.description.name,
