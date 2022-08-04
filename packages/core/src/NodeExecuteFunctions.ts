@@ -1318,9 +1318,9 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  *
  * @export
  * @param {(IDataObject | IDataObject[])} jsonData
- * @returns {JsonPairable[]}
+ * @returns {JsonExecutionData[]}
  */
-export function buildJsonArray(jsonData: IDataObject | IDataObject[]): JsonExecutionData[] {
+function buildJsonArray(jsonData: IDataObject | IDataObject[]): JsonExecutionData[] {
 	const returnData: JsonExecutionData[] = [];
 
 	if (!Array.isArray(jsonData)) {
@@ -1337,7 +1337,7 @@ export function buildJsonArray(jsonData: IDataObject | IDataObject[]): JsonExecu
 /**
  * Takes input data and transforms it into a binary format n8n uses.
  * @param {(IBinaryKeyData | IBinaryKeyData[])} binaryData
- * @returns {BinaryPairable[]}
+ * @returns {BinaryExecutionData[]}
  */
 function buildBinaryArray(binaryData: IBinaryKeyData | IBinaryKeyData[]): BinaryExecutionData[] {
 	const returnData: BinaryExecutionData[] = [];
@@ -1356,7 +1356,7 @@ function buildBinaryArray(binaryData: IBinaryKeyData | IBinaryKeyData[]): Binary
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
  * @param {(IPairedItemData)} setPairedItemData
- * @param {(JsonPairable[] | BinaryPairable[])} inputData
+ * @param {(JsonExecutionData[] | BinaryExecutionData[])} inputData
  * @param {(PrepairOptions)} options
  * @returns {(INodeExecutionPairedData[])}
  */
@@ -2512,7 +2512,6 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
-				preparePairedOutputData,
 				preparePairedJsonOutputData,
 				preparePairedBinaryOutputData,
 			},
