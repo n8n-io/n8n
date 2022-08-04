@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable import/no-cycle */
 import { Application, Request, RequestHandler as Middleware, Response, Router } from 'express';
-import { posix } from 'path';
 import { ResponseHelper } from '..';
 import config from '../../config';
 
@@ -20,14 +19,14 @@ const Keys = {
 type Method = 'get' | 'post' | 'patch' | 'delete';
 
 export const RestController =
-	(basePath = '/'): ClassDecorator =>
+	(basePath: `/${string}` = '/'): ClassDecorator =>
 	(target: object) => {
 		Reflect.defineMetadata(Keys.BASE_PATH, basePath, target);
 	};
 
 const RouteFactory =
 	(...methods: Method[]) =>
-	(path = '/'): MethodDecorator =>
+	(path: `/${string}` = '/'): MethodDecorator =>
 	(target, handlerName) => {
 		const ControllerClass = target.constructor;
 		const routes: RouteMetadata[] = Reflect.getMetadata(Keys.ROUTES, ControllerClass) ?? [];
@@ -62,7 +61,7 @@ export const registerController = (
 		const router = Router({ mergeParams: true });
 		const restEndpoint: string = config.getEnv('endpoints.rest');
 		const basePath: string = Reflect.getMetadata(Keys.BASE_PATH, ControllerClass);
-		const prefix = `/${posix.join(restEndpoint, basePath)}`;
+		const prefix = [restEndpoint, basePath].join('/');
 
 		routes.forEach(({ method, path, handlerName }) => {
 			router[method](
