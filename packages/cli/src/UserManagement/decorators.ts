@@ -42,26 +42,24 @@ export const Post = RouteFactory('post');
 export const Patch = RouteFactory('patch');
 export const Delete = RouteFactory('delete');
 
-interface RequestHandler<ReqBody = unknown, ResBody = unknown> extends Function {
-	async(req: Request<unknown, ResBody, ReqBody>, res: Response<ResBody>): Promise<ReqBody>;
+type RequestHandler = (req: Request, res: Response) => Promise<unknown>;
+
+interface Controller<T> {
+	new (...args: unknown[]): T;
 }
 
-interface Controller extends Function {
-	new (...args: unknown[]): Record<string, RequestHandler>;
-}
-
-export const registerController = (
+export const registerController = <T>(
 	app: Application,
-	ControllerClass: Controller,
+	ControllerClass: Controller<T>,
 	...middlewares: Middleware[]
 ): void => {
-	const instance = new ControllerClass();
+	const instance = new ControllerClass() as unknown as Record<string, RequestHandler>;
 	const routes: RouteMetadata[] = Reflect.getMetadata(Keys.ROUTES, ControllerClass);
 	if (routes.length > 0) {
 		const router = Router({ mergeParams: true });
 		const restEndpoint: string = config.getEnv('endpoints.rest');
 		const basePath: string = Reflect.getMetadata(Keys.BASE_PATH, ControllerClass);
-		const prefix = [restEndpoint, basePath].join('/');
+		const prefix = `/${[restEndpoint, basePath].join('/')}`.replace(/\/+/g, '/');
 
 		routes.forEach(({ method, path, handlerName }) => {
 			router[method](
