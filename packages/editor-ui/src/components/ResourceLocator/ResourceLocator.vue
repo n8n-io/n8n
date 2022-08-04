@@ -83,12 +83,13 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { INodePropertyMode } from 'n8n-workflow';
+import { INodeProperties, INodePropertyMode } from 'n8n-workflow';
 import { getParameterModeLabel, validateResourceLocatorParameter } from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
+import { PropType } from 'vue';
 
 export default mixins().extend({
 	name: 'ResourceLocator',
@@ -97,54 +98,83 @@ export default mixins().extend({
 		ExpressionEdit,
 		ParameterIssues,
 	},
-	props: [ // TODO: Clean this and order alphabetically
-		'parameter', // NodeProperties
-		'value',
-		'inputSize',
-		'path', // string
-		'isReadOnly',
-		'droppable',
-		'activeDrop',
-		'forceShowExpression',
-		'eventSource', // string
-		'errorHighlight',
-		// ---------------- FROM PARAM ↓
-		'issues',
-		'hideIssues', // boolean
-		'parameterInputClasses',
-		'rows',
-		'isValueExpression',
-		// ---------------- COMPUTED ↓
-		'displayValue',
-		'displayTitle',
-		'expressionDisplayValue',
-		// --------------- DATA ↓
-		'expressionEditDialogVisible',
-	],
+	props: {
+		parameter: {
+			type: Object as () => INodeProperties,
+			required: true,
+		},
+		value: {
+			type: String,
+			default: '',
+		},
+		inputSize: {
+			type: String,
+			default: 'small',
+			validator: size => {
+				return ['mini', 'small', 'medium', 'large', 'xlarge'].includes(size);
+			},
+		},
+		eventSource: {
+			type: String,
+			default: 'ndv',
+		},
+		parameterIssues: {
+			type: Array as PropType<string[]>,
+			default () {
+				return [];
+			},
+		},
+		displayValue: {
+			type: String,
+			default: '',
+		},
+		displayTitle: {
+			type: String,
+			default: '',
+		},
+		expressionDisplayValue: {
+			type: String,
+			default: '',
+		},
+		parameterInputClasses: {
+			type: Object,
+			default: {},
+		},
+		rows: {
+			type: Number,
+			default: 0,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		activeDrop: {
+			type: Boolean,
+			default: false,
+		},
+		forceShowExpression: {
+			type: Boolean,
+			default: false,
+		},
+		isValueExpression: {
+			type: Boolean,
+			default: false,
+		},
+		expressionEditDialogVisible: {
+			type: Boolean,
+			default: false,
+		},
+		droppable: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	data() {
 		return {
 			selectedMode: '',
 			tempValue: '',
 			resourceIssues: [] as string[],
 		};
-	},
-	mounted() {
-		this.tempValue = this.displayValue as string;
-		if (this.selectedMode === '') {
-			this.setDefaultMode();
-		}
-	},
-	watch: {
-		issues () {
-			this.validate();
-		},
-		hasMultipleModes (newValue: boolean) {
-			// TODO: Only do this if there is no mode selected...
-			this.setDefaultMode();
-		},
-		value (newValue: string) {
-			this.tempValue = this.displayValue as string;
-		},
 	},
 	computed: {
 		inputPlaceholder (): string {
@@ -157,7 +187,7 @@ export default mixins().extend({
 			return this.findModeByName(this.selectedMode) || {} as INodePropertyMode;
 		},
 		hasMultipleModes (): boolean {
-			return this.parameter.modes && this.parameter.modes.length > 1;
+			return (this.parameter.modes && this.parameter.modes.length > 1) ? true : false;
 		},
 		inputClasses (): {[c: string]: boolean} {
 			const classes = {
@@ -169,6 +199,24 @@ export default mixins().extend({
 			}
 			return classes;
 		},
+	},
+	watch: {
+		parameterIssues () {
+			this.validate();
+		},
+		hasMultipleModes (newValue: boolean) {
+			// TODO: Only do this if there is no mode selected...
+			this.setDefaultMode();
+		},
+		value (newValue: string) {
+			this.tempValue = this.displayValue as string;
+		},
+	},
+	mounted () {
+		this.tempValue = this.displayValue as string;
+		if (this.selectedMode === '') {
+			this.setDefaultMode();
+		}
 	},
 	methods: {
 		setDefaultMode (): void {
@@ -182,30 +230,7 @@ export default mixins().extend({
 		validate (): void {
 			const valueToValidate = this.displayValue ? this.displayValue.toString() : this.expressionDisplayValue ? this.expressionDisplayValue.toString() : '';
 			const validationErrors: string[] = validateResourceLocatorParameter(valueToValidate, this.currentMode);
-			this.resourceIssues = this.issues.concat(validationErrors);
-		},
-		onEditIconClick (): void {
-			this.$emit('editIconClick');
-		},
-		onBlur (): void {
-			this.$emit('blur');
-		},
-		onFocus (): void {
-			this.$emit('focus');
-		},
-		onInput (value: string): void {
-			this.$emit('textInputChange', value);
-		},
-		onInputChange (value: string): void {
-			this.$emit('change', value);
-		},
-		onModeSelected (value: string): void {
-			// this.$emit('change', this.tempValue);
-			this.validate();
-		},
-		onExpressionValueChanged (latestValue: string): void {
-			this.tempValue = latestValue;
-			this.$emit('valueChanged', latestValue);
+			this.resourceIssues = this.parameterIssues.concat(validationErrors);
 		},
 		findModeByName (name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -216,8 +241,30 @@ export default mixins().extend({
 		getModeLabel (name: string): string | null {
 			return getParameterModeLabel(name);
 		},
+		onInput (value: string): void {
+			this.$emit('textInputChange', value);
+		},
+		onInputChange (value: string): void {
+			this.$emit('change', value);
+		},
+		onModeSelected (value: string): void {
+			this.validate();
+		},
+		onExpressionValueChanged (latestValue: string): void {
+			this.tempValue = latestValue;
+			this.$emit('valueChanged', latestValue);
+		},
 		onDrop(data: string) {
 			this.$emit('drop', data);
+		},
+		onEditIconClick (): void {
+			this.$emit('editIconClick');
+		},
+		onBlur (): void {
+			this.$emit('blur');
+		},
+		onFocus (): void {
+			this.$emit('focus');
 		},
 	},
 });
