@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const threadOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const threadOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -61,16 +57,8 @@ export const threadFields: INodeProperties[] = [
 		description: 'The ID of the thread you are operating on',
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'get',
-					'delete',
-					'reply',
-					'trash',
-					'untrash',
-				],
+				resource: ['thread'],
+				operation: ['get', 'delete', 'reply', 'trash', 'untrash'],
 			},
 		},
 	},
@@ -85,20 +73,15 @@ export const threadFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getThreadMessages',
-			loadOptionsDependsOn: [
-				'threadId',
-			],
+			loadOptionsDependsOn: ['threadId'],
 		},
 		default: '',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['thread'],
+				operation: ['reply'],
 			},
 		},
 	},
@@ -121,12 +104,8 @@ export const threadFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['thread'],
+				operation: ['reply'],
 			},
 		},
 	},
@@ -138,12 +117,8 @@ export const threadFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['thread'],
+				operation: ['reply'],
 			},
 		},
 		hint: 'Get better Text and Expressions writing experience by using the expression editor',
@@ -155,12 +130,8 @@ export const threadFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['thread'],
+				operation: ['reply'],
 			},
 		},
 		default: {},
@@ -183,7 +154,8 @@ export const threadFields: INodeProperties[] = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Add the field name from the input node. Multiple properties can be set separated by comma.',
+								description:
+									'Add the field name from the input node. Multiple properties can be set separated by comma.',
 							},
 						],
 					},
@@ -195,7 +167,8 @@ export const threadFields: INodeProperties[] = [
 				displayName: 'BCC',
 				name: 'bccList',
 				type: 'string',
-				description: 'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
 				default: '',
 			},
@@ -203,7 +176,8 @@ export const threadFields: INodeProperties[] = [
 				displayName: 'CC',
 				name: 'ccList',
 				type: 'string',
-				description: 'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
 				default: '',
 			},
@@ -214,13 +188,12 @@ export const threadFields: INodeProperties[] = [
 				default: '',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'reply',
-						],
+						'/operation': ['reply'],
 					},
 				},
 				placeholder: 'info@example.com',
-				description: 'These emails would be sent along with the original sender\'s email. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					"These emails would be sent along with the original sender's email. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.",
 			},
 			{
 				displayName: 'Override Sender Name',
@@ -242,12 +215,8 @@ export const threadFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['thread'],
+				operation: ['get'],
 			},
 		},
 		default: {},
@@ -260,7 +229,8 @@ export const threadFields: INodeProperties[] = [
 					{
 						name: 'Full',
 						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field; the raw field is not used',
+						description:
+							'Returns the full email message data with body content parsed in the payload field; the raw field is not used',
 					},
 					{
 						name: 'Metadata',
@@ -270,7 +240,8 @@ export const threadFields: INodeProperties[] = [
 					{
 						name: 'Minimal',
 						value: 'minimal',
-						description: 'Returns only email message IDs and labels; does not return the email headers, body, or payload',
+						description:
+							'Returns only email message IDs and labels; does not return the email headers, body, or payload',
 					},
 				],
 				default: 'minimal',
@@ -294,12 +265,8 @@ export const threadFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
 			},
 		},
 		default: false,
@@ -311,15 +278,9 @@ export const threadFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -330,18 +291,15 @@ export const threadFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
+		displayName:
+			'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
 		name: 'filtersNotice',
 		type: 'notice',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
 			},
 		},
 	},
@@ -349,16 +307,12 @@ export const threadFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -377,7 +331,8 @@ export const threadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Search',
@@ -420,14 +375,16 @@ export const threadFields: INodeProperties[] = [
 				name: 'receivedAfter',
 				type: 'dateTime',
 				default: '',
-				description: 'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+				description:
+					'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 			{
 				displayName: 'Received Before',
 				name: 'receivedBefore',
 				type: 'dateTime',
 				default: '',
-				description: 'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+				description:
+					'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 		],
 	},

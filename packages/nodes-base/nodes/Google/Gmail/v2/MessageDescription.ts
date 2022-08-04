@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -65,15 +61,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-					'delete',
-					'markAsRead',
-					'markAsUnread',
-				],
+				resource: ['message'],
+				operation: ['get', 'delete', 'markAsRead', 'markAsUnread'],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -86,12 +75,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -104,16 +89,13 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		placeholder: 'info@example.com',
-		description: 'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+		description:
+			'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 	},
 	{
 		displayName: 'Subject',
@@ -123,12 +105,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		placeholder: 'Hello World!',
@@ -152,13 +130,8 @@ export const messageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['send', 'reply'],
 			},
 		},
 	},
@@ -170,13 +143,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-					'send',
-				],
+				resource: ['message'],
+				operation: ['reply', 'send'],
 			},
 		},
 	},
@@ -187,13 +155,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['send', 'reply'],
 			},
 		},
 		default: {},
@@ -216,7 +179,8 @@ export const messageFields: INodeProperties[] = [
 								name: 'property',
 								type: 'string',
 								default: 'data',
-								description: 'Add the field name from the input node. Multiple properties can be set separated by comma.',
+								description:
+									'Add the field name from the input node. Multiple properties can be set separated by comma.',
 								hint: 'The name of the field with the attachment in the node input',
 							},
 						],
@@ -229,7 +193,8 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'BCC',
 				name: 'bccList',
 				type: 'string',
-				description: 'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
 				default: '',
 			},
@@ -237,7 +202,8 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'CC',
 				name: 'ccList',
 				type: 'string',
-				description: 'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
 				default: '',
 			},
@@ -248,13 +214,12 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'reply',
-						],
+						'/operation': ['reply'],
 					},
 				},
 				placeholder: 'info@example.com',
-				description: 'These emails would be sent along with the original sender\'s email. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					"These emails would be sent along with the original sender's email. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.",
 			},
 			{
 				displayName: 'Override Sender Name',
@@ -273,12 +238,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['message'],
+				operation: ['get'],
 			},
 		},
 		default: {},
@@ -291,7 +252,8 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Full',
 						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field',
+						description:
+							'Returns the full email message data with body content parsed in the payload field',
 					},
 					{
 						name: 'Metadata',
@@ -301,17 +263,20 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Minimal',
 						value: 'minimal',
-						description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+						description:
+							'Returns only email message ID and labels; does not return the email headers, body, or payload',
 					},
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
+						description:
+							'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data',
+						description:
+							'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 				],
 				default: 'resolved',
@@ -324,15 +289,11 @@ export const messageFields: INodeProperties[] = [
 				default: 'attachment_',
 				displayOptions: {
 					hide: {
-						format: [
-							'full',
-							'metadata',
-							'minimal',
-							'raw',
-						],
+						format: ['full', 'metadata', 'minimal', 'raw'],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is \'attachment_\' the first attachment is saved to \'attachment_0\'.',
+				description:
+					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 		],
 	},
@@ -346,12 +307,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
 			},
 		},
 		default: false,
@@ -363,15 +320,9 @@ export const messageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['message'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -382,35 +333,44 @@ export const messageFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['message'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	{
 		displayName: 'Download Attachments',
 		name: 'downloadAttachments',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
+			},
+			hide: {
+				simple: [true],
 			},
 		},
 		default: false,
 		description: "Whether the emaail's attachments will be downloaded",
 	},
 	{
-		displayName: 'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
+		displayName:
+			'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
 		name: 'filtersNotice',
 		type: 'notice',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
 			},
 		},
 	},
@@ -418,16 +378,12 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -446,7 +402,8 @@ export const messageFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Search',
@@ -489,14 +446,16 @@ export const messageFields: INodeProperties[] = [
 				name: 'receivedAfter',
 				type: 'dateTime',
 				default: '',
-				description: 'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+				description:
+					'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 			{
 				displayName: 'Received Before',
 				name: 'receivedBefore',
 				type: 'dateTime',
 				default: '',
-				description: 'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+				description:
+					'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 			{
 				displayName: 'Sender',
@@ -516,12 +475,11 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
+			},
+			hide: {
+				simple: [true],
 			},
 		},
 		options: [
@@ -532,16 +490,11 @@ export const messageFields: INodeProperties[] = [
 				default: 'attachment_',
 				displayOptions: {
 					hide: {
-						format: [
-							'full',
-							'ids',
-							'metadata',
-							'minimal',
-							'raw',
-						],
+						format: ['full', 'ids', 'metadata', 'minimal', 'raw'],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is \'attachment_\' the first attachment is saved to \'attachment_0\'.',
+				description:
+					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 			{
 				displayName: 'Format',
@@ -551,7 +504,8 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Full',
 						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field',
+						description:
+							'Returns the full email message data with body content parsed in the payload field',
 					},
 					{
 						name: 'IDs',
@@ -566,17 +520,20 @@ export const messageFields: INodeProperties[] = [
 					{
 						name: 'Minimal',
 						value: 'minimal',
-						description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+						description:
+							'Returns only email message ID and labels; does not return the email headers, body, or payload',
 					},
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
+						description:
+							'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data',
+						description:
+							'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 				],
 				default: 'resolved',

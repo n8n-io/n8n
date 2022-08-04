@@ -1,19 +1,10 @@
-import {
-	INodeTypeBaseDescription,
-	INodeVersionedType,
-} from 'n8n-workflow';
+import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
-import {
-	NodeVersionedType
- } from '../../../src/NodeVersionedType';
+import { NodeVersionedType } from '../../../src/NodeVersionedType';
 
-import {
-	GmailV1,
-} from './v1/GmailV1.node';
+import { GmailV1 } from './v1/GmailV1.node';
 
-import {
-	GmailV2,
-} from './v2/GmailV2.node';
+import { GmailV2 } from './v2/GmailV2.node';
 
 export class Gmail extends NodeVersionedType {
 	constructor() {

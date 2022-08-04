@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const labelOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const labelOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
+				resource: ['label'],
 			},
 		},
 
@@ -62,12 +58,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['label'],
+				operation: ['create'],
 			},
 		},
 		placeholder: 'invoices',
@@ -81,13 +73,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['label'],
+				operation: ['get', 'delete'],
 			},
 		},
 		description: 'The ID of the label',
@@ -114,12 +101,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['label'],
+				operation: ['create'],
 			},
 		},
 		description: 'The visibility of the label in the label list in the Gmail web interface',
@@ -142,15 +125,12 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['label'],
+				operation: ['create'],
 			},
 		},
-		description: 'The visibility of messages with this label in the message list in the Gmail web interface',
+		description:
+			'The visibility of messages with this label in the message list in the Gmail web interface',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 label:getAll                               */
@@ -161,12 +141,8 @@ export const labelFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['getAll'],
+				resource: ['label'],
 			},
 		},
 		default: false,
@@ -178,15 +154,9 @@ export const labelFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'label',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['label'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -218,13 +188,8 @@ export const labelFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'addLabels',
-					'removeLabels',
-				],
+				resource: ['label'],
+				operation: ['addLabels', 'removeLabels'],
 			},
 		},
 	},
@@ -237,16 +202,9 @@ export const labelFields: INodeProperties[] = [
 		placeholder: '172ce2c4a72cc243',
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'addLabels',
-					'removeLabels',
-				],
-				operateOn: [
-					'threads',
-				],
+				resource: ['label'],
+				operation: ['addLabels', 'removeLabels'],
+				operateOn: ['threads'],
 			},
 		},
 	},
@@ -259,16 +217,9 @@ export const labelFields: INodeProperties[] = [
 		placeholder: '172ce2c4a72cc243',
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'addLabels',
-					'removeLabels',
-				],
-				operateOn: [
-					'messages',
-				],
+				resource: ['label'],
+				operation: ['addLabels', 'removeLabels'],
+				operateOn: ['messages'],
 			},
 		},
 	},
@@ -283,15 +234,11 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'addLabels',
-					'removeLabels',
-				],
+				resource: ['label'],
+				operation: ['addLabels', 'removeLabels'],
 			},
 		},
-		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 ];

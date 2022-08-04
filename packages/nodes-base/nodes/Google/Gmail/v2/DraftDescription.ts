@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const draftOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const draftOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
+				resource: ['draft'],
 			},
 		},
 		options: [
@@ -50,13 +46,8 @@ export const draftFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['draft'],
+				operation: ['delete', 'get'],
 			},
 		},
 		placeholder: 'r-3254521568507167962',
@@ -69,12 +60,8 @@ export const draftFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		placeholder: 'Hello World!',
@@ -98,12 +85,8 @@ export const draftFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -115,12 +98,8 @@ export const draftFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		hint: 'Get better Text and Expressions writing experience by using the expression editor',
@@ -132,12 +111,8 @@ export const draftFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -148,13 +123,15 @@ export const draftFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'info@example.com',
-				description: 'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 			},
 			{
 				displayName: 'BCC',
 				name: 'bccList',
 				type: 'string',
-				description: 'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
 				default: '',
 			},
@@ -162,7 +139,8 @@ export const draftFields: INodeProperties[] = [
 				displayName: 'CC',
 				name: 'ccList',
 				type: 'string',
-				description: 'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				description:
+					'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
 				default: '',
 			},
@@ -184,7 +162,8 @@ export const draftFields: INodeProperties[] = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Add the field name from the input node. Multiple properties can be set separated by comma.',
+								description:
+									'Add the field name from the input node. Multiple properties can be set separated by comma.',
 							},
 						],
 					},
@@ -201,12 +180,8 @@ export const draftFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['draft'],
+				operation: ['get'],
 			},
 		},
 		default: {},
@@ -218,15 +193,11 @@ export const draftFields: INodeProperties[] = [
 				default: 'attachment_',
 				displayOptions: {
 					hide: {
-						format: [
-							'full',
-							'metadata',
-							'minimal',
-							'raw',
-						],
+						format: ['full', 'metadata', 'minimal', 'raw'],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is \'attachment_\' the first attachment is saved to \'attachment_0\'.',
+				description:
+					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 			{
 				displayName: 'Format',
@@ -236,7 +207,8 @@ export const draftFields: INodeProperties[] = [
 					{
 						name: 'Full',
 						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field',
+						description:
+							'Returns the full email message data with body content parsed in the payload field',
 					},
 					{
 						name: 'Metadata',
@@ -246,17 +218,20 @@ export const draftFields: INodeProperties[] = [
 					{
 						name: 'Minimal',
 						value: 'minimal',
-						description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+						description:
+							'Returns only email message ID and labels; does not return the email headers, body, or payload',
 					},
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
+						description:
+							'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data',
+						description:
+							'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 				],
 				default: 'resolved',
@@ -274,12 +249,8 @@ export const draftFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'draft',
-				],
+				operation: ['getAll'],
+				resource: ['draft'],
 			},
 		},
 		default: false,
@@ -291,15 +262,9 @@ export const draftFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'draft',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['draft'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -315,12 +280,8 @@ export const draftFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'draft',
-				],
+				operation: ['getAll'],
+				resource: ['draft'],
 			},
 		},
 		default: false,
@@ -334,12 +295,8 @@ export const draftFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'draft',
-				],
+				operation: ['getAll'],
+				resource: ['draft'],
 			},
 		},
 		options: [
@@ -350,16 +307,11 @@ export const draftFields: INodeProperties[] = [
 				default: 'attachment_',
 				displayOptions: {
 					hide: {
-						format: [
-							'full',
-							'ids',
-							'metadata',
-							'minimal',
-							'raw',
-						],
+						format: ['full', 'ids', 'metadata', 'minimal', 'raw'],
 					},
 				},
-				description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is \'attachment_\' the first attachment is saved to \'attachment_0\'.',
+				description:
+					"Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
 			},
 			{
 				displayName: 'Format',
@@ -369,7 +321,8 @@ export const draftFields: INodeProperties[] = [
 					{
 						name: 'Full',
 						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field',
+						description:
+							'Returns the full email message data with body content parsed in the payload field',
 					},
 					{
 						name: 'IDs',
@@ -384,17 +337,20 @@ export const draftFields: INodeProperties[] = [
 					{
 						name: 'Minimal',
 						value: 'minimal',
-						description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+						description:
+							'Returns only email message ID and labels; does not return the email headers, body, or payload',
 					},
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
+						description:
+							'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
 					},
 					{
 						name: 'Resolved',
 						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data',
+						description:
+							'Returns the full email with all data resolved and attachments saved as binary data',
 					},
 				],
 				default: 'resolved',

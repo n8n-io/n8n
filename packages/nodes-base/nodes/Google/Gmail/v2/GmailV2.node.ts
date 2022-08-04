@@ -497,8 +497,8 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
 						const qs: IDataObject = {};
 						Object.assign(qs, prepareQuery.call(this, filters), options);
 
@@ -528,9 +528,23 @@ export class GmailV2 implements INodeType {
 						}
 
 						const format = options.format || 'resolved';
+						const simple = this.getNodeParameter('simple', i) as boolean;
+						let labels: IDataObject[] = [];
 
 						if (format !== 'ids') {
-							if (format === 'resolved') {
+							if (simple) {
+								qs.format = 'metadata';
+								qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
+								const labelsData = await googleApiRequest.call(
+									this,
+									'GET',
+									`/gmail/v1/users/me/labels`,
+								);
+								labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
+									id,
+									name,
+								}));
+							} else if (format === 'resolved') {
 								qs.format = 'raw';
 							} else {
 								qs.format = format;
@@ -545,7 +559,7 @@ export class GmailV2 implements INodeType {
 									qs,
 								);
 
-								if (format === 'resolved') {
+								if (format === 'resolved' && !simple) {
 									const dataPropertyNameDownload =
 										(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
 
@@ -555,10 +569,22 @@ export class GmailV2 implements INodeType {
 										dataPropertyNameDownload,
 									);
 								}
+
+								if (simple) {
+									responseData = (responseData as IDataObject[]).map((item) => {
+										if (item.labelIds) {
+											item.labels = labels.filter((label) =>
+												(item.labelIds as string[]).includes(label.id as string),
+											);
+											delete item.labelIds;
+										}
+										return item;
+									});
+								}
 							}
 						}
 
-						if (format !== 'resolved') {
+						if (format !== 'resolved' || simple) {
 							responseData = this.helpers.returnJsonArray(responseData);
 						}
 					}
@@ -988,6 +1014,7 @@ export class GmailV2 implements INodeType {
 			['get', 'getAll'].includes(operation)
 		) {
 			return this.prepareOutputData(unescapeSnippets(returnData) as INodeExecutionData[]);
+			// return this.prepareOutputData(returnData as INodeExecutionData[]);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
