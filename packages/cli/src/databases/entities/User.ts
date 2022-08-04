@@ -153,6 +153,6 @@ export class User {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password == null;
+		this.isPending = this.password == null && this.lastName == null;
 	}
 }

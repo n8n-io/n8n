@@ -61,8 +61,8 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 		}),
 	);
 
-	const CLIENT_ID = '974645230259-j5m3mbld4ibqqmmbvt3a174vn65d21fo.apps.googleusercontent.com';
-	const CLIENT_SECRET = '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';
+	const CLIENT_ID = 'redacted';
+	const CLIENT_SECRET = 'redacted';
 	const REDIRECT_URI_BASE = 'http://localhost:5678';
 
 	const initOIDC = async () => {
@@ -103,7 +103,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 				}
 
 				if (!userinfo.email_verified) {
-					return done('Unverified email address from provider');
+					return done(null, false, { message: 'Unverified email address from provider' });
 				}
 
 				let user = await Db.collections.User.findOne({
@@ -112,7 +112,7 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 				});
 
 				if (!user) {
-					throw new Error('User not found!');
+					return done(null, false, { message: 'User not found' });
 				}
 
 				await Db.collections.FederatedUser.insert({
@@ -145,19 +145,22 @@ export function addRoutes(this: N8nApp, ignoredEndpoints: string[], restEndpoint
 	/* Endpoints */
 	this.app.get(`/${restEndpoint}/login/openid`, passport.authenticate('openid'));
 
-	this.app.get(
-		`/${restEndpoint}/login/openid/callback`,
-		passport.authenticate('openid', {
-			failureRedirect: `/${restEndpoint}/login/openid`,
-		}),
-		async (req, res) => {
-			if (!req.user) {
-				return res.redirect(`/${restEndpoint}/login/openid`);
-			}
-			await issueCookie(res, req.user);
-			res.redirect('/');
-		},
-	);
+	this.app.get(`/${restEndpoint}/login/openid/callback`, async (req, res, next) => {
+		passport.authenticate(
+			'openid',
+			{
+				failureRedirect: `/${restEndpoint}/login/openid`,
+				failureFlash: 'Failed to authenticate',
+			},
+			async (error, user, { message }: { message: string }) => {
+				if (!user) {
+					return res.redirect(`/${restEndpoint}/login/openid`);
+				}
+				await issueCookie(res, user);
+				return res.redirect('/');
+			},
+		)(req, res, next);
+	});
 
 	this.app.use(async (req: Request, res: Response, next: NextFunction) => {
 		if (
