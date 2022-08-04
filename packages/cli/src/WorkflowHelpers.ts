@@ -21,6 +21,7 @@ import {
 	LoggerProxy as Logger,
 	Workflow,
 } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import/no-cycle
 import {
 	CredentialTypes,
@@ -472,6 +473,22 @@ export async function getStaticDataById(workflowId: string | number) {
 
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	return workflowData.staticData || {};
+}
+
+/**
+ * Set node ids if not already set
+ *
+ * @param workflow
+ */
+export function addNodeIds(workflow: WorkflowEntity) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	nodes.forEach((node) => {
+		if (!node.id) {
+			node.id = uuid();
+		}
+	});
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely

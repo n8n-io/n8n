@@ -260,6 +260,12 @@ export interface IWorkflowDataUpdate {
 	pinData?: IPinData;
 }
 
+export interface IWorkflowToShare extends IWorkflowDataUpdate {
+	meta?: {
+		instanceId: string;
+	};
+}
+
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
@@ -524,11 +530,29 @@ export type IPersonalizationSurveyAnswersV2 = {
 	companyIndustryExtended?: string[] | null;
 	companySize?: string | null;
 	companyType?: string | null;
+	customerType?: string | null;
 	mspFocus?: string[] | null;
 	mspFocusOther?: string | null;
 	otherAutomationGoal?: string | null;
 	otherCompanyIndustryExtended?: string[] | null;
 };
+
+export type IPersonalizationSurveyAnswersV3 = {
+	version: 'v3';
+	automationGoal?: string | null;
+	otherAutomationGoal?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+
+export type IPersonalizationSurveyVersions = IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3;
 
 export type IRole = 'default' | 'owner' | 'member';
 
@@ -542,7 +566,7 @@ export interface IUserResponse {
 		id: string;
 		createdAt: Date;
 	};
-	personalizationAnswers?: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | null;
+	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 }
 
@@ -849,7 +873,6 @@ export interface IRootState {
 	workflowExecutionData: IExecutionResponse | null;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
-	nodeIndex: Array<string | null>;
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -956,7 +979,11 @@ export interface ISettingsState {
 }
 
 export interface INodeTypesState {
-	nodeTypes: { [nodeType: string]: INodeTypeDescription };
+	nodeTypes: {
+		[nodeType: string]: {
+			[version: number]: INodeTypeDescription;
+		}
+	};
 }
 
 export interface ITemplateState {
