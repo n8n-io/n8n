@@ -1,10 +1,18 @@
 import { exec as callbackExec } from 'child_process';
 import { promisify } from 'util';
 
-import { createConnection, getConnection, ConnectionOptions, Connection } from 'typeorm';
 import { UserSettings } from 'n8n-core';
+import { Connection, ConnectionOptions, createConnection, getConnection } from 'typeorm';
 
 import config from '../../../config';
+import { DatabaseType, Db, ICredentialsDb } from '../../../src';
+import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
+import { entities } from '../../../src/databases/entities';
+import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
+import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
+import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
+import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
+import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
 import {
 	BOOTSTRAP_MYSQL_CONNECTION_NAME,
 	BOOTSTRAP_POSTGRES_CONNECTION_NAME,
@@ -12,25 +20,23 @@ import {
 	MAPPING_TABLES,
 	MAPPING_TABLES_TO_CLEAR,
 } from './constants';
-import { DatabaseType, Db, ICredentialsDb } from '../../../src';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
-import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
-import { entities } from '../../../src/databases/entities';
-import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
-import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
-import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
 import { categorize, getPostgresSchemaSection } from './utils';
-import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
-import type { Role } from '../../../src/databases/entities/Role';
-import type { CollectionName, CredentialPayload, InstalledNodePayload, InstalledPackagePayload, MappingName } from './types';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
+import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
+import type { Role } from '../../../src/databases/entities/Role';
+import { TagEntity } from '../../../src/databases/entities/TagEntity';
 import { User } from '../../../src/databases/entities/User';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
-import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
-import { TagEntity } from '../../../src/databases/entities/TagEntity';
+import type {
+	CollectionName,
+	CredentialPayload,
+	InstalledNodePayload,
+	InstalledPackagePayload,
+	MappingName,
+} from './types';
 
 const exec = promisify(callbackExec);
 
@@ -257,6 +263,7 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		Webhook: 'webhook_entity',
 		Role: 'role',
 		User: 'user',
+		FederatedUser: 'federated_user',
 		SharedCredentials: 'shared_credentials',
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
@@ -346,17 +353,20 @@ export function createUserShell(globalRole: Role): Promise<User> {
 // Installed nodes and packages creation
 // --------------------------------------
 
-export async function saveInstalledPackage(installedPackagePayload: InstalledPackagePayload): Promise<InstalledPackages> {
+export async function saveInstalledPackage(
+	installedPackagePayload: InstalledPackagePayload,
+): Promise<InstalledPackages> {
 	const newInstalledPackage = new InstalledPackages();
 
 	Object.assign(newInstalledPackage, installedPackagePayload);
-
 
 	const savedInstalledPackage = await Db.collections.InstalledPackages.save(newInstalledPackage);
 	return savedInstalledPackage;
 }
 
-export async function saveInstalledNode(installedNodePayload: InstalledNodePayload): Promise<InstalledNodes> {
+export async function saveInstalledNode(
+	installedNodePayload: InstalledNodePayload,
+): Promise<InstalledNodes> {
 	const newInstalledNode = new InstalledNodes();
 
 	Object.assign(newInstalledNode, installedNodePayload);

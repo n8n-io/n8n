@@ -1,8 +1,8 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import path from 'path';
 import * as core from 'n8n-core';
+import path from 'path';
 
 export const schema = {
 	database: {
@@ -501,6 +501,73 @@ export const schema = {
 				default: '',
 				env: 'N8N_JWT_ALLOWED_TENANT',
 				doc: 'JWT tenant to allow (optional)',
+			},
+		},
+		oidc: {
+			enabled: {
+				doc: 'OpenID Connect enabled.',
+				format: Boolean,
+				default: false,
+				env: 'N8N_OIDC_ENABLED',
+			},
+			issuerUrl: {
+				doc: 'OpenID Issuer URL.',
+				format: String,
+				default: '',
+				env: 'N8N_OIDC_ISSUER_URL',
+			},
+			clientId: {
+				doc: 'OpenID Client ID.',
+				format: String,
+				default: '',
+				env: 'N8N_OIDC_CLIENT_ID',
+			},
+			clientSecret: {
+				doc: 'OpenID Client Secret.',
+				format: String,
+				default: '',
+				env: 'N8N_OIDC_CLIENT_SECRET',
+			},
+			responseTypes: {
+				doc: 'OpenID Response Types.',
+				format: function check(rawValue: string): void {
+					try {
+						const values = JSON.parse(rawValue);
+						if (!Array.isArray(values)) {
+							throw new Error();
+						}
+
+						for (const value of values) {
+							if (typeof value !== 'string') {
+								throw new Error();
+							}
+						}
+					} catch (error) {
+						throw new TypeError(`The response types are not a valid Array of strings.`);
+					}
+				},
+				default: '["code"]',
+				env: 'N8N_OIDC_RESPONSE_TYPES',
+			},
+			tokenEndpointAuthMethod: {
+				doc: 'OpenID Token Endpoint Auth Method.',
+				format: [
+					'client_secret_basic',
+					'client_secret_post',
+					'client_secret_jwt',
+					'private_key_jwt',
+					'tls_client_auth',
+					'self_signed_tls_client_auth',
+					'none',
+				] as const,
+				default: 'client_secret_post',
+				env: 'N8N_OIDC_TOKEN_ENDPOINT_AUTH_METHOD',
+			},
+			scope: {
+				doc: 'OpenID Scope.',
+				format: String,
+				default: 'openid email profile',
+				env: 'N8N_OIDC_SCOPE',
 			},
 		},
 	},

@@ -7,19 +7,13 @@ import { Issuer, Strategy as OIDCStrategy } from 'openid-client';
 import passport from 'passport';
 import { Strategy as JwtStrategy } from 'passport-jwt';
 import config from '../../../config';
+import type { User } from '../../databases/entities/User';
 import type { JwtPayload, N8nApp } from '../Interfaces';
+import { getInstanceBaseUrl } from '../UserManagementHelper';
 import { jwtFromRequest, resolveJwtContent } from './jwt';
 import { oidcHandler } from './oidc';
 
 export async function initializePassport(this: N8nApp): Promise<void> {
-	this.app.use(
-		expressSession({
-			secret: config.getEnv('userManagement.jwtSecret'),
-			resave: false,
-			saveUninitialized: true,
-		}),
-	);
-
 	passport.use(
 		new JwtStrategy(
 			{
@@ -38,32 +32,38 @@ export async function initializePassport(this: N8nApp): Promise<void> {
 		),
 	);
 
-	const CLIENT_ID = '974645230259-20eu4aen132u8ptjr35ohd13v3jum039.apps.googleusercontent.com';
-	const CLIENT_SECRET = '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';
-	const REDIRECT_URI_BASE = 'http://localhost:5678';
+	if (config.getEnv('security.oidc.enabled')) {
+		this.app.use(
+			expressSession({
+				secret: config.getEnv('userManagement.jwtSecret'),
+				resave: false,
+				saveUninitialized: true,
+			}),
+		);
 
-	const issuer = await Issuer.discover('https://accounts.google.com');
+		const issuer = await Issuer.discover(config.getEnv('security.oidc.issuerUrl'));
 
-	/* Authorize Code Flow */
-	const client = new issuer.Client({
-		client_id: CLIENT_ID,
-		client_secret: CLIENT_SECRET,
-		redirect_uris: [`${REDIRECT_URI_BASE}/rest/login/openid/callback/`],
-		token_endpoint_auth_method: 'client_secret_post',
-	});
+		const client = new issuer.Client({
+			client_id: config.getEnv('security.oidc.clientId'),
+			client_secret: config.getEnv('security.oidc.clientSecret'),
+			redirect_uris: [`${getInstanceBaseUrl()}/${this.restEndpoint}/login/openid/callback`],
+			response_types: JSON.parse(config.getEnv('security.oidc.responseTypes')) as string[],
+			token_endpoint_auth_method: config.getEnv('security.oidc.tokenEndpointAuthMethod'),
+		});
 
-	const params = {
-		scope: 'openid email profile',
-	};
+		const params = {
+			scope: config.getEnv('security.oidc.scope'),
+		};
 
-	passport.use('openid', new OIDCStrategy({ client, params }, oidcHandler));
+		passport.use('openid', new OIDCStrategy({ client, params }, oidcHandler));
 
-	passport.serializeUser((user, done) => {
-		done(null, user);
-	});
-	passport.deserializeUser((user: Express.User, done) => {
-		done(null, user);
-	});
+		passport.serializeUser((user, done) => {
+			done(null, user);
+		});
+		passport.deserializeUser((user: User, done) => {
+			done(null, user);
+		});
+	}
 
 	this.app.use(passport.initialize());
 	this.app.use(passport.session());
