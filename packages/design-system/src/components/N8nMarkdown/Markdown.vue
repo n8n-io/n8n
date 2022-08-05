@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="n8n-markdown">
 		<div
 			v-if="!loading"
 			ref="editor"
@@ -55,7 +55,9 @@ interface IImage {
 	url: string;
 }
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	components: {
 		N8nLoading,
 	},
@@ -175,7 +177,7 @@ export default {
 			this.$emit('markdown-click', clickedLink, event);
 		}
 	}
-};
+});
 </script>
 
 <style lang="scss" module>

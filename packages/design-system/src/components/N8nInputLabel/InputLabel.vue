@@ -1,6 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<div v-if="label || $slots.options" :class="{
+				'n8n-input-label': true,
 				[this.$style.heading]: !!this.label,
 				[this.$style.underline]: this.underline,
 				[this.$style[this.size]]: true,
@@ -34,7 +35,9 @@ import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-input-label',
 	components: {
 		N8nText,
@@ -74,7 +77,7 @@ export default {
 	methods: {
 		addTargetBlank,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

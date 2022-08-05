@@ -46,7 +46,9 @@ function getSize(delta, min, virtual, gridSize): number {
 	return min;
 };
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-resize',
 	props: {
 		isResizingEnabled: {
@@ -152,7 +154,7 @@ export default {
 			this.dir = '';
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
