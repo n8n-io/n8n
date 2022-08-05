@@ -294,3 +294,12 @@ export const TEST_PIN_DATA = [
 	},
 ];
 export const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`, '$parameter'];
+
+/**
+ * Enterprise edition
+ */
+
+export enum EnterpriseEditionFeature {
+	CredentialsSharing = 'credentialsSharing',
+	WorkflowSharing = 'workflowSharing',
+}

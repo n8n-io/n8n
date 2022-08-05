@@ -82,6 +82,7 @@ import {
 	N8nTooltip,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
+import EnterpriseEdition from "@/components/EnterpriseEdition.ee.vue";
 
 Vue.use(Fragment.Plugin);
 
@@ -122,6 +123,8 @@ Vue.component('n8n-tabs', N8nTabs);
 Vue.use(N8nTag);
 Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);
+
+Vue.component('enterprise-edition', EnterpriseEdition);
 
 // element io
 Vue.use(Dialog);

@@ -305,6 +305,10 @@ export interface IActivationError {
 	};
 }
 
+export interface IShareCredentialsPayload {
+	shareeId: string;
+}
+
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
@@ -701,6 +705,8 @@ export interface IN8nUISettings {
 		latestVersion: number;
 		path: string;
 	};
+	credentialsSharing: boolean;
+	workflowSharing: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

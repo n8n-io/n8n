@@ -17,9 +17,6 @@
 				<span v-show="data">{{$locale.baseText('credentials.item.created')}} <time-ago :date="data.createdAt" /></span>
 			</n8n-text>
 			<template #append>
-				<n8n-text color="text-light" size="medium" class="mr-s">
-					3 workflows (TODO)
-				</n8n-text>
 				<n8n-action-toggle
 					:actions="actions"
 					@action="onAction"

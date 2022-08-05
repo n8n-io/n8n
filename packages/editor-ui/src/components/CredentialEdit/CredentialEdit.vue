@@ -54,12 +54,17 @@
 						defaultActive="connection"
 						:light="true"
 					>
-						<n8n-menu-item index="connection"
-							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span></n8n-menu-item
-						>
-						<n8n-menu-item index="details"
-							><span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span></n8n-menu-item
-						>
+						<n8n-menu-item index="connection">
+							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span>
+						</n8n-menu-item>
+						<enterprise-edition :features="[EnterpriseEditionFeature.CredentialsSharing]">
+							<n8n-menu-item index="sharing">
+								<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.sharing') }}</span>
+							</n8n-menu-item>
+						</enterprise-edition>
+						<n8n-menu-item index="details">
+							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span>
+						</n8n-menu-item>
 					</n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
@@ -81,7 +86,16 @@
 						@scrollToTop="scrollToTop"
 					/>
 				</div>
-				<div v-if="activeTab === 'details'" :class="$style.mainContent">
+				<enterprise-edition
+					v-else-if="activeTab === 'sharing'"
+					:class="$style.mainContent"
+					:features="[EnterpriseEditionFeature.CredentialsSharing]"
+				>
+					<CredentialSharing
+						:currentCredential="currentCredential"
+					/>
+				</enterprise-edition>
+				<div v-else-if="activeTab === 'details'" :class="$style.mainContent">
 					<CredentialInfo
 						:nodeAccess="nodeAccess"
 						:nodesWithAccess="nodesWithAccess"
@@ -123,9 +137,11 @@ import { showMessage } from '../mixins/showMessage';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
+import CredentialSharing from "./CredentialSharing.ee.vue";
 import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
+import {EnterpriseEditionFeature} from "@/constants";
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -134,6 +150,7 @@ interface NodeAccessMap {
 export default mixins(showMessage, nodeHelpers).extend({
 	name: 'CredentialsDetail',
 	components: {
+		CredentialSharing,
 		CredentialConfig,
 		CredentialIcon,
 		CredentialInfo,
@@ -171,6 +188,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			showValidationWarning: false,
 			testedSuccessfully: false,
 			isRetesting: false,
+			EnterpriseEditionFeature,
 		};
 	},
 	async mounted() {
@@ -851,12 +869,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 <style module lang="scss">
 .credentialModal {
-	max-width: 900px;
+	max-width: 872px;
 	--dialog-close-top: 28px;
 }
 
 .mainContent {
-	flex-grow: 1;
+	flex: 1;
 	overflow: auto;
 	padding-bottom: 100px;
 }

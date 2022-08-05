@@ -9,7 +9,6 @@ declare module 'vue/types/vue' {
 
 declare module 'n8n-design-system' {
 	export * from './components';
-	export { N8nUserSelect, N8nUsersList } from './components'; // Workaround for circular imports, will be removed when migrated to typescript
 	export { locale };
 }
 

@@ -16,7 +16,7 @@ import {
 	ICredentialsResponse,
 	ICredentialsState,
 	ICredentialTypeMap,
-	IRootState,
+	IRootState, IUser,
 } from '../Interface';
 import {
 	ICredentialType,
@@ -26,6 +26,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
+import {addCredentialSharee, removeCredentialSharee} from "@/api/credentials.ee";
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -211,6 +212,30 @@ const module: Module<ICredentialsState, IRootState> = {
 			} catch (e) {
 				return DEFAULT_CREDENTIAL_NAME;
 			}
+		},
+		addCredentialSharee: async (context: ActionContext<ICredentialsState, IRootState>, payload: { userId: string; credentialId: string; }) => {
+			await addCredentialSharee(
+				context.rootGetters.getRestApiContext,
+				payload.credentialId,
+				{
+					shareeId: payload.userId,
+				},
+			);
+
+			// @TODO Set credential sharee in state
+			// context.commit('setCredentials', credentials);
+		},
+		removeCredentialSharee: async (context: ActionContext<ICredentialsState, IRootState>, payload:  { userId: string; credentialId: string; }) => {
+			await removeCredentialSharee(
+				context.rootGetters.getRestApiContext,
+				payload.credentialId,
+				{
+					shareeId: payload.userId,
+				},
+			);
+
+			// @TODO Remove credential sharee from state
+			// context.commit('setCredentials', credentials);
 		},
 	},
 };

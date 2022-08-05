@@ -11,7 +11,7 @@
 				</n8n-button>
 			</div>
 
-			<n8n-menu default-active="owner" type="secondary" @select="onSelect">
+			<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner">
 				<n8n-menu-item index="owner">
 					<template #title>
 						<n8n-icon icon="user" />
@@ -250,8 +250,8 @@ export default mixins(
 		},
 	},
 	methods: {
-		onSelect(type: string[]) {
-			this.filters.type = type;
+		onSelectOwner(type: string) {
+			this.filters.owner = type === 'owner';
 		},
 		addCredential() {
 			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
@@ -279,7 +279,7 @@ export default mixins(
 			this.filters.type = [];
 			this.filters.ownedBy = '';
 			this.filters.sharedWith = '';
-			this.filtersInput.type = '';
+			this.filtersInput.type = [];
 			this.filtersInput.ownedBy = '';
 			this.filtersInput.sharedWith = '';
 		},

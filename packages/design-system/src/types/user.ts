@@ -5,4 +5,5 @@ export interface IUser {
 	email?: string;
 	isPending: boolean;
 	isOwner: boolean;
+	isPendingUser: boolean;
 }
