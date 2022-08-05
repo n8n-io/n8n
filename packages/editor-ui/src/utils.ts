@@ -6,7 +6,7 @@ export function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: st
 
 export function isJsonKeyObject(item: unknown): item is {
 	json: unknown;
-	[otherOptions: string]: unknown;
+	[otherKeys: string]: unknown;
 } {
 	if (!isObjectLiteral(item)) return false;
 
