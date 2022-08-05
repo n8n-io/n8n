@@ -79,6 +79,7 @@ import {
 	N8nTags,
 	N8nTag,
 	N8nText,
+	N8nTree,
 	N8nTooltip,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
@@ -119,6 +120,7 @@ Vue.use(N8nRadioButtons);
 Vue.component('n8n-square-button', N8nSquareButton);
 Vue.use(N8nTags);
 Vue.component('n8n-tabs', N8nTabs);
+Vue.component('n8n-tree', N8nTree);
 Vue.use(N8nTag);
 Vue.component('n8n-text', N8nText);
 Vue.use(N8nTooltip);

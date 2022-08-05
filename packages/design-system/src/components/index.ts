@@ -71,6 +71,7 @@ import N8nTabs from './N8nTabs';
 import N8nTag from './N8nTag';
 import N8nText from './N8nText';
 import N8nTooltip from './N8nTooltip';
+import N8nTree from './N8nTree';
 import N8nUsersList from './N8nUsersList';
 import N8nUserSelect from './N8nUserSelect';
 
@@ -114,6 +115,7 @@ export {
 	N8nTags,
 	N8nTag,
 	N8nText,
+	N8nTree,
 	N8nTooltip,
 	N8nUsersList,
 	N8nUserSelect,

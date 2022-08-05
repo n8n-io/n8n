@@ -54,7 +54,10 @@
 						:data-col="index2"
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
-					>{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
+					>
+						<!-- <span v-if="isSimple()">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span> -->
+						<n8n-tree :input="data" />
+					</td>
 				</tr>
 			</tbody>
 		</table>
