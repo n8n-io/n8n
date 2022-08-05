@@ -381,6 +381,7 @@ import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
+import { isJsonKeyObject } from '@/utils';
 
 // A path that does not exist so that nothing is selected by default
 const deselectedPlaceholder = '_!^&*';
@@ -619,13 +620,7 @@ export default mixins(
 				let inputData = this.rawInputData;
 
 				if (this.node && this.pinData) {
-					inputData = Array.isArray(this.pinData)
-						? this.pinData.map((value) => ({
-							json: value,
-						}))
-						: [{
-							json: this.pinData,
-						}];
+					inputData = this.pinData;
 				}
 
 				const offset = this.pageSize * (this.currentPage - 1);
@@ -761,25 +756,22 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: this.removeJsonKeys(value) });
+				this.$store.commit('pinData', { node: this.node, data: this.normalize(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
 			},
-			removeJsonKeys(value: string) {
-				const parsed = JSON.parse(value);
 
-				return Array.isArray(parsed)
-					? parsed.map(item => this.isJsonKeyObject(item) ? item.json : item)
-					: parsed;
-			},
-			isJsonKeyObject(item: unknown): item is { json: unknown } {
-				if (!this.isObjectLiteral(item)) return false;
+			/**
+			 * Clear user-added `json` metadata key from pindata items.
+			 */
+			normalize(userInput: string) {
+				const parsedUserInput = JSON.parse(userInput);
 
-				const keys = Object.keys(item);
+				if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 
-				return keys.length === 1 && keys[0] === 'json';
+				return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
 			},
 			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 				this.$telemetry.track('User closed ndv edit state', {
