@@ -981,7 +981,7 @@ export const store = new Vuex.Store({
 	},
 });
 
-// TODO: Pending decision on mapping logic, temp `0` for now
+// @TODO: Mapping logic, defaulting to `0` for now
 function toStoredPinData(payload: INodeExecutionData[] | INodeExecutionData) {
 	if (!Array.isArray(payload)) payload = [payload];
 
