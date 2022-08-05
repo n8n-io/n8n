@@ -538,7 +538,8 @@ export const store = new Vuex.Store({
 				return node.name === payload.nodeName;
 			});
 			if (node) {
-				Vue.set(node, 'parameterModes', { [payload.paramName] : payload.mode });
+				Vue.set(node.parameters, payload.paramName + '.mode', payload.mode );
+				state.stateIsDirty = true;
 			}
 		},
 
@@ -987,8 +988,8 @@ export const store = new Vuex.Store({
 
 		getNodeParameterLocatorMode: (state, getters) => (nodeName: string, paramName: string): string => {
 			const node: INodeUi = getters.nodesByName[nodeName];
-			if (node && node.parameterModes) {
-				return node.parameterModes[paramName] || '';
+			if (node && node.parameters[`${paramName}.mode`]) {
+				return node.parameters[`${paramName}.mode`]!.toString() || '';
 			}
 			return '';
 		},
