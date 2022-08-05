@@ -77,12 +77,12 @@ export default Vue.extend({
 
 			return this.size;
 		},
-		classes(): string {
+		classes(): string[] {
 			if (this.size === 'xlarge') {
-				return 'xlarge';
+				return ['xlarge'];
 			}
 
-			return '';
+			return [];
 		},
 	},
 	methods: {
