@@ -97,12 +97,26 @@ export async function googleApiRequest(
 		}
 
 		if (error.httpCode === '404') {
-			const resource = this.getNodeParameter('resource', 0) as string;
+			let resource = this.getNodeParameter('resource', 0) as string;
+			if (resource === 'label') {
+				resource = 'label ID';
+			}
 			const options = {
 				message: `${resource.charAt(0).toUpperCase() + resource.slice(1)} not found`,
 				description: '',
 			};
 			throw new NodeApiError(this.getNode(), error, options);
+		}
+
+		if (error.httpCode === '409') {
+			const resource = this.getNodeParameter('resource', 0) as string;
+			if (resource === 'label') {
+				const options = {
+					message: `Label name exists already`,
+					description: '',
+				};
+				throw new NodeApiError(this.getNode(), error, options);
+			}
 		}
 
 		if (error.code === 'EAUTH') {
@@ -113,7 +127,10 @@ export async function googleApiRequest(
 			throw new NodeApiError(this.getNode(), error, options);
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error, {
+			message: error.message,
+			description: error.description,
+		});
 	}
 }
 

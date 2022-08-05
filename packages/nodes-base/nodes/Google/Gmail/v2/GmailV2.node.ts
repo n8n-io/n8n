@@ -217,10 +217,15 @@ export class GmailV2 implements INodeType {
 					if (operation === 'create') {
 						//https://developers.google.com/gmail/api/v1/reference/users/labels/create
 						const labelName = this.getNodeParameter('name', i) as string;
-						const labelListVisibility = this.getNodeParameter('labelListVisibility', i) as string;
-						const messageListVisibility = this.getNodeParameter(
-							'messageListVisibility',
+						const labelListVisibility = this.getNodeParameter(
+							'options.labelListVisibility',
 							i,
+							'labelShow',
+						) as string;
+						const messageListVisibility = this.getNodeParameter(
+							'options.messageListVisibility',
+							i,
+							'show',
 						) as string;
 
 						const body = {

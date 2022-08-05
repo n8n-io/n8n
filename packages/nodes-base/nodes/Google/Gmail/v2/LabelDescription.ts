@@ -80,57 +80,58 @@ export const labelFields: INodeProperties[] = [
 		description: 'The ID of the label',
 	},
 	{
-		displayName: 'Label List Visibility',
-		name: 'labelListVisibility',
-		type: 'options',
-		options: [
-			{
-				name: 'Hide',
-				value: 'labelHide',
-			},
-			{
-				name: 'Show',
-				value: 'labelShow',
-			},
-			{
-				name: 'Show If Unread',
-				value: 'labelShowIfUnread',
-			},
-		],
-		default: 'labelShow',
-		required: true,
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				resource: ['label'],
 				operation: ['create'],
 			},
 		},
-		description: 'The visibility of the label in the label list in the Gmail web interface',
-	},
-	{
-		displayName: 'Message List Visibility',
-		name: 'messageListVisibility',
-		type: 'options',
+		default: {},
 		options: [
 			{
-				name: 'Hide',
-				value: 'hide',
+				displayName: 'Label List Visibility',
+				name: 'labelListVisibility',
+				type: 'options',
+				options: [
+					{
+						name: 'Hide',
+						value: 'labelHide',
+					},
+					{
+						name: 'Show',
+						value: 'labelShow',
+					},
+					{
+						name: 'Show If Unread',
+						value: 'labelShowIfUnread',
+					},
+				],
+				default: 'labelShow',
+				description: 'The visibility of the label in the label list in the Gmail web interface',
 			},
 			{
-				name: 'Show',
-				value: 'show',
+				displayName: 'Message List Visibility',
+				name: 'messageListVisibility',
+				type: 'options',
+				options: [
+					{
+						name: 'Hide',
+						value: 'hide',
+					},
+					{
+						name: 'Show',
+						value: 'show',
+					},
+				],
+				default: 'show',
+				description:
+					'The visibility of messages with this label in the message list in the Gmail web interface',
 			},
 		],
-		default: 'show',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['label'],
-				operation: ['create'],
-			},
-		},
-		description:
-			'The visibility of messages with this label in the message list in the Gmail web interface',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 label:getAll                               */
@@ -170,10 +171,11 @@ export const labelFields: INodeProperties[] = [
 	/*                      label:addLabel, removeLabel                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Operate On',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Add to a',
 		name: 'operateOn',
 		type: 'options',
-		default: 'threads',
+		default: 'messages',
 		required: true,
 		noDataExpression: true,
 		options: [
@@ -189,7 +191,32 @@ export const labelFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['label'],
-				operation: ['addLabels', 'removeLabels'],
+				operation: ['addLabels'],
+			},
+		},
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Remove from a',
+		name: 'operateOn',
+		type: 'options',
+		default: 'messages',
+		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Message',
+				value: 'messages',
+			},
+			{
+				name: 'Thread',
+				value: 'threads',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['label'],
+				operation: ['removeLabels'],
 			},
 		},
 	},
@@ -224,7 +251,7 @@ export const labelFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Label ID Names or IDs',
+		displayName: 'Label Names or IDs',
 		name: 'labelIds',
 		type: 'multiOptions',
 		typeOptions: {
