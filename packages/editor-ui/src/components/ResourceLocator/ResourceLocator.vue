@@ -17,7 +17,7 @@
 				filterable
 			>
 				<n8n-option
-					v-for="mode in parameter.modes"
+					v-for="mode in sortedModes"
 					:key="mode.name"
 					:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
 					:value="mode.name">
@@ -58,26 +58,18 @@
 					@focus="onFocus"
 					@blur="onBlur"
 				>
-					<div slot="suffix" :class="$style['expand-input-icon-container']">
-						<font-awesome-icon
-							v-if="!isReadOnly"
-							icon="expand-alt"
-							:class="[$style['edit-window-button'], 'clickable']"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="onEditIconClick"
-						/>
-					</div>
 				</n8n-input>
 			</DraggableTarget>
 			<parameter-issues v-if="resourceIssues" :issues="resourceIssues" />
 		</div>
-		<n8n-text
-			v-if="infoText"
-			size="small"
-			:class="$style['info-text']"
-		>
-				{{ infoText }}
-		</n8n-text>
+		<div :class="$style['info-text']">
+			<n8n-text
+				v-if="infoText"
+				size="small"
+			>
+					{{ infoText }}
+			</n8n-text>
+		</div>
 	</div>
 </template>
 
@@ -181,6 +173,19 @@ export default mixins().extend({
 		};
 	},
 	computed: {
+		sortedModes (): INodePropertyMode[] {
+			// Display modes in this order regardless of how they are set in node definition
+			const priorityQueue: string[] = ['list', 'id', 'url', 'custom'];
+			const sorted: INodePropertyMode[] = [];
+
+			for (const modeName of priorityQueue) {
+				const mode = this.findModeByName(modeName);
+				if (mode) {
+					sorted.push(mode);
+				}
+			}
+			return sorted;
+		},
 		inputPlaceholder (): string {
 			return this.currentMode.placeholder ? this.currentMode.placeholder : '';
 		},
@@ -267,9 +272,6 @@ export default mixins().extend({
 		onDrop(data: string) {
 			this.$emit('drop', data);
 		},
-		onEditIconClick (): void {
-			this.$emit('editIconClick');
-		},
 		onBlur (): void {
 			this.$emit('blur');
 		},
@@ -282,17 +284,17 @@ export default mixins().extend({
 
 <style lang="scss" module>
 .mode-selector {
-	flex-basis: 100px;
+	flex-basis: 92px;
 	--input-background-color: initial;
 
 	input {
 		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
 		border-right: none;
 		overflow: hidden;
-		text-overflow: ellipsis;
 
 		&:focus {
-			border-right: var(--color-secondary) var(--border-style-base) var(--border-width-base);
+			// border-right: var(--color-secondary) var(--border-style-base) var(--border-width-base);
+			border-right: none;
 		}
 	}
 }
@@ -323,7 +325,7 @@ export default mixins().extend({
 		.input-container {
 			display: flex;
 			align-items: center;
-			flex-basis: calc(100% - 100px);
+			flex-basis: calc(100% - 92px);
 			flex-grow: 1;
 		}
 	}
@@ -341,5 +343,9 @@ export default mixins().extend({
 
 .has-issues {
 	--input-border-color: var(--color-danger);
+}
+
+.info-text {
+	margin-top: var(--spacing-2xs);
 }
 </style>

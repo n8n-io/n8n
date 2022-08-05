@@ -116,7 +116,7 @@
 		height: var.$input-height;
 		line-height: var.$input-height;
 		outline: none;
-		padding: 0 var(--spacing-xs);
+		padding: 0 var(--spacing-xs) 0 var(--spacing-2xs);
 		transition: var.$border-transition-base;
 		width: 100%;
 
