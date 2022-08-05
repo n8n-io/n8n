@@ -1,20 +1,21 @@
-<template functional>
-	<component
-		:is="$options.components.ElMenu"
-		:defaultActive="props.defaultActive"
-		:collapse="props.collapse"
-		:router="props.router"
-		:class="$style[props.type + (props.light ? '-light' : '')]"
-		@select="(e) => listeners.select && listeners.select(e)"
+<template>
+	<el-menu
+		:defaultActive="defaultActive"
+		:collapse="collapse"
+		:router="router"
+		:class="['n8n-menu', $style[type + (light ? '-light' : '')]]"
+		v-on="$listeners"
 	>
 		<slot></slot>
-	</component>
+	</el-menu>
 </template>
 
 <script lang="ts">
 import ElMenu from 'element-ui/lib/menu';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-menu',
 	props: {
 		type: {
@@ -38,7 +39,7 @@ export default {
 	components: {
 		ElMenu,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

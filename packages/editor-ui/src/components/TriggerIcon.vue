@@ -1,4 +1,4 @@
-<template functional>
+<template>
 	<span :class="$style.trigger">
 		<svg width="36px" height="36px" viewBox="0 0 36 36" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 				<title>Trigger node</title>

@@ -43,6 +43,8 @@ workflowsController.post(
 
 		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
 
+		WorkflowHelpers.addNodeIds(newWorkflow);
+
 		let savedWorkflow: undefined | WorkflowEntity;
 
 		await Db.transaction(async (transactionManager) => {
@@ -69,7 +71,7 @@ workflowsController.post(
 			throw new ResponseHelper.ResponseError('Failed to save workflow');
 		}
 
-		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
+		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
 			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
 			});

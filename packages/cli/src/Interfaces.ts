@@ -144,7 +144,7 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
-	tags: ITagDb[];
+	tags?: ITagDb[];
 }
 
 export interface IWorkflowToImport extends IWorkflowBase {
