@@ -1,5 +1,5 @@
 <template>
-	<div :class="['n8n-pulse', $style.pulseContainer]">
+	<div :class="['pulse', $style.pulseContainer]">
 		<div :class="$style.pulse">
 			<div :class="$style.pulse2">
 				<slot></slot>
