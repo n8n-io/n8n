@@ -19,7 +19,11 @@ export class AddNodeIds1658932910559 implements MigrationInterface {
 		// @ts-ignore
 		await runChunked(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
-				const nodes = workflow.nodes;
+				let nodes = workflow.nodes;
+				if (typeof nodes === 'string') {
+					nodes = JSON.parse(nodes);
+				}
+
 				// @ts-ignore
 				nodes.forEach((node) => {
 					if (!node.id) {
