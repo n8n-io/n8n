@@ -5,10 +5,12 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	LoggerProxy as Logger,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
+import { apiRequestAllItems, downloadRecordAttachments, IRecord } from './GenericFunctions';
 
 import moment from 'moment';
 
@@ -159,7 +161,24 @@ export class AirtableTrigger implements INodeType {
 			qs.maxRecords = 1;
 		}
 
-		const { records } = await apiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+		let records: IRecord[] = [];
+		try {
+			records = (await apiRequestAllItems.call(this, 'GET', endpoint, {}, qs)).records || [];
+		} catch (error) {
+			if (this.getMode() === 'manual' || !webhookData.lastTimeChecked) {
+				throw error;
+			}
+			const workflow = this.getWorkflow();
+			const node = this.getNode();
+			Logger.error(
+				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${error.description}'`,
+				{
+					node: node.name,
+					workflowId: workflow.id,
+					error,
+				},
+			);
+		}
 
 		webhookData.lastTimeChecked = endDate;
 
@@ -176,7 +195,7 @@ export class AirtableTrigger implements INodeType {
 				return [data];
 			}
 
-			return [this.helpers.returnJsonArray(records)];
+			return [this.helpers.returnJsonArray(records as unknown as IDataObject)];
 		}
 
 		return null;
