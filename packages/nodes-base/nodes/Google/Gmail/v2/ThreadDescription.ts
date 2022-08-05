@@ -182,26 +182,19 @@ export const threadFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Extra to Recipients',
-				name: 'sendTo',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						'/operation': ['reply'],
-					},
-				},
-				placeholder: 'info@example.com',
-				description:
-					"These emails would be sent along with the original sender's email. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.",
-			},
-			{
 				displayName: 'Override Sender Name',
 				name: 'senderName',
 				type: 'string',
 				placeholder: '',
 				default: '',
 				description: 'The name displayed in your contacts inboxes',
+			},
+			{
+				displayName: 'Reply to Sender Only',
+				name: 'replyToSenderOnly',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to reply to the sender only or to the entire list of recipients',
 			},
 		],
 	},

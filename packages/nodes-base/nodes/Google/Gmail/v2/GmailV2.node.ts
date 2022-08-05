@@ -400,19 +400,6 @@ export class GmailV2 implements INodeType {
 							qs,
 						);
 
-						let to;
-						for (const header of payload.headers as IDataObject[]) {
-							if (header.name === 'From') {
-								to = `<${extractEmail(header.value as string)}>,`;
-								break;
-							}
-						}
-
-						if (options.sendTo) {
-							const sendTo = options.sendTo as string;
-							to += prepareEmailsInput.call(this, sendTo, 'To', i);
-						}
-
 						const subject =
 							payload.headers.filter(
 								(data: { [key: string]: string }) => data.name === 'Subject',
@@ -425,13 +412,43 @@ export class GmailV2 implements INodeType {
 								(data: { [key: string]: string }) => data.name === 'Message-Id',
 							)[0]?.value || '';
 
+						const { emailAddress } = await googleApiRequest.call(
+							this,
+							'GET',
+							'/gmail/v1/users/me/profile',
+						);
+
+						let to = '';
+						const replyToSenderOnly =
+							options.replyToSenderOnly === undefined
+								? false
+								: (options.replyToSenderOnly as boolean);
+
+						for (const header of payload.headers as IDataObject[]) {
+							if (header.name === 'From') {
+								const from = header.value as string;
+								if (from.includes('<') && from.includes('>')) {
+									to += `${from}, `;
+								} else {
+									to += `<${from}>, `;
+								}
+							}
+
+							if (header.name === 'To' && !replyToSenderOnly) {
+								const toEmails = header.value as string;
+								toEmails.split(',').forEach((email: string) => {
+									if (email.includes(emailAddress)) return;
+									if (email.includes('<') && email.includes('>')) {
+										to += `${email}, `;
+									} else {
+										to += `<${email}>, `;
+									}
+								});
+							}
+						}
+
 						let from = '';
 						if (options.senderName) {
-							const { emailAddress } = await googleApiRequest.call(
-								this,
-								'GET',
-								'/gmail/v1/users/me/profile',
-							);
 							from = `${options.senderName as string} <${emailAddress}>`;
 						}
 
@@ -942,19 +959,6 @@ export class GmailV2 implements INodeType {
 							qs,
 						);
 
-						let to;
-						for (const header of payload.headers as IDataObject[]) {
-							if (header.name === 'From') {
-								to = `<${extractEmail(header.value as string)}>,`;
-								break;
-							}
-						}
-
-						if (options.sendTo) {
-							const sendTo = options.sendTo as string;
-							to += prepareEmailsInput.call(this, sendTo, 'To', i);
-						}
-
 						const subject =
 							payload.headers.filter(
 								(data: { [key: string]: string }) => data.name === 'Subject',
@@ -967,13 +971,43 @@ export class GmailV2 implements INodeType {
 								(data: { [key: string]: string }) => data.name === 'Message-Id',
 							)[0]?.value || '';
 
+						const { emailAddress } = await googleApiRequest.call(
+							this,
+							'GET',
+							'/gmail/v1/users/me/profile',
+						);
+
+						let to = '';
+						const replyToSenderOnly =
+							options.replyToSenderOnly === undefined
+								? false
+								: (options.replyToSenderOnly as boolean);
+
+						for (const header of payload.headers as IDataObject[]) {
+							if (header.name === 'From') {
+								const from = header.value as string;
+								if (from.includes('<') && from.includes('>')) {
+									to += `${from}, `;
+								} else {
+									to += `<${from}>, `;
+								}
+							}
+
+							if (header.name === 'To' && !replyToSenderOnly) {
+								const toEmails = header.value as string;
+								toEmails.split(',').forEach((email: string) => {
+									if (email.includes(emailAddress)) return;
+									if (email.includes('<') && email.includes('>')) {
+										to += `${email}, `;
+									} else {
+										to += `<${email}>, `;
+									}
+								});
+							}
+						}
+
 						let from = '';
 						if (options.senderName) {
-							const { emailAddress } = await googleApiRequest.call(
-								this,
-								'GET',
-								'/gmail/v1/users/me/profile',
-							);
 							from = `${options.senderName as string} <${emailAddress}>`;
 						}
 
