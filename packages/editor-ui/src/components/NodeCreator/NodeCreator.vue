@@ -44,31 +44,16 @@ export default Vue.extend({
 	],
 	data() {
 		return {
-			allNodeTypes: [],
+			allLatestNodeTypes: [] as INodeTypeDescription[],
 		};
 	},
 	computed: {
 		...mapGetters('users', ['personalizedNodeTypes']),
 		nodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters['nodeTypes/allNodeTypes'];
+			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.allNodeTypes
-				.filter((nodeType: INodeTypeDescription) => {
-					return !HIDDEN_NODES.includes(nodeType.name);
-				}).reduce((accumulator: INodeTypeDescription[], currentValue: INodeTypeDescription) => {
-					// keep only latest version of the nodes
-					// accumulator starts as an empty array.
-					const exists = accumulator.findIndex(nodes => nodes.name === currentValue.name);
-					if (exists >= 0 && accumulator[exists].version < currentValue.version) {
-						// This must be a versioned node and we've found a newer version.
-						// Replace the previous one with this one.
-						accumulator[exists] = currentValue;
-					} else {
-						accumulator.push(currentValue);
-					}
-					return accumulator;
-				}, []);
+			return this.allLatestNodeTypes.filter((nodeType) => !HIDDEN_NODES.includes(nodeType.name));
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);
@@ -125,8 +110,8 @@ export default Vue.extend({
 	},
 	watch: {
 		nodeTypes(newList) {
-			if (newList.length !== this.allNodeTypes.length) {
-				this.allNodeTypes = newList;
+			if (newList.length !== this.allLatestNodeTypes.length) {
+				this.allLatestNodeTypes = newList;
 			}
 		},
 	},

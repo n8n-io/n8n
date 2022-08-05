@@ -1,7 +1,7 @@
 <template>
 	<el-checkbox
 		v-bind="$props"
-		:class="$style.n8nCheckbox"
+		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
 		:indeterminate="indeterminate"
 		:value="value"

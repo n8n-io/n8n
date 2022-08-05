@@ -823,6 +823,7 @@ export interface INodeCredentials {
 }
 
 export interface INode {
+	id: string;
 	name: string;
 	typeVersion: number;
 	type: string;
@@ -877,10 +878,6 @@ export interface INodeExecutionData {
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
-}
-
-export interface INodeExecutionPairedData extends INodeExecutionData {
-	pairedItem: IPairedItemData | IPairedItemData[] | number;
 }
 
 export interface INodeExecuteFunctions {
@@ -1010,7 +1007,7 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(
 		this: IExecuteFunctions,
-	): Promise<INodeExecutionData[][] | INodeExecutionPairedData[][] | null>;
+	): Promise<INodeExecutionData[][] | INodeExecutionMetaData[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
@@ -1116,6 +1113,7 @@ export type PostReceiveAction =
 			response: IN8nHttpFullResponse,
 	  ) => Promise<INodeExecutionData[]>)
 	| IPostReceiveBinaryData
+	| IPostReceiveLimit
 	| IPostReceiveRootProperty
 	| IPostReceiveSet
 	| IPostReceiveSetKeyValue
@@ -1153,6 +1151,13 @@ export interface IPostReceiveBinaryData extends IPostReceiveBase {
 	type: 'binaryData';
 	properties: {
 		destinationProperty: string;
+	};
+}
+
+export interface IPostReceiveLimit extends IPostReceiveBase {
+	type: 'limit';
+	properties: {
+		maxResults: number | string;
 	};
 }
 
@@ -1548,6 +1553,7 @@ export interface INoteGraphItem {
 }
 
 export interface INodeGraphItem {
+	id: string;
 	type: string;
 	resource?: string;
 	operation?: string;
@@ -1559,6 +1565,8 @@ export interface INodeGraphItem {
 	credential_type?: string; // HTTP Request node v2
 	credential_set?: boolean; // HTTP Request node v2
 	method?: string; // HTTP Request node v2
+	src_node_id?: string;
+	src_instance_id?: string;
 }
 
 export interface INodeNameIndex {
@@ -1621,3 +1629,7 @@ export type PublicInstalledNode = {
 	latestVersion: string;
 	package: PublicInstalledPackage;
 };
+
+export interface INodeExecutionMetaData extends INodeExecutionData {
+	pairedItem: IPairedItemData | IPairedItemData[];
+}
