@@ -3,7 +3,8 @@ import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeExecutionPairedData,
+	INodeExecutionData,
+	INodeExecutionMetaData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -104,11 +105,11 @@ export class DeepL implements INodeType {
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionPairedData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionMetaData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const responseData: INodeExecutionPairedData[] = [];
+		const responseData: INodeExecutionMetaData[] = [];
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -130,19 +131,27 @@ export class DeepL implements INodeType {
 
 						const { translations } = await deepLApiRequest.call(this, 'GET', '/translate', body);
 						const [translation] = translations;
-						responseData.push(
-							...this.helpers.preparePairedJsonOutputData({ item: i }, translation),
+						const translationJsonArray = this.helpers.returnJsonArray(translation);
+						const executionData = this.helpers.constructExecutionMetaData(
+							{ item: i },
+							translationJsonArray,
 						);
+						responseData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					responseData.push(
-						...this.helpers.preparePairedJsonOutputData(
-							{ item: i },
-							{ $error: error, $json: this.getInputData(i) },
-						),
+					const errorData = this.helpers.returnJsonArray({
+						$error: error,
+						$json: this.getInputData(i),
+						json: {},
+						itemIndex: i,
+					});
+					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						errorData,
 					);
+					responseData.push(...exectionErrorWithMetaData);
 					continue;
 				}
 				throw error;
