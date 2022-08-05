@@ -293,7 +293,6 @@ export default mixins().extend({
 		overflow: hidden;
 
 		&:focus {
-			// border-right: var(--color-secondary) var(--border-style-base) var(--border-width-base);
 			border-right: none;
 		}
 	}
