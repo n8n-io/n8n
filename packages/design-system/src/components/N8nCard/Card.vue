@@ -1,5 +1,5 @@
 <template>
-	<div :class="['n8n-card', $style.card]" v-on="$listeners">
+	<div :class="['card', $style.card]" v-on="$listeners">
 		<div :class="$style.header" v-if="$slots.header">
 			<slot name="header" />
 		</div>
