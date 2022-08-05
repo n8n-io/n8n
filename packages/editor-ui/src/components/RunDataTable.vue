@@ -55,8 +55,8 @@
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
-						<!-- <span v-if="isSimple()">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span> -->
-						<n8n-tree :input="data" />
+						<span v-if="isSimple(data)">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
+						<n8n-tree path="$json" :input="data" />
 					</td>
 				</tr>
 			</tbody>
@@ -167,6 +167,9 @@ export default Vue.extend({
 				});
 			}, 1000); // ensure dest data gets set if drop
 		},
+		isSimple(data: unknown): boolean {
+			return typeof data !== 'object';
+		},
 	},
 	watch: {
 		focusedMappableInput (curr: boolean) {
@@ -206,15 +209,14 @@ export default Vue.extend({
 		border-left: var(--border-base);
 		position: sticky;
 		top: 0;
-		max-width: 300px;
 	}
 
 	td {
+		vertical-align: top;
 		padding: var(--spacing-2xs);
 		border-bottom: var(--border-base);
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
-		max-width: 300px;
 		white-space: pre-wrap;
 	}
 
