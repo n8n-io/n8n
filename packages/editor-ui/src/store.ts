@@ -220,7 +220,11 @@ export const store = new Vuex.Store({
 				Vue.set(state.workflow, 'pinData', {});
 			}
 
-			const storedPinData = toStoredPinData(payload.data);
+			if (!Array.isArray(payload.data)) {
+				payload.data = [payload.data];
+			}
+
+			const storedPinData = payload.data.map(item => isJsonKeyObject(item) ? item : { json: item });
 
 			Vue.set(state.workflow.pinData!, payload.node.name, storedPinData);
 			state.stateIsDirty = true;
@@ -980,15 +984,3 @@ export const store = new Vuex.Store({
 		},
 	},
 });
-
-// @TODO: Mapping logic, defaulting to `0` for now
-function toStoredPinData(payload: INodeExecutionData[] | INodeExecutionData) {
-	if (!Array.isArray(payload)) payload = [payload];
-
-	return payload.map(item => {
-		if (isJsonKeyObject(item) && item.pairedItem) return item;
-		if (isJsonKeyObject(item) && !item.pairedItem) return { ...item, pairedItem: 0 };
-
-		return { json: item, pairedItem: 0 };
-	});
-}
