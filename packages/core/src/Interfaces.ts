@@ -17,6 +17,7 @@ import {
 	INodeType,
 	IOAuth2Options,
 	IPairedItemData,
+	IPairedItemData,
 	IPollFunctions as IPollFunctionsBase,
 	IPollResponse,
 	ITriggerFunctions as ITriggerFunctionsBase,
