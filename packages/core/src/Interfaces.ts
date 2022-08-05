@@ -13,7 +13,7 @@ import {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
-	INodeExecutionPairedData,
+	INodeExecutionMetaData,
 	INodeType,
 	IOAuth2Options,
 	IPairedItemData,
@@ -71,14 +71,10 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
 		): Promise<any>;
-		preparePairedJsonOutputData(
-			setPairedItemData: IPairedItemData,
-			jsonData: IDataObject | IDataObject[],
-		): INodeExecutionPairedData[];
-		preparePairedBinaryOutputData(
-			setPairedItemData: IPairedItemData,
-			binaryData: IBinaryKeyData | IBinaryKeyData[],
-		): INodeExecutionPairedData[];
+		constructExecutionMetaData(
+			itemData: IPairedItemData,
+			inputData: INodeExecutionData[],
+		): INodeExecutionMetaData[];
 	};
 }
 
