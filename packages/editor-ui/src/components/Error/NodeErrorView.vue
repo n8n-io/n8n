@@ -129,7 +129,7 @@ export default mixins(
 			if (!node) {
 				return [];
 			}
-			const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+			const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 
 			if (nodeType === null) {
 				return [];

@@ -1,7 +1,4 @@
-import {
-	INodeProperties,
-	INodePropertyOptions,
-} from 'n8n-workflow';
+import { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 export const resource = {
 	name: 'Entry',
@@ -16,9 +13,7 @@ export const operations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
+				resource: [resource.value],
 			},
 		},
 		options: [
@@ -42,17 +37,13 @@ export const fields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
+				resource: [resource.value],
+				operation: ['get', 'getAll'],
 			},
 		},
 		default: 'master',
-		description: 'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
+		description:
+			'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
 		displayName: 'Return All',
@@ -60,12 +51,8 @@ export const fields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					resource.value,
-				],
+				operation: ['getAll'],
+				resource: [resource.value],
 			},
 		},
 		default: false,
@@ -77,15 +64,9 @@ export const fields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					resource.value,
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: [resource.value],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -103,12 +84,8 @@ export const fields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'getAll',
-				],
+				resource: [resource.value],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -125,7 +102,8 @@ export const fields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'fields.title=n8n',
-				description: 'Search for all data that matches the condition: {attribute}={value}. Attribute can use dot notation.',
+				description:
+					'Search for all data that matches the condition: {attribute}={value}. Attribute can use dot notation.',
 			},
 			{
 				displayName: 'Exclude',
@@ -133,7 +111,8 @@ export const fields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'fields.tags[nin]=accessories,flowers',
-				description: 'Search for all data that matches the condition: {attribute}[nin]={value}. Attribute can use dot notation.',
+				description:
+					'Search for all data that matches the condition: {attribute}[nin]={value}. Attribute can use dot notation.',
 			},
 			{
 				displayName: 'Exist',
@@ -141,7 +120,8 @@ export const fields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'fields.tags[exists]=true',
-				description: 'Search for all data that matches the condition: {attribute}[exists]={value}. Attribute can use dot notation.',
+				description:
+					'Search for all data that matches the condition: {attribute}[exists]={value}. Attribute can use dot notation.',
 			},
 			{
 				displayName: 'Fields',
@@ -149,7 +129,8 @@ export const fields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'fields.title',
 				default: '',
-				description: 'The select operator allows you to choose what fields to return from an entity. You can choose multiple values by combining comma-separated operators.',
+				description:
+					'The select operator allows you to choose what fields to return from an entity. You can choose multiple values by combining comma-separated operators.',
 			},
 			{
 				displayName: 'Include',
@@ -157,7 +138,8 @@ export const fields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'fields.tags[in]=accessories,flowers',
-				description: 'Search for all data that matches the condition: {attribute}[in]={value}. Attribute can use dot notation.',
+				description:
+					'Search for all data that matches the condition: {attribute}[in]={value}. Attribute can use dot notation.',
 			},
 			{
 				displayName: 'Not Equal',
@@ -165,7 +147,8 @@ export const fields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'fields.title[ne]=n8n',
-				description: 'Search for all data that matches the condition: {attribute}[ne]={value}. Attribute can use dot notation.',
+				description:
+					'Search for all data that matches the condition: {attribute}[ne]={value}. Attribute can use dot notation.',
 			},
 			{
 				displayName: 'Order',
@@ -173,14 +156,16 @@ export const fields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'sys.createdAt',
-				description: 'You can order items in the response by specifying the order search parameter. You can use sys properties (such as sys.createdAt) or field values (such as fields.myCustomDateField) for ordering.',
+				description:
+					'You can order items in the response by specifying the order search parameter. You can use sys properties (such as sys.createdAt) or field values (such as fields.myCustomDateField) for ordering.',
 			},
 			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
+				description:
+					'Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
 			},
 			{
 				displayName: 'RAW Data',
@@ -199,12 +184,8 @@ export const fields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-				],
+				resource: [resource.value],
+				operation: ['get'],
 			},
 		},
 	},
