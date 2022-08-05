@@ -59,12 +59,8 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
-	INodeExecutionPairedData,
-	IBinaryKeyData,
+	INodeExecutionMetaData,
 	IPairedItemData,
-	PrepairOptions,
-	JsonExecutionData,
-	BinaryExecutionData,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1307,7 +1303,7 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 		jsonData = [jsonData];
 	}
 
-	jsonData.forEach((data) => {
+	jsonData.forEach((data: IDataObject) => {
 		returnData.push({ json: data });
 	});
 
@@ -1317,33 +1313,23 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
  * @export
- * @param {(IPairedItemData)} setPairedItemData
- * @param {(IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[])} inputData
- * @param {(PrepairOptions)} options
- * @returns {(INodeExecutionPairedData[])}
+ * @param {(IPairedItemData)} itemData
+ * @param {(INodeExecutionData[])} inputData
+ * @returns {(INodeExecutionMetaData[])}
  */
-export function preparePairedOutputData(
-	setPairedItemData: IPairedItemData,
-	inputData: IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[],
-	options?: PrepairOptions,
-): INodeExecutionPairedData[] {
-	if (!Array.isArray(inputData)) {
-		inputData = [inputData];
-	}
-	const { setBinaryData = false } = options || {};
-	const pairedItem: IPairedItemData = { ...setPairedItemData };
+export function constructExecutionMetaData(
+	itemData: IPairedItemData | IPairedItemData[],
+	inputData: INodeExecutionData[],
+): INodeExecutionMetaData[] {
+	const pairedItem = itemData;
 
-	return inputData.map((data) => {
-		const { json = {} } = data as JsonExecutionData;
-
-		const executionPairedData = { json, pairedItem } as INodeExecutionPairedData;
-
-		if (setBinaryData) {
-			const { binary } = data as BinaryExecutionData;
-			Object.assign(executionPairedData, { binary });
+	return inputData.map((data: INodeExecutionData) => {
+		const { json, binary } = data;
+		const metaData = { json, pairedItem } as INodeExecutionMetaData;
+		if (binary !== undefined) {
+			Object.assign(metaData, { binary });
 		}
-
-		return executionPairedData;
+		return metaData;
 	});
 }
 
@@ -2447,7 +2433,7 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
-				preparePairedOutputData,
+				constructExecutionMetaData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);

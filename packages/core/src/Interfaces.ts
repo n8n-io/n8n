@@ -3,7 +3,6 @@ import {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IBinaryData,
-	IBinaryKeyData,
 	ICredentialTestFunctions as ICredentialTestFunctionsBase,
 	ICredentialType,
 	IDataObject,
@@ -13,7 +12,7 @@ import {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
-	INodeExecutionPairedData,
+	INodeExecutionMetaData,
 	INodeType,
 	IOAuth2Options,
 	IPairedItemData,
@@ -23,7 +22,6 @@ import {
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	PrepairOptions,
 } from 'n8n-workflow';
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -72,11 +70,10 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
 		): Promise<any>;
-		preparePairedOutputData(
-			setPairedItemData: IPairedItemData,
-			inputData: IDataObject | IDataObject[] | IBinaryKeyData | IBinaryKeyData[],
-			options?: PrepairOptions,
-		): INodeExecutionPairedData[];
+		constructExecutionMetaData(
+			itemData: IPairedItemData,
+			inputData: INodeExecutionData[],
+		): INodeExecutionMetaData[];
 	};
 }
 
