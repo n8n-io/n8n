@@ -12,8 +12,10 @@ import {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
+	INodeExecutionMetaData,
 	INodeType,
 	IOAuth2Options,
+	IPairedItemData,
 	IPollFunctions as IPollFunctionsBase,
 	IPollResponse,
 	ITriggerFunctions as ITriggerFunctionsBase,
@@ -68,6 +70,10 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			credentialsType: string,
 			requestOptions: IHttpRequestOptions,
 		): Promise<any>;
+		constructExecutionMetaData(
+			itemData: IPairedItemData,
+			inputData: INodeExecutionData[],
+		): INodeExecutionMetaData[];
 	};
 }
 

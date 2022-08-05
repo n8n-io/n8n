@@ -1005,7 +1005,9 @@ export interface ITriggerResponse {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
+	execute?(
+		this: IExecuteFunctions,
+	): Promise<INodeExecutionData[][] | INodeExecutionMetaData[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
@@ -1627,3 +1629,7 @@ export type PublicInstalledNode = {
 	latestVersion: string;
 	package: PublicInstalledPackage;
 };
+
+export interface INodeExecutionMetaData extends INodeExecutionData {
+	pairedItem: IPairedItemData | IPairedItemData[];
+}
