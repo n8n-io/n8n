@@ -51,7 +51,6 @@ import {
 	N8nButton,
 	N8nElButton,
 	N8nCallout,
-	N8nPanelCallout,
 	N8nCard,
 	N8nIcon,
 	N8nIconButton,
@@ -65,6 +64,7 @@ import {
 	N8nMarkdown,
 	N8nMenu,
 	N8nMenuItem,
+	N8nNodeIcon,
 	N8nNotice,
 	N8nOption,
 	N8nRadioButtons,
@@ -93,7 +93,6 @@ Vue.component('n8n-avatar', N8nAvatar);
 Vue.component('n8n-button', N8nButton);
 Vue.component('el-button', N8nElButton);
 Vue.component('n8n-callout', N8nCallout);
-Vue.component('n8n-panel-callout', N8nPanelCallout);
 Vue.component('n8n-card', N8nCard);
 Vue.component('n8n-form-box', N8nFormBox);
 Vue.component('n8n-form-inputs', N8nFormInputs);
@@ -109,6 +108,7 @@ Vue.component('n8n-link', N8nLink);
 Vue.component('n8n-markdown', N8nMarkdown);
 Vue.component('n8n-menu', N8nMenu);
 Vue.component('n8n-menu-item', N8nMenuItem);
+Vue.component('n8n-node-icon', N8nNodeIcon);
 Vue.component('n8n-notice', N8nNotice);
 Vue.component('n8n-option', N8nOption);
 Vue.component('n8n-pulse', N8nPulse);

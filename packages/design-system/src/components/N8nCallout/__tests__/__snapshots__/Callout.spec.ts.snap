@@ -1,78 +1,79 @@
 // Vitest Snapshot v1
 
-exports[`components > N8NCallout > content > should pass props to text component correctly 1`] = `
-"<div role=\\"alert\\" class=\\"_callout_a6gr6_1 _warning_a6gr6_16\\" bold=\\"true\\" align=\\"center\\" tag=\\"p\\">
-  <div class=\\"_icon_a6gr6_34\\">
-    <n8n-icon-stub icon=\\"exclamation-triangle\\" size=\\"large\\" bold=\\"true\\" align=\\"center\\" tag=\\"p\\"></n8n-icon-stub>
+exports[`components > N8nCallout > should render additional slots correctly 1`] = `
+"<div role=\\"alert\\" class=\\"_callout_p74de_1 _custom_p74de_16\\">
+  <div class=\\"_message-section_p74de_12\\">
+    <div class=\\"_icon_p74de_40\\">
+      <n8n-icon-stub icon=\\"code-branch\\" size=\\"large\\"></n8n-icon-stub>
+    </div>
+    <n8n-text-stub size=\\"small\\" tag=\\"span\\">This is a secondary callout.</n8n-text-stub>&nbsp; <n8n-link-stub size=\\"small\\">Do something!</n8n-link-stub>
   </div>
-  <div>
-    <n8n-text-stub bold=\\"true\\" size=\\"small\\" align=\\"center\\" tag=\\"p\\"><span>This is a callout.</span></n8n-text-stub>
+  <n8n-link-stub theme=\\"secondary\\" size=\\"small\\" bold=\\"true\\" underline=\\"true\\" to=\\"https://n8n.io\\">Learn more</n8n-link-stub>
+</div>"
+`;
+
+exports[`components > N8nCallout > should render custom theme correctly 1`] = `
+"<div role=\\"alert\\" class=\\"_callout_p74de_1 _custom_p74de_16\\">
+  <div class=\\"_message-section_p74de_12\\">
+    <div class=\\"_icon_p74de_40\\">
+      <n8n-icon-stub icon=\\"code-branch\\" size=\\"large\\"></n8n-icon-stub>
+    </div>
+    <n8n-text-stub size=\\"small\\" tag=\\"span\\">This is a secondary callout.</n8n-text-stub>&nbsp;
   </div>
 </div>"
 `;
 
-exports[`components > N8NCallout > content > should render custom HTML content correctly 1`] = `
-"<div role=\\"alert\\" class=\\"_callout_a6gr6_1 _custom_a6gr6_10\\">
-  <div class=\\"_icon_a6gr6_34\\">
-    <n8n-icon-stub icon=\\"code\\" size=\\"large\\"></n8n-icon-stub>
-  </div>
-  <div>
-    <n8n-text-stub size=\\"small\\" tag=\\"span\\"><span>This is an HTML callout. <a href=\\"#\\" target=\\"_blank\\"><b>Read more</b></a></span></n8n-text-stub>
-  </div>
-</div>"
-`;
-
-exports[`components > N8NCallout > props > should render custom theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"_callout_a6gr6_1 _custom_a6gr6_10\\">
-  <div class=\\"_icon_a6gr6_34\\">
-    <n8n-icon-stub icon=\\"code\\" size=\\"large\\"></n8n-icon-stub>
-  </div>
-  <div>
-    <n8n-text-stub size=\\"small\\" tag=\\"span\\"><span>This is an custom callout.</span></n8n-text-stub>
+exports[`components > N8nCallout > should render danger theme correctly 1`] = `
+"<div role=\\"alert\\" class=\\"_callout_p74de_1 _danger_p74de_34\\">
+  <div class=\\"_message-section_p74de_12\\">
+    <div class=\\"_icon_p74de_40\\">
+      <n8n-icon-stub icon=\\"times-circle\\" size=\\"large\\"></n8n-icon-stub>
+    </div>
+    <n8n-text-stub size=\\"small\\" tag=\\"span\\">This is a danger callout.</n8n-text-stub>&nbsp;
   </div>
 </div>"
 `;
 
-exports[`components > N8NCallout > props > should render danger theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"_callout_a6gr6_1 _danger_a6gr6_28\\">
-  <div class=\\"_icon_a6gr6_34\\">
-    <n8n-icon-stub icon=\\"times-circle\\" size=\\"large\\"></n8n-icon-stub>
-  </div>
-  <div>
-    <n8n-text-stub size=\\"small\\" tag=\\"span\\"><span>This is an danger callout.</span></n8n-text-stub>
-  </div>
-</div>"
-`;
-
-exports[`components > N8NCallout > props > should render info theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"_callout_a6gr6_1 _info_a6gr6_10\\">
-  <div class=\\"_icon_a6gr6_34\\">
-    <n8n-icon-stub icon=\\"info-circle\\" size=\\"large\\"></n8n-icon-stub>
-  </div>
-  <div>
-    <n8n-text-stub size=\\"small\\" tag=\\"span\\"><span>This is an info callout.</span></n8n-text-stub>
+exports[`components > N8nCallout > should render info theme correctly 1`] = `
+"<div role=\\"alert\\" class=\\"_callout_p74de_1 _info_p74de_16\\">
+  <div class=\\"_message-section_p74de_12\\">
+    <div class=\\"_icon_p74de_40\\">
+      <n8n-icon-stub icon=\\"info-circle\\" size=\\"large\\"></n8n-icon-stub>
+    </div>
+    <n8n-text-stub size=\\"small\\" tag=\\"span\\">This is an info callout.</n8n-text-stub>&nbsp;
   </div>
 </div>"
 `;
 
-exports[`components > N8NCallout > props > should render success theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"_callout_a6gr6_1 _success_a6gr6_22\\">
-  <div class=\\"_icon_a6gr6_34\\">
-    <n8n-icon-stub icon=\\"check-circle\\" size=\\"large\\"></n8n-icon-stub>
-  </div>
-  <div>
-    <n8n-text-stub size=\\"small\\" tag=\\"span\\"><span>This is an success callout.</span></n8n-text-stub>
+exports[`components > N8nCallout > should render secondary theme correctly 1`] = `
+"<div role=\\"alert\\" class=\\"_callout_p74de_1 _secondary_p74de_44\\">
+  <div class=\\"_message-section_p74de_12\\">
+    <div class=\\"_icon_p74de_40\\">
+      <n8n-icon-stub icon=\\"info-circle\\" size=\\"medium\\"></n8n-icon-stub>
+    </div>
+    <n8n-text-stub size=\\"small\\" tag=\\"span\\">This is a secondary callout.</n8n-text-stub>&nbsp;
   </div>
 </div>"
 `;
 
-exports[`components > N8NCallout > props > should render warning theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"_callout_a6gr6_1 _warning_a6gr6_16\\">
-  <div class=\\"_icon_a6gr6_34\\">
-    <n8n-icon-stub icon=\\"exclamation-triangle\\" size=\\"large\\"></n8n-icon-stub>
+exports[`components > N8nCallout > should render success theme correctly 1`] = `
+"<div role=\\"alert\\" class=\\"_callout_p74de_1 _success_p74de_28\\">
+  <div class=\\"_message-section_p74de_12\\">
+    <div class=\\"_icon_p74de_40\\">
+      <n8n-icon-stub icon=\\"check-circle\\" size=\\"large\\"></n8n-icon-stub>
+    </div>
+    <n8n-text-stub size=\\"small\\" tag=\\"span\\">This is a success callout.</n8n-text-stub>&nbsp;
   </div>
-  <div>
-    <n8n-text-stub size=\\"small\\" tag=\\"span\\"><span>This is an warning callout.</span></n8n-text-stub>
+</div>"
+`;
+
+exports[`components > N8nCallout > should render warning theme correctly 1`] = `
+"<div role=\\"alert\\" class=\\"_callout_p74de_1 _warning_p74de_22\\">
+  <div class=\\"_message-section_p74de_12\\">
+    <div class=\\"_icon_p74de_40\\">
+      <n8n-icon-stub icon=\\"exclamation-triangle\\" size=\\"large\\"></n8n-icon-stub>
+    </div>
+    <n8n-text-stub size=\\"small\\" tag=\\"span\\">This is a warning callout.</n8n-text-stub>&nbsp;
   </div>
 </div>"
 `;

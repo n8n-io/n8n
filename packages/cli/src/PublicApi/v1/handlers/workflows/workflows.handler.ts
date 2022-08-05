@@ -7,7 +7,7 @@ import config = require('../../../../../config');
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
 import { InternalHooksManager } from '../../../../InternalHooksManager';
 import { externalHooks } from '../../../../Server';
-import { replaceInvalidCredentials } from '../../../../WorkflowHelpers';
+import { addNodeIds, replaceInvalidCredentials } from '../../../../WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
@@ -41,6 +41,8 @@ export = {
 			}
 
 			await replaceInvalidCredentials(workflow);
+
+			addNodeIds(workflow);
 
 			const role = await getWorkflowOwnerRole();
 
@@ -186,6 +188,7 @@ export = {
 			}
 
 			await replaceInvalidCredentials(updateData);
+			addNodeIds(updateData);
 
 			const workflowRunner = ActiveWorkflowRunner.getInstance();
 

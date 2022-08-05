@@ -4,14 +4,25 @@
 			<n8n-heading size="xlarge" align="center">{{ heading }}</n8n-heading>
 		</div>
 		<div :class="$style.description" @click="$emit('descriptionClick', $event)">
-			<n8n-text color="text-base"><span v-html="description"></span></n8n-text>
+			<n8n-text color="text-base">
+				<span v-html="description"></span>
+			</n8n-text>
 		</div>
 		<n8n-button v-if="buttonText" :label="buttonText" size="large"
 			@click="$emit('click', $event)"
 		/>
-		<n8n-callout v-if="calloutText"
-			:theme="calloutTheme" :message="calloutText" :icon="props.calloutIcon"
-		/>
+		<n8n-callout
+			v-if="calloutText"
+			:theme="calloutTheme"
+			:icon="calloutIcon"
+			:class="$style.callout"
+		>
+			<template>
+				<n8n-text color="text-base">
+					<span size="small" v-html="calloutText"></span>
+				</n8n-text>
+			</template>
+		</n8n-callout>
 	</div>
 </template>
 
@@ -24,6 +35,12 @@ import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-action-box',
+	components: {
+		N8nButton,
+		N8nHeading,
+		N8nText,
+		N8nCallout,
+	},
 	props: {
 		heading: {
 			type: String,
@@ -44,12 +61,6 @@ export default Vue.extend({
 		calloutIcon: {
 			type: String,
 		},
-	},
-	components: {
-		N8nButton,
-		N8nHeading,
-		N8nText,
-		N8nCallout,
 	},
 });
 </script>
@@ -80,4 +91,10 @@ export default Vue.extend({
 	color: var(--color-text-base);
 	margin-bottom: var(--spacing-xl);
 }
+
+.callout {
+	width: 100%;
+	text-align: left;
+}
+
 </style>

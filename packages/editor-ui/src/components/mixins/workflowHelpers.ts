@@ -53,7 +53,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuid } from 'uuid';
 
 export const workflowHelpers = mixins(
 	externalHooks,
@@ -188,7 +188,7 @@ export const workflowHelpers = mixins(
 
 				const returnData: INodeTypesMaxCount = {};
 
-				const nodeTypes = this.$store.getters.allNodeTypes;
+				const nodeTypes = this.$store.getters['nodeTypes/allNodeTypes'];
 				for (const nodeType of nodeTypes) {
 					if (nodeType.maxNodes !== undefined) {
 						returnData[nodeType.name] = {
@@ -298,7 +298,7 @@ export const workflowHelpers = mixins(
 						return [];
 					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version) as INodeTypeDescription | null;
+						const nodeTypeDescription = this.$store.getters['nodeTypes/getNodeType'](nodeType, version) as INodeTypeDescription | null;
 
 						if (nodeTypeDescription === null) {
 							return undefined;
@@ -406,7 +406,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+				const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
@@ -666,7 +666,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean} = {}, redirect = true): Promise<boolean> {
+			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, resetNodeIds, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean, resetNodeIds?: boolean} = {}, redirect = true): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
@@ -674,10 +674,19 @@ export const workflowHelpers = mixins(
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
 					const changedNodes = {} as IDataObject;
+
+					if (resetNodeIds) {
+						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
+							node.id = uuid();
+
+							return node;
+						});
+					}
+
 					if (resetWebhookUrls) {
 						workflowDataRequest.nodes = workflowDataRequest.nodes!.map(node => {
 							if (node.webhookId) {
-								node.webhookId = uuidv4();
+								node.webhookId = uuid();
 								changedNodes[node.name] = node.webhookId;
 							}
 							return node;

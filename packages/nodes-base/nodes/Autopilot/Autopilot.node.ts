@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,30 +9,15 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	autopilotApiRequest,
-	autopilotApiRequestAllItems,
-} from './GenericFunctions';
+import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
 
-import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
+import { contactFields, contactOperations } from './ContactDescription';
 
-import {
-	contactJourneyFields,
-	contactJourneyOperations,
-} from './ContactJourneyDescription';
+import { contactJourneyFields, contactJourneyOperations } from './ContactJourneyDescription';
 
-import {
-	contactListFields,
-	contactListOperations,
-} from './ContactListDescription';
+import { contactListFields, contactListOperations } from './ContactListDescription';
 
-import {
-	listFields,
-	listOperations,
-} from './ListDescription';
+import { listFields, listOperations } from './ListDescription';
 
 export class Autopilot implements INodeType {
 	description: INodeTypeDescription = {
@@ -96,15 +79,9 @@ export class Autopilot implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getCustomFields(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const customFields = await autopilotApiRequest.call(
-					this,
-					'GET',
-					'/contacts/custom_fields',
-				);
+				const customFields = await autopilotApiRequest.call(this, 'GET', '/contacts/custom_fields');
 				for (const customField of customFields) {
 					returnData.push({
 						name: customField.name,
@@ -113,15 +90,9 @@ export class Autopilot implements INodeType {
 				}
 				return returnData;
 			},
-			async getLists(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { lists } = await autopilotApiRequest.call(
-					this,
-					'GET',
-					'/lists',
-				);
+				const { lists } = await autopilotApiRequest.call(this, 'GET', '/lists');
 				for (const list of lists) {
 					returnData.push({
 						name: list.title,
@@ -130,15 +101,9 @@ export class Autopilot implements INodeType {
 				}
 				return returnData;
 			},
-			async getTriggers(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getTriggers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { triggers } = await autopilotApiRequest.call(
-					this,
-					'GET',
-					'/triggers',
-				);
+				const { triggers } = await autopilotApiRequest.call(this, 'GET', '/triggers');
 				for (const trigger of triggers) {
 					returnData.push({
 						name: trigger.journey,
@@ -173,7 +138,8 @@ export class Autopilot implements INodeType {
 						Object.assign(body, additionalFields);
 
 						if (body.customFieldsUi) {
-							const customFieldsValues = (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+							const customFieldsValues = (body.customFieldsUi as IDataObject)
+								.customFieldsValues as IDataObject[];
 
 							body.custom = {};
 
@@ -203,22 +169,15 @@ export class Autopilot implements INodeType {
 							delete body.newEmail;
 						}
 
-						responseData = await autopilotApiRequest.call(
-							this,
-							'POST',
-							`/contact`,
-							{ contact: body },
-						);
+						responseData = await autopilotApiRequest.call(this, 'POST', `/contact`, {
+							contact: body,
+						});
 					}
 
 					if (operation === 'delete') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						responseData = await autopilotApiRequest.call(
-							this,
-							'DELETE',
-							`/contact/${contactId}`,
-						);
+						responseData = await autopilotApiRequest.call(this, 'DELETE', `/contact/${contactId}`);
 
 						responseData = { success: true };
 					}
@@ -226,11 +185,7 @@ export class Autopilot implements INodeType {
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						responseData = await autopilotApiRequest.call(
-							this,
-							'GET',
-							`/contact/${contactId}`,
-						);
+						responseData = await autopilotApiRequest.call(this, 'GET', `/contact/${contactId}`);
 					}
 
 					if (operation === 'getAll') {
@@ -255,7 +210,6 @@ export class Autopilot implements INodeType {
 				}
 				if (resource === 'contactJourney') {
 					if (operation === 'add') {
-
 						const triggerId = this.getNodeParameter('triggerId', i) as string;
 
 						const contactId = this.getNodeParameter('contactId', i) as string;
@@ -271,15 +225,14 @@ export class Autopilot implements INodeType {
 				}
 				if (resource === 'contactList') {
 					if (['add', 'remove', 'exist'].includes(operation)) {
-
 						const listId = this.getNodeParameter('listId', i) as string;
 
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
 						const method: { [key: string]: string } = {
-							'add': 'POST',
-							'remove': 'DELETE',
-							'exist': 'GET',
+							add: 'POST',
+							remove: 'DELETE',
+							exist: 'GET',
 						};
 
 						const endpoint = `/list/${listId}/contact/${contactId}`;
@@ -321,19 +274,13 @@ export class Autopilot implements INodeType {
 				}
 				if (resource === 'list') {
 					if (operation === 'create') {
-
 						const name = this.getNodeParameter('name', i) as string;
 
 						const body: IDataObject = {
 							name,
 						};
 
-						responseData = await autopilotApiRequest.call(
-							this,
-							'POST',
-							`/list`,
-							body,
-						);
+						responseData = await autopilotApiRequest.call(this, 'POST', `/list`, body);
 					}
 
 					if (operation === 'getAll') {
@@ -342,11 +289,7 @@ export class Autopilot implements INodeType {
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
-						responseData = await autopilotApiRequest.call(
-							this,
-							'GET',
-							'/lists',
-						);
+						responseData = await autopilotApiRequest.call(this, 'GET', '/lists');
 
 						responseData = responseData.lists;
 
@@ -361,9 +304,7 @@ export class Autopilot implements INodeType {
 				} else if (responseData !== undefined) {
 					returnData.push(responseData as IDataObject);
 				}
-
 			} catch (error) {
-
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.toString() });
 					continue;

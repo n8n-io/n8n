@@ -1,6 +1,7 @@
 import { FindManyOptions, In, UpdateResult } from 'typeorm';
 import intersection from 'lodash.intersection';
 import type { INode } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 import { Db } from '../../../..';
 import { User } from '../../../../databases/entities/User';
@@ -133,6 +134,7 @@ export function hasStartNode(workflow: WorkflowEntity): boolean {
 
 export function getStartNode(): INode {
 	return {
+		id: uuid(),
 		parameters: {},
 		name: 'Start',
 		type: 'n8n-nodes-base.start',

@@ -1,13 +1,14 @@
 <template>
 	<div :class="$style.container">
-		<div :class="{
+		<div v-if="label || $slots.options" :class="{
 				'n8n-input-label': true,
-				[this.$style.label]: !!this.label,
+				[this.$style.heading]: !!this.label,
 				[this.$style.underline]: this.underline,
 				[this.$style[this.size]]: true,
+				[$style.overflow]: !!$slots.options,
 			}">
 			<div :class="$style.title" v-if="label">
-				<n8n-text :bold="bold" :size="size" :compact="!underline">
+				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
@@ -156,8 +157,11 @@ export default Vue.extend({
 	opacity: 1;
 }
 
-.label {
+.heading {
 	display: flex;
+}
+
+.overflow {
 	overflow-x: hidden;
 	overflow-y: clip;
 }

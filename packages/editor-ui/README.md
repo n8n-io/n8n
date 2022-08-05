@@ -51,4 +51,4 @@ See [Configuration Reference](https://cli.vuejs.org/config/).
 
 n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-Additional information on the license can be found in the [FAQ](https://docs.n8n.io/reference/faq.html#license)
+Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).
