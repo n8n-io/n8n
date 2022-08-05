@@ -5,9 +5,9 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeExecutionPairedData,
 	INodeType,
 	INodeTypeDescription,
+	IPairedItemData,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -1617,9 +1617,9 @@ export class Github implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionPairedData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionPairedData[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		let returnAll = false;
 
@@ -2110,17 +2110,18 @@ export class Github implements INodeType {
 
 				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i, false) as boolean;
 				if (returnAll === true) {
-					const allItems = await githubApiRequestAllItems.call(
+					const response = await githubApiRequestAllItems.call(
 						this,
 						requestMethod,
 						endpoint,
 						body,
 						qs,
 					);
-					responseData = this.helpers.preparePairedOutputData(allItems, asBinaryProperty, {item: i});
+					const responseExecutionData = this.helpers.returnJsonArray(response);
+					responseData = this.helpers.constructExecutionMetaData({item: i}, responseExecutionData);
 				} else {
-					const data = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
-					responseData = this.helpers.preparePairedOutputData(data, asBinaryProperty, {item: i});
+					responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = this.helpers.returnJsonArray(responseData);
 				}
 
 				if (fullOperation === 'file:get') {
@@ -2133,7 +2134,7 @@ export class Github implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						const newItem: INodeExecutionData = {
-							json: items[i].json, // IS THIS CORRECT? Should it be returnData[i].json?
+							json: items[i].json,
 							binary: {},
 						};
 
@@ -2145,18 +2146,18 @@ export class Github implements INodeType {
 						}
 
 
-						const {content, path} = (responseData as INodeExecutionPairedData[])[i].json;
+						const {content, path} = responseData[i].json;
 						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 							Buffer.from(content as string, 'base64'), path as string);
 
 						items[i] = newItem;
 
-						return [this.helpers.preparePairedOutputData(items, asBinaryProperty)];
+						return [items];
 					}
 				}
 
 				if (fullOperation === 'release:delete') {
-					responseData = this.helpers.preparePairedOutputData({ success: true });
+					responseData = this.helpers.returnJsonArray({ success: true });
 				}
 
 				if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
@@ -2168,8 +2169,13 @@ export class Github implements INodeType {
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)
 					) {
-						const errorData = { error: error.message, json: { error: error.message } };
-						returnData.push(...this.helpers.preparePairedOutputData({...errorData} as IDataObject, false, {item: i}));
+						const errorData = this.helpers.returnJsonArray({
+							$error: error,
+							$json: this.getInputData(i),
+							itemIndex: i,
+						});
+
+						returnData.push(...this.helpers.constructExecutionMetaData({item: i}, errorData));
 					} else {
 						items[i].json = { error: error.message };
 					}
@@ -2184,10 +2190,10 @@ export class Github implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return [this.helpers.preparePairedOutputData(returnData)];
+			return [returnData];
 		} else {
 			// For all other ones simply return the unchanged items
-			return [this.helpers.preparePairedOutputData(items)];
+			return [items];
 		}
 	}
 }
