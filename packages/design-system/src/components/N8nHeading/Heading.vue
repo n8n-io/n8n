@@ -1,11 +1,13 @@
-<template functional>
-	<component :is="props.tag" :class="$options.methods.getClasses(props, $style)" :style="$options.methods.getStyles(props)">
+<template>
+	<component :is="tag" :class="['n8n-heading', ...classes]" v-on="$listeners">
 		<slot></slot>
 	</component>
 </template>
 
 <script lang="ts">
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-heading',
 	props: {
 		tag: {
@@ -23,29 +25,31 @@ export default {
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'].includes(value),
+			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(value),
 		},
 		align: {
 			type: String,
 			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
 		},
 	},
-	methods: {
-		getClasses(props: {size: string, bold: boolean}, $style: any) {
-			return {[$style[`size-${props.size}`]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold};
-		},
-		getStyles(props: {color: string}) {
-			const styles = {} as any;
-			if (props.color) {
-				styles.color = `var(--color-${props.color})`;
+	computed: {
+		classes() {
+			const applied = [];
+			if (this.align) {
+				applied.push(`align-${this.align}`);
 			}
-			if (props.align) {
-				styles['text-align'] = props.align;
+			if (this.color) {
+				applied.push(this.color);
 			}
-			return styles;
-		},
+
+			applied.push(`size-${this.size}`);
+
+			applied.push(this.bold? 'bold': 'regular');
+
+			return applied.map((c) => this.$style[c]);
+		}
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
@@ -80,6 +84,42 @@ export default {
 .size-small {
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-regular);
+}
+
+.primary {
+	color: var(--color-primary);
+}
+
+.text-dark {
+	color: var(--color-text-dark);
+}
+
+.text-base {
+	color: var(--color-text-base);
+}
+
+.text-light {
+	color: var(--color-text-light);
+}
+
+.text-xlight {
+	color: var(--color-text-xlight);
+}
+
+.danger {
+	color: var(--color-danger);
+}
+
+.align-left {
+	text-align: left;
+}
+
+.align-right {
+	text-align: right;
+}
+
+.align-center {
+	text-align: center;
 }
 
 </style>
