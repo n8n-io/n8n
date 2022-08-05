@@ -59,6 +59,7 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1622,8 +1623,20 @@ export function getNode(node: INode): INode {
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
 function cleanupParameterData(
-	inputData: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	inputData:
+		| NodeParameterValue
+		| INodeParameters
+		| NodeParameterValue[]
+		| INodeParameters[]
+		| INodeParameterResourceLocator
+		| INodeParameterResourceLocator[],
+):
+	| NodeParameterValue
+	| INodeParameters
+	| NodeParameterValue[]
+	| INodeParameters[]
+	| INodeParameterResourceLocator
+	| INodeParameterResourceLocator[] {
 	if (inputData === null || inputData === undefined) {
 		return inputData;
 	}
@@ -1640,7 +1653,9 @@ function cleanupParameterData(
 
 	if (typeof inputData === 'object') {
 		Object.keys(inputData).forEach((key) => {
-			inputData[key] = cleanupParameterData(inputData[key]);
+			inputData[key as keyof typeof inputData] = cleanupParameterData(
+				inputData[key as keyof typeof inputData],
+			);
 		});
 	}
 
@@ -1674,7 +1689,14 @@ export function getNodeParameter(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData?: IExecuteData,
 	fallbackValue?: any,
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
+):
+	| NodeParameterValue
+	| INodeParameters
+	| NodeParameterValue[]
+	| INodeParameters[]
+	| INodeParameterResourceLocator
+	| INodeParameterResourceLocator[]
+	| object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -1885,6 +1907,8 @@ export function getExecutePollFunctions(
 				| INodeParameters
 				| NodeParameterValue[]
 				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[]
 				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2040,6 +2064,8 @@ export function getExecuteTriggerFunctions(
 				| INodeParameters
 				| NodeParameterValue[]
 				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[]
 				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2256,6 +2282,8 @@ export function getExecuteFunctions(
 				| INodeParameters
 				| NodeParameterValue[]
 				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[]
 				| object => {
 				return getNodeParameter(
 					workflow,
@@ -2530,6 +2558,8 @@ export function getExecuteSingleFunctions(
 				| INodeParameters
 				| NodeParameterValue[]
 				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[]
 				| object => {
 				return getNodeParameter(
 					workflow,
@@ -2681,6 +2711,8 @@ export function getLoadOptionsFunctions(
 				| INodeParameters
 				| NodeParameterValue[]
 				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[]
 				| object
 				| undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
@@ -2705,6 +2737,8 @@ export function getLoadOptionsFunctions(
 				| INodeParameters
 				| NodeParameterValue[]
 				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[]
 				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2836,6 +2870,8 @@ export function getExecuteHookFunctions(
 				| INodeParameters
 				| NodeParameterValue[]
 				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[]
 				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
@@ -2999,6 +3035,8 @@ export function getExecuteWebhookFunctions(
 				| INodeParameters
 				| NodeParameterValue[]
 				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[]
 				| object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;

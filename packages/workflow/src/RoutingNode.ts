@@ -43,6 +43,7 @@ import {
 	IExecuteData,
 	IExecuteSingleFunctions,
 	IN8nRequestOperations,
+	INodeParameterResourceLocator,
 	INodeProperties,
 	INodePropertyCollection,
 	PostReceiveAction,
@@ -580,13 +581,26 @@ export class RoutingNode {
 	}
 
 	getParameterValue(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue:
+			| NodeParameterValue
+			| INodeParameters
+			| NodeParameterValue[]
+			| INodeParameters[]
+			| INodeParameterResourceLocator
+			| INodeParameterResourceLocator[],
 		itemIndex: number,
 		runIndex: number,
 		executeData: IExecuteData,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
+	):
+		| NodeParameterValue
+		| INodeParameters
+		| NodeParameterValue[]
+		| INodeParameters[]
+		| INodeParameterResourceLocator
+		| INodeParameterResourceLocator[]
+		| string {
 		if (
 			typeof parameterValue === 'object' ||
 			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')

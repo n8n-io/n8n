@@ -9,6 +9,7 @@ import {
 	IExecuteData,
 	INode,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodeParameters,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -350,9 +351,18 @@ export class Expression {
 			| INodeParameters
 			| NodeParameterValue[]
 			| INodeParameters[]
+			| INodeParameterResourceLocator
+			| INodeParameterResourceLocator[]
 			| undefined = undefined,
 		selfData = {},
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined {
+	):
+		| NodeParameterValue
+		| INodeParameters
+		| NodeParameterValue[]
+		| INodeParameters[]
+		| INodeParameterResourceLocator
+		| INodeParameterResourceLocator[]
+		| undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -417,7 +427,13 @@ export class Expression {
 	 * @memberof Workflow
 	 */
 	getParameterValue(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue:
+			| NodeParameterValue
+			| INodeParameters
+			| NodeParameterValue[]
+			| INodeParameters[]
+			| INodeParameterResourceLocator
+			| INodeParameterResourceLocator[],
 		runExecutionData: IRunExecutionData | null,
 		runIndex: number,
 		itemIndex: number,
@@ -429,17 +445,35 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	):
+		| NodeParameterValue
+		| INodeParameters
+		| NodeParameterValue[]
+		| INodeParameters[]
+		| INodeParameterResourceLocator
+		| INodeParameterResourceLocator[] {
 		// Helper function which returns true when the parameter is a complex one or array
 		const isComplexParameter = (
-			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+			value:
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[],
 		) => {
 			return typeof value === 'object';
 		};
 
 		// Helper function which resolves a parameter value depending on if it is simply or not
 		const resolveParameterValue = (
-			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+			value:
+				| NodeParameterValue
+				| INodeParameters
+				| NodeParameterValue[]
+				| INodeParameters[]
+				| INodeParameterResourceLocator
+				| INodeParameterResourceLocator[],
 			siblingParameters: INodeParameters,
 		) => {
 			if (isComplexParameter(value)) {

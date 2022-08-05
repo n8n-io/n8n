@@ -16,6 +16,7 @@ import {
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodeParameters,
 	IPairedItemData,
 	IRunExecutionData,
@@ -182,7 +183,9 @@ export class WorkflowDataProxy {
 					| INodeParameters
 					| NodeParameterValue
 					| NodeParameterValue[]
-					| INodeParameters[];
+					| INodeParameters[]
+					| INodeParameterResourceLocator
+					| INodeParameterResourceLocator[];
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
