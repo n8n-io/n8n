@@ -1,5 +1,5 @@
 <template>
-	<div :class="['n8n-info-accordion', $style.container]" >
+	<div :class="['accordion', $style.container]" >
 		<div :class="{[$style.header]: true, [$style.expanded]: expanded}" @click="toggle">
 			<n8n-text color="text-base" size="small" align="left" bold>{{ title }}</n8n-text>
 
