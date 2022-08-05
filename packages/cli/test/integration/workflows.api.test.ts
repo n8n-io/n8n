@@ -91,6 +91,7 @@ function makeWorkflow({ withPinData }: { withPinData: boolean }) {
 	workflow.connections = {};
 	workflow.nodes = [
 		{
+			id: 'uuid-1234',
 			name: 'Spotify',
 			type: 'n8n-nodes-base.spotify',
 			parameters: { resource: 'track', operation: 'get', id: '123' },

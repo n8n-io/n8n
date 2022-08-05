@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -18,14 +16,11 @@ export const eventOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 	},
 ];
-
 
 export const eventFields: INodeProperties[] = [
 	// ----------------------------------
@@ -39,12 +34,8 @@ export const eventFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['event'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -59,15 +50,9 @@ export const eventFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -111,12 +96,8 @@ export const eventFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['event'],
+				operation: ['getAll'],
 			},
 		},
 	},

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const projectOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const projectOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
+				resource: ['project'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const projectOperations: INodeProperties[] = [
 ];
 
 export const projectFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 project:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -65,12 +60,8 @@ export const projectFields: INodeProperties[] = [
 		description: 'Name of project being created',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['project'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -81,12 +72,8 @@ export const projectFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'project',
-				],
+				operation: ['create'],
+				resource: ['project'],
 			},
 		},
 		default: {},
@@ -107,11 +94,10 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 					loadOptionsMethod: 'loadClientsForWorkspace',
 				},
 				default: '',
@@ -182,12 +168,8 @@ export const projectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['project'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -202,12 +184,8 @@ export const projectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['project'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -220,12 +198,8 @@ export const projectFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'project',
-				],
+				operation: ['getAll'],
+				resource: ['project'],
 			},
 		},
 		default: false,
@@ -237,15 +211,9 @@ export const projectFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'project',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['project'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -262,12 +230,8 @@ export const projectFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'project',
-				],
+				operation: ['getAll'],
+				resource: ['project'],
 			},
 		},
 		default: {},
@@ -288,11 +252,10 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'Client Names or IDs',
 				name: 'clients',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 					loadOptionsMethod: 'loadClientsForWorkspace',
 				},
 				default: [],
@@ -381,11 +344,10 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'User Name or ID',
 				name: 'users',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 					loadOptionsMethod: 'loadUsersForWorkspace',
 				},
 				default: '',
@@ -421,12 +383,8 @@ export const projectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['project'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -437,12 +395,8 @@ export const projectFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'project',
-				],
+				operation: ['update'],
+				resource: ['project'],
 			},
 		},
 		default: {},
@@ -463,11 +417,10 @@ export const projectFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'clientId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 					loadOptionsMethod: 'loadClientsForWorkspace',
 				},
 				default: '',
@@ -533,5 +486,4 @@ export const projectFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

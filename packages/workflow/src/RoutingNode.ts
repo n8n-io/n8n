@@ -283,6 +283,17 @@ export class RoutingNode {
 				);
 			}
 		}
+		if (action.type === 'limit') {
+			const maxResults = this.getParameterValue(
+				action.properties.maxResults,
+				itemIndex,
+				runIndex,
+				executeSingleFunctions.getExecuteData(),
+				{ $response: responseData, $value: parameterValue },
+				false,
+			) as string;
+			return inputData.slice(0, parseInt(maxResults, 10));
+		}
 		if (action.type === 'set') {
 			const { value } = action.properties;
 			// If the value is an expression resolve it

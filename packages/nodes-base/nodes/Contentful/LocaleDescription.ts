@@ -1,7 +1,4 @@
-import {
-	INodeProperties,
-	INodePropertyOptions
-} from 'n8n-workflow';
+import { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 export const resource = {
 	name: 'Locale',
@@ -16,9 +13,7 @@ export const operations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
+				resource: [resource.value],
 			},
 		},
 		options: [
@@ -38,17 +33,13 @@ export const fields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
+				resource: [resource.value],
+				operation: ['get', 'getAll'],
 			},
 		},
 		default: 'master',
-		description: 'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
+		description:
+			'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
 		displayName: 'Return All',
@@ -56,12 +47,8 @@ export const fields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					resource.value,
-				],
+				operation: ['getAll'],
+				resource: [resource.value],
 			},
 		},
 		default: false,
@@ -73,15 +60,9 @@ export const fields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					resource.value,
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: [resource.value],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
