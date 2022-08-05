@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="$style.container"
+		:class="['n8n-form-box', $style.container]"
 	>
 		<div
 			v-if="title"

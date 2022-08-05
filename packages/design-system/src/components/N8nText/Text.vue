@@ -1,11 +1,12 @@
-<template functional>
-	<component :is="props.tag" :class="$options.methods.getClasses(props, $style, data)" :style="$options.methods.getStyles(props)" v-on="listeners">
+<template>
+	<component :is="tag" :class="['n8n-text', ...classes]" v-on="$listeners">
 		<slot></slot>
 	</component>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+
 export default Vue.extend({
 	name: 'n8n-text',
 	props: {
@@ -20,7 +21,7 @@ export default Vue.extend({
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'].includes(value),
+			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(value),
 		},
 		align: {
 			type: String,
@@ -35,28 +36,26 @@ export default Vue.extend({
 			default: 'span',
 		},
 	},
-	methods: {
-		getClasses(props: {size: string, bold: boolean}, $style: any, data: any) {
-			const classes = {[$style[`size-${props.size}`]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold};
-			if (data.staticClass) {
-				classes[data.staticClass] = true;
+	computed: {
+		classes() {
+			const applied = [];
+			if (this.align) {
+				applied.push(`align-${this.align}`);
+			}
+			if (this.color) {
+				applied.push(this.color);
 			}
 
-			return classes;
-		},
-		getStyles(props: {color: string, align: string, compact: false}) {
-			const styles = {} as any;
-			if (props.color) {
-				styles.color = `var(--color-${props.color})`;
+			if (this.compact) {
+				applied.push('compact');
 			}
-			if (props.compact) {
-				styles['line-height'] = 1;
-			}
-			if (props.align) {
-				styles['text-align'] = props.align;
-			}
-			return styles;
-		},
+
+			applied.push(`size-${this.size}`);
+
+			applied.push(this.bold? 'bold': 'regular');
+
+			return applied.map((c) => this.$style[c]);
+		}
 	},
 });
 </script>
@@ -93,6 +92,46 @@ export default Vue.extend({
 .size-xsmall {
 	font-size: var(--font-size-3xs);
 	line-height: var(--font-line-height-compact);
+}
+
+.compact {
+	line-height: 1;
+}
+
+.primary {
+	color: var(--color-primary);
+}
+
+.text-dark {
+	color: var(--color-text-dark);
+}
+
+.text-base {
+	color: var(--color-text-base);
+}
+
+.text-light {
+	color: var(--color-text-light);
+}
+
+.text-xlight {
+	color: var(--color-text-xlight);
+}
+
+.danger {
+	color: var(--color-danger);
+}
+
+.align-left {
+	text-align: left;
+}
+
+.align-right {
+	text-align: right;
+}
+
+.align-center {
+	text-align: center;
 }
 
 </style>
