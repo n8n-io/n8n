@@ -1242,11 +1242,6 @@ export default mixins(
 					);
 					return;
 				}
-
-				this.$showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.stopWaitingForWebhook.title'),
-					type: 'success',
-				});
 			},
 
 			/**
