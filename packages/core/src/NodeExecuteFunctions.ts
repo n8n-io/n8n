@@ -805,6 +805,23 @@ export async function getBinaryDataBuffer(
 	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
 }
 
+
+/**
+ * Store an incoming IBinaryData & related buffer using the configured binary data manager.
+ *
+ * @export
+ * @param {Buffer} binaryData
+ * @param {IBinaryData} data
+ * @returns {Promise<IBinaryData>}
+ */
+export async function storeBinaryDataBuffer(
+	binaryData: Buffer,
+	executionId: string,
+	data: IBinaryData
+): Promise<IBinaryData> {
+	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
+}
+
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
@@ -874,7 +891,7 @@ export async function prepareBinaryData(
 		}
 	}
 
-	return BinaryDataManager.getInstance().storeBinaryData(returnData, binaryData, executionId);
+	return storeBinaryDataBuffer(binaryData, executionId, returnData);
 }
 
 /**
@@ -1920,6 +1937,17 @@ export function getExecutePollFunctions(
 			},
 			helpers: {
 				httpRequest,
+				async storeBinaryDataBuffer(
+					binaryData: Buffer,
+					data: IBinaryData,
+				): Promise<IBinaryData> {
+					return storeBinaryDataBuffer.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						data
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -2089,6 +2117,17 @@ export function getExecuteTriggerFunctions(
 						node,
 						additionalData,
 						additionalCredentialOptions,
+					);
+				},
+				async storeBinaryDataBuffer(
+					binaryData: Buffer,
+					data: IBinaryData,
+				): Promise<IBinaryData> {
+					return storeBinaryDataBuffer.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						data
 					);
 				},
 				async prepareBinaryData(
@@ -2347,6 +2386,17 @@ export function getExecuteFunctions(
 						additionalCredentialOptions,
 					);
 				},
+				async storeBinaryDataBuffer(
+					binaryData: Buffer,
+					data: IBinaryData,
+				): Promise<IBinaryData> {
+					return storeBinaryDataBuffer.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						data
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -2587,6 +2637,17 @@ export function getExecuteSingleFunctions(
 						node,
 						additionalData,
 						additionalCredentialOptions,
+					);
+				},
+				async storeBinaryDataBuffer(
+					binaryData: Buffer,
+					data: IBinaryData,
+				): Promise<IBinaryData> {
+					return storeBinaryDataBuffer.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						data
 					);
 				},
 				async prepareBinaryData(
@@ -3084,6 +3145,17 @@ export function getExecuteWebhookFunctions(
 						node,
 						additionalData,
 						additionalCredentialOptions,
+					);
+				},
+				async storeBinaryDataBuffer(
+					binaryData: Buffer,
+					data: IBinaryData,
+				): Promise<IBinaryData> {
+					return storeBinaryDataBuffer.call(
+						this,
+						binaryData,
+						additionalData.executionId!,
+						data
 					);
 				},
 				async prepareBinaryData(
