@@ -5,7 +5,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeExecutionPairedData,
+	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -145,9 +145,9 @@ export class Ghost implements INodeType {
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionPairedData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: INodeExecutionPairedData[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
@@ -180,7 +180,6 @@ export class Ghost implements INodeType {
 
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.posts;
-							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 
 						if (operation === 'getAll') {
@@ -198,8 +197,6 @@ export class Ghost implements INodeType {
 								responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
 								responseData = responseData.posts;
 							}
-
-							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 					}
 				}
@@ -245,7 +242,6 @@ export class Ghost implements INodeType {
 
 							responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
 							responseData = responseData.posts;
-							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 
 						if (operation === 'delete') {
@@ -253,9 +249,6 @@ export class Ghost implements INodeType {
 							const postId = this.getNodeParameter('postId', i) as string;
 
 							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
-
-							returnData.push.apply(this.helpers.preparePairedJsonOutputData({ item: i }, { success: true }));
-
 						}
 
 						if (operation === 'get') {
@@ -277,7 +270,6 @@ export class Ghost implements INodeType {
 							}
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.posts;
-							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 
 						if (operation === 'getAll') {
@@ -296,8 +288,6 @@ export class Ghost implements INodeType {
 								responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
 								responseData = responseData.posts;
 							}
-
-							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 
 						if (operation === 'update') {
@@ -339,13 +329,18 @@ export class Ghost implements INodeType {
 
 							responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
 							responseData = responseData.posts;
-							returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, responseData));
 						}
 					}
 				}
+
+				responseData = this.helpers.returnJsonArray(responseData);
+				const responseExecutionMetadata = this.helpers.constructExecutionMetaData({ item: i }, responseData);
+				returnData.push(...responseExecutionMetadata);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push.apply(returnData, this.helpers.preparePairedJsonOutputData({ item: i }, { error: error.message, $json: this.getInputData(i) }));
+					const executionErrorData = this.helpers.returnJsonArray({ error: error.message, $json: this.getInputData(i), itemIndex: i });
+					const errorExecutionMetadata = this.helpers.constructExecutionMetaData({ item: i }, executionErrorData);
+					returnData.push(...errorExecutionMetadata);
 					continue;
 				}
 				throw error;
