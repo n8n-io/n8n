@@ -3,7 +3,6 @@ import {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IBinaryData,
-	IBinaryKeyData,
 	ICredentialTestFunctions as ICredentialTestFunctionsBase,
 	ICredentialType,
 	IDataObject,
