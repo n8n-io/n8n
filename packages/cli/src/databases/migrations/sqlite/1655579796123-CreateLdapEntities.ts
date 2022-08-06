@@ -31,6 +31,7 @@ export class CreateLdapEntities1655579796123 implements MigrationInterface {
 				"disabled" boolean DEFAULT false,
 				CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
 		);
+
 		await queryRunner.query(
 			`INSERT INTO "temporary_user"(
 				"id",
@@ -89,6 +90,12 @@ export class CreateLdapEntities1655579796123 implements MigrationInterface {
 				"error" TEXT,
 				PRIMARY KEY("id" AUTOINCREMENT)
 			);`
+		);
+
+		await queryRunner.query('PRAGMA foreign_keys=ON');
+
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "IDX_${tablePrefix}9uxg3h65pj2dzm18mugtk565a8" ON "${tablePrefix}user" ("ldapId")`,
 		);
 
 		logMigrationEnd(this.name);
