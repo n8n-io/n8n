@@ -47,10 +47,14 @@ export const nodeHelpers = mixins(
 				return Object.keys(node.parameters).includes('nodeCredentialType');
 			},
 
+			isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
+				return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
+			},
+
 			isCustomApiCallSelected (nodeValues: INodeParameters): boolean {
 				const { parameters } = nodeValues;
 
-				if (!isObjectLiteral(parameters)) return false;
+				if (!this.isObjectLiteral(parameters)) return false;
 
 				return (
 					parameters.resource !== undefined && parameters.resource.includes(CUSTOM_API_CALL_KEY) ||
@@ -73,11 +77,13 @@ export const nodeHelpers = mixins(
 
 			// Returns all the issues of the node
 			getNodeIssues (nodeType: INodeTypeDescription | null, node: INodeUi, ignoreIssues?: string[]): INodeIssues | null {
+				const pinDataNodeNames = Object.keys(this.$store.getters.pinData || {});
+
 				let nodeIssues: INodeIssues | null = null;
 				ignoreIssues = ignoreIssues || [];
 
-				if (node.disabled === true) {
-					// Ignore issues on disabled nodes
+				if (node.disabled === true || pinDataNodeNames.includes(node.name)) {
+					// Ignore issues on disabled and pindata nodes
 					return null;
 				}
 
@@ -184,7 +190,7 @@ export const nodeHelpers = mixins(
 			// Updates the parameter-issues of the node
 			updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				}
 
 				if (nodeType === null) {
@@ -215,7 +221,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				}
 
 				if (nodeType === null || nodeType!.credentials === undefined) {
@@ -509,8 +515,4 @@ declare namespace HttpRequestNode {
 			nodeCredentialType: string;
 		};
 	}
-}
-
-function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
-	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
 }

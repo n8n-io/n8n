@@ -24,8 +24,10 @@ import { categorize, getPostgresSchemaSection } from './utils';
 import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
 import type { Role } from '../../../src/databases/entities/Role';
+import type { CollectionName, CredentialPayload, InstalledNodePayload, InstalledPackagePayload, MappingName } from './types';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
+import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
 import { User } from '../../../src/databases/entities/User';
-import type { CollectionName, CredentialPayload, MappingName } from './types';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { TagEntity } from '../../../src/databases/entities/TagEntity';
@@ -199,6 +201,7 @@ export async function truncate(collections: Array<CollectionName>, testDbName: s
 
 		const truncationPromises = collections.map((collection) => {
 			const tableName = toTableName(collection);
+			Db.collections[collection].clear();
 			return testDb.query(
 				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
 			);
@@ -221,7 +224,6 @@ export async function truncate(collections: Array<CollectionName>, testDbName: s
 		}
 
 		return await truncateMappingTables(dbType, collections, testDb);
-		// return Promise.resolve([])
 	}
 
 	/**
@@ -258,6 +260,8 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		SharedCredentials: 'shared_credentials',
 		SharedWorkflow: 'shared_workflow',
 		Settings: 'settings',
+		InstalledPackages: 'installed_packages',
+		InstalledNodes: 'installed_nodes',
 		FeatureConfig: 'feature_config',
 		LdapSyncHistory: 'ldap_sync_history',
 	}[sourceName];
@@ -338,6 +342,29 @@ export function createUserShell(globalRole: Role): Promise<User> {
 	}
 
 	return Db.collections.User.save(shell);
+}
+
+// --------------------------------------
+// Installed nodes and packages creation
+// --------------------------------------
+
+export async function saveInstalledPackage(installedPackagePayload: InstalledPackagePayload): Promise<InstalledPackages> {
+	const newInstalledPackage = new InstalledPackages();
+
+	Object.assign(newInstalledPackage, installedPackagePayload);
+
+
+	const savedInstalledPackage = await Db.collections.InstalledPackages.save(newInstalledPackage);
+	return savedInstalledPackage;
+}
+
+export async function saveInstalledNode(installedNodePayload: InstalledNodePayload): Promise<InstalledNodes> {
+	const newInstalledNode = new InstalledNodes();
+
+	Object.assign(newInstalledNode, installedNodePayload);
+
+	const savedInstalledNode = await Db.collections.InstalledNodes.save(newInstalledNode);
+	return savedInstalledNode;
 }
 
 export function addApiKey(user: User): Promise<User> {
@@ -497,6 +524,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
 			{
+				id: 'uuid-1234',
 				name: 'Start',
 				parameters: {},
 				position: [-20, 260],
@@ -530,6 +558,7 @@ export async function createWorkflowWithTrigger(
 		{
 			nodes: [
 				{
+					id: 'uuid-1',
 					parameters: {},
 					name: 'Start',
 					type: 'n8n-nodes-base.start',
@@ -537,6 +566,7 @@ export async function createWorkflowWithTrigger(
 					position: [240, 300],
 				},
 				{
+					id: 'uuid-2',
 					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -544,6 +574,7 @@ export async function createWorkflowWithTrigger(
 					position: [500, 300],
 				},
 				{
+					id: 'uuid-3',
 					parameters: { options: {} },
 					name: 'Set',
 					type: 'n8n-nodes-base.set',

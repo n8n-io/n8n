@@ -2,7 +2,7 @@ import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRequestOptionsFromParameters,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	RoutingNode,
 	Workflow,
@@ -46,7 +46,7 @@ describe('RoutingNode', () => {
 				nodeParameters: INodeParameters;
 				nodeTypeProperties: INodeProperties;
 			};
-			output: IRequestOptionsFromParameters | undefined;
+			output: DeclarativeRestApiSettings.ResultOptions | undefined;
 		}> = [
 			{
 				description: 'single parameter, only send defined, fixed value',
@@ -613,6 +613,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1659,6 +1660,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1831,6 +1833,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 

@@ -38,7 +38,10 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedWorkflow', 'User', 'Workflow'], testDbName);
+	await testDb.truncate(
+		['SharedCredentials', 'SharedWorkflow', 'Tag', 'User', 'Workflow', 'Credentials'],
+		testDbName,
+	);
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -948,6 +951,7 @@ test('POST /workflows should create workflow', async () => {
 		name: 'testing',
 		nodes: [
 			{
+				id: 'uuid-1234',
 				parameters: {},
 				name: 'Start',
 				type: 'n8n-nodes-base.start',
@@ -1044,6 +1048,7 @@ test('PUT /workflows/:id should fail due to non-existing workflow', async () => 
 		name: 'testing',
 		nodes: [
 			{
+				id: 'uuid-1234',
 				parameters: {},
 				name: 'Start',
 				type: 'n8n-nodes-base.start',
@@ -1079,6 +1084,7 @@ test('PUT /workflows/:id should fail due to invalid body', async () => {
 	const response = await authOwnerAgent.put(`/workflows/1`).send({
 		nodes: [
 			{
+				id: 'uuid-1234',
 				parameters: {},
 				name: 'Start',
 				type: 'n8n-nodes-base.start',
@@ -1117,6 +1123,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 		name: 'name updated',
 		nodes: [
 			{
+				id: 'uuid-1234',
 				parameters: {},
 				name: 'Start',
 				type: 'n8n-nodes-base.start',
@@ -1124,6 +1131,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 				position: [240, 300],
 			},
 			{
+				id: 'uuid-1234',
 				parameters: {},
 				name: 'Cron',
 				type: 'n8n-nodes-base.cron',
@@ -1192,6 +1200,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 		name: 'name owner updated',
 		nodes: [
 			{
+				id: 'uuid-1',
 				parameters: {},
 				name: 'Start',
 				type: 'n8n-nodes-base.start',
@@ -1199,6 +1208,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 				position: [240, 300],
 			},
 			{
+				id: 'uuid-2',
 				parameters: {},
 				name: 'Cron',
 				type: 'n8n-nodes-base.cron',

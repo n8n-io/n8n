@@ -8,11 +8,11 @@
 				@keydown.stop
 				@keydown.esc="editName = false"
 			>
-				<n8n-text :class="$style.renameText" :bold="true" color="text-base" tag="div"
+				<n8n-text :bold="true" color="text-base" tag="div"
 					>{{ $locale.baseText('ndv.title.renameNode') }}</n8n-text>
 				<n8n-input ref="input" size="small" v-model="newName" />
 				<div :class="$style.editButtons">
-					<n8n-button type="outline" size="small" @click="editName = false" :label="$locale.baseText('ndv.title.cancel')" />
+					<n8n-button type="secondary" size="small" @click="editName = false" :label="$locale.baseText('ndv.title.cancel')" />
 					<n8n-button type="primary" size="small" @click="onRename" :label="$locale.baseText('ndv.title.rename')" />
 				</div>
 			</div>

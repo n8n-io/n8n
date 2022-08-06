@@ -15,7 +15,7 @@ export type IFormInput = {
 	initialValue?: string | number | boolean | null;
 	properties: {
 		label?: string;
-		type?: 'text' | 'email' | 'password' | 'select' | 'multi-select' | 'info';
+		type?: 'text' | 'email' | 'password' | 'select' | 'multi-select' | 'info'| 'checkbox';
 		maxlength?: number;
 		required?: boolean;
 		showRequiredAsterisk?: boolean;

@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -19,9 +16,7 @@ import {
 	webexApiRequestAllItems,
 } from './GenericFunctions';
 
-import {
-	createHmac,
-} from 'crypto';
+import { createHmac } from 'crypto';
 
 export class CiscoWebexTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -102,14 +97,13 @@ export class CiscoWebexTrigger implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'attachmentAction',
-						],
+						resource: ['attachmentAction'],
 					},
 				},
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically.',
+				description:
+					'By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Filters',
@@ -124,13 +118,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'message',
-								],
-								'/event': [
-									'created',
-									'deleted',
-								],
+								'/resource': ['message'],
+								'/event': ['created', 'deleted'],
 							},
 						},
 						default: false,
@@ -142,13 +131,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'room',
-								],
-								'/event': [
-									'created',
-									'updated',
-								],
+								'/resource': ['room'],
+								'/event': ['created', 'updated'],
 							},
 						},
 						default: false,
@@ -160,14 +144,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'membership',
-								],
-								'/event': [
-									'created',
-									'updated',
-									'deleted',
-								],
+								'/resource': ['membership'],
+								'/event': ['created', 'updated', 'deleted'],
 							},
 						},
 						default: false,
@@ -179,17 +157,13 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'message',
-								],
-								'/event': [
-									'created',
-									'deleted',
-								],
+								'/resource': ['message'],
+								'/event': ['created', 'deleted'],
 							},
 						},
 						default: '',
-						description: 'Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas',
+						description:
+							'Limit to messages which contain these mentioned people, by person ID; accepts me as a shorthand for your own person ID; separate multiple values with commas',
 					},
 					{
 						displayName: 'Message ID',
@@ -197,12 +171,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'attachmentAction',
-								],
-								'/event': [
-									'created',
-								],
+								'/resource': ['attachmentAction'],
+								'/event': ['created'],
 							},
 						},
 						default: '',
@@ -213,9 +183,7 @@ export class CiscoWebexTrigger implements INodeType {
 						name: 'ownedBy',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'meeting',
-								],
+								'/resource': ['meeting'],
 							},
 						},
 						type: 'string',
@@ -227,14 +195,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'membership',
-								],
-								'/event': [
-									'created',
-									'updated',
-									'deleted',
-								],
+								'/resource': ['membership'],
+								'/event': ['created', 'updated', 'deleted'],
 							},
 						},
 						default: '',
@@ -246,13 +208,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'message',
-								],
-								'/event': [
-									'created',
-									'deleted',
-								],
+								'/resource': ['message'],
+								'/event': ['created', 'deleted'],
 							},
 						},
 						default: '',
@@ -264,12 +221,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'attachmentAction',
-								],
-								'/event': [
-									'created',
-								],
+								'/resource': ['attachmentAction'],
+								'/event': ['created'],
 							},
 						},
 						default: '',
@@ -281,14 +234,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'membership',
-								],
-								'/event': [
-									'created',
-									'updated',
-									'deleted',
-								],
+								'/resource': ['membership'],
+								'/event': ['created', 'updated', 'deleted'],
 							},
 						},
 						default: '',
@@ -300,13 +247,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'message',
-								],
-								'/event': [
-									'created',
-									'deleted',
-								],
+								'/resource': ['message'],
+								'/event': ['created', 'deleted'],
 							},
 						},
 						default: '',
@@ -319,12 +261,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'attachmentAction',
-								],
-								'/event': [
-									'created',
-								],
+								'/resource': ['attachmentAction'],
+								'/event': ['created'],
 							},
 						},
 						default: '',
@@ -336,14 +274,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'membership',
-								],
-								'/event': [
-									'created',
-									'updated',
-									'deleted',
-								],
+								'/resource': ['membership'],
+								'/event': ['created', 'updated', 'deleted'],
 							},
 						},
 						default: '',
@@ -355,13 +287,8 @@ export class CiscoWebexTrigger implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/resource': [
-									'message',
-								],
-								'/event': [
-									'created',
-									'updated',
-								],
+								'/resource': ['message'],
+								'/event': ['created', 'updated'],
 							},
 						},
 						default: '',
@@ -383,13 +310,8 @@ export class CiscoWebexTrigger implements INodeType {
 						],
 						displayOptions: {
 							show: {
-								'/resource': [
-									'message',
-								],
-								'/event': [
-									'created',
-									'deleted',
-								],
+								'/resource': ['message'],
+								'/event': ['created', 'deleted'],
 							},
 						},
 						default: '',
@@ -411,13 +333,8 @@ export class CiscoWebexTrigger implements INodeType {
 						],
 						displayOptions: {
 							show: {
-								'/resource': [
-									'room',
-								],
-								'/event': [
-									'created',
-									'updated',
-								],
+								'/resource': ['room'],
+								'/event': ['created', 'updated'],
 							},
 						},
 						default: '',
@@ -587,10 +504,12 @@ export class CiscoWebexTrigger implements INodeType {
 				// one that is supposed to get created.
 				const data = await webexApiRequestAllItems.call(this, 'items', 'GET', '/webhooks');
 				for (const webhook of data) {
-					if (webhook.url === webhookUrl
-						&& webhook.resource === mapResource(resource)
-						&& webhook.event === event
-						&& webhook.status === 'active') {
+					if (
+						webhook.url === webhookUrl &&
+						webhook.resource === mapResource(resource) &&
+						webhook.event === event &&
+						webhook.status === 'active'
+					) {
 						webhookData.webhookId = webhook.id as string;
 						return true;
 					}
@@ -643,7 +562,6 @@ export class CiscoWebexTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/webhooks/${webhookData.webhookId}`;
 					try {
 						await webexApiRequest.call(this, 'DELETE', endpoint);
@@ -668,20 +586,23 @@ export class CiscoWebexTrigger implements INodeType {
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 
 		//@ts-ignore
-		const computedSignature = createHmac('sha1', webhookData.secret).update(req.rawBody).digest('hex');
+		const computedSignature = createHmac('sha1', webhookData.secret)
+			//@ts-ignore
+			.update(req.rawBody)
+			.digest('hex');
 		if (headers['x-spark-signature'] !== computedSignature) {
 			return {};
 		}
 
 		if (resolveData) {
-			const { data: { id } } = bodyData as { data: { id: string } };
+			const {
+				data: { id },
+			} = bodyData as { data: { id: string } };
 			bodyData = await webexApiRequest.call(this, 'GET', `/attachment/actions/${id}`);
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

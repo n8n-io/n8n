@@ -25,6 +25,23 @@
 				</i>
 				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
 			</n8n-menu-item>
+			<n8n-menu-item
+				v-for="fakeDoor in settingsFakeDoorFeatures"
+				v-bind:key="fakeDoor.featureName"
+				:index="`/settings/coming-soon/${fakeDoor.id}`"
+				:class="$style.tab"
+			>
+				<i :class="$style.icon">
+					<font-awesome-icon :icon="fakeDoor.icon" />
+				</i>
+				<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
+			</n8n-menu-item>
+			<n8n-menu-item index="/settings/community-nodes" v-if="canAccessCommunityNodes()" :class="$style.tab">
+				<i :class="$style.icon">
+					<font-awesome-icon icon="cube" />
+				</i>
+				<span slot="title">{{ $locale.baseText('settings.communityNodes') }}</span>
+			</n8n-menu-item>
 			<n8n-menu-item index="/settings/ldap" v-if="canAccessLdapSettings()" :class="$style.tab">
 				<i :class="$style.icon">
 					<font-awesome-icon icon="network-wired" />
@@ -45,6 +62,7 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
+import { IFakeDoor } from '@/Interface';
 
 export default mixins(
 	userHelpers,
@@ -52,6 +70,9 @@ export default mixins(
 	name: 'SettingsSidebar',
 	computed: {
 		...mapGetters('settings', ['versionCli']),
+		settingsFakeDoorFeatures(): IFakeDoor[] {
+			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
+		},
 	},
 	methods: {
 		canAccessPersonalSettings(): boolean {
@@ -59,6 +80,9 @@ export default mixins(
 		},
 		canAccessUsersSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USERS_SETTINGS);
+		},
+		canAccessCommunityNodes(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.COMMUNITY_NODES);
 		},
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
@@ -111,9 +135,8 @@ export default mixins(
 }
 
 .icon {
-	width: 24px;
+	width: 16px;
 	display: inline-flex;
-	justify-content: center;
 	margin-right: 10px;
 }
 

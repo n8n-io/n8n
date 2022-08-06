@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 import { Length } from 'class-validator';
 
-import { IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
+import { IConnections, IDataObject, INode, IPinData, IWorkflowSettings } from 'n8n-workflow';
 
 import {
 	BeforeUpdate,
@@ -22,7 +22,7 @@ import * as config from '../../../config';
 import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
-import { objectRetriever } from '../utils/transformers';
+import { objectRetriever, serializer } from '../utils/transformers';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');
@@ -112,10 +112,17 @@ export class WorkflowEntity implements IWorkflowDb {
 			referencedColumnName: 'id',
 		},
 	})
-	tags: TagEntity[];
+	tags?: TagEntity[];
 
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];
+
+	@Column({
+		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
+		nullable: true,
+		transformer: serializer,
+	})
+	pinData: IPinData;
 
 	@BeforeUpdate()
 	setUpdateDate() {

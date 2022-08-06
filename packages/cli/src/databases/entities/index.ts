@@ -10,6 +10,8 @@ import { Role } from './Role';
 import { Settings } from './Settings';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
+import { InstalledPackages } from './InstalledPackages';
+import { InstalledNodes } from './InstalledNodes';
 import { FeatureConfig } from './FeatureConfig';
 import { LdapSyncHistory } from './LdapSyncHistory';
 
@@ -24,6 +26,8 @@ export const entities = {
 	Settings,
 	SharedWorkflow,
 	SharedCredentials,
+	InstalledPackages,
+	InstalledNodes,
 	FeatureConfig,
 	LdapSyncHistory,
 };

@@ -273,6 +273,7 @@ export class Expression {
 			throw new Error('Expression resolved to a function. Please add "()"');
 		} else if (returnValue !== null && typeof returnValue === 'object') {
 			if (returnObjectAsString) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return this.convertObjectValueToString(returnValue);
 			}
 		}

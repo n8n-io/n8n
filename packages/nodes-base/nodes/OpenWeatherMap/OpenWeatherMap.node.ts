@@ -241,7 +241,7 @@ export class OpenWeatherMap implements INodeType {
 				} else if (locationSelection === 'zipCode') {
 					qs.zip = this.getNodeParameter('zipCode', i) as string;
 				} else {
-					throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`, { itemIndex: i });
 				}
 
 				// Get the language
@@ -263,7 +263,7 @@ export class OpenWeatherMap implements INodeType {
 
 					endpoint = 'forecast';
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
 				}
 
 				const options: OptionsWithUri = {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
@@ -36,7 +37,6 @@ import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
 	FindManyOptions,
-	getConnection,
 	getConnectionManager,
 	In,
 	IsNull,
@@ -49,10 +49,8 @@ import cookieParser from 'cookie-parser';
 import history from 'connect-history-api-fallback';
 import os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import clientOAuth2 from 'client-oauth2';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import csrf from 'csrf';
-import requestPromise, { OptionsWithUrl } from 'request-promise-native';
+import axios, { AxiosRequestConfig, AxiosPromise } from 'axios';
 import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
@@ -70,6 +68,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	ITelemetrySettings,
 	IWorkflowBase,
 	LoggerProxy,
@@ -86,7 +85,6 @@ import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
-import querystring from 'querystring';
 import promClient, { Registry } from 'prom-client';
 import * as Queue from './Queue';
 import {
@@ -129,6 +127,7 @@ import {
 	WorkflowRunner,
 	getCredentialForUser,
 	getCredentialWithoutUser,
+	IWorkflowDb,
 } from '.';
 
 import config from '../config';
@@ -146,8 +145,6 @@ import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import type {
-	AuthenticatedRequest,
-	CredentialRequest,
 	ExecutionRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
@@ -156,9 +153,11 @@ import type {
 } from './requests';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT, validateEntity } from './GenericHelpers';
 import { ExecutionEntity } from './databases/entities/ExecutionEntity';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './api/credentials.api';
+import { workflowsController } from './api/workflows.api';
+import { nodesController } from './api/nodes.api';
+import { oauth2CredentialController } from './api/oauth2Credential.api';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -335,6 +334,9 @@ class App {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
 			},
+			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
+			executionMode: config.getEnv('executions.mode'),
+			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 		};
 	}
 
@@ -366,6 +368,10 @@ class App {
 			loginLabel: getLdapLoginLabel(),
 			loginEnabled: isLdapLoginEnabled(),
 		});
+		if (config.get('nodes.packagesMissing').length > 0) {
+			this.frontendSettings.missingPackages = true;
+		}
+
 		return this.frontendSettings;
 	}
 
@@ -718,6 +724,13 @@ class App {
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
 		// ----------------------------------------
+		// Packages and nodes management
+		// ----------------------------------------
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
+		}
+
+		// ----------------------------------------
 		// LDAP
 		// ----------------------------------------
 
@@ -773,74 +786,6 @@ class App {
 		// Workflow
 		// ----------------------------------------
 
-		// Creates a new workflow
-		this.app.post(
-			`/${this.restEndpoint}/workflows`,
-			ResponseHelper.send(async (req: WorkflowRequest.Create) => {
-				delete req.body.id; // delete if sent
-
-				const newWorkflow = new WorkflowEntity();
-
-				Object.assign(newWorkflow, req.body);
-
-				await validateEntity(newWorkflow);
-
-				await this.externalHooks.run('workflow.create', [newWorkflow]);
-
-				const { tags: tagIds } = req.body;
-
-				if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-					newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
-						select: ['id', 'name'],
-					});
-				}
-
-				await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
-
-				let savedWorkflow: undefined | WorkflowEntity;
-
-				await getConnection().transaction(async (transactionManager) => {
-					savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-					const role = await Db.collections.Role.findOneOrFail({
-						name: 'owner',
-						scope: 'workflow',
-					});
-
-					const newSharedWorkflow = new SharedWorkflow();
-
-					Object.assign(newSharedWorkflow, {
-						role,
-						user: req.user,
-						workflow: savedWorkflow,
-					});
-
-					await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-				});
-
-				if (!savedWorkflow) {
-					LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-					throw new ResponseHelper.ResponseError('Failed to save workflow');
-				}
-
-				if (tagIds && !config.getEnv('workflowTagsDisabled')) {
-					savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
-						requestOrder: tagIds,
-					});
-				}
-
-				await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-				void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
-
-				const { id, ...rest } = savedWorkflow;
-
-				return {
-					id: id.toString(),
-					...rest,
-				};
-			}),
-		);
-
 		// Reads and returns workflow data from an URL
 		this.app.get(
 			`/${this.restEndpoint}/workflows/from-url`,
@@ -860,11 +805,10 @@ class App {
 							400,
 						);
 					}
-					const data = await requestPromise.get(req.query.url as string);
-
 					let workflowData: IWorkflowResponse | undefined;
 					try {
-						workflowData = JSON.parse(data);
+						const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
+						workflowData = data;
 					} catch (error) {
 						throw new ResponseHelper.ResponseError(
 							`The URL does not point to valid JSON file!`,
@@ -966,50 +910,6 @@ class App {
 			}),
 		);
 
-		// Returns a specific workflow
-		this.app.get(
-			`/${this.restEndpoint}/workflows/:id`,
-			ResponseHelper.send(async (req: WorkflowRequest.Get) => {
-				const { id: workflowId } = req.params;
-
-				let relations = ['workflow', 'workflow.tags'];
-
-				if (config.getEnv('workflowTagsDisabled')) {
-					relations = relations.filter((relation) => relation !== 'workflow.tags');
-				}
-
-				const shared = await Db.collections.SharedWorkflow.findOne({
-					relations,
-					where: whereClause({
-						user: req.user,
-						entityType: 'workflow',
-						entityId: workflowId,
-					}),
-				});
-
-				if (!shared) {
-					LoggerProxy.info('User attempted to access a workflow without permissions', {
-						workflowId,
-						userId: req.user.id,
-					});
-					throw new ResponseHelper.ResponseError(
-						`Workflow with ID "${workflowId}" could not be found.`,
-						undefined,
-						404,
-					);
-				}
-
-				const {
-					workflow: { id, ...rest },
-				} = shared;
-
-				return {
-					id: id.toString(),
-					...rest,
-				};
-			}),
-		);
-
 		// Updates an existing workflow
 		this.app.patch(
 			`/${this.restEndpoint}/workflows/:id`,
@@ -1043,6 +943,8 @@ class App {
 
 				// check credentials for old format
 				await WorkflowHelpers.replaceInvalidCredentials(updateData);
+
+				WorkflowHelpers.addNodeIds(updateData);
 
 				await this.externalHooks.run('workflow.update', [updateData]);
 
@@ -1113,7 +1015,7 @@ class App {
 					);
 				}
 
-				if (updatedWorkflow.tags.length && tags?.length) {
+				if (updatedWorkflow.tags?.length && tags?.length) {
 					updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
 						requestOrder: tags,
 					});
@@ -1208,6 +1110,7 @@ class App {
 				): Promise<IExecutionPushResponse> => {
 					const { workflowData } = req.body;
 					const { runData } = req.body;
+					const { pinData } = req.body;
 					const { startNodes } = req.body;
 					const { destinationNode } = req.body;
 					const executionMode = 'manual';
@@ -1215,12 +1118,15 @@ class App {
 
 					const sessionId = GenericHelpers.getSessionId(req);
 
+					const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
+
 					// If webhooks nodes exist and are active we have to wait for till we receive a call
 					if (
-						runData === undefined ||
-						startNodes === undefined ||
-						startNodes.length === 0 ||
-						destinationNode === undefined
+						pinnedTrigger === undefined &&
+						(runData === undefined ||
+							startNodes === undefined ||
+							startNodes.length === 0 ||
+							destinationNode === undefined)
 					) {
 						const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 						const nodeTypes = NodeTypes();
@@ -1258,11 +1164,17 @@ class App {
 						destinationNode,
 						executionMode,
 						runData,
+						pinData,
 						sessionId,
 						startNodes,
 						workflowData,
 						userId: req.user.id,
 					};
+
+					if (pinnedTrigger) {
+						data.startNodes = [pinnedTrigger.name];
+					}
+
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
 
@@ -1272,6 +1184,8 @@ class App {
 				},
 			),
 		);
+
+		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// Retrieves all tags, with or without usage count
 		this.app.get(
@@ -1813,11 +1727,13 @@ class App {
 				// @ts-ignore
 				options.headers = data;
 
-				const response = await requestPromise(options);
+				const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
 
 				// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-				const responseJson = querystring.parse(response);
+				const paramsParser = new URLSearchParams(response);
+
+				const responseJson = Object.fromEntries(paramsParser.entries());
 
 				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
 					responseJson.oauth_token
@@ -1912,10 +1828,10 @@ class App {
 						timezone,
 					);
 
-					const options: OptionsWithUrl = {
+					const options: AxiosRequestConfig = {
 						method: 'POST',
 						url: _.get(oauthCredentials, 'accessTokenUrl') as string,
-						qs: {
+						params: {
 							oauth_token,
 							oauth_verifier,
 						},
@@ -1924,7 +1840,7 @@ class App {
 					let oauthToken;
 
 					try {
-						oauthToken = await requestPromise(options);
+						oauthToken = await axios.request(options);
 					} catch (error) {
 						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
 							userId: req.user?.id,
@@ -1940,7 +1856,9 @@ class App {
 
 					// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-					const oauthTokenJson = querystring.parse(oauthToken);
+					const paramParser = new URLSearchParams(oauthToken.data);
+
+					const oauthTokenJson = Object.fromEntries(paramParser.entries());
 
 					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
@@ -1973,302 +1891,10 @@ class App {
 		);
 
 		// ----------------------------------------
-		// OAuth2-Credential/Auth
+		// OAuth2-Credential
 		// ----------------------------------------
 
-		// Authorize OAuth Data
-		this.app.get(
-			`/${this.restEndpoint}/oauth2-credential/auth`,
-			ResponseHelper.send(async (req: OAuthRequest.OAuth2Credential.Auth): Promise<string> => {
-				const { id: credentialId } = req.query;
-
-				if (!credentialId) {
-					throw new ResponseHelper.ResponseError(
-						'Required credential ID is missing',
-						undefined,
-						400,
-					);
-				}
-
-				const credential = await getCredentialForUser(credentialId, req.user);
-
-				if (!credential) {
-					LoggerProxy.error('Failed to authorize OAuth2 due to lack of permissions', {
-						userId: req.user.id,
-						credentialId,
-					});
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-						undefined,
-						404,
-					);
-				}
-
-				let encryptionKey: string;
-				try {
-					encryptionKey = await UserSettings.getEncryptionKey();
-				} catch (error) {
-					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
-				}
-
-				const mode: WorkflowExecuteMode = 'internal';
-				const timezone = config.getEnv('generic.timezone');
-				const credentialsHelper = new CredentialsHelper(encryptionKey);
-				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-					credential as INodeCredentialsDetails,
-					credential.type,
-					mode,
-					timezone,
-					true,
-				);
-
-				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-					decryptedDataOriginal,
-					credential.type,
-					mode,
-					timezone,
-				);
-
-				const token = new csrf();
-				// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
-				const csrfSecret = token.secretSync();
-				const state = {
-					token: token.create(csrfSecret),
-					cid: req.query.id,
-				};
-				const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
-
-				const oAuthOptions: clientOAuth2.Options = {
-					clientId: _.get(oauthCredentials, 'clientId') as string,
-					clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
-					accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-					authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-					redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
-						this.restEndpoint
-					}/oauth2-credential/callback`,
-					scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
-					state: stateEncodedStr,
-				};
-
-				await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
-
-				const oAuthObj = new clientOAuth2(oAuthOptions);
-
-				// Encrypt the data
-				const credentials = new Credentials(
-					credential as INodeCredentialsDetails,
-					credential.type,
-					credential.nodesAccess,
-				);
-				decryptedDataOriginal.csrfSecret = csrfSecret;
-
-				credentials.setData(decryptedDataOriginal, encryptionKey);
-				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
-
-				// Add special database related data
-				newCredentialsData.updatedAt = this.getCurrentDate();
-
-				// Update the credentials in DB
-				await Db.collections.Credentials.update(req.query.id as string, newCredentialsData);
-
-				const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
-				let returnUri = oAuthObj.code.getUri();
-
-				// if scope uses comma, change it as the library always return then with spaces
-				if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
-					const data = querystring.parse(returnUri.split('?')[1]);
-					data.scope = _.get(oauthCredentials, 'scope') as string;
-					returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
-				}
-
-				if (authQueryParameters) {
-					returnUri += `&${authQueryParameters}`;
-				}
-
-				LoggerProxy.verbose('OAuth2 authentication successful for new credential', {
-					userId: req.user.id,
-					credentialId,
-				});
-				return returnUri;
-			}),
-		);
-
-		// ----------------------------------------
-		// OAuth2-Credential/Callback
-		// ----------------------------------------
-
-		// Verify and store app code. Generate access tokens and store for respective credential.
-		this.app.get(
-			`/${this.restEndpoint}/oauth2-credential/callback`,
-			async (req: OAuthRequest.OAuth2Credential.Callback, res: express.Response) => {
-				try {
-					// realmId it's currently just use for the quickbook OAuth2 flow
-					const { code, state: stateEncoded } = req.query;
-
-					if (!code || !stateEncoded) {
-						const errorResponse = new ResponseHelper.ResponseError(
-							`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
-								req.query,
-							)}`,
-							undefined,
-							503,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					let state;
-					try {
-						state = JSON.parse(Buffer.from(stateEncoded, 'base64').toString());
-					} catch (error) {
-						const errorResponse = new ResponseHelper.ResponseError(
-							'Invalid state format returned',
-							undefined,
-							503,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					const credential = await getCredentialWithoutUser(state.cid);
-
-					if (!credential) {
-						LoggerProxy.error('OAuth2 callback failed because of insufficient permissions', {
-							userId: req.user?.id,
-							credentialId: state.cid,
-						});
-						const errorResponse = new ResponseHelper.ResponseError(
-							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-							undefined,
-							404,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					let encryptionKey: string;
-					try {
-						encryptionKey = await UserSettings.getEncryptionKey();
-					} catch (error) {
-						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
-					}
-
-					const mode: WorkflowExecuteMode = 'internal';
-					const timezone = config.getEnv('generic.timezone');
-					const credentialsHelper = new CredentialsHelper(encryptionKey);
-					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
-						credential as INodeCredentialsDetails,
-						credential.type,
-						mode,
-						timezone,
-						true,
-					);
-					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
-						decryptedDataOriginal,
-						credential.type,
-						mode,
-						timezone,
-					);
-
-					const token = new csrf();
-					if (
-						decryptedDataOriginal.csrfSecret === undefined ||
-						!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
-					) {
-						LoggerProxy.debug('OAuth2 callback state is invalid', {
-							userId: req.user?.id,
-							credentialId: state.cid,
-						});
-						const errorResponse = new ResponseHelper.ResponseError(
-							'The OAuth2 callback state is invalid!',
-							undefined,
-							404,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					let options = {};
-
-					const oAuth2Parameters = {
-						clientId: _.get(oauthCredentials, 'clientId') as string,
-						clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
-						accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-						authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-						redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${
-							this.restEndpoint
-						}/oauth2-credential/callback`,
-						scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
-					};
-
-					if ((_.get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
-						options = {
-							body: {
-								client_id: _.get(oauthCredentials, 'clientId') as string,
-								client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
-							},
-						};
-						delete oAuth2Parameters.clientSecret;
-					}
-
-					await this.externalHooks.run('oauth2.callback', [oAuth2Parameters]);
-
-					const oAuthObj = new clientOAuth2(oAuth2Parameters);
-
-					const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
-
-					const oauthToken = await oAuthObj.code.getToken(
-						`${oAuth2Parameters.redirectUri}?${queryParameters}`,
-						options,
-					);
-
-					if (Object.keys(req.query).length > 2) {
-						_.set(oauthToken.data, 'callbackQueryString', _.omit(req.query, 'state', 'code'));
-					}
-
-					if (oauthToken === undefined) {
-						LoggerProxy.error('OAuth2 callback failed: unable to get access tokens', {
-							userId: req.user?.id,
-							credentialId: state.cid,
-						});
-						const errorResponse = new ResponseHelper.ResponseError(
-							'Unable to get access tokens!',
-							undefined,
-							404,
-						);
-						return ResponseHelper.sendErrorResponse(res, errorResponse);
-					}
-
-					if (decryptedDataOriginal.oauthTokenData) {
-						// Only overwrite supplied data as some providers do for example just return the
-						// refresh_token on the very first request and not on subsequent ones.
-						Object.assign(decryptedDataOriginal.oauthTokenData, oauthToken.data);
-					} else {
-						// No data exists so simply set
-						decryptedDataOriginal.oauthTokenData = oauthToken.data;
-					}
-
-					_.unset(decryptedDataOriginal, 'csrfSecret');
-
-					const credentials = new Credentials(
-						credential as INodeCredentialsDetails,
-						credential.type,
-						credential.nodesAccess,
-					);
-					credentials.setData(decryptedDataOriginal, encryptionKey);
-					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
-					// Add special database related data
-					newCredentialsData.updatedAt = this.getCurrentDate();
-					// Save the credentials in DB
-					await Db.collections.Credentials.update(state.cid, newCredentialsData);
-					LoggerProxy.verbose('OAuth2 callback successful for new credential', {
-						userId: req.user?.id,
-						credentialId: state.cid,
-					});
-
-					res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
-				} catch (error) {
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
-		);
+		this.app.use(`/${this.restEndpoint}/oauth2-credential`, oauth2CredentialController);
 
 		// ----------------------------------------
 		// Executions
@@ -2331,7 +1957,7 @@ class App {
 							filterToAdd = { [key]: value };
 						}
 
-						Object.assign(findOptions.where, filterToAdd);
+						Object.assign(findOptions.where!, filterToAdd);
 					});
 
 					const rangeQuery: string[] = [];
@@ -2357,7 +1983,7 @@ class App {
 					}
 
 					if (rangeQuery.length) {
-						Object.assign(findOptions.where, {
+						Object.assign(findOptions.where!, {
 							id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
 						});
 					}
@@ -2679,10 +2305,10 @@ class App {
 						if (req.query.filter) {
 							const { workflowId } = JSON.parse(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-								Object.assign(findOptions.where, { workflowId });
+								Object.assign(findOptions.where!, { workflowId });
 							}
 						} else {
-							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
+							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
 						}
 
 						const executions = await Db.collections.Execution.find(findOptions);
@@ -3221,5 +2847,22 @@ function isOAuth(credType: ICredentialType) {
 		credType.extends.some((parentType) =>
 			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
 		)
+	);
+}
+
+const TRIGGER_NODE_SUFFIXES = ['trigger', 'webhook'];
+
+const isTrigger = (str: string) =>
+	TRIGGER_NODE_SUFFIXES.some((suffix) => str.toLowerCase().includes(suffix));
+
+function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
+	if (!pinData) return;
+
+	const firstPinnedTriggerName = Object.keys(pinData).find(isTrigger);
+
+	if (!firstPinnedTriggerName) return;
+
+	return workflow.nodes.find(
+		({ type, name }) => isTrigger(type) && name === firstPinnedTriggerName,
 	);
 }

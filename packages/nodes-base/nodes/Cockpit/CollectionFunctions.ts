@@ -1,13 +1,15 @@
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 import { ICollection } from './CollectionInterface';
 import { cockpitApiRequest } from './GenericFunctions';
 
-export async function createCollectionEntry(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, data: IDataObject, id?: string): Promise<any> { // tslint:disable-line:no-any
+export async function createCollectionEntry(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	resourceName: string,
+	data: IDataObject,
+	id?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const body: ICollection = {
 		data,
 	};
@@ -22,12 +24,16 @@ export async function createCollectionEntry(this: IExecuteFunctions | IExecuteSi
 	return cockpitApiRequest.call(this, 'post', `/collections/save/${resourceName}`, body);
 }
 
-
-export async function getAllCollectionEntries(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function getAllCollectionEntries(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	resourceName: string,
+	options: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const body: ICollection = {};
 
 	if (options.fields) {
-		const fields = (options.fields as string).split(',').map(field => field.trim() );
+		const fields = (options.fields as string).split(',').map((field) => field.trim());
 
 		const bodyFields = {
 			_id: false,
@@ -71,7 +77,8 @@ export async function getAllCollectionEntries(this: IExecuteFunctions | IExecute
 	return cockpitApiRequest.call(this, 'post', `/collections/get/${resourceName}`, body);
 }
 
-
-export async function getAllCollectionNames(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions): Promise<string[]> {
+export async function getAllCollectionNames(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+): Promise<string[]> {
 	return cockpitApiRequest.call(this, 'GET', `/collections/listCollections`, {});
 }

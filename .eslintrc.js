@@ -13,6 +13,7 @@ module.exports = {
 		sourceType: 'module',
 	},
 	ignorePatterns: [
+		'n8n',
 		'.eslintrc.js',
 		'**/*.js',
 		'**/node_modules/**',
@@ -83,7 +84,7 @@ module.exports = {
 				// The following rule enables eslint-plugin-prettier
 				// See: https://github.com/prettier/eslint-plugin-prettier#recommended-configuration
 
-				'prettier/prettier': 'error',
+				'prettier/prettier': ['error', { endOfLine: 'auto' }],
 
 				// The following two rules must be disabled when using eslint-plugin-prettier:
 				// See: https://github.com/prettier/eslint-plugin-prettier#arrow-body-style-and-prefer-arrow-callback-issue

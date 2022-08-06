@@ -1008,7 +1008,7 @@ export class Nasa implements INodeType {
 						endpoint = `/neo/rest/v1/neo/${asteroidId}`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 
 				}
@@ -1027,7 +1027,7 @@ export class Nasa implements INodeType {
 						endpoint = `/neo/rest/v1/neo/browse`;
 
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
+						throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`, { itemIndex: i });
 					}
 
 				}

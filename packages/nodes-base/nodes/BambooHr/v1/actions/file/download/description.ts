@@ -1,6 +1,4 @@
-import {
-	FileProperties,
-} from '../../Interfaces';
+import { FileProperties } from '../../Interfaces';
 
 export const fileDownloadDescription: FileProperties = [
 	{
@@ -10,12 +8,8 @@ export const fileDownloadDescription: FileProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'download',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['download'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -30,12 +24,8 @@ export const fileDownloadDescription: FileProperties = [
 		description: 'The name of the output field to put the binary file data in',
 		displayOptions: {
 			show: {
-				operation: [
-					'download',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['download'],
+				resource: ['file'],
 			},
 		},
 	},

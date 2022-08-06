@@ -133,7 +133,7 @@ export const playlistFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner Channel',
@@ -520,7 +520,7 @@ export const playlistFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',

@@ -6,7 +6,12 @@
 import express from 'express';
 import { In } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
-import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import {
+	INodeCredentialsDetails,
+	INodeCredentialTestResult,
+	LoggerProxy,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
 import {
@@ -17,6 +22,7 @@ import {
 	ICredentialsResponse,
 	whereClause,
 	ResponseHelper,
+	CredentialTypes,
 } from '..';
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
@@ -76,6 +82,7 @@ credentialsController.get(
 				});
 			}
 		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			LoggerProxy.error('Request to list credentials failed', error);
 			throw error;
 		}
@@ -129,7 +136,6 @@ credentialsController.post(
 		}
 
 		const helper = new CredentialsHelper(encryptionKey);
-
 		return helper.testCredentials(req.user, credentials.type, credentials, nodeToTestWith);
 	}),
 );

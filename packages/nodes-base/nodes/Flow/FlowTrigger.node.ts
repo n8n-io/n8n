@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,9 +8,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	flowApiRequest,
-} from './GenericFunctions';
+import { flowApiRequest } from './GenericFunctions';
 
 export class FlowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,17 +45,16 @@ export class FlowTrigger implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				default: '',
-				options:
-					[
-						{
-							name: 'Project',
-							value: 'list',
-						},
-						{
-							name: 'Task',
-							value: 'task',
-						},
-					],
+				options: [
+					{
+						name: 'Project',
+						value: 'list',
+					},
+					{
+						name: 'Task',
+						value: 'task',
+					},
+				],
 				description: 'Resource that triggers the webhook',
 			},
 			{
@@ -71,14 +65,10 @@ export class FlowTrigger implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource:[
-							'list',
-						],
+						resource: ['list'],
 					},
 					hide: {
-						resource: [
-							'task',
-						],
+						resource: ['task'],
 					},
 				},
 				description: 'Lists IDs, perhaps known better as "Projects" separated by a comma (,)',
@@ -91,20 +81,15 @@ export class FlowTrigger implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource:[
-							'task',
-						],
+						resource: ['task'],
 					},
 					hide: {
-						resource: [
-							'list',
-						],
+						resource: ['list'],
 					},
 				},
 				description: 'Task IDs separated by a comma (,)',
 			},
 		],
-
 	};
 	// @ts-ignore
 	webhookMethods = {
@@ -154,7 +139,7 @@ export class FlowTrigger implements INodeType {
 					resourceIds = (this.getNodeParameter('taskIds') as string).split(',');
 				}
 				// @ts-ignore
-				for (const resourceId of resourceIds ) {
+				for (const resourceId of resourceIds) {
 					body = {
 						organization_id: credentials.organizationId as number,
 						integration_webhook: {
@@ -165,12 +150,14 @@ export class FlowTrigger implements INodeType {
 						},
 					};
 					try {
-						 responseData = await flowApiRequest.call(this, 'POST', endpoint, body);
-					} catch(error) {
+						responseData = await flowApiRequest.call(this, 'POST', endpoint, body);
+					} catch (error) {
 						return false;
 					}
-					if (responseData.integration_webhook === undefined
-						|| responseData.integration_webhook.id === undefined) {
+					if (
+						responseData.integration_webhook === undefined ||
+						responseData.integration_webhook.id === undefined
+					) {
 						// Required data is missing so was not successful
 						return false;
 					}
@@ -188,7 +175,7 @@ export class FlowTrigger implements INodeType {
 				// @ts-ignore
 				if (webhookData.webhookIds.length > 0) {
 					// @ts-ignore
-					for (const webhookId of webhookData.webhookIds ) {
+					for (const webhookId of webhookData.webhookIds) {
 						const endpoint = `/integration_webhooks/${webhookId}`;
 						try {
 							await flowApiRequest.call(this, 'DELETE', endpoint, {}, qs);
@@ -206,9 +193,7 @@ export class FlowTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

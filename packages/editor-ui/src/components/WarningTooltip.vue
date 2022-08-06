@@ -1,4 +1,4 @@
-<template functional>
+<template>
 	<n8n-tooltip  content=" " placement="top" >
 		<div slot="content"><slot /></div>
 		<font-awesome-icon :class="$style['icon']" icon="exclamation-triangle"></font-awesome-icon>
