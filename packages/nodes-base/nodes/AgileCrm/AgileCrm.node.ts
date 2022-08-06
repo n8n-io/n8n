@@ -90,7 +90,7 @@ export class AgileCrm implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -613,13 +613,16 @@ export class AgileCrm implements INodeType {
 				}
 			}
 
+			responseData = this.helpers.returnJsonArray(responseData);
+			responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
+
 			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				returnData.push.apply(returnData, responseData);
 			} else {
-				returnData.push(responseData as IDataObject);
+				returnData.push(responseData);
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }
