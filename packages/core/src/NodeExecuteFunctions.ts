@@ -59,8 +59,7 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
-	INodeExecutionPairedData,
-	IBinaryKeyData,
+	INodeExecutionMetaData,
 	IPairedItemData,
 } from 'n8n-workflow';
 
@@ -1304,7 +1303,7 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 		jsonData = [jsonData];
 	}
 
-	jsonData.forEach((data) => {
+	jsonData.forEach((data: IDataObject) => {
 		returnData.push({ json: data });
 	});
 
@@ -1313,63 +1312,25 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
- *
  * @export
- * @param {(IDataObject | IDataObject[] | IBinaryKeyData)} data
- * @param {(number)} itemIndex
- * @param {(number)} inputIndex
- * @param {(boolean)} isBinary
- * @returns {INodeExecutionPairedData[]}
+ * @param {(IPairedItemData)} itemData
+ * @param {(INodeExecutionData[])} inputData
+ * @returns {(INodeExecutionMetaData[])}
  */
-export function preparePairedOutputData(
-	data: IDataObject | IDataObject[] | IBinaryKeyData,
-	isBinary = false,
-	pairedItem?: IPairedItemData,
-): INodeExecutionPairedData[] {
-	const returnData: INodeExecutionPairedData[] = [];
+export function constructExecutionMetaData(
+	itemData: IPairedItemData | IPairedItemData[],
+	inputData: INodeExecutionData[],
+): INodeExecutionMetaData[] {
+	const pairedItem = itemData;
 
-	if (!Array.isArray(data)) {
-		data = [data];
-	}
-
-	data.forEach((data, itemIndex) => {
-		const { item = itemIndex, input = 0 } =
-			(data.pairedItem as IPairedItemData) || pairedItem || {};
-
-		if (!isBinary) {
-			const { json } = data;
-			if (json !== undefined) {
-				returnData.push({
-					json: json as IDataObject,
-					pairedItem: { item, input },
-				});
-			} else {
-				returnData.push({
-					json: data,
-					pairedItem: { item, input },
-				});
-			}
+	return inputData.map((data: INodeExecutionData) => {
+		const { json, binary } = data;
+		const metaData = { json, pairedItem } as INodeExecutionMetaData;
+		if (binary !== undefined) {
+			Object.assign(metaData, { binary });
 		}
-
-		if (isBinary) {
-			const { json, binary } = data;
-			if (json !== undefined && binary !== undefined) {
-				returnData.push({
-					json: json as IDataObject,
-					binary: binary as IBinaryKeyData,
-					pairedItem: { item, input },
-				});
-			} else {
-				returnData.push({
-					json: data,
-					binary: data as IBinaryKeyData,
-					pairedItem: { item, input },
-				});
-			}
-		}
+		return metaData;
 	});
-
-	return returnData;
 }
 
 /**
@@ -2472,7 +2433,7 @@ export function getExecuteFunctions(
 				},
 				returnJsonArray,
 				normalizeItems,
-				preparePairedOutputData,
+				constructExecutionMetaData,
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node);

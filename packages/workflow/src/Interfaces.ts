@@ -880,10 +880,6 @@ export interface INodeExecutionData {
 	pairedItem?: IPairedItemData | IPairedItemData[] | number;
 }
 
-export interface INodeExecutionPairedData extends INodeExecutionData {
-	pairedItem: IPairedItemData | IPairedItemData[] | number;
-}
-
 export interface INodeExecuteFunctions {
 	getExecutePollFunctions: IGetExecutePollFunctions;
 	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
@@ -1011,7 +1007,7 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(
 		this: IExecuteFunctions,
-	): Promise<INodeExecutionData[][] | INodeExecutionPairedData[][] | null>;
+	): Promise<INodeExecutionData[][] | INodeExecutionMetaData[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
@@ -1633,3 +1629,7 @@ export type PublicInstalledNode = {
 	latestVersion: string;
 	package: PublicInstalledPackage;
 };
+
+export interface INodeExecutionMetaData extends INodeExecutionData {
+	pairedItem: IPairedItemData | IPairedItemData[];
+}
