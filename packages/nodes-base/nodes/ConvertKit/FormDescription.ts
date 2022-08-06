@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const formOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const formOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
+				resource: ['form'],
 			},
 		},
 		options: [
@@ -45,20 +41,16 @@ export const formFields: INodeProperties[] = [
 		displayName: 'Form Name or ID',
 		name: 'id',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getForms',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'addSubscriber',
-					'getSubscriptions',
-				],
+				resource: ['form'],
+				operation: ['addSubscriber', 'getSubscriptions'],
 			},
 		},
 		default: '',
@@ -71,16 +63,12 @@ export const formFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'addSubscriber',
-				],
+				resource: ['form'],
+				operation: ['addSubscriber'],
 			},
 		},
 		default: '',
-		description: 'The subscriber\'s email address',
+		description: "The subscriber's email address",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -90,12 +78,8 @@ export const formFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'addSubscriber',
-				],
+				resource: ['form'],
+				operation: ['addSubscriber'],
 			},
 		},
 		options: [
@@ -103,7 +87,8 @@ export const formFields: INodeProperties[] = [
 				displayName: 'Custom Fields',
 				name: 'fieldsUi',
 				placeholder: 'Add Custom Field',
-				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
+				description:
+					'Object of key/value pairs for custom fields (the custom field must exist before you can use it here)',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -120,7 +105,7 @@ export const formFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'last_name',
-								description: 'The field\'s key',
+								description: "The field's key",
 							},
 							{
 								displayName: 'Field Value',
@@ -139,7 +124,7 @@ export const formFields: INodeProperties[] = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'The subscriber\'s first name',
+				description: "The subscriber's first name",
 			},
 		],
 	},
@@ -149,13 +134,8 @@ export const formFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'getSubscriptions',
-				],
-				resource: [
-					'form',
-				],
+				operation: ['getAll', 'getSubscriptions'],
+				resource: ['form'],
 			},
 		},
 		default: false,
@@ -167,16 +147,9 @@ export const formFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'getSubscriptions',
-				],
-				resource: [
-					'form',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll', 'getSubscriptions'],
+				resource: ['form'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -194,12 +167,8 @@ export const formFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getSubscriptions',
-				],
+				resource: ['form'],
+				operation: ['getSubscriptions'],
 			},
 		},
 		options: [

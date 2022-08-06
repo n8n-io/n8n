@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userGroupOperations: INodeProperties[] = [
 	{
@@ -12,9 +10,7 @@ export const userGroupOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
+				resource: ['userGroup'],
 			},
 		},
 		options: [
@@ -46,12 +42,8 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userGroup'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -64,12 +56,8 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userGroup'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -86,12 +74,8 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userGroup'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
@@ -104,16 +88,11 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userGroup'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
 		description: 'ID of the group to remove',
 	},
-
 ];
