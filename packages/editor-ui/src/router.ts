@@ -360,7 +360,9 @@ const router = new Router({
 						role: [ROLE.Owner],
 					},
 					deny: {
-						um: false,
+						shouldDeny: () => {
+							return store.getters['settings/isUserManagementEnabled'] === false;
+						},
 					},
 				},
 			},
