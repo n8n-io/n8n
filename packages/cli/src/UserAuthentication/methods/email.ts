@@ -19,8 +19,8 @@ export const handleEmailLogin = async (
 	);
 
 	if (user?.password && (await compareHash(password, user.password))) {
-		return undefined;
+		return user;
 	}
 
-	return user;
+	return undefined;
 };

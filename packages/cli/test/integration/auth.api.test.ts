@@ -9,6 +9,7 @@ import type { Role } from '../../src/databases/entities/Role';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
 import { AUTH_COOKIE_NAME } from '../../src/constants';
+import { setLdapLoginEnabled } from '../../src/Ldap/helpers';
 
 jest.mock('../../src/telemetry');
 
@@ -30,6 +31,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['User'], testDbName);
+
+	config.set('ldap.disabled', true);
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 

@@ -31,6 +31,7 @@ import { User } from '../../../src/databases/entities/User';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { TagEntity } from '../../../src/databases/entities/TagEntity';
+import { SignInType } from '../../../src/Ldap/constants';
 
 const exec = promisify(callbackExec);
 
@@ -317,13 +318,14 @@ export async function saveCredential(
  * Store a user in the DB, defaulting to a `member`.
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
-	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+	const { email, password, firstName, lastName, globalRole, signInType, ...rest } = attributes;
 	const user = {
 		email: email ?? randomEmail(),
 		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
+		signInType: signInType ?? SignInType.EMAIL,
 		...rest,
 	};
 
