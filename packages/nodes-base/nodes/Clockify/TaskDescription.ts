@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const taskOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -56,18 +52,15 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Project Name or ID',
 		name: 'projectId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
+			loadOptionsDependsOn: ['workspaceId'],
 			loadOptionsMethod: 'loadProjectsForWorkspace',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		required: true,
@@ -85,12 +78,8 @@ export const taskFields: INodeProperties[] = [
 		description: 'Name of task to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -101,12 +90,8 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['create'],
+				resource: ['task'],
 			},
 		},
 		default: {},
@@ -116,7 +101,8 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Assignee Names or IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'loadUsersForWorkspace',
@@ -144,12 +130,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['task'],
+				operation: ['delete'],
 			},
 		},
 		description: 'ID of task to delete',
@@ -166,12 +148,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['task'],
+				operation: ['get'],
 			},
 		},
 		description: 'ID of task to get',
@@ -186,12 +164,8 @@ export const taskFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['getAll'],
+				resource: ['task'],
 			},
 		},
 		default: false,
@@ -203,15 +177,9 @@ export const taskFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['task'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -228,12 +196,8 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['getAll'],
+				resource: ['task'],
 			},
 		},
 		default: {},
@@ -293,12 +257,8 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		description: 'ID of task to update',
@@ -310,12 +270,8 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'task',
-				],
+				operation: ['update'],
+				resource: ['task'],
 			},
 		},
 		default: {},
@@ -325,7 +281,8 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Assignee Names or IDs',
 				name: 'assigneeIds',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'loadUsersForWorkspace',

@@ -35,14 +35,22 @@ interface IAttachment {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('nocoDb');
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	const credentials = await this.getCredentials(authenticationMethod);
+
+	if (credentials === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+
+	const baseUrl = credentials.host as string;
+
 	query = query || {};
 
 	const options: OptionsWithUri = {
 		method,
 		body,
 		qs: query,
-		uri: uri || `${credentials.host}${endpoint}`,
+		uri: uri || baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`,
 		json: true,
 
 	};
@@ -56,7 +64,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	}
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'nocoDb', options);
+		return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -76,6 +84,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	const version = this.getNode().typeVersion as number;
 
 	if (query === undefined) {
 		query = {};
@@ -88,12 +97,12 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push(...responseData);
+		version === 1 ? returnData.push(...responseData) : returnData.push(...responseData.list);
 
 		query.offset += query.limit;
 
 	} while (
-		responseData.length !== 0
+		version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true
 	);
 
 	return returnData;
