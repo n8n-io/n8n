@@ -814,10 +814,10 @@ export async function getBinaryDataBuffer(
  * @param {IBinaryData} data
  * @returns {Promise<IBinaryData>}
  */
-export async function storeBinaryDataBuffer(
+export async function setBinaryDataBuffer(
+	data: IBinaryData,
 	binaryData: Buffer,
-	executionId: string,
-	data: IBinaryData
+	executionId: string
 ): Promise<IBinaryData> {
 	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
 }
@@ -891,7 +891,7 @@ export async function prepareBinaryData(
 		}
 	}
 
-	return storeBinaryDataBuffer(binaryData, executionId, returnData);
+	return setBinaryDataBuffer(returnData, binaryData, executionId);
 }
 
 /**
@@ -1937,15 +1937,15 @@ export function getExecutePollFunctions(
 			},
 			helpers: {
 				httpRequest,
-				async storeBinaryDataBuffer(
-					binaryData: Buffer,
+				async setBinaryDataBuffer(
 					data: IBinaryData,
+					binaryData: Buffer	
 				): Promise<IBinaryData> {
-					return storeBinaryDataBuffer.call(
+					return setBinaryDataBuffer.call(
 						this,
+						data,
 						binaryData,
-						additionalData.executionId!,
-						data
+						additionalData.executionId!
 					);
 				},
 				async prepareBinaryData(
@@ -2119,15 +2119,15 @@ export function getExecuteTriggerFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				async storeBinaryDataBuffer(
-					binaryData: Buffer,
+				async setBinaryDataBuffer(
 					data: IBinaryData,
+					binaryData: Buffer	
 				): Promise<IBinaryData> {
-					return storeBinaryDataBuffer.call(
+					return setBinaryDataBuffer.call(
 						this,
+						data,
 						binaryData,
-						additionalData.executionId!,
-						data
+						additionalData.executionId!
 					);
 				},
 				async prepareBinaryData(
@@ -2386,15 +2386,15 @@ export function getExecuteFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				async storeBinaryDataBuffer(
-					binaryData: Buffer,
+				async setBinaryDataBuffer(
 					data: IBinaryData,
+					binaryData: Buffer	
 				): Promise<IBinaryData> {
-					return storeBinaryDataBuffer.call(
+					return setBinaryDataBuffer.call(
 						this,
+						data,
 						binaryData,
-						additionalData.executionId!,
-						data
+						additionalData.executionId!
 					);
 				},
 				async prepareBinaryData(
@@ -2639,15 +2639,15 @@ export function getExecuteSingleFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				async storeBinaryDataBuffer(
-					binaryData: Buffer,
+				async setBinaryDataBuffer(
 					data: IBinaryData,
+					binaryData: Buffer	
 				): Promise<IBinaryData> {
-					return storeBinaryDataBuffer.call(
+					return setBinaryDataBuffer.call(
 						this,
+						data,
 						binaryData,
-						additionalData.executionId!,
-						data
+						additionalData.executionId!
 					);
 				},
 				async prepareBinaryData(
@@ -3147,15 +3147,15 @@ export function getExecuteWebhookFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				async storeBinaryDataBuffer(
-					binaryData: Buffer,
+				async setBinaryDataBuffer(
 					data: IBinaryData,
+					binaryData: Buffer	
 				): Promise<IBinaryData> {
-					return storeBinaryDataBuffer.call(
+					return setBinaryDataBuffer.call(
 						this,
+						data,
 						binaryData,
-						additionalData.executionId!,
-						data
+						additionalData.executionId!
 					);
 				},
 				async prepareBinaryData(

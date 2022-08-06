@@ -75,6 +75,8 @@ return item;`,
 		};
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			const mode = this.getMode();
+
 			try {
 				item = items[itemIndex];
 
@@ -85,12 +87,12 @@ return item;`,
 				const sandbox = {
 					/** @deprecated for removal */
 					getBinaryData: (): IBinaryKeyData | undefined => {
-						this.sendMessageToUI("getBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to getBinaryDataAsync(...) instead.")
+						if (mode === 'manual') this.sendMessageToUI("getBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to getBinaryDataAsync(...) instead.")
 						return item.binary;
 					},
 					/** @deprecated for removal */
 					setBinaryData: async (data: IBinaryKeyData) => {
-						this.sendMessageToUI("setBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to setBinaryDataAsync(...) instead.")
+						if (mode === 'manual') this.sendMessageToUI("setBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to setBinaryDataAsync(...) instead.")
 						item.binary = data;
 					},
 					getNodeParameter: this.getNodeParameter,
@@ -109,8 +111,7 @@ return item;`,
 						if (data) {
 							for (let binaryPropertyName of Object.keys(data)) {
 								let binaryItem = data[binaryPropertyName];
-								data[binaryPropertyName] = (await this.helpers.storeBinaryDataBuffer(Buffer.from(binaryItem.data, 'base64'), binaryItem))
-								data[binaryPropertyName].data = "";
+								data[binaryPropertyName] = (await this.helpers.setBinaryDataBuffer(binaryItem, Buffer.from(binaryItem.data, 'base64')))
 							}
 						}
 						item.binary = data;
@@ -120,8 +121,6 @@ return item;`,
 				// Make it possible to access data via $node, $parameter, ...
 				const dataProxy = this.getWorkflowDataProxy(itemIndex);
 				Object.assign(sandbox, dataProxy);
-
-				const mode = this.getMode();
 
 				const options = {
 					console: mode === 'manual' ? 'redirect' : 'inherit',
