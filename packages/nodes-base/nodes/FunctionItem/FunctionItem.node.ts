@@ -87,12 +87,12 @@ return item;`,
 				const sandbox = {
 					/** @deprecated for removal */
 					getBinaryData: (): IBinaryKeyData | undefined => {
-						if (mode === 'manual') this.sendMessageToUI("getBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to getBinaryDataAsync(...) instead.")
+						if (mode === 'manual') this.sendMessageToUI("getBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to getBinaryDataAsync(...) instead.");
 						return item.binary;
 					},
 					/** @deprecated for removal */
 					setBinaryData: async (data: IBinaryKeyData) => {
-						if (mode === 'manual') this.sendMessageToUI("setBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to setBinaryDataAsync(...) instead.")
+						if (mode === 'manual') this.sendMessageToUI("setBinaryData(...) is deprecated and will be removed in a future version. Please consider switching to setBinaryDataAsync(...) instead.");
 						item.binary = data;
 					},
 					getNodeParameter: this.getNodeParameter,
@@ -101,17 +101,17 @@ return item;`,
 					item: item.json,
 					getBinaryDataAsync: async (): Promise<IBinaryKeyData | undefined> => {
 						if (item?.binary) {
-							for (let binaryPropertyName of Object.keys(item.binary)) {
-								item.binary[binaryPropertyName].data = (await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName))?.toString('base64')
+							for (const binaryPropertyName of Object.keys(item.binary)) {
+								item.binary[binaryPropertyName].data = (await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName))?.toString('base64');
 							}
 						}
 						return item.binary;
 					},
 					setBinaryDataAsync: async (data: IBinaryKeyData) => {
 						if (data) {
-							for (let binaryPropertyName of Object.keys(data)) {
-								let binaryItem = data[binaryPropertyName];
-								data[binaryPropertyName] = (await this.helpers.setBinaryDataBuffer(binaryItem, Buffer.from(binaryItem.data, 'base64')))
+							for (const binaryPropertyName of Object.keys(data)) {
+								const binaryItem = data[binaryPropertyName];
+								data[binaryPropertyName] = (await this.helpers.setBinaryDataBuffer(binaryItem, Buffer.from(binaryItem.data, 'base64')));
 							}
 						}
 						item.binary = data;
