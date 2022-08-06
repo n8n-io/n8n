@@ -941,7 +941,7 @@
 	"settings.ldap.syncronizationTable.column.endedAt": "Ended At",
 	"settings.ldap.syncronizationTable.column.runMode": "Run Mode",
 	"settings.ldap.syncronizationTable.column.runTime": "Run Time",
-	"settings.ldap.syncronizationTable.column.Details": "Details",
+	"settings.ldap.syncronizationTable.column.details": "Details",
 	"settings.ldap.dryRun": "Dry Run",
 	"settings.ldap.synchronizeNow": "Synchronize Now"
 }
