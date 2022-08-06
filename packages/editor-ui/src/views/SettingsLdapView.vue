@@ -489,7 +489,7 @@ export default mixins(
 							required: true,
 						},
 						shouldDisplay(values): boolean {
-							return values['syncronizationEnabled'] === 'true';
+							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
 						},
 					},
 				];
