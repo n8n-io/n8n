@@ -9,7 +9,6 @@ import {
 import { getConnection, In, Not } from 'typeorm';
 import { createHash } from 'crypto';
 
-import { Workflow } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import {
 	DatabaseType,
@@ -36,8 +35,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 						// Clean up all the data of no longer existing node
 						const contexts = workflow.nodes.map((node) =>
 							ProcessedDataManagerNativeDatabase.createContext('node', {
-								// TODO: Should change generally to use IWorkflowBase or just workflowId
-								workflow: workflow as unknown as Workflow,
+								workflow,
 								node,
 							}),
 						);
@@ -127,7 +125,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 	): Promise<ICheckProcessedOutput> {
 		const dbContext = ProcessedDataManagerNativeDatabase.createContext(context, contextData);
 
-		if (!contextData.workflow.id) {
+		if (contextData.workflow.id === undefined) {
 			throw new Error('Workflow has to have an ID set!');
 		}
 
@@ -142,7 +140,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			for (const item of items) {
 				upsertPromises.push(
 					Db.collections.ProcessedData.insert({
-						workflowId: contextData.workflow.id,
+						workflowId: contextData.workflow.id.toString(),
 						context: dbContext,
 						value: ProcessedDataManagerNativeDatabase.createValueHash(item),
 					}),
@@ -183,7 +181,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		// TODO: Check if that is really the case! Until now just tested with Postgres.
 		const insertItems = items.map((item: string) => {
 			return {
-				workflowId: contextData.workflow.id as string,
+				workflowId: contextData.workflow.id?.toString(),
 				context: dbContext,
 				value: ProcessedDataManagerNativeDatabase.createValueHash(item),
 			};

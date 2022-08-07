@@ -21,7 +21,6 @@ import {
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	Workflow,
 } from 'n8n-workflow';
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -392,5 +391,8 @@ export interface ICheckProcessedOutputItems {
 
 export interface ICheckProcessedContextData {
 	node?: INode;
-	workflow: Workflow;
+	workflow: {
+		id?: number | string;
+		active: boolean;
+	};
 }
