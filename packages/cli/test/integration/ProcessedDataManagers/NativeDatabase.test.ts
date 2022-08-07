@@ -18,6 +18,7 @@ beforeAll(async () => {
 	testDbName = initResult.testDbName;
 
 	node = {
+		id: 'uuid-1234',
 		parameters: {},
 		name: 'test',
 		type: 'test.set',
