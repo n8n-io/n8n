@@ -38,6 +38,10 @@ export class ProcessedDataManager {
 		return ProcessedDataManager.instance;
 	}
 
+	static getManagers(): string[] {
+		return Object.keys(ProcessedDataManager.instance.managers);
+	}
+
 	async checkProcessed(
 		items: string[],
 		context: IProcessedDataContext,
