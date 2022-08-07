@@ -40,8 +40,8 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 							}),
 						);
 
-						// Add also empty else it will delete all the ones with context 'workflow'
-						// TODO: Should make probably "context" nullable
+						// Add also empty else it will delete all the ones with context 'workflow'.
+						// It is not possible to make 'context' nullable as it is a PrimaryColumn.
 						contexts.push('');
 
 						await Db.collections.ProcessedData.delete({
@@ -72,9 +72,9 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			if (!contextData.node) {
 				throw new Error(`No node information has been provided and can so not use context 'node'`);
 			}
-			// TODO: Should probably also have another piece of information in case a node wants to use it twice
-			// TODO: It should be be the up and coming node-id. Like that it does not delete the data if a node gets renamed
-			return `n:${contextData.node.name}`;
+			// Use the node ID to make sure that the data can still be accessed and does not get deleted
+			// whenver the node gets renamed
+			return `n:${contextData.node.id}`;
 		}
 
 		return '';
