@@ -197,7 +197,7 @@ export class WorkflowRunnerProcess {
 		await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		const loadedProcessedDataManager = ProcessedDataManager.getManagers() as string[];
+		const loadedProcessedDataManager = ProcessedDataManager.getManagers();
 		if (loadedProcessedDataManager.includes('nativeDatabase')) {
 			shouldInitializaDb = true;
 		}
