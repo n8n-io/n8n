@@ -1,0 +1,40 @@
+{
+  "name": "Hass n8n",
+  "version": "0.0.4",
+  "slug": "hass-n8n",
+  "description": "Self host your n8n instance",
+  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "startup": "application",
+  "boot": "auto",
+  "icon": "ico.png",
+  "logo": "ico.png",
+  "webui": "[PROTO:protocol]://[HOST]:[PORT:5678]/",
+  "map": ["ssl"],
+  "apparmor": true,
+  "ingress": true,
+  "ingress_port": 5678,
+  "ports": {
+    "5678/tcp": 5678
+  },
+  "ports_description": {
+    "5678/tcp": "n8n Web interface"
+  },
+  "options": {
+    "auth": false,
+    "auth_username": "",
+    "auth_password": "",
+    "timezone": "America/New_York",
+    "protocol": "http",
+    "certfile": "fullchain.pem",
+    "keyfile": "privkey.pem"
+  },
+  "schema": {
+    "auth": "bool",
+    "auth_username": "str?",
+    "auth_password": "str?",
+    "timezone": "str",
+    "protocol": "str",
+    "certfile": "str",
+    "keyfile": "str"
+  }
+}
