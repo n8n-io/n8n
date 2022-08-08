@@ -21,8 +21,8 @@ export default Vue.extend({
 		input: {
 		},
 		path: {
-			type: String,
-			default: '',
+			type: Array,
+			default: () => [],
 		},
 	},
 	computed: {

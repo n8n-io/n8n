@@ -16,7 +16,7 @@
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
 						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
 							<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
-							<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
+							<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="() => onDragEnd(column)">
 								<template v-slot:preview="{ canDrop }">
 									<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
 										{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(column, 16, 2) } }) }}
@@ -46,33 +46,31 @@
 					</th>
 				</tr>
 			</thead>
-			<tbody>
-				<tr v-for="(row, index1) in tableData.data" :key="index1">
-					<td
-						v-for="(data, index2) in row"
-						:key="index2"
-						:data-col="index2"
-						@mouseenter="onMouseEnterCell"
-						@mouseleave="onMouseLeaveCell"
-					>
-						<span v-if="isSimple(data)">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
-						<n8n-tree path="$json" :input="data">
-							<template v-slot:label="{ label, path }">
-								<Draggable type="mapping" :data="path" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(path) => onDragEnd(path)">
-									<template v-slot:preview="{ canDrop }">
-										<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-											{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(path || '', 16, 2) } }) }}
-										</div>
-									</template>
-									<template>
-										<span>yo {{ label }}</span>
-									</template>
-								</Draggable>
-							</template>
-						</n8n-tree>
-					</td>
-				</tr>
-			</tbody>
+			<Draggable tag="tbody" type="mapping" targetDataKey="mappable" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="onCellDragEnd">
+				<template v-slot:preview="{ canDrop }">
+					<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
+						{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten('path' || '', 16, 2) } }) }}
+					</div>
+				</template>
+				<template>
+					<tr v-for="(row, index1) in tableData.data" :key="index1">
+						<td
+							v-for="(data, index2) in row"
+							:key="index2"
+							:data-col="index2"
+							@mouseenter="onMouseEnterCell"
+							@mouseleave="onMouseLeaveCell"
+						>
+							<span v-if="isSimple(data)">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
+							<n8n-tree :input="data">
+								<template v-slot:label="{ label, path }">
+									<span :class="{[$style.mappable]: mappingEnabled}" data-target="mappable" :data-value="getCellExpression(path, index1)">{{ label }}</span>
+								</template>
+							</n8n-tree>
+						</td>
+					</tr>
+				</template>
+			</Draggable>
 		</table>
 	</div>
 </template>
@@ -159,10 +157,27 @@ export default Vue.extend({
 
 			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
 		},
+		getCellExpression(path: (string | number)[], colIndex: number) {
+			const expr = path.reduce((accu: string, key: string | number) => {
+				if (typeof key === 'number') {
+					return `${accu}[${key}]`;
+				}
+
+				return `${accu}["${key}"]`;
+			}, '');
+			const column = this.tableData.columns[colIndex];
+
+			return `{{ $json["${column}"]${ expr } }}`;
+		},
 		onDragStart() {
 			this.draggedColumn = true;
 
 			this.$store.commit('ui/resetMappingTelemetry');
+		},
+		onCellDragEnd(el: HTMLElement) {
+			if (el.dataset.path) {
+				this.onDragEnd(el.dataset.path);
+			}
 		},
 		onDragEnd(column: string) {
 			setTimeout(() => {
@@ -299,5 +314,9 @@ export default Vue.extend({
 	background-color: var(--color-primary);
 	transform: translate(-50%, -100%);
 	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
+}
+
+.mappable {
+	cursor: grab;
 }
 </style>

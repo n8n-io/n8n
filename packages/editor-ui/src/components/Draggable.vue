@@ -1,5 +1,5 @@
 <template>
-	<div
+	<component :is="tag"
 		:class="{[$style.dragging]: isDragging }"
 		@mousedown="onDragStart"
 	>
@@ -15,7 +15,7 @@
 				<slot name="preview" :canDrop="canDrop"></slot>
 			</div>
 		</Teleport>
-	</div>
+	</component>
 </template>
 
 <script lang="ts">
@@ -39,6 +39,13 @@ export default Vue.extend({
 		data: {
 			type: String,
 		},
+		tag: {
+			type: String,
+			default: 'div',
+		},
+		targetDataKey: {
+			type: String,
+		},
 	},
 	data() {
 		return {
@@ -47,6 +54,7 @@ export default Vue.extend({
 				x: -100,
 				y: -100,
 			},
+			draggingEl: null as null | HTMLElement,
 		};
 	},
 	computed: {
@@ -69,10 +77,19 @@ export default Vue.extend({
 				return;
 			}
 
+			const target = e.target as HTMLElement;
+			if (this.targetDataKey && target && target.dataset.target !== this.targetDataKey) {
+				return;
+			}
+
+			this.draggingEl = target;
+
 			e.preventDefault();
 			e.stopPropagation();
 			this.isDragging = true;
-			this.$store.commit('ui/draggableStartDragging', {type: this.type, data: this.data || ''});
+
+			const data = this.targetDataKey ? target.dataset.value : (this.data || '');
+			this.$store.commit('ui/draggableStartDragging', {type: this.type, data });
 
 			this.$emit('dragstart');
 			document.body.style.cursor = 'grabbing';
@@ -112,8 +129,9 @@ export default Vue.extend({
 			window.removeEventListener('mouseup', this.onDragEnd);
 
 			setTimeout(() => {
-				this.$emit('dragend');
+				this.$emit('dragend', this.draggingEl);
 				this.isDragging = false;
+				this.draggingEl = null;
 				this.$store.commit('ui/draggableStopDragging');
 			}, 0);
 		},
