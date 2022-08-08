@@ -4,7 +4,7 @@
 			<div :class="$style.simple" v-if="isSimple(input[label])">
 				<slot name="label" v-bind:label="label" v-bind:path="getPath(label)" />
 				<span>&nbsp:&nbsp;</span>
-				<span :class="$style.value">{{ input[label] }}</span>
+				<slot name="value" v-bind:value="input[label]" />
 			</div>
 			<div v-else>
 				<slot name="label" v-bind:label="label" v-bind:path="getPath(label)" />
@@ -39,6 +39,14 @@ export default Vue.extend({
 	},
 	methods: {
 		isSimple(data: unkown): boolean {
+			if (typeof data === 'object' && Object.keys(data).length === 0) {
+				return true;
+			}
+
+			if (Array.isArray(data) && data.length === 0) {
+				return true;
+			}
+
 			return typeof data !== 'object';
 		},
 		getPath(key: string): string[] {
@@ -59,11 +67,6 @@ export default Vue.extend({
 .simple {
 	text-indent: -24px;
 	margin-left: var(--spacing-l);
-}
-
-
-.value {
-	word-break: break-all;
 }
 
 </style>

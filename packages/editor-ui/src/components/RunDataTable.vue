@@ -62,9 +62,12 @@
 							@mouseleave="onMouseLeaveCell"
 						>
 							<span v-if="isSimple(data)">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
-							<n8n-tree :input="data">
+							<n8n-tree v-else :input="data">
 								<template v-slot:label="{ label, path }">
-									<span :class="{[$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label }}</span>
+									<span :class="{[$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
+								</template>
+								<template v-slot:value="{ value }">
+									<span :class="$style.value">{{ getValueToRender(value) }}</span>
 								</template>
 							</n8n-tree>
 						</td>
@@ -186,6 +189,24 @@ export default Vue.extend({
 			const column = this.tableData.columns[colIndex];
 
 			return `{{ $json["${column}"]${ expr } }}`;
+		},
+		getValueToRender(value: unknown) {
+			if (value === '') {
+				return this.$locale.baseText('runData.emptyString');
+			}
+			if (typeof value === 'string') {
+				return value.replaceAll('\n', '\\n');
+			}
+
+			if (Array.isArray(value) && value.length === 0) {
+				return this.$locale.baseText('runData.emptyArray');
+			}
+
+			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
+				return this.$locale.baseText('runData.emptyObject');
+			}
+
+			return value;
 		},
 		onDragStart() {
 			this.draggedColumn = true;
@@ -334,7 +355,17 @@ export default Vue.extend({
 	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
 }
 
+.dataKey {
+	white-space: nowrap;
+}
+
 .mappable {
 	cursor: grab;
 }
+
+.value {
+	word-break: break-all;
+	max-width: 290px;
+}
+
 </style>
