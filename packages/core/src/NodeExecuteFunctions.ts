@@ -1792,13 +1792,15 @@ export function getNodeParameter(
 		);
 
 		returnData = cleanupParameterData(returnData);
-		if (options?.extractValue) {
-			returnData = extractValue(returnData, parameterName, node, nodeType);
-		}
 	} catch (e) {
 		if (e.context) e.context.parameter = parameterName;
 		e.cause = value;
 		throw e;
+	}
+
+	// This is outside the try/catch because it throws errors with proper messages
+	if (options?.extractValue) {
+		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
 
 	return returnData;
