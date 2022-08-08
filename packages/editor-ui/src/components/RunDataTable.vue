@@ -47,9 +47,9 @@
 				</tr>
 			</thead>
 			<Draggable tag="tbody" type="mapping" targetDataKey="mappable" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="onCellDragEnd">
-				<template v-slot:preview="{ canDrop }">
+				<template v-slot:preview="{ canDrop, el }">
 					<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-						{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten('path' || '', 16, 2) } }) }}
+						{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) } }) }}
 					</div>
 				</template>
 				<template>
@@ -64,7 +64,7 @@
 							<span v-if="isSimple(data)">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
 							<n8n-tree :input="data">
 								<template v-slot:label="{ label, path }">
-									<span :class="{[$style.mappable]: mappingEnabled}" data-target="mappable" :data-value="getCellExpression(path, index1)">{{ label }}</span>
+									<span :class="{[$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index1)" :data-value="getCellExpression(path, index1)">{{ label }}</span>
 								</template>
 							</n8n-tree>
 						</td>
@@ -156,6 +156,24 @@ export default Vue.extend({
 			}
 
 			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
+		},
+		getPathNameFromTarget(el: HTMLElement) {
+			if (!el) {
+				return '';
+			}
+			return el.dataset.name;
+		},
+		getCellPathName(path: (string | number)[], colIndex: number) {
+			const lastKey = path[path.length - 1];
+			if (typeof lastKey === 'string') {
+				return lastKey;
+			}
+			if (path.length > 1) {
+				const prevKey = path[path.length - 2];
+				return `${prevKey}[${lastKey}]`;
+			}
+			const column = this.tableData.columns[colIndex];
+			return `${column}[${lastKey}]`;
 		},
 		getCellExpression(path: (string | number)[], colIndex: number) {
 			const expr = path.reduce((accu: string, key: string | number) => {

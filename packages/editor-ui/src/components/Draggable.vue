@@ -12,7 +12,7 @@
 				:style="draggableStyle"
 				v-show="isDragging"
 			>
-				<slot name="preview" :canDrop="canDrop"></slot>
+				<slot name="preview" :canDrop="canDrop" :el="draggingEl"></slot>
 			</div>
 		</Teleport>
 	</component>
