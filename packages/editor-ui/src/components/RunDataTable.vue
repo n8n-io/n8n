@@ -56,7 +56,20 @@
 						@mouseleave="onMouseLeaveCell"
 					>
 						<span v-if="isSimple(data)">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
-						<n8n-tree path="$json" :input="data" />
+						<n8n-tree path="$json" :input="data">
+							<template v-slot:label="{ label, path }">
+								<Draggable type="mapping" :data="path" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(path) => onDragEnd(path)">
+									<template v-slot:preview="{ canDrop }">
+										<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
+											{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(path || '', 16, 2) } }) }}
+										</div>
+									</template>
+									<template>
+										<span>{{ label }}</span>
+									</template>
+								</Draggable>
+							</template>
+						</n8n-tree>
 					</td>
 				</tr>
 			</tbody>

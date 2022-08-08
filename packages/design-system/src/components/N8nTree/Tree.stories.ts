@@ -13,7 +13,11 @@ export const Default: StoryFn = (args, {argTypes}) => ({
 	components: {
 		N8nTree,
 	},
-	template: `<n8n-tree v-bind="$props"></n8n-tree>`,
+	template: `<n8n-tree v-bind="$props">
+		<template v-slot:label="{ label }">
+			<span>{{ label }}</span>
+		</template>
+	</n8n-tree>`,
 });
 
 Default.args = {
