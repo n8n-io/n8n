@@ -4,7 +4,6 @@ node_modules
 tmp
 dist
 npm-debug.log*
-lerna-debug.log
 yarn.lock
 google-generated-credentials.json
 _START_PACKAGE
@@ -15,3 +14,4 @@ _START_PACKAGE
 .idea
 nodelinter.config.json
 packages/*/package-lock.json
+packages/*/.turbo
