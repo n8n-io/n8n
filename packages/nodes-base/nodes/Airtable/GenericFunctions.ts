@@ -41,8 +41,6 @@ export async function apiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('airtableApi');
-
 	query = query || {};
 
 	// For some reason for some endpoints the bearer auth does not work
@@ -136,8 +134,7 @@ export async function downloadRecordAttachments(
 						encoding: null,
 					});
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
-						// Buffer.from(file),
-						file as unknown as Buffer,
+						Buffer.from(file),
 						attachment.filename,
 						attachment.type,
 					);
