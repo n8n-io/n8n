@@ -1,3 +1,4 @@
+import { IExecuteFunctions } from 'n8n-workflow';
 import { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import pg from 'pg-promise/typescript/pg-subset';
@@ -68,7 +69,7 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
  * @param {input[]} input The Node's input data
  * @returns Promise<Array<IDataObject>>
  */
-export async function pgQuery(
+ export async function pgQuery(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -97,6 +98,76 @@ export async function pgQuery(
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries))).flat(1);
+	} else if (mode === 'transaction') {
+		return db.tx(async t => {
+			const result: IDataObject[] = [];
+			for (let i = 0; i < allQueries.length; i++) {
+				try {
+					Array.prototype.push.apply(result, await t.any(allQueries[i].query, allQueries[i].values));
+				} catch (err) {
+					if (continueOnFail === false) throw err;
+					result.push({ ...items[i].json, code: (err as JsonObject).code, message: (err as JsonObject).message });
+					return result;
+				}
+			}
+			return result;
+		});
+	} else if (mode === 'independently') {
+		return db.task(async t => {
+			const result: IDataObject[] = [];
+			for (let i = 0; i < allQueries.length; i++) {
+				try {
+					Array.prototype.push.apply(result, await t.any(allQueries[i].query, allQueries[i].values));
+				} catch (err) {
+					if (continueOnFail === false) throw err;
+					result.push({ ...items[i].json, code: (err as JsonObject).code, message: (err as JsonObject).message });
+				}
+			}
+			return result;
+		});
+	}
+	throw new Error('multiple, independently or transaction are valid options');
+}
+
+
+export async function pgQueryV2(
+	this: IExecuteFunctions,
+	pgp: pgPromise.IMain<{}, pg.IClient>,
+	db: pgPromise.IDatabase<{}, pg.IClient>,
+	items: INodeExecutionData[],
+	continueOnFail: boolean,
+	overrideMode?: string,
+): Promise<IDataObject[]> {
+	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+
+	let valuesArray = [] as string[][];
+	if (additionalFields.queryParams) {
+		const propertiesString = additionalFields.queryParams as string;
+		const properties = propertiesString.split(',').map(column => column.trim());
+		const paramsItems = getItemsCopy(items, properties);
+		valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
+	}
+
+	type QueryWithValues = {query: string, values?: string[]};
+	const allQueries = new Array<QueryWithValues>();
+	for (let i = 0; i < items.length; i++) {
+		let query = this.getNodeParameter('query', i) as string;
+		query = `WITH query_${i} AS (${query}) SELECT ${i} as n8n_item_index, * FROM query_${i}`;
+		const values = valuesArray[i];
+		const queryFormat = { query, values };
+		allQueries.push(queryFormat);
+	}
+
+	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
+	if (mode === 'multiple') {
+		const queryResult = (await db.multi(pgp.helpers.concat(allQueries))).flat();
+		const executionJson = this.helpers.returnJsonArray(queryResult);
+		return executionJson.map((executionData: Partial<INodeExecutionData>) => {
+			const { n8n_item_index: item } = executionData.json! as IDataObject;
+			delete executionData.json?.n8n_item_index;
+			Object.assign(executionData, { pairedItem: { item } });
+			return executionData;
+		});
 	} else if (mode === 'transaction') {
 		return db.tx(async t => {
 			const result: IDataObject[] = [];
