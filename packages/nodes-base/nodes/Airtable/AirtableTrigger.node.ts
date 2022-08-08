@@ -6,7 +6,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	LoggerProxy as Logger,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -120,28 +119,18 @@ export class AirtableTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
-
 		const webhookData = this.getWorkflowStaticData('node');
-
-		const qs: IDataObject = {};
-
+		const base = this.getNodeParameter('baseId') as string;
+		const table = this.getNodeParameter('tableId') as string;
+		const triggerField = this.getNodeParameter('triggerField') as string;
+		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
-		const base = this.getNodeParameter('baseId') as string;
-
-		const table = this.getNodeParameter('tableId') as string;
-
-		const triggerField = this.getNodeParameter('triggerField') as string;
-
-		const endpoint = `${base}/${table}`;
-
 		const now = moment().utc().format();
-
 		const startDate = (webhookData.lastTimeChecked as string) || now;
-
 		const endDate = now;
 
+		const qs: IDataObject = {};
 		if (additionalFields.viewId) {
 			qs.view = additionalFields.viewId;
 		}
@@ -163,6 +152,7 @@ export class AirtableTrigger implements INodeType {
 
 		let records: IRecord[] = [];
 		try {
+			const endpoint = `${base}/${table}`;
 			records = (await apiRequestAllItems.call(this, 'GET', endpoint, {}, qs)).records || [];
 		} catch (error) {
 			if (this.getMode() === 'manual' || !webhookData.lastTimeChecked) {
