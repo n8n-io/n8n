@@ -64,7 +64,7 @@
 							<span v-if="isSimple(data)">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
 							<n8n-tree :input="data">
 								<template v-slot:label="{ label, path }">
-									<span :class="{[$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index1)" :data-value="getCellExpression(path, index1)">{{ label }}</span>
+									<span :class="{[$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label }}</span>
 								</template>
 							</n8n-tree>
 						</td>
