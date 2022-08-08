@@ -535,6 +535,10 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 	};
 }
 
+export interface IGetNodeParameterOptions {
+	extractValue?: boolean;
+}
+
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
 	evaluateExpression(
@@ -559,6 +563,7 @@ export interface IExecuteFunctions {
 		parameterName: string,
 		itemIndex: number,
 		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -602,6 +607,7 @@ export interface IExecuteSingleFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
@@ -651,6 +657,7 @@ export interface ILoadOptionsFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getCurrentNodeParameter(
 		parameterName: string,
@@ -695,6 +702,7 @@ export interface IHookFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getTimezone(): string;
 	getWebhookDescription(name: string): IWebhookDescription | undefined;
@@ -724,6 +732,7 @@ export interface IPollFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
@@ -757,6 +766,7 @@ export interface ITriggerFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
@@ -785,6 +795,7 @@ export interface IWebhookFunctions {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getNodeWebhookUrl: (name: string) => string | undefined;
 	getParamsData(): object;

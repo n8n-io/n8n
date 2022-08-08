@@ -62,6 +62,7 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
+	IGetNodeParameterOptions,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1650,6 +1651,16 @@ function cleanupParameterData(
 	return inputData;
 }
 
+/**
+ * Extracts wanted value from a provided value using a property's extractor.
+ *
+ * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)} value
+ * @param {string} parameterName
+ * @param {INode} node
+ * @param {INodeType} nodeType
+ * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)}
+ */
+
 function extractValue(
 	value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object,
 	parameterName: string,
@@ -1752,6 +1763,7 @@ export function getNodeParameter(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData?: IExecuteData,
 	fallbackValue?: any,
+	options?: IGetNodeParameterOptions,
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
@@ -1780,7 +1792,9 @@ export function getNodeParameter(
 		);
 
 		returnData = cleanupParameterData(returnData);
-		returnData = extractValue(returnData, parameterName, node, nodeType);
+		if (options?.extractValue) {
+			returnData = extractValue(returnData, parameterName, node, nodeType);
+		}
 	} catch (e) {
 		if (e.context) e.context.parameter = parameterName;
 		e.cause = value;
@@ -1959,6 +1973,7 @@ export function getExecutePollFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			):
 				| NodeParameterValue
 				| INodeParameters
@@ -1983,6 +1998,7 @@ export function getExecutePollFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getRestApiUrl: (): string => {
@@ -2114,6 +2130,7 @@ export function getExecuteTriggerFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			):
 				| NodeParameterValue
 				| INodeParameters
@@ -2138,6 +2155,7 @@ export function getExecuteTriggerFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getRestApiUrl: (): string => {
@@ -2330,6 +2348,7 @@ export function getExecuteFunctions(
 				parameterName: string,
 				itemIndex: number,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			):
 				| NodeParameterValue
 				| INodeParameters
@@ -2349,6 +2368,7 @@ export function getExecuteFunctions(
 					getAdditionalKeys(additionalData),
 					executeData,
 					fallbackValue,
+					options,
 				);
 			},
 			getMode: (): WorkflowExecuteMode => {
@@ -2604,6 +2624,7 @@ export function getExecuteSingleFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			):
 				| NodeParameterValue
 				| INodeParameters
@@ -2623,6 +2644,7 @@ export function getExecuteSingleFunctions(
 					getAdditionalKeys(additionalData),
 					executeData,
 					fallbackValue,
+					options,
 				);
 			},
 			getWorkflow: () => {
@@ -2779,6 +2801,7 @@ export function getLoadOptionsFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			):
 				| NodeParameterValue
 				| INodeParameters
@@ -2803,6 +2826,7 @@ export function getLoadOptionsFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getTimezone: (): string => {
@@ -2910,6 +2934,7 @@ export function getExecuteHookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			):
 				| NodeParameterValue
 				| INodeParameters
@@ -2934,6 +2959,7 @@ export function getExecuteHookFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
@@ -3073,6 +3099,7 @@ export function getExecuteWebhookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
 			):
 				| NodeParameterValue
 				| INodeParameters
@@ -3097,6 +3124,7 @@ export function getExecuteWebhookFunctions(
 					getAdditionalKeys(additionalData),
 					undefined,
 					fallbackValue,
+					options,
 				);
 			},
 			getParamsData(): object {

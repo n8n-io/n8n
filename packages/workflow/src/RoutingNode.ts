@@ -632,6 +632,8 @@ export class RoutingNode {
 			if (basePath + nodeProperties.name && 'type' in nodeProperties) {
 				parameterValue = executeSingleFunctions.getNodeParameter(
 					basePath + nodeProperties.name,
+					undefined,
+					{ extractValue: nodeProperties.extractValue !== undefined },
 				) as string;
 			}
 
