@@ -57,27 +57,41 @@ export async function init(
 	if (testConnectionOptions) {
 		connectionOptions = testConnectionOptions;
 	} else {
+		let sslCa = (await GenericHelpers.getConfigValue('database.ssl.ca')) as string;
+		let sslCert = (await GenericHelpers.getConfigValue('database.ssl.cert')) as string;
+		let sslKey = (await GenericHelpers.getConfigValue('database.ssl.key')) as string;
+		let sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
+			'database.ssl.rejectUnauthorized',
+		)) as boolean;
+
+		let ssl: TlsOptions | undefined;
+		if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
+			ssl = {
+				ca: sslCa || undefined,
+				cert: sslCert || undefined,
+				key: sslKey || undefined,
+				rejectUnauthorized: sslRejectUnauthorized,
+			};
+		}
+
 		switch (dbType) {
 			case 'postgresdb':
-				const sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
-				const sslCert = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.cert',
-				)) as string;
-				const sslKey = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.key',
-				)) as string;
-				const sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.rejectUnauthorized',
-				)) as boolean;
+				if (ssl === undefined) {
+					sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
+					sslCert = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.cert')) as string;
+					sslKey = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.key')) as string;
+					sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
+						'database.postgresdb.ssl.rejectUnauthorized',
+					)) as boolean;
 
-				let ssl: TlsOptions | undefined;
-				if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
-					ssl = {
-						ca: sslCa || undefined,
-						cert: sslCert || undefined,
-						key: sslKey || undefined,
-						rejectUnauthorized: sslRejectUnauthorized,
-					};
+					if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
+						ssl = {
+							ca: sslCa || undefined,
+							cert: sslCert || undefined,
+							key: sslKey || undefined,
+							rejectUnauthorized: sslRejectUnauthorized,
+						};
+					}
 				}
 
 				connectionOptions = {
@@ -111,6 +125,7 @@ export async function init(
 					migrationsRun: true,
 					migrationsTableName: `${entityPrefix}migrations`,
 					timezone: 'Z', // set UTC as default
+					ssl,
 				};
 				break;
 

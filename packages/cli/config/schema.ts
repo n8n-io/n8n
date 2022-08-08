@@ -38,6 +38,32 @@ export const schema = {
 				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
 			},
 		},
+		ssl: {
+			ca: {
+				doc: 'SSL certificate authority',
+				format: String,
+				default: '',
+				env: 'DB_SSL_CA',
+			},
+			cert: {
+				doc: 'SSL certificate',
+				format: String,
+				default: '',
+				env: 'DB_SSL_CERT',
+			},
+			key: {
+				doc: 'SSL key',
+				format: String,
+				default: '',
+				env: 'DB_SSL_KEY',
+			},
+			rejectUnauthorized: {
+				doc: 'If unauthorized SSL connections should be rejected',
+				format: 'Boolean',
+				default: true,
+				env: 'DB_SSL_REJECT_UNAUTHORIZED',
+			},
+		},
 		postgresdb: {
 			database: {
 				doc: 'PostgresDB Database',
