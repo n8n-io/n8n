@@ -1,6 +1,10 @@
 <template>
 	<div class="n8n-tree">
-		<n8n-tree-node :input="input" :path="path"></n8n-tree-node>
+		<n8n-tree-node :input="input" :path="path">
+			<template v-for="(index, name) in $scopedSlots" v-slot:[name]="data">
+				<slot :name="name" v-bind="data"></slot>
+			</template>
+		</n8n-tree-node>
 	</div>
 </template>
 
@@ -15,7 +19,6 @@ export default Vue.extend({
 	},
 	props: {
 		input: {
-			type: Object,
 		},
 		path: {
 			type: String,

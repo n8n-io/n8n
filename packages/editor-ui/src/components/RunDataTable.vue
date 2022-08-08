@@ -65,7 +65,7 @@
 										</div>
 									</template>
 									<template>
-										<span>{{ label }}</span>
+										<span>yo {{ label }}</span>
 									</template>
 								</Draggable>
 							</template>
