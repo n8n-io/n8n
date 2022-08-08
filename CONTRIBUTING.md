@@ -51,7 +51,7 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 #### Node.js
 
-We suggest using the current [Node.js](https://nodejs.org/en/) LTS version (14.18.0 which includes npm 6.14.15) for development purposes.
+We suggest using [Node.js](https://nodejs.org/en/) version 16 for development purposes.
 
 #### Build tools
 
