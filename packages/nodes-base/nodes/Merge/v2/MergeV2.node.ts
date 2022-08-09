@@ -204,8 +204,9 @@ const versionDescription: INodeTypeDescription = {
 			name: 'includeUnpaired',
 			type: 'boolean',
 			default: false,
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 			description:
-				'Whether to include at the end items with nothing to pair with, if there are different numbers of items in input 1 and input 2',
+				'If there are different numbers of items in input 1 and input 2, whether to include the ones at the end with nothing to pair with',
 			displayOptions: {
 				show: {
 					mode: ['matchPositions'],
@@ -215,7 +216,7 @@ const versionDescription: INodeTypeDescription = {
 
 		// chooseBranch -----------------------------------------------------------------
 		{
-			displayName: 'Mode',
+			displayName: 'Output Type',
 			name: 'chooseBranchMode',
 			type: 'options',
 			options: [
@@ -242,19 +243,19 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'Input 1',
+					name: 'Input 1 Data',
 					value: 'input1',
 				},
 				{
-					name: 'Input 2',
+					name: 'Input 2 Data',
 					value: 'input2',
 				},
 				{
-					name: 'Empty Item',
+					name: 'A Single, Empty Item',
 					value: 'empty',
 				},
 			],
-			default: 'empty',
+			default: 'input1',
 			displayOptions: {
 				show: {
 					mode: ['chooseBranch'],
