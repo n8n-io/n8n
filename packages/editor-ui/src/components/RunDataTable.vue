@@ -91,7 +91,7 @@
 				<template v-slot:preview="{ canDrop, el }">
 					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
 						{{
-							$locale.baseText('dataMapping.mapSpecificColumnToField', {
+							$locale.baseText(tableData.data.length > 1? 'dataMapping.mapAllKeysToField': 'dataMapping.mapSpecificColumnToField', {
 								interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
 							})
 						}}
