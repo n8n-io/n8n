@@ -313,7 +313,7 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail())
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail());
 			returnItems = queryResult as INodeExecutionData[];
 		} else if (operation === 'insert') {
 			// ----------------------------------

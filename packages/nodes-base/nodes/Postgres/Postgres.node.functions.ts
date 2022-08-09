@@ -151,7 +151,7 @@ export async function pgQueryV2(
 	type QueryWithValues = {query: string, values?: string[]};
 	const allQueries = new Array<QueryWithValues>();
 	for (let i = 0; i < items.length; i++) {
-		let query = this.getNodeParameter('query', i) as string;
+		const query = this.getNodeParameter('query', i) as string;
 		const values = valuesArray[i];
 		const queryFormat = { query, values };
 		allQueries.push(queryFormat);
@@ -160,7 +160,7 @@ export async function pgQueryV2(
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
 	if (mode === 'multiple') {
 		(await db.multi(pgp.helpers.concat(allQueries))).map((result, i) => {
-			return this.helpers.constructExecutionMetaData({item: i}, this.helpers.returnJsonArray([...result]))
+			return this.helpers.constructExecutionMetaData({item: i}, this.helpers.returnJsonArray([...result]));
 		}).flat();
 	} else if (mode === 'transaction') {
 		return db.tx(async t => {
