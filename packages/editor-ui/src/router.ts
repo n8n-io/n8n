@@ -1,6 +1,7 @@
 import Vue from 'vue';
 
 import ChangePasswordView from './views/ChangePasswordView.vue';
+import CredentialsView from "./views/CredentialsView.vue";
 import ErrorView from './views/ErrorView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
@@ -153,6 +154,21 @@ const router = new Router({
 						};
 					},
 				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/credentials',
+			name: VIEWS.CREDENTIALS,
+			components: {
+				default: CredentialsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],

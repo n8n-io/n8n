@@ -49,6 +49,10 @@ export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	VIEW_DOCS: 'view-documentation',
 };
 
+export const CREDENTIAL_LIST_ITEM_ACTIONS = {
+	REMOVE: 'remove',
+};
+
 // breakpoints
 export const BREAKPOINT_SM = 768;
 export const BREAKPOINT_MD = 992;
@@ -272,6 +276,7 @@ export enum VIEWS {
 	WORKFLOW = "NodeViewExisting",
 	DEMO = "WorkflowDemo",
 	TEMPLATE_IMPORT = "WorkflowTemplate",
+	CREDENTIALS = "CredentialsView",
 	SIGNIN = "SigninView",
 	SIGNUP = "SignupView",
 	SETUP = "SetupView",

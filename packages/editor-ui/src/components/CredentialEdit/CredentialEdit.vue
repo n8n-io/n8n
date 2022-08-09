@@ -878,12 +878,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 <style module lang="scss">
 .credentialModal {
-	max-width: 900px;
+	max-width: 872px;
 	--dialog-close-top: 28px;
 }
 
 .mainContent {
-	flex-grow: 1;
+	flex: 1;
 	overflow: auto;
 	padding-bottom: 100px;
 }

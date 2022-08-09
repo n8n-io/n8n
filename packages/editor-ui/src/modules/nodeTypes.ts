@@ -18,6 +18,7 @@ import {
 } from '@/api/nodeTypes';
 import { omit } from '@/utils';
 import type { IRootState, INodeTypesState } from '../Interface';
+import {IWorkflowsState} from "../Interface";
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,

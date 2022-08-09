@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import Vuex from 'vuex';
+import Vuex, {ActionContext} from 'vuex';
 
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -32,7 +32,7 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	ICommunityNodesState,
+	ICommunityNodesState, IWorkflowsState,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
@@ -47,7 +47,6 @@ import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
-import { isCommunityPackageName } from './components/helpers';
 
 Vue.use(Vuex);
 

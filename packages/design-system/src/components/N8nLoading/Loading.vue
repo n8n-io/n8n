@@ -1,11 +1,6 @@
 <template>
-	<el-skeleton :loading="loading" :animated="animated" class="n8n-loading">
+	<el-skeleton :loading="loading" :animated="animated" :class="['n8n-loading', `n8n-loading-${variant}`]">
 		<template slot="template">
-			<el-skeleton-item
-				v-if="variant === 'button'"
-				:variant="variant"
-			/>
-
 			<div v-if="variant === 'h1'">
 				<div
 					v-for="(item, index) in rows"
@@ -19,11 +14,7 @@
 					/>
 				</div>
 			</div>
-			<el-skeleton-item
-				v-if="variant === 'image'"
-				:variant="variant"
-			/>
-			<div v-if="variant === 'p'">
+			<div v-else-if="variant === 'p'">
 				<div
 					v-for="(item, index) in rows"
 					:key="index"
@@ -35,6 +26,15 @@
 						/>
 				</div>
 			</div>
+			<div :class="$style.custom" v-else-if="variant === 'custom'">
+				<el-skeleton-item
+					:variant="variant"
+				/>
+			</div>
+			<el-skeleton-item
+				v-else
+				:variant="variant"
+			/>
 		</template>
 	</el-skeleton>
 </template>
@@ -71,7 +71,7 @@ export default Vue.extend({
 		variant: {
 			type: String,
 			default: 'p',
-			validator: (value: string): boolean => ['p', 'h1', 'button', 'image'].includes(value),
+			validator: (value: string): boolean => ['custom', 'p', 'text', 'h1', 'h3', 'text', 'caption', 'button', 'image', 'circle', 'rect'].includes(value),
 		},
 	},
 });
@@ -84,5 +84,20 @@ export default Vue.extend({
 
 .pLast {
   width: 61%;
+}
+
+.custom {
+  width: 100%;
+  height: 100%;
+}
+</style>
+
+<style lang="scss">
+.n8n-loading-custom .el-skeleton {
+ 	&,
+	.el-skeleton__item {
+		width: 100%;
+		height: 100%;
+	}
 }
 </style>

@@ -1,5 +1,8 @@
 <template>
 	<div :class="['n8n-action-box', $style.container]">
+		<div :class="$style.emoji" v-if="emoji">
+			{{ emoji }}
+		</div>
 		<div :class="$style.heading" v-if="heading">
 			<n8n-heading size="xlarge" align="center">{{ heading }}</n8n-heading>
 		</div>
@@ -42,6 +45,9 @@ export default Vue.extend({
 		N8nCallout,
 	},
 	props: {
+		emoji: {
+			type: String,
+		},
 		heading: {
 			type: String,
 		},

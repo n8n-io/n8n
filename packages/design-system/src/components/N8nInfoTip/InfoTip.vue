@@ -1,12 +1,23 @@
 <template>
-	<div :class="{'n8n-info-tip': true, [$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
-		<n8n-tooltip :placement="tooltipPlacement" :popper-class="$style.tooltipPopper" :disabled="type !== 'tooltip'">
+	<div :class="{[$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
+		<n8n-tooltip
+				v-if="type === 'tooltip'"
+				:placement="tooltipPlacement"
+				:popper-class="$style.tooltipPopper"
+		>
 			<span :class="$style.iconText">
 				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
-				<span v-if="type === 'note'"><slot></slot></span>
 			</span>
-			<span v-if="type === 'tooltip'" slot="content"><slot></slot></span>
+			<span slot="content">
+				<slot />
+			</span>
 		</n8n-tooltip>
+		<span :class="$style.iconText" v-else>
+			<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
+			<span>
+				<slot />
+			</span>
+		</span>
 	</div>
 </template>
 
@@ -14,9 +25,7 @@
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
-import Vue from 'vue';
-
-export default Vue.extend({
+export default {
 	name: 'n8n-info-tip',
 	components: {
 		N8nIcon,
@@ -44,56 +53,57 @@ export default Vue.extend({
 			default: 'top',
 		},
 	},
-});
+};
 </script>
 
 <style lang="scss" module>
 .base {
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-size-s);
-	word-break: normal;
-	display: flex;
-	align-items: center;
+  font-size: var(--font-size-2xs);
+  line-height: var(--font-size-s);
+  word-break: normal;
+  display: flex;
+  align-items: center;
 
-	svg {
-		font-size: var(--font-size-s);
-	}
+  svg {
+	font-size: var(--font-size-s);
+  }
 }
 
 .bold {
-	font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-bold);
 }
 
 .note {
-	composes: base;
+  composes: base;
 
-	svg {
-		margin-right: var(--spacing-4xs);
-	}
+  svg {
+	margin-right: var(--spacing-4xs);
+  }
 }
 
 .tooltip {
-	composes: base;
-	display: inline-flex;
+  composes: base;
+  display: inline-flex;
 }
 
 .iconText {
-	display: inline-flex;
+  display: inline-flex;
+  align-items: center;
 }
 
 .info-light {
-	color: var(--color-foreground-dark);
+  color: var(--color-foreground-dark);
 }
 
 .info {
-	color: var(--color-text-light);
+  color: var(--color-text-light);
 }
 
 .warning {
-	color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 .danger {
-	color: var(--color-danger);
+  color: var(--color-danger);
 }
 </style>

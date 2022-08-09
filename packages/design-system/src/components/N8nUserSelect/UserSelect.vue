@@ -1,23 +1,27 @@
 <template>
 	<el-select
-		:value="value"
-		:filterable="true"
-		:filterMethod="setFilter"
-		:placeholder="t('nds.userSelect.selectUser')"
-		:default-first-option="true"
-		:popper-append-to-body="true"
-		:popper-class="$style.limitPopperWidth"
-		:noDataText="t('nds.userSelect.noMatchingUsers')"
-		@change="onChange"
-		@blur="onBlur"
-		@focus="onFocus"
+			:value="value"
+			:filterable="true"
+			:filterMethod="setFilter"
+			:placeholder="placeholder"
+			:default-first-option="true"
+			:popper-append-to-body="true"
+			:popper-class="$style.limitPopperWidth"
+			:noDataText="t('nds.userSelect.noMatchingUsers')"
+			:size="size"
+			@change="onChange"
+			@blur="onBlur"
+			@focus="onFocus"
 	>
+		<template #prefix v-if="$slots.prefix">
+			<slot name="prefix" />
+		</template>
 		<el-option
-			v-for="user in sortedUsers"
-			:key="user.id"
-			:value="user.id"
-			:class="$style.itemContainer"
-			:label="getLabel(user)"
+				v-for="user in sortedUsers"
+				:key="user.id"
+				:value="user.id"
+				:class="$style.itemContainer"
+				:label="getLabel(user)"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 		</el-option>
@@ -32,6 +36,7 @@ import ElSelect from 'element-ui/lib/select';
 import ElOption from 'element-ui/lib/option';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
+import { t } from '../../locale';
 
 export default mixins(Locale).extend({
 	name: 'n8n-user-select',
@@ -44,7 +49,7 @@ export default mixins(Locale).extend({
 		users: {
 			type: Array,
 			default() {
-				return [];
+				return [] as IUser[];
 			},
 		},
 		value: {
@@ -60,6 +65,15 @@ export default mixins(Locale).extend({
 		},
 		currentUserId: {
 			type: String,
+		},
+		placeholder: {
+			type: String,
+			default: () => t('nds.userSelect.selectUser'),
+		},
+		size: {
+			type: String,
+			validator: (value: string): boolean =>
+				['mini', 'small', 'large'].includes(value),
 		},
 	},
 	data() {
@@ -130,16 +144,16 @@ export default mixins(Locale).extend({
 
 <style lang="scss" module>
 .itemContainer {
-	--select-option-padding: var(--spacing-2xs) var(--spacing-s);
-	--select-option-line-height: 1;
+  --select-option-padding: var(--spacing-2xs) var(--spacing-s);
+  --select-option-line-height: 1;
 }
 
 .limitPopperWidth {
-	width: 0;
+  width: 0;
 
-	li > span {
-		text-overflow: ellipsis;
-		overflow-x: hidden;
-	}
+  li > span {
+	text-overflow: ellipsis;
+	overflow-x: hidden;
+  }
 }
 </style>

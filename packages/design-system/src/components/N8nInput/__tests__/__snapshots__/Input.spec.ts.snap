@@ -1,0 +1,11 @@
+// Vitest Snapshot v1
+
+exports[`components > N8nInput > should render correctly 1`] = `
+"<div class=\\"el-input el-input--large\\">
+  <!----><input type=\\"text\\" autocomplete=\\"off\\" class=\\"el-input__inner\\">
+  <!---->
+  <!---->
+  <!---->
+  <!---->
+</div>"
+`;
