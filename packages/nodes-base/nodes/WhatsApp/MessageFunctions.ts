@@ -78,3 +78,81 @@ export async function mediaUploadFromItem(
 
 	return requestOptions;
 }
+
+export async function templateInfo(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const template = this.getNodeParameter('template') as string;
+	const [name, language] = template.split('|');
+	if (!requestOptions.body) {
+		requestOptions.body = {};
+	}
+	set(requestOptions.body as Object, 'template.name', name);
+	set(requestOptions.body as Object, 'template.language.code', language);
+	return requestOptions;
+}
+
+export async function componentsRequest(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const components = this.getNodeParameter('components') as any;
+	const componentsRet: any[] = [];
+
+	for (const component of components.component) {
+		const comp: any = {
+			type: component.type,
+		};
+
+		if (component.type === 'body') {
+			comp.parameters = component.bodyParameters.parameter.map((i: any) => {
+				if (i.type === 'text') {
+					return i;
+				} else if (i.type === 'currency') {
+					return {
+						type: 'currency',
+						currency: {
+							code: i.code,
+							fallback_value: i.fallback_value,
+							amount_1000: i.amount_1000,
+						},
+					};
+				} else if (i.type === 'date_time') {
+					return {
+						type: 'date_time',
+						date_time: {
+							fallback_value: i.fallback_value,
+						},
+					};
+				}
+			});
+		} else if (component.type === 'button') {
+			comp.index = component.index;
+			comp.sub_type = component.sub_type;
+			comp.parameters = component.buttonParameters.parameter;
+		} else if (component.type === 'header') {
+			comp.parameters = component.headerParameters.parameter.map((i: any) => {
+				if (i.type === 'image') {
+					return {
+						type: 'image',
+						image: {
+							link: i.imageLink,
+						},
+					};
+				}
+				return i;
+			});
+		}
+
+		componentsRet.push(comp);
+	}
+
+	if (!requestOptions.body) {
+		requestOptions.body = {};
+	}
+
+	set(requestOptions.body as Object, 'template.components', componentsRet);
+
+	return requestOptions;
+}

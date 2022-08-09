@@ -1,11 +1,18 @@
-import { INodeProperties } from 'n8n-workflow';
-import { addTemplateComponents, mediaUploadFromItem } from './MessageFunctions';
+import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import {
+	addTemplateComponents,
+	componentsRequest,
+	mediaUploadFromItem,
+	templateInfo,
+} from './MessageFunctions';
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
 let currencies = require('currency-codes/data');
-currencies = currencies.map(({ code, currency }: { code: string, currency: string }) =>
-({ name: `${code} - ${currency}`, value: code }));
+currencies = currencies.map(({ code, currency }: { code: string; currency: string }) => ({
+	name: `${code} - ${currency}`,
+	value: code,
+}));
 
 export const messageFields: INodeProperties[] = [
 	{
@@ -426,8 +433,8 @@ export const messageTypeFields: INodeProperties[] = [
 	//         type: template
 	// ----------------------------------
 	{
-		displayName: 'Template Name',
-		name: 'templateName',
+		displayName: 'Template',
+		name: 'template',
 		default: '',
 		type: 'options',
 		displayOptions: {
@@ -454,8 +461,8 @@ export const messageTypeFields: INodeProperties[] = [
 							{
 								type: 'setKeyValue',
 								properties: {
-									name: '={{$responseItem.name}}',
-									value: '={{$responseItem.name}}',
+									name: '={{$responseItem.name}} - {{$responseItem.language}}',
+									value: '={{$responseItem.name}}|{{$responseItem.language}}',
 								},
 							},
 							{
@@ -474,32 +481,33 @@ export const messageTypeFields: INodeProperties[] = [
 		routing: {
 			send: {
 				type: 'body',
-				property: 'template.name',
+				// property: 'template.name',
+				preSend: [templateInfo],
 			},
 		},
 	},
-	{
-		// Search for ISO6391.getCode(language) in the Twitter node. Pehaps, we can use the same library?
-		//TODO: would be nice to change this to a searchable dropdown with all the possible language codes
-		displayName: 'Language Code',
-		name: 'templateLanguageCode',
-		type: 'string',
-		default: 'en_US',
-		displayOptions: {
-			show: {
-				operation: ['template'],
-				resource: ['messages'],
-			},
-		},
-		description:
-			'The code of the language or locale to use. Accepts both language and language_locale formats (e.g., en and en_US).',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'template.language.code',
-			},
-		},
-	},
+	//{
+	//	// Search for ISO6391.getCode(language) in the Twitter node. Pehaps, we can use the same library?
+	//	//TODO: would be nice to change this to a searchable dropdown with all the possible language codes
+	//	displayName: 'Language Code',
+	//	name: 'templateLanguageCode',
+	//	type: 'string',
+	//	default: 'en_US',
+	//	displayOptions: {
+	//		show: {
+	//			operation: ['template'],
+	//			resource: ['messages'],
+	//		},
+	//	},
+	//	description:
+	//		'The code of the language or locale to use. Accepts both language and language_locale formats (e.g., en and en_US).',
+	//	routing: {
+	//		send: {
+	//			type: 'body',
+	//			property: 'template.language.code',
+	//		},
+	//	},
+	//},
 	{
 		displayName: 'Components',
 		name: 'components',
@@ -515,30 +523,35 @@ export const messageTypeFields: INodeProperties[] = [
 				resource: ['messages'],
 			},
 		},
+		routing: {
+			send: {
+				preSend: [componentsRequest],
+			},
+		},
 		options: [
 			{
-				name: 'Component',
+				name: 'component',
 				displayName: 'Component',
 				values: [
 					{
-					displayName: 'Type',
-					name: 'type',
-					type: 'options',
-					options: [
-						{
-							name: 'Body',
-							value: 'body',
-						},
-						{
-							name: 'Button',
-							value: 'button',
-						},
-						{
-							name: 'Header',
-							value: 'header',
-						},
-					],
-					default: 'body',
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Button',
+								value: 'button',
+							},
+							{
+								name: 'Header',
+								value: 'header',
+							},
+						],
+						default: 'body',
 					},
 					{
 						displayName: 'Parameters',
@@ -550,9 +563,7 @@ export const messageTypeFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'body',
-								],
+								type: ['body'],
 							},
 						},
 						placeholder: 'Add Parameter',
@@ -588,9 +599,7 @@ export const messageTypeFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'text',
-												],
+												type: ['text'],
 											},
 										},
 										default: '',
@@ -602,9 +611,7 @@ export const messageTypeFields: INodeProperties[] = [
 										options: currencies,
 										displayOptions: {
 											show: {
-												type: [
-													'currency',
-												],
+												type: ['currency'],
 											},
 										},
 										default: '',
@@ -616,26 +623,11 @@ export const messageTypeFields: INodeProperties[] = [
 										type: 'number',
 										displayOptions: {
 											show: {
-												type: [
-													'currency',
-												],
+												type: ['currency'],
 											},
 										},
 										default: '',
 										placeholder: '',
-									},
-									{
-										displayName: 'Date',
-										name: 'timestamp',
-										type: 'dateTime',
-										displayOptions: {
-											show: {
-												type: [
-													'date_time',
-												],
-											},
-										},
-										default: '',
 									},
 									{
 										displayName: 'Fallback Value',
@@ -643,10 +635,7 @@ export const messageTypeFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'currency',
-													'date_time',
-												],
+												type: ['currency', 'date_time'],
 											},
 										},
 										default: '',
@@ -661,9 +650,7 @@ export const messageTypeFields: INodeProperties[] = [
 						type: 'options',
 						displayOptions: {
 							show: {
-								type: [
-									'button',
-								],
+								type: ['button'],
 							},
 						},
 						options: [
@@ -689,16 +676,14 @@ export const messageTypeFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'button',
-								],
+								type: ['button'],
 							},
 						},
 						default: 0,
 					},
 					{
 						displayName: 'Parameters',
-						name: 'ButtonParameters',
+						name: 'buttonParameters',
 						type: 'fixedCollection',
 						typeOptions: {
 							sortable: true,
@@ -706,9 +691,7 @@ export const messageTypeFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'button',
-								],
+								type: ['button'],
 							},
 						},
 						placeholder: 'Add Parameter',
@@ -740,9 +723,7 @@ export const messageTypeFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'payload',
-												],
+												type: ['payload'],
 											},
 										},
 										default: '',
@@ -753,9 +734,7 @@ export const messageTypeFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'text',
-												],
+												type: ['text'],
 											},
 										},
 										default: '',
@@ -766,7 +745,7 @@ export const messageTypeFields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Parameters',
-						name: 'HeaderParameters',
+						name: 'headerParameters',
 						type: 'fixedCollection',
 						typeOptions: {
 							sortable: true,
@@ -774,9 +753,7 @@ export const messageTypeFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'header',
-								],
+								type: ['header'],
 							},
 						},
 						placeholder: 'Add Parameter',
@@ -804,9 +781,7 @@ export const messageTypeFields: INodeProperties[] = [
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: [
-													'image',
-												],
+												type: ['image'],
 											},
 										},
 										default: '',
