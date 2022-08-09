@@ -18,21 +18,25 @@ export const conversationOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new conversation',
+				action: 'Create a conversation',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a conversation',
+				action: 'Delete a conversation',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a conversation',
+				action: 'Get a conversation',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all conversations',
+				action: 'Get all conversations',
 			},
 		],
 		default: 'create',
@@ -62,7 +66,7 @@ export const conversationFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of a mailbox where the conversation is being created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'ID of a mailbox where the conversation is being created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Status',
@@ -164,6 +168,7 @@ export const conversationFields: INodeProperties[] = [
 				],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
@@ -195,7 +200,7 @@ export const conversationFields: INodeProperties[] = [
 				name: 'autoReply',
 				type: 'boolean',
 				default: false,
-				description: 'When autoReply is set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation',
+				description: 'Whether set to true, an auto reply will be sent as long as there is at least one customer thread in the conversation',
 			},
 			{
 				displayName: 'Closed At',
@@ -228,17 +233,17 @@ export const conversationFields: INodeProperties[] = [
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'When imported is set to true, no outgoing emails or notifications will be generated',
+				description: 'Whether set to true, no outgoing emails or notifications will be generated',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags to be be added to the conversation',
+				description: 'List of tags to be added to the conversation. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'User ID',
@@ -359,7 +364,7 @@ export const conversationFields: INodeProperties[] = [
 						},
 						type: 'boolean',
 						default: false,
-						description: 'If set to true, a draft reply is created',
+						description: 'Whether true, a draft reply is created',
 					},
 				],
 			},
@@ -621,14 +626,14 @@ export const conversationFields: INodeProperties[] = [
 				description: 'Filter conversation by status',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'Filter conversation by tags',
+				description: 'Filter conversation by tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

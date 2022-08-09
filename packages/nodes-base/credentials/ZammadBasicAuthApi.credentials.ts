@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ZammadBasicAuthApi implements ICredentialType {
 	name = 'zammadBasicAuthApi';
@@ -38,6 +35,7 @@ export class ZammadBasicAuthApi implements ICredentialType {
 			displayName: 'Ignore SSL Issues',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 			default: false,
 		},
 	];

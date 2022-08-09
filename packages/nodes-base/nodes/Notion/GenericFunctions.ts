@@ -55,13 +55,11 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 			json: true,
 		};
 		options = Object.assign({}, options, option);
-		const credentials = await this.getCredentials('notionApi');
-		if (!uri) {
-			//do not include the API Key when downloading files, else the request fails
-			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
+		}
+		if (!uri) {
+			return this.helpers.requestWithAuthentication.call(this,'notionApi', options );
 		}
 		return this.helpers.request!(options);
 
@@ -241,7 +239,9 @@ export function formatBlocks(blocks: IDataObject[]) {
 
 // tslint:disable-next-line: no-any
 function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
+	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) => !v && value.ignoreIfEmpty ? undefined : cb(v);  // tslint:disable-line: no-any
 	let result = {};
+
 	switch (type) {
 		case 'rich_text':
 			if (value.richText === false) {
@@ -257,7 +257,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 			result = { type: 'number', number: value.numberValue };
 			break;
 		case 'url':
-			result = { type: 'url', url: value.urlValue };
+			result = ignoreIfEmpty(value.urlValue, url => ({ type: 'url', url }));
 			break;
 		case 'checkbox':
 			result = { type: 'checkbox', checkbox: value.checkboxValue };
@@ -363,9 +363,13 @@ function getNameAndType(key: string) {
 }
 
 export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
-	return properties.reduce((obj, value) => Object.assign(obj, {
-		[`${(value.key as string).split('|')[0]}`]: getPropertyKeyValue(value, (value.key as string).split('|')[1], timezone, version),
-	}), {});
+	return properties
+	.filter((property): property is Record<string, { key: string; [k: string]: any }> => typeof property.key === 'string') // tslint:disable-line: no-any
+		.map(property => [`${property.key.split('|')[0]}`, getPropertyKeyValue(property, property.key.split('|')[1], timezone, version)] as const)
+		.filter(([, value]) => value)
+		.reduce((obj, [key, value]) => Object.assign(obj, {
+			[key]: value,
+		}), {});
 }
 
 export function mapSorting(data: [{ key: string, type: string, direction: string, timestamp: boolean }]) {
@@ -427,7 +431,7 @@ function simplifyProperty(property: any) {
 		result = property.plain_text;
 	} else if (['rich_text', 'title'].includes(property.type)) {
 		if (Array.isArray(property[type]) && property[type].length !== 0) {
-				// tslint:disable-next-line: no-any
+			// tslint:disable-next-line: no-any
 			result = property[type].map((text: any) => simplifyProperty(text) as string).join('');
 		} else {
 			result = '';
@@ -709,19 +713,6 @@ export function getConditions() {
 	}
 
 	return elements;
-}
-
-export function validateCrendetials(this: ICredentialTestFunctions, credentials: ICredentialDataDecryptedObject) {
-	const options: OptionsWithUri = {
-		headers: {
-			'Authorization': `Bearer ${credentials.apiKey}`,
-			'Notion-Version': apiVersion[2],
-		},
-		method: 'GET',
-		uri: `https://api.notion.com/v1/users/me`,
-		json: true,
-	};
-	return this.helpers.request!(options);
 }
 
 // tslint:disable-next-line: no-any

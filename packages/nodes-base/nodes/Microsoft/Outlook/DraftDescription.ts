@@ -20,26 +20,31 @@ export const draftOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new email draft',
+				action: 'Create a draft',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a draft',
+				action: 'Delete a draft',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single draft',
+				action: 'Get a draft',
 			},
 			{
 				name: 'Send',
 				value: 'send',
 				description: 'Send an existing draft message',
+				action: 'Send a draft',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a draft',
+				action: 'Update a draft',
 			},
 		],
 		default: 'create',
@@ -171,9 +176,10 @@ export const draftFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
+				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
@@ -249,7 +255,7 @@ export const draftFields: INodeProperties[] = [
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},

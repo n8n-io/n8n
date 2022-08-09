@@ -76,6 +76,7 @@ export async function buildRequestURL(this: IExecuteSingleFunctions, requestOpti
 function parseBinId(context: IExecuteSingleFunctions) {
 	const binId = context.getNodeParameter('binId') as string;
 	// Test if the Bin id is in the expected format
+	BIN_ID_REGEX.lastIndex = 0;
 	const idMatch = BIN_ID_REGEX.exec(binId);
 
 	// Return what is matched

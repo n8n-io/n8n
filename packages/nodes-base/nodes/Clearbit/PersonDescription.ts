@@ -8,9 +8,7 @@ export const personOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
+				resource: ['person'],
 			},
 		},
 		options: [
@@ -18,6 +16,7 @@ export const personOperations: INodeProperties[] = [
 				name: 'Enrich',
 				value: 'enrich',
 				description: 'Look up a person and company data based on an email or domain',
+				action: 'Enrich a person',
 			},
 		],
 		default: 'enrich',
@@ -25,7 +24,6 @@ export const personOperations: INodeProperties[] = [
 ];
 
 export const personFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 person:enrich                                 */
 	/* -------------------------------------------------------------------------- */
@@ -33,16 +31,13 @@ export const personFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['person'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'The email address to look up',
@@ -55,12 +50,8 @@ export const personFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['person'],
+				operation: ['enrich'],
 			},
 		},
 		options: [
@@ -90,7 +81,8 @@ export const personFields: INodeProperties[] = [
 				name: 'familyName',
 				type: 'string',
 				default: '',
-				description: 'Last name of person. If you have this, passing this is strongly recommended to improve match rates.',
+				description:
+					'Last name of person. If you have this, passing this is strongly recommended to improve match rates.',
 			},
 			{
 				displayName: 'Given Name',
@@ -104,7 +96,8 @@ export const personFields: INodeProperties[] = [
 				name: 'ipAddress',
 				type: 'string',
 				default: '',
-				description: 'IP address of the person. If you have this, passing this is strongly recommended to improve match rates.',
+				description:
+					'IP address of the person. If you have this, passing this is strongly recommended to improve match rates.',
 			},
 			{
 				displayName: 'Location',

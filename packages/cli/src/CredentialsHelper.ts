@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -37,6 +38,7 @@ import {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	LoggerProxy as Logger,
+	IHttpRequestHelper,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -90,7 +92,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (credentialType.authenticate) {
 			if (typeof credentialType.authenticate === 'function') {
 				// Special authentication function is defined
-
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
 			}
@@ -98,78 +99,101 @@ export class CredentialsHelper extends ICredentialsHelper {
 			if (typeof credentialType.authenticate === 'object') {
 				// Predefined authentication method
 
+				let keyResolved: string;
+				let valueResolved: string;
 				const { authenticate } = credentialType;
 				if (requestOptions.headers === undefined) {
 					requestOptions.headers = {};
 				}
 
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				if (authenticate.type === 'bearer') {
-					const tokenPropertyName: string =
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.tokenPropertyName ?? 'accessToken';
-					requestOptions.headers.Authorization = `Bearer ${
-						credentials[tokenPropertyName] as string
-					}`;
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				} else if (authenticate.type === 'basicAuth') {
-					const userPropertyName: string =
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.userPropertyName ?? 'user';
-					const passwordPropertyName: string =
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.passwordPropertyName ?? 'password';
+				if (authenticate.type === 'generic') {
+					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
+						Object.entries(outerValue).forEach(([key, value]) => {
+							keyResolved = this.resolveValue(
+								key,
+								{ $credentials: credentials },
+								workflow,
+								node,
+								defaultTimezone,
+							);
 
-					requestOptions.auth = {
-						username: credentials[userPropertyName] as string,
-						password: credentials[passwordPropertyName] as string,
-					};
-				} else if (authenticate.type === 'headerAuth') {
-					const key = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.name,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
+							valueResolved = this.resolveValue(
+								value as string,
+								{ $credentials: credentials },
+								workflow,
+								node,
+								defaultTimezone,
+							);
 
-					const value = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.value,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-					requestOptions.headers[key] = value;
-				} else if (authenticate.type === 'queryAuth') {
-					const key = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.key,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-
-					const value = this.resolveValue(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						authenticate.properties.value,
-						{ $credentials: credentials },
-						workflow,
-						node,
-						defaultTimezone,
-					);
-					if (!requestOptions.qs) {
-						requestOptions.qs = {};
-					}
-					requestOptions.qs[key] = value;
+							// @ts-ignore
+							if (!requestOptions[outerKey]) {
+								// @ts-ignore
+								requestOptions[outerKey] = {};
+							}
+							// @ts-ignore
+							requestOptions[outerKey][keyResolved] = valueResolved;
+						});
+					});
 				}
 			}
 		}
 
 		return requestOptions as IHttpRequestOptions;
+	}
+
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined> {
+		const credentialType = this.credentialTypes.getByName(typeName);
+
+		const expirableProperty = credentialType.properties.find(
+			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
+		);
+
+		if (expirableProperty === undefined || expirableProperty.name === undefined) {
+			return undefined;
+		}
+
+		// check if the node is the mockup node used for testing
+		// if so, it means this is a credential test and not normal node execution
+		const isTestingCredentials =
+			node?.parameters?.temp === '' && node?.type === 'n8n-nodes-base.noOp';
+
+		if (credentialType.preAuthentication) {
+			if (typeof credentialType.preAuthentication === 'function') {
+				// if the expirable property is empty in the credentials
+				// or are expired, call pre authentication method
+				// or the credentials are being tested
+				if (
+					credentials[expirableProperty?.name] === '' ||
+					credentialsExpired ||
+					isTestingCredentials
+				) {
+					const output = await credentialType.preAuthentication.call(helpers, credentials);
+
+					// if there is data in the output, make sure the returned
+					// property is the expirable property
+					// else the database will not get updated
+					if (output[expirableProperty.name] === undefined) {
+						return undefined;
+					}
+
+					if (node.credentials) {
+						await this.updateCredentials(
+							node.credentials[credentialType.name],
+							credentialType.name,
+							Object.assign(credentials, output),
+						);
+						return Object.assign(credentials, output);
+					}
+				}
+			}
+		}
+		return undefined;
 	}
 
 	/**
@@ -534,7 +558,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeToTestWith?: string,
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType, nodeToTestWith);
-
 		if (credentialTestFunction === undefined) {
 			return Promise.resolve({
 				status: 'Error',
@@ -563,6 +586,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const node: INode = {
+			id: 'temp',
 			parameters: {},
 			name: 'Temp-Node',
 			type: nodeType.description.name,
@@ -570,6 +594,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 				? nodeType.description.version.slice(-1)[0]
 				: nodeType.description.version,
 			position: [0, 0],
+			credentials: {
+				[credentialType]: {
+					id: credentialsDecrypted.id.toString(),
+					name: credentialsDecrypted.name,
+				},
+			},
 		};
 
 		const workflowData = {
@@ -654,12 +684,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		} catch (error) {
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
-			if (error.cause.response) {
+			if (error.cause?.response) {
 				const errorResponseData = {
 					statusCode: error.cause.response.status,
 					statusMessage: error.cause.response.statusText,
 				};
-
 				if (credentialTestFunction.testRequest.rules) {
 					// Special testing rules are defined so check all in order
 					for (const rule of credentialTestFunction.testRequest.rules) {
@@ -685,6 +714,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 							`Received HTTP status code: ${errorResponseData.statusCode}`,
 					};
 				}
+			} else if (error.cause.code) {
+				return {
+					status: 'Error',
+					message: error.cause.code,
+				};
 			}
 			Logger.debug('Credential test failed', error);
 			return {

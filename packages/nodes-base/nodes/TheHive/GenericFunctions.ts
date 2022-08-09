@@ -18,10 +18,7 @@ import { Eq } from './QueryFunctions';
 export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = await this.getCredentials('theHiveApi');
 
-	const headerWithAuthentication = Object.assign({}, { Authorization: `Bearer ${credentials.ApiKey}` });
-
 	let options: OptionsWithUri = {
-		headers: headerWithAuthentication,
 		method,
 		qs: query,
 		uri: uri || `${credentials.url}/api${resource}`,
@@ -42,7 +39,7 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 		delete options.qs;
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

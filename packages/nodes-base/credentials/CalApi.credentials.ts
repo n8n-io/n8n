@@ -1,5 +1,5 @@
 import {
-	IAuthenticateQueryAuth,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -24,13 +24,14 @@ export class CalApi implements ICredentialType {
 		},
 	];
 
-	authenticate = {
-		type: 'queryAuth',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			key: 'apiKey',
-			value: '={{$credentials.apiKey}}',
+			qs: {
+				apiKey: '={{$credentials.apiKey}}',
+			},
 		},
-	} as IAuthenticateQueryAuth;
+	};
 
 	test: ICredentialTestRequest = {
 		request: {

@@ -29,6 +29,7 @@ export class Sendy implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sendy',
 		name: 'sendy',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:sendy.png',
 		group: ['input'],
 		version: 1,
@@ -191,7 +192,7 @@ export class Sendy implements INodeType {
 					if (responseData === '1') {
 						responseData = { success: true };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 
@@ -221,7 +222,7 @@ export class Sendy implements INodeType {
 					if (!errors.includes(responseData)) {
 						responseData = { count: responseData };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 
@@ -246,7 +247,7 @@ export class Sendy implements INodeType {
 					if (responseData === '1') {
 						responseData = { success: true };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 
@@ -271,7 +272,7 @@ export class Sendy implements INodeType {
 					if (responseData === '1') {
 						responseData = { success: true };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 
@@ -305,7 +306,7 @@ export class Sendy implements INodeType {
 					if (status.includes(responseData)) {
 						responseData = { status: responseData };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`, { itemIndex: i });
 					}
 				}
 			}

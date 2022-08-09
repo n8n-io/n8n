@@ -23,21 +23,25 @@ export const cardOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new card',
+				action: 'Create a card',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a card',
+				action: 'Delete a card',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a card',
+				action: 'Get a card',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a card',
+				action: 'Update a card',
 			},
 		],
 		default: 'create',
@@ -131,7 +135,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'dueComplete',
 				type: 'boolean',
 				default: false,
-				description: 'If the card is completed',
+				description: 'Whether the card is completed',
 			},
 			{
 				displayName: 'Position',
@@ -384,7 +388,7 @@ export const cardFields: INodeProperties[] = [
 				name: 'dueComplete',
 				type: 'boolean',
 				default: false,
-				description: 'If the card is completed',
+				description: 'Whether the card is completed',
 			},
 			{
 				displayName: 'Label IDs',

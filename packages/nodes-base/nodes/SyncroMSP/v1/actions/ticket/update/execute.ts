@@ -35,7 +35,7 @@ export async function updateTicket(this: IExecuteFunctions, index: number): Prom
 	};
 
 	if (!Object.keys(body).length) {
-		throw new NodeOperationError(this.getNode(), 'At least one update fields has to be defined');
+		throw new NodeOperationError(this.getNode(), 'At least one update fields has to be defined', { itemIndex: index });
 	}
 
 	let responseData;

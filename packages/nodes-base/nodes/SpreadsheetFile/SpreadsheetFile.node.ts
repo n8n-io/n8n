@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	JSON2SheetOpts,
 	read as xlsxRead,
 	Sheet2JSONOpts,
 	utils as xlsxUtils,
@@ -72,11 +73,13 @@ export class SpreadsheetFile implements INodeType {
 						name: 'Read From File',
 						value: 'fromFile',
 						description: 'Reads data from a spreadsheet file',
+						action: 'Read data from a spreadsheet file',
 					},
 					{
 						name: 'Write to File',
 						value: 'toFile',
 						description: 'Writes the workflow data to a spreadsheet file',
+						action: 'Write the workflow data to a spreadsheet file',
 					},
 				],
 				default: 'fromFile',
@@ -192,7 +195,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Weather compression will be applied or not',
+						description: 'Whether compression will be applied or not',
 					},
 					{
 						displayName: 'File Name',
@@ -216,11 +219,12 @@ export class SpreadsheetFile implements INodeType {
 							show: {
 								'/operation': [
 									'fromFile',
+									'toFile',
 								],
 							},
 						},
 						default: true,
-						description: 'The first row of the file contains the header names',
+						description: 'Whether the first row of the file contains the header names',
 					},
 					{
 						displayName: 'Include Empty Cells',
@@ -234,6 +238,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'When reading from file the empty cells will be filled with an empty string in the JSON',
 					},
 					{
@@ -248,7 +253,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
-						description: 'If the data should be returned RAW instead of parsed',
+						description: 'Whether the data should be returned RAW instead of parsed',
 					},
 					{
 						displayName: 'Read As String',
@@ -262,6 +267,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'In some cases and file formats, it is necessary to read specifically as string else some special character get interpreted wrong',
 					},
 					{
@@ -352,13 +358,13 @@ export class SpreadsheetFile implements INodeType {
 					}
 
 					if (workbook.SheetNames.length === 0) {
-						throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!');
+						throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!', { itemIndex: i });
 					}
 
 					let sheetName = workbook.SheetNames[0];
 					if (options.sheetName) {
 						if (!workbook.SheetNames.includes(options.sheetName as string)) {
-							throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+							throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`, { itemIndex: i });
 						}
 						sheetName = options.sheetName as string;
 					}
@@ -435,7 +441,10 @@ export class SpreadsheetFile implements INodeType {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 				const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-
+				const sheetToJsonOptions: JSON2SheetOpts = {};
+				if (options.headerRow === false) {
+					sheetToJsonOptions.skipHeader = true;
+				}
 				// Get the json data of the items and flatten it
 				let item: INodeExecutionData;
 				const itemData: IDataObject[] = [];
@@ -444,7 +453,7 @@ export class SpreadsheetFile implements INodeType {
 					itemData.push(flattenObject(item.json));
 				}
 
-				const ws = xlsxUtils.json_to_sheet(itemData);
+				const ws = xlsxUtils.json_to_sheet(itemData, sheetToJsonOptions);
 
 				const wopts: WritingOptions = {
 					bookSST: false,

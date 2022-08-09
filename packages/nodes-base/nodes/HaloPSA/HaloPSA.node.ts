@@ -31,7 +31,7 @@ import {
 	haloPSAApiRequestAllItems,
 	qsSetStatus,
 	simplifyHaloPSAGetOutput,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunctions';
 
 export class HaloPSA implements INodeType {
@@ -201,7 +201,7 @@ export class HaloPSA implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					return {
 						status: 'Error',

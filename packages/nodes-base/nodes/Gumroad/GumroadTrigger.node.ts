@@ -19,6 +19,7 @@ export class GumroadTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gumroad Trigger',
 		name: 'gumroadTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:gumroad.png',
 		group: ['trigger'],
 		version: 1,

@@ -1,28 +1,16 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	pipelineFields,
-	pipelineOperations,
-} from './PipelineDescription';
+import { pipelineFields, pipelineOperations } from './PipelineDescription';
 
-import {
-	circleciApiRequest,
-	circleciApiRequestAllItems,
-} from './GenericFunctions';
+import { circleciApiRequest, circleciApiRequestAllItems } from './GenericFunctions';
 
 export class CircleCi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CircleCI',
 		name: 'circleCi',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:circleCi.png',
 		group: ['output'],
 		version: 1,
@@ -96,8 +84,14 @@ export class CircleCi implements INodeType {
 						const endpoint = `/project/${vcs}/${slug}/pipeline`;
 
 						if (returnAll === true) {
-							responseData = await circleciApiRequestAllItems.call(this, 'items', 'GET', endpoint, {}, qs);
-
+							responseData = await circleciApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);

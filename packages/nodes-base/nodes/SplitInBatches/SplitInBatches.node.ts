@@ -50,7 +50,7 @@ export class SplitInBatches implements INodeType {
 						name: 'reset',
 						type: 'boolean',
 						default: false,
-						description: 'If set to true, the node will be reset and so with the current input-data newly initialized',
+						description: 'Whether the node will be reset and so with the current input-data newly initialized',
 					},
 				],
 			},

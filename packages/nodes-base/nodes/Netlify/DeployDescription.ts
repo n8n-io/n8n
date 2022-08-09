@@ -20,21 +20,25 @@ export const deployOperations: INodeProperties[] = [
 				name: 'Cancel',
 				value: 'cancel',
 				description: 'Cancel a deployment',
+				action: 'Cancel a deployment',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new deployment',
+				action: 'Create a deployment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a deployment',
+				action: 'Get a deployment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all deployments',
+				action: 'Get all deployments',
 			},
 		],
 		default: 'getAll',
@@ -51,7 +55,7 @@ export const deployFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getSites',
 		},
-		description: 'Enter the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'Enter the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions:{
 			show: {
 				resource: [

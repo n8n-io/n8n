@@ -2,7 +2,6 @@
 @use "mixins/button";
 @use "./common/var";
 @use "common/popup";
-@use "button" as buttons;
 @use "input";
 
 @include mixins.b(message-box) {
@@ -151,15 +150,13 @@
 			margin-left: 10px;
 		}
 
-		& .btn--confirm {
-			@include button.button-just-primary();
-			@include button.button-medium();
-		}
-
-		& .btn--cancel {
-			@include button.button-outline();
-			@include button.button-medium();
-		}
+		//& .btn--confirm {
+		//	@include button.button-just-primary();
+		//	@include button.button-medium();
+		//}
+		//
+		//& .btn--cancel {
+		//}
 	}
 
 	@include mixins.e(btns-reverse) {

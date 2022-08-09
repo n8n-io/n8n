@@ -1,13 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 	name = 'microsoftDynamicsOAuth2Api';
-	extends = [
-		'microsoftOAuth2Api',
-	];
+	extends = ['microsoftOAuth2Api'];
 	displayName = 'Microsoft Dynamics OAuth2 API';
 	documentationUrl = 'microsoft';
 	properties: INodeProperties[] = [
@@ -93,7 +88,7 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 					value: 'crm15.dynamics.com',
 				},
 				{
-					name: 'United Kingdom  (UK/ GBR)',
+					name: 'United Kingdom (UK/ GBR)',
 					value: 'crm11.dynamics.com',
 				},
 				{

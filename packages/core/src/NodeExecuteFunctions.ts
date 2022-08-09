@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-lonely-if */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-prototype-builtins */
@@ -57,6 +58,7 @@ import {
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
 	IExecuteData,
+	OAuth2GrantType,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -76,6 +78,7 @@ import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
 import axios, {
+	AxiosError,
 	AxiosPromise,
 	AxiosProxyConfig,
 	AxiosRequestConfig,
@@ -275,6 +278,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined) {
 				// merge both objects when exist.
+				// @ts-ignore
 				requestObject.body = Object.assign(requestObject.body, requestObject.form);
 			}
 			axiosConfig.data = requestObject.body as FormData | GenericValue | GenericValue[];
@@ -729,6 +733,10 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 				axiosRequest.headers = axiosRequest.headers || {};
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
+		} else if (
+			axiosRequest.headers[existingContentTypeHeaderKey] === 'application/x-www-form-urlencoded'
+		) {
+			axiosRequest.data = new URLSearchParams(n8nRequest.body as Record<string, string>);
 		}
 	}
 
@@ -759,6 +767,12 @@ async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	const axiosRequest = convertN8nRequestToAxios(requestOptions);
+	if (
+		axiosRequest.data === undefined ||
+		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
+	) {
+		delete axiosRequest.data;
+	}
 	const result = await axios(axiosRequest);
 	if (requestOptions.returnFullResponse) {
 		return {
@@ -807,6 +821,7 @@ export async function prepareBinaryData(
 	filePath?: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
+	let fileExtension: string | undefined;
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
@@ -823,6 +838,7 @@ export async function prepareBinaryData(
 			const fileTypeData = await fromBuffer(binaryData);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
+				fileExtension = fileTypeData.ext;
 			}
 		}
 
@@ -834,6 +850,7 @@ export async function prepareBinaryData(
 
 	const returnData: IBinaryData = {
 		mimeType,
+		fileExtension,
 		data: '',
 	};
 
@@ -883,7 +900,11 @@ export async function requestOAuth2(
 ) {
 	const credentials = await this.getCredentials(credentialsType);
 
-	if (credentials.oauthTokenData === undefined) {
+	// Only the OAuth2 with authorization code grant needs connection
+	if (
+		credentials.grantType === OAuth2GrantType.authorizationCode &&
+		credentials.oauthTokenData === undefined
+	) {
 		throw new Error('OAuth credentials not connected!');
 	}
 
@@ -891,9 +912,32 @@ export async function requestOAuth2(
 		clientId: credentials.clientId as string,
 		clientSecret: credentials.clientSecret as string,
 		accessTokenUri: credentials.accessTokenUrl as string,
+		scopes: (credentials.scope as string).split(' '),
 	});
 
-	const oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+	// if it's the first time using the credentials, get the access token and save it into the DB.
+	if (credentials.grantType === OAuth2GrantType.clientCredentials && oauthTokenData === undefined) {
+		const { data } = await oAuthClient.credentials.getToken();
+
+		// Find the credentials
+		if (!node.credentials || !node.credentials[credentialsType]) {
+			throw new Error(
+				`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+			);
+		}
+
+		const nodeCredentials = node.credentials[credentialsType];
+
+		// Save the refreshed token
+		await additionalData.credentialsHelper.updateCredentials(
+			nodeCredentials,
+			credentialsType,
+			credentials as unknown as ICredentialDataDecryptedObject,
+		);
+
+		oauthTokenData = data;
+	}
 
 	const token = oAuthClient.createToken(
 		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
@@ -904,13 +948,84 @@ export async function requestOAuth2(
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
-
 	// If keep bearer is false remove the it from the authorization header
 	if (oAuth2Options?.keepBearer === false) {
 		// @ts-ignore
 		newRequestOptions?.headers?.Authorization =
 			// @ts-ignore
 			newRequestOptions?.headers?.Authorization.split(' ')[1];
+	}
+
+	// @ts-ignore
+	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+		Object.assign(newRequestOptions.headers, {
+			// @ts-ignore
+			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
+		});
+	}
+
+	if (isN8nRequest) {
+		return this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
+			if (error.response?.status === 401) {
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
+				);
+				const tokenRefreshOptions: IDataObject = {};
+				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+					const body: IDataObject = {
+						client_id: credentials.clientId as string,
+						client_secret: credentials.clientSecret as string,
+					};
+					tokenRefreshOptions.body = body;
+					tokenRefreshOptions.headers = {
+						Authorization: '',
+					};
+				}
+
+				let newToken;
+
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+				);
+				// if it's OAuth2 with client credentials grant type, get a new token
+				// instead of refreshing it.
+				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
+					newToken = await token.client.credentials.getToken();
+				} else {
+					newToken = await token.refresh(tokenRefreshOptions);
+				}
+
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+				);
+
+				credentials.oauthTokenData = newToken.data;
+				// Find the credentials
+				if (!node.credentials || !node.credentials[credentialsType]) {
+					throw new Error(
+						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+					);
+				}
+				const nodeCredentials = node.credentials[credentialsType];
+				await additionalData.credentialsHelper.updateCredentials(
+					nodeCredentials,
+					credentialsType,
+					credentials,
+				);
+				const refreshedRequestOption = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+
+				// @ts-ignore
+				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+					Object.assign(newRequestOptions.headers, {
+						// @ts-ignore
+						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
+					});
+				}
+
+				return this.helpers.httpRequest(refreshedRequestOption);
+			}
+			throw error;
+		});
 	}
 
 	return this.helpers.request!(newRequestOptions).catch(async (error: IResponseError) => {
@@ -926,8 +1041,8 @@ export async function requestOAuth2(
 
 			if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 				const body: IDataObject = {
-					client_id: credentials.clientId as string,
-					client_secret: credentials.clientSecret as string,
+					client_id: credentials.clientId,
+					client_secret: credentials.clientSecret,
 				};
 				tokenRefreshOptions.body = body;
 				// Override authorization property so the credentails are not included in it
@@ -940,7 +1055,15 @@ export async function requestOAuth2(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 			);
 
-			const newToken = await token.refresh(tokenRefreshOptions);
+			let newToken;
+
+			// if it's OAuth2 with client credentials grant type, get a new token
+			// instead of refreshing it.
+			if (OAuth2GrantType.clientCredentials === credentials.grantType) {
+				newToken = await token.client.credentials.getToken();
+			} else {
+				newToken = await token.refresh(tokenRefreshOptions);
+			}
 
 			Logger.debug(
 				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
@@ -960,7 +1083,7 @@ export async function requestOAuth2(
 			await additionalData.credentialsHelper.updateCredentials(
 				nodeCredentials,
 				credentialsType,
-				credentials,
+				credentials as unknown as ICredentialDataDecryptedObject,
 			);
 
 			Logger.debug(
@@ -969,9 +1092,15 @@ export async function requestOAuth2(
 
 			// Make the request again with the new token
 			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
-			if (isN8nRequest) {
-				return this.helpers.httpRequest(newRequestOptions);
+
+			// @ts-ignore
+			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+				Object.assign(newRequestOptions.headers, {
+					// @ts-ignore
+					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
+				});
 			}
+
 			return this.helpers.request!(newRequestOptions);
 		}
 
@@ -1041,7 +1170,6 @@ export async function requestOAuth1(
 
 	// @ts-ignore
 	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
-
 	if (isN8nRequest) {
 		return this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
 	}
@@ -1061,9 +1189,9 @@ export async function httpRequestWithAuthentication(
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
-
 		if (parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
@@ -1079,7 +1207,6 @@ export async function httpRequestWithAuthentication(
 			);
 		}
 
-		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
@@ -1093,6 +1220,20 @@ export async function httpRequestWithAuthentication(
 			);
 		}
 
+		const data = await additionalData.credentialsHelper.preAuthentication(
+			{ helpers: { httpRequest: this.helpers.httpRequest } },
+			credentialsDecrypted,
+			credentialsType,
+			node,
+			false,
+		);
+
+		if (data) {
+			// make the updated property in the credentials
+			// available to the authenticate method
+			Object.assign(credentialsDecrypted, data);
+		}
+
 		requestOptions = await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
@@ -1101,9 +1242,47 @@ export async function httpRequestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-
 		return await httpRequest(requestOptions);
 	} catch (error) {
+		// if there is a pre authorization method defined and
+		// the method failed due to unathorized request
+		if (
+			error.response?.status === 401 &&
+			additionalData.credentialsHelper.preAuthentication !== undefined
+		) {
+			try {
+				if (credentialsDecrypted !== undefined) {
+					// try to refresh the credentials
+					const data = await additionalData.credentialsHelper.preAuthentication(
+						{ helpers: { httpRequest: this.helpers.httpRequest } },
+						credentialsDecrypted,
+						credentialsType,
+						node,
+						true,
+					);
+
+					if (data) {
+						// make the updated property in the credentials
+						// available to the authenticate method
+						Object.assign(credentialsDecrypted, data);
+					}
+
+					requestOptions = await additionalData.credentialsHelper.authenticate(
+						credentialsDecrypted,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData.timezone,
+					);
+				}
+				// retry the request
+				return await httpRequest(requestOptions);
+			} catch (error) {
+				throw new NodeApiError(this.getNode(), error);
+			}
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -1184,6 +1363,8 @@ export async function requestWithAuthentication(
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
@@ -1202,7 +1383,6 @@ export async function requestWithAuthentication(
 			);
 		}
 
-		let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
@@ -1216,6 +1396,20 @@ export async function requestWithAuthentication(
 			);
 		}
 
+		const data = await additionalData.credentialsHelper.preAuthentication(
+			{ helpers: { httpRequest: this.helpers.httpRequest } },
+			credentialsDecrypted,
+			credentialsType,
+			node,
+			false,
+		);
+
+		if (data) {
+			// make the updated property in the credentials
+			// available to the authenticate method
+			Object.assign(credentialsDecrypted, data);
+		}
+
 		requestOptions = await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
@@ -1227,7 +1421,37 @@ export async function requestWithAuthentication(
 
 		return await proxyRequestToAxios(requestOptions as IDataObject);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		try {
+			if (credentialsDecrypted !== undefined) {
+				// try to refresh the credentials
+				const data = await additionalData.credentialsHelper.preAuthentication(
+					{ helpers: { httpRequest: this.helpers.httpRequest } },
+					credentialsDecrypted,
+					credentialsType,
+					node,
+					true,
+				);
+
+				if (data) {
+					// make the updated property in the credentials
+					// available to the authenticate method
+					Object.assign(credentialsDecrypted, data);
+				}
+
+				requestOptions = await additionalData.credentialsHelper.authenticate(
+					credentialsDecrypted,
+					credentialsType,
+					requestOptions as IHttpRequestOptions,
+					workflow,
+					node,
+					additionalData.timezone,
+				);
+			}
+			// retry the request
+			return await proxyRequestToAxios(requestOptions as IDataObject);
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error);
+		}
 	}
 }
 
@@ -2280,6 +2504,9 @@ export function getExecuteSingleFunctions(
 
 				return allItems[itemIndex];
 			},
+			getItemIndex() {
+				return itemIndex;
+			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
 			},
@@ -2342,6 +2569,9 @@ export function getExecuteSingleFunctions(
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
+				async getBinaryDataBuffer(propertyName: string, inputIndex = 0): Promise<Buffer> {
+					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
+				},
 				httpRequest,
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,

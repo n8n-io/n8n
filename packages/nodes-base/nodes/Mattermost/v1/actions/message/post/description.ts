@@ -23,7 +23,7 @@ export const messagePostDescription: MessageProperties = [
 				],
 			},
 		},
-		description: 'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Message',
@@ -322,7 +322,7 @@ export const messagePostDescription: MessageProperties = [
 								name: 'short',
 								type: 'boolean',
 								default: true,
-								description: 'If items can be displayed next to each other',
+								description: 'Whether items can be displayed next to each other',
 							},
 						],
 					},

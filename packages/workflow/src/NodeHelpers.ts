@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -823,7 +824,7 @@ export function getNodeParameters(
 				Object.keys(propertyValues || {}).forEach((value) => {
 					returnValue[value] = {};
 				});
-				return { [nodeProperties.name]: returnValue };
+				nodeParameters[nodeProperties.name] = returnValue;
 			}
 
 			if (Object.keys(collectionValues).length !== 0 || returnDefaults) {
@@ -1060,12 +1061,13 @@ export function getNodeWebhookUrl(
 export function getNodeParametersIssues(
 	nodePropertiesArray: INodeProperties[],
 	node: INode,
+	pinDataNodeNames?: string[],
 ): INodeIssues | null {
 	const foundIssues: INodeIssues = {};
 	let propertyIssues: INodeIssues;
 
-	if (node.disabled === true) {
-		// Ignore issues on disabled nodes
+	if (node.disabled === true || pinDataNodeNames?.includes(node.name)) {
+		// Ignore issues on disabled and pindata nodes
 		return null;
 	}
 
@@ -1138,7 +1140,8 @@ export function addToIssuesIfMissing(
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && value === undefined)
+		(nodeProperties.type === 'dateTime' && value === undefined) ||
+		(nodeProperties.type === 'options' && (value === '' || value === undefined))
 	) {
 		// Parameter is requried but empty
 		if (foundIssues.parameters === undefined) {

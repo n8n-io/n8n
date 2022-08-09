@@ -1,6 +1,5 @@
 @use "mixins/mixins";
 @use "./common/var";
-@use "button";
 @use "./popper";
 
 @include mixins.b(dropdown) {
@@ -35,7 +34,7 @@
 			background: rgba(var.$color-white, 0.5);
 		}
 
-		&.el-button--default::before {
+		&.button::before {
 			background: hsla(
 				var(#{--button-default-border-color-h}),
 				var(#{--button-default-border-color-s}),
