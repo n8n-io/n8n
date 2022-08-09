@@ -318,7 +318,7 @@ export class MergeV2 implements INodeType {
 				for (entry2 of dataInput2) {
 					returnData.push({
 						json: {
-							...mergeEntries({ ...entry1.json }, [entry2.json]),
+							...mergeEntries(entry1.json, [entry2.json]),
 						},
 						pairedItem: [
 							entry1.pairedItem as IPairedItemData,
@@ -386,7 +386,7 @@ export class MergeV2 implements INodeType {
 
 				returnData.push({
 					json: {
-						...mergeEntries({ ...entry1.json }, [entry2.json]),
+						...mergeEntries(entry1.json, [entry2.json]),
 					},
 					binary: {
 						...merge({}, entry1.binary, entry2.binary),

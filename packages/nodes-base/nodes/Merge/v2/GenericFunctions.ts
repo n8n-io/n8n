@@ -116,7 +116,7 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 		if (clashResolveOptions.resolveClash === 'addSuffix') {
 			[entry] = addSuffixToEntriesKeys([entry], '1');
 			matches = addSuffixToEntriesKeys(matches, '2');
-			json = mergeEntries({ ...entry.json }, [...matches.map((match) => match.json)]);
+			json = mergeEntries({ ...entry.json }, matches.map((match) => match.json));
 		}
 
 		if (clashResolveOptions.resolveClash === 'preferInput1') {
@@ -128,7 +128,7 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 			clashResolveOptions.resolveClash === 'preferInput2' ||
 			clashResolveOptions.resolveClash === undefined
 		) {
-			json = mergeEntries({ ...entry.json }, [...matches.map((match) => match.json)]);
+			json = mergeEntries({ ...entry.json }, matches.map((match) => match.json));
 		}
 
 		const pairedItem = [
@@ -152,22 +152,19 @@ export function selectMergeMethod(clashResolveOptions: IDataObject) {
 				return objValue;
 			}
 		}
-
 		if (clashResolveOptions.mergeMode === 'deepMerge') {
 			return (obj: IDataObject, source: IDataObject[]) => mergeWith(obj, ...source, customizer);
 		}
-
 		if (clashResolveOptions.mergeMode === 'shallowMerge') {
 			return (obj: IDataObject, source: IDataObject[]) => assignWith(obj, ...source, customizer);
 		}
 	} else {
 		if (clashResolveOptions.mergeMode === 'deepMerge') {
-			return (obj: IDataObject, source: IDataObject[]) => merge(obj, ...source);
+			return (obj: IDataObject, source: IDataObject[]) => merge({}, obj, ...source);
 		}
-
 		if (clashResolveOptions.mergeMode === 'shallowMerge') {
-			return (obj: IDataObject, source: IDataObject[]) => assign(obj, ...source);
+			return (obj: IDataObject, source: IDataObject[]) => assign({}, obj, ...source);
 		}
 	}
-	return (obj: IDataObject, source: IDataObject[]) => merge(obj, ...source);
+	return (obj: IDataObject, source: IDataObject[]) => merge({}, obj, ...source);
 }
