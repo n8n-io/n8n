@@ -7,7 +7,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "clean:dist": "npm exec -ws -- rimraf ./dist",
-    "format": "turbo run format",
+    "format": "turbo run format && node scripts/format.mjs",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
