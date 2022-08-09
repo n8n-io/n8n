@@ -1321,14 +1321,9 @@ export function constructExecutionMetaData(
 	itemData: IPairedItemData | IPairedItemData[],
 	inputData: INodeExecutionData[],
 ): INodeExecutionMetaData[] {
-	const pairedItem = itemData;
-
 	return inputData.map((data: INodeExecutionData) => {
-		const { json, binary } = data;
-		const metaData = { json, pairedItem } as INodeExecutionMetaData;
-		if (binary !== undefined) {
-			Object.assign(metaData, { binary });
-		}
+		const { json, ...rest } = data;
+		const metaData = { json, pairedItem: { ...itemData }, rest } as INodeExecutionMetaData;
 		return metaData;
 	});
 }
