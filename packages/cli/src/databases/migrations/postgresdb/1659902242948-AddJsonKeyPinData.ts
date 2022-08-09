@@ -2,7 +2,7 @@ import {
 	getTablePrefix,
 	logMigrationEnd,
 	logMigrationStart,
-	runChunked,
+	runInBatches,
 } from '../../utils/migrationHelpers';
 import { addJsonKeyToPinDataColumn } from '../sqlite/1659888469333-AddJsonKeyPinData';
 import type { MigrationInterface, QueryRunner } from 'typeorm';
@@ -31,7 +31,7 @@ export class AddJsonKeyPinData1659902242948 implements MigrationInterface {
 			WHERE id = :id;
 		`;
 
-		await runChunked(
+		await runInBatches(
 			queryRunner,
 			PINDATA_SELECT_QUERY,
 			addJsonKeyToPinDataColumn(queryRunner, PINDATA_UPDATE_STATEMENT),

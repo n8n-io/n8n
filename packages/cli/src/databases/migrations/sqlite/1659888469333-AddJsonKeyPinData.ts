@@ -1,7 +1,7 @@
 import {
 	logMigrationStart,
 	logMigrationEnd,
-	runChunked,
+	runInBatches,
 	getTablePrefix,
 	escapeQuery,
 } from '../../utils/migrationHelpers';
@@ -32,7 +32,7 @@ export class AddJsonKeyPinData1659888469333 implements MigrationInterface {
 			WHERE id = :id;
 		`;
 
-		await runChunked(
+		await runInBatches(
 			queryRunner,
 			PINDATA_SELECT_QUERY,
 			addJsonKeyToPinDataColumn(queryRunner, PINDATA_UPDATE_STATEMENT),

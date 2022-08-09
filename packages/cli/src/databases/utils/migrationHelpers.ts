@@ -57,7 +57,7 @@ export function logMigrationEnd(migrationName: string): void {
 	}, 100);
 }
 
-export function chunkQuery(query: string, limit: number, offset = 0): string {
+export function batchQuery(query: string, limit: number, offset = 0): string {
 	return `
 			${query}
 			LIMIT ${limit}
@@ -65,7 +65,7 @@ export function chunkQuery(query: string, limit: number, offset = 0): string {
 		`;
 }
 
-export async function runChunked(
+export async function runInBatches(
 	queryRunner: QueryRunner,
 	query: string,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,19 +73,19 @@ export async function runChunked(
 	limit = 100,
 ): Promise<void> {
 	let offset = 0;
-	let chunkedQuery: string;
-	let chunkedQueryResults: unknown[];
+	let batchedQuery: string;
+	let batchedQueryResults: unknown[];
 
 	// eslint-disable-next-line no-param-reassign
 	if (query.trim().endsWith(';')) query = query.trim().slice(0, -1);
 
 	do {
-		chunkedQuery = chunkQuery(query, limit, offset);
-		chunkedQueryResults = (await queryRunner.query(chunkedQuery)) as unknown[];
+		batchedQuery = batchQuery(query, limit, offset);
+		batchedQueryResults = (await queryRunner.query(batchedQuery)) as unknown[];
 		// pass a copy to prevent errors from mutation
-		await operation([...chunkedQueryResults]);
+		await operation([...batchedQueryResults]);
 		offset += limit;
-	} while (chunkedQueryResults.length === limit);
+	} while (batchedQueryResults.length === limit);
 }
 
 export const getTablePrefix = () => {
