@@ -65,7 +65,7 @@
 							<span v-if="isSimple(data)" :class="$style.value">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :input="data">
 								<template v-slot:label="{ label, path }">
-									<span :class="{[$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
+									<span @mouseenter="() => onMouseEnterKey(path)" @mouseleave="onMouseLeaveKey" :class="{[$style.hoveringKey]: mappingEnabled && isHovering(path), [$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
 								</template>
 								<template v-slot:value="{ value }">
 									<span :class="{[$style.value]: true, [$style.empty]: isEmpty(value)}">{{ getValueToRender(value) }}</span>
@@ -118,6 +118,7 @@ export default Vue.extend({
 			showHintWithDelay: false,
 			forceShowGrip: false,
 			draggedColumn: false,
+			hoveringPath: null as null | string,
 		};
 	},
 	mounted() {
@@ -149,6 +150,15 @@ export default Vue.extend({
 		},
 		onMouseLeaveCell() {
 			this.activeColumn = -1;
+		},
+		onMouseEnterKey(path: string[]) {
+			this.hoveringPath = path.join('|');
+		},
+		onMouseLeaveKey() {
+			this.hoveringPath = null;
+		},
+		isHovering(path: string[]) {
+			return this.hoveringPath === path.join('|');
 		},
 		getExpression(column: string) {
 			if (!this.node) {
@@ -396,6 +406,10 @@ export default Vue.extend({
 
 .limitWidth {
 	max-width: 300px;
+}
+
+.hoveringKey {
+	background-color: var(--color-foreground-base);
 }
 
 </style>
