@@ -91,7 +91,7 @@ export default Vue.extend({
 			const data = this.targetDataKey ? target.dataset.value : (this.data || '');
 			this.$store.commit('ui/draggableStartDragging', {type: this.type, data });
 
-			this.$emit('dragstart');
+			this.$emit('dragstart', this.draggingEl);
 			document.body.style.cursor = 'grabbing';
 
 			window.addEventListener('mousemove', this.onDrag);

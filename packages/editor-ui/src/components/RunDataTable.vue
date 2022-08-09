@@ -46,7 +46,7 @@
 					</th>
 				</tr>
 			</thead>
-			<Draggable tag="tbody" type="mapping" targetDataKey="mappable" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="onCellDragEnd">
+			<Draggable tag="tbody" type="mapping" targetDataKey="mappable" :disabled="!mappingEnabled" @dragstart="onCellDragStart" @dragend="onCellDragEnd">
 				<template v-slot:preview="{ canDrop, el }">
 					<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
 						{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) } }) }}
@@ -65,7 +65,7 @@
 							<span v-if="isSimple(data)" :class="$style.value">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :input="data">
 								<template v-slot:label="{ label, path }">
-									<span @mouseenter="() => onMouseEnterKey(path)" @mouseleave="onMouseLeaveKey" :class="{[$style.hoveringKey]: mappingEnabled && isHovering(path), [$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
+									<span @mouseenter="() => onMouseEnterKey(path)" @mouseleave="onMouseLeaveKey" :class="{[$style.hoveringKey]: mappingEnabled && isHovering(path), [$style.draggingKey]: isDraggingKey(path, index2), [$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
 								</template>
 								<template v-slot:value="{ value }">
 									<span :class="{[$style.value]: true, [$style.empty]: isEmpty(value)}">{{ getValueToRender(value) }}</span>
@@ -118,6 +118,7 @@ export default Vue.extend({
 			showHintWithDelay: false,
 			forceShowGrip: false,
 			draggedColumn: false,
+			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
 		};
 	},
@@ -227,10 +228,25 @@ export default Vue.extend({
 
 			this.$store.commit('ui/resetMappingTelemetry');
 		},
+		onCellDragStart(el: HTMLElement) {
+			if (el && el.dataset.value) {
+				this.draggingPath = el.dataset.value;
+			}
+
+			this.onDragStart();
+		},
 		onCellDragEnd(el: HTMLElement) {
+			this.draggingPath = null;
 			if (el.dataset.path) {
 				this.onDragEnd(el.dataset.path);
 			}
+		},
+		isDraggingKey(path: (string | number)[], colIndex: number) {
+			if (!this.draggingPath) {
+				return;
+			}
+
+			return this.draggingPath === this.getCellExpression(path, colIndex)
 		},
 		onDragEnd(column: string) {
 			setTimeout(() => {
@@ -410,6 +426,10 @@ export default Vue.extend({
 
 .hoveringKey {
 	background-color: var(--color-foreground-base);
+}
+
+.draggingKey {
+	background-color: var(--color-primary-tint-2);
 }
 
 </style>
