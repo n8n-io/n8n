@@ -36,24 +36,32 @@ export function loadSurveyFromDisk(): string | null {
 }
 
 let logFinishTimeout: NodeJS.Timeout;
-const disableLogging = process.argv[1].split('/').includes('jest');
 
-export function logMigrationStart(migrationName: string): void {
+export function logMigrationStart(
+	migrationName: string,
+	disableLogging = process.env.NODE_ENV === 'test',
+): void {
 	if (disableLogging) return;
-	const logger = getLogger();
+
 	if (!logFinishTimeout) {
-		logger.warn('Migrations in progress, please do NOT stop the process.');
+		getLogger().warn('Migrations in progress, please do NOT stop the process.');
 	}
-	logger.debug(`Starting migration ${migrationName}`);
+
+	getLogger().debug(`Starting migration ${migrationName}`);
+
 	clearTimeout(logFinishTimeout);
 }
 
-export function logMigrationEnd(migrationName: string): void {
+export function logMigrationEnd(
+	migrationName: string,
+	disableLogging = process.env.NODE_ENV === 'test',
+): void {
 	if (disableLogging) return;
-	const logger = getLogger();
-	logger.debug(`Finished migration ${migrationName}`);
+
+	getLogger().debug(`Finished migration ${migrationName}`);
+
 	logFinishTimeout = setTimeout(() => {
-		logger.warn('Migrations finished.');
+		getLogger().warn('Migrations finished.');
 	}, 100);
 }
 
