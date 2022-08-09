@@ -457,3 +457,104 @@ export async function pgUpdate(
 	}
 	throw new Error('multiple, independently or transaction are valid options');
 }
+
+
+/**
+ * Updates the given items in the database.
+ *
+ * @param {Function} getNodeParam The getter for the Node's parameters
+ * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
+ * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {INodeExecutionData[]} items The items to be updated
+ * @returns Promise<Array<IDataObject>>
+ */
+ export async function pgUpdateV2(
+	this: IExecuteFunctions,
+	pgp: pgPromise.IMain<{}, pg.IClient>,
+	db: pgPromise.IDatabase<{}, pg.IClient>,
+	items: INodeExecutionData[],
+	continueOnFail = false,
+): Promise<IDataObject[]> {
+	const table = this.getNodeParameter('table', 0) as string;
+	const schema = this.getNodeParameter('schema', 0) as string;
+	const updateKey = this.getNodeParameter('updateKey', 0) as string;
+	const columnString = this.getNodeParameter('columns', 0) as string;
+	const guardedColumns: {[key: string]: string} = {};
+
+	const columns: Array<{name:string, cast: string, prop:string}> = columnString.split(',')
+		.map(column => column.trim().split(':'))
+		.map(([name, cast], i) => {
+			guardedColumns[`column${i}`] = name;
+			return { name, cast, prop: `column${i}` };
+		});
+
+	const updateKeys = updateKey.split(',').map((key, i) => {
+		const [name, cast] = key.trim().split(':');
+		const targetCol = columns.find((column) => column.name === name);
+		const updateColumn = { name, cast, prop: targetCol ? targetCol.prop : `updateColumn${i}` };
+		if (!targetCol) {
+			guardedColumns[updateColumn.prop] = name;
+			columns.unshift(updateColumn);
+		}
+		else if (!targetCol.cast) {
+			targetCol.cast = updateColumn.cast || targetCol.cast;
+		}
+		return updateColumn;
+	});
+
+	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+	const mode = additionalFields.mode ?? 'multiple' as string;
+
+	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
+
+	// Prepare the data to update and copy it to be returned
+	const columnNames = columns.map(column => column.name);
+	const updateItems = getItemsCopy(items, columnNames, guardedColumns);
+
+	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
+	if (mode === 'multiple') {
+		const query =
+			pgp.helpers.update(updateItems, cs)
+			+ ' WHERE ' + updateKeys.map(updateKey => {
+				const key = pgp.as.name(updateKey.name);
+				return 'v.' + key + ' = t.' + key;
+			}).join(' AND ')
+			+ returning;
+		return await db.any(query);
+	} else {
+		const where = ' WHERE ' +
+		updateKeys.map(updateKey => pgp.as.name(updateKey.name) +
+		' = ${' + updateKey.prop + '}').join(' AND ');
+		if (mode === 'transaction') {
+			return db.tx(async t => {
+				const result: IDataObject[] = [];
+				for (let i = 0; i < items.length; i++) {
+					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
+					try {
+						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
+					} catch (err) {
+						if (continueOnFail === false) throw err;
+						result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
+						return result;
+					}
+				}
+				return result;
+			});
+		} else if (mode === 'independently') {
+			return db.task(async t => {
+				const result: IDataObject[] = [];
+				for (let i = 0; i < items.length; i++) {
+					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
+					try {
+						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
+					} catch (err) {
+						if (continueOnFail === false) throw err;
+						result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
+					}
+				}
+				return result;
+			});
+		}
+	}
+	throw new Error('multiple, independently or transaction are valid options');
+}
