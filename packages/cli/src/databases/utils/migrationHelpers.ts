@@ -1,7 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { readFileSync, rmSync } from 'fs';
 import { UserSettings } from 'n8n-core';
-import { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import config from '../../../config';
 import { getLogger } from '../../Logger';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
@@ -75,6 +76,9 @@ export async function runChunked(
 	let chunkedQuery: string;
 	let chunkedQueryResults: unknown[];
 
+	// eslint-disable-next-line no-param-reassign
+	if (query.trim().endsWith(';')) query = query.trim().slice(0, -1);
+
 	do {
 		chunkedQuery = chunkQuery(query, limit, offset);
 		chunkedQueryResults = (await queryRunner.query(chunkedQuery)) as unknown[];
@@ -83,3 +87,28 @@ export async function runChunked(
 		offset += limit;
 	} while (chunkedQueryResults.length === limit);
 }
+
+export const getTablePrefix = () => {
+	const tablePrefix = config.getEnv('database.tablePrefix');
+
+	if (config.getEnv('database.type') === 'postgresdb') {
+		const schema = config.getEnv('database.postgresdb.schema');
+		return [schema, tablePrefix].join('.');
+	}
+
+	return tablePrefix;
+};
+
+export const escapeQuery = (
+	queryRunner: QueryRunner,
+	query: string,
+	params: { [property: string]: unknown },
+): [string, unknown[]] =>
+	queryRunner.connection.driver.escapeQueryWithParameters(
+		query,
+		{
+			pinData: params.pinData,
+			id: params.id,
+		},
+		{},
+	);
