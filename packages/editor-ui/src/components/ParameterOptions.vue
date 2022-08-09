@@ -68,6 +68,9 @@ export default Vue.extend({
 			if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
 				return true;
 			}
+			if (typeof this.value.value === 'string' && this.value.value.charAt(0) === '=') {
+				return true;
+			}
 			return false;
 		},
 		hasRemoteMethod (): boolean {

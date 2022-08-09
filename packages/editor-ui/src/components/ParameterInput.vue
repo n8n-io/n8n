@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="value"
+			:value="isResourceLocatorParameter ? value.value : value"
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
@@ -18,6 +18,8 @@
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				v-bind="$props"
+				:value="typeof value === 'string' ? value : value.value"
+				:mode="typeof value === 'string' ? '' : value.mode"
 				:rows="getArgument('rows')"
 				:displayValue="displayValue"
 				:displayTitle="displayTitle"
@@ -26,8 +28,8 @@
 				:isValueExpression="isValueExpression"
 				:parameterIssues="getIssues"
 				:droppable="droppable"
-				@textInputChange="onTextInputChange"
-				@change="valueChanged"
+				@valueChanged="valueChanged"
+				@modeChanged="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onDrop"
@@ -504,6 +506,14 @@ export default mixins(
 					}
 				}
 
+				if (this.isResourceLocatorParameter) {
+					if (this.isValueExpression === false) {
+						returnValue = this.value.value;
+					} else {
+						returnValue = this.expressionValueComputed;
+					}
+				}
+
 				return returnValue;
 			},
 			expressionDisplayValue (): string {
@@ -532,7 +542,11 @@ export default mixins(
 				let computedValue: NodeParameterValue;
 
 				try {
-					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
+					if (this.isResourceLocatorParameter) {
+						computedValue = this.resolveExpression(this.value.value) as NodeParameterValue;
+					} else {
+						computedValue = this.resolveExpression(this.value) as NodeParameterValue;
+					}
 				} catch (error) {
 					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
@@ -637,6 +651,9 @@ export default mixins(
 					return false;
 				}
 				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
+					return true;
+				}
+				if (this.isResourceLocatorParameter && typeof this.value.value === 'string' && this.value.value.charAt(0) === '=') {
 					return true;
 				}
 				return false;
@@ -825,7 +842,8 @@ export default mixins(
 				return this.parameter.typeOptions[argumentName];
 			},
 			expressionUpdated (value: string) {
-				this.valueChanged(value);
+				const val = this.isResourceLocatorParameter ? { value, mode: this.value.mode } : value;
+				this.valueChanged(val);
 			},
 			openExpressionEdit() {
 				if (this.areExpressionsDisabled) {
@@ -896,7 +914,7 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
-			valueChanged (value: string[] | string | number | boolean | Date | null) {
+			valueChanged (value: string[] | string | number | boolean | Date | {} | null) {
 				if (this.parameter.name === 'nodeCredentialType') {
 					this.activeCredentialType = value as string;
 				}
@@ -936,14 +954,19 @@ export default mixins(
 				const prevValue = this.value;
 
 				if (command === 'resetValue') {
-					this.valueChanged(this.parameter.default);
+					if (this.isResourceLocatorParameter) {
+						this.valueChanged({ value: this.parameter.default, mode: '' });
+					} else {
+						this.valueChanged(this.parameter.default);
+					}
 				} else if (command === 'openExpression') {
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
 						this.valueChanged(`={{${this.value}}}`);
-					}
-					else {
+					} else if (this.isResourceLocatorParameter) {
+						this.valueChanged(`=${this.value.value}`);
+					} else {
 						this.valueChanged(`=${this.value}`);
 					}
 

@@ -972,14 +972,6 @@ export interface INodeParameters {
 		| INodeParameterResourceLocator[];
 }
 
-// // The values a node property can have
-// export type NodeParameterValue = string | number | boolean | undefined | null;
-
-// export interface INodeParameters {
-// 	// TODO: Later also has to be possible to add multiple ones with the name name. So array has to be possible
-// 	[key: string]: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
-// }
-
 export type NodePropertyTypes =
 	| 'boolean'
 	| 'collection'

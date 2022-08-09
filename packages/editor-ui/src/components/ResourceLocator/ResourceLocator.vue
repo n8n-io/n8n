@@ -52,7 +52,6 @@
 					:disabled="isReadOnly"
 					:title="displayTitle"
 					:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
-					@input="onInput"
 					@change="onInputChange"
 					@keydown.stop
 					@focus="onFocus"
@@ -98,6 +97,10 @@ export default mixins().extend({
 			required: true,
 		},
 		value: {
+			type: String,
+			default: '',
+		},
+		mode: {
 			type: String,
 			default: '',
 		},
@@ -222,10 +225,8 @@ export default mixins().extend({
 		},
 	},
 	mounted () {
-		const storedMode = this.$store.getters.getNodeParameterLocatorMode(this.node.name, this.parameter.name);
-		this.selectedMode = storedMode;
+		this.selectedMode = this.mode;
 		this.tempValue = this.displayValue as string;
-
 		this.setDefaultMode();
 	},
 	methods: {
@@ -251,23 +252,16 @@ export default mixins().extend({
 		getModeLabel (name: string): string | null {
 			return getParameterModeLabel(name);
 		},
-		onInput (value: string): void {
-			this.$emit('textInputChange', value);
-		},
 		onInputChange (value: string): void {
-			this.$emit('change', value);
+			this.$emit('valueChanged', { value, mode: this.selectedMode });
 		},
 		onModeSelected (value: string): void {
 			this.validate();
-			this.$store.commit('setNodeParameterMode', {
-				nodeName: this.node.name,
-				paramName: this.parameter.name,
-				mode: this.selectedMode,
-			});
+			this.$emit('modeChanged', { mode: value, value: this.value });
 		},
 		onExpressionValueChanged (latestValue: string): void {
 			this.tempValue = latestValue;
-			this.$emit('valueChanged', latestValue);
+			this.$emit('valueChanged', { value: latestValue, mode: this.selectedMode });
 		},
 		onDrop(data: string) {
 			this.$emit('drop', data);

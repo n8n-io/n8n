@@ -142,7 +142,7 @@ export default mixins(
 						const parameterData = {
 							node: this.node.name,
 							name: this.path,
-							value: updatedValue,
+							value: this.isResourceLocator ? { value: updatedValue, mode: this.value.mode } : updatedValue,
 						};
 
 						this.$emit('valueChanged', parameterData);
