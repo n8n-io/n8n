@@ -67,7 +67,7 @@
 									<span :class="{[$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
 								</template>
 								<template v-slot:value="{ value }">
-									<span :class="$style.value">{{ getValueToRender(value) }}</span>
+									<span>{{ getValueToRender(value) }}</span>
 								</template>
 							</n8n-tree>
 						</td>
@@ -361,11 +361,6 @@ export default Vue.extend({
 
 .mappable {
 	cursor: grab;
-}
-
-.value {
-	word-break: break-all;
-	max-width: 290px;
 }
 
 </style>
