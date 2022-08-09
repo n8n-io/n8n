@@ -578,6 +578,14 @@ export class Airtable implements INodeType {
 					);
 					return [data];
 				}
+
+				// We can return from here
+				return [
+					this.helpers.constructExecutionMetaData(
+						{ item: 0 },
+						this.helpers.returnJsonArray(returnData),
+					),
+				];
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
