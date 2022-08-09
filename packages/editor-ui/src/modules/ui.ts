@@ -20,6 +20,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	IMPORT_CURL,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -96,6 +97,10 @@ const module: Module<IUiState, IRootState> = {
 				mode: '',
 				activeId: null,
 			},
+			[IMPORT_CURL]: {
+				open: false,
+				curlCommand: '',
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -131,6 +136,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
+		},
+		getCommand: (state: IUiState) => {
+			return state.modals[IMPORT_CURL].curlCommand;
 		},
 		isModalOpen: (state: IUiState) => {
 			return (name: string) => state.modals[name].open;
@@ -169,6 +177,10 @@ const module: Module<IUiState, IRootState> = {
 		setActiveId: (state: IUiState, params: {name: string, id: string}) => {
 			const { name, id } = params;
 			Vue.set(state.modals[name], 'activeId', id);
+		},
+		setCurlCommand: (state: IUiState, params: {name: string, command: string}) => {
+			const { name, command } = params;
+			Vue.set(state.modals[name], 'curlCommand', command);
 		},
 		openModal: (state: IUiState, name: string) => {
 			Vue.set(state.modals[name], 'open', true);
@@ -253,6 +265,9 @@ const module: Module<IUiState, IRootState> = {
 		openDeleteUserModal: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: DELETE_USER_MODAL_KEY, id });
 			context.commit('openModal', DELETE_USER_MODAL_KEY);
+		},
+		setCommand: async (context: ActionContext<IUiState, IRootState>, { command }: {command: string}) => {
+			context.commit('setCurlCommand', { name: IMPORT_CURL, command });
 		},
 		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });

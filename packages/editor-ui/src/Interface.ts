@@ -889,6 +889,7 @@ export interface IModalState {
 	open: boolean;
 	mode?: string | null;
 	activeId?: string | null;
+	curlCommand?: string;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';

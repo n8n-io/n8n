@@ -56,16 +56,24 @@
 					:node="node"
 					:nodeType="nodeType"
 				/>
+				<div class="import-section" v-if="nodeTypeName === 'n8n-nodes-base.httpRequest2'">
+					<n8n-button
+					type="secondary"
+					label="Import cURL"
+					size="mini"
+					@click="onImportCurlClicked"
+					/>
+				</div>
 				<parameter-input-list
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-					<node-credentials
-						:node="node"
-						@credentialSelected="credentialSelected"
-					/>
+				<node-credentials
+					:node="node"
+					@credentialSelected="credentialSelected"
+				/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
@@ -107,8 +115,10 @@ import {
 } from '@/Interface';
 
 import {
+	ABOUT_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
+	IMPORT_CURL,
 } from '../constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -144,11 +154,13 @@ export default mixins(
 			NodeExecuteButton,
 		},
 		computed: {
+			isModalOpen() {
+				return this.$store.getters['ui/isModalOpen'](IMPORT_CURL);
+			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
 					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
 				}
-
 				return null;
 			},
 			nodeTypeName(): string {
@@ -223,6 +235,7 @@ export default mixins(
 		},
 		data () {
 			return {
+
 				nodeValid: true,
 				nodeColor: null,
 				openPanel: 'params',
@@ -338,8 +351,102 @@ export default mixins(
 			node (newNode, oldNode) {
 				this.setNodeValues();
 			},
+			isModalOpen(newValue, oldValue) {
+				if (newValue === false) {
+					this.onImportSubmit();
+				}
+			},
 		},
 		methods: {
+			async onImportSubmit() {
+				const curlCommand = this.$store.getters['ui/getCommand'];
+				if (curlCommand !== '') {
+					const { raw_url, method, data, headers } = await this.$store.dispatch('settings/getCurlToJson', curlCommand);
+					let auxData = data;
+					// console.log(data);
+					//@ts-ignore
+					// this.valueChanged({
+					// 	node: this.node.name,
+					// 	name: 'parameters',
+					// 	value: JSON.stringify({ url: raw_url }),
+					// });
+
+					// @ts-ignore
+					this.valueChanged({
+						node: this.node.name,
+						name: 'parameters.url',
+						value: raw_url,
+					});
+
+					// @ts-ignore
+					this.valueChanged({
+						node: this.node.name,
+						name: 'parameters.requestMethod',
+						value: method.toUpperCase(),
+					});
+
+
+					// console.log(headers);
+					// console.log(headers.hasOwnProperty['Content-Type']);
+					// console.log(headers['Content-Type'] === 'application/json');
+					if (headers.hasOwnProperty('Content-Type') &&
+						headers['Content-Type'] === 'application/json') {
+						const key = Object.keys(data)[0];
+						// console.log('este es el key');
+						// console.log(key);
+						auxData = JSON.parse(key);
+					}
+
+					// console.log('este es aux data');
+					// console.log(auxData);
+
+					if (Object.keys(auxData)) {
+
+						const dataArray = [];
+						for (const key of Object.keys(auxData)) {
+							dataArray.push({ 'name': [key], 'value': auxData[key] });
+						}
+
+						//console.log(dataArray);
+
+						// @ts-ignore
+						this.valueChanged({
+							node: this.node.name,
+							name: 'parameters.sendBody',
+							//@ts-ignore
+							value: true,
+						});
+						// @ts-ignore
+						this.valueChanged({
+							node: this.node.name,
+							name: 'parameters.bodyParameters.parameters',
+							//@ts-ignore
+							value: dataArray,
+						});
+					}
+
+					// this.valueChanged({
+					// 	node: this.node.name,
+					// 	name: 'parameters.requestMethod',
+					// 	value: method.toUpperCase(),
+					// });
+
+					// data from the store
+
+					// make http reqeust
+					//change the ui
+					// console.log('the modal was closed');
+					// console.log('getting the value is');
+				}
+			},
+			onImportCurlClicked() {
+				// console.log(this.isModalOpen(IMPORT_CURL));
+				this.$store.dispatch('ui/openModal', IMPORT_CURL);
+				//console.log('on import was clicked');
+				// console.log(this.isModalOpen(IMPORT_CURL));
+
+
+			},
 			onWorkflowActivate() {
 				this.$emit('activate');
 			},
@@ -419,6 +526,7 @@ export default mixins(
 				});
 			},
 			valueChanged (parameterData: IUpdateInformation) {
+				//console.log(parameterData);
 				let newValue: NodeParameterValue;
 				if (parameterData.hasOwnProperty('value')) {
 					// New value is given
@@ -635,6 +743,12 @@ export default mixins(
 </style>
 
 <style lang="scss">
+.import-section {
+	display: flex;
+  flex-direction: row-reverse;
+	margin-top: 10px;
+}
+
 .node-settings {
 	overflow: hidden;
 	min-width: 360px;

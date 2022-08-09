@@ -477,6 +477,7 @@
       "dist/nodes/HomeAssistant/HomeAssistant.node.js",
       "dist/nodes/HtmlExtract/HtmlExtract.node.js",
       "dist/nodes/HttpRequest/HttpRequest.node.js",
+      "dist/nodes/HttpRequest2/HttpRequest2.node.js",
       "dist/nodes/Hubspot/Hubspot.node.js",
       "dist/nodes/Hubspot/HubspotTrigger.node.js",
       "dist/nodes/HumanticAI/HumanticAi.node.js",

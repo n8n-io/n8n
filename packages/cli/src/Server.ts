@@ -55,6 +55,7 @@ import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 import csrf from 'csrf';
 import requestPromise, { OptionsWithUrl } from 'request-promise-native';
 import { createHmac, randomBytes } from 'crypto';
+import * as curlconverter from 'curlconverter';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -1560,6 +1561,17 @@ class App {
 			}),
 		);
 
+		// ----------------------------------------
+		// curl-converter
+		// ----------------------------------------
+		this.app.post(
+			`/${this.restEndpoint}/curl-to-json`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{}> => {
+				const curlCommand = req.body.curlCommand as string;
+				const response = curlconverter.toJsonString(curlCommand) as string;
+				return JSON.parse(response);
+			}),
+		);
 		// ----------------------------------------
 		// Credential-Types
 		// ----------------------------------------
