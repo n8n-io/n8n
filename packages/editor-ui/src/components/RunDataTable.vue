@@ -14,12 +14,28 @@
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
+						<n8n-tooltip
+							placement="bottom-start"
+							:disabled="!mappingEnabled || showHintWithDelay"
+							:open-delay="1000"
+						>
 							<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
-							<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="() => onDragEnd(column)">
+							<Draggable
+								type="mapping"
+								:data="getExpression(column)"
+								:disabled="!mappingEnabled"
+								@dragstart="onDragStart"
+								@dragend="() => onDragEnd(column)"
+							>
 								<template v-slot:preview="{ canDrop }">
-									<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-										{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(column, 16, 2) } }) }}
+									<div
+										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
+									>
+										{{
+											$locale.baseText('dataMapping.mapSpecificColumnToField', {
+												interpolate: { name: shorten(column, 16, 2) },
+											})
+										}}
 									</div>
 								</template>
 								<template v-slot="{ isDragging }">
@@ -27,14 +43,32 @@
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.activeHeader]:
+												(i === activeColumn || forceShowGrip) && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span>{{ column || "&nbsp;" }}</span>
-										<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHintWithDelay">
-											<div v-if="focusedMappableInput" slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
-											<div v-else slot="content" v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"></div>
+										<span>{{ column || '&nbsp;' }}</span>
+										<n8n-tooltip
+											v-if="mappingEnabled"
+											placement="bottom-start"
+											:manual="true"
+											:value="i === 0 && showHintWithDelay"
+										>
+											<div
+												v-if="focusedMappableInput"
+												slot="content"
+												v-html="
+													$locale.baseText('dataMapping.tableHint', {
+														interpolate: { name: focusedMappableInput },
+													})
+												"
+											></div>
+											<div
+												v-else
+												slot="content"
+												v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"
+											></div>
 											<div :class="$style.dragButton">
 												<font-awesome-icon icon="grip-vertical" />
 											</div>
@@ -46,10 +80,21 @@
 					</th>
 				</tr>
 			</thead>
-			<Draggable tag="tbody" type="mapping" targetDataKey="mappable" :disabled="!mappingEnabled" @dragstart="onCellDragStart" @dragend="onCellDragEnd">
+			<Draggable
+				tag="tbody"
+				type="mapping"
+				targetDataKey="mappable"
+				:disabled="!mappingEnabled"
+				@dragstart="onCellDragStart"
+				@dragend="onCellDragEnd"
+			>
 				<template v-slot:preview="{ canDrop, el }">
-					<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-						{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) } }) }}
+					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
+						{{
+							$locale.baseText('dataMapping.mapSpecificColumnToField', {
+								interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
+							})
+						}}
 					</div>
 				</template>
 				<template>
@@ -60,15 +105,32 @@
 							:data-col="index2"
 							@mouseenter="onMouseEnterCell"
 							@mouseleave="onMouseLeaveCell"
-							:class="{[$style.limitWidth]: !hasJsonInColumn(index2)}"
+							:class="{ [$style.limitWidth]: !hasJsonInColumn(index2) }"
 						>
-							<span v-if="isSimple(data)" :class="$style.value">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
+							<span v-if="isSimple(data)" :class="$style.value">{{
+								[null, undefined].includes(data) ? '&nbsp;' : data
+							}}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :input="data">
 								<template v-slot:label="{ label, path }">
-									<span @mouseenter="() => onMouseEnterKey(path)" @mouseleave="onMouseLeaveKey" :class="{[$style.hoveringKey]: mappingEnabled && isHovering(path), [$style.draggingKey]: isDraggingKey(path, index2), [$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
+									<span
+										@mouseenter="() => onMouseEnterKey(path)"
+										@mouseleave="onMouseLeaveKey"
+										:class="{
+											[$style.hoveringKey]: mappingEnabled && isHovering(path),
+											[$style.draggingKey]: isDraggingKey(path, index2),
+											[$style.dataKey]: true,
+											[$style.mappable]: mappingEnabled,
+										}"
+										data-target="mappable"
+										:data-name="getCellPathName(path, index2)"
+										:data-value="getCellExpression(path, index2)"
+										>{{ label || $locale.baseText('runData.unnamedField') }}</span
+									>
 								</template>
 								<template v-slot:value="{ value }">
-									<span :class="{[$style.value]: true, [$style.empty]: isEmpty(value)}">{{ getValueToRender(value) }}</span>
+									<span :class="{ [$style.value]: true, [$style.empty]: isEmpty(value) }">{{
+										getValueToRender(value)
+									}}</span>
 								</template>
 							</n8n-tree>
 						</td>
@@ -131,11 +193,16 @@ export default Vue.extend({
 		}
 	},
 	computed: {
-		focusedMappableInput (): string {
+		focusedMappableInput(): string {
 			return this.$store.getters['ui/focusedMappableInput'];
 		},
-		showHint (): boolean {
-			return !this.draggedColumn && (this.showMappingHint || (!!this.focusedMappableInput && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'));
+		showHint(): boolean {
+			return (
+				!this.draggedColumn &&
+				(this.showMappingHint ||
+					(!!this.focusedMappableInput &&
+						window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'))
+			);
 		},
 	},
 	methods: {
@@ -200,10 +267,14 @@ export default Vue.extend({
 			}, '');
 			const column = this.tableData.columns[colIndex];
 
-			return `{{ $json["${column}"]${ expr } }}`;
+			return `{{ $json["${column}"]${expr} }}`;
 		},
 		isEmpty(value: unknown) {
-			return value === '' || (Array.isArray(value) && value.length === 0) || (typeof value === 'object' && value !== null && Object.keys(value).length === 0);
+			return (
+				value === '' ||
+				(Array.isArray(value) && value.length === 0) ||
+				(typeof value === 'object' && value !== null && Object.keys(value).length === 0)
+			);
 		},
 		getValueToRender(value: unknown) {
 			if (value === '') {
@@ -246,7 +317,7 @@ export default Vue.extend({
 				return;
 			}
 
-			return this.draggingPath === this.getCellExpression(path, colIndex)
+			return this.draggingPath === this.getCellExpression(path, colIndex);
 		},
 		onDragEnd(column: string) {
 			setTimeout(() => {
@@ -272,12 +343,15 @@ export default Vue.extend({
 		},
 	},
 	watch: {
-		focusedMappableInput (curr: boolean) {
-			setTimeout(() => {
-				this.forceShowGrip = !!this.focusedMappableInput;
-			}, curr? 300: 150);
+		focusedMappableInput(curr: boolean) {
+			setTimeout(
+				() => {
+					this.forceShowGrip = !!this.focusedMappableInput;
+				},
+				curr ? 300 : 150,
+			);
 		},
-		showHint (curr: boolean, prev: boolean) {
+		showHint(curr: boolean, prev: boolean) {
 			if (curr) {
 				setTimeout(() => {
 					this.showHintWithDelay = this.showHint;
@@ -285,8 +359,7 @@ export default Vue.extend({
 						this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
 					}
 				}, 1000);
-			}
-			else {
+			} else {
 				this.showHintWithDelay = false;
 			}
 		},
@@ -431,5 +504,4 @@ export default Vue.extend({
 .draggingKey {
 	background-color: var(--color-primary-tint-2);
 }
-
 </style>
