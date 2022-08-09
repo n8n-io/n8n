@@ -104,9 +104,9 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			return (credentialTypeName: string) => {
-				const nodeTypes: INodeTypeDescription[] = rootGetters['nodeTypes/allNodeTypes'];
+				const allLatestNodeTypes: INodeTypeDescription[] = rootGetters['nodeTypes/allLatestNodeTypes'];
 
-				return nodeTypes.filter((nodeType: INodeTypeDescription) => {
+				return allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
 						return false;
 					}

@@ -49,6 +49,7 @@ export default Vue.extend({
 	computed: {
 		classes(): string[] {
 			return [
+				'n8n-callout',
 				this.$style['callout'],
 				this.$style[this.theme],
 			];

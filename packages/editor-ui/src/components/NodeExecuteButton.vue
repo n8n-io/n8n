@@ -156,11 +156,6 @@ export default mixins(
 				);
 				return;
 			}
-
-			this.$showMessage({
-				title: this.$locale.baseText('ndv.execute.stopWaitingForWebhook.success'),
-				type: 'success',
-			});
 		},
 
 		async onClick() {
