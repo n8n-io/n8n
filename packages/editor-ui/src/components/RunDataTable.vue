@@ -67,7 +67,7 @@
 									<span :class="{[$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
 								</template>
 								<template v-slot:value="{ value }">
-									<span>{{ getValueToRender(value) }}</span>
+									<span :class="{[$style.empty]: isEmpty(value)}">{{ getValueToRender(value) }}</span>
 								</template>
 							</n8n-tree>
 						</td>
@@ -190,6 +190,9 @@ export default Vue.extend({
 
 			return `{{ $json["${column}"]${ expr } }}`;
 		},
+		isEmpty(value: unknown) {
+			return value === '' || (Array.isArray(value) && value.length === 0) || (typeof value === 'object' && value !== null && Object.keys(value).length === 0);
+		},
 		getValueToRender(value: unknown) {
 			if (value === '') {
 				return this.$locale.baseText('runData.emptyString');
@@ -276,6 +279,7 @@ export default Vue.extend({
 		border-left: var(--border-base);
 		position: sticky;
 		top: 0;
+		color: var(--color-text-dark);
 	}
 
 	td {
@@ -361,6 +365,10 @@ export default Vue.extend({
 
 .mappable {
 	cursor: grab;
+}
+
+.empty {
+	color: var(--color-danger);
 }
 
 </style>

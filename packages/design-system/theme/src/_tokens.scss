@@ -384,8 +384,8 @@
 
 	--color-json-default: #5045A1;
 	--color-json-null:  var(--color-danger);
-	--color-json-boolean: #1d8ce0;
-	--color-json-number: #1d8ce0;
+	--color-json-boolean: var(--color-success);
+	--color-json-number: var(--color-success);
 	--color-json-string: #5045A1;
 	--color-json-key: var(--color-text-dark);
 	--color-json-brackets: var(--color-text-dark);
