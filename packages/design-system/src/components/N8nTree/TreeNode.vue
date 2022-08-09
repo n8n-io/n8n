@@ -1,6 +1,6 @@
 <template>
 	<div class="n8n-tree-node">
-		<div v-for="(label, i) in Object.keys(input)" :key="i" :class="{[$style.indent]: depth > 0}">
+		<div v-for="(label, i) in Object.keys(input)" :key="i" :class="{[nodeClass]: !!nodeClass, [$style.indent]: depth > 0}">
 			<div :class="$style.simple" v-if="isSimple(input[label])">
 				<slot name="label" v-bind:label="label" v-bind:path="getPath(label)" />
 				<span>&nbsp:&nbsp;</span>
@@ -8,7 +8,7 @@
 			</div>
 			<div v-else>
 				<slot name="label" v-bind:label="label" v-bind:path="getPath(label)" />
-				<n8n-tree-node :path="getPath(label)" :depth="depth + 1" :input="input[label]">
+				<n8n-tree-node :path="getPath(label)" :depth="depth + 1" :input="input[label]" :nodeClass="nodeClass">
 					<template v-for="(index, name) in $scopedSlots" v-slot:[name]="data">
 						<slot :name="name" v-bind="data"></slot>
 					</template>
@@ -35,6 +35,9 @@ export default Vue.extend({
 		depth: {
 			type: Number,
 			default: 0,
+		},
+		nodeClass: {
+			type: String,
 		},
 	},
 	methods: {
@@ -67,7 +70,6 @@ export default Vue.extend({
 .simple {
 	text-indent: -24px;
 	margin-left: var(--spacing-l);
-	max-width: 300px;
 }
 
 </style>

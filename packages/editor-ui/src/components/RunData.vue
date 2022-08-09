@@ -1029,6 +1029,7 @@ export default mixins(
 				let leftEntryColumns: string[], entryRows: GenericValue[];
 				// Go over all entries
 				let entry: IDataObject;
+				const hasJson: {[key: string]: boolean} = {};
 				inputData.forEach((data) => {
 					if (!data.hasOwnProperty('json')) {
 						return;
@@ -1046,6 +1047,8 @@ export default mixins(
 							entryRows.push(entry[key]);
 							// Remove key so that we know that it got added
 							leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
+
+							hasJson[key] = typeof entry[key] === 'object' || hasJson[key] || false;
 						} else {
 							// Entry does not have key so add null
 							entryRows.push(null);
@@ -1058,6 +1061,7 @@ export default mixins(
 						tableColumns.push(key);
 						// Add the value
 						entryRows.push(entry[key]);
+						hasJson[key] = typeof entry[key] === 'object' || hasJson[key] || false;
 					});
 
 					// Add the data of the entry
@@ -1073,6 +1077,7 @@ export default mixins(
 				});
 
 				return {
+					hasJson,
 					columns: tableColumns,
 					data: tableData,
 				};

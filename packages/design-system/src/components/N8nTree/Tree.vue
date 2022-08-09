@@ -1,6 +1,6 @@
 <template>
 	<div class="n8n-tree">
-		<n8n-tree-node :input="input" :path="path">
+		<n8n-tree-node :input="input" :path="path" :nodeClass="nodeClass">
 			<template v-for="(index, name) in $scopedSlots" v-slot:[name]="data">
 				<slot :name="name" v-bind="data"></slot>
 			</template>
@@ -23,6 +23,9 @@ export default Vue.extend({
 		path: {
 			type: Array,
 			default: () => [],
+		},
+		nodeClass: {
+			type: String,
 		},
 	},
 	computed: {

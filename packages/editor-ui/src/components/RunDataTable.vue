@@ -53,21 +53,22 @@
 					</div>
 				</template>
 				<template>
-					<tr v-for="(row, index1) in tableData.data" :key="index1">
+					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="$style.hoverableRow">
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
 							:data-col="index2"
 							@mouseenter="onMouseEnterCell"
 							@mouseleave="onMouseLeaveCell"
+							:class="{[$style.limitWidth]: !hasJsonInColumn(index2)}"
 						>
-							<span v-if="isSimple(data)">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
-							<n8n-tree v-else :input="data">
+							<span v-if="isSimple(data)" :class="$style.value">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</span>
+							<n8n-tree :nodeClass="$style.nodeClass" v-else :input="data">
 								<template v-slot:label="{ label, path }">
 									<span :class="{[$style.dataKey]: true, [$style.mappable]: mappingEnabled}" data-target="mappable" :data-name="getCellPathName(path, index2)" :data-value="getCellExpression(path, index2)">{{ label || $locale.baseText('runData.unnamedField') }}</span>
 								</template>
 								<template v-slot:value="{ value }">
-									<span :class="{[$style.empty]: isEmpty(value)}">{{ getValueToRender(value) }}</span>
+									<span :class="{[$style.value]: true, [$style.empty]: isEmpty(value)}">{{ getValueToRender(value) }}</span>
 								</template>
 							</n8n-tree>
 						</td>
@@ -240,6 +241,9 @@ export default Vue.extend({
 		isSimple(data: unknown): boolean {
 			return typeof data !== 'object';
 		},
+		hasJsonInColumn(colIndex: number): boolean {
+			return this.tableData.hasJson[this.tableData.columns[colIndex]];
+		},
 	},
 	watch: {
 		focusedMappableInput (curr: boolean) {
@@ -295,6 +299,10 @@ export default Vue.extend({
 	td:last-child {
 		border-right: var(--border-base);
 	}
+}
+
+.nodeClass {
+	margin-bottom: 2px;
 }
 
 .emptyCell {
@@ -361,6 +369,21 @@ export default Vue.extend({
 
 .dataKey {
 	white-space: nowrap;
+	color: var(--color-text-dark);
+	line-height: 1.7;
+}
+
+.value {
+	line-height: var(--font-line-height-loose);
+	// word-break: break-all;
+}
+
+.hoverableRow {
+	&:hover {
+		.dataKey {
+			color: var(--color-table-highlight);
+		}
+	}
 }
 
 .mappable {
@@ -369,6 +392,10 @@ export default Vue.extend({
 
 .empty {
 	color: var(--color-danger);
+}
+
+.limitWidth {
+	max-width: 300px;
 }
 
 </style>
