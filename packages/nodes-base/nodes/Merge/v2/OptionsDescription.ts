@@ -58,12 +58,11 @@ const clashHandlingProperties: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Minimise Empty Fields',
+					displayName: 'Minimize Empty Fields',
 					name: 'overrideEmpty',
 					type: 'boolean',
 					default: false,
-					description:
-						'Whether to override the preferred input version if it is null, undefined or an empty string',
+					description: "Whether to override the preferred input version for a field if it is empty and the other version isn't. Here 'empty' means undefined, null or an empty string.",
 					displayOptions: {
 						show: {
 							resolveClash: ['preferInput1', 'preferInput2'],

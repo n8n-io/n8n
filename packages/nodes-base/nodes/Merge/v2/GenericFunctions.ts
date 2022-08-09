@@ -1,6 +1,6 @@
-import { IDataObject, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
+import { GenericValue, IDataObject, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
 
-import { assign, get, isEqual, merge } from 'lodash';
+import { assign, assignWith, get, isEqual, merge, mergeWith } from 'lodash';
 
 interface IMatch {
 	entry: INodeExecutionData;
@@ -105,11 +105,7 @@ export function findMatches(
 export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject) {
 	const returnData: INodeExecutionData[] = [];
 
-	let mergeEntries = merge;
-
-	if (clashResolveOptions.mergeMode === 'shallowMerge') {
-		mergeEntries = assign;
-	}
+	const mergeEntries = selectMergeMethod(clashResolveOptions);
 
 	for (const match of data.matched as IMatch[]) {
 		let entry = match.entry;
@@ -120,18 +116,19 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 		if (clashResolveOptions.resolveClash === 'addSuffix') {
 			[entry] = addSuffixToEntriesKeys([entry], '1');
 			matches = addSuffixToEntriesKeys(matches, '2');
-			json = mergeEntries({}, entry.json, ...matches.map((match) => match.json));
+			json = mergeEntries({ ...entry.json }, [...matches.map((match) => match.json)]);
 		}
 
 		if (clashResolveOptions.resolveClash === 'preferInput1') {
-			json = mergeEntries({}, ...matches.map((match) => match.json), entry.json);
+			const [firstMatch, ...restMatches] = matches.map((match) => match.json);
+			json = mergeEntries({ ...firstMatch }, [...restMatches, entry.json]);
 		}
 
 		if (
 			clashResolveOptions.resolveClash === 'preferInput2' ||
 			clashResolveOptions.resolveClash === undefined
 		) {
-			json = mergeEntries({}, entry.json, ...matches.map((match) => match.json));
+			json = mergeEntries({ ...entry.json }, [...matches.map((match) => match.json)]);
 		}
 
 		const pairedItem = [
@@ -146,4 +143,31 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 	}
 
 	return returnData;
+}
+
+export function selectMergeMethod(clashResolveOptions: IDataObject) {
+	if (clashResolveOptions.overrideEmpty) {
+		function customizer(objValue: GenericValue, srcValue: GenericValue) {
+			if (srcValue === undefined || srcValue === null || srcValue === '') {
+				return objValue;
+			}
+		}
+
+		if (clashResolveOptions.mergeMode === 'deepMerge') {
+			return (obj: IDataObject, source: IDataObject[]) => mergeWith(obj, ...source, customizer);
+		}
+
+		if (clashResolveOptions.mergeMode === 'shallowMerge') {
+			return (obj: IDataObject, source: IDataObject[]) => assignWith(obj, ...source, customizer);
+		}
+	} else {
+		if (clashResolveOptions.mergeMode === 'deepMerge') {
+			return (obj: IDataObject, source: IDataObject[]) => merge(obj, ...source);
+		}
+
+		if (clashResolveOptions.mergeMode === 'shallowMerge') {
+			return (obj: IDataObject, source: IDataObject[]) => assign(obj, ...source);
+		}
+	}
+	return (obj: IDataObject, source: IDataObject[]) => merge(obj, ...source);
 }

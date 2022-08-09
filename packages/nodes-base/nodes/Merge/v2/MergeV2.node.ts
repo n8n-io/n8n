@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { assign, merge } from 'lodash';
-
 import { IExecuteFunctions } from 'n8n-core';
+
+import { merge } from 'lodash';
 
 import {
 	IDataObject,
@@ -12,7 +12,12 @@ import {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import { addSuffixToEntriesKeys, findMatches, mergeMatched } from './GenericFunctions';
+import {
+	addSuffixToEntriesKeys,
+	findMatches,
+	mergeMatched,
+	selectMergeMethod,
+} from './GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
 
@@ -34,15 +39,19 @@ const versionDescription: INodeTypeDescription = {
 	inputNames: ['Input 1', 'Input 2'],
 	properties: [
 		{
-			displayName: 'Type of Merging',
+			displayName: 'Mode',
 			name: 'mode',
 			type: 'options',
-			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
 					name: 'Append',
 					value: 'append',
 					description: 'All items of input 1, then all items of input 2',
+				},
+				{
+					name: 'Choose Branch',
+					value: 'chooseBranch',
+					description: 'Output input data, without modifying it',
 				},
 				{
 					name: 'Match Fields',
@@ -58,11 +67,6 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Multiplex',
 					value: 'multiplex',
 					description: 'All possible item combinations (cross join)',
-				},
-				{
-					name: 'Choose Branch',
-					value: 'chooseBranch',
-					description: 'Output input data, without modifying it',
 				},
 			],
 			default: 'append',
@@ -301,11 +305,7 @@ export class MergeV2 implements INodeType {
 				dataInput2 = addSuffixToEntriesKeys(dataInput2, '2');
 			}
 
-			let mergeEntries = merge;
-
-			if (options.mergeMode === 'shallowMerge') {
-				mergeEntries = assign;
-			}
+			const mergeEntries = selectMergeMethod(options);
 
 			if (!dataInput1 || !dataInput2) {
 				return [returnData];
@@ -318,7 +318,7 @@ export class MergeV2 implements INodeType {
 				for (entry2 of dataInput2) {
 					returnData.push({
 						json: {
-							...mergeEntries({}, entry1.json, entry2.json),
+							...mergeEntries({ ...entry1.json }, [entry2.json]),
 						},
 						pairedItem: [
 							entry1.pairedItem as IPairedItemData,
@@ -369,11 +369,7 @@ export class MergeV2 implements INodeType {
 				numEntries = Math.min(dataInput1.length, dataInput2.length);
 			}
 
-			let mergeEntries = merge;
-
-			if (options.mergeMode === 'shallowMerge') {
-				mergeEntries = assign;
-			}
+			const mergeEntries = selectMergeMethod(options);
 
 			for (let i = 0; i < numEntries; i++) {
 				if (i >= dataInput1.length) {
@@ -390,7 +386,7 @@ export class MergeV2 implements INodeType {
 
 				returnData.push({
 					json: {
-						...mergeEntries({}, entry1.json, entry2.json),
+						...mergeEntries({ ...entry1.json }, [entry2.json]),
 					},
 					binary: {
 						...merge({}, entry1.binary, entry2.binary),
