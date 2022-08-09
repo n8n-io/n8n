@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBearer,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	NodePropertyTypes,
@@ -17,10 +17,12 @@ export class HighLevelApi implements ICredentialType {
 			default: '',
 		},
 	];
-	authenticate: IAuthenticateBearer = {
-		type: 'bearer',
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
 		properties: {
-			tokenPropertyName: 'apiKey',
+			headers: {
+				Authorization: '=bearer {{$credentials?.apiKey}}',
+			},
 		},
 	};
 	test: ICredentialTestRequest = {
