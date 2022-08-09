@@ -17,7 +17,7 @@ try {
 	process.exit(1);
 }
 
-const DIRS_TO_SKIP = ['.git', 'node_modules', 'packages'];
+const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages'];
 const EXTENSIONS_TO_FORMAT = ['.md', 'yml', '.js', '.json'];
 
 const isDir = (path) => fs.lstatSync(path).isDirectory();
@@ -37,7 +37,7 @@ const walk = (dir, test, found = []) => {
 const targets = fs
 	.readdirSync('.')
 	.reduce((acc, cur) => {
-		if (DIRS_TO_SKIP.includes(cur)) return acc;
+		if (ROOT_DIRS_TO_SKIP.includes(cur)) return acc;
 		if (isDir(cur)) return [...acc, ...walk(cur, isTarget)];
 		if (isTarget(cur)) return [...acc, cur];
 
