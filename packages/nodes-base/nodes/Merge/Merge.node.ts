@@ -1,20 +1,10 @@
+import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
-import {
-	INodeTypeBaseDescription,
-	INodeVersionedType,
-} from 'n8n-workflow';
+import { NodeVersionedType } from '../../src/NodeVersionedType';
 
-import {
-	NodeVersionedType
- } from '../../src/NodeVersionedType';
+import { MergeV1 } from './v1/MergeV1.node';
 
-import {
-	MergeV1,
-} from './v1/MergeV1.node';
-
-import {
-	MergeV2,
-} from './v2/MergeV2.node';
+import { MergeV2 } from './v2/MergeV2.node';
 
 export class Merge extends NodeVersionedType {
 	constructor() {

@@ -1,10 +1,12 @@
 import { INodeProperties } from 'n8n-workflow';
 
-const clashHandlingProperties: INodeProperties = 	{
+const clashHandlingProperties: INodeProperties = {
 	displayName: 'Clash Handling',
 	name: 'clashHandling',
 	type: 'fixedCollection',
-	default: {values: {resolveClash: 'preferInput1', mergeMode: 'deepMerge', overrideEmpty: false}},
+	default: {
+		values: { resolveClash: 'preferInput1', mergeMode: 'deepMerge', overrideEmpty: false },
+	},
 	options: [
 		{
 			displayName: 'Values',
@@ -44,7 +46,8 @@ const clashHandlingProperties: INodeProperties = 	{
 						{
 							name: 'Shallow Merge',
 							value: 'shallowMerge',
-							description: 'Merge at the top level only (all nested fields will come from the same input)',
+							description:
+								'Merge at the top level only (all nested fields will come from the same input)',
 						},
 					],
 					hint: 'How to merge when there are sub-fields below the top-level ones',
@@ -59,7 +62,8 @@ const clashHandlingProperties: INodeProperties = 	{
 					name: 'overrideEmpty',
 					type: 'boolean',
 					default: false,
-					description: 'Whether to override the preferred input version if it is null, undefined or an empty string',
+					description:
+						'Whether to override the preferred input version if it is null, undefined or an empty string',
 					displayOptions: {
 						show: {
 							resolveClash: ['preferInput1', 'preferInput2'],
@@ -84,12 +88,11 @@ export const optionsDescription: INodeProperties[] = [
 				name: 'disableDotNotation',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to disallow referencing child fields using `parent.child` in the field name',
+				description:
+					'Whether to disallow referencing child fields using `parent.child` in the field name',
 				displayOptions: {
 					show: {
-						'/mode': [
-							'matchFields',
-						],
+						'/mode': ['matchFields'],
 					},
 				},
 			},
@@ -97,16 +100,11 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': [
-							'matchFields',
-						],
+						'/mode': ['matchFields'],
 						'/mergeMatchedItems': [true],
 					},
 					hide: {
-						'/joinMode': [
-							'keepMatches',
-							'keepNonMatches',
-						],
+						'/joinMode': ['keepMatches', 'keepNonMatches'],
 					},
 				},
 			},
@@ -114,15 +112,9 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': [
-							'matchFields',
-						],
-						'/joinMode': [
-							'keepMatches',
-						],
-						'/outputDataFrom': [
-							'both',
-						],
+						'/mode': ['matchFields'],
+						'/joinMode': ['keepMatches'],
+						'/outputDataFrom': ['both'],
 						'/mergeMatchedItems': [true],
 					},
 				},
@@ -131,20 +123,14 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': [
-							'multiplex',
-							'matchPositions',
-						],
+						'/mode': ['multiplex', 'matchPositions'],
 					},
 				},
 			},
 		],
 		displayOptions: {
 			hide: {
-				mode: [
-					'chooseBranch',
-					'append',
-				],
+				mode: ['chooseBranch', 'append'],
 			},
 		},
 	},

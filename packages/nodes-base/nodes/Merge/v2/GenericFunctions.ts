@@ -1,15 +1,6 @@
-import {
-	IDataObject,
-	INodeExecutionData,
-	IPairedItemData
-} from "n8n-workflow";
+import { IDataObject, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
 
-import {
-	assign,
-	get,
-	isEqual,
-	merge,
-} from 'lodash';
+import { assign, get, isEqual, merge } from 'lodash';
 
 interface IMatch {
 	entry: INodeExecutionData;
@@ -17,17 +8,21 @@ interface IMatch {
 }
 
 export function addSuffixToEntriesKeys(data: INodeExecutionData[], suffix: string) {
-	return data.map( entry => {
+	return data.map((entry) => {
 		const json: IDataObject = {};
-		Object.keys(entry.json).forEach( key => {
+		Object.keys(entry.json).forEach((key) => {
 			json[`${key}_${suffix}`] = entry.json[key];
 		});
-		return {...entry, json};
+		return { ...entry, json };
 	});
 }
 
-
-export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeExecutionData[], fieldsToMatch: IDataObject[], disableDotNotation: boolean) {
+export function findMatches(
+	dataInput1: INodeExecutionData[],
+	dataInput2: INodeExecutionData[],
+	fieldsToMatch: IDataObject[],
+	disableDotNotation: boolean,
+) {
 	const data1 = [...dataInput1];
 	const data2 = [...dataInput2];
 
@@ -35,24 +30,26 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 		matched: [] as IMatch[],
 		unmatched1: [] as INodeExecutionData[],
 		unmatched2: [] as INodeExecutionData[],
-		getMatches1 () {
-			return this.matched.map( match => match.entry);
+		getMatches1() {
+			return this.matched.map((match) => match.entry);
 		},
-		getMatches2 () {
-			return this.matched.reduce((acc, match) => acc.concat(match.matches), [] as INodeExecutionData[]);
+		getMatches2() {
+			return this.matched.reduce(
+				(acc, match) => acc.concat(match.matches),
+				[] as INodeExecutionData[],
+			);
 		},
 	};
 
-	matchesLoop:
-	for (const entry1 of data1) {
+	matchesLoop: for (const entry1 of data1) {
 		const lookup: IDataObject = {};
 
-		fieldsToMatch.forEach(matchCase => {
+		fieldsToMatch.forEach((matchCase) => {
 			let valueToCompare;
 			if (disableDotNotation) {
 				valueToCompare = entry1.json[matchCase.field1 as string];
 			} else {
-				 valueToCompare = get(entry1.json, matchCase.field1 as string);
+				valueToCompare = get(entry1.json, matchCase.field1 as string);
 			}
 			lookup[matchCase.field2 as string] = valueToCompare;
 		});
@@ -64,7 +61,7 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 			}
 		}
 
-		const foundedMarches = data2.filter( (entry2, i) => {
+		const foundedMarches = data2.filter((entry2, i) => {
 			if (entry2 === undefined) return false;
 
 			let matched = true;
@@ -100,7 +97,7 @@ export function findMatches(dataInput1: INodeExecutionData[], dataInput2: INodeE
 		}
 	}
 
-	filteredData.unmatched2.push(...data2.filter( entry => entry !== undefined));
+	filteredData.unmatched2.push(...data2.filter((entry) => entry !== undefined));
 
 	return filteredData;
 }
@@ -123,20 +120,23 @@ export function mergeMatched(data: IDataObject, clashResolveOptions: IDataObject
 		if (clashResolveOptions.resolveClash === 'addSuffix') {
 			[entry] = addSuffixToEntriesKeys([entry], '1');
 			matches = addSuffixToEntriesKeys(matches, '2');
-			json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
+			json = mergeEntries({}, entry.json, ...matches.map((match) => match.json));
 		}
 
 		if (clashResolveOptions.resolveClash === 'preferInput1') {
-			json = mergeEntries({}, ...matches.map(match => match.json), entry.json);
+			json = mergeEntries({}, ...matches.map((match) => match.json), entry.json);
 		}
 
-		if (clashResolveOptions.resolveClash === 'preferInput2' || clashResolveOptions.resolveClash === undefined) {
-			json = mergeEntries({}, entry.json, ...matches.map(match => match.json));
+		if (
+			clashResolveOptions.resolveClash === 'preferInput2' ||
+			clashResolveOptions.resolveClash === undefined
+		) {
+			json = mergeEntries({}, entry.json, ...matches.map((match) => match.json));
 		}
 
 		const pairedItem = [
 			entry.pairedItem as IPairedItemData,
-			...matches.map(m => m.pairedItem as IPairedItemData),
+			...matches.map((m) => m.pairedItem as IPairedItemData),
 		];
 
 		returnData.push({

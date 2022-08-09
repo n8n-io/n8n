@@ -1,12 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	assign,
-	merge,
-} from 'lodash';
+import { assign, merge } from 'lodash';
 
-import {
-	IExecuteFunctions
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -17,15 +12,9 @@ import {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import {
-	addSuffixToEntriesKeys,
-	findMatches,
-	mergeMatched,
- } from './GenericFunctions';
+import { addSuffixToEntriesKeys, findMatches, mergeMatched } from './GenericFunctions';
 
-import {
-	optionsDescription,
-} from './OptionsDescription';
+import { optionsDescription } from './OptionsDescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -86,7 +75,7 @@ const versionDescription: INodeTypeDescription = {
 			name: 'matchFields',
 			type: 'fixedCollection',
 			placeholder: 'Add Fields',
-			default: {values: [{field1: '', field2: ''}]},
+			default: { values: [{ field1: '', field2: '' }] },
 			typeOptions: {
 				multipleValues: true,
 			},
@@ -131,7 +120,7 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Keep Non-Matches',
 					value: 'keepNonMatches',
-					description: 'Items that don\'t match (outer join)',
+					description: "Items that don't match (outer join)",
 				},
 				{
 					name: 'Enrich Input 1',
@@ -211,7 +200,8 @@ const versionDescription: INodeTypeDescription = {
 			name: 'includeUnpaired',
 			type: 'boolean',
 			default: false,
-			description: 'Whether to include at the end items with nothing to pair with, if there are different numbers of items in input 1 and input 2',
+			description:
+				'Whether to include at the end items with nothing to pair with, if there are different numbers of items in input 1 and input 2',
 			displayOptions: {
 				show: {
 					mode: ['matchPositions'],
@@ -405,10 +395,7 @@ export class MergeV2 implements INodeType {
 					binary: {
 						...merge({}, entry1.binary, entry2.binary),
 					},
-					pairedItem: [
-						entry1.pairedItem as IPairedItemData,
-						entry2.pairedItem as IPairedItemData,
-					],
+					pairedItem: [entry1.pairedItem as IPairedItemData, entry2.pairedItem as IPairedItemData],
 				});
 			}
 		}
@@ -416,10 +403,14 @@ export class MergeV2 implements INodeType {
 		if (mode === 'matchFields') {
 			const matchFields = this.getNodeParameter('matchFields.values', 0, []) as IDataObject[];
 			const joinMode = this.getNodeParameter('joinMode', 0) as string;
-			const disableDotNotation = this.getNodeParameter('options.disableDotNotation', 0, false) as boolean;
+			const disableDotNotation = this.getNodeParameter(
+				'options.disableDotNotation',
+				0,
+				false,
+			) as boolean;
 
 			const dataInput1 = this.getInputData(0);
-			if (!dataInput1 ) return [returnData];
+			if (!dataInput1) return [returnData];
 
 			const dataInput2 = this.getInputData(1);
 			if (!dataInput2 || !matchFields.length) {
@@ -435,17 +426,21 @@ export class MergeV2 implements INodeType {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
 				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
 
-				if (outputDataFrom === 'input1' ) {
+				if (outputDataFrom === 'input1') {
 					return [matches.getMatches1()];
 				}
-				if (outputDataFrom === 'input2' ) {
+				if (outputDataFrom === 'input2') {
 					return [matches.getMatches2()];
 				}
-				if (outputDataFrom === 'both' && !mergeMatchedItems ) {
+				if (outputDataFrom === 'both' && !mergeMatchedItems) {
 					return [[...matches.getMatches1(), ...matches.getMatches2()]];
 				}
-				if (outputDataFrom === 'both' && mergeMatchedItems ) {
-					const clashResolveOptions = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+				if (outputDataFrom === 'both' && mergeMatchedItems) {
+					const clashResolveOptions = this.getNodeParameter(
+						'options.clashHandling.values',
+						0,
+						{},
+					) as IDataObject;
 					const mergedEntries = mergeMatched(matches, clashResolveOptions);
 
 					returnData.push(...mergedEntries);
@@ -454,13 +449,13 @@ export class MergeV2 implements INodeType {
 
 			if (joinMode === 'keepNonMatches') {
 				const outputDataFrom = this.getNodeParameter('outputDataFrom', 0) as string;
-				if (outputDataFrom === 'input1' ) {
+				if (outputDataFrom === 'input1') {
 					return [matches.unmatched1];
 				}
-				if (outputDataFrom === 'input2' ) {
+				if (outputDataFrom === 'input2') {
 					return [matches.unmatched2];
 				}
-				if (outputDataFrom === 'both' ) {
+				if (outputDataFrom === 'both') {
 					return [[...matches.unmatched1, ...matches.unmatched2]];
 				}
 			}
@@ -468,7 +463,11 @@ export class MergeV2 implements INodeType {
 			if (joinMode === 'enrichInput1') {
 				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
 				if (mergeMatchedItems) {
-					const clashResolveOptions = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+					const clashResolveOptions = this.getNodeParameter(
+						'options.clashHandling.values',
+						0,
+						{},
+					) as IDataObject;
 					const mergedEntries = mergeMatched(matches, clashResolveOptions);
 
 					if (clashResolveOptions.resolveClash === 'addSuffix') {
@@ -484,7 +483,11 @@ export class MergeV2 implements INodeType {
 			if (joinMode === 'enrichInput2') {
 				const mergeMatchedItems = this.getNodeParameter('mergeMatchedItems', 0, false) as boolean;
 				if (mergeMatchedItems) {
-					const clashResolveOptions = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+					const clashResolveOptions = this.getNodeParameter(
+						'options.clashHandling.values',
+						0,
+						{},
+					) as IDataObject;
 					const mergedEntries = mergeMatched(matches, clashResolveOptions);
 
 					if (clashResolveOptions.resolveClash === 'addSuffix') {
