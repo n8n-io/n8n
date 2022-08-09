@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import { dueDatePreSendAction, taskPostReceiceAction } from '../GenericFunctions';
 
@@ -12,9 +10,7 @@ export const taskOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -27,11 +23,10 @@ export const taskOperations: INodeProperties[] = [
 						url: '=/contacts/{{$parameter.contactId}}/tasks',
 					},
 					output: {
-						postReceive: [
-							taskPostReceiceAction
-						],
+						postReceive: [taskPostReceiceAction],
 					},
 				},
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
@@ -52,6 +47,7 @@ export const taskOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
@@ -62,11 +58,10 @@ export const taskOperations: INodeProperties[] = [
 						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}',
 					},
 					output: {
-						postReceive: [
-							taskPostReceiceAction
-						],
+						postReceive: [taskPostReceiceAction],
 					},
 				},
+				action: 'Get a task',
 			},
 			{
 				name: 'Get All',
@@ -84,10 +79,11 @@ export const taskOperations: INodeProperties[] = [
 									property: 'tasks',
 								},
 							},
-							taskPostReceiceAction
+							taskPostReceiceAction,
 						],
 					},
-				}
+				},
+				action: 'Get all tasks',
 			},
 			{
 				name: 'Update',
@@ -98,11 +94,10 @@ export const taskOperations: INodeProperties[] = [
 						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}',
 					},
 					output: {
-						postReceive: [
-							taskPostReceiceAction
-						],
+						postReceive: [taskPostReceiceAction],
 					},
 				},
+				action: 'Update a task',
 			},
 		],
 		default: 'create',
@@ -118,13 +113,8 @@ const additionalFields: Array<INodeProperties> = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['task'],
+				operation: ['create', 'update'],
 			},
 		},
 		options: [
@@ -134,16 +124,17 @@ const additionalFields: Array<INodeProperties> = [
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers'
+					loadOptionsMethod: 'getUsers',
 				},
 				routing: {
 					send: {
 						type: 'body',
 						property: 'assignedTo',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Description',
@@ -154,8 +145,8 @@ const additionalFields: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'description',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Status',
@@ -176,12 +167,12 @@ const additionalFields: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'status',
-					}
-				}
+					},
+				},
 			},
 		],
-	}
-]
+	},
+];
 
 const createOperations: Array<INodeProperties> = [
 	{
@@ -190,12 +181,8 @@ const createOperations: Array<INodeProperties> = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -210,20 +197,16 @@ const createOperations: Array<INodeProperties> = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
 				property: 'title',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Due Date',
@@ -233,23 +216,17 @@ const createOperations: Array<INodeProperties> = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
 				property: 'dueDate',
-				preSend: [
-					dueDatePreSendAction
-				],
-			}
-		}
+				preSend: [dueDatePreSendAction],
+			},
+		},
 	},
 ];
 
@@ -260,12 +237,8 @@ const deleteOperations: Array<INodeProperties> = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['task'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -279,12 +252,8 @@ const deleteOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'delete',
-				]
+				resource: ['task'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -298,12 +267,8 @@ const getOperations: Array<INodeProperties> = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['task'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -317,12 +282,8 @@ const getOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'get',
-				]
+				resource: ['task'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -336,12 +297,8 @@ const getAllOperations: Array<INodeProperties> = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 		default: '',
@@ -354,12 +311,8 @@ const getAllOperations: Array<INodeProperties> = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -371,15 +324,9 @@ const getAllOperations: Array<INodeProperties> = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['task'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -404,12 +351,8 @@ const updateOperations: Array<INodeProperties> = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -422,12 +365,8 @@ const updateOperations: Array<INodeProperties> = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -441,20 +380,16 @@ const updateOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
 				property: 'title',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Due Date',
@@ -464,23 +399,17 @@ const updateOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		routing: {
 			send: {
 				type: 'body',
 				property: 'dueDate',
-				preSend: [
-					dueDatePreSendAction
-				],
-			}
-		}
+				preSend: [dueDatePreSendAction],
+			},
+		},
 	},
 ];
 

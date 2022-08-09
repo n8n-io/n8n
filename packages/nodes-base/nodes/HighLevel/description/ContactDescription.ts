@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const contactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -35,6 +31,7 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
@@ -55,6 +52,7 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
@@ -75,6 +73,7 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get All',
@@ -87,7 +86,8 @@ export const contactOperations: INodeProperties[] = [
 					send: {
 						paginate: true,
 					},
-				}
+				},
+				action: 'Get all contacts',
 			},
 			{
 				name: 'Lookup',
@@ -108,6 +108,7 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Lookup a contact',
 			},
 			{
 				name: 'Update',
@@ -128,6 +129,7 @@ export const contactOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
@@ -154,7 +156,8 @@ const customFields: INodeProperties = {
 					type: 'options',
 					required: true,
 					default: '',
-					description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+					description:
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 					typeOptions: {
 						loadOptions: {
 							routing: {
@@ -186,7 +189,7 @@ const customFields: INodeProperties = {
 									],
 								},
 							},
-						}
+						},
 					},
 				},
 				{
@@ -205,22 +208,19 @@ const customFields: INodeProperties = {
 			],
 		},
 	],
-}
+};
 
 const createOperations: Array<INodeProperties> = [
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		description: 'Email or Phone are required to create contact',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -228,8 +228,8 @@ const createOperations: Array<INodeProperties> = [
 			send: {
 				type: 'body',
 				property: 'email',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Phone',
@@ -238,12 +238,8 @@ const createOperations: Array<INodeProperties> = [
 		description: 'Phone or Email are required to create contact',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -251,8 +247,8 @@ const createOperations: Array<INodeProperties> = [
 			send: {
 				type: 'body',
 				property: 'phone',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -262,12 +258,8 @@ const createOperations: Array<INodeProperties> = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -280,8 +272,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'address1',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'City',
@@ -292,8 +284,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'city',
-					}
-				}
+					},
+				},
 			},
 			customFields,
 			{
@@ -305,8 +297,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'dnd',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'First Name',
@@ -317,8 +309,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'firstName',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Last Name',
@@ -329,8 +321,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'lastName',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Name',
@@ -341,8 +333,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'name',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Postal Code',
@@ -353,8 +345,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'postalCode',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Source',
@@ -365,8 +357,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'source',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'State',
@@ -377,8 +369,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'state',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Tags',
@@ -393,7 +385,7 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'tags',
-					}
+					},
 				},
 			},
 			{
@@ -405,8 +397,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'timezone',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Website',
@@ -417,11 +409,11 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'website',
-					}
-				}
+					},
+				},
 			},
 		],
-	}
+	},
 ];
 
 const updateOperations: Array<INodeProperties> = [
@@ -432,12 +424,8 @@ const updateOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				]
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -450,12 +438,8 @@ const updateOperations: Array<INodeProperties> = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -468,8 +452,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'address1',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'City',
@@ -480,8 +464,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'city',
-					}
-				}
+					},
+				},
 			},
 			customFields,
 			{
@@ -493,21 +477,21 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'dnd',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				routing: {
-					send:
-					{
+					send: {
 						type: 'body',
 						property: 'email',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'First Name',
@@ -518,8 +502,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'firstName',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Last Name',
@@ -530,8 +514,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'lastName',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Name',
@@ -542,8 +526,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'name',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Phone',
@@ -554,8 +538,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'phone',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Postal Code',
@@ -566,8 +550,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'postalCode',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'State',
@@ -578,8 +562,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'state',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Tags',
@@ -594,7 +578,7 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'tags',
-					}
+					},
 				},
 			},
 			{
@@ -606,8 +590,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'timezone',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Website',
@@ -618,11 +602,11 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'website',
-					}
-				}
+					},
+				},
 			},
 		],
-	}
+	},
 ];
 
 const deleteOperations: Array<INodeProperties> = [
@@ -632,16 +616,12 @@ const deleteOperations: Array<INodeProperties> = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				]
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
-	}
+	},
 ];
 
 const getOperations: Array<INodeProperties> = [
@@ -652,12 +632,8 @@ const getOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				]
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -671,12 +647,8 @@ const getAllOperations: Array<INodeProperties> = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -688,15 +660,9 @@ const getAllOperations: Array<INodeProperties> = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -723,12 +689,8 @@ const getAllOperations: Array<INodeProperties> = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -737,13 +699,14 @@ const getAllOperations: Array<INodeProperties> = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Query will search on these fields: Name, Phone, Email, Tags, and Company Name',
+				description:
+					'Query will search on these fields: Name, Phone, Email, Tags, and Company Name',
 				routing: {
 					send: {
 						type: 'query',
 						property: 'query',
-					}
-				}
+					},
+				},
 			},
 		],
 	},
@@ -755,12 +718,8 @@ const getAllOperations: Array<INodeProperties> = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -783,8 +742,8 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'order',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Sort By',
@@ -805,8 +764,8 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'sortBy',
-					}
-				}
+					},
+				},
 			},
 		],
 	},
@@ -817,15 +776,12 @@ const lookupOperations: Array<INodeProperties> = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		description: 'Lookup Contact by Email and/or Phone',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['contact'],
+				operation: ['lookup'],
 			},
 		},
 		default: '',
@@ -837,18 +793,13 @@ const lookupOperations: Array<INodeProperties> = [
 		description: 'Lookup Contact by Phone and/or Email',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['contact'],
+				operation: ['lookup'],
 			},
 		},
 		default: '',
 	},
 ];
-
 
 export const contactFields: INodeProperties[] = [
 	...createOperations,

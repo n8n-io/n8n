@@ -1,10 +1,6 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	contactIdentifierPreSendAction
-} from '../GenericFunctions';
+import { contactIdentifierPreSendAction } from '../GenericFunctions';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const opportunityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
@@ -29,6 +23,7 @@ export const opportunityOperations: INodeProperties[] = [
 						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities',
 					},
 				},
+				action: 'Create an opportunity',
 			},
 			{
 				name: 'Delete',
@@ -49,6 +44,7 @@ export const opportunityOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Delete an opportunity',
 			},
 			{
 				name: 'Get',
@@ -59,6 +55,7 @@ export const opportunityOperations: INodeProperties[] = [
 						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
 					},
 				},
+				action: 'Get an opportunity',
 			},
 			{
 				name: 'Get All',
@@ -71,7 +68,8 @@ export const opportunityOperations: INodeProperties[] = [
 					send: {
 						paginate: true,
 					},
-				}
+				},
+				action: 'Get all opportunities',
 			},
 			{
 				name: 'Update',
@@ -82,32 +80,25 @@ export const opportunityOperations: INodeProperties[] = [
 						url: '=/pipelines/{{$parameter.pipelineId}}/opportunities/{{$parameter.opportunityId}}',
 					},
 				},
+				action: 'Update an opportunity',
 			},
 		],
 		default: 'create',
 	},
 ];
 
-const pipelineId: INodeProperties =
-{
+const pipelineId: INodeProperties = {
 	displayName: 'Pipeline ID',
 	name: 'pipelineId',
 	type: 'options',
 	displayOptions: {
 		show: {
-			resource: [
-				'opportunity',
-			],
-			operation: [
-				'create',
-				'delete',
-				'get',
-				'getAll',
-				'update',
-			],
+			resource: ['opportunity'],
+			operation: ['create', 'delete', 'get', 'getAll', 'update'],
 		},
 	},
-	description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+	description:
+		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
 	typeOptions: {
 		loadOptions: {
 			routing: {
@@ -139,10 +130,10 @@ const pipelineId: INodeProperties =
 					],
 				},
 			},
-		}
+		},
 	},
 	default: '',
-}
+};
 
 const createOperations: Array<INodeProperties> = [
 	{
@@ -151,28 +142,25 @@ const createOperations: Array<INodeProperties> = [
 		name: 'stageId',
 		type: 'options',
 		required: true,
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 		typeOptions: {
 			loadOptionsDependsOn: ['pipelineId'],
-			loadOptionsMethod: 'getPipelineStages'
+			loadOptionsMethod: 'getPipelineStages',
 		},
 		routing: {
 			send: {
 				type: 'body',
 				property: 'stageId',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Contact Identifier',
@@ -182,22 +170,16 @@ const createOperations: Array<INodeProperties> = [
 		description: 'Either Email, Phone or Contact ID',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 		routing: {
 			send: {
-				preSend: [
-					contactIdentifierPreSendAction
-				],
-			}
-		}
+				preSend: [contactIdentifierPreSendAction],
+			},
+		},
 	},
 	{
 		displayName: 'Title',
@@ -206,12 +188,8 @@ const createOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -219,8 +197,8 @@ const createOperations: Array<INodeProperties> = [
 			send: {
 				type: 'body',
 				property: 'title',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Status',
@@ -229,12 +207,8 @@ const createOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -260,8 +234,8 @@ const createOperations: Array<INodeProperties> = [
 			send: {
 				type: 'body',
 				property: 'status',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -271,12 +245,8 @@ const createOperations: Array<INodeProperties> = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -286,16 +256,17 @@ const createOperations: Array<INodeProperties> = [
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers'
+					loadOptionsMethod: 'getUsers',
 				},
 				routing: {
 					send: {
 						type: 'body',
 						property: 'assignedTo',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Company Name',
@@ -306,8 +277,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'companyName',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Monetary Value',
@@ -318,8 +289,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'monetaryValue',
-					}
-				}
+					},
+				},
 			},
 
 			{
@@ -331,8 +302,8 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'name',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Tags',
@@ -347,11 +318,11 @@ const createOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'tags',
-					}
+					},
 				},
 			},
 		],
-	}
+	},
 ];
 
 const deleteOperations: Array<INodeProperties> = [
@@ -362,12 +333,8 @@ const deleteOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'delete',
-				]
+				resource: ['opportunity'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -382,12 +349,8 @@ const getOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'get',
-				]
+				resource: ['opportunity'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -401,12 +364,8 @@ const getAllOperations: Array<INodeProperties> = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -418,15 +377,9 @@ const getAllOperations: Array<INodeProperties> = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -450,12 +403,8 @@ const getAllOperations: Array<INodeProperties> = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -465,16 +414,17 @@ const getAllOperations: Array<INodeProperties> = [
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers'
+					loadOptionsMethod: 'getUsers',
 				},
 				routing: {
 					send: {
 						type: 'query',
 						property: 'assignedTo',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Campaign ID',
@@ -485,8 +435,8 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'campaignId',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'End Date',
@@ -498,8 +448,8 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'endDate',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Monetary Value',
@@ -510,8 +460,8 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'monetaryValue',
-					}
-				}
+					},
+				},
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
@@ -519,17 +469,18 @@ const getAllOperations: Array<INodeProperties> = [
 				name: 'stageId',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
-					loadOptionsMethod: 'getPipelineStages'
+					loadOptionsMethod: 'getPipelineStages',
 				},
 				routing: {
 					send: {
 						type: 'query',
 						property: 'stageId',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Start Date',
@@ -541,8 +492,8 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'startDate',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Status',
@@ -571,21 +522,22 @@ const getAllOperations: Array<INodeProperties> = [
 					send: {
 						type: 'query',
 						property: 'status',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Query will search on these fields: Name, Phone, Email, Tags, and Company Name',
+				description:
+					'Query will search on these fields: Name, Phone, Email, Tags, and Company Name',
 				routing: {
 					send: {
 						type: 'query',
 						property: 'query',
-					}
-				}
+					},
+				},
 			},
 		],
 	},
@@ -599,12 +551,8 @@ const updateOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				]
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -616,12 +564,8 @@ const updateOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -629,8 +573,8 @@ const updateOperations: Array<INodeProperties> = [
 			send: {
 				type: 'body',
 				property: 'title',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Status',
@@ -639,12 +583,8 @@ const updateOperations: Array<INodeProperties> = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -670,8 +610,8 @@ const updateOperations: Array<INodeProperties> = [
 			send: {
 				type: 'body',
 				property: 'status',
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -681,12 +621,8 @@ const updateOperations: Array<INodeProperties> = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -696,16 +632,17 @@ const updateOperations: Array<INodeProperties> = [
 				name: 'assignedTo',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers'
+					loadOptionsMethod: 'getUsers',
 				},
 				routing: {
 					send: {
 						type: 'body',
 						property: 'assignedTo',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Company Name',
@@ -716,8 +653,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'companyName',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Contact Identifier',
@@ -727,11 +664,9 @@ const updateOperations: Array<INodeProperties> = [
 				default: '',
 				routing: {
 					send: {
-						preSend: [
-							contactIdentifierPreSendAction
-						],
-					}
-				}
+						preSend: [contactIdentifierPreSendAction],
+					},
+				},
 			},
 			{
 				displayName: 'Monetary Value',
@@ -742,8 +677,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'monetaryValue',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Name',
@@ -754,8 +689,8 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'name',
-					}
-				}
+					},
+				},
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
@@ -763,17 +698,18 @@ const updateOperations: Array<INodeProperties> = [
 				name: 'stageId',
 				type: 'options',
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsDependsOn: ['pipelineId'],
-					loadOptionsMethod: 'getPipelineStages'
+					loadOptionsMethod: 'getPipelineStages',
 				},
 				routing: {
 					send: {
 						type: 'body',
 						property: 'stageId',
-					}
-				}
+					},
+				},
 			},
 			{
 				displayName: 'Tags',
@@ -788,11 +724,11 @@ const updateOperations: Array<INodeProperties> = [
 					send: {
 						type: 'body',
 						property: 'tags',
-					}
+					},
 				},
 			},
 		],
-	}
+	},
 ];
 
 export const opportunityFields: INodeProperties[] = [

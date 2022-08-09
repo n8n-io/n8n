@@ -1,8 +1,4 @@
-import {
-	INodeProperties,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeProperties, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
@@ -32,7 +28,7 @@ const ressources: INodeProperties[] = [
 		default: 'contact',
 		required: true,
 	},
-]
+];
 
 export class HighLevel implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,7 +54,7 @@ export class HighLevel implements INodeType {
 		requestDefaults: {
 			baseURL: 'https://rest.gohighlevel.com/v1',
 			headers: {
-				'Accept': 'application/json',
+				Accept: 'application/json',
 				'Content-Type': 'application/json',
 			},
 		},
@@ -79,7 +75,7 @@ export class HighLevel implements INodeType {
 	methods = {
 		loadOptions: {
 			getPipelineStages,
-			getUsers
+			getUsers,
 		},
 	};
 }
