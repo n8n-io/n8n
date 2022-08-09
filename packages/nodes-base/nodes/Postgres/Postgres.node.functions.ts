@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import pg from 'pg-promise/typescript/pg-subset';
@@ -152,7 +152,6 @@ export async function pgQueryV2(
 	const allQueries = new Array<QueryWithValues>();
 	for (let i = 0; i < items.length; i++) {
 		let query = this.getNodeParameter('query', i) as string;
-		query = `WITH query_${i} AS (${query}) SELECT ${i} as n8n_item_index, * FROM query_${i}`;
 		const values = valuesArray[i];
 		const queryFormat = { query, values };
 		allQueries.push(queryFormat);
@@ -160,23 +159,20 @@ export async function pgQueryV2(
 
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
 	if (mode === 'multiple') {
-		const queryResult = (await db.multi(pgp.helpers.concat(allQueries))).flat();
-		const executionJson = this.helpers.returnJsonArray(queryResult);
-		return executionJson.map((executionData: Partial<INodeExecutionData>) => {
-			const { n8n_item_index: item } = executionData.json! as IDataObject;
-			delete executionData.json?.n8n_item_index;
-			Object.assign(executionData, { pairedItem: { item } });
-			return executionData;
-		});
+		(await db.multi(pgp.helpers.concat(allQueries))).map((result, i) => {
+			return this.helpers.constructExecutionMetaData({item: i}, this.helpers.returnJsonArray([...result]))
+		}).flat();
 	} else if (mode === 'transaction') {
 		return db.tx(async t => {
-			const result: IDataObject[] = [];
+			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
-					Array.prototype.push.apply(result, await t.any(allQueries[i].query, allQueries[i].values));
+					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
+					const executionData = this.helpers.constructExecutionMetaData({ item: i }, this.helpers.returnJsonArray(transactionResult));
+					result.push(...executionData);
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ ...items[i].json, code: (err as JsonObject).code, message: (err as JsonObject).message });
+					result.push({ json: { ...items[i].json }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
 					return result;
 				}
 			}
@@ -184,13 +180,15 @@ export async function pgQueryV2(
 		});
 	} else if (mode === 'independently') {
 		return db.task(async t => {
-			const result: IDataObject[] = [];
+			const result: INodeExecutionData[] = [];
 			for (let i = 0; i < allQueries.length; i++) {
 				try {
-					Array.prototype.push.apply(result, await t.any(allQueries[i].query, allQueries[i].values));
+					const transactionResult = await t.any(allQueries[i].query, allQueries[i].values);
+					const executionData = this.helpers.constructExecutionMetaData({ item: i }, this.helpers.returnJsonArray(transactionResult));
+					result.push(...executionData);
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ ...items[i].json, code: (err as JsonObject).code, message: (err as JsonObject).message });
+					result.push({ json: { ...items[i].json }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
 				}
 			}
 			return result;

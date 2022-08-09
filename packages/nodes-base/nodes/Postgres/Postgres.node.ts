@@ -9,7 +9,7 @@ import {
 
 import pgPromise from 'pg-promise';
 
-import { pgInsert, pgQuery, pgUpdate } from './Postgres.node.functions';
+import { pgInsert, pgQuery, pgQueryV2, pgUpdate } from './Postgres.node.functions';
 
 export class Postgres implements INodeType {
 	description: INodeTypeDescription = {
@@ -313,7 +313,7 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQueryV2(this, pgp, db, items, this.continueOnFail());
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail())
 			returnItems = queryResult as INodeExecutionData[];
 		} else if (operation === 'insert') {
 			// ----------------------------------
