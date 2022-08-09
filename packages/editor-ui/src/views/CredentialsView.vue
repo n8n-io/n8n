@@ -94,7 +94,7 @@
 											/>
 										</n8n-select>
 									</div>
-									<div class="mb-s">
+									<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.CredentialsSharing]">
 										<n8n-input-label :label="$locale.baseText('credentials.filters.ownedBy')" />
 										<n8n-select
 											v-model="filtersInput.type"
@@ -109,8 +109,8 @@
 												:label="credentialType.displayName"
 											/>
 										</n8n-select>
-									</div>
-									<div>
+									</enterprise-edition>
+									<enterprise-edition :features="[EnterpriseEditionFeature.CredentialsSharing]">
 										<n8n-input-label :label="$locale.baseText('credentials.filters.sharedWith')" />
 										<n8n-select
 											v-model="filtersInput.type"
@@ -125,7 +125,7 @@
 												:label="credentialType.displayName"
 											/>
 										</n8n-select>
-									</div>
+									</enterprise-edition>
 									<div class="mt-s text-right">
 										<n8n-button @click="applyFilters" type="secondary">
 											{{ $locale.baseText('credentials.filters.apply') }}
@@ -169,6 +169,7 @@ import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
 import CredentialCard from "@/components/CredentialCard.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY} from "@/constants";
 import {ICredentialType} from "n8n-workflow";
+import {EnterpriseEditionFeature} from "@/constants";
 
 export default mixins(
 	showMessage,
@@ -195,6 +196,7 @@ export default mixins(
 				ownedBy: '',
 				sharedWith: '',
 			},
+			EnterpriseEditionFeature,
 		};
 	},
 	computed: {
