@@ -254,7 +254,7 @@ export class GithubTrigger implements INodeType {
 						description: 'Triggered when a private repository is open sourced',
 					},
 					{
-						name: 'Pull Pequest',
+						name: 'Pull Request',
 						value: 'pull_request',
 						description: 'Triggered when a pull request is assigned, unassigned, labeled, unlabeled, opened, edited, closed, reopened, synchronize, ready_for_review, locked, unlocked, a pull request review is requested, or a review request is removed',
 					},
