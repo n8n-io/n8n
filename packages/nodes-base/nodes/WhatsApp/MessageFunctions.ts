@@ -106,7 +106,7 @@ export async function componentsRequest(
 	}
 
 	for (const component of components.component as IDataObject[]) {
-		const comp: any = {
+		const comp: IDataObject = {
 			type: component.type,
 		};
 
@@ -140,7 +140,7 @@ export async function componentsRequest(
 		} else if (component.type === 'header') {
 			comp.parameters = (
 				(component.headerParameters as IDataObject).parameter as IDataObject[]
-			).map((i: any) => {
+			).map((i: IDataObject) => {
 				if (i.type === 'image') {
 					return {
 						type: 'image',
