@@ -146,7 +146,7 @@ export class Affinity implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -413,19 +413,32 @@ export class Affinity implements INodeType {
 						);
 					}
 				}
+
+				responseData = this.helpers.returnJsonArray(responseData);
+				responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
+
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData.push.apply(returnData, responseData);
 				} else {
-					returnData.push(responseData as IDataObject);
+					returnData.push(responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.returnJsonArray({
+						error: error.message,
+						$json: this.getInputData(i),
+						itemIndex: i,
+					});
+					const errorExecutionMetadata = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						executionErrorData,
+					);
+					returnData.push(...errorExecutionMetadata);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }
