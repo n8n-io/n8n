@@ -4,7 +4,6 @@ import {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
-	INodeParameters,
 	NodeOperationError,
 } from 'n8n-workflow';
 
