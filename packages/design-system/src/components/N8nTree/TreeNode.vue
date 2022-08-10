@@ -70,6 +70,7 @@ export default Vue.extend({
 .simple {
 	text-indent: -24px;
 	margin-left: var(--spacing-l);
+	max-width: 300px;
 }
 
 </style>

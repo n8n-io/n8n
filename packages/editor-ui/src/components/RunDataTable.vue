@@ -496,7 +496,6 @@ export default Vue.extend({
 
 .value {
 	line-height: var(--font-line-height-loose);
-	word-break: break-all;
 }
 
 .hoverableRow {
