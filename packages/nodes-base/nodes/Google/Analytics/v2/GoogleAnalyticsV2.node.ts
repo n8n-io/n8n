@@ -22,6 +22,7 @@ import {
 	processFilters,
 	simplify,
 	simplifyGA4,
+	sortLoadOptions,
 } from '../GenericFunctions';
 
 import moment from 'moment-timezone';
@@ -95,8 +96,6 @@ export class GoogleAnalyticsV2 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the dimensions to display them to user so that he can
-			// select them easily
 			async getDimensions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { items: dimensions } = await googleApiRequest.call(
@@ -120,23 +119,9 @@ export class GoogleAnalyticsV2 implements INodeType {
 						});
 					}
 				}
-
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) {
-						return -1;
-					}
-					if (aName > bName) {
-						return 1;
-					}
-					return 0;
-				});
-
-				return returnData;
+				return sortLoadOptions(returnData);
 			},
-			// Get all the views to display them to user so that he can
-			// select them easily
+
 			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { items } = await googleApiRequest.call(
@@ -155,7 +140,8 @@ export class GoogleAnalyticsV2 implements INodeType {
 						description: item.websiteUrl,
 					});
 				}
-				return returnData;
+
+				return sortLoadOptions(returnData);
 			},
 
 			async getProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -189,8 +175,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 						}
 					}
 				}
-
-				return returnData;
+				return sortLoadOptions(returnData);
 			},
 
 			async getDimensionsGA4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -211,20 +196,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 						description: dimesion.description as string,
 					});
 				}
-
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) {
-						return -1;
-					}
-					if (aName > bName) {
-						return 1;
-					}
-					return 0;
-				});
-
-				return returnData;
+				return sortLoadOptions(returnData);
 			},
 
 			async getMetricsGA4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -245,20 +217,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 						description: metric.description as string,
 					});
 				}
-
-				returnData.sort((a, b) => {
-					const aName = a.name.toLowerCase();
-					const bName = b.name.toLowerCase();
-					if (aName < bName) {
-						return -1;
-					}
-					if (aName > bName) {
-						return 1;
-					}
-					return 0;
-				});
-
-				return returnData;
+				return sortLoadOptions(returnData);
 			},
 		},
 	};
