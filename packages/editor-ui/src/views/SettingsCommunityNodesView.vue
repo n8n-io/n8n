@@ -10,15 +10,15 @@
 					@click="openInstallModal"
 				/>
 			</div>
-			<n8n-action-box
-				v-if="isQueueModeEnabled"
-				:heading="$locale.baseText('settings.communityNodes.empty.title')"
-				:description="getEmptyStateDescription"
-				:calloutText="actionBoxConfig.calloutText"
-				:calloutTheme="actionBoxConfig.calloutTheme"
-				@click="openInstallModal"
-				@descriptionClick="onDescriptionTextClick"
-			/>
+			<div v-if="isQueueModeEnabled" :class="$style.actionBoxContainer">
+				<n8n-action-box
+					:heading="$locale.baseText('settings.communityNodes.empty.title')"
+					:description="getEmptyStateDescription"
+					:calloutText="actionBoxConfig.calloutText"
+					:calloutTheme="actionBoxConfig.calloutTheme"
+					@descriptionClick="onDescriptionTextClick"
+				/>
+			</div>
 			<div
 				:class="$style.cardsContainer"
 				v-else-if="loading"

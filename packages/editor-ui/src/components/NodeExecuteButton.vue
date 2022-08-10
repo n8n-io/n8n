@@ -59,7 +59,7 @@ export default mixins(
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
@@ -156,11 +156,6 @@ export default mixins(
 				);
 				return;
 			}
-
-			this.$showMessage({
-				title: this.$locale.baseText('ndv.execute.stopWaitingForWebhook.success'),
-				type: 'success',
-			});
 		},
 
 		async onClick() {
