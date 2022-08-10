@@ -41,7 +41,6 @@ import N8nBadge from './N8nBadge';
 import N8nButton from './N8nButton';
 import { N8nElButton } from './N8nButton/overrides';
 import N8nCallout from './N8nCallout';
-import N8nPanelCallout from './N8nPanelCallout';
 import N8nCard from './N8nCard';
 import N8nFormBox from './N8nFormBox';
 import N8nFormInput from './N8nFormInput';
@@ -57,6 +56,7 @@ import N8nLoading from './N8nLoading';
 import N8nMarkdown from './N8nMarkdown';
 import N8nMenu from './N8nMenu';
 import N8nMenuItem from './N8nMenuItem';
+import N8nNodeIcon from './N8nNodeIcon';
 import N8nNotice from './N8nNotice';
 import N8nLink from './N8nLink';
 import N8nOption from './N8nOption';
@@ -85,7 +85,6 @@ export {
 	N8nButton,
 	N8nElButton,
 	N8nCallout,
-	N8nPanelCallout,
 	N8nCard,
 	N8nHeading,
 	N8nFormBox,
@@ -103,6 +102,7 @@ export {
 	N8nMenu,
 	N8nMenuItem,
 	N8nNotice,
+	N8nNodeIcon,
 	N8nOption,
 	N8nPulse,
 	N8nRadioButtons,

@@ -1,32 +1,33 @@
-<template functional>
-	<component
-		:is="$options.components.ElInput"
-		v-bind="props"
-		:size="$options.methods.getSize(props.size)"
-		:class="$style[$options.methods.getClass(props)]"
-		:ref="data.ref"
-		:autoComplete="props.autocomplete"
-		v-on="listeners"
+<template>
+	<el-input
+		v-bind="$props"
+		:size="computedSize"
+		:class="['n8n-input', ...classes]"
+		:autoComplete="autocomplete"
+		ref="innerInput"
+		v-on="$listeners"
 	>
-		<template v-slot:prepend>
+		<template #prepend>
 			<slot name="prepend" />
 		</template>
-		<template v-slot:append>
+		<template #append>
 			<slot name="append" />
 		</template>
-		<template v-slot:prefix>
+		<template #prefix>
 			<slot name="prefix" />
 		</template>
-		<template v-slot:suffix>
+		<template #suffix>
 			<slot name="suffix" />
 		</template>
-	</component>
+	</el-input>
 </template>
 
 <script lang="ts">
 import ElInput from 'element-ui/lib/input';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-input',
 	components: {
 		ElInput,
@@ -68,23 +69,43 @@ export default {
 			default: 'off',
 		},
 	},
-	methods: {
-		getSize(size: string): string | undefined {
-			if (size === 'xlarge') {
+	computed: {
+		computedSize(): string | undefined {
+			if (this.size === 'xlarge') {
 				return undefined;
 			}
 
-			return size;
+			return this.size;
 		},
-		getClass(props: { size: string }): string {
-			if (props.size === 'xlarge') {
-				return 'xlarge';
+		classes(): string[] {
+			if (this.size === 'xlarge') {
+				return ['xlarge'];
 			}
 
-			return '';
+			return [];
 		},
 	},
-};
+	methods: {
+		focus() {
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+			}
+		},
+		blur() {
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).blur();
+			}
+		},
+		select() {
+			if (this.$refs.innerInput.$el) {
+				// @ts-ignore
+				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).select();
+			}
+		},
+	},
+});
 </script>
 
 <style lang="scss" module>

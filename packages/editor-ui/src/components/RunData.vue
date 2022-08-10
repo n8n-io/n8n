@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<n8n-panel-callout
+		<n8n-callout
 			v-if="canPinData && hasPinData && !editMode.enabled"
 			theme="secondary"
 			icon="thumbtack"
@@ -30,7 +30,7 @@
 					{{ $locale.baseText('runData.pindata.learnMore') }}
 				</n8n-link>
 			</template>
-		</n8n-panel-callout>
+		</n8n-callout>
 
 		<BinaryDataDisplay :windowVisible="binaryDataDisplayVisible" :displayData="binaryDataDisplayData" @close="closeBinaryDataDisplay"/>
 
@@ -113,8 +113,8 @@
 
 
 			<n8n-tooltip placement="right" v-if="canLinkRuns" :content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint': 'runData.linking.hint')">
-				<n8n-icon-button v-if="linkedRuns" icon="unlink" text size="small" @click="unlinkRun" />
-				<n8n-icon-button v-else icon="link" text size="small" @click="linkRun" />
+				<n8n-icon-button v-if="linkedRuns" icon="unlink" text type="tertiary" size="small" @click="unlinkRun" />
+				<n8n-icon-button v-else icon="link" text type="tertiary" size="small" @click="linkRun" />
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
@@ -179,7 +179,7 @@
 				<div :class="$style['edit-mode-footer']">
 					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
 						{{ $locale.baseText('runData.editor.copyDataInfo') }}
-						<n8n-link :to="dataPinningDocsUrl" size="small">
+						<n8n-link :to="dataEditingDocsUrl" size="small">
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-info-tip>
@@ -356,6 +356,7 @@ import {
 
 import {
 	DATA_PINNING_DOCS_URL,
+	DATA_EDITING_DOCS_URL,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -499,6 +500,9 @@ export default mixins(
 			dataPinningDocsUrl(): string {
 				return DATA_PINNING_DOCS_URL;
 			},
+			dataEditingDocsUrl(): string{
+				return DATA_EDITING_DOCS_URL;
+			},
 			displayMode(): IRunDataDisplayMode {
 				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
 			},
@@ -507,7 +511,7 @@ export default mixins(
 			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 				}
 				return null;
 			},
@@ -1394,6 +1398,7 @@ export default mixins(
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 	display: flex;
+	align-items: center;
 
 	> * {
 		margin-right: var(--spacing-4xs);
@@ -1446,7 +1451,7 @@ export default mixins(
 	display: inline-block;
 	width: 300px;
 	overflow: hidden;
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	margin-right: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
 	border-radius: var(--border-radius-base);
@@ -1460,7 +1465,7 @@ export default mixins(
 	font-size: 1.2em;
 	padding-bottom: 0.5em;
 	margin-bottom: 0.5em;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid var(--color-text-light);
 }
 
 .binaryButtonContainer {
