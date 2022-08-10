@@ -78,6 +78,7 @@
 							</Draggable>
 						</n8n-tooltip>
 					</th>
+					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
 			<Draggable
@@ -136,6 +137,7 @@
 								</template>
 							</n8n-tree>
 						</td>
+						<td :class="$style.tableRightMargin"></td>
 					</tr>
 				</template>
 			</Draggable>
@@ -390,8 +392,7 @@ export default Vue.extend({
 .table {
 	border-collapse: separate;
 	text-align: left;
-	width: calc(100% - var(--spacing-s));
-	margin-right: var(--spacing-s);
+	width: calc(100%);
 	font-size: var(--font-size-s);
 
 	th {
@@ -522,5 +523,13 @@ export default Vue.extend({
 
 .draggingKey {
 	background-color: var(--color-primary-tint-2);
+}
+
+.tableRightMargin{
+	// becomes necessary with large tables
+	width: var(--spacing-s);
+	border-right: none !important;
+	border-top: none !important;
+	border-bottom: none !important;
 }
 </style>
