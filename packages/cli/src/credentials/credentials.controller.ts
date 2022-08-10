@@ -1,18 +1,16 @@
-/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
 import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+
+import config from '../../config';
 import { getLogger } from '../Logger';
-
-import { GenericHelpers, ICredentialsDb, ICredentialsResponse, ResponseHelper } from '..';
-
-import type { CredentialRequest } from '../requests';
-import * as config from '../../config';
+import { GenericHelpers, ResponseHelper } from '..';
 import { CredentialsService } from './credentials.service';
 import { EECredentialsController } from './credentials.controller.ee';
+
+import type { ICredentialsDb, ICredentialsResponse } from '..';
+import type { CredentialRequest } from '../requests';
 
 export const credentialsController = express.Router();
 
@@ -45,9 +43,10 @@ credentialsController.get(
 			throw error;
 		}
 
+		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 		return credentials.map((credential) => {
 			// eslint-disable-next-line no-param-reassign
-			credential.id = credential.id.toString(); // @TODO_TECH_DEBT: Stringify ID with entity transformer
+			credential.id = credential.id.toString();
 			return credential as ICredentialsResponse;
 		});
 	}),
@@ -95,12 +94,8 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Create) => {
 		const newCredential = await CredentialsService.prepareCreateData(req.body);
 
-		const encryptionKey = await CredentialsService.getEncryptionKey();
-		const encryptedData = CredentialsService.createEncryptedData(
-			encryptionKey,
-			null,
-			newCredential,
-		);
+		const key = await CredentialsService.getEncryptionKey();
+		const encryptedData = CredentialsService.createEncryptedData(key, null, newCredential);
 		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
 
 		return { id: id.toString(), ...rest, ownedBy: req.user };
@@ -117,7 +112,7 @@ credentialsController.delete(
 
 		const sharings = await CredentialsService.getSharings(req.user, credentialId);
 
-		if (!sharings) {
+		if (sharings.length === 0) {
 			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -129,7 +124,10 @@ credentialsController.delete(
 			);
 		}
 
-		await CredentialsService.delete(sharings.credentials);
+		const [firstSharing] = sharings;
+		const { credentials: credential } = firstSharing;
+
+		await CredentialsService.delete(credential);
 
 		return true;
 	}),
@@ -145,7 +143,7 @@ credentialsController.patch(
 
 		const sharings = await CredentialsService.getSharings(req.user, credentialId);
 
-		if (!sharings) {
+		if (sharings.length === 0) {
 			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -157,18 +155,19 @@ credentialsController.patch(
 			);
 		}
 
-		const { credentials: credential } = sharings;
+		const addPermissions = CredentialsService.createAddPermissions(sharings);
 
-		const addPermissions = CredentialsService.createAddPermissions([sharings]);
+		const [firstSharing] = sharings;
+		const { credentials: credential } = firstSharing;
 
-		const encryptionKey = await CredentialsService.getEncryptionKey();
-		const decryptedData = await CredentialsService.decrypt(encryptionKey, credential);
+		const key = await CredentialsService.getEncryptionKey();
+		const decryptedData = await CredentialsService.decrypt(key, credential);
 		const preparedCredentialData = await CredentialsService.prepareUpdateData(
 			req.body,
 			decryptedData,
 		);
 		const newCredentialData = CredentialsService.createEncryptedData(
-			encryptionKey,
+			key,
 			credentialId,
 			preparedCredentialData,
 		);
@@ -206,7 +205,7 @@ credentialsController.get(
 
 		const sharings = await CredentialsService.getSharings(req.user, credentialId);
 
-		if (!sharings) {
+		if (sharings.length === 0) {
 			throw new ResponseHelper.ResponseError(
 				`Credential with ID "${credentialId}" could not be found.`,
 				undefined,
@@ -214,9 +213,12 @@ credentialsController.get(
 			);
 		}
 
-		const { credentials: credential } = sharings;
+		const addPermissions = CredentialsService.createAddPermissions(sharings);
 
-		const addPermissions = CredentialsService.createAddPermissions([sharings]);
+		const [firstSharing] = sharings;
+		const { credentials: credential } = firstSharing;
+
+		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 
 		if (!includeDecryptedData) {
 			const { id, data: _, ...rest } = addPermissions(credential);
@@ -226,8 +228,8 @@ credentialsController.get(
 
 		const { id, data: _, ...rest } = addPermissions(credential);
 
-		const encryptionKey = await CredentialsService.getEncryptionKey();
-		const decryptedData = await CredentialsService.decrypt(encryptionKey, credential);
+		const key = await CredentialsService.getEncryptionKey();
+		const decryptedData = await CredentialsService.decrypt(key, credential);
 
 		return { id: id.toString(), data: decryptedData, ...rest };
 	}),

@@ -8,7 +8,7 @@ import {
 	INodeCredentialTestResult,
 	LoggerProxy,
 } from 'n8n-workflow';
-import { FindOneOptions, In } from 'typeorm';
+import { FindManyOptions, In } from 'typeorm';
 
 import {
 	createCredentialsFromCredentialsEntity,
@@ -27,13 +27,16 @@ import { CredentialRequest } from '../requests';
 import { externalHooks } from '../Server';
 
 export class CredentialsService {
+	/**
+	 * Retrieve all the sharings matching a user (in any role) and a credential.
+	 */
 	static async getSharings(
 		user: User,
 		credentialId: number | string,
 		relations: string[] | undefined = ['credentials', 'role', 'user'],
-		{ allowGlobalOwner }: { allowGlobalOwner: boolean } = { allowGlobalOwner: true },
-	): Promise<SharedCredentials | undefined> {
-		const options: FindOneOptions = {
+		{ allowGlobalOwner } = { allowGlobalOwner: true },
+	): Promise<SharedCredentials[]> {
+		const options: FindManyOptions = {
 			where: {
 				credentials: { id: credentialId },
 			},
@@ -51,7 +54,7 @@ export class CredentialsService {
 			options.relations = relations;
 		}
 
-		return Db.collections.SharedCredentials.findOne(options);
+		return Db.collections.SharedCredentials.find(options);
 	}
 
 	static async getMany(user: User): Promise<ICredentialsDb[]> {
@@ -72,7 +75,7 @@ export class CredentialsService {
 			}),
 		});
 
-		if (!sharings.length) return [];
+		if (sharings.length === 0) return [];
 
 		const addPermissions = CredentialsService.createAddPermissions(sharings);
 
