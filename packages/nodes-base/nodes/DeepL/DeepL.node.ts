@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeExecutionMetaData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -104,18 +105,17 @@ export class DeepL implements INodeType {
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionMetaData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const responseData = [];
+		const responseData: INodeExecutionMetaData[] = [];
 
 		for (let i = 0; i < length; i++) {
 			try {
 				const resource = this.getNodeParameter('resource', i) as string;
 				const operation = this.getNodeParameter('operation', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
 				if (resource === 'language') {
 					if (operation === 'translate') {
 						let body: IDataObject = {};
@@ -129,19 +129,35 @@ export class DeepL implements INodeType {
 								: additionalFields.sourceLang;
 						}
 
-						const response = await deepLApiRequest.call(this, 'GET', '/translate', body);
-						responseData.push(response.translations[0]);
+						const { translations } = await deepLApiRequest.call(this, 'GET', '/translate', body);
+						const [translation] = translations;
+						const translationJsonArray = this.helpers.returnJsonArray(translation);
+						const executionData = this.helpers.constructExecutionMetaData(
+							{ item: i },
+							translationJsonArray,
+						);
+						responseData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					responseData.push({ $error: error, $json: this.getInputData(i) });
+					const errorData = this.helpers.returnJsonArray({
+						$error: error,
+						$json: this.getInputData(i),
+						json: {},
+						itemIndex: i,
+					});
+					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						errorData,
+					);
+					responseData.push(...exectionErrorWithMetaData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(responseData)];
+		return [responseData];
 	}
 }
