@@ -281,7 +281,17 @@ export class Aws implements ICredentialType {
 		} else if (service === 's3' && credentials.s3Endpoint) {
 			endpoint = credentials.s3Endpoint;
 		}
+		else if (service === 'ses' && credentials.sesEndpoint) {
+			endpoint = credentials.sesEndpoint;
+		}
+		else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
+			endpoint = credentials.rekognitionEndpoint;
+		}
+		else if (service === 'sqs' && credentials.sqsEndpoint) {
+			endpoint = credentials.sqsEndpoint;
+		}
 		else {
+			console.log('ERROR SQS ', service);
 			endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
 		}
 		endpoint = new URL((endpoint as string).replace('{region}', credentials.region as string));
