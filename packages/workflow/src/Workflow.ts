@@ -39,7 +39,6 @@ import {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	NodeHelpers,
-	NodeParameterValue,
 	ObservableObject,
 	RoutingNode,
 	WebhookSetupMethodNames,
@@ -56,7 +55,7 @@ import {
 	IObservableObject,
 	IRun,
 	IRunNodeResponse,
-	INodeParameterResourceLocator,
+	NodeParameterValueType,
 } from './Interfaces';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -437,22 +436,10 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	renameNodeInExpressions(
-		parameterValue:
-			| NodeParameterValue
-			| INodeParameters
-			| NodeParameterValue[]
-			| INodeParameters[]
-			| INodeParameterResourceLocator
-			| INodeParameterResourceLocator[],
+		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
-	):
-		| NodeParameterValue
-		| INodeParameters
-		| NodeParameterValue[]
-		| INodeParameters[]
-		| INodeParameterResourceLocator
-		| INodeParameterResourceLocator[] {
+	): NodeParameterValueType {
 		if (typeof parameterValue !== 'object') {
 			// Reached the actual value
 			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {

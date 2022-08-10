@@ -16,7 +16,6 @@ import {
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,
-	INodeParameterResourceLocator,
 	INodeParameters,
 	IPairedItemData,
 	IRunExecutionData,
@@ -25,7 +24,7 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeHelpers,
-	NodeParameterValue,
+	NodeParameterValueType,
 	Workflow,
 	WorkflowExecuteMode,
 } from '.';
@@ -179,13 +178,7 @@ export class WorkflowDataProxy {
 			get(target, name, receiver) {
 				name = name.toString();
 
-				let returnValue:
-					| INodeParameters
-					| NodeParameterValue
-					| NodeParameterValue[]
-					| INodeParameters[]
-					| INodeParameterResourceLocator
-					| INodeParameterResourceLocator[];
+				let returnValue: NodeParameterValueType;
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
