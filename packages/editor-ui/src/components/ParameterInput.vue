@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="isResourceLocatorParameter ? value.value : value"
+			:value="isResourceLocatorParameter ? value.value || '' : value"
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
@@ -17,10 +17,9 @@
 			<resource-locator
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
-				v-bind="$props"
-				:value="typeof value === 'string' ? value : value.value"
-				:mode="typeof value === 'string' ? '' : value.mode"
-				:rows="getArgument('rows')"
+				:parameter="parameter"
+				:value="value.value || value"
+				:mode="value.mode || ''"
 				:displayValue="displayValue"
 				:displayTitle="displayTitle"
 				:parameterInputClasses="parameterInputClasses"
@@ -350,6 +349,7 @@ export default mixins(
 			'activeDrop',
 			'droppable',
 			'forceShowExpression',
+			'isValueExpression',
 		],
 		data () {
 			return {
@@ -475,7 +475,7 @@ export default mixins(
 
 				let returnValue;
 				if (this.isValueExpression === false) {
-					returnValue = this.value;
+					returnValue = this.isResourceLocatorParameter ? this.value.value : this.value;
 				} else {
 					returnValue = this.expressionValueComputed;
 				}
@@ -503,14 +503,6 @@ export default mixins(
 					const rows = this.getArgument('rows');
 					if (rows === undefined || rows === 1) {
 						returnValue = returnValue.toString().replace(/\n/, '|');
-					}
-				}
-
-				if (this.isResourceLocatorParameter) {
-					if (this.isValueExpression === false) {
-						returnValue = this.value.value;
-					} else {
-						returnValue = this.expressionValueComputed;
 					}
 				}
 
@@ -542,16 +534,12 @@ export default mixins(
 				let computedValue: NodeParameterValue;
 
 				try {
-					if (this.isResourceLocatorParameter) {
-						computedValue = this.resolveExpression(this.value.value) as NodeParameterValue;
-					} else {
-						computedValue = this.resolveExpression(this.value) as NodeParameterValue;
-					}
+					computedValue = this.resolveExpression(this.value.value || this.value) as NodeParameterValue;
 				} catch (error) {
 					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
 				}
 
-				// Try to convert it into the corret type
+				// Try to convert it into the correct type
 				if (this.parameter.type === 'number') {
 					computedValue = parseInt(computedValue as string, 10);
 					if (isNaN(computedValue)) {
@@ -645,18 +633,6 @@ export default mixins(
 			},
 			isEditor (): boolean {
 				return ['code', 'json'].includes(this.editorType);
-			},
-			isValueExpression () {
-				if (this.parameter.noDataExpression === true) {
-					return false;
-				}
-				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
-					return true;
-				}
-				if (this.isResourceLocatorParameter && typeof this.value.value === 'string' && this.value.value.charAt(0) === '=') {
-					return true;
-				}
-				return false;
 			},
 			editorType (): string {
 				return this.getArgument('editor') as string;
@@ -954,11 +930,7 @@ export default mixins(
 				const prevValue = this.value;
 
 				if (command === 'resetValue') {
-					if (this.isResourceLocatorParameter) {
-						this.valueChanged({ value: this.parameter.default, mode: '' });
-					} else {
-						this.valueChanged(this.parameter.default);
-					}
+					this.valueChanged(this.parameter.default);
 				} else if (command === 'openExpression') {
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
@@ -982,7 +954,11 @@ export default mixins(
 							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
 					}
 
-					this.valueChanged(typeof value !== 'undefined' ? value : null);
+					if (this.isResourceLocatorParameter) {
+						this.valueChanged({ value, mode: this.value.mode });
+					} else {
+						this.valueChanged(typeof value !== 'undefined' ? value : null);
+					}
 				} else if (command === 'refreshOptions') {
 					this.loadRemoteParameterOptions();
 				}

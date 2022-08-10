@@ -13,6 +13,7 @@
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
+				:isValueExpression="isValueExpression"
 				@optionSelected="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -36,6 +37,7 @@
 							:droppable="droppable"
 							:activeDrop="activeDrop"
 							:forceShowExpression="forceShowExpression"
+							:isValueExpression="isValueExpression"
 							@valueChanged="valueChanged"
 							@focus="onFocus"
 							@blur="onBlur"
@@ -100,6 +102,18 @@ export default mixins(
 			},
 			isDropDisabled (): boolean {
 				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
+			},
+			isValueExpression () {
+				if (this.parameter.noDataExpression === true) {
+					return false;
+				}
+				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
+					return true;
+				}
+				if (typeof this.value.value === 'string' && this.value.value.charAt(0) === '=') {
+					return true;
+				}
+				return false;
 			},
 		},
 		methods: {

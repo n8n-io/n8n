@@ -36,7 +36,6 @@
 					v-if="isValueExpression || droppable || forceShowExpression"
 					:size="inputSize"
 					type="text"
-					:rows="rows"
 					:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
 					:title="displayTitle"
 					@keydown.stop
@@ -47,7 +46,6 @@
 					v-model="tempValue"
 					:size="inputSize"
 					type="text"
-					:rows="rows"
 					:value="displayValue"
 					:disabled="isReadOnly"
 					:title="displayTitle"
@@ -104,12 +102,6 @@ export default mixins().extend({
 			type: String,
 			default: '',
 		},
-		node: {
-			type: Object as () => INodeUi,
-			default() {
-				return this.$store.getters.activeNode;
-			},
-		},
 		inputSize: {
 			type: String,
 			default: 'small',
@@ -137,11 +129,9 @@ export default mixins().extend({
 		},
 		parameterInputClasses: {
 			type: Object,
-			default: {},
-		},
-		rows: {
-			type: Number,
-			default: 0,
+			default () {
+				return {};
+			},
 		},
 		isReadOnly: {
 			type: Boolean,

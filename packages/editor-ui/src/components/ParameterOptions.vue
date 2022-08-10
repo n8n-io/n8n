@@ -34,6 +34,7 @@ export default Vue.extend({
 		'isReadOnly',
 		'value',
 		'showOptions',
+		'isValueExpression',
 	],
 	computed: {
 		isDefault (): boolean {
@@ -60,18 +61,6 @@ export default Vue.extend({
 			}
 
 			return 'fixed';
-		},
-		isValueExpression () {
-			if (this.parameter.noDataExpression === true) {
-				return false;
-			}
-			if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
-				return true;
-			}
-			if (typeof this.value.value === 'string' && this.value.value.charAt(0) === '=') {
-				return true;
-			}
-			return false;
 		},
 		hasRemoteMethod (): boolean {
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
