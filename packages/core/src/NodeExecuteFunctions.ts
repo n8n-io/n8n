@@ -1309,6 +1309,7 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 
 	return returnData;
 }
+
 /**
  * Takes generic input data and brings it into the new json, pairedItem format n8n uses.
  * @export
