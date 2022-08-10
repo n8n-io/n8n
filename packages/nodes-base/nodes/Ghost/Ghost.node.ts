@@ -147,7 +147,7 @@ export class Ghost implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
@@ -155,6 +155,7 @@ export class Ghost implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const source = this.getNodeParameter('source', 0) as string;
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
@@ -176,10 +177,9 @@ export class Ghost implements INodeType {
 							} else {
 								endpoint = `/content/posts/${identifier}`;
 							}
+
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
-
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'getAll') {
@@ -197,9 +197,6 @@ export class Ghost implements INodeType {
 								responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
 								responseData = responseData.posts;
 							}
-
-							returnData.push.apply(returnData, responseData);
-
 						}
 					}
 				}
@@ -244,9 +241,7 @@ export class Ghost implements INodeType {
 							}
 
 							responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
-
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'delete') {
@@ -254,9 +249,6 @@ export class Ghost implements INodeType {
 							const postId = this.getNodeParameter('postId', i) as string;
 
 							responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
-
-							returnData.push({ success: true });
-
 						}
 
 						if (operation === 'get') {
@@ -277,9 +269,7 @@ export class Ghost implements INodeType {
 								endpoint = `/admin/posts/${identifier}`;
 							}
 							responseData = await ghostApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
-
+							responseData = responseData.posts;
 						}
 
 						if (operation === 'getAll') {
@@ -298,9 +288,6 @@ export class Ghost implements INodeType {
 								responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
 								responseData = responseData.posts;
 							}
-
-							returnData.push.apply(returnData, responseData);
-
 						}
 
 						if (operation === 'update') {
@@ -341,20 +328,25 @@ export class Ghost implements INodeType {
 							post.updated_at = posts[0].updated_at;
 
 							responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
-
-							returnData.push.apply(returnData, responseData.posts);
-
+							responseData = responseData.posts;
 						}
 					}
 				}
+
+				responseData = this.helpers.returnJsonArray(responseData);
+				const responseExecutionMetadata = this.helpers.constructExecutionMetaData({ item: i }, responseData);
+				returnData.push(...responseExecutionMetadata);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.returnJsonArray({ error: error.message, $json: this.getInputData(i), itemIndex: i });
+					const errorExecutionMetadata = this.helpers.constructExecutionMetaData({ item: i }, executionErrorData);
+					returnData.push(...errorExecutionMetadata);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return [returnData];
 	}
 }
