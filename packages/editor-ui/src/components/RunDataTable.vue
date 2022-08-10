@@ -260,7 +260,7 @@ export default Vue.extend({
 			}
 			return el.dataset.name;
 		},
-		getCellPathName(path: (string | number)[], colIndex: number) {
+		getCellPathName(path: Array<string | number>, colIndex: number) {
 			const lastKey = path[path.length - 1];
 			if (typeof lastKey === 'string') {
 				return lastKey;
@@ -272,7 +272,7 @@ export default Vue.extend({
 			const column = this.tableData.columns[colIndex];
 			return `${column}[${lastKey}]`;
 		},
-		getCellExpression(path: (string | number)[], colIndex: number) {
+		getCellExpression(path: Array<string | number>, colIndex: number) {
 			if (!this.node) {
 				return '';
 			}
@@ -334,7 +334,7 @@ export default Vue.extend({
 
 			this.onDragEnd(el.dataset.name || '', 'tree', el.dataset.depth || '0');
 		},
-		isDraggingKey(path: (string | number)[], colIndex: number) {
+		isDraggingKey(path: Array<string | number>, colIndex: number) {
 			if (!this.draggingPath) {
 				return;
 			}
