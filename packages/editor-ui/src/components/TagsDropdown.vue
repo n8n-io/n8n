@@ -77,7 +77,8 @@ export default mixins(showMessage).extend({
 		};
 	},
 	mounted() {
-		const select = this.$refs.select as (Vue | undefined);
+		// @ts-ignore
+		const select = (this.$refs.select && this.$refs.select.$refs && this.$refs.select.$refs.innerSelect) as (Vue | undefined);
 		if (select) {
 			const input = select.$refs.input as (Element | undefined);
 			if (input) {
@@ -200,10 +201,10 @@ export default mixins(showMessage).extend({
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.select as Vue;
-			const input = select && select.$refs.input as HTMLElement;
-			if (input && input.focus) {
-				input.focus();
+			const select = (this.$refs.select) as (Vue | undefined);
+			if (select) {
+				// @ts-ignore
+				select.focusOnInput();
 				this.focused = true;
 			}
 		},

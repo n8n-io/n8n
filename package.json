@@ -4,26 +4,28 @@
   "private": true,
   "homepage": "https://n8n.io",
   "scripts": {
-    "bootstrap": "lerna bootstrap --hoist --no-ci",
-    "build": "lerna exec npm run build",
-    "dev": "lerna exec npm run dev --parallel",
-    "clean:dist": "lerna exec -- rimraf ./dist",
-    "format": "lerna exec npm run format",
-    "lint": "lerna exec npm run lint",
-    "lintfix": "lerna exec npm run lintfix",
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "clean:dist": "npm exec -ws -- rimraf ./dist",
+    "format": "turbo run format",
+    "lint": "turbo run lint",
+    "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:windows": "cd packages/cli/bin && n8n",
-    "test": "lerna run test",
-    "watch": "lerna run --parallel watch",
+    "test": "turbo run test",
+    "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
-    "lerna": "^3.13.1",
     "rimraf": "^3.0.2",
-    "run-script-os": "^1.0.7"
+    "run-script-os": "^1.0.7",
+    "turbo": "1.2.15"
   },
-  "postcss": {}
+  "postcss": {},
+  "workspaces": [
+    "packages/*"
+  ]
 }
