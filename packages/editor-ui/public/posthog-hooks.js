@@ -110,7 +110,7 @@ window.featureFlag = {
 	reload() {
 		window.posthog.reloadFeatureFlags();
 	}
-};
+}
 
 const postHogUserNodesPanelSession = {
 	sessionId: '',
