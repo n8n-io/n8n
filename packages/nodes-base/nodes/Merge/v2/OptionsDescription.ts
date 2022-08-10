@@ -83,19 +83,6 @@ export const optionsDescription: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Disable Dot Notation',
-				name: 'disableDotNotation',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to disallow referencing child fields using `parent.child` in the field name',
-				displayOptions: {
-					show: {
-						'/mode': ['matchFields'],
-					},
-				},
-			},
-			{
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
@@ -123,6 +110,33 @@ export const optionsDescription: INodeProperties[] = [
 				displayOptions: {
 					show: {
 						'/mode': ['multiplex', 'matchPositions'],
+					},
+				},
+			},
+			{
+				displayName: 'Disable Dot Notation',
+				name: 'disableDotNotation',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to disallow referencing child fields using `parent.child` in the field name',
+				displayOptions: {
+					show: {
+						'/mode': ['matchFields'],
+					},
+				},
+			},
+			{
+				displayName: 'Include Any Unpaired Items',
+				name: 'includeUnpaired',
+				type: 'boolean',
+				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'If there are different numbers of items in input 1 and input 2, whether to include the ones at the end with nothing to pair with',
+				displayOptions: {
+					show: {
+						'/mode': ['matchPositions'],
 					},
 				},
 			},

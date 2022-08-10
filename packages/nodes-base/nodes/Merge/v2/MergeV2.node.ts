@@ -78,7 +78,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Fields to Match',
 			name: 'matchFields',
 			type: 'fixedCollection',
-			placeholder: 'Add Fields',
+			placeholder: 'Add Fields to Match',
 			default: { values: [{ field1: '', field2: '' }] },
 			typeOptions: {
 				multipleValues: true,
@@ -89,18 +89,22 @@ const versionDescription: INodeTypeDescription = {
 					name: 'values',
 					values: [
 						{
-							displayName: 'Input 1 Field Named',
+							displayName: 'Input 1 Field',
 							name: 'field1',
 							type: 'string',
 							default: '',
 							required: true,
+							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+							placeholder: 'id',
 						},
 						{
-							displayName: 'Input 2 Field Named',
+							displayName: 'Input 2 Field',
 							name: 'field2',
 							type: 'string',
 							default: '',
 							required: true,
+							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+							placeholder: 'id',
 						},
 					],
 				},
@@ -112,7 +116,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			displayName: 'Mode',
+			displayName: 'Output Type',
 			name: 'joinMode',
 			type: 'options',
 			options: [
@@ -150,16 +154,16 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
+					name: 'Both Inputs Merged Together',
+					value: 'both',
+				},
+				{
 					name: 'Input 1',
 					value: 'input1',
 				},
 				{
 					name: 'Input 2',
 					value: 'input2',
-				},
-				{
-					name: 'Both Inputs',
-					value: 'both',
 				},
 			],
 			default: 'input1',
@@ -194,22 +198,6 @@ const versionDescription: INodeTypeDescription = {
 				show: {
 					mode: ['matchFields'],
 					joinMode: ['enrichInput1', 'enrichInput2'],
-				},
-			},
-		},
-
-		// matchPositions ---------------------------------------------------------------
-		{
-			displayName: 'Include Any Unpaired Items',
-			name: 'includeUnpaired',
-			type: 'boolean',
-			default: false,
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-			description:
-				'If there are different numbers of items in input 1 and input 2, whether to include the ones at the end with nothing to pair with',
-			displayOptions: {
-				show: {
-					mode: ['matchPositions'],
 				},
 			},
 		},
@@ -332,8 +320,8 @@ export class MergeV2 implements INodeType {
 		}
 
 		if (mode === 'matchPositions') {
-			const includeUnpaired = this.getNodeParameter('includeUnpaired', 0) as boolean;
 			const options = this.getNodeParameter('options.clashHandling.values', 0, {}) as IDataObject;
+			const includeUnpaired = this.getNodeParameter('options.includeUnpaired', 0, false) as boolean;
 
 			let dataInput1 = this.getInputData(0);
 			let dataInput2 = this.getInputData(1);
