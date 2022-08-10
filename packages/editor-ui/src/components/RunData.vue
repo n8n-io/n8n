@@ -798,14 +798,16 @@ export default mixins(
 				});
 			},
 			onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
-				this.$telemetry.track('Ndv data pinning success', {
+				const telemetryPayload = {
 					pinning_source: source,
 					node_type: this.activeNode.type,
 					session_id: this.sessionId,
 					data_size: stringSizeInBytes(this.pinData),
 					view: this.displayMode,
 					run_index: this.runIndex,
-				});
+				};
+				this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+				this.$telemetry.track('Ndv data pinning success', telemetryPayload);
 			},
 			onDataPinningError(
 				{ errorType, source }: {
@@ -827,12 +829,15 @@ export default mixins(
 				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
 			) {
 				if (source === 'pin-icon-click') {
-					this.$telemetry.track('User clicked pin data icon', {
+					const telemetryPayload = {
 						node_type: this.activeNode.type,
 						session_id: this.sessionId,
 						run_index: this.runIndex,
 						view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
-					});
+					};
+
+					this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
+					this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 				}
 
 				this.updateNodeParameterIssues(this.node);

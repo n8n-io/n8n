@@ -55,6 +55,7 @@ export class Telemetry {
 			}
 
 			this.rudderStack = this.initRudderStack(key, url, logLevel);
+			this.postHog = this.initPostHog();
 
 			this.startPulse();
 		}
@@ -62,6 +63,10 @@ export class Telemetry {
 
 	private initRudderStack(key: string, url: string, logLevel: string): RudderStack {
 		return new RudderStack(key, url, { logLevel });
+	}
+
+	private initPostHog(): PostHog {
+		return new PostHog(config.getEnv('diagnostics.config.posthog.apiKey'));
 	}
 
 	private startPulse() {
@@ -163,7 +168,11 @@ export class Telemetry {
 		});
 	}
 
-	async track(eventName: string, properties: ITelemetryTrackProperties = {}): Promise<void> {
+	async track(
+		eventName: string,
+		properties: ITelemetryTrackProperties = {},
+		{ withPostHog } = { withPostHog: false }, // whether to additionally track with PostHog
+	): Promise<void> {
 		return new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				const { user_id } = properties;
@@ -173,15 +182,20 @@ export class Telemetry {
 					version_cli: this.versionCli,
 				};
 
-				this.rudderStack.track(
-					{
-						userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
-						anonymousId: '000000000000',
-						event: eventName,
-						properties: updatedProperties,
-					},
-					resolve,
-				);
+				const distinctId = `${this.instanceId}${user_id ? `#${user_id}` : ''}`;
+
+				const payload = {
+					userId: distinctId,
+					anonymousId: '000000000000',
+					event: eventName,
+					properties: updatedProperties,
+				};
+
+				if (withPostHog && this.postHog) {
+					this.postHog.capture({ ...payload, distinctId });
+				}
+
+				this.rudderStack.track(payload, resolve);
 			} else {
 				resolve();
 			}

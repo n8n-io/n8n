@@ -2608,7 +2608,8 @@ class App {
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-			if (this.frontendSettings.telemetry.enabled) {
+			// @TODO_PART_3: Re-enable, for now injecting in editor-ui/public/index.html
+			if (false && this.frontendSettings.telemetry.enabled) {
 				// @TODO_PART_3:
 				// Confirm if `autocapture` is needed for session recording, if so enable
 
@@ -2616,7 +2617,9 @@ class App {
 				// Set `disableSessionRecording` to `!['desktop_mac', 'desktop_win', 'cloud'].includes(deploymentType)`
 				// Set `debug` to `config.getEnv('logs.level') === 'debug'`
 
-				const postHogScript = telemetryScripts.postHog({
+				const { createPostHogLoadingScript, postHogHooksScript } = telemetryScripts;
+
+				const postHogLoadingScript = createPostHogLoadingScript({
 					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
 					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
 					autocapture: false,
@@ -2624,9 +2627,12 @@ class App {
 					debug: true,
 				});
 
-				const firstLinkedScript = '<link href="/js/';
+				const firstLinkedScriptSegment = '<link href="/js/';
 
-				readIndexFile = readIndexFile.replace(firstLinkedScript, postHogScript + firstLinkedScript);
+				readIndexFile = readIndexFile.replace(
+					firstLinkedScriptSegment,
+					postHogLoadingScript + postHogHooksScript + firstLinkedScriptSegment,
+				);
 			}
 
 			// Serve the altered index.html file separately

@@ -167,14 +167,16 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				this.$telemetry.track('User closed Expression Editor', {
+				const telemetryPayload = {
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.$store.getters.workflowId,
 					source: this.eventSource,
 					session_id: this.$store.getters['ui/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
 					has_mapping: hasExpressionMapping(this.value),
-				});
+				};
+				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
+				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},

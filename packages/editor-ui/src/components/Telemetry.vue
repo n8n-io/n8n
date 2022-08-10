@@ -4,10 +4,12 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 
 import { mapGetters } from 'vuex';
+import { externalHooks } from './mixins/externalHooks';
 
-export default Vue.extend({
+export default mixins(externalHooks).extend({
 	name: 'Telemetry',
 	data() {
 		return {
@@ -51,6 +53,10 @@ export default Vue.extend({
 		},
 		currentUserId(userId) {
 			this.$telemetry.identify(this.instanceId, userId);
+			this.$externalHooks().run('telemetry.currentUserIdChanged', {
+				instanceId: this.instanceId,
+				userId,
+			});
 		},
 		isTelemetryEnabledOnRoute(enabled) {
 			if (enabled) {
