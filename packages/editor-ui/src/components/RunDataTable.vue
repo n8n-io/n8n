@@ -3,11 +3,13 @@
 		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
 			<tr>
 				<th :class="$style.emptyCell"></th>
+				<th :class="$style.tableRightMargin"></th>
 			</tr>
 			<tr v-for="(row, index1) in tableData.data" :key="index1">
 				<td>
 					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
 				</td>
+				<td :class="$style.tableRightMargin"></td>
 			</tr>
 		</table>
 		<table :class="$style.table" v-else>
