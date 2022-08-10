@@ -7,7 +7,7 @@ import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '../Logger';
 
-import { GenericHelpers, ICredentialsResponse, ResponseHelper } from '..';
+import { GenericHelpers, ICredentialsDb, ICredentialsResponse, ResponseHelper } from '..';
 
 import type { CredentialRequest } from '../requests';
 import * as config from '../../config';
@@ -36,13 +36,18 @@ credentialsController.use('/', EECredentialsController);
 credentialsController.get(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
-		const filter = req.query.filter ? (JSON.parse(req.query.filter) as Record<string, string>) : {};
+		let credentials: ICredentialsDb[] | undefined;
 
-		const credentials = await CredentialsService.getFiltered(req.user, filter);
+		try {
+			credentials = await CredentialsService.getMany(req.user);
+		} catch (error) {
+			LoggerProxy.error('Request to list credentials failed', error as Error);
+			throw error;
+		}
 
 		return credentials.map((credential) => {
 			// eslint-disable-next-line no-param-reassign
-			credential.id = credential.id.toString();
+			credential.id = credential.id.toString(); // @TODO: Tech debt - stringify ID in entity
 			return credential as ICredentialsResponse;
 		});
 	}),
@@ -98,7 +103,7 @@ credentialsController.post(
 		);
 		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
 
-		return { id: id.toString(), ...rest };
+		return { id: id.toString(), ...rest, ownedBy: req.user };
 	}),
 );
 
@@ -110,9 +115,9 @@ credentialsController.delete(
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
-		const shared = await CredentialsService.getShared(req.user, credentialId);
+		const sharings = await CredentialsService.getSharings(req.user, credentialId);
 
-		if (!shared) {
+		if (!sharings) {
 			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -124,7 +129,7 @@ credentialsController.delete(
 			);
 		}
 
-		await CredentialsService.delete(shared.credentials);
+		await CredentialsService.delete(sharings.credentials);
 
 		return true;
 	}),
@@ -138,9 +143,9 @@ credentialsController.patch(
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
 		const { id: credentialId } = req.params;
 
-		const shared = await CredentialsService.getShared(req.user, credentialId);
+		const sharings = await CredentialsService.getSharings(req.user, credentialId);
 
-		if (!shared) {
+		if (!sharings) {
 			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -152,7 +157,9 @@ credentialsController.patch(
 			);
 		}
 
-		const { credentials: credential } = shared;
+		const { credentials: credential } = sharings;
+
+		const addPermissions = CredentialsService.createAddPermissions([sharings]);
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
 		const decryptedData = await CredentialsService.decrypt(encryptionKey, credential);
@@ -177,7 +184,7 @@ credentialsController.patch(
 		}
 
 		// Remove the encrypted data as it is not needed in the frontend
-		const { id, data, ...rest } = responseData;
+		const { id, data: _, ...rest } = addPermissions(responseData);
 
 		LoggerProxy.verbose('Credential updated', { credentialId });
 
@@ -195,37 +202,33 @@ credentialsController.get(
 	'/:id',
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
+		const includeDecryptedData = req.query.includeData === 'true';
 
-		const shared = await CredentialsService.getShared(req.user, credentialId, ['credentials']);
+		const sharings = await CredentialsService.getSharings(req.user, credentialId);
 
-		if (!shared) {
+		if (!sharings) {
 			throw new ResponseHelper.ResponseError(
-				`Credentials with ID "${credentialId}" could not be found.`,
+				`Credential with ID "${credentialId}" could not be found.`,
 				undefined,
 				404,
 			);
 		}
 
-		const { credentials: credential } = shared;
+		const { credentials: credential } = sharings;
 
-		if (req.query.includeData !== 'true') {
-			const { data, id, ...rest } = credential;
+		const addPermissions = CredentialsService.createAddPermissions([sharings]);
 
-			return {
-				id: id.toString(),
-				...rest,
-			};
+		if (!includeDecryptedData) {
+			const { id, data: _, ...rest } = addPermissions(credential);
+
+			return { id: id.toString(), ...rest };
 		}
 
-		const { data, id, ...rest } = credential;
+		const { id, data: _, ...rest } = addPermissions(credential);
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
 		const decryptedData = await CredentialsService.decrypt(encryptionKey, credential);
 
-		return {
-			id: id.toString(),
-			data: decryptedData,
-			...rest,
-		};
+		return { id: id.toString(), data: decryptedData, ...rest };
 	}),
 );
