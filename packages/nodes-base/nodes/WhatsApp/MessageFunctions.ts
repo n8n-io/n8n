@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
+	INodeParameters,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -26,7 +27,7 @@ export async function addTemplateComponents(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as object, 'template.components', components);
+	set(requestOptions.body as {}, 'template.components', components);
 	return requestOptions;
 }
 
@@ -71,9 +72,9 @@ export async function mediaUploadFromItem(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as object, `${operation}.id`, result.id);
+	set(requestOptions.body as {}, `${operation}.id`, result.id);
 	if (operation === 'document') {
-		set(requestOptions.body as object, `${operation}.filename`, mediaFileName || binaryFileName);
+		set(requestOptions.body as {}, `${operation}.filename`, mediaFileName || binaryFileName);
 	}
 
 	return requestOptions;
@@ -88,8 +89,8 @@ export async function templateInfo(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as Object, 'template.name', name);
-	set(requestOptions.body as Object, 'template.language.code', language);
+	set(requestOptions.body as {}, 'template.name', name);
+	set(requestOptions.body as {}, 'template.language.code', language);
 	return requestOptions;
 }
 
@@ -97,16 +98,21 @@ export async function componentsRequest(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const components = this.getNodeParameter('components') as any;
-	const componentsRet: any[] = [];
+	const components = this.getNodeParameter('components') as IDataObject;
+	const componentsRet: object[] = [];
 
-	for (const component of components.component) {
+	if (!components?.component) {
+		return requestOptions;
+	}
+
+	for (const component of components.component as IDataObject[]) {
 		const comp: any = {
 			type: component.type,
 		};
 
 		if (component.type === 'body') {
-			comp.parameters = component.bodyParameters.parameter.map((i: any) => {
+			comp.parameters = ((component.bodyParameters as IDataObject)!
+				.parameter as IDataObject[])!.map((i: IDataObject) => {
 				if (i.type === 'text') {
 					return i;
 				} else if (i.type === 'currency') {
@@ -130,9 +136,11 @@ export async function componentsRequest(
 		} else if (component.type === 'button') {
 			comp.index = component.index;
 			comp.sub_type = component.sub_type;
-			comp.parameters = component.buttonParameters.parameter;
+			comp.parameters = (component.buttonParameters as IDataObject).parameter;
 		} else if (component.type === 'header') {
-			comp.parameters = component.headerParameters.parameter.map((i: any) => {
+			comp.parameters = (
+				(component.headerParameters as IDataObject).parameter as IDataObject[]
+			).map((i: any) => {
 				if (i.type === 'image') {
 					return {
 						type: 'image',
@@ -152,7 +160,7 @@ export async function componentsRequest(
 		requestOptions.body = {};
 	}
 
-	set(requestOptions.body as Object, 'template.components', componentsRet);
+	set(requestOptions.body as {}, 'template.components', componentsRet);
 
 	return requestOptions;
 }
