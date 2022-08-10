@@ -97,7 +97,7 @@ window.featureFlag = {
 	 * @returns boolean | undefined
 	 */
 	isEnabled(flagName) {
-		// PostHog's' `isFeatureEnabled` misleadingly returns `false`
+		// PostHog's `isFeatureEnabled` misleadingly returns `false`
 		// for non-existent flag, so ensure `undefined`
 		if (this.get(flagName) === undefined) return undefined;
 
