@@ -487,6 +487,18 @@ export default mixins(
 				}
 			}
 		},
+		updated() {
+			this.$nextTick(() => {
+				const jsonValues = this.$el.querySelectorAll('.vjs-value');
+				const tableRows = this.$el.querySelectorAll('tbody tr');
+
+				const elements = [...jsonValues, ...tableRows].reduce<Element[]>((acc, cur) => [...acc, cur], []);
+
+				if (elements.length > 0) {
+					this.$externalHooks().run('runData.updated', { elements });
+				}
+			});
+		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();
 			this.eventBus.$off('data-pinning-error', this.onDataPinningError);

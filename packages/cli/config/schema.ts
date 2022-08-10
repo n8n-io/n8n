@@ -892,6 +892,7 @@ export const schema = {
 				apiKey: {
 					doc: 'API key for PostHog',
 					format: String,
+					// @TODO_ON_COMPLETION: Set random example
 					default: 'phc_QLECpA3yiIJcyafUv0pe6EoxvdfIDZ5A12dGpGXH4jV',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_KEY',
 				},
