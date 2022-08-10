@@ -2611,13 +2611,13 @@ class App {
 			// @TODO_ON_COMPLETION: Re-enable, for now injecting in
 			// editor-ui/public/index.html only for using editor-ui dev mode
 
+			// if (this.frontendSettings.telemetry.enabled) {
+			// 	const { createPostHogLoadingScript, postHogHooksScript } = telemetryScripts;
+
 			// @TODO_ON_COMPLETION: Set `disableSessionRecording` to
 			// `!['desktop_mac', 'desktop_win', 'cloud'].includes(deploymentType)`
 
 			// @TODO_ON_COMPLETION: Set `debug` to `config.getEnv('logs.level') === 'debug'`
-
-			// if (this.frontendSettings.telemetry.enabled) {
-			// 	const { createPostHogLoadingScript, postHogHooksScript } = telemetryScripts;
 
 			// 	const postHogLoadingScript = createPostHogLoadingScript({
 			// 		apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
