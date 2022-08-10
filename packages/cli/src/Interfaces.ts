@@ -167,6 +167,8 @@ export interface ICredentialsBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: number | string;
 	name: string;
+	ownedBy?: User; // injected by service
+	sharedWith?: Array<Partial<User>>; // injected by service
 }
 
 export interface ICredentialsResponse extends ICredentialsDb {

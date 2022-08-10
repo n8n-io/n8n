@@ -129,11 +129,10 @@ export class CredentialsService {
 	private static addPermissions(permissions: Permissions) {
 		return (credential: ICredentialsDb) => {
 			if (permissions[credential.id].ownedBy) {
-				// @ts-ignore @TODO: Type properly
 				credential.ownedBy = permissions[credential.id].ownedBy;
 			}
+
 			if (permissions[credential.id].sharedWith) {
-				// @ts-ignore @TODO: Type properly
 				credential.sharedWith = permissions[credential.id].sharedWith;
 			}
 
