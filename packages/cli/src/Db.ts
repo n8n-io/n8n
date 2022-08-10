@@ -183,6 +183,7 @@ export async function init(
 		}
 	}
 
+	// @ts-ignore
 	collections.Credentials = linkRepository(entities.CredentialsEntity);
 	collections.Execution = linkRepository(entities.ExecutionEntity);
 	collections.Workflow = linkRepository(entities.WorkflowEntity);
