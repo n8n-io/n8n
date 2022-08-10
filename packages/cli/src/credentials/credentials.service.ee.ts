@@ -11,7 +11,7 @@ export class EECredentialsService extends CredentialsService {
 		user: User,
 		credentialId: string,
 	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
-		const sharing = await this.getShared(user, credentialId, ['credentials'], {
+		const sharing = await this.getSharings(user, credentialId, ['credentials'], {
 			allowGlobalOwner: false,
 		});
 
