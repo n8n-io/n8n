@@ -2,6 +2,7 @@
 	<component :is="tag"
 		:class="{[$style.dragging]: isDragging }"
 		@mousedown="onDragStart"
+		ref="wrapper"
 	>
 		<slot :isDragging="isDragging"></slot>
 

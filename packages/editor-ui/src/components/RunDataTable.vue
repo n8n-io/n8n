@@ -87,6 +87,7 @@
 				:disabled="!mappingEnabled"
 				@dragstart="onCellDragStart"
 				@dragend="onCellDragEnd"
+				ref="draggable"
 			>
 				<template v-slot:preview="{ canDrop, el }">
 					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
@@ -192,6 +193,15 @@ export default Vue.extend({
 				this.showHintWithDelay = this.showHint;
 				this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
 			}, 500);
+		}
+
+		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
+			const tbody = (this.$refs.draggable as Vue).$refs.wrapper as HTMLElement;
+			if (tbody) {
+				this.$emit('mounted', {
+					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,
+				});
+			}
 		}
 	},
 	computed: {
