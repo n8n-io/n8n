@@ -218,9 +218,14 @@ credentialsController.get(
 		const [firstSharing] = sharings;
 		const { credentials: credential } = firstSharing;
 
+		const userIsEditor =
+			sharings.find(
+				(s) => s.credentialId.toString() === credentialId && s.role.name === 'editor',
+			) !== undefined;
+
 		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 
-		if (!includeDecryptedData) {
+		if (!includeDecryptedData || userIsEditor) {
 			const { id, data: _, ...rest } = addPermissions(credential);
 
 			return { id: id.toString(), ...rest };
