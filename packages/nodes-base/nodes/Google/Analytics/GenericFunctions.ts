@@ -1,27 +1,29 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
-	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function googleApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
-	const baseURL = resource === 'reportGA4' ? 'https://analyticsdata.googleapis.com' : 'https://analyticsreporting.googleapis.com';
+	const baseURL =
+		resource === 'reportGA4'
+			? 'https://analyticsdata.googleapis.com'
+			: 'https://analyticsreporting.googleapis.com';
 
 	let options: OptionsWithUri = {
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -41,14 +43,22 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleAnalyticsOAuth2', options);
-
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function googleApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const returnData: IDataObject[] = [];
 
@@ -70,7 +80,6 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 		}
 		responseData.rows = rows;
 		returnData.push(responseData);
-
 	} else {
 		do {
 			responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
@@ -81,8 +90,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 			}
 			returnData.push.apply(returnData, responseData[propertyName]);
 		} while (
-			(responseData['nextPageToken'] !== undefined &&
-				responseData['nextPageToken'] !== '') ||
+			(responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '') ||
 			(responseData[propertyName] &&
 				responseData[propertyName][0].nextPageToken &&
 				responseData[propertyName][0].nextPageToken !== undefined)
@@ -92,9 +100,13 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-export function simplify(responseData: any | [any]) { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function simplify(responseData: any | [any]) {
 	const response = [];
-	for (const { columnHeader: { dimensions }, data: { rows } } of responseData) {
+	for (const {
+		columnHeader: { dimensions },
+		data: { rows },
+	} of responseData) {
 		if (rows === undefined) {
 			// Do not error if there is no data
 			continue;
@@ -115,13 +127,17 @@ export function simplify(responseData: any | [any]) { // tslint:disable-line:no-
 	return response;
 }
 
-export function simplifyGA4 (response: IDataObject) {
-	if (!response.rows)  return [];
-	const dimensionHeaders = (response.dimensionHeaders as IDataObject[] || []).map(header => header.name as string);
-	const metricHeaders = (response.metricHeaders as IDataObject[] || []).map(header => header.name as string);
+export function simplifyGA4(response: IDataObject) {
+	if (!response.rows) return [];
+	const dimensionHeaders = ((response.dimensionHeaders as IDataObject[]) || []).map(
+		(header) => header.name as string,
+	);
+	const metricHeaders = ((response.metricHeaders as IDataObject[]) || []).map(
+		(header) => header.name as string,
+	);
 	const returnData: IDataObject[] = [];
 
-	(response.rows as IDataObject[]).forEach(row => {
+	(response.rows as IDataObject[]).forEach((row) => {
 		if (!row) return;
 		const returnRow: IDataObject = {};
 		dimensionHeaders.forEach((dimension, index) => {
@@ -136,13 +152,16 @@ export function simplifyGA4 (response: IDataObject) {
 	return returnData;
 }
 
-export function merge(responseData: [any]) { // tslint:disable-line:no-any
-	const response: { columnHeader: IDataObject, data: { rows: [] } } = {
+// tslint:disable-next-line:no-any
+export function merge(responseData: [any]) {
+	const response: { columnHeader: IDataObject; data: { rows: [] } } = {
 		columnHeader: responseData[0].columnHeader,
 		data: responseData[0].data,
 	};
 	const allRows = [];
-	for (const { data: { rows } } of responseData) {
+	for (const {
+		data: { rows },
+	} of responseData) {
 		allRows.push(...rows);
 	}
 	response.data.rows = allRows as [];
@@ -152,10 +171,10 @@ export function merge(responseData: [any]) { // tslint:disable-line:no-any
 export function processFilters(expression: IDataObject): IDataObject[] {
 	const processedFilters: IDataObject[] = [];
 
-	Object.entries(expression as IDataObject).forEach(entry => {
+	Object.entries(expression as IDataObject).forEach((entry) => {
 		const [filterType, filters] = entry;
 
-		(filters as IDataObject[]).forEach(filter => {
+		(filters as IDataObject[]).forEach((filter) => {
 			const { fieldName } = filter;
 			delete filter.fieldName;
 
@@ -182,9 +201,9 @@ export function processFilters(expression: IDataObject): IDataObject[] {
 
 			processedFilters.push({
 				filter: {
-						fieldName,
-						[filterType]: filter,
-					},
+					fieldName,
+					[filterType]: filter,
+				},
 			});
 		});
 	});

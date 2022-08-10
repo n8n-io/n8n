@@ -21,12 +21,11 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getDimensionsGA4',
-							loadOptionsDependsOn: [
-								'profileId',
-							],
+							loadOptionsDependsOn: ['profileId'],
 						},
 						default: '',
-						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -88,12 +87,11 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getDimensionsGA4',
-							loadOptionsDependsOn: [
-								'profileId',
-							],
+							loadOptionsDependsOn: ['profileId'],
 						},
 						default: '',
-						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Values',
@@ -120,12 +118,11 @@ const dimensionsFilterExpressions: INodeProperties[] = [
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getDimensionsGA4',
-							loadOptionsDependsOn: [
-								'profileId',
-							],
+							loadOptionsDependsOn: ['profileId'],
 						},
 						default: '',
-						description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value Type',
@@ -244,12 +241,11 @@ const metricsFilterExpressions: INodeProperties[] = [
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getMetricsGA4',
-							loadOptionsDependsOn: [
-								'profileId',
-							],
+							loadOptionsDependsOn: ['profileId'],
 						},
 						default: '',
-						description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value Type',
@@ -291,12 +287,11 @@ const metricsFilterExpressions: INodeProperties[] = [
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getMetricsGA4',
-							loadOptionsDependsOn: [
-								'profileId',
-							],
+							loadOptionsDependsOn: ['profileId'],
 						},
 						default: '',
-						description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value Type',

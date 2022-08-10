@@ -1,11 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	dimensionFilterField,
-	metricsFilterField,
-} from './FiltersDescription';
+import { dimensionFilterField, metricsFilterField } from './FiltersDescription';
 
 export const reportOperations: INodeProperties[] = [
 	{
@@ -15,10 +10,7 @@ export const reportOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-					'reportGA4',
-				],
+				resource: ['report', 'reportGA4'],
 			},
 		},
 		options: [
@@ -34,7 +26,6 @@ export const reportOperations: INodeProperties[] = [
 ];
 
 export const reportFields: INodeProperties[] = [
-
 	//------------------------ Reporting API V4 ------------------------//
 	{
 		displayName: 'View Name or ID',
@@ -47,18 +38,15 @@ export const reportFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
 		placeholder: '123456',
-		description: 'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-		//------------------------ Data API V1 ------------------------//
+	//------------------------ Data API V1 ------------------------//
 	{
 		displayName: 'Property Name or ID',
 		name: 'propertyId',
@@ -70,31 +58,23 @@ export const reportFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reportGA4',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['reportGA4'],
+				operation: ['get'],
 			},
 		},
 		placeholder: '123456',
-		description: 'The Property ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The Property ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-	 //-------------------------------------------------------------------//
+	//-------------------------------------------------------------------//
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'report',
-					'reportGA4',
-				],
+				operation: ['get'],
+				resource: ['report', 'reportGA4'],
 			},
 		},
 		default: false,
@@ -106,16 +86,9 @@ export const reportFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'report',
-					'reportGA4',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['get'],
+				resource: ['report', 'reportGA4'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -131,13 +104,8 @@ export const reportFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'report',
-					'reportGA4',
-				],
+				operation: ['get'],
+				resource: ['report', 'reportGA4'],
 			},
 		},
 		default: true,
@@ -151,12 +119,8 @@ export const reportFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -197,7 +161,8 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Dimension',
-				description: 'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
+				description:
+					'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
 				options: [
 					{
 						displayName: 'Dimension',
@@ -211,7 +176,8 @@ export const reportFields: INodeProperties[] = [
 									loadOptionsMethod: 'getDimensions',
 								},
 								default: '',
-								description: 'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -240,7 +206,8 @@ export const reportFields: INodeProperties[] = [
 									loadOptionsMethod: 'getDimensions',
 								},
 								default: '',
-								description: 'Name of the dimension to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Name of the dimension to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							// https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Operator
 							{
@@ -290,7 +257,8 @@ export const reportFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: 'ga:newUsers',
-								description: 'String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against',
+								description:
+									'String or <a href="https://support.google.com/analytics/answer/1034324?hl=en">regular expression</a> to match against',
 							},
 						],
 					},
@@ -301,7 +269,8 @@ export const reportFields: INodeProperties[] = [
 				name: 'hideTotals',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to hide the total of all metrics for all the matching rows, for every date range',
+				description:
+					'Whether to hide the total of all metrics for all the matching rows, for every date range',
 			},
 			{
 				displayName: 'Hide Value Ranges',
@@ -315,7 +284,8 @@ export const reportFields: INodeProperties[] = [
 				name: 'includeEmptyRows',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the response exclude rows if all the retrieved metrics are equal to zero',
+				description:
+					'Whether the response exclude rows if all the retrieved metrics are equal to zero',
 			},
 			{
 				displayName: 'Metrics',
@@ -337,14 +307,16 @@ export const reportFields: INodeProperties[] = [
 								name: 'alias',
 								type: 'string',
 								default: '',
-								description: 'An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting.',
+								description:
+									'An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting.',
 							},
 							{
 								displayName: 'Expression',
 								name: 'expression',
 								type: 'string',
 								default: 'ga:newUsers',
-								description: '<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>.',
+								description:
+									'<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>.',
 							},
 							{
 								displayName: 'Formatting Type',
@@ -397,12 +369,8 @@ export const reportFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'reportGA4',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['reportGA4'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -411,7 +379,8 @@ export const reportFields: INodeProperties[] = [
 				name: 'currencyCode',
 				type: 'string',
 				default: '',
-				description: 'A currency code in ISO4217 format, such as "AED", "USD", "JPY". If the field is empty, the report uses the property\'s default currency.',
+				description:
+					'A currency code in ISO4217 format, such as "AED", "USD", "JPY". If the field is empty, the report uses the property\'s default currency.',
 			},
 			{
 				displayName: 'Date Ranges',
@@ -446,7 +415,8 @@ export const reportFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								hint: 'Optional name to this date range',
-								description: 'If set, cannot begin with date_range_ or RESERVED_. If not set, date ranges are named by their zero based index in the request: date_range_0, date_range_1, etc.',
+								description:
+									'If set, cannot begin with date_range_ or RESERVED_. If not set, date ranges are named by their zero based index in the request: date_range_0, date_range_1, etc.',
 							},
 						],
 					},
@@ -461,7 +431,8 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Dimension',
-				description: 'Dimensions are attributes of your data. For example, the dimension city indicates the city from which an event originates. Dimension values in report responses are strings; for example, the city could be "Paris" or "New York". Requests are allowed up to 9 dimensions.',
+				description:
+					'Dimensions are attributes of your data. For example, the dimension city indicates the city from which an event originates. Dimension values in report responses are strings; for example, the city could be "Paris" or "New York". Requests are allowed up to 9 dimensions.',
 				options: [
 					{
 						displayName: 'Dimension',
@@ -473,12 +444,11 @@ export const reportFields: INodeProperties[] = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDimensionsGA4',
-									loadOptionsDependsOn: [
-										'profileId',
-									],
+									loadOptionsDependsOn: ['profileId'],
 								},
 								default: '',
-								description: 'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -515,7 +485,8 @@ export const reportFields: INodeProperties[] = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Metric',
-				description: 'The quantitative measurements of a report. For example, the metric eventCount is the total number of events. Requests are allowed up to 10 metrics.',
+				description:
+					'The quantitative measurements of a report. For example, the metric eventCount is the total number of events. Requests are allowed up to 10 metrics.',
 				options: [
 					{
 						displayName: 'Metric',
@@ -527,12 +498,11 @@ export const reportFields: INodeProperties[] = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getMetricsGA4',
-									loadOptionsDependsOn: [
-										'profileId',
-									],
+									loadOptionsDependsOn: ['profileId'],
 								},
 								default: '',
-								description: 'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -544,7 +514,8 @@ export const reportFields: INodeProperties[] = [
 				name: 'keepEmptyRows',
 				type: 'boolean',
 				default: false,
-				description: 'Whether false or unspecified, each row with all metrics equal to 0 will not be returned. If true, these rows will be returned if they are not separately removed by a filter.',
+				description:
+					'Whether false or unspecified, each row with all metrics equal to 0 will not be returned. If true, these rows will be returned if they are not separately removed by a filter.',
 			},
 			{
 				displayName: 'Order By',
@@ -574,12 +545,11 @@ export const reportFields: INodeProperties[] = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getMetricsGA4',
-									loadOptionsDependsOn: [
-										'profileId',
-									],
+									loadOptionsDependsOn: ['profileId'],
 								},
 								default: '',
-								description: 'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -600,12 +570,11 @@ export const reportFields: INodeProperties[] = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getDimensionsGA4',
-									loadOptionsDependsOn: [
-										'profileId',
-									],
+									loadOptionsDependsOn: ['profileId'],
 								},
 								default: '',
-								description: 'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Sorts by metric values. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Order Type',
@@ -621,7 +590,8 @@ export const reportFields: INodeProperties[] = [
 									{
 										name: 'Case Insensitive Alphanumeric',
 										value: 'CASE_INSENSITIVE_ALPHANUMERIC',
-										description: 'Case insensitive alphanumeric sort by lower case Unicode code point',
+										description:
+											'Case insensitive alphanumeric sort by lower case Unicode code point',
 									},
 									{
 										name: 'Numeric',
@@ -643,10 +613,10 @@ export const reportFields: INodeProperties[] = [
 				name: 'returnPropertyQuota',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return the current state of this Analytics Property\'s quota. Quota is returned in PropertyQuota.',
+				description:
+					"Whether to return the current state of this Analytics Property's quota. Quota is returned in PropertyQuota.",
 				hint: 'Simplify need to be turned off for this to be shown in output',
 			},
 		],
 	},
 ];
-

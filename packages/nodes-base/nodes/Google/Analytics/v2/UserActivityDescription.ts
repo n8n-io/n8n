@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userActivityOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userActivityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userActivity',
-				],
+				resource: ['userActivity'],
 			},
 		},
 		options: [
@@ -39,16 +35,13 @@ export const userActivityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userActivity',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['userActivity'],
+				operation: ['search'],
 			},
 		},
 		placeholder: '123456',
-		description: 'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'User ID',
@@ -58,12 +51,8 @@ export const userActivityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userActivity',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['userActivity'],
+				operation: ['search'],
 			},
 		},
 		placeholder: '123456',
@@ -75,12 +64,8 @@ export const userActivityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'userActivity',
-				],
+				operation: ['search'],
+				resource: ['userActivity'],
 			},
 		},
 		default: false,
@@ -92,15 +77,9 @@ export const userActivityFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'userActivity',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['search'],
+				resource: ['userActivity'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -118,12 +97,8 @@ export const userActivityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'userActivity',
-				],
+				operation: ['search'],
+				resource: ['userActivity'],
 			},
 		},
 		options: [
