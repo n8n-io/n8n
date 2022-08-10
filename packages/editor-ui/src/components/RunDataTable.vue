@@ -269,6 +269,10 @@ export default Vue.extend({
 			return `${column}[${lastKey}]`;
 		},
 		getCellExpression(path: (string | number)[], colIndex: number) {
+			if (!this.node) {
+				return '';
+			}
+
 			const expr = path.reduce((accu: string, key: string | number) => {
 				if (typeof key === 'number') {
 					return `${accu}[${key}]`;
@@ -278,7 +282,11 @@ export default Vue.extend({
 			}, '');
 			const column = this.tableData.columns[colIndex];
 
-			return `{{ $json["${column}"]${expr} }}`;
+			if (this.distanceFromActive === 1) {
+				return `{{ $json["${column}"]${expr} }}`;
+			}
+
+			return `{{ $node["${this.node.name}"].json["${column}"]${expr} }}`;
 		},
 		isEmpty(value: unknown) {
 			return (
@@ -485,7 +493,7 @@ export default Vue.extend({
 
 .value {
 	line-height: var(--font-line-height-loose);
-	// word-break: break-all;
+	word-break: break-all;
 }
 
 .hoverableRow {
