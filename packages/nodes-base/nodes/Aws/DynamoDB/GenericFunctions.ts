@@ -1,7 +1,3 @@
-import { URL } from 'url';
-
-import { sign } from 'aws4';
-
 import {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -9,7 +5,12 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	IHttpRequestOptions,
+	INodeExecutionData,
+} from 'n8n-workflow';
 
 import { IRequestBody } from './types';
 
@@ -38,32 +39,22 @@ export async function awsApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
-
-	// Concatenate path and instantiate URL object so it parses correctly query strings
-	const endpoint = new URL(getEndpointForService(service, credentials) + path);
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials
-			? `${credentials.sessionToken}`.trim()
-			: undefined,
-	};
-	const options = sign(
-		{
-			// @ts-ignore
-			uri: endpoint,
+	const requestOptions = {
+		qs: {
 			service,
-			region: credentials.region as string,
-			method,
-			path: '/',
-			headers: { ...headers },
-			body: JSON.stringify(body),
+			path,
 		},
-		securityHeaders,
-	);
+		method,
+		body: JSON.stringify(body),
+		url: '',
+		headers,
+		region: credentials?.region as string,
+	} as IHttpRequestOptions;
 
 	try {
-		return JSON.parse(await this.helpers.request!(options));
+		return JSON.parse(
+			await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions),
+		);
 	} catch (error) {
 		const errorMessage =
 			(error.response && error.response.body && error.response.body.message) ||

@@ -60,10 +60,15 @@ export async function awsApiRequest(
 		method,
 		uri: endpoint.href,
 		body: signOpts.body,
+		qs: {
+			service,
+			method,
+			path,
+		},
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this,'aws',options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}
