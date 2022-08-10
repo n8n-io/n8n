@@ -125,7 +125,6 @@
 										data-target="mappable"
 										:data-name="getCellPathName(path, index2)"
 										:data-value="getCellExpression(path, index2)"
-										:data-col="index2"
 										:data-depth="path.length"
 										>{{ label || $locale.baseText('runData.unnamedField') }}</span
 									>
@@ -321,8 +320,7 @@ export default Vue.extend({
 		onCellDragEnd(el: HTMLElement) {
 			this.draggingPath = null;
 
-			const col = el.dataset.col;
-			this.onDragEnd(col? this.tableData.columns[parseInt(col, 10)] : '', 'tree', el.dataset.depth || '');
+			this.onDragEnd(el.dataset.name || '', 'tree', el.dataset.depth || '0');
 		},
 		isDraggingKey(path: (string | number)[], colIndex: number) {
 			if (!this.draggingPath) {
