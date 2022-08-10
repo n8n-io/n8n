@@ -35,14 +35,14 @@ export class WhatsApp implements INodeType {
 				options: [
 					{
 						name: 'Message',
-						value: 'messages',
+						value: 'message',
 					},
 					{
 						name: 'Media',
 						value: 'media',
 					},
 				],
-				default: 'messages',
+				default: 'message',
 			},
 			...messageFields,
 			...mediaFields,

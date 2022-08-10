@@ -33,6 +33,11 @@ export const messageFields: INodeProperties[] = [
 				action: 'Send image',
 			},
 			{
+				name: 'Send Location',
+				value: 'location',
+				action: 'Send location',
+			},
+			{
 				name: 'Send Template',
 				value: 'template',
 				action: 'Send template',
@@ -58,7 +63,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: ['messages'],
+				resource: ['message'],
 			},
 		},
 	},
@@ -76,7 +81,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: ['messages'],
+				resource: ['message'],
 			},
 		},
 	},
@@ -130,7 +135,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: ['messages'],
+				resource: ['message'],
 			},
 		},
 	},
@@ -149,13 +154,102 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: ['messages'],
+				resource: ['message'],
 			},
 		},
 	},
 ];
 
 export const messageTypeFields: INodeProperties[] = [
+		// ----------------------------------
+	//         type: location
+	// ----------------------------------
+	{
+		displayName: 'Longitude',
+		name: 'longitude',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: ['location'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'location.longitude',
+			},
+		},
+	},
+	{
+		displayName: 'Latitude',
+		name: 'latitude',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: ['location'],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'location.latitude',
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'location',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Address',
+				name: 'address',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'location.address',
+					},
+				},
+				hint: 'Only displayed if name is present',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'location.name',
+					},
+				},
+			},
+		],
+	},
 	// ----------------------------------
 	//         type: text
 	// ----------------------------------
@@ -393,7 +487,7 @@ export const messageTypeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['messages'],
+				resource: ['message'],
 				operation: mediaTypes,
 			},
 		},
@@ -438,7 +532,7 @@ export const messageTypeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['template'],
-				resource: ['messages'],
+				resource: ['message'],
 			},
 		},
 		typeOptions: {
@@ -494,7 +588,7 @@ export const messageTypeFields: INodeProperties[] = [
 	//	displayOptions: {
 	//		show: {
 	//			operation: ['template'],
-	//			resource: ['messages'],
+	//			resource: ['message'],
 	//		},
 	//	},
 	//	description:
@@ -518,7 +612,7 @@ export const messageTypeFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['template'],
-				resource: ['messages'],
+				resource: ['message'],
 			},
 		},
 		routing: {
@@ -871,7 +965,7 @@ export const messageTypeFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['messages'],
+				resource: ['message'],
 				operation: ['text'],
 			},
 		},
