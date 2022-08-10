@@ -362,8 +362,8 @@ export default mixins(
 							output_first_connector_runs: this.maxOutputRun,
 							selected_view_inputs: this.isTriggerNode
 								? 'trigger'
-								: this.$store.getters['ui/inputPanelDispalyMode'],
-							selected_view_outputs: this.$store.getters['ui/outputPanelDispalyMode'],
+								: this.$store.getters['ui/inputPanelDisplayMode'],
+							selected_view_outputs: this.$store.getters['ui/outputPanelDisplayMode'],
 							input_connectors: this.parentNodes.length,
 							output_connectors:
 								outogingConnections && outogingConnections.main && outogingConnections.main.length,
