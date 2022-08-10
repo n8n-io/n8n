@@ -22,7 +22,7 @@
 				<DraggableTarget
 					type="mapping"
 					:disabled="isDropDisabled"
-					:sticky="!isResourceLocator"
+					:sticky="true"
 					:stickyOffset="4"
 					@drop="onDrop"
 				>
