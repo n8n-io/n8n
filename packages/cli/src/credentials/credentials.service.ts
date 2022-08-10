@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 import { Credentials, UserSettings } from 'n8n-core';
@@ -26,10 +27,10 @@ import { CredentialRequest } from '../requests';
 import { externalHooks } from '../Server';
 
 export class CredentialsService {
-	static async getShared(
+	static async getSharings(
 		user: User,
 		credentialId: number | string,
-		relations: string[] | undefined = ['credentials'],
+		relations: string[] | undefined = ['credentials', 'role', 'user'],
 		{ allowGlobalOwner }: { allowGlobalOwner: boolean } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
 		const options: FindOneOptions = {
@@ -53,8 +54,8 @@ export class CredentialsService {
 		return Db.collections.SharedCredentials.findOne(options);
 	}
 
-	static async getFiltered(user: User, filter: Record<string, string>): Promise<ICredentialsDb[]> {
-		const selectFields: Array<keyof ICredentialsDb> = [
+	static async getMany(user: User): Promise<ICredentialsDb[]> {
+		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
 			'name',
 			'type',
@@ -62,35 +63,79 @@ export class CredentialsService {
 			'createdAt',
 			'updatedAt',
 		];
-		try {
-			if (user.globalRole.name === 'owner') {
-				return await Db.collections.Credentials.find({
-					select: selectFields,
-					where: filter,
-				});
-			}
-			const shared = await Db.collections.SharedCredentials.find({
-				where: whereClause({
-					user,
-					entityType: 'credentials',
-				}),
-			});
 
-			if (!shared.length) return [];
+		const sharings = await Db.collections.SharedCredentials.find({
+			relations: ['role', 'user'],
+			where: whereClause({
+				user,
+				entityType: 'credentials',
+			}),
+		});
 
-			return await Db.collections.Credentials.find({
-				select: selectFields,
-				where: {
-					// The ordering is important here. If id is before the object spread then
-					// a user can control the id field
-					...filter,
-					id: In(shared.map(({ credentialId }) => credentialId)),
-				},
-			});
-		} catch (error) {
-			LoggerProxy.error('Request to list credentials failed', error as Error);
-			throw error;
+		if (!sharings.length) return [];
+
+		const addPermissions = CredentialsService.createAddPermissions(sharings);
+
+		/**
+		 * If owner request, return all credentials.
+		 */
+		if (user.globalRole.name === 'owner') {
+			const allCreds = await Db.collections.Credentials.find({ select: SELECT_FIELDS });
+
+			return allCreds.map(addPermissions);
 		}
+
+		/**
+		 * If member request, return all credentials if owned by or shared with member.
+		 */
+		const memberCreds = await Db.collections.Credentials.find({
+			select: SELECT_FIELDS,
+			where: {
+				id: In(sharings.map(({ credentialId }) => credentialId)),
+			},
+		});
+
+		return memberCreds.map(addPermissions);
+	}
+
+	static createAddPermissions(sharings: SharedCredentials[]) {
+		const permissions = sharings.reduce<Permissions>((acc, cur) => {
+			if (!acc[cur.credentialId]) {
+				acc[cur.credentialId] = {};
+			}
+
+			if (cur.role.name === 'owner') {
+				acc[cur.credentialId].ownedBy = cur.user;
+			}
+
+			if (cur.role.name === 'editor') {
+				if (!acc[cur.credentialId].sharedWith) {
+					acc[cur.credentialId].sharedWith = [];
+				}
+				const { id, email, firstName, lastName } = cur.user;
+
+				acc[cur.credentialId].sharedWith?.push({ id, email, firstName, lastName });
+			}
+
+			return acc;
+		}, {});
+
+		return CredentialsService.addPermissions(permissions);
+	}
+
+	private static addPermissions(permissions: Permissions) {
+		return (credential: ICredentialsDb) => {
+			if (permissions[credential.id].ownedBy) {
+				// @ts-ignore @TODO: Type properly
+				credential.ownedBy = permissions[credential.id].ownedBy;
+			}
+			if (permissions[credential.id].sharedWith) {
+				// @ts-ignore @TODO: Type properly
+				credential.sharedWith = permissions[credential.id].sharedWith;
+			}
+
+			return credential;
+		};
 	}
 
 	static createCredentialsFromCredentialsEntity(
@@ -266,3 +311,7 @@ export class CredentialsService {
 		return helper.testCredentials(user, credentials.type, credentials, nodeToTestWith);
 	}
 }
+
+type Permissions = {
+	[credentialId: string]: { ownedBy?: User; sharedWith?: Array<Partial<User>> };
+};
