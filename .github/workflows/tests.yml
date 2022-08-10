@@ -21,8 +21,8 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - name: npm install, build, and test
       run: |
+        npm install -g npm@latest
         npm install
-        npm run bootstrap
         npm run build --if-present
         npm test
         npm run lint

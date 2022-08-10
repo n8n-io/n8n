@@ -94,7 +94,7 @@
     "uuid": "^8.3.2",
     "vue": "~2.6.11",
     "vue-agile": "^2.0.0",
-    "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
+    "vue-cli-plugin-webpack-bundle-analyzer": "^4.0.0",
     "vue-json-pretty": "1.7.1",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",

@@ -1,11 +1,12 @@
-<template functional>
-	<button :class="$style.button" @click="(e) => listeners.click && listeners.click(e)">
-		<span :class="$style.text" v-text="props.label" />
+<template>
+	<button :class="['n8n-square-button', $style.button]" v-on="$listeners">
+		<span :class="$style.text">{{label}}</span>
 	</button>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+
 export default Vue.extend({
 	name: 'n8n-square-button',
 	props: {
