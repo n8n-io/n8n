@@ -617,12 +617,12 @@ export function getNodeParameters(
 		if (!['collection', 'fixedCollection'].includes(nodeProperties.type)) {
 			// Is a simple property so can be set as it is
 
-			// If it's a resource locator parameter, find it's mode and add to list
-			if (nodeProperties.type === 'resourceLocator') {
-				const parameterMode = nodeValues[`${nodeProperties.name}.mode`];
-				if (parameterMode) {
-					nodeParameters[`${nodeProperties.name}.mode`] = parameterMode;
-				}
+			// If it's a resource locator parameter initialize it's value to object if it's first type value is fetched
+			if (
+				nodeProperties.type === 'resourceLocator' &&
+				typeof nodeValues[nodeProperties.name] !== 'object'
+			) {
+				nodeValues[nodeProperties.name] = { value: '', mode: '' };
 			}
 
 			if (duplicateParameterNames.includes(nodeProperties.name)) {

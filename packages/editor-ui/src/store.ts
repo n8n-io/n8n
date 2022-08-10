@@ -532,17 +532,6 @@ export const store = new Vuex.Store({
 			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
-		// Selected resource locator modes for each parameter
-		setNodeParameterMode(state, payload: { nodeName: string, paramName: string, mode: string }) {
-			const node = state.workflow.nodes.find(node => {
-				return node.name === payload.nodeName;
-			});
-			if (node) {
-				Vue.set(node.parameters, payload.paramName + '.mode', payload.mode );
-				state.stateIsDirty = true;
-			}
-		},
-
 		// Node-View
 		setNodeViewMoveInProgress(state, value: boolean) {
 			state.nodeViewMoveInProgress = value;
@@ -984,14 +973,6 @@ export const store = new Vuex.Store({
 
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
-		},
-
-		getNodeParameterLocatorMode: (state, getters) => (nodeName: string, paramName: string): string => {
-			const node: INodeUi = getters.nodesByName[nodeName];
-			if (node && node.parameters[`${paramName}.mode`]) {
-				return node.parameters[`${paramName}.mode`]!.toString() || '';
-			}
-			return '';
 		},
 	},
 });

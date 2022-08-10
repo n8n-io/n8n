@@ -65,7 +65,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping } from './helpers';
+import { hasExpressionMapping, isValueExpression } from './helpers';
 
 export default mixins(
 	showMessage,
@@ -103,17 +103,8 @@ export default mixins(
 			isDropDisabled (): boolean {
 				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
 			},
-			isValueExpression () {
-				if (this.parameter.noDataExpression === true) {
-					return false;
-				}
-				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
-					return true;
-				}
-				if (typeof this.value.value === 'string' && this.value.value.charAt(0) === '=') {
-					return true;
-				}
-				return false;
+			isValueExpression (): boolean {
+				return isValueExpression(this.parameter, this.value);
 			},
 		},
 		methods: {

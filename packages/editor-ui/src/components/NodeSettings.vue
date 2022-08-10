@@ -491,8 +491,7 @@ export default mixins(
 					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false, node);
 
 					for (const key of Object.keys(nodeParameters as object)) {
-						// Skip non-exiting keys and resource loader '.mode' parameters
-						if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined && !key.endsWith('.mode')) {
+						if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
 							this.setValue(`parameters.${key}`, nodeParameters[key] as string);
 						}
 					}
