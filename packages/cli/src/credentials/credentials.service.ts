@@ -86,7 +86,7 @@ export class CredentialsService {
 		}
 
 		/**
-		 * If member request, return all credentials if owned by or shared with member.
+		 * If member request, return credentials owned by or shared with member.
 		 */
 		const memberCreds = await Db.collections.Credentials.find({
 			select: SELECT_FIELDS,
