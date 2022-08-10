@@ -14,6 +14,7 @@ const postHogUtils = {
 
 		console.log(`Hook fired: ${name}`);
 	},
+
 	identify(meta) {
 		this.log('identify', { isMethod: true });
 
@@ -68,6 +69,43 @@ const postHogUtils = {
 
 	appendNoCapture(originalClasses, noCaptureClass = POSTHOG_NO_CAPTURE_CLASS) {
 		return [originalClasses, noCaptureClass].join(' ');
+	}
+}
+
+window.featureFlag = {
+	/**
+	 * @returns string[]
+	 */
+	getAll() {
+		return window.posthog.feature_flags.getFlags();
+	},
+
+	/**
+	 * @returns boolean | undefined
+	 */
+	get(flagName) {
+		return window.posthog.getFeatureFlag(flagName);
+	},
+
+	/**
+	 * By default, this function will send a `$feature_flag_called` event
+	 * to your instance every time it's called so you're able to do analytics.
+	 * You can disable this by passing `{ send_event: false }` as second arg.
+	 *
+	 * https://posthog.com/docs/integrate/client/js
+	 *
+	 * @returns boolean | undefined
+	 */
+	isEnabled(flagName) {
+		// PostHog's `isFeatureEnabled` misleadingly returns `false`
+		// for non-existent flag, so ensure `undefined`
+		if (this.get(flagName) === undefined) return undefined;
+
+		return window.posthog.isFeatureEnabled(flagName);
+	},
+
+	reload() {
+		window.posthog.reloadFeatureFlags();
 	}
 }
 

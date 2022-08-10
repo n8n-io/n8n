@@ -1965,6 +1965,9 @@ export default mixins(
 				this.$store.commit('setStateDirty', false);
 
 				this.setZoomLevel(1);
+
+				if (!window.featureFlag.isEnabled('show-welcome-note')) return;
+
 				setTimeout(() => {
 					this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0]});
 					// For novice users (onboardingFlowEnabled == true)
