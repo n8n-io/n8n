@@ -520,7 +520,8 @@ export async function pgUpdate(
 				return 'v.' + key + ' = t.' + key;
 			}).join(' AND ')
 			+ returning;
-		return await db.any(query);
+		const updateResult = await db.any(query);
+		return updateResult;
 	} else {
 		const where = ' WHERE ' +
 		updateKeys.map(updateKey => pgp.as.name(updateKey.name) +
@@ -531,7 +532,9 @@ export async function pgUpdate(
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
-						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
+						const transactionResult = await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
+						const executionData = this.helpers.constructExecutionMetaData({ item: i }, this.helpers.returnJsonArray(transactionResult));
+						result.push(...executionData);
 					} catch (err) {
 						if (continueOnFail === false) throw err;
 						result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
@@ -546,10 +549,12 @@ export async function pgUpdate(
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
-						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
+						const independentResult = await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
+						const executionData = this.helpers.constructExecutionMetaData({ item: i }, this.helpers.returnJsonArray(independentResult));
+						result.push(...executionData)
 					} catch (err) {
 						if (continueOnFail === false) throw err;
-						result.push({ ...itemCopy, code: (err as JsonObject).code, message: (err as JsonObject).message });
+						result.push({ json: { ...items[i].json }, code: (err as JsonObject).code, message: (err as JsonObject).message, pairedItem: { item: i } } as INodeExecutionData);
 					}
 				}
 				return result;
