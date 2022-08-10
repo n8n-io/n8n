@@ -1,16 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	IBinaryData,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
-
-import { mediaTypes, messageFields, messageTypeFields } from './MessagesDescription';
-import { OptionsWithUri } from 'request';
+import { messageFields, messageTypeFields } from './MessagesDescription';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
 
 export class WhatsApp implements INodeType {
@@ -18,7 +8,7 @@ export class WhatsApp implements INodeType {
 		displayName: 'WhatsApp',
 		name: 'whatsApp',
 		icon: 'file:whatsapp.svg',
-		group: ['transform'],
+		group: ['output'],
 		version: 1,
 		subtitle: '={{ $parameter["resource"] + ": " + $parameter["operation"] }}',
 		description: 'Access WhatsApp API',
@@ -55,8 +45,8 @@ export class WhatsApp implements INodeType {
 				default: 'messages',
 			},
 			...messageFields,
-			...messageTypeFields,
 			...mediaFields,
+			...messageTypeFields,
 			...mediaTypeFields,
 		],
 	};

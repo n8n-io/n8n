@@ -111,7 +111,7 @@ export async function componentsRequest(
 
 		if (component.type === 'body') {
 			comp.parameters = ((component.bodyParameters as IDataObject)!
-				.parameter as IDataObject[])!.map((i: IDataObject) => {
+				.parameter as IDataObject[] || [])!.map((i: IDataObject) => {
 				if (i.type === 'text') {
 					return i;
 				} else if (i.type === 'currency') {
@@ -120,22 +120,22 @@ export async function componentsRequest(
 						currency: {
 							code: i.code,
 							fallback_value: i.fallback_value,
-							amount_1000: i.amount_1000,
+							amount_1000: (i.amount_1000 as number * 1000),
 						},
 					};
 				} else if (i.type === 'date_time') {
 					return {
 						type: 'date_time',
 						date_time: {
-							fallback_value: i.fallback_value,
+							fallback_value: i.date_time,
 						},
 					};
 				}
 			});
 		} else if (component.type === 'button') {
-			comp.index = component.index;
+			comp.index = component.index?.toString();
 			comp.sub_type = component.sub_type;
-			comp.parameters = (component.buttonParameters as IDataObject).parameter;
+			comp.parameters = [(component.buttonParameters as IDataObject).parameter];
 		} else if (component.type === 'header') {
 			comp.parameters = (
 				(component.headerParameters as IDataObject).parameter as IDataObject[]
@@ -151,7 +151,6 @@ export async function componentsRequest(
 				return i;
 			});
 		}
-
 		componentsRet.push(comp);
 	}
 

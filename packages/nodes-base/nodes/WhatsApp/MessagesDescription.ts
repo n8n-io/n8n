@@ -1,10 +1,5 @@
-import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
-import {
-	addTemplateComponents,
-	componentsRequest,
-	mediaUploadFromItem,
-	templateInfo,
-} from './MessageFunctions';
+import { INodeProperties } from 'n8n-workflow';
+import { componentsRequest, mediaUploadFromItem, templateInfo } from './MessageFunctions';
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
@@ -172,6 +167,9 @@ export const messageTypeFields: INodeProperties[] = [
 		description: 'The body of the message (max 4096 characters)',
 		displayOptions: {
 			show: {
+				resource: [
+					'message',
+				],
 				operation: ['text'],
 			},
 		},
@@ -630,12 +628,24 @@ export const messageTypeFields: INodeProperties[] = [
 										placeholder: '',
 									},
 									{
+										displayName: 'Date Time',
+										name: 'date_time',
+										type: 'dateTime',
+										displayOptions: {
+											show: {
+												type: ['date_time'],
+											},
+										},
+										default: '',
+										placeholder: '',
+									},
+									{
 										displayName: 'Fallback Value',
 										name: 'fallback_value',
 										type: 'string',
 										displayOptions: {
 											show: {
-												type: ['currency', 'date_time'],
+												type: ['currency'],
 											},
 										},
 										default: '',
@@ -686,8 +696,7 @@ export const messageTypeFields: INodeProperties[] = [
 						name: 'buttonParameters',
 						type: 'fixedCollection',
 						typeOptions: {
-							sortable: true,
-							multipleValues: true,
+							multipleValues: false,
 						},
 						displayOptions: {
 							show: {
@@ -769,11 +778,71 @@ export const messageTypeFields: INodeProperties[] = [
 										type: 'options',
 										options: [
 											{
+												name: 'Text',
+												value: 'text',
+											},
+											{
+												name: 'Currency',
+												value: 'currency',
+											},
+											{
+												name: 'Date Time',
+												value: 'date_time',
+											},
+											{
 												name: 'Image',
 												value: 'image',
 											},
 										],
-										default: 'image',
+										default: 'text',
+									},
+									{
+										displayName: 'Text',
+										name: 'text',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: ['text'],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Currency Code',
+										name: 'code',
+										type: 'options',
+										options: currencies,
+										displayOptions: {
+											show: {
+												type: ['currency'],
+											},
+										},
+										default: '',
+										placeholder: 'USD',
+									},
+									{
+										displayName: 'Amount',
+										name: 'amount_1000',
+										type: 'number',
+										displayOptions: {
+											show: {
+												type: ['currency'],
+											},
+										},
+										default: '',
+										placeholder: '',
+									},
+									{
+										displayName: 'Date Time',
+										name: 'date_time',
+										type: 'dateTime',
+										displayOptions: {
+											show: {
+												type: ['date_time'],
+											},
+										},
+										default: '',
+										placeholder: '',
 									},
 									{
 										displayName: 'Image Link',
