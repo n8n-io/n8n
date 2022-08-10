@@ -25,7 +25,7 @@
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
 								@dragstart="onDragStart"
-								@dragend="() => onDragEnd(column)"
+								@dragend="() => onDragEnd(column, 'column')"
 							>
 								<template v-slot:preview="{ canDrop }">
 									<div
@@ -124,6 +124,8 @@
 										data-target="mappable"
 										:data-name="getCellPathName(path, index2)"
 										:data-value="getCellExpression(path, index2)"
+										:data-col="index2"
+										:data-depth="path.length"
 										>{{ label || $locale.baseText('runData.unnamedField') }}</span
 									>
 								</template>
@@ -308,9 +310,9 @@ export default Vue.extend({
 		},
 		onCellDragEnd(el: HTMLElement) {
 			this.draggingPath = null;
-			if (el.dataset.path) {
-				this.onDragEnd(el.dataset.path);
-			}
+
+			const col = el.dataset.col;
+			this.onDragEnd(col? this.tableData.columns[parseInt(col, 10)] : '', 'tree', el.dataset.depth || '');
 		},
 		isDraggingKey(path: (string | number)[], colIndex: number) {
 			if (!this.draggingPath) {
@@ -319,7 +321,7 @@ export default Vue.extend({
 
 			return this.draggingPath === this.getCellExpression(path, colIndex);
 		},
-		onDragEnd(column: string) {
+		onDragEnd(column: string, src: string, depth = '0') {
 			setTimeout(() => {
 				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
 				this.$telemetry.track('User dragged data for mapping', {
@@ -328,8 +330,9 @@ export default Vue.extend({
 					src_nodes_back: this.distanceFromActive,
 					src_run_index: this.runIndex,
 					src_runs_total: this.totalRuns,
+					src_field_nest_level: parseInt(depth, 10),
 					src_view: 'table',
-					src_element: 'column',
+					src_element: src,
 					success: false,
 					...mappingTelemetry,
 				});
