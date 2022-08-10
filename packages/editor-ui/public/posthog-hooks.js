@@ -15,10 +15,6 @@ const postHogUtils = {
 		console.log(`Hook fired: ${name}`);
 	},
 
-	/**
-	 * https://github.com/rudderlabs/rudder-sdk-js/blob/master/dist/rudder-sdk-js/index.d.ts
-	 */
-
 	identify(meta) {
 		this.log('identify', { isMethod: true });
 
