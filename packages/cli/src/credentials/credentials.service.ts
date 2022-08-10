@@ -26,6 +26,8 @@ import { validateEntity } from '../GenericHelpers';
 import { CredentialRequest } from '../requests';
 import { externalHooks } from '../Server';
 
+import type { Permissions } from './credentials.types';
+
 export class CredentialsService {
 	/**
 	 * Retrieve all the sharings matching a user (in any role) and a credential.
@@ -313,7 +315,3 @@ export class CredentialsService {
 		return helper.testCredentials(user, credentials.type, credentials, nodeToTestWith);
 	}
 }
-
-type Permissions = {
-	[credentialId: string]: { ownedBy?: User; sharedWith?: Array<Partial<User>> };
-};
