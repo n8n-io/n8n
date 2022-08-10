@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="{[$style.sticky]: true, [$style.clickable]: !isResizing}"
+		:class="{'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing}"
 		:style="styles"
 		@keydown.prevent
 	>
@@ -183,8 +183,11 @@ export default mixins(Locale).extend({
 	watch: {
 		editMode(newMode, prevMode) {
 			setTimeout(() => {
-				if (newMode && !prevMode && this.$refs.input && this.$refs.input.$refs && this.$refs.input.$refs.textarea) {
-					const textarea = this.$refs.input.$refs.textarea;
+				if (newMode &&
+					!prevMode &&
+					this.$refs.input
+				) {
+					const textarea = this.$refs.input;
 					if (this.defaultText === this.content) {
 						textarea.select();
 					}
