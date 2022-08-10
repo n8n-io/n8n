@@ -21,14 +21,14 @@ export class HighLevelApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '=bearer {{$credentials?.apiKey}}',
+				Authorization: '=Bearer {{$credentials.apiKey}}',
 			},
 		},
 	};
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://rest.gohighlevel.com/v1',
-			url: '/timezones/',
+			url: '/custom-values/',
 		},
 	};
 }
