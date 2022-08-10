@@ -299,20 +299,29 @@ export class Autopilot implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					{ item: i },
+					this.helpers.returnJsonArray(responseData),
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.toString() });
+					const errorData = this.helpers.returnJsonArray({
+						$error: error,
+						json: this.getInputData(i),
+						itemIndex: i,
+					});
+					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						errorData,
+					);
+					responseData.push(...exectionErrorWithMetaData);
 					continue;
 				}
 
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData as INodeExecutionData[]];
 	}
 }
