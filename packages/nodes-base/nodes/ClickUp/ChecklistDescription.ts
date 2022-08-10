@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const checklistOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const checklistOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'checklist',
-				],
+				resource: ['checklist'],
 			},
 		},
 		options: [
@@ -40,7 +36,6 @@ export const checklistOperations: INodeProperties[] = [
 ];
 
 export const checklistFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                checklist:create                            */
 	/* -------------------------------------------------------------------------- */
@@ -51,12 +46,8 @@ export const checklistFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklist',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['checklist'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -68,12 +59,8 @@ export const checklistFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklist',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['checklist'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -88,12 +75,8 @@ export const checklistFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklist',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['checklist'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -108,12 +91,8 @@ export const checklistFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklist',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['checklist'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -126,12 +105,8 @@ export const checklistFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'checklist',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['checklist'],
+				operation: ['update'],
 			},
 		},
 		options: [

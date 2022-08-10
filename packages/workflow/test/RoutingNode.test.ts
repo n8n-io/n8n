@@ -613,6 +613,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1659,6 +1660,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1831,6 +1833,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 

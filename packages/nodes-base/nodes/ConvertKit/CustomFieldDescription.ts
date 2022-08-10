@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const customFieldOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const customFieldOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customField',
-				],
+				resource: ['customField'],
 			},
 		},
 		options: [
@@ -53,13 +49,8 @@ export const customFieldFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customField',
-				],
-				operation: [
-					'update',
-					'delete',
-				],
+				resource: ['customField'],
+				operation: ['update', 'delete'],
 			},
 		},
 		default: '',
@@ -72,13 +63,8 @@ export const customFieldFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customField',
-				],
-				operation: [
-					'update',
-					'create',
-				],
+				resource: ['customField'],
+				operation: ['update', 'create'],
 			},
 		},
 		default: '',
@@ -90,12 +76,8 @@ export const customFieldFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'customField',
-				],
+				operation: ['getAll'],
+				resource: ['customField'],
 			},
 		},
 		default: false,
@@ -107,15 +89,9 @@ export const customFieldFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'customField',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['customField'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

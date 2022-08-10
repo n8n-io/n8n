@@ -37,7 +37,6 @@ import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
 	FindManyOptions,
-	getConnection,
 	getConnectionManager,
 	In,
 	IsNull,
@@ -50,10 +49,8 @@ import cookieParser from 'cookie-parser';
 import history from 'connect-history-api-fallback';
 import os from 'os';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import clientOAuth2 from 'client-oauth2';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import csrf from 'csrf';
-import requestPromise, { OptionsWithUrl } from 'request-promise-native';
+import axios, { AxiosRequestConfig, AxiosPromise } from 'axios';
 import { createHmac, randomBytes } from 'crypto';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
@@ -88,11 +85,9 @@ import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
-import querystring from 'querystring';
 import promClient, { Registry } from 'prom-client';
 import * as Queue from './Queue';
 import {
-	LoadNodesAndCredentials,
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
@@ -150,8 +145,6 @@ import { userManagementRouter } from './UserManagement';
 import { resolveJwt } from './UserManagement/auth/jwt';
 import { User } from './databases/entities/User';
 import type {
-	AuthenticatedRequest,
-	CredentialRequest,
 	ExecutionRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
@@ -171,7 +164,6 @@ import {
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import { loadPublicApiVersions } from './PublicApi';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 
 require('body-parser-xml')(bodyParser);
 
@@ -793,11 +785,10 @@ class App {
 							400,
 						);
 					}
-					const data = await requestPromise.get(req.query.url as string);
-
 					let workflowData: IWorkflowResponse | undefined;
 					try {
-						workflowData = JSON.parse(data);
+						const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
+						workflowData = data;
 					} catch (error) {
 						throw new ResponseHelper.ResponseError(
 							`The URL does not point to valid JSON file!`,
@@ -933,6 +924,8 @@ class App {
 				// check credentials for old format
 				await WorkflowHelpers.replaceInvalidCredentials(updateData);
 
+				WorkflowHelpers.addNodeIds(updateData);
+
 				await this.externalHooks.run('workflow.update', [updateData]);
 
 				if (shared.workflow.active) {
@@ -1002,7 +995,7 @@ class App {
 					);
 				}
 
-				if (updatedWorkflow.tags.length && tags?.length) {
+				if (updatedWorkflow.tags?.length && tags?.length) {
 					updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
 						requestOrder: tags,
 					});
@@ -1714,11 +1707,13 @@ class App {
 				// @ts-ignore
 				options.headers = data;
 
-				const response = await requestPromise(options);
+				const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
 
 				// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-				const responseJson = querystring.parse(response);
+				const paramsParser = new URLSearchParams(response);
+
+				const responseJson = Object.fromEntries(paramsParser.entries());
 
 				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
 					responseJson.oauth_token
@@ -1813,10 +1808,10 @@ class App {
 						timezone,
 					);
 
-					const options: OptionsWithUrl = {
+					const options: AxiosRequestConfig = {
 						method: 'POST',
 						url: _.get(oauthCredentials, 'accessTokenUrl') as string,
-						qs: {
+						params: {
 							oauth_token,
 							oauth_verifier,
 						},
@@ -1825,7 +1820,7 @@ class App {
 					let oauthToken;
 
 					try {
-						oauthToken = await requestPromise(options);
+						oauthToken = await axios.request(options);
 					} catch (error) {
 						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
 							userId: req.user?.id,
@@ -1841,7 +1836,9 @@ class App {
 
 					// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-					const oauthTokenJson = querystring.parse(oauthToken);
+					const paramParser = new URLSearchParams(oauthToken.data);
+
+					const oauthTokenJson = Object.fromEntries(paramParser.entries());
 
 					decryptedDataOriginal.oauthTokenData = oauthTokenJson;
 
@@ -1940,7 +1937,7 @@ class App {
 							filterToAdd = { [key]: value };
 						}
 
-						Object.assign(findOptions.where, filterToAdd);
+						Object.assign(findOptions.where!, filterToAdd);
 					});
 
 					const rangeQuery: string[] = [];
@@ -1966,7 +1963,7 @@ class App {
 					}
 
 					if (rangeQuery.length) {
-						Object.assign(findOptions.where, {
+						Object.assign(findOptions.where!, {
 							id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
 						});
 					}
@@ -2288,10 +2285,10 @@ class App {
 						if (req.query.filter) {
 							const { workflowId } = JSON.parse(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-								Object.assign(findOptions.where, { workflowId });
+								Object.assign(findOptions.where!, { workflowId });
 							}
 						} else {
-							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
+							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
 						}
 
 						const executions = await Db.collections.Execution.find(findOptions);

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -14,10 +12,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	dropcontactApiRequest,
-	validateCredentials,
-} from './GenericFunction';
+import { dropcontactApiRequest, validateCredentials } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
 	description: INodeTypeDescription = {
@@ -82,12 +77,8 @@ export class Dropcontact implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'contact',
-						],
-						operation: [
-							'fetchRequest',
-						],
+						resource: ['contact'],
+						operation: ['fetchRequest'],
 					},
 				},
 				default: '',
@@ -99,12 +90,8 @@ export class Dropcontact implements INodeType {
 				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						resource: [
-							'contact',
-						],
-						operation: [
-							'enrich',
-						],
+						resource: ['contact'],
+						operation: ['enrich'],
 					},
 				},
 				default: '',
@@ -115,17 +102,14 @@ export class Dropcontact implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'contact',
-						],
-						operation: [
-							'enrich',
-						],
+						resource: ['contact'],
+						operation: ['enrich'],
 					},
 				},
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.',
+				description:
+					'When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -135,12 +119,8 @@ export class Dropcontact implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'contact',
-						],
-						operation: [
-							'enrich',
-						],
+						resource: ['contact'],
+						operation: ['enrich'],
 					},
 				},
 				options: [
@@ -212,12 +192,8 @@ export class Dropcontact implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						resource: [
-							'contact',
-						],
-						operation: [
-							'enrich',
-						],
+						resource: ['contact'],
+						operation: ['enrich'],
 					},
 				},
 				placeholder: 'Add Option',
@@ -232,20 +208,20 @@ export class Dropcontact implements INodeType {
 						},
 						displayOptions: {
 							show: {
-								'/simplify': [
-									false,
-								],
+								'/simplify': [false],
 							},
 						},
 						default: 45,
-						description: 'When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step.',
+						description:
+							'When not simplifying the response, data will be fetched in two steps. This parameter controls how long to wait (in seconds) before trying the second step.',
 					},
 					{
 						displayName: 'French Company Enrich',
 						name: 'siren',
 						type: 'boolean',
 						default: false,
-						description: 'Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies.',
+						description:
+							'Whether you want the <a href="https://en.wikipedia.org/wiki/SIREN_code" target="_blank">SIREN number</a>, NAF code, TVA number, company address and informations about the company leader. Only applies to french companies.',
 					},
 					{
 						displayName: 'Language',
@@ -271,7 +247,10 @@ export class Dropcontact implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async dropcontactApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async dropcontactApiCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
@@ -317,22 +296,36 @@ export class Dropcontact implements INodeType {
 					data.push(body);
 				}
 
-				responseData = await dropcontactApiRequest.call(this, 'POST', '/batch', { data, siren, language }, {}) as { request_id: string, error: string, success: boolean };
+				responseData = (await dropcontactApiRequest.call(
+					this,
+					'POST',
+					'/batch',
+					{ data, siren, language },
+					{},
+				)) as { request_id: string; error: string; success: boolean };
 
 				if (!responseData.success) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: responseData.reason || 'invalid request' });
 					} else {
-						throw new NodeApiError(this.getNode(), { error: responseData.reason || 'invalid request' });
+						throw new NodeApiError(this.getNode(), {
+							error: responseData.reason || 'invalid request',
+						});
 					}
 				}
 
 				if (simplify === false) {
 					const waitTime = this.getNodeParameter('options.waitTime', 0, 45) as number;
 					// tslint:disable-next-line: no-any
-					const delay = (ms: any) => new Promise(res => setTimeout(res, ms * 1000));
+					const delay = (ms: any) => new Promise((res) => setTimeout(res, ms * 1000));
 					await delay(waitTime);
-					responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${responseData.request_id}`, {}, {});
+					responseData = await dropcontactApiRequest.call(
+						this,
+						'GET',
+						`/batch/${responseData.request_id}`,
+						{},
+						{},
+					);
 					if (!responseData.success) {
 						if (this.continueOnFail()) {
 							responseData.push({ error: responseData.reason });
@@ -353,12 +346,20 @@ export class Dropcontact implements INodeType {
 			if (operation === 'fetchRequest') {
 				for (let i = 0; i < entryData.length; i++) {
 					const requestId = this.getNodeParameter('requestId', i) as string;
-					responseData = await dropcontactApiRequest.call(this, 'GET', `/batch/${requestId}`, {}, {}) as { request_id: string, error: string, success: boolean };
+					responseData = (await dropcontactApiRequest.call(
+						this,
+						'GET',
+						`/batch/${requestId}`,
+						{},
+						{},
+					)) as { request_id: string; error: string; success: boolean };
 					if (!responseData.success) {
 						if (this.continueOnFail()) {
 							responseData.push({ error: responseData.reason || 'invalid request' });
 						} else {
-							throw new NodeApiError(this.getNode(), { error: responseData.reason || 'invalid request' });
+							throw new NodeApiError(this.getNode(), {
+								error: responseData.reason || 'invalid request',
+							});
 						}
 					}
 					returnData.push(...responseData.data);

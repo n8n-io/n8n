@@ -1,11 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeSimpleField,
-	petitionAdditionalFieldsOptions,
-} from './SharedFields';
+import { makeSimpleField, petitionAdditionalFieldsOptions } from './SharedFields';
 
 export const petitionOperations: INodeProperties[] = [
 	{
@@ -15,9 +10,7 @@ export const petitionOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
+				resource: ['petition'],
 			},
 		},
 		options: [
@@ -59,12 +52,8 @@ export const petitionFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['petition'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -77,12 +66,8 @@ export const petitionFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['petition'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -95,12 +80,8 @@ export const petitionFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['petition'],
+				operation: ['create'],
 			},
 		},
 		options: petitionAdditionalFieldsOptions,
@@ -118,12 +99,8 @@ export const petitionFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['petition'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -140,12 +117,8 @@ export const petitionFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['petition'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -160,15 +133,9 @@ export const petitionFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['petition'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -186,12 +153,8 @@ export const petitionFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['petition'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -204,12 +167,8 @@ export const petitionFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['petition'],
+				operation: ['update'],
 			},
 		},
 		options: petitionAdditionalFieldsOptions,

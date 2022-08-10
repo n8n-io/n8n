@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const jobOperations: INodeProperties[] = [
 	{
@@ -12,9 +10,7 @@ export const jobOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'job',
-				],
+				resource: ['job'],
 			},
 		},
 		options: [
@@ -43,13 +39,8 @@ export const jobFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'job',
-				],
-				operation: [
-					'get',
-					'report',
-				],
+				resource: ['job'],
+				operation: ['get', 'report'],
 			},
 		},
 		default: '',
