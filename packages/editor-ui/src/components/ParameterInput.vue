@@ -18,7 +18,7 @@
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				:parameter="parameter"
-				:value="value.value || value"
+				:value="typeof value === 'string' ? value : value.value"
 				:mode="value.mode || ''"
 				:displayValue="displayValue"
 				:displayTitle="displayTitle"
