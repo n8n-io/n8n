@@ -47,7 +47,7 @@ credentialsController.get(
 
 		return credentials.map((credential) => {
 			// eslint-disable-next-line no-param-reassign
-			credential.id = credential.id.toString(); // @TODO: Tech debt - stringify ID in entity
+			credential.id = credential.id.toString(); // @TODO_TECH_DEBT: Stringify ID with entity transformer
 			return credential as ICredentialsResponse;
 		});
 	}),
