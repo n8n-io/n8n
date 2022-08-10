@@ -66,6 +66,21 @@ const module: Module<ICredentialsState, IRootState> = {
 		enableOAuthCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			// enable oauth event to track change between modals
 		},
+		addCredentialSharee(state: ICredentialsState, payload: { credentialId: string, sharee: IUser }) {
+			Vue.set(
+				state.credentials[payload.credentialId],
+				'sharedWith',
+				(state.credentials[payload.credentialId].sharedWith || []).concat([payload.sharee]),
+			);
+		},
+		removeCredentialSharee(state: ICredentialsState, payload: { credentialId: string, sharee: IUser }) {
+			Vue.set(
+				state.credentials[payload.credentialId],
+				'sharedWith',
+				state.credentials[payload.credentialId].sharedWith
+					.filter((sharee: IUser) => sharee.id !== payload.sharee.id),
+			);
+		},
 	},
 	getters: {
 		allCredentialTypes(state: ICredentialsState): ICredentialType[] {
@@ -173,6 +188,15 @@ const module: Module<ICredentialsState, IRootState> = {
 			const credential = await createNewCredential(context.rootGetters.getRestApiContext, data);
 			context.commit('upsertCredential', credential);
 
+			if (data.sharedWith) {
+				data.sharedWith.forEach((sharee) => {
+					context.dispatch('addCredentialSharee', {
+						credentialId: credential.id,
+						user: sharee,
+					});
+				});
+			}
+
 			return credential;
 		},
 		updateCredential: async (context: ActionContext<ICredentialsState, IRootState>, params: {data: ICredentialsDecrypted, id: string}) => {
@@ -213,29 +237,33 @@ const module: Module<ICredentialsState, IRootState> = {
 				return DEFAULT_CREDENTIAL_NAME;
 			}
 		},
-		addCredentialSharee: async (context: ActionContext<ICredentialsState, IRootState>, payload: { userId: string; credentialId: string; }) => {
+		addCredentialSharee: async (context: ActionContext<ICredentialsState, IRootState>, payload: { user: IUser; credentialId: string; }) => {
 			await addCredentialSharee(
 				context.rootGetters.getRestApiContext,
 				payload.credentialId,
 				{
-					shareeId: payload.userId,
+					shareeId: payload.user.id,
 				},
 			);
 
-			// @TODO Set credential sharee in state
-			// context.commit('setCredentials', credentials);
+			context.commit('addCredentialSharee', {
+				credentialId: payload.credentialId,
+				sharee: payload.user,
+			});
 		},
-		removeCredentialSharee: async (context: ActionContext<ICredentialsState, IRootState>, payload:  { userId: string; credentialId: string; }) => {
+		removeCredentialSharee: async (context: ActionContext<ICredentialsState, IRootState>, payload:  { user: IUser; credentialId: string; }) => {
 			await removeCredentialSharee(
 				context.rootGetters.getRestApiContext,
 				payload.credentialId,
 				{
-					shareeId: payload.userId,
+					shareeId: payload.user.id,
 				},
 			);
 
-			// @TODO Remove credential sharee from state
-			// context.commit('setCredentials', credentials);
+			context.commit('removeCredentialSharee', {
+				credentialId: payload.credentialId,
+				sharee: payload.user,
+			});
 		},
 	},
 };

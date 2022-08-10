@@ -31,7 +31,12 @@
 			</n8n-menu>
 		</template>
 
-		<template v-if="!loading">
+		<div v-if="loading">
+			<n8n-loading :class="$style['header-loading']" variant="custom" />
+			<n8n-loading :class="[$style['card-loading'], 'mt-l', 'mb-2xs']" variant="custom" />
+			<n8n-loading :class="$style['card-loading']" variant="custom" />
+		</div>
+		<template v-else>
 			<div v-if="credentials.length === 0">
 				<n8n-action-box
 					emoji="👋"
@@ -324,6 +329,14 @@ export default mixins(
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.header-loading {
+	height: 42px;
+}
+
+.card-loading {
+	height: 76px;
 }
 </style>
 

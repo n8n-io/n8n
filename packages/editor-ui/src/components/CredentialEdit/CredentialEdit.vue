@@ -92,7 +92,9 @@
 					:features="[EnterpriseEditionFeature.CredentialsSharing]"
 				>
 					<CredentialSharing
-						:currentCredential="currentCredential"
+						:credential="currentCredential || credentialData"
+						:temporary="!currentCredential"
+						@change="onChangeSharedWith"
 					/>
 				</enterprise-edition>
 				<div v-else-if="activeTab === 'details'" :class="$style.mainContent">
@@ -113,7 +115,7 @@ import Vue from 'vue';
 
 import {
 	ICredentialsDecryptedResponse,
-	ICredentialsResponse,
+	ICredentialsResponse, IUser,
 } from '@/Interface';
 
 import {
@@ -142,6 +144,7 @@ import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import {EnterpriseEditionFeature} from "@/constants";
+import {IDataObject} from "n8n-workflow";
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -510,6 +513,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 				};
 			}
 		},
+		onChangeSharedWith(sharees: IDataObject[]) {
+			Vue.set(this.credentialData, 'sharedWith', sharees);
+			this.hasUnsavedChanges = true;
+		},
 		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
 
@@ -629,12 +636,18 @@ export default mixins(showMessage, nodeHelpers).extend({
 				null,
 			);
 
+			let sharedWith: IDataObject[] = [];
+			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.CredentialsSharing)) {
+				sharedWith = this.credentialData.sharedWith as IDataObject[];
+			}
+
 			const credentialDetails: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess,
+				sharedWith,
 			};
 
 			let credential;

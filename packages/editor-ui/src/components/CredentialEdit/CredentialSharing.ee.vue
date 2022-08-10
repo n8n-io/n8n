@@ -6,7 +6,7 @@
 		<n8n-user-select
 			size="large"
 			:users="usersList"
-			:currentUserId="currentUserId"
+			:currentUserId="currentUser.id"
 			:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
 			@input="onAddSharee"
 		>
@@ -15,8 +15,8 @@
 			</template>
 		</n8n-user-select>
 		<n8n-users-list
-			:users="sharedWith"
-			:currentUserId="currentUserId"
+			:users="sharedWithList"
+			:currentUserId="currentUser.id"
 			:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
 			@delete="onRemoveSharee"
 		/>
@@ -35,38 +35,48 @@ export default Vue.extend({
 		N8nUserSelect,
 		N8nUsersList,
 	},
-	props: ['currentCredential'],
+	props: ['credential', 'sharedWith', 'temporary'],
 	computed: {
-		...mapGetters('users', ['allUsers', 'currentUserId']),
+		...mapGetters('users', ['allUsers', 'currentUser']),
 		usersList(): IUser[] {
-			return this.allUsers; // @TODO Remove
 			return this.allUsers.filter((user: IUser) => {
-				return user.id !== this.currentUserId;
+				const isCurrentUser = user.id === this.currentUser.id;
+				const isAlreadySharedWithUser = (this.credential.sharedWith || []).find((sharee: IUser) => sharee.id === user.id);
+
+				return !isCurrentUser && !isAlreadySharedWithUser;
 			});
 		},
-		sharedWith(): IUser[] {
-			return this.currentCredential.sharedWith || [
-				...this.allUsers,
-				{
-					id: '124241',
-					firstName: 'John',
-					lastName: 'Doe',
-					email: 'john@doe.com',
-				},
-			];
+		sharedWithList(): IUser[] {
+			return [this.currentUser].concat(this.credential.sharedWith || []);
 		},
 	},
 	methods: {
 		async onAddSharee(userId: string) {
+			const user = this.$store.getters['users/getUserById'](userId);
+
+			if (this.temporary) {
+				this.$emit('change', (this.credential.sharedWith || []).concat(user));
+				return;
+			}
+
 			await this.$store.dispatch('credentials/addCredentialSharee', {
-				credentialId: this.currentCredential.id,
-				userId,
+				credentialId: this.credential.id,
+				user,
 			});
 		},
 		async onRemoveSharee(userId: string) {
+			const user = this.$store.getters['users/getUserById'](userId);
+
+			if (this.temporary) {
+				this.$emit('change', this.credential.sharedWith.filter((sharee: IUser) => {
+					return sharee.id !== user.id;
+				}));
+				return;
+			}
+
 			await this.$store.dispatch('credentials/removeCredentialSharee', {
-				credentialId: this.currentCredential.id,
-				userId,
+				credentialId: this.credential.id,
+				user,
 			});
 		},
 		async loadUsers() {

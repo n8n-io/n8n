@@ -313,6 +313,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
+	sharedWith: IUser[];
+	ownedBy: IUser;
 }
 
 export interface ICredentialsBase {

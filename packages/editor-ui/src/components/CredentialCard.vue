@@ -27,7 +27,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import {ICredentialsResponse} from "@/Interface";
+import {ICredentialsResponse, IUser} from "@/Interface";
 import {ICredentialType} from "n8n-workflow";
 import {CREDENTIAL_LIST_ITEM_ACTIONS} from '@/constants';
 import {showMessage} from "@/components/mixins/showMessage";
@@ -50,6 +50,8 @@ export default mixins(
 				type: '',
 				name: '',
 				nodesAccess: [],
+				sharedWith: [],
+				ownedBy: {} as IUser,
 			}),
 		},
 	},
