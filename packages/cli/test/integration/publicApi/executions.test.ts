@@ -292,9 +292,9 @@ test.skip('GET /executions should paginate two executions', async () => {
 
 	const workflow = await testDb.createWorkflow({}, owner);
 
-	const fistSuccessfullExecution = await testDb.createSuccessfulExecution(workflow);
+	const firstSuccessfulExecution = await testDb.createSuccessfulExecution(workflow);
 
-	const secondSuccessfullExecution = await testDb.createSuccessfulExecution(workflow);
+	const secondSuccessfulExecution = await testDb.createSuccessfulExecution(workflow);
 
 	await testDb.createErrorExecution(workflow);
 
@@ -317,7 +317,7 @@ test.skip('GET /executions should paginate two executions', async () => {
 	expect(secondExecutionResponse.body.data.length).toBe(1);
 	expect(secondExecutionResponse.body.nextCursor).toBeNull();
 
-	const successfullExecutions = [fistSuccessfullExecution, secondSuccessfullExecution];
+	const successfulExecutions = [firstSuccessfulExecution, secondSuccessfulExecution];
 	const executions = [...firstExecutionResponse.body.data, ...secondExecutionResponse.body.data];
 
 	for (let i = 0; i < executions.length; i++) {
@@ -335,12 +335,12 @@ test.skip('GET /executions should paginate two executions', async () => {
 
 		expect(id).toBeDefined();
 		expect(finished).toBe(true);
-		expect(mode).toEqual(successfullExecutions[i].mode);
+		expect(mode).toEqual(successfulExecutions[i].mode);
 		expect(retrySuccessId).toBeNull();
 		expect(retryOf).toBeNull();
 		expect(startedAt).not.toBeNull();
 		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(successfullExecutions[i].workflowId);
+		expect(workflowId).toBe(successfulExecutions[i].workflowId);
 		expect(waitTill).toBeNull();
 	}
 });
