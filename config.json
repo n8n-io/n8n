@@ -1,6 +1,6 @@
 {
   "name": "Hass n8n",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "slug": "hass-n8n",
   "description": "Home Assistant n8n instance with ingress",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
@@ -12,6 +12,8 @@
   "map": ["ssl"],
   "apparmor": true,
   "ingress": true,
+  "ingress_port": 5678,
+  "ingress_stream": true,
   "ports": {
     "5678/tcp": 5678
   },
@@ -25,7 +27,9 @@
     "timezone": "America/New_York",
     "protocol": "http",
     "certfile": "fullchain.pem",
-    "keyfile": "privkey.pem"
+    "keyfile": "privkey.pem",
+    "data_path": "/data/n8n",
+    "personalized": "false"
   },
   "schema": {
     "auth": "bool",
@@ -34,6 +38,8 @@
     "timezone": "str",
     "protocol": "str",
     "certfile": "str",
-    "keyfile": "str"
+    "keyfile": "str",
+    "data_path": "str",
+    "personalized": "bool"
   }
 }
