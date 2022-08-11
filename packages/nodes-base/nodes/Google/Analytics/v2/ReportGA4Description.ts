@@ -45,7 +45,128 @@ export const reportGA4Fields: INodeProperties[] = [
 		description:
 			'The Property ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-
+	{
+		displayName: 'Date Ranges',
+		name: 'dateRangesUi',
+		placeholder: 'Add Date Range',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
+		description: 'Date ranges in the request',
+		options: [
+			{
+				displayName: 'Date Range',
+				name: 'dateRanges',
+				values: [
+					{
+						displayName: 'Start Date',
+						name: 'startDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'End Date',
+						name: 'endDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						hint: 'Optional name to this date range',
+						description:
+							'If set, cannot begin with date_range_ or RESERVED_. If not set, date ranges are named by their zero based index in the request: date_range_0, date_range_1, etc.',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['reportGA4'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Metrics',
+		name: 'metricUi',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Metric',
+		description:
+			'The quantitative measurements of a report. For example, the metric eventCount is the total number of events. Requests are allowed up to 10 metrics.',
+		options: [
+			{
+				displayName: 'Metric',
+				name: 'metricValues',
+				values: [
+					{
+						displayName: 'Name or ID',
+						name: 'name',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getMetricsGA4',
+							loadOptionsDependsOn: ['profileId'],
+						},
+						default: '',
+						description:
+							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['reportGA4'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Dimensions',
+		name: 'dimensionUi',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Dimension',
+		description:
+			'Dimensions are attributes of your data. For example, the dimension city indicates the city from which an event originates. Dimension values in report responses are strings; for example, the city could be "Paris" or "New York". Requests are allowed up to 9 dimensions.',
+		options: [
+			{
+				displayName: 'Dimension',
+				name: 'dimensionValues',
+				values: [
+					{
+						displayName: 'Name or ID',
+						name: 'name',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getDimensionsGA4',
+							loadOptionsDependsOn: ['profileId'],
+						},
+						default: '',
+						description:
+							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['reportGA4'],
+				operation: ['get'],
+			},
+		},
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -74,7 +195,7 @@ export const reportGA4Fields: INodeProperties[] = [
 			minValue: 1,
 			maxValue: 1000,
 		},
-		default: 1000,
+		default: 50,
 		description: 'Max number of results to return',
 	},
 	{
@@ -112,84 +233,11 @@ export const reportGA4Fields: INodeProperties[] = [
 				description:
 					'A currency code in ISO4217 format, such as "AED", "USD", "JPY". If the field is empty, the report uses the property\'s default currency.',
 			},
-			{
-				displayName: 'Date Ranges',
-				name: 'dateRangesUi',
-				placeholder: 'Add Date Range',
-				type: 'fixedCollection',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				description: 'Date ranges in the request',
-				options: [
-					{
-						displayName: 'Date Range',
-						name: 'dateRanges',
-						values: [
-							{
-								displayName: 'Start Date',
-								name: 'startDate',
-								type: 'dateTime',
-								default: '',
-							},
-							{
-								displayName: 'End Date',
-								name: 'endDate',
-								type: 'dateTime',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								hint: 'Optional name to this date range',
-								description:
-									'If set, cannot begin with date_range_ or RESERVED_. If not set, date ranges are named by their zero based index in the request: date_range_0, date_range_1, etc.',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Dimensions',
-				name: 'dimensionUi',
-				type: 'fixedCollection',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Dimension',
-				description:
-					'Dimensions are attributes of your data. For example, the dimension city indicates the city from which an event originates. Dimension values in report responses are strings; for example, the city could be "Paris" or "New York". Requests are allowed up to 9 dimensions.',
-				options: [
-					{
-						displayName: 'Dimension',
-						name: 'dimensionValues',
-						values: [
-							{
-								displayName: 'Name or ID',
-								name: 'name',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getDimensionsGA4',
-									loadOptionsDependsOn: ['profileId'],
-								},
-								default: '',
-								description:
-									'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-							},
-						],
-					},
-				],
-			},
 			...dimensionFilterField,
 			{
 				displayName: 'Metric Aggregation',
 				name: 'metricAggregations',
 				type: 'multiOptions',
-				hint: 'Simplify need to be turned off for this to be shown in output',
 				default: [],
 				options: [
 					{
@@ -205,38 +253,11 @@ export const reportGA4Fields: INodeProperties[] = [
 						value: 'TOTAL',
 					},
 				],
-			},
-			{
-				displayName: 'Metrics',
-				name: 'metricUi',
-				type: 'fixedCollection',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Metric',
-				description:
-					'The quantitative measurements of a report. For example, the metric eventCount is the total number of events. Requests are allowed up to 10 metrics.',
-				options: [
-					{
-						displayName: 'Metric',
-						name: 'metricValues',
-						values: [
-							{
-								displayName: 'Name or ID',
-								name: 'name',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getMetricsGA4',
-									loadOptionsDependsOn: ['profileId'],
-								},
-								default: '',
-								description:
-									'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-							},
-						],
+				displayOptions: {
+					show: {
+						'/simple': [false],
 					},
-				],
+				},
 			},
 			...metricsFilterField,
 			{
@@ -345,7 +366,11 @@ export const reportGA4Fields: INodeProperties[] = [
 				default: false,
 				description:
 					"Whether to return the current state of this Analytics Property's quota. Quota is returned in PropertyQuota.",
-				hint: 'Simplify need to be turned off for this to be shown in output',
+				displayOptions: {
+					show: {
+						'/simple': [false],
+					},
+				},
 			},
 		],
 	},

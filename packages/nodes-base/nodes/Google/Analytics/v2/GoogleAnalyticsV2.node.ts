@@ -217,25 +217,24 @@ export class GoogleAnalyticsV2 implements INodeType {
 						}
 					}
 				}
+
 				if (resource === 'reportGA4') {
 					if (operation === 'get') {
 						//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
 						const propertyId = this.getNodeParameter('propertyId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const dateRangesUi = this.getNodeParameter('dateRangesUi', i, {}) as IDataObject;
+						const metricUi = this.getNodeParameter('metricUi', i, {}) as IDataObject;
+						const dimensionUi = this.getNodeParameter('dimensionUi', i, {}) as IDataObject;
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						const qs: IDataObject = {};
 						const body: IDataObject = {};
 
-						if (additionalFields.currencyCode) {
-							body.currencyCode = additionalFields.currencyCode;
-						}
-
-						if (additionalFields.dateRangesUi) {
-							const dateRanges = (additionalFields.dateRangesUi as IDataObject)
-								.dateRanges as IDataObject[];
-							if (dateRanges) {
+						if (dateRangesUi.dateRanges ) {
+							const dateRanges = dateRangesUi.dateRanges as IDataObject[];
+							if (dateRanges.length) {
 								body.dateRanges = dateRanges.map((range) => {
 									const dateRange: IDataObject = {
 										startDate: moment(range.startDate as string)
@@ -255,6 +254,24 @@ export class GoogleAnalyticsV2 implements INodeType {
 							}
 						}
 
+						if (metricUi.metricValues) {
+							const metrics = metricUi.metricValues as IDataObject[];
+							if (metrics.length) {
+								body.metrics = metrics;
+							}
+						}
+
+						if (dimensionUi.dimensionValues) {
+							const dimensions = dimensionUi.dimensionValues as IDataObject[];
+							if (dimensions.length) {
+								body.dimensions = dimensions;
+							}
+						}
+
+						if (additionalFields.currencyCode) {
+							body.currencyCode = additionalFields.currencyCode;
+						}
+
 						if (additionalFields.dimensionFiltersUI) {
 							const { filterExpressionType, expression } = (
 								additionalFields.dimensionFiltersUI as IDataObject
@@ -265,22 +282,6 @@ export class GoogleAnalyticsV2 implements INodeType {
 										expressions: processFilters(expression as IDataObject),
 									},
 								};
-							}
-						}
-
-						if (additionalFields.dimensionUi) {
-							const dimensions = (additionalFields.dimensionUi as IDataObject)
-								.dimensionValues as IDataObject[];
-							if (dimensions) {
-								body.dimensions = dimensions;
-							}
-						}
-
-						if (additionalFields.metricUi) {
-							const metrics = (additionalFields.metricUi as IDataObject)
-								.metricValues as IDataObject[];
-							if (metrics) {
-								body.metrics = metrics;
 							}
 						}
 
@@ -403,6 +404,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 						}
 					}
 				}
+
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else if (responseData !== undefined) {
