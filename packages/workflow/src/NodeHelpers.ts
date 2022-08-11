@@ -617,14 +617,6 @@ export function getNodeParameters(
 		if (!['collection', 'fixedCollection'].includes(nodeProperties.type)) {
 			// Is a simple property so can be set as it is
 
-			// If it's a resource locator parameter initialize it's value to object if it's first type value is fetched
-			if (
-				nodeProperties.type === 'resourceLocator' &&
-				typeof nodeValues[nodeProperties.name] !== 'object'
-			) {
-				nodeValues[nodeProperties.name] = { value: '', mode: '' };
-			}
-
 			if (duplicateParameterNames.includes(nodeProperties.name)) {
 				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, node, nodeValuesRoot)) {
 					continue;
@@ -855,7 +847,6 @@ export function getNodeParameters(
 			}
 		}
 	}
-
 	return nodeParameters;
 }
 
