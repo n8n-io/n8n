@@ -2199,7 +2199,11 @@ export function getExecuteFunctions(
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
 				return additionalData
-					.executeWorkflow(workflowInfo, additionalData, inputData)
+					.executeWorkflow(workflowInfo, additionalData, {
+						parentWorkflowId: workflow.id?.toString(),
+						inputData,
+						parentWorkflowSettings: workflow.settings,
+					})
 					.then(async (result) =>
 						BinaryDataManager.getInstance().duplicateBinaryData(
 							result,
