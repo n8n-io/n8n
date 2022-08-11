@@ -2612,25 +2612,25 @@ class App {
 
 				const postHogHooksScript = getPostHogHooksScript();
 
-				if (!postHogHooksScript) return;
+				if (postHogHooksScript) {
+					const SESSION_RECORDED_PLATFORMS = ['desktop_mac', 'desktop_win', 'cloud'];
+					const deploymentType = config.getEnv('deployment.type');
 
-				const SESSION_RECORDED_PLATFORMS = ['desktop_mac', 'desktop_win', 'cloud'];
-				const deploymentType = config.getEnv('deployment.type');
+					const postHogLoadingScript = createPostHogLoadingScript({
+						apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+						apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+						autocapture: false,
+						disableSessionRecording: !SESSION_RECORDED_PLATFORMS.includes(deploymentType),
+						debug: config.getEnv('logs.level') === 'debug',
+					});
 
-				const postHogLoadingScript = createPostHogLoadingScript({
-					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
-					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-					autocapture: false,
-					disableSessionRecording: !SESSION_RECORDED_PLATFORMS.includes(deploymentType),
-					debug: config.getEnv('logs.level') === 'debug',
-				});
+					const firstLinkedScriptSegment = '<link href="/js/';
 
-				const firstLinkedScriptSegment = '<link href="/js/';
-
-				readIndexFile = readIndexFile.replace(
-					firstLinkedScriptSegment,
-					postHogLoadingScript + postHogHooksScript + firstLinkedScriptSegment,
-				);
+					readIndexFile = readIndexFile.replace(
+						firstLinkedScriptSegment,
+						postHogLoadingScript + postHogHooksScript + firstLinkedScriptSegment,
+					);
+				}
 			}
 
 			// Serve the altered index.html file separately
