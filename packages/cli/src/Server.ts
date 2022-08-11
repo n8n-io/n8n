@@ -33,6 +33,7 @@
 import express from 'express';
 import { readFileSync, promises } from 'fs';
 import { readFile } from 'fs/promises';
+import { exec as callbackExec } from 'child_process';
 import _, { cloneDeep } from 'lodash';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import {
@@ -86,6 +87,7 @@ import jwks from 'jwks-rsa';
 import timezones from 'google-timezones-json';
 import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
+import { promisify } from 'util';
 import * as Queue from './Queue';
 import {
 	ActiveExecutions,
@@ -168,6 +170,8 @@ import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import * as telemetryScripts from './telemetry/scripts';
 
 require('body-parser-xml')(bodyParser);
+
+const exec = promisify(callbackExec);
 
 export const externalHooks: IExternalHooksClass = ExternalHooks();
 
@@ -335,6 +339,7 @@ class App {
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},
+			isNpmAvailable: false,
 		};
 	}
 
@@ -378,6 +383,10 @@ class App {
 			register.setDefaultLabels({ prefix });
 			promClient.collectDefaultMetrics({ register });
 		}
+
+		this.frontendSettings.isNpmAvailable = await exec('npm --version')
+			.then(() => true)
+			.catch(() => false);
 
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;

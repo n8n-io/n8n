@@ -519,6 +519,7 @@ export interface IN8nUISettings {
 	deployment: {
 		type: string;
 	};
+	isNpmAvailable: boolean;
 }
 
 export interface IPersonalizationSurveyAnswers {
