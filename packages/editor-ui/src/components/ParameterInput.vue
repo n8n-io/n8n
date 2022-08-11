@@ -25,6 +25,7 @@
 				:parameterInputClasses="parameterInputClasses"
 				:expressionDisplayValue="expressionDisplayValue"
 				:isValueExpression="isValueExpression"
+				:isReadOnly="isReadOnly"
 				:parameterIssues="getIssues"
 				:droppable="droppable"
 				@valueChanged="valueChanged"
@@ -935,9 +936,9 @@ export default mixins(
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
-						this.valueChanged(`={{${this.value}}}`);
+						this.valueChanged({ value: `={{${this.value}}}`, mode: this.value.mode });
 					} else if (this.isResourceLocatorParameter) {
-						this.valueChanged(`=${this.value.value}`);
+						this.valueChanged({ value: `=${this.value.value}`, mode: this.value.mode });
 					} else {
 						this.valueChanged(`=${this.value}`);
 					}
@@ -1072,7 +1073,7 @@ export default mixins(
 }
 
 .expression {
-	textarea, input {
+	textarea:not([disabled]), input:not([disabled]) {
 		cursor: pointer !important;
 	}
 

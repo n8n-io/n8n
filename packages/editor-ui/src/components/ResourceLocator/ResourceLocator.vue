@@ -12,9 +12,10 @@
 		>
 			<n8n-select
 				v-model="selectedMode"
-				@change="onModeSelected"
-				:size="inputSize"
 				filterable
+				:size="inputSize"
+				:disabled="isReadOnly"
+				@change="onModeSelected"
 			>
 				<n8n-option
 					v-for="mode in sortedModes"
@@ -34,10 +35,11 @@
 			>
 				<n8n-input
 					v-if="isValueExpression || droppable || forceShowExpression"
-					:size="inputSize"
 					type="text"
+					:size="inputSize"
 					:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
 					:title="displayTitle"
+					:disabled="isReadOnly"
 					@keydown.stop
 				/>
 				<n8n-input
@@ -80,7 +82,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { PropType } from 'vue';
-import { INodeUi } from '@/Interface';
+
 
 export default mixins().extend({
 	name: 'ResourceLocator',
@@ -248,10 +250,6 @@ export default mixins().extend({
 		onModeSelected (value: string): void {
 			this.validate();
 			this.$emit('modeChanged', { mode: value, value: this.value });
-		},
-		onExpressionValueChanged (latestValue: string): void {
-			this.tempValue = latestValue;
-			this.$emit('valueChanged', { value: latestValue, mode: this.selectedMode });
 		},
 		onDrop(data: string) {
 			this.$emit('drop', data);

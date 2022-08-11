@@ -135,7 +135,7 @@ export default mixins(
 				this.forceShowExpression = true;
 				setTimeout(() => {
 					if (this.node) {
-						const prevValue = this.value;
+						const prevValue = this.isResourceLocator ? this.value.value : this.value;
 						let updatedValue: string;
 						if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
 							updatedValue = `${prevValue} ${data}`;
