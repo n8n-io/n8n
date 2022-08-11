@@ -717,7 +717,10 @@ export default mixins(
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
-				const inputData = this.pinData ? this.pinData : this.convertToJson(this.rawInputData);
+				const inputData = this.pinData
+					? this.clearJsonKey(this.pinData)
+					: this.convertToJson(this.rawInputData);
+
 				const data = inputData.length > 0
 					? inputData
 					: TEST_PIN_DATA;
@@ -756,18 +759,14 @@ export default mixins(
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: this.normalize(value) });
+				this.$store.commit('pinData', { node: this.node, data: this.clearJsonKey(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
 			},
-
-			/**
-			 * Clear user-added `json` metadata key from pindata items.
-			 */
-			normalize(userInput: string) {
-				const parsedUserInput = JSON.parse(userInput);
+			clearJsonKey(userInput: string | object) {
+				const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
 
 				if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 
@@ -1161,7 +1160,7 @@ export default mixins(
 				let selectedValue = this.selectedOutput.value;
 				if (isNotSelected) {
 					if (this.hasPinData) {
-						selectedValue = this.pinData as object;
+						selectedValue = this.clearJsonKey(this.pinData as object);
 					} else {
 						selectedValue = this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
 					}
