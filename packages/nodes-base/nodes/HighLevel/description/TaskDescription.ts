@@ -174,7 +174,7 @@ const additionalFields: INodeProperties[] = [
 	},
 ];
 
-const createOperations: INodeProperties[] = [
+const createProperties: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -230,7 +230,7 @@ const createOperations: INodeProperties[] = [
 	},
 ];
 
-const deleteOperations: INodeProperties[] = [
+const deleteProperties: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -260,7 +260,7 @@ const deleteOperations: INodeProperties[] = [
 	},
 ];
 
-const getOperations: INodeProperties[] = [
+const getProperties: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -290,7 +290,7 @@ const getOperations: INodeProperties[] = [
 	},
 ];
 
-const getAllOperations: INodeProperties[] = [
+const getAllProperties: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -344,7 +344,7 @@ const getAllOperations: INodeProperties[] = [
 	},
 ];
 
-const updateOperations: INodeProperties[] = [
+const updateProperties: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -414,10 +414,10 @@ const updateOperations: INodeProperties[] = [
 ];
 
 export const taskFields: INodeProperties[] = [
-	...createOperations,
-	...updateOperations,
+	...createProperties,
+	...updateProperties,
 	...additionalFields,
-	...deleteOperations,
-	...getOperations,
-	...getAllOperations,
+	...deleteProperties,
+	...getProperties,
+	...getAllProperties,
 ];

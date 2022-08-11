@@ -210,7 +210,7 @@ const customFields: INodeProperties = {
 	],
 };
 
-const createOperations: INodeProperties[] = [
+const createProperties: INodeProperties[] = [
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -264,7 +264,7 @@ const createOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Address 1',
+				displayName: 'Address',
 				name: 'address1',
 				type: 'string',
 				default: '',
@@ -389,10 +389,16 @@ const createOperations: INodeProperties[] = [
 				},
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Timezone',
 				name: 'timezone',
-				type: 'string',
+				type: 'options',
 				default: '',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getTimezones',
+				},
 				routing: {
 					send: {
 						type: 'body',
@@ -416,7 +422,7 @@ const createOperations: INodeProperties[] = [
 	},
 ];
 
-const updateOperations: INodeProperties[] = [
+const updateProperties: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -444,7 +450,7 @@ const updateOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Address 1',
+				displayName: 'Address',
 				name: 'address1',
 				type: 'string',
 				default: '',
@@ -582,10 +588,16 @@ const updateOperations: INodeProperties[] = [
 				},
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Timezone',
 				name: 'timezone',
-				type: 'string',
+				type: 'options',
 				default: '',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getTimezones',
+				},
 				routing: {
 					send: {
 						type: 'body',
@@ -609,7 +621,7 @@ const updateOperations: INodeProperties[] = [
 	},
 ];
 
-const deleteOperations: INodeProperties[] = [
+const deleteProperties: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -624,7 +636,7 @@ const deleteOperations: INodeProperties[] = [
 	},
 ];
 
-const getOperations: INodeProperties[] = [
+const getProperties: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -640,7 +652,7 @@ const getOperations: INodeProperties[] = [
 	},
 ];
 
-const getAllOperations: INodeProperties[] = [
+const getAllProperties: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -771,7 +783,7 @@ const getAllOperations: INodeProperties[] = [
 	},
 ];
 
-const lookupOperations: INodeProperties[] = [
+const lookupProperties: INodeProperties[] = [
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -802,10 +814,10 @@ const lookupOperations: INodeProperties[] = [
 ];
 
 export const contactFields: INodeProperties[] = [
-	...createOperations,
-	...updateOperations,
-	...deleteOperations,
-	...getOperations,
-	...getAllOperations,
-	...lookupOperations,
+	...createProperties,
+	...updateProperties,
+	...deleteProperties,
+	...getProperties,
+	...getAllProperties,
+	...lookupProperties,
 ];

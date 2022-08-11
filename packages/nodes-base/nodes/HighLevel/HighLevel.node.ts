@@ -3,7 +3,12 @@ import { INodeProperties, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { contactFields, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
 import { taskFields, taskOperations } from './description/TaskDescription';
-import { getPipelineStages, getUsers, highLevelApiPagination } from './GenericFunctions';
+import {
+	getPipelineStages,
+	getTimezones,
+	getUsers,
+	highLevelApiPagination,
+} from './GenericFunctions';
 
 const ressources: INodeProperties[] = [
 	{
@@ -76,6 +81,7 @@ export class HighLevel implements INodeType {
 		loadOptions: {
 			getPipelineStages,
 			getUsers,
+			getTimezones,
 		},
 	};
 }

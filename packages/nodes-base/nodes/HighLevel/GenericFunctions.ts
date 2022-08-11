@@ -19,6 +19,8 @@ import { OptionsWithUri } from 'request';
 
 import { DateTime, ToISOTimeOptions } from 'luxon';
 
+import moment from 'moment-timezone';
+
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 const VALID_PHONE_REGEX =
@@ -181,4 +183,11 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 		return { name, value };
 	});
 	return options;
+}
+
+export async function getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	return (moment.tz.names() as string[]).map((zone) => ({
+		name: zone,
+		value: zone,
+	})) as INodePropertyOptions[];
 }
