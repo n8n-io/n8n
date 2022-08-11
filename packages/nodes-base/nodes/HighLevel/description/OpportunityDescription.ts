@@ -135,7 +135,7 @@ const pipelineId: INodeProperties = {
 	default: '',
 };
 
-const createOperations: Array<INodeProperties> = [
+const createOperations: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Stage ID',
@@ -325,7 +325,7 @@ const createOperations: Array<INodeProperties> = [
 	},
 ];
 
-const deleteOperations: Array<INodeProperties> = [
+const deleteOperations: INodeProperties[] = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
@@ -341,7 +341,7 @@ const deleteOperations: Array<INodeProperties> = [
 	},
 ];
 
-const getOperations: Array<INodeProperties> = [
+const getOperations: INodeProperties[] = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
@@ -357,7 +357,7 @@ const getOperations: Array<INodeProperties> = [
 	},
 ];
 
-const getAllOperations: Array<INodeProperties> = [
+const getAllOperations: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -543,7 +543,7 @@ const getAllOperations: Array<INodeProperties> = [
 	},
 ];
 
-const updateOperations: Array<INodeProperties> = [
+const updateOperations: INodeProperties[] = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',

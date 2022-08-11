@@ -210,7 +210,7 @@ const customFields: INodeProperties = {
 	],
 };
 
-const createOperations: Array<INodeProperties> = [
+const createOperations: INodeProperties[] = [
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -416,7 +416,7 @@ const createOperations: Array<INodeProperties> = [
 	},
 ];
 
-const updateOperations: Array<INodeProperties> = [
+const updateOperations: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -609,7 +609,7 @@ const updateOperations: Array<INodeProperties> = [
 	},
 ];
 
-const deleteOperations: Array<INodeProperties> = [
+const deleteOperations: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -624,7 +624,7 @@ const deleteOperations: Array<INodeProperties> = [
 	},
 ];
 
-const getOperations: Array<INodeProperties> = [
+const getOperations: INodeProperties[] = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -640,7 +640,7 @@ const getOperations: Array<INodeProperties> = [
 	},
 ];
 
-const getAllOperations: Array<INodeProperties> = [
+const getAllOperations: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -771,7 +771,7 @@ const getAllOperations: Array<INodeProperties> = [
 	},
 ];
 
-const lookupOperations: Array<INodeProperties> = [
+const lookupOperations: INodeProperties[] = [
 	{
 		displayName: 'Email',
 		name: 'email',

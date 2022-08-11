@@ -1,18 +1,18 @@
 import {
 	DeclarativeRestApiSettings,
-	IExecutePaginationFunctions,
-	INodeExecutionData,
-	IExecuteSingleFunctions,
-	IN8nHttpFullResponse,
 	IDataObject,
-	IHttpRequestOptions,
-	NodeApiError,
 	IExecuteFunctions,
-	IWebhookFunctions,
+	IExecutePaginationFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 	INodePropertyOptions,
 	IPollFunctions,
+	IWebhookFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -123,11 +123,11 @@ export async function highLevelApiRequest(
 		| ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('highLevelApi');
 	const endpoint = 'https://rest.gohighlevel.com/v1';
 
