@@ -45,6 +45,7 @@ import {
 	IN8nRequestOperations,
 	INodeProperties,
 	INodePropertyCollection,
+	NodeParameterValueType,
 	PostReceiveAction,
 } from './Interfaces';
 
@@ -580,13 +581,13 @@ export class RoutingNode {
 	}
 
 	getParameterValue(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType,
 		itemIndex: number,
 		runIndex: number,
 		executeData: IExecuteData,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | string {
+	): NodeParameterValueType | string {
 		if (
 			typeof parameterValue === 'object' ||
 			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')

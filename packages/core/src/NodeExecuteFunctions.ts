@@ -51,7 +51,6 @@ import {
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
-	NodeParameterValue,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowDataProxy,
@@ -59,6 +58,7 @@ import {
 	LoggerProxy as Logger,
 	IExecuteData,
 	OAuth2GrantType,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1621,9 +1621,7 @@ export function getNode(node: INode): INode {
  * Clean up parameter data to make sure that only valid data gets returned
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
-function cleanupParameterData(
-	inputData: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+function cleanupParameterData(inputData: NodeParameterValueType): NodeParameterValueType {
 	if (inputData === null || inputData === undefined) {
 		return inputData;
 	}
@@ -1640,7 +1638,9 @@ function cleanupParameterData(
 
 	if (typeof inputData === 'object') {
 		Object.keys(inputData).forEach((key) => {
-			inputData[key] = cleanupParameterData(inputData[key]);
+			inputData[key as keyof typeof inputData] = cleanupParameterData(
+				inputData[key as keyof typeof inputData],
+			);
 		});
 	}
 
@@ -1674,7 +1674,7 @@ export function getNodeParameter(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData?: IExecuteData,
 	fallbackValue?: any,
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
+): NodeParameterValueType | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -1880,12 +1880,7 @@ export function getExecutePollFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2035,12 +2030,7 @@ export function getExecuteTriggerFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2251,12 +2241,7 @@ export function getExecuteFunctions(
 				parameterName: string,
 				itemIndex: number,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2525,12 +2510,7 @@ export function getExecuteSingleFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2676,13 +2656,7 @@ export function getLoadOptionsFunctions(
 			},
 			getCurrentNodeParameter: (
 				parameterPath: string,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object
-				| undefined => {
+			): NodeParameterValueType | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
 
 				if (parameterPath.charAt(0) === '&') {
@@ -2700,12 +2674,7 @@ export function getLoadOptionsFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2831,12 +2800,7 @@ export function getExecuteHookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2994,12 +2958,7 @@ export function getExecuteWebhookFunctions(
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;

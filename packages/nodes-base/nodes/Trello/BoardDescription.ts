@@ -315,7 +315,7 @@ export const boardFields: INodeProperties[] = [
 		displayName: 'Board',
 		name: 'id',
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -358,7 +358,7 @@ export const boardFields: INodeProperties[] = [
 		displayName: 'Board',
 		name: 'id',
 		type: 'resourceLocator',
-		default: '',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {

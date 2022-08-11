@@ -13,29 +13,38 @@
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
+				:isValueExpression="isValueExpression"
 				@optionSelected="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
 		<template>
-			<DraggableTarget type="mapping" :disabled="parameter.noDataExpression || isReadOnly" :sticky="true" :stickyOffset="4" @drop="onDrop">
-				<template v-slot="{ droppable, activeDrop }">
-					<parameter-input
-						ref="param"
-						:parameter="parameter"
-						:value="value"
-						:displayOptions="displayOptions"
-						:path="path"
-						:isReadOnly="isReadOnly"
-						:droppable="droppable"
-						:activeDrop="activeDrop"
-						:forceShowExpression="forceShowExpression"
-						@valueChanged="valueChanged"
-						@focus="onFocus"
-						@blur="onBlur"
-						inputSize="small" />
-				</template>
-			</DraggableTarget>
+				<DraggableTarget
+					type="mapping"
+					:disabled="isDropDisabled"
+					:sticky="true"
+					:stickyOffset="4"
+					@drop="onDrop"
+				>
+					<template v-slot="{ droppable, activeDrop }">
+						<parameter-input
+							ref="param"
+							:parameter="parameter"
+							:value="value"
+							:displayOptions="displayOptions"
+							:path="path"
+							:isReadOnly="isReadOnly"
+							:droppable="droppable"
+							:activeDrop="activeDrop"
+							:forceShowExpression="forceShowExpression"
+							:isValueExpression="isValueExpression"
+							@valueChanged="valueChanged"
+							@focus="onFocus"
+							@blur="onBlur"
+							@drop="onDrop"
+							inputSize="small" />
+					</template>
+				</DraggableTarget>
 			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
 	</n8n-input-label>
@@ -56,7 +65,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping } from './helpers';
+import { hasExpressionMapping, isValueExpression } from './helpers';
 
 export default mixins(
 	showMessage,
@@ -88,6 +97,15 @@ export default mixins(
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
+			isResourceLocator (): boolean {
+				return  this.parameter.type === 'resourceLocator';
+			},
+			isDropDisabled (): boolean {
+				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
+			},
+			isValueExpression (): boolean {
+				return isValueExpression(this.parameter, this.value);
+			},
 		},
 		methods: {
 			onFocus() {
@@ -117,7 +135,7 @@ export default mixins(
 				this.forceShowExpression = true;
 				setTimeout(() => {
 					if (this.node) {
-						const prevValue = this.value;
+						const prevValue = this.isResourceLocator ? this.value.value : this.value;
 						let updatedValue: string;
 						if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
 							updatedValue = `${prevValue} ${data}`;
@@ -129,7 +147,7 @@ export default mixins(
 						const parameterData = {
 							node: this.node.name,
 							name: this.path,
-							value: updatedValue,
+							value: this.isResourceLocator ? { value: updatedValue, mode: this.value.mode } : updatedValue,
 						};
 
 						this.$emit('valueChanged', parameterData);
