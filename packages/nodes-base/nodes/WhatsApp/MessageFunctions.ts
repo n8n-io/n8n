@@ -30,6 +30,22 @@ export async function addTemplateComponents(
 	return requestOptions;
 }
 
+export async function setType(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+) {
+	let operation = this.getNodeParameter('operation');
+
+	if (operation === 'contact') {
+		operation = 'contacts';
+	}
+
+	Object.assign(requestOptions.body, { type: operation });
+
+	return requestOptions;
+
+}
+
 export async function mediaUploadFromItem(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,

@@ -1,5 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-import { componentsRequest, mediaUploadFromItem, templateInfo } from './MessageFunctions';
+import { componentsRequest, mediaUploadFromItem, setType, templateInfo } from './MessageFunctions';
 
 export const mediaTypes = ['image', 'video', 'audio', 'sticker', 'document'];
 
@@ -21,6 +21,11 @@ export const messageFields: INodeProperties[] = [
 				name: 'Send Audio',
 				value: 'audio',
 				action: 'Send audio',
+			},
+			{
+				name: 'Send Contact',
+				value: 'contact',
+				action: 'Send contact',
 			},
 			{
 				name: 'Send Document',
@@ -57,8 +62,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The type of the message',
 		routing: {
 			send: {
-				type: 'body',
-				property: 'type',
+				preSend: [setType],
 			},
 		},
 		displayOptions: {
@@ -144,6 +148,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'recipientPhoneNumber',
 		type: 'string',
 		default: '',
+		required: true,
 		description:
 			'Phone number of the recipient of the message, starting with the country code without the leading +',
 		routing: {
@@ -161,7 +166,472 @@ export const messageFields: INodeProperties[] = [
 ];
 
 export const messageTypeFields: INodeProperties[] = [
-		// ----------------------------------
+	// ----------------------------------
+	//         type: contact
+	// ----------------------------------
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: false,
+		},
+		displayOptions: {
+			show: {
+				operation: ['contact'],
+			},
+		},
+		placeholder: 'Add Parameter',
+		default: {},
+		options: [
+			{
+				displayName: 'Name',
+				name: 'data',
+				values: [
+					{
+						displayName: 'Formatted Name',
+						name: 'formatted_name',
+						type: 'string',
+						required: true,
+						default: '',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'contacts[0].name.formatted_name',
+							},
+						},
+					},
+					{
+						displayName: 'First Name',
+						name: 'first_name',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'contacts[0].name.first_name',
+							},
+						},
+					},
+					{
+						displayName: 'Last Name',
+						name: 'last_name',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'contacts[0].name.last_name',
+							},
+						},
+					},
+					{
+						displayName: 'Middle Name',
+						name: 'middle_name',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'contacts[0].name.middle_name',
+							},
+						},
+					},
+					{
+						displayName: 'Suffix',
+						name: 'suffix',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'contacts[0].name.suffix',
+							},
+						},
+					},
+					{
+						displayName: 'Prefix',
+						name: 'prefix',
+						type: 'string',
+						default: '',
+						routing: {
+							send: {
+								type: 'body',
+								property: 'contacts[0].name.prefix',
+							},
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['contact'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Addresses',
+				name: 'addresses',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Parameter',
+				default: {},
+				options: [
+					{
+						displayName: 'Address',
+						name: 'address',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Home',
+										value: 'HOME',
+									},
+									{
+										name: 'Work',
+										value: 'WORK',
+									},
+								],
+								default: 'HOME',
+								routing: {
+									send: {
+										property: '=contacts[0].addresses[{{$index}}].type',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'Street',
+								name: 'street',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].addresses[{{$index}}].street',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'City',
+								name: 'city',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].addresses[{{$index}}].city',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'State',
+								name: 'state',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].addresses[{{$index}}].state',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'Zip',
+								name: 'zip',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].addresses[{{$index}}].zip',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'Country',
+								name: 'country',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].addresses[{{$index}}].country',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'Country Code',
+								name: 'country_code',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].addresses[{{$index}}].country_code',
+										type: 'body',
+									},
+								},
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Birthday',
+				name: 'birthday',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						property: 'contacts[0].birthday',
+						type: 'body',
+					},
+				},
+				placeholder: 'YYYY-MM-DD',
+			},
+			{
+				displayName: 'Emails',
+				name: 'emails',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Parameter',
+				default: {},
+				options: [
+					{
+						displayName: 'Email',
+						name: 'data',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Home',
+										value: 'HOME',
+									},
+									{
+										name: 'Work',
+										value: 'WORK',
+									},
+								],
+								default: 'HOME',
+								routing: {
+									send: {
+										property: '=contacts[0].emails[{{$index}}].type',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'Email',
+								name: 'email',
+								type: 'string',
+								placeholder: 'name@email.com',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].emails[{{$index}}].email',
+										type: 'body',
+									},
+								},
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Organization',
+				name: 'organization',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				placeholder: 'Add Parameter',
+				default: {},
+				options: [
+					{
+						displayName: 'Organization',
+						name: 'data',
+						values: [
+							{
+								displayName: 'Company',
+								name: 'company',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										type: 'body',
+										property: 'contacts[0].org.company',
+									},
+								},
+							},
+							{
+								displayName: 'Department',
+								name: 'department',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										type: 'body',
+										property: 'contacts[0].org.department',
+									},
+								},
+							},
+							{
+								displayName: 'Title',
+								name: 'title',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										type: 'body',
+										property: 'contacts[0].org.title',
+									},
+								},
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Phones',
+				name: 'phones',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Parameter',
+				default: {},
+				options: [
+					{
+						displayName: 'Phone',
+						name: 'data',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Cell',
+										value: 'CELL',
+									},
+									{
+										name: 'Home',
+										value: 'HOME',
+									},
+									{
+										name: 'Iphone',
+										value: 'IPHONE',
+									},
+									{
+										name: 'Main',
+										value: 'MAIN',
+									},
+									{
+										name: 'WhatsApp ID',
+										value: 'wa_id',
+									},
+									{
+										name: 'Work',
+										value: 'WORK',
+									},
+								],
+								default: 'CELL',
+								routing: {
+									send: {
+										property: '=contacts[0].phones[{{$index}}].type',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'Phone',
+								name: 'phone',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].phones[{{$index}}].phone',
+										type: 'body',
+									},
+								},
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'URLs',
+				name: 'urls',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Parameter',
+				default: {},
+				options: [
+					{
+						displayName: 'URL',
+						name: 'url',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Home',
+										value: 'HOME',
+									},
+									{
+										name: 'Work',
+										value: 'WORK',
+									},
+								],
+								default: 'HOME',
+								routing: {
+									send: {
+										property: '=contacts[0].urls[{{$index}}].type',
+										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'URL',
+								name: 'url',
+								type: 'string',
+								default: '',
+								routing: {
+									send: {
+										property: '=contacts[0].urls[{{$index}}].url',
+										type: 'body',
+									},
+								},
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	// ----------------------------------
 	//         type: location
 	// ----------------------------------
 	{
