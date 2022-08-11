@@ -90,6 +90,9 @@ const module: Module<ISettingsState, IRootState> = {
 		isCommunityNodesFeatureEnabled: (state): boolean => {
 			return state.settings.communityNodesEnabled;
 		},
+		isNpmAvailable: (state): boolean => {
+			return state.settings.isNpmAvailable;
+		},
 		isQueueModeEnabled: (state): boolean => {
 			return state.settings.executionMode === 'queue';
 		},
@@ -138,6 +141,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setOauthCallbackUrls', settings.oauthCallbackUrls, {root: true});
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
 			context.commit('setDefaultLocale', settings.defaultLocale, {root: true});
+			context.commit('setIsNpmAvailable', settings.isNpmAvailable, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 			context.commit('setCommunityNodesFeatureEnabled', settings.communityNodesEnabled === true);
 		},

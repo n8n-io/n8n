@@ -84,6 +84,7 @@ const state: IRootState = {
 	selectedNodes: [],
 	sessionId: Math.random().toString(36).substring(2, 15),
 	urlBaseWebhook: 'http://localhost:5678/',
+	isNpmAvailable: false,
 	workflow: {
 		id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
 		name: '',
@@ -599,6 +600,9 @@ export const store = new Vuex.Store({
 		},
 		setDefaultLocale(state, locale: string) {
 			Vue.set(state, 'defaultLocale', locale);
+		},
+		setIsNpmAvailable(state, isNpmAvailable: boolean) {
+			Vue.set(state, 'isNpmAvailable', isNpmAvailable);
 		},
 		setActiveNode(state, nodeName: string) {
 			state.activeNode = nodeName;
