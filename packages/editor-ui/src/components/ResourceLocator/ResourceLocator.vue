@@ -39,7 +39,6 @@
 					:size="inputSize"
 					:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
 					:title="displayTitle"
-					:disabled="isReadOnly"
 					@keydown.stop
 				/>
 				<n8n-input
@@ -276,6 +275,10 @@ export default mixins().extend({
 
 		&:focus {
 			border-right: none;
+		}
+
+		&:disabled {
+			cursor: not-allowed !important;
 		}
 	}
 }
