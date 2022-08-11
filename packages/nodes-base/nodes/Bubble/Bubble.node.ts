@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
+	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -57,9 +58,9 @@ export class Bubble implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		let responseData;
+		let responseData: any;
 		const qs: IDataObject = {};
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'object') {
@@ -86,6 +87,10 @@ export class Bubble implements INodeType {
 					property.forEach((data) => (body[data.key] = data.value));
 
 					responseData = await bubbleApiRequest.call(this, 'POST', `/obj/${typeName}`, body, {});
+					responseData = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						this.helpers.returnJsonArray(responseData),
+					);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         object: delete
@@ -97,7 +102,10 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'DELETE', endpoint, {}, {});
-					responseData = { success: true };
+					responseData = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						this.helpers.returnJsonArray({ success: true }),
+					);
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//         object: get
@@ -109,7 +117,10 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData.response;
+					responseData = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						this.helpers.returnJsonArray(responseData.response),
+					);
 				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//         object: getAll
@@ -152,6 +163,10 @@ export class Bubble implements INodeType {
 						responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.response.results;
 					}
+					responseData = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						this.helpers.returnJsonArray(responseData),
+					);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//         object: update
@@ -169,15 +184,16 @@ export class Bubble implements INodeType {
 
 					property.forEach((data) => (body[data.key] = data.value));
 					responseData = await bubbleApiRequest.call(this, 'PATCH', endpoint, body, {});
-					responseData = { sucess: true };
+					responseData = this.helpers.constructExecutionMetaData(
+						{ item: i },
+						this.helpers.returnJsonArray({ success: true }),
+					);
 				}
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			returnData.push(...responseData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }
