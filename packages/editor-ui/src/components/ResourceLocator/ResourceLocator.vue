@@ -55,11 +55,28 @@
 					@keydown.stop
 					@focus="onFocus"
 					@blur="onBlur"
+					@click.native="listModeDropDownToggle"
 				>
+					<div slot="suffix" :class="$style['list-mode-icon-container']">
+						<i
+							v-if="currentMode.name === 'list'"
+							:class="{
+								['el-input__icon']: true,
+								['el-icon-arrow-down']: true,
+								[$style['select-icon']]: true,
+								[$style['is-reverse']]: listModeDropdownOpen
+							}"
+						></i>
+					</div>
 				</n8n-input>
 			</DraggableTarget>
 			<parameter-issues v-if="resourceIssues" :issues="resourceIssues" />
 		</div>
+
+		<list-mode-dropdown
+			v-if="selectedMode === 'list' && listModeDropdownOpen"
+		/>
+
 		<div :class="$style['info-text']">
 			<n8n-text
 				v-if="infoText"
@@ -80,6 +97,7 @@ import { getParameterModeLabel, validateResourceLocatorParameter } from './helpe
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
+import ListModeDropdown from '@/components/ResourceLocator/ListModeDropdown.vue';
 import { PropType } from 'vue';
 
 
@@ -88,6 +106,7 @@ export default mixins().extend({
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
+		ListModeDropdown,
 		ParameterIssues,
 	},
 	props: {
@@ -164,6 +183,7 @@ export default mixins().extend({
 			selectedMode: '',
 			tempValue: '',
 			resourceIssues: [] as string[],
+			listModeDropdownOpen: false,
 		};
 	},
 	computed: {
@@ -196,6 +216,7 @@ export default mixins().extend({
 			const classes = {
 				...this.parameterInputClasses,
 				[this.$style['input-container']]: true,
+				[this.$style['list-mode-input-container']]: this.selectedMode === 'list',
 			};
 			if (this.resourceIssues.length) {
 				classes['has-issues'] = true;
@@ -258,6 +279,9 @@ export default mixins().extend({
 		},
 		onFocus (): void {
 			this.$emit('focus');
+		},
+		listModeDropDownToggle() {
+			this.listModeDropdownOpen = !this.listModeDropdownOpen;
 		},
 	},
 });
@@ -331,5 +355,22 @@ export default mixins().extend({
 
 .info-text {
 	margin-top: var(--spacing-2xs);
+}
+
+.select-icon {
+	cursor: pointer;
+	font-size: 14px;
+	transition: transform 0.3s, -webkit-transform 0.3s;
+	-webkit-transform: rotateZ(0);
+					transform: rotateZ(0);
+
+	&.is-reverse {
+		-webkit-transform: rotateZ(180deg);
+					transform: rotateZ(180deg);
+	}
+}
+
+.list-mode-input-container * {
+	cursor: pointer;
 }
 </style>
