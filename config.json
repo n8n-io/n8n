@@ -1,6 +1,6 @@
 {
   "name": "Hass n8n",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "slug": "hass-n8n",
   "description": "Home Assistant n8n instance with ingress",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
@@ -12,7 +12,6 @@
   "map": ["ssl"],
   "apparmor": true,
   "ingress": true,
-  "ingress_port": 5678,
   "ports": {
     "5678/tcp": 5678
   },
