@@ -105,11 +105,11 @@ export class DeepL implements INodeType {
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionMetaData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const responseData: INodeExecutionMetaData[] = [];
+		const responseData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -141,17 +141,12 @@ export class DeepL implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const errorData = this.helpers.returnJsonArray({
-						$error: error,
-						$json: this.getInputData(i),
-						json: {},
+					const executionErrorData = {
+						json: {} as IDataObject,
+						error: error.message,
 						itemIndex: i,
-					});
-					const exectionErrorWithMetaData = this.helpers.constructExecutionMetaData(
-						{ item: i },
-						errorData,
-					);
-					responseData.push(...exectionErrorWithMetaData);
+					};
+					responseData.push(executionErrorData as INodeExecutionData);
 					continue;
 				}
 				throw error;

@@ -338,9 +338,8 @@ export class Ghost implements INodeType {
 				returnData.push(...responseExecutionMetadata);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const executionErrorData = this.helpers.returnJsonArray({ error: error.message, $json: this.getInputData(i), itemIndex: i });
-					const errorExecutionMetadata = this.helpers.constructExecutionMetaData({ item: i }, executionErrorData);
-					returnData.push(...errorExecutionMetadata);
+					const executionErrorData = { error: error.message, json: {} as IDataObject, itemIndex: i };
+					returnData.push(executionErrorData as INodeExecutionData);
 					continue;
 				}
 				throw error;

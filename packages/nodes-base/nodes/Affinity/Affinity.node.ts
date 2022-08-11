@@ -424,16 +424,12 @@ export class Affinity implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const executionErrorData = this.helpers.returnJsonArray({
+					const executionErrorData = {
+						json: {} as IDataObject,
 						error: error.message,
-						$json: this.getInputData(i),
 						itemIndex: i,
-					});
-					const errorExecutionMetadata = this.helpers.constructExecutionMetaData(
-						{ item: i },
-						executionErrorData,
-					);
-					returnData.push(...errorExecutionMetadata);
+					};
+					returnData.push(executionErrorData as INodeExecutionData);
 					continue;
 				}
 				throw error;

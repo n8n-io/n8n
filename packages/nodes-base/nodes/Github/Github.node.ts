@@ -2169,13 +2169,12 @@ export class Github implements INodeType {
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)
 					) {
-						const errorData = this.helpers.returnJsonArray({
+						const errorData = {
 							$error: error,
-							$json: this.getInputData(i),
+							json: {} as IDataObject,
 							itemIndex: i,
-						});
-
-						returnData.push(...this.helpers.constructExecutionMetaData({item: i}, errorData));
+						};
+						returnData.push( errorData as INodeExecutionData);
 					} else {
 						items[i].json = { error: error.message };
 					}
