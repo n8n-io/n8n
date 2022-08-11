@@ -21,13 +21,14 @@ export const objectRetriever: ValueTransformer = {
 };
 
 /**
- * Transformer to account for sqlite storing and retrieving JSON as TEXT.
+ * Transformer for sqlite JSON columns to mimic JSON-as-object behavior
+ * from Postgres and MySQL.
  */
-const jsonSerializer: ValueTransformer = {
+const jsonColumn: ValueTransformer = {
 	to: (value: object): string | object =>
 		config.getEnv('database.type') === 'sqlite' ? JSON.stringify(value) : value,
 	from: (value: string | object): object =>
 		typeof value === 'string' ? (JSON.parse(value) as object) : value,
 };
 
-export const sqlite = { jsonSerializer };
+export const sqlite = { jsonColumn };

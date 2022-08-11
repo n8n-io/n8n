@@ -120,7 +120,7 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
 		nullable: true,
-		transformer: sqlite.jsonSerializer,
+		transformer: sqlite.jsonColumn,
 	})
 	pinData: IPinData;
 
