@@ -24,7 +24,13 @@ import { categorize, getPostgresSchemaSection } from './utils';
 import { createCredentiasFromCredentialsEntity } from '../../../src/CredentialsHelper';
 
 import type { Role } from '../../../src/databases/entities/Role';
-import type { CollectionName, CredentialPayload, InstalledNodePayload, InstalledPackagePayload, MappingName } from './types';
+import type {
+	CollectionName,
+	CredentialPayload,
+	InstalledNodePayload,
+	InstalledPackagePayload,
+	MappingName,
+} from './types';
 import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
 import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
 import { User } from '../../../src/databases/entities/User';
@@ -167,7 +173,7 @@ async function truncateMappingTables(
 	if (dbType === 'postgresdb') {
 		const schema = config.getEnv('database.postgresdb.schema');
 
-		// `TRUNCATE` in postgres cannot be parallelized
+		// sequential TRUNCATEs to prevent race conditions
 		for (const tableName of mappingTables) {
 			const fullTableName = `${schema}.${tableName}`;
 			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
@@ -217,29 +223,37 @@ export async function truncate(collections: Array<CollectionName>, testDbName: s
 	if (dbType === 'postgresdb') {
 		const schema = config.getEnv('database.postgresdb.schema');
 
-		// `TRUNCATE` in postgres cannot be parallelized
+		// sequential TRUNCATEs to prevent race conditions
 		for (const collection of collections) {
 			const fullTableName = `${schema}.${toTableName(collection)}`;
 			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
 		}
 
-		return await truncateMappingTables(dbType, collections, testDb);
+		return truncateMappingTables(dbType, collections, testDb);
 	}
 
-	/**
-	 * MySQL `TRUNCATE` requires enabling and disabling the global variable `foreign_key_checks`,
-	 * which cannot be safely manipulated by parallel tests, so use `DELETE` and `AUTO_INCREMENT`.
-	 * Clear shared tables first to avoid deadlock: https://stackoverflow.com/a/41174997
-	 */
 	if (dbType === 'mysqldb') {
-		const { pass: isShared, fail: isNotShared } = categorize(
-			collections,
-			(collectionName: CollectionName) => collectionName.toLowerCase().startsWith('shared'),
+		const { pass: sharedTables, fail: rest } = categorize(collections, (c: CollectionName) =>
+			c.toLowerCase().startsWith('shared'),
 		);
 
-		await truncateMySql(testDb, isShared);
-		await truncateMappingTables(dbType, collections, testDb);
-		await truncateMySql(testDb, isNotShared);
+		// sequential DELETEs to prevent race conditions
+		// clear foreign-key tables first to avoid deadlocks on MySQL: https://stackoverflow.com/a/41174997
+		for (const collection of [...sharedTables, ...rest]) {
+			const tableName = toTableName(collection);
+
+			await testDb.query(`DELETE FROM ${tableName};`);
+
+			const hasIdColumn = await testDb
+				.query(`SHOW COLUMNS FROM ${tableName}`)
+				.then((columns: { Field: string }[]) => columns.find((c) => c.Field === 'id'));
+
+			if (!hasIdColumn) continue;
+
+			await testDb.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
+		}
+
+		return truncateMappingTables(dbType, collections, testDb);
 	}
 }
 
@@ -263,16 +277,6 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		InstalledPackages: 'installed_packages',
 		InstalledNodes: 'installed_nodes',
 	}[sourceName];
-}
-
-function truncateMySql(connection: Connection, collections: CollectionName[]) {
-	return Promise.all(
-		collections.map(async (collection) => {
-			const tableName = toTableName(collection);
-			await connection.query(`DELETE FROM ${tableName};`);
-			await connection.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
-		}),
-	);
 }
 
 // ----------------------------------
@@ -346,23 +350,25 @@ export function createUserShell(globalRole: Role): Promise<User> {
 // Installed nodes and packages creation
 // --------------------------------------
 
-export async function saveInstalledPackage(installedPackagePayload: InstalledPackagePayload): Promise<InstalledPackages> {
+export async function saveInstalledPackage(
+	installedPackagePayload: InstalledPackagePayload,
+): Promise<InstalledPackages> {
 	const newInstalledPackage = new InstalledPackages();
 
 	Object.assign(newInstalledPackage, installedPackagePayload);
-
 
 	const savedInstalledPackage = await Db.collections.InstalledPackages.save(newInstalledPackage);
 	return savedInstalledPackage;
 }
 
-export async function saveInstalledNode(installedNodePayload: InstalledNodePayload): Promise<InstalledNodes> {
+export function saveInstalledNode(
+	installedNodePayload: InstalledNodePayload,
+): Promise<InstalledNodes> {
 	const newInstalledNode = new InstalledNodes();
 
 	Object.assign(newInstalledNode, installedNodePayload);
 
-	const savedInstalledNode = await Db.collections.InstalledNodes.save(newInstalledNode);
-	return savedInstalledNode;
+	return Db.collections.InstalledNodes.save(newInstalledNode);
 }
 
 export function addApiKey(user: User): Promise<User> {

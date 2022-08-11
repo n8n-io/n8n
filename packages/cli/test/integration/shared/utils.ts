@@ -25,7 +25,8 @@ import {
 import config from '../../../config';
 import {
 	AUTHLESS_ENDPOINTS,
-	CURRENT_PACKAGE_VERSION,
+	COMMUNITY_NODE_VERSION,
+	COMMUNITY_PACKAGE_VERSION,
 	PUBLIC_API_REST_PATH_SEGMENT,
 	REST_PATH_SEGMENT,
 } from './constants';
@@ -908,7 +909,7 @@ export function getPostgresSchemaSection(
 export function installedPackagePayload(): InstalledPackagePayload {
 	return {
 		packageName: NODE_PACKAGE_PREFIX + randomName(),
-		installedVersion: CURRENT_PACKAGE_VERSION,
+		installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
 	};
 }
 
@@ -917,7 +918,7 @@ export function installedNodePayload(packageName: string): InstalledNodePayload 
 	return {
 		name: nodeName,
 		type: nodeName,
-		latestVersion: CURRENT_PACKAGE_VERSION,
+		latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
 		package: packageName,
 	};
 }
