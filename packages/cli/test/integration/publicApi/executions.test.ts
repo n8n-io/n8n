@@ -279,6 +279,71 @@ test('GET /executions should retrieve all successfull executions', async () => {
 	expect(waitTill).toBeNull();
 });
 
+test('GET /executions should paginate two executions', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		auth: true,
+		user: owner,
+		version: 1,
+	});
+
+	const workflow = await testDb.createWorkflow({}, owner);
+
+	const fistSuccessfullExecution = await testDb.createSuccessfulExecution(workflow);
+
+	const secondSuccessfullExecution = await testDb.createSuccessfulExecution(workflow);
+
+	await testDb.createErrorExecution(workflow);
+
+	const firstExecutionResponse = await authOwnerAgent.get(`/executions`).query({
+		status: 'success',
+		limit: 1,
+	});
+
+	expect(firstExecutionResponse.statusCode).toBe(200);
+	expect(firstExecutionResponse.body.data.length).toBe(1);
+	expect(firstExecutionResponse.body.nextCursor).toBeDefined();
+
+	const secondExecutionResponse = await authOwnerAgent.get(`/executions`).query({
+		status: 'success',
+		limit: 1,
+		cursor: firstExecutionResponse.body.nextCursor,
+	});
+
+	expect(secondExecutionResponse.statusCode).toBe(200);
+	expect(secondExecutionResponse.body.data.length).toBe(1);
+	expect(secondExecutionResponse.body.nextCursor).toBeNull();
+
+	const successfullExecutions = [fistSuccessfullExecution, secondSuccessfullExecution];
+	const executions = [...firstExecutionResponse.body.data, ...secondExecutionResponse.body.data];
+
+	for (let i = 0; i < executions.length; i++) {
+		const {
+			id,
+			finished,
+			mode,
+			retryOf,
+			retrySuccessId,
+			startedAt,
+			stoppedAt,
+			workflowId,
+			waitTill,
+		} = executions[i]
+
+		expect(id).toBeDefined();
+		expect(finished).toBe(true);
+		expect(mode).toEqual(successfullExecutions[i].mode);
+		expect(retrySuccessId).toBeNull();
+		expect(retryOf).toBeNull();
+		expect(startedAt).not.toBeNull();
+		expect(stoppedAt).not.toBeNull();
+		expect(workflowId).toBe(successfullExecutions[i].workflowId);
+		expect(waitTill).toBeNull();
+	}
+});
+
 test('GET /executions should retrieve all error executions', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
