@@ -88,6 +88,7 @@ export async function highLevelApiPagination(
 	const responseData: INodeExecutionData[] = [];
 	const resource = this.getNodeParameter('resource') as string;
 	const returnAll = this.getNodeParameter('returnAll', false) as boolean;
+
 	const resourceMapping: { [key: string]: string } = {
 		contact: 'contacts',
 		opportunity: 'opportunities',
@@ -124,35 +125,30 @@ export async function highLevelApiRequest(
 	method: string,
 	resource: string,
 	body: IDataObject = {},
-	query: IDataObject = {},
+	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('highLevelApi');
-	const endpoint = 'https://rest.gohighlevel.com/v1';
-
 	let options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${credentials.apiKey}`,
-		},
 		method,
 		body,
-		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		qs,
+		uri: uri || `https://rest.gohighlevel.com/v1${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
-	if (!Object.keys(query).length) {
+	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error, {
+			message: error.message,
+		});
 	}
 }
 
