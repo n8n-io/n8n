@@ -404,6 +404,13 @@ export const boardFields: INodeProperties[] = [
 							throw new Error("No valid URL got entered.");
 						}
 					},
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?:\/\/api.trello.com\/1\/boards\/[a-zA-Z0-9]+',
+							errorMessage: 'URL has to be in the format: http(s)://api.trello.com/1/boards/<board ID>',
+						},
+					},
 				],
 				extractValue: {
 					type: 'regex',
