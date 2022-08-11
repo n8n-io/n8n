@@ -1323,7 +1323,7 @@ export function constructExecutionMetaData(
 ): INodeExecutionMetaData[] {
 	return inputData.map((data: INodeExecutionData) => {
 		const { json, ...rest } = data;
-		const metaData = { json, pairedItem: { ...itemData }, rest } as INodeExecutionMetaData;
+		const metaData = { json, pairedItem: { ...itemData }, ...rest } as INodeExecutionMetaData;
 		return metaData;
 	});
 }
