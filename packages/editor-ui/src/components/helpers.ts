@@ -1,7 +1,7 @@
 import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import dateformat from 'dateformat';
-import {IDataObject, INodeTypeDescription} from 'n8n-workflow';
+import {IDataObject, INodeParameterResourceLocator, INodeProperties, INodeTypeDescription} from 'n8n-workflow';
 
 const KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
@@ -98,4 +98,17 @@ export function shorten(s: string, limit: number, keep: number) {
 
 export function hasExpressionMapping(value: unknown) {
 	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
+}
+
+export function isValueExpression (parameter: INodeProperties, paramValue: string| INodeParameterResourceLocator): boolean {
+	if (parameter.noDataExpression === true) {
+		return false;
+	}
+	if (typeof paramValue === 'string' && paramValue.charAt(0) === '=') {
+		return true;
+	}
+	if (typeof paramValue === 'object' && paramValue.value && paramValue.value.toString().charAt(0) === '=') {
+		return true;
+	}
+	return false;
 }

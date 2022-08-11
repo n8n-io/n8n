@@ -51,7 +51,6 @@ import {
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
-	NodeParameterValue,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowDataProxy,
@@ -63,6 +62,7 @@ import {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	IGetNodeParameterOptions,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1625,9 +1625,7 @@ export function getNode(node: INode): INode {
  * Clean up parameter data to make sure that only valid data gets returned
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
-function cleanupParameterData(
-	inputData: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+function cleanupParameterData(inputData: NodeParameterValueType): NodeParameterValueType {
 	if (inputData === null || inputData === undefined) {
 		return inputData;
 	}
@@ -1644,7 +1642,9 @@ function cleanupParameterData(
 
 	if (typeof inputData === 'object') {
 		Object.keys(inputData).forEach((key) => {
-			inputData[key] = cleanupParameterData(inputData[key]);
+			inputData[key as keyof typeof inputData] = cleanupParameterData(
+				inputData[key as keyof typeof inputData],
+			);
 		});
 	}
 
@@ -1662,11 +1662,11 @@ function cleanupParameterData(
  */
 
 function extractValue(
-	value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object,
+	value: NodeParameterValueType | object,
 	parameterName: string,
 	node: INode,
 	nodeType: INodeType,
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
+): NodeParameterValueType | object {
 	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection;
 	const paramParts = parameterName.split('.');
 	const findProp = (
@@ -1698,7 +1698,7 @@ function extractValue(
 	}
 
 	if (typeof value !== 'string') {
-		let typeName = value?.constructor.name;
+		let typeName: string | undefined = value?.constructor.name;
 		if (value === null) {
 			typeName = 'null';
 		} else if (typeName === undefined) {
@@ -1764,7 +1764,7 @@ export function getNodeParameter(
 	executeData?: IExecuteData,
 	fallbackValue?: any,
 	options?: IGetNodeParameterOptions,
-): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
+): NodeParameterValueType | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -1976,12 +1976,7 @@ export function getExecutePollFunctions(
 				parameterName: string,
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2133,12 +2128,7 @@ export function getExecuteTriggerFunctions(
 				parameterName: string,
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2351,12 +2341,7 @@ export function getExecuteFunctions(
 				itemIndex: number,
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2627,12 +2612,7 @@ export function getExecuteSingleFunctions(
 				parameterName: string,
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				return getNodeParameter(
 					workflow,
 					runExecutionData,
@@ -2779,13 +2759,7 @@ export function getLoadOptionsFunctions(
 			},
 			getCurrentNodeParameter: (
 				parameterPath: string,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object
-				| undefined => {
+			): NodeParameterValueType | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
 
 				if (parameterPath.charAt(0) === '&') {
@@ -2804,12 +2778,7 @@ export function getLoadOptionsFunctions(
 				parameterName: string,
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -2937,12 +2906,7 @@ export function getExecuteHookFunctions(
 				parameterName: string,
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -3102,12 +3066,7 @@ export function getExecuteWebhookFunctions(
 				parameterName: string,
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
-			):
-				| NodeParameterValue
-				| INodeParameters
-				| NodeParameterValue[]
-				| INodeParameters[]
-				| object => {
+			): NodeParameterValueType | object => {
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;

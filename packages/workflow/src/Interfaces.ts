@@ -541,10 +541,7 @@ export interface IGetNodeParameterOptions {
 
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
-	evaluateExpression(
-		expression: string,
-		itemIndex: number,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
+	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	executeWorkflow(
 		workflowInfo: IExecuteWorkflowInfo,
 		inputData?: INodeExecutionData[],
@@ -564,7 +561,7 @@ export interface IExecuteFunctions {
 		itemIndex: number,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
+	): NodeParameterValueType | object;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
@@ -594,10 +591,7 @@ export interface IExecuteFunctions {
 
 export interface IExecuteSingleFunctions {
 	continueOnFail(): boolean;
-	evaluateExpression(
-		expression: string,
-		itemIndex: number | undefined,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
+	evaluateExpression(expression: string, itemIndex: number | undefined): NodeParameterValueType;
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
@@ -608,7 +602,7 @@ export interface IExecuteSingleFunctions {
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
+	): NodeParameterValueType | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getExecuteData(): IExecuteData;
@@ -658,16 +652,8 @@ export interface ILoadOptionsFunctions {
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
-	getCurrentNodeParameter(
-		parameterName: string,
-	):
-		| NodeParameterValue
-		| INodeParameters
-		| NodeParameterValue[]
-		| INodeParameters[]
-		| object
-		| undefined;
+	): NodeParameterValueType | object;
+	getCurrentNodeParameter(parameterName: string): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 	getTimezone(): string;
 	getRestApiUrl(): string;
@@ -703,7 +689,7 @@ export interface IHookFunctions {
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
+	): NodeParameterValueType | object;
 	getTimezone(): string;
 	getWebhookDescription(name: string): IWebhookDescription | undefined;
 	getWebhookName(): string;
@@ -733,7 +719,7 @@ export interface IPollFunctions {
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
+	): NodeParameterValueType | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
@@ -767,7 +753,7 @@ export interface ITriggerFunctions {
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
+	): NodeParameterValueType | object;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
@@ -796,7 +782,7 @@ export interface IWebhookFunctions {
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
+	): NodeParameterValueType | object;
 	getNodeWebhookUrl: (name: string) => string | undefined;
 	getParamsData(): object;
 	getQueryData(): object;
@@ -900,12 +886,26 @@ export interface INodeExecuteFunctions {
 	getExecuteWebhookFunctions: IGetExecuteWebhookFunctions;
 }
 
-// The values a node property can have
 export type NodeParameterValue = string | number | boolean | undefined | null;
 
-export interface INodeParameters {
+export type ResourceLocatorModes = 'id' | 'url';
+
+export interface INodeParameterResourceLocator {
+	mode: ResourceLocatorModes;
+	value: NodeParameterValue;
+}
+
+export type NodeParameterValueType =
 	// TODO: Later also has to be possible to add multiple ones with the name name. So array has to be possible
-	[key: string]: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
+	| NodeParameterValue
+	| INodeParameters
+	| INodeParameterResourceLocator
+	| NodeParameterValue[]
+	| INodeParameters[]
+	| INodeParameterResourceLocator[];
+
+export interface INodeParameters {
+	[key: string]: NodeParameterValueType;
 }
 
 export type NodePropertyTypes =
@@ -970,7 +970,7 @@ export interface INodeProperties {
 	name: string;
 	type: NodePropertyTypes;
 	typeOptions?: INodePropertyTypeOptions;
-	default: NodeParameterValue | INodeParameters | INodeParameters[] | NodeParameterValue[];
+	default: NodeParameterValueType;
 	description?: string;
 	hint?: string;
 	displayOptions?: IDisplayOptions;

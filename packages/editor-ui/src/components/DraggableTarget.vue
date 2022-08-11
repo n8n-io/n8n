@@ -59,7 +59,7 @@ export default Vue.extend({
 
 				this.hovering = e.clientX >= dim.left && e.clientX <= dim.right && e.clientY >= dim.top && e.clientY <= dim.bottom;
 
-				if (this.sticky && this.hovering) {
+				if (!this.disabled && this.sticky && this.hovering) {
 					this.$store.commit('ui/setDraggableStickyPos', [dim.left + this.stickyOffset, dim.top + this.stickyOffset]);
 				}
 			}
