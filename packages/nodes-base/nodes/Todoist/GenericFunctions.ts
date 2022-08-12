@@ -24,6 +24,7 @@ export async function todoistApiRequest(
 	this: Context,
 	method: string,
 	resource: string,
+	// tslint:disable-next-line:no-any
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any

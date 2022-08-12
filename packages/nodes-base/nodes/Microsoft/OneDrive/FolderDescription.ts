@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const folderOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const folderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
+				resource: ['folder'],
 			},
 		},
 		options: [
@@ -58,10 +54,9 @@ export const folderOperations: INodeProperties[] = [
 ];
 
 export const folderFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 folder:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -70,12 +65,8 @@ export const folderFields: INodeProperties[] = [
 		placeholder: '/Pictures/2021',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['create'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -87,12 +78,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['create'],
+				resource: ['folder'],
 			},
 		},
 		default: {},
@@ -107,98 +94,78 @@ export const folderFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 folder:getChildren/delete                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:getChildren/delete                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-					'getChildren',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['delete', 'getChildren'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                               folder:rename                                */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Item ID',
-	name: 'itemId',
-	type: 'string',
-	displayOptions: {
-		show: {
-			operation: [
-				'rename',
-			],
-			resource: [
-				'folder',
-			],
+	/* -------------------------------------------------------------------------- */
+	/*                               folder:rename                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['rename'],
+				resource: ['folder'],
+			},
 		},
+		default: '',
+		description: 'ID of the folder',
 	},
-	default: '',
-	description: 'ID of the folder',
-},
-{
-	displayName: 'New Name',
-	name: 'newName',
-	type: 'string',
-	displayOptions: {
-		show: {
-			operation: [
-				'rename',
-			],
-			resource: [
-				'folder',
-			],
+	{
+		displayName: 'New Name',
+		name: 'newName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['rename'],
+				resource: ['folder'],
+			},
 		},
+		default: '',
+		description: 'New name for folder',
 	},
-	default: '',
-	description: 'New name for folder',
-},
-/* -------------------------------------------------------------------------- */
-/*                                 folder:search                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:search                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Query',
 		name: 'query',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['search'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
-		description: 'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
+		description:
+			'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 folder:share                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:share                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -224,12 +191,8 @@ export const folderFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -251,12 +214,8 @@ export const folderFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: '',

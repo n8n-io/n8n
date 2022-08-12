@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -31,7 +27,7 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all messages in the signed-in user\'s mailbox',
+				description: "Get all messages in the signed-in user's mailbox",
 				action: 'Get all messages',
 			},
 			{
@@ -78,9 +74,7 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 				operation: [
 					'addAttachment',
 					'delete',
@@ -114,12 +108,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
 	},
@@ -129,12 +119,8 @@ export const messageFields: INodeProperties[] = [
 		description: 'A comment to include. Can be an empty string.',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
 		type: 'string',
@@ -143,15 +129,12 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Send',
 		name: 'send',
-		description: 'Whether to send the reply message directly. If not set, it will be saved as draft.',
+		description:
+			'Whether to send the reply message directly. If not set, it will be saved as draft.',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
 		type: 'boolean',
@@ -165,15 +148,9 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
-				replyType: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['reply'],
+				replyType: ['reply'],
 			},
 		},
 		options: [
@@ -196,12 +173,12 @@ export const messageFields: INodeProperties[] = [
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary property containing the data to be added to the email as an attachment',
+								description:
+									'Name of the binary property containing the data to be added to the email as an attachment',
 							},
 						],
 					},
 				],
-
 			},
 			{
 				displayName: 'BCC Recipients',
@@ -276,7 +253,8 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'From',
 				name: 'from',
-				description: 'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
+				description:
+					'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -339,12 +317,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['message'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -356,15 +330,9 @@ export const messageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['message'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -382,13 +350,8 @@ export const messageFields: INodeProperties[] = [
 		description: 'The subject of the message',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-					'send',
-				],
+				resource: ['message'],
+				operation: ['create', 'send'],
 			},
 		},
 		type: 'string',
@@ -401,13 +364,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'create',
-					'send',
-				],
+				resource: ['message'],
+				operation: ['create', 'send'],
 			},
 		},
 		default: '',
@@ -419,12 +377,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		required: true,
@@ -438,12 +392,8 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		options: [
@@ -466,12 +416,12 @@ export const messageFields: INodeProperties[] = [
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary property containing the data to be added to the email as an attachment',
+								description:
+									'Name of the binary property containing the data to be added to the email as an attachment',
 							},
 						],
 					},
 				],
-
 			},
 			{
 				displayName: 'BCC Recipients',
@@ -501,7 +451,8 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
@@ -549,7 +500,8 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'From',
 				name: 'from',
-				description: 'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
+				description:
+					'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -615,12 +567,8 @@ export const messageFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'getMime',
-				],
+				resource: ['message'],
+				operation: ['getMime'],
 			},
 		},
 	},
@@ -635,12 +583,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'move',
-				],
+				resource: ['message'],
+				operation: ['move'],
 			},
 		},
 	},

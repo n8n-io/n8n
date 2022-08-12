@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const galaxyOperations: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const galaxyOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'galaxy',
-				],
+				resource: ['galaxy'],
 			},
 		},
 		noDataExpression: true,
@@ -49,12 +45,8 @@ export const galaxyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'galaxy',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['galaxy'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -71,12 +63,8 @@ export const galaxyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'galaxy',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['galaxy'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -92,12 +80,8 @@ export const galaxyFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'galaxy',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['galaxy'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -112,15 +96,9 @@ export const galaxyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'galaxy',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['galaxy'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

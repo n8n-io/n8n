@@ -20,6 +20,7 @@ export async function onfleetApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
+	// tslint:disable-next-line:no-any
 	body: any = {}, // tslint:disable-line:no-any
 	qs?: any, // tslint:disable-line:no-any
 	uri?: string): Promise<any> { // tslint:disable-line:no-any

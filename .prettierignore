@@ -49,41 +49,41 @@ packages/design-system
 # packages/nodes-base/nodes/LingvaNex
 # packages/nodes-base/nodes/LinkedIn
 # packages/nodes-base/nodes/LocalFileTrigger
-packages/nodes-base/nodes/Magento
-packages/nodes-base/nodes/Mailcheck
-packages/nodes-base/nodes/Mailchimp
-packages/nodes-base/nodes/MailerLite
-packages/nodes-base/nodes/Mailgun
-packages/nodes-base/nodes/Mailjet
-packages/nodes-base/nodes/Mandrill
-packages/nodes-base/nodes/Markdown
-packages/nodes-base/nodes/Marketstack
-packages/nodes-base/nodes/Matrix
-packages/nodes-base/nodes/Mattermost
-packages/nodes-base/nodes/Mautic
-packages/nodes-base/nodes/Medium
-packages/nodes-base/nodes/Merge
-packages/nodes-base/nodes/MessageBird
-packages/nodes-base/nodes/Microsoft
-packages/nodes-base/nodes/Mindee
-packages/nodes-base/nodes/Misp
-packages/nodes-base/nodes/Mocean
-packages/nodes-base/nodes/MondayCom
-packages/nodes-base/nodes/MongoDb
-packages/nodes-base/nodes/MonicaCrm
-packages/nodes-base/nodes/MoveBinaryData
-packages/nodes-base/nodes/MQTT
-packages/nodes-base/nodes/Msg91
-packages/nodes-base/nodes/MySql
-packages/nodes-base/nodes/N8nTrainingCustomerDatastore
-packages/nodes-base/nodes/N8nTrainingCustomerMessenger
-packages/nodes-base/nodes/N8nTrigger
-packages/nodes-base/nodes/Nasa
-packages/nodes-base/nodes/Netlify
-packages/nodes-base/nodes/NextCloud
-packages/nodes-base/nodes/NocoDB
-packages/nodes-base/nodes/NoOp
-packages/nodes-base/nodes/Notion
+# packages/nodes-base/nodes/Magento
+# packages/nodes-base/nodes/Mailcheck
+# packages/nodes-base/nodes/Mailchimp
+# packages/nodes-base/nodes/MailerLite
+# packages/nodes-base/nodes/Mailgun
+# packages/nodes-base/nodes/Mailjet
+# packages/nodes-base/nodes/Mandrill
+# packages/nodes-base/nodes/Markdown
+# packages/nodes-base/nodes/Marketstack
+# packages/nodes-base/nodes/Matrix
+# packages/nodes-base/nodes/Mattermost
+# packages/nodes-base/nodes/Mautic
+# packages/nodes-base/nodes/Medium
+# packages/nodes-base/nodes/Merge
+# packages/nodes-base/nodes/MessageBird
+# packages/nodes-base/nodes/Microsoft
+# packages/nodes-base/nodes/Mindee
+# packages/nodes-base/nodes/Misp
+# packages/nodes-base/nodes/Mocean
+# packages/nodes-base/nodes/MondayCom
+# packages/nodes-base/nodes/MongoDb
+# packages/nodes-base/nodes/MonicaCrm
+# packages/nodes-base/nodes/MoveBinaryData
+# packages/nodes-base/nodes/MQTT
+# packages/nodes-base/nodes/Msg91
+# packages/nodes-base/nodes/MySql
+# packages/nodes-base/nodes/N8nTrainingCustomerDatastore
+# packages/nodes-base/nodes/N8nTrainingCustomerMessenger
+# packages/nodes-base/nodes/N8nTrigger
+# packages/nodes-base/nodes/Nasa
+# packages/nodes-base/nodes/Netlify
+# packages/nodes-base/nodes/NextCloud
+# packages/nodes-base/nodes/NocoDB
+# packages/nodes-base/nodes/NoOp
+# packages/nodes-base/nodes/Notion
 packages/nodes-base/nodes/Odoo
 packages/nodes-base/nodes/OneSimpleApi
 packages/nodes-base/nodes/Onfleet
