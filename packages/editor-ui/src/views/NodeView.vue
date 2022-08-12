@@ -2232,27 +2232,31 @@ export default mixins(
 			__removeConnectionByConnectionInfo (info: OnConnectionBindInfo, removeVisualConnection = false) {
 				// @ts-ignore
 				const sourceInfo = info.sourceEndpoint.getParameters();
+				const sourceNode = this.$store.getters.getNodeById(sourceInfo.nodeId);
 				// @ts-ignore
 				const targetInfo = info.targetEndpoint.getParameters();
+				const targetNode = this.$store.getters.getNodeById(targetInfo.nodeId);
 
-				const connectionInfo = [
-					{
-						node: this.$store.getters.getNodeById(sourceInfo.nodeId).name,
-						type: sourceInfo.type,
-						index: sourceInfo.index,
-					},
-					{
-						node: this.$store.getters.getNodeById(targetInfo.nodeId).name,
-						type: targetInfo.type,
-						index: targetInfo.index,
-					},
-				] as [IConnection, IConnection];
+				if (sourceNode && targetNode) {
+					const connectionInfo = [
+						{
+							node: sourceNode.name,
+							type: sourceInfo.type,
+							index: sourceInfo.index,
+						},
+						{
+							node: targetNode.name,
+							type: targetInfo.type,
+							index: targetInfo.index,
+						},
+					] as [IConnection, IConnection];
 
-				if (removeVisualConnection) {
-					this.__deleteJSPlumbConnection(info.connection);
+					if (removeVisualConnection) {
+						this.__deleteJSPlumbConnection(info.connection);
+					}
+
+					this.$store.commit('removeConnection', { connection: connectionInfo });
 				}
-
-				this.$store.commit('removeConnection', { connection: connectionInfo });
 			},
 			async duplicateNode (nodeName: string) {
 				if (this.editAllowedCheck() === false) {
