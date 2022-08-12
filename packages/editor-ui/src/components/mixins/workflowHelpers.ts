@@ -320,17 +320,20 @@ export const workflowHelpers = mixins(
 				return nodeTypes;
 			},
 
-			// Returns a workflow instance.
-			getWorkflow (nodes?: INodeUi[], connections?: IConnections, copyData?: boolean): Workflow {
-				nodes = nodes || this.getNodes();
-				connections = connections || (this.$store.getters.allConnections as IConnections);
-
+			getCurrentWorkflow(copyData?: boolean): Workflow {
+				const nodes = this.getNodes();
+				const connections = (this.$store.getters.allConnections as IConnections);
 				const cacheKey = JSON.stringify({nodes, connections});
 				if (cachedWorkflow && cacheKey === cachedWorkflowKey) {
 					return cachedWorkflow;
 				}
 				cachedWorkflowKey = cacheKey;
 
+				return this.getWorkflow(nodes, connections, copyData);
+			},
+
+			// Returns a workflow instance.
+			getWorkflow (nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 				const nodeTypes = this.getNodeTypes();
 				let workflowId = this.$store.getters.workflowId;
 				if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
@@ -514,7 +517,7 @@ export const workflowHelpers = mixins(
 				const itemIndex = 0;
 				const inputName = 'main';
 				const activeNode = this.$store.getters.activeNode;
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				const parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 
@@ -595,7 +598,7 @@ export const workflowHelpers = mixins(
 				const returnData = this.resolveParameter(parameters) as IDataObject;
 
 				if (typeof returnData['__xxxxxxx__'] === 'object') {
-					const workflow = this.getWorkflow();
+					const workflow = this.getCurrentWorkflow();
 					return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
 				}
 				return returnData['__xxxxxxx__'];
