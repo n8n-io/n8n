@@ -55,6 +55,9 @@ import { isEqual } from 'lodash';
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 
+let cachedWorkflowKey: string | null = '';
+let cachedWorkflow: Workflow | null = null;
+
 export const workflowHelpers = mixins(
 	externalHooks,
 	nodeHelpers,
@@ -322,6 +325,12 @@ export const workflowHelpers = mixins(
 				nodes = nodes || this.getNodes();
 				connections = connections || (this.$store.getters.allConnections as IConnections);
 
+				const cacheKey = JSON.stringify({nodes, connections});
+				if (cachedWorkflow && cacheKey === cachedWorkflowKey) {
+					return cachedWorkflow;
+				}
+				cachedWorkflowKey = cacheKey;
+
 				const nodeTypes = this.getNodeTypes();
 				let workflowId = this.$store.getters.workflowId;
 				if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
@@ -330,7 +339,7 @@ export const workflowHelpers = mixins(
 
 				const workflowName = this.$store.getters.workflowName;
 
-				return new Workflow({
+				cachedWorkflow = new Workflow({
 					id: workflowId,
 					name: workflowName,
 					nodes: copyData ? JSON.parse(JSON.stringify(nodes)) : nodes,
@@ -340,6 +349,8 @@ export const workflowHelpers = mixins(
 					settings: this.$store.getters.workflowSettings,
 					pinData: this.$store.getters.pinData,
 				});
+
+				return cachedWorkflow;
 			},
 
 			// Returns the currently loaded workflow as JSON.
