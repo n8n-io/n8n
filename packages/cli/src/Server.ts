@@ -70,6 +70,7 @@ import {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
+	IRun,
 	ITelemetrySettings,
 	IWorkflowBase,
 	LoggerProxy,
@@ -1166,6 +1167,15 @@ class App {
 
 					const workflowRunner = new WorkflowRunner();
 					const executionId = await workflowRunner.run(data);
+
+					const PEPromise = new Promise();
+
+					this.activeExecutionsInstance.attachResponsePromise(executionId, PEPromise);
+
+					const result = await PEPromise as IRun;
+
+					result.data.resultData.runData[destinationNode];
+
 
 					return {
 						executionId,

@@ -1456,6 +1456,7 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId: string;
+	exportMode?: boolean;
 }
 
 export type WorkflowExecuteMode =

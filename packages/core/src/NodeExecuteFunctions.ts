@@ -537,6 +537,7 @@ function digestAuthAxiosConfig(
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
+	exportMode?: boolean,
 ): Promise<any> {
 	// tslint:disable-line:no-any
 
@@ -598,6 +599,9 @@ async function proxyRequestToAxios(
 			}
 		});
 	} else {
+		if (exportMode) {
+			return [{json: {curlCmd: librarythatgeneratesCurl()}}]
+		}
 		axiosPromise = axios(axiosConfig);
 	}
 
