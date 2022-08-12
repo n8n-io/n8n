@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const ecommerceProductOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const ecommerceProductOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ecommerceProduct',
-				],
+				resource: ['ecommerceProduct'],
 			},
 		},
 		options: [
@@ -46,10 +42,9 @@ export const ecommerceProductOperations: INodeProperties[] = [
 ];
 
 export const ecommerceProductFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 ecommerceProduct:create                    */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ecommerceProduct:create                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product Name',
 		name: 'productName',
@@ -57,12 +52,8 @@ export const ecommerceProductFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceProduct',
-				],
+				operation: ['create'],
+				resource: ['ecommerceProduct'],
 			},
 		},
 		default: '',
@@ -75,12 +66,8 @@ export const ecommerceProductFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceProduct',
-				],
+				operation: ['create'],
+				resource: ['ecommerceProduct'],
 			},
 		},
 		options: [
@@ -128,9 +115,9 @@ export const ecommerceProductFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 ecommerceProduct:delete                    */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ecommerceProduct:delete                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
@@ -138,19 +125,15 @@ export const ecommerceProductFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'ecommerceProduct',
-				],
+				operation: ['delete'],
+				resource: ['ecommerceProduct'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 ecommerceProduct:get                       */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ecommerceProduct:get                       */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
@@ -158,31 +141,23 @@ export const ecommerceProductFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'ecommerceProduct',
-				],
+				operation: ['get'],
+				resource: ['ecommerceProduct'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 ecommerceProduct:getAll                    */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ecommerceProduct:getAll                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceProduct',
-				],
+				operation: ['getAll'],
+				resource: ['ecommerceProduct'],
 			},
 		},
 		default: false,
@@ -194,15 +169,9 @@ export const ecommerceProductFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceProduct',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['ecommerceProduct'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -220,12 +189,8 @@ export const ecommerceProductFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceProduct',
-				],
+				operation: ['getAll'],
+				resource: ['ecommerceProduct'],
 			},
 		},
 		options: [

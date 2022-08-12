@@ -29,26 +29,26 @@ packages/design-system
 # packages/nodes-base/nodes/Hubspot
 # packages/nodes-base/nodes/HumanticAI
 # packages/nodes-base/nodes/Hunter
-packages/nodes-base/nodes/ICalendar
-packages/nodes-base/nodes/If
-packages/nodes-base/nodes/Intercom
-packages/nodes-base/nodes/Interval
-packages/nodes-base/nodes/InvoiceNinja
-packages/nodes-base/nodes/ItemLists
-packages/nodes-base/nodes/Iterable
-packages/nodes-base/nodes/Jenkins
-packages/nodes-base/nodes/Jira
-packages/nodes-base/nodes/JotForm
-packages/nodes-base/nodes/Kafka
-packages/nodes-base/nodes/Keap
-packages/nodes-base/nodes/Kitemaker
-packages/nodes-base/nodes/KoBoToolbox
-packages/nodes-base/nodes/Lemlist
-packages/nodes-base/nodes/Line
-packages/nodes-base/nodes/Linear
-packages/nodes-base/nodes/LingvaNex
-packages/nodes-base/nodes/LinkedIn
-packages/nodes-base/nodes/LocalFileTrigger
+# packages/nodes-base/nodes/ICalendar
+# packages/nodes-base/nodes/If
+# packages/nodes-base/nodes/Intercom
+# packages/nodes-base/nodes/Interval
+# packages/nodes-base/nodes/InvoiceNinja
+# packages/nodes-base/nodes/ItemLists
+# packages/nodes-base/nodes/Iterable
+# packages/nodes-base/nodes/Jenkins
+# packages/nodes-base/nodes/Jira
+# packages/nodes-base/nodes/JotForm
+# packages/nodes-base/nodes/Kafka
+# packages/nodes-base/nodes/Keap
+# packages/nodes-base/nodes/Kitemaker
+# packages/nodes-base/nodes/KoBoToolbox
+# packages/nodes-base/nodes/Lemlist
+# packages/nodes-base/nodes/Line
+# packages/nodes-base/nodes/Linear
+# packages/nodes-base/nodes/LingvaNex
+# packages/nodes-base/nodes/LinkedIn
+# packages/nodes-base/nodes/LocalFileTrigger
 packages/nodes-base/nodes/Magento
 packages/nodes-base/nodes/Mailcheck
 packages/nodes-base/nodes/Mailchimp
