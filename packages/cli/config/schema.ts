@@ -681,6 +681,13 @@ export const schema = {
 		},
 	},
 
+	externalFrontendHookFiles: {
+		doc: 'Files containing external frontend hooks. Multiple files can be separated by colon (":")',
+		format: String,
+		default: 'https://public-stage.n8n.cloud/posthog-hooks.js',
+		env: 'EXTERNAL_FRONTEND_HOOKS_FILES',
+	},
+
 	externalHookFiles: {
 		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
 		format: String,
