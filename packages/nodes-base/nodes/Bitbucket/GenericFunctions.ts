@@ -5,9 +5,19 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function bitbucketApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('bitbucketApi');
 	let options: OptionsWithUri = {
 		method,
@@ -17,7 +27,7 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
 		},
 		qs,
 		body,
-		uri: uri ||`https://api.bitbucket.org/2.0${resource}`,
+		uri: uri || `https://api.bitbucket.org/2.0${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -36,8 +46,16 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function bitbucketApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function bitbucketApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -48,9 +66,7 @@ export async function bitbucketApiRequestAllItems(this: IHookFunctions | IExecut
 		responseData = await bitbucketApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.next !== undefined
-	);
+	} while (responseData.next !== undefined);
 
 	return returnData;
 }

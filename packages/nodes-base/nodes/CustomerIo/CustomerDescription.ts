@@ -8,16 +8,15 @@ export const customerOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
+				resource: ['customer'],
 			},
 		},
 		options: [
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new customer, or update the current one if it already exists (upsert)',
+				description:
+					'Create a new customer, or update the current one if it already exists (upsert)',
 				action: 'Create or update a customer',
 			},
 			{
@@ -32,7 +31,6 @@ export const customerOperations: INodeProperties[] = [
 ];
 
 export const customerFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                   customer:delete			            */
 	/* -------------------------------------------------------------------------- */
@@ -44,12 +42,8 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['customer'],
+				operation: ['delete'],
 			},
 		},
 		description: 'The unique identifier for the customer',
@@ -66,12 +60,8 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['customer'],
+				operation: ['upsert'],
 			},
 		},
 		description: 'The unique identifier for the customer',
@@ -83,12 +73,8 @@ export const customerFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['customer'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -102,18 +88,13 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'upsert',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['customer'],
+				operation: ['upsert'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
+		description:
+			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -123,15 +104,9 @@ export const customerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'upsert',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['customer'],
+				operation: ['upsert'],
+				jsonParameters: [false],
 			},
 		},
 		options: [

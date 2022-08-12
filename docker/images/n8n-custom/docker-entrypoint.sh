@@ -14,7 +14,7 @@ if [ "$#" -gt 0 ]; then
 
   if [[ "$COMMAND" == "n8n" ]]; then
     shift
-    exec su-exec node ./packages/cli/bin/n8n "$@"
+    (cd packages/cli; exec su-exec node ./bin/n8n "$@")
   else
     exec su-exec node "$@"
   fi

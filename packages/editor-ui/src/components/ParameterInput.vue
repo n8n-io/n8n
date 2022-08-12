@@ -738,7 +738,20 @@ export default mixins(
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 
-					const options = await this.restApi().getNodeParameterOptions({ nodeTypeAndVersion: { name: this.node.type, version: this.node.typeVersion}, path: this.path, methodName: loadOptionsMethod, loadOptions, currentNodeParameters: resolvedNodeParameters, credentials: this.node.credentials });
+					const options = await this.$store.dispatch('nodeTypes/getNodeParameterOptions',
+						{
+							nodeTypeAndVersion: {
+								name: this.node.type,
+								version: this.node.typeVersion,
+							},
+							path: this.path,
+							methodName: loadOptionsMethod,
+							loadOptions,
+							currentNodeParameters: resolvedNodeParameters,
+							credentials: this.node.credentials,
+						},
+					);
+
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -832,9 +845,9 @@ export default mixins(
 				// Set focus on field
 				setTimeout(() => {
 					// @ts-ignore
-					if (this.$refs.inputField.$el) {
+					if (this.$refs.inputField) {
 						// @ts-ignore
-						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+						this.$refs.inputField.focus();
 					}
 				});
 

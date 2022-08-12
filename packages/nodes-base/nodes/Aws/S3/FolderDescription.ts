@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const folderOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const folderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
+				resource: ['folder'],
 			},
 		},
 		options: [
@@ -40,10 +36,9 @@ export const folderOperations: INodeProperties[] = [
 ];
 
 export const folderFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                folder:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                folder:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Bucket Name',
 		name: 'bucketName',
@@ -52,12 +47,8 @@ export const folderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['folder'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -69,12 +60,8 @@ export const folderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['folder'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -85,12 +72,8 @@ export const folderFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['folder'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -107,7 +90,8 @@ export const folderFields: INodeProperties[] = [
 				name: 'requesterPays',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
+				description:
+					'Whether the requester will pay for requests and data transfer. While Requester Pays is enabled, anonymous access to this bucket is disabled.',
 			},
 			{
 				displayName: 'Storage Class',
@@ -148,9 +132,9 @@ export const folderFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                folder:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                folder:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Bucket Name',
 		name: 'bucketName',
@@ -159,12 +143,8 @@ export const folderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['folder'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -176,18 +156,14 @@ export const folderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['folder'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 folder:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Bucket Name',
 		name: 'bucketName',
@@ -196,12 +172,8 @@ export const folderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['folder'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -211,12 +183,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['getAll'],
+				resource: ['folder'],
 			},
 		},
 		default: false,
@@ -228,15 +196,9 @@ export const folderFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'folder',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['folder'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -254,12 +216,8 @@ export const folderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['folder'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -269,7 +227,8 @@ export const folderFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
+				description:
+					'The owner field is not present in listV2 by default, if you want to return owner field with each key in the result then set the fetch owner field to true',
 			},
 			{
 				displayName: 'Folder Key',

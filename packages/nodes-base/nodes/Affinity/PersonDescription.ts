@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const personOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const personOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
+				resource: ['person'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const personOperations: INodeProperties[] = [
 ];
 
 export const personFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                person:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -64,12 +59,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		description: 'The first name of the person',
@@ -82,12 +73,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		description: 'The last name of the person',
@@ -100,12 +87,8 @@ export const personFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -117,7 +100,8 @@ export const personFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: [],
-				description: 'Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -132,12 +116,8 @@ export const personFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		placeholder: 'info@example.com',
@@ -154,12 +134,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 		description: 'Unique identifier for the person',
@@ -172,12 +148,8 @@ export const personFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -203,7 +175,8 @@ export const personFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: [],
-				description: 'Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Organizations that the person is associated with. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -218,12 +191,8 @@ export const personFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 		placeholder: 'info@example.com',
@@ -240,12 +209,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['person'],
+				operation: ['get'],
 			},
 		},
 		description: 'Unique identifier for the person',
@@ -258,12 +223,8 @@ export const personFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['person'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -285,12 +246,8 @@ export const personFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['person'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -302,15 +259,9 @@ export const personFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['person'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -328,12 +279,8 @@ export const personFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['person'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -342,7 +289,8 @@ export const personFields: INodeProperties[] = [
 				name: 'term',
 				type: 'string',
 				default: '',
-				description: 'A string used to search all the persons in your team’s address book. This could be an email address, a first name or a last name.',
+				description:
+					'A string used to search all the persons in your team’s address book. This could be an email address, a first name or a last name.',
 			},
 			{
 				displayName: 'With Interaction Dates',
@@ -364,12 +312,8 @@ export const personFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['person'],
+				operation: ['delete'],
 			},
 		},
 		description: 'Unique identifier for the person',

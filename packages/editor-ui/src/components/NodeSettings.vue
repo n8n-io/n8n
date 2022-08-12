@@ -146,7 +146,7 @@ export default mixins(
 		computed: {
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
-					return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 				}
 
 				return null;
@@ -446,7 +446,7 @@ export default mixins(
 				} else if (parameterData.name.startsWith('parameters.')) {
 					// A node parameter changed
 
-					const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+					const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 					if (!nodeType) {
 						return;
 					}

@@ -1,28 +1,28 @@
-<template functional>
+<template>
 	<div
 		:class="{
 			container: true,
-			clickable: props.clickable,
-			active: props.active,
+			clickable: clickable,
+			active: active,
 		}"
-		@click="listeners.click"
+		v-on="$listeners"
 	>
 		<CategoryItem
-			v-if="props.item.type === 'category'"
-			:item="props.item"
+			v-if="item.type === 'category'"
+			:item="item"
 		/>
 
 		<SubcategoryItem
-			v-else-if="props.item.type === 'subcategory'"
-			:item="props.item"
+			v-else-if="item.type === 'subcategory'"
+			:item="item"
 		/>
 
 		<NodeItem
-			v-else-if="props.item.type === 'node'"
-			:nodeType="props.item.properties.nodeType"
-			:bordered="!props.lastNode"
-			@dragstart="listeners.dragstart"
-			@dragend="listeners.dragend"
+			v-else-if="item.type === 'node'"
+			:nodeType="item.properties.nodeType"
+			:bordered="!lastNode"
+			@dragstart="$listeners.dragstart"
+			@dragend="$listeners.dragend"
 		/>
 	</div>
 </template>
@@ -33,13 +33,15 @@ import NodeItem from './NodeItem.vue';
 import CategoryItem from './CategoryItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 
-Vue.component('CategoryItem', CategoryItem);
-Vue.component('SubcategoryItem', SubcategoryItem);
-Vue.component('NodeItem', NodeItem);
-
-export default {
+export default Vue.extend({
+	name: 'CreatorItem',
+	components: {
+		CategoryItem,
+		SubcategoryItem,
+		NodeItem,
+	},
 	props: ['item', 'active', 'clickable', 'lastNode'],
-};
+});
 </script>
 
 <style lang="scss" scoped>

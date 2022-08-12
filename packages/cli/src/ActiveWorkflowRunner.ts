@@ -653,6 +653,7 @@ export class ActiveWorkflowRunner {
 			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
+				WorkflowHelpers.saveStaticData(workflow);
 				this.runWorkflow(workflowData, node, data, additionalData, mode);
 			};
 			return returnFunctions;

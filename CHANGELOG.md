@@ -1,3 +1,45 @@
+# [0.190.0](https://github.com/n8n-io/n8n/compare/n8n@0.189.1...n8n@0.190.0) (2022-08-10)
+
+
+### Bug Fixes
+
+* **core:** Fix crash caused by parallel test-webhook calls ([#3756](https://github.com/n8n-io/n8n/issues/3756)) ([8fe71db](https://github.com/n8n-io/n8n/commit/8fe71dba4bf568e70ed740ac3413aae77559ca3c))
+* **core:** Fix issue that static data did not get saved for poll-triggers  ([#3853](https://github.com/n8n-io/n8n/issues/3853)) ([8311abc](https://github.com/n8n-io/n8n/commit/8311abcf9d453f0d253c269e7d1c3842fcf8e256))
+* **GitHub Trigger:** Fix typo ([#3859](https://github.com/n8n-io/n8n/issues/3859)) ([7b3d6de](https://github.com/n8n-io/n8n/commit/7b3d6de44eeb6cb066fb378c52fcc5aec60c4fdf))
+* **public-api:** fix issue paginating executions ([b9fe707](https://github.com/n8n-io/n8n/commit/b9fe707cbd9df4a33b6040215826375bef238b65))
+
+
+### Features
+
+* Synchronize default VSCode settings ([#3833](https://github.com/n8n-io/n8n/issues/3833)) ([11461fd](https://github.com/n8n-io/n8n/commit/11461fda5fae10077ea9804b5cc9581074107005))
+
+
+
+## [0.189.1](https://github.com/n8n-io/n8n/compare/n8n@0.189.0...n8n@0.189.1) (2022-08-05)
+
+
+### Bug Fixes
+
+* Fix issue with MySQL/MariaDB migration ([#3832](https://github.com/n8n-io/n8n/issues/3832))
+
+
+# [0.189.0](https://github.com/n8n-io/n8n/compare/n8n@0.188.0...n8n@0.189.0) (2022-08-03)
+
+
+### Bug Fixes
+
+* **editor:** Fix label cut off ([#3820](https://github.com/n8n-io/n8n/issues/3820)) ([0f27be4](https://github.com/n8n-io/n8n/commit/0f27be4447662056a2ba13c027280830f7eab09b))
+* Fix problem saving workflow when tags disabled ([#3792](https://github.com/n8n-io/n8n/issues/3792)) ([f0dddaa](https://github.com/n8n-io/n8n/commit/f0dddaa2a585715b35e26b16e1003e1683ab9402))
+
+
+### Features
+
+* **NocoDB Node:** Add support v0.90.0+ ([#3146](https://github.com/n8n-io/n8n/issues/3146)) ([d65a9ed](https://github.com/n8n-io/n8n/commit/d65a9ed118ff16c67b6d69d68108d8b7da1814d9))
+* **SendInBlue Node:** Add SendInBlue Regular + Trigger Node  ([#3746](https://github.com/n8n-io/n8n/issues/3746)) ([74cedd9](https://github.com/n8n-io/n8n/commit/74cedd94a82f0c053a24b6e925d9e3bcadcebfbc))
+* Support community nodes on Windows ([#3823](https://github.com/n8n-io/n8n/issues/3823)) ([e8eda74](https://github.com/n8n-io/n8n/commit/e8eda7470a17deec1f5eab8cded6e74a8e3aee39))
+
+
+
 # [0.188.0](https://github.com/n8n-io/n8n/compare/n8n@0.187.2...n8n@0.188.0) (2022-07-27)
 
 

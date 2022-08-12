@@ -825,6 +825,7 @@ export interface INodeCredentials {
 }
 
 export interface INode {
+	id: string;
 	name: string;
 	typeVersion: number;
 	type: string;
@@ -1112,6 +1113,7 @@ export type PostReceiveAction =
 			response: IN8nHttpFullResponse,
 	  ) => Promise<INodeExecutionData[]>)
 	| IPostReceiveBinaryData
+	| IPostReceiveLimit
 	| IPostReceiveRootProperty
 	| IPostReceiveSet
 	| IPostReceiveSetKeyValue
@@ -1149,6 +1151,13 @@ export interface IPostReceiveBinaryData extends IPostReceiveBase {
 	type: 'binaryData';
 	properties: {
 		destinationProperty: string;
+	};
+}
+
+export interface IPostReceiveLimit extends IPostReceiveBase {
+	type: 'limit';
+	properties: {
+		maxResults: number | string;
 	};
 }
 
@@ -1430,10 +1439,14 @@ export interface IWorkflowExecuteAdditionalData {
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
-		inputData?: INodeExecutionData[],
-		parentExecutionId?: string,
-		loadedWorkflowData?: IWorkflowBase,
-		loadedRunData?: any,
+		options?: {
+			parentWorkflowId?: string;
+			inputData?: INodeExecutionData[];
+			parentExecutionId?: string;
+			loadedWorkflowData?: IWorkflowBase;
+			loadedRunData?: any;
+			parentWorkflowSettings?: IWorkflowSettings;
+		},
 	) => Promise<any>;
 	// hooks?: IWorkflowExecuteHooks;
 	executionId?: string;
@@ -1544,6 +1557,7 @@ export interface INoteGraphItem {
 }
 
 export interface INodeGraphItem {
+	id: string;
 	type: string;
 	resource?: string;
 	operation?: string;
@@ -1555,6 +1569,8 @@ export interface INodeGraphItem {
 	credential_type?: string; // HTTP Request node v2
 	credential_set?: boolean; // HTTP Request node v2
 	method?: string; // HTTP Request node v2
+	src_node_id?: string;
+	src_instance_id?: string;
 }
 
 export interface INodeNameIndex {
