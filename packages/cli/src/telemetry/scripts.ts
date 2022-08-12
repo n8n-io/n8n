@@ -21,7 +21,7 @@ export const createPostHogLoadingScript = ({
 export function getPostHogHooksScript() {
 	const filepaths = config.getEnv('externalFrontendHookFiles');
 
-	const filepath = filepaths.split(':').find((file) => file.includes('posthog'));
+	const filepath = filepaths.split(';').find((file) => file.includes('posthog'));
 
 	if (!filepath) return null;
 
