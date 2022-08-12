@@ -165,7 +165,7 @@ export default mixins(
 				}
 
 				if (fullPath === false) {
-					return parameters.pop().displayName;
+					return parameters.pop()!.displayName;
 				}
 				return parameters.map(parameter => parameter.displayName).join(' > ');
 			} catch (error) {
