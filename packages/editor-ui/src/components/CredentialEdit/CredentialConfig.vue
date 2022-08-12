@@ -151,8 +151,6 @@ export default mixins(restApi).extend({
 				return '';
 			}
 
-
-
 			const appName = getAppNameFromCredType(
 				(this.credentialType as ICredentialType).displayName,
 			);
@@ -165,7 +163,7 @@ export default mixins(restApi).extend({
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
 			const activeNode = this.$store.getters.activeNode;
-			const isCommunityNode = isCommunityPackageName(activeNode.type);
+			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 			if (!type || !type.documentationUrl) {
 				return '';
@@ -195,16 +193,6 @@ export default mixins(restApi).extend({
 		},
 	},
 	methods: {
-		/**
-		 * Get the current version for a node type.
-		 */
-		async getCurrentNodeVersion(targetNodeType: string) {
-			const { allNodeTypes }: { allNodeTypes: INodeTypeDescription[] } = this.$store.getters;
-			const found = allNodeTypes.find(nodeType => nodeType.name === targetNodeType);
-
-			return found ? found.version : 1;
-		},
-
 		onDataChange (event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},

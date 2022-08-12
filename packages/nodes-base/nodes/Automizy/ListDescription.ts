@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const listOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const listOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
@@ -52,7 +48,6 @@ export const listOperations: INodeProperties[] = [
 ];
 
 export const listFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -63,12 +58,8 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -83,17 +74,13 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['delete'],
+				resource: ['list'],
 			},
 		},
 		default: '',
 	},
-		/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
 	/*                                 list:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
@@ -103,12 +90,8 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['get'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -122,12 +105,8 @@ export const listFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		default: false,
@@ -139,15 +118,9 @@ export const listFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['list'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -164,12 +137,8 @@ export const listFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -189,7 +158,8 @@ export const listFields: INodeProperties[] = [
 					},
 				],
 				default: 'desc',
-				description: 'Defines the direction in which search results are ordered. Default value is DESC. Note: It has to be using with the Sort By parameter',
+				description:
+					'Defines the direction in which search results are ordered. Default value is DESC. Note: It has to be using with the Sort By parameter',
 			},
 			{
 				displayName: 'Fields',
@@ -202,7 +172,8 @@ export const listFields: INodeProperties[] = [
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
-				default: 'Defines the field in which search results are sort by. Note: It has to be using with the Direcction parameter',
+				default:
+					'Defines the field in which search results are sort by. Note: It has to be using with the Direcction parameter',
 			},
 		],
 	},
@@ -216,12 +187,8 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -233,12 +200,8 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		default: '',

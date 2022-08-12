@@ -28,6 +28,7 @@ import {
 	INodes,
 	INodeType,
 	INodeTypes,
+	IPinData,
 	IPollFunctions,
 	IRunExecutionData,
 	ITaskDataConnections,
@@ -84,6 +85,8 @@ export class Workflow {
 	// ids of registred webhooks of nodes
 	staticData: IDataObject;
 
+	pinData?: IPinData;
+
 	// constructor(id: string | undefined, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings) {
 	constructor(parameters: {
 		id?: string;
@@ -94,10 +97,12 @@ export class Workflow {
 		nodeTypes: INodeTypes;
 		staticData?: IDataObject;
 		settings?: IWorkflowSettings;
+		pinData?: IPinData;
 	}) {
 		this.id = parameters.id;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
+		this.pinData = parameters.pinData;
 
 		// Save nodes in workflow as object to be able to get the
 		// nodes easily by its name.
@@ -408,6 +413,17 @@ export class Workflow {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Returns the pinData of the node with the given name if it exists
+	 *
+	 * @param {string} nodeName Name of the node to return the pinData of
+	 * @returns {(IDataObject[] | undefined)}
+	 * @memberof Workflow
+	 */
+	getPinDataOfNode(nodeName: string): IDataObject[] | undefined {
+		return this.pinData ? this.pinData[nodeName] : undefined;
 	}
 
 	/**

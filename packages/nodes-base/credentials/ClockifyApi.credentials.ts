@@ -5,7 +5,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class ClockifyApi implements ICredentialType {
 	name = 'clockifyApi';
 	displayName = 'Clockify API';

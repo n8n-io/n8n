@@ -23,7 +23,13 @@ import {
 } from 'n8n-workflow';
 
 import config from '../../../config';
-import { AUTHLESS_ENDPOINTS, CURRENT_PACKAGE_VERSION, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from './constants';
+import {
+	AUTHLESS_ENDPOINTS,
+	COMMUNITY_NODE_VERSION,
+	COMMUNITY_PACKAGE_VERSION,
+	PUBLIC_API_REST_PATH_SEGMENT,
+	REST_PATH_SEGMENT,
+} from './constants';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
 import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import {
@@ -56,6 +62,7 @@ import type { N8nApp } from '../../../src/UserManagement/Interfaces';
 import { workflowsController } from '../../../src/api/workflows.api';
 import { nodesController } from '../../../src/api/nodes.api';
 import { randomName } from './random';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
 
 /**
  * Initialize a test server.
@@ -101,7 +108,7 @@ export async function initTestServer({
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			nodes: { controller: nodesController, path: 'nodes' },
-			publicApi: apiRouters
+			publicApi: apiRouters,
 		};
 
 		for (const group of routerEndpoints) {
@@ -138,6 +145,9 @@ export function initTestTelemetry() {
 
 	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
 }
+
+export const createAuthAgent = (app: express.Application) => (user: User) =>
+	createAgent(app, { auth: true, user });
 
 /**
  * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
@@ -893,13 +903,13 @@ export function getPostgresSchemaSection(
 }
 
 // ----------------------------------
-//              nodes
+//           community nodes
 // ----------------------------------
 
 export function installedPackagePayload(): InstalledPackagePayload {
 	return {
 		packageName: NODE_PACKAGE_PREFIX + randomName(),
-		installedVersion: CURRENT_PACKAGE_VERSION,
+		installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
 	};
 }
 
@@ -908,7 +918,15 @@ export function installedNodePayload(packageName: string): InstalledNodePayload 
 	return {
 		name: nodeName,
 		type: nodeName,
-		latestVersion: CURRENT_PACKAGE_VERSION,
+		latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
 		package: packageName,
 	};
 }
+
+export const emptyPackage = () => {
+	const installedPackage = new InstalledPackages();
+	installedPackage.installedNodes = [];
+
+	return Promise.resolve(installedPackage);
+};
+

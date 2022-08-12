@@ -5,7 +5,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class StripeApi implements ICredentialType {
 	name = 'stripeApi';
 	displayName = 'Stripe API';

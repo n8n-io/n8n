@@ -1,8 +1,4 @@
-import {
-	ICredentialType,
-	IDisplayOptions,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 export class Mqtt implements ICredentialType {
 	name = 'mqtt';
@@ -61,7 +57,8 @@ export class Mqtt implements ICredentialType {
 			name: 'clean',
 			type: 'boolean',
 			default: true,
-			description: 'Whether to use clean session - set to false to receive QoS 1 and 2 messages while offline',
+			description:
+				'Whether to use clean session - set to false to receive QoS 1 and 2 messages while offline',
 		},
 		{
 			displayName: 'Client ID',
@@ -82,13 +79,12 @@ export class Mqtt implements ICredentialType {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
+					ssl: [true],
 				},
 			},
 			default: true,
-			description: 'Whether to use passwordless connection with certificates (SASL mechanism EXTERNAL)',
+			description:
+				'Whether to use passwordless connection with certificates (SASL mechanism EXTERNAL)',
 		},
 		{
 			displayName: 'CA Certificates',
@@ -99,9 +95,7 @@ export class Mqtt implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
+					ssl: [true],
 				},
 			},
 			default: '',
@@ -113,12 +107,8 @@ export class Mqtt implements ICredentialType {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
-					passwordless: [
-						true,
-					],
+					ssl: [true],
+					passwordless: [true],
 				},
 			} as IDisplayOptions,
 			default: false,
@@ -133,12 +123,8 @@ export class Mqtt implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
-					passwordless: [
-						true,
-					],
+					ssl: [true],
+					passwordless: [true],
 				},
 			} as IDisplayOptions,
 			default: '',
@@ -153,12 +139,8 @@ export class Mqtt implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
-					passwordless: [
-						true,
-					],
+					ssl: [true],
+					passwordless: [true],
 				},
 			},
 			default: '',

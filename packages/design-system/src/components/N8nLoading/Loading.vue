@@ -1,5 +1,5 @@
 <template>
-	<el-skeleton :loading="loading" :animated="animated">
+	<el-skeleton :loading="loading" :animated="animated" class="n8n-loading">
 		<template slot="template">
 			<el-skeleton-item
 				v-if="variant === 'button'"
@@ -43,7 +43,9 @@
 import ElSkeleton from 'element-ui/lib/skeleton';
 import ElSkeletonItem from 'element-ui/lib/skeleton-item';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-loading',
 	components: {
 		ElSkeleton,
@@ -72,7 +74,7 @@ export default {
 			validator: (value: string): boolean => ['p', 'h1', 'button', 'image'].includes(value),
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>

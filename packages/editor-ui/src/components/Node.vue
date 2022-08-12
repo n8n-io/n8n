@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition">
+	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
@@ -172,7 +172,7 @@ export default mixins(
 		},
 		isSingleActiveTriggerNode (): boolean {
 			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
-				const nodeType =  this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+				const nodeType =  this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
@@ -188,7 +188,7 @@ export default mixins(
 			return this.node && this.node.disabled;
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters.nodeType(this.data.type, this.data.typeVersion);
+			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
@@ -485,7 +485,7 @@ export default mixins(
 			background-color: var(--color-background-xlight);
 
 			&.executing {
-				background-color: $--color-primary-light !important;
+				background-color: var(--color-primary-tint-3) !important;
 
 				.node-executing-info {
 					display: inline-block;
@@ -515,7 +515,7 @@ export default mixins(
 			font-size: 3.75em;
 			line-height: 1.65em;
 			text-align: center;
-			color: rgba($--color-primary, 0.7);
+			color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
 		}
 
 		.node-icon {
