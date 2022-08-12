@@ -1,11 +1,14 @@
 ARG BUILD_FROM=node:16-alpine
-#ARG BUILD_FROM=ghcr.io/hassio-addons/base/amd64-base-python:3.16
+# ARG BUILD_FROM=ghcr.io/hassio-addons/base/amd64-base-python:3.16
 FROM $BUILD_FROM
 
 ARG N8N_VERSION=0.190.0
 
+# Set shell
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
+
 
 # # Set a custom user to not have n8n run as root
 USER root
@@ -54,8 +57,6 @@ ENV \
 # Copy root filesystem
 COPY rootfs /
 
-# Set shell
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install base system
 ARG BUILD_ARCH=amd64
