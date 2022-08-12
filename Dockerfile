@@ -13,6 +13,24 @@ USER root
 # Update everything and install needed dependencies
 RUN apk add --update graphicsmagick tzdata git tini su-exec jq
 
+# Install n8n and the also temporary all the packages
+# it needs to build it correctly.
+RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates && \
+	npm config set python "$(which python3)" && \
+	npm_config_user=root npm install -g npm@latest full-icu n8n@${N8N_VERSION} && \
+	apk del build-dependencies \
+	&& rm -rf /root /tmp/* /var/cache/apk/* && mkdir /root;
+
+# Install fonts
+RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
+	update-ms-fonts && \
+	fc-cache -f && \
+	apk del fonts && \
+	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; \
+	&& rm -rf /root /tmp/* /var/cache/apk/* && mkdir /root
+
+###
+
 # Home Assistant Base system
 
 # Environment variables
@@ -39,23 +57,6 @@ COPY rootfs /
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install n8n and the also temporary all the packages
-# it needs to build it correctly.
-RUN apk --update add --virtual build-dependencies python3 build-base ca-certificates && \
-	npm config set python "$(which python3)" && \
-	npm_config_user=root npm install -g npm@latest full-icu n8n@${N8N_VERSION} && \
-	apk del build-dependencies \
-	&& rm -rf /root /tmp/* /var/cache/apk/* && mkdir /root;
-
-# Install fonts
-RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
-	update-ms-fonts && \
-	fc-cache -f && \
-	apk del fonts && \
-	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; \
-	&& rm -rf /root /tmp/* /var/cache/apk/* && mkdir /root
-
-###
 # Install base system
 ARG BUILD_ARCH=amd64
 RUN \
