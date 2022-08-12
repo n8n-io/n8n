@@ -110,18 +110,18 @@ packages/design-system
 # packages/nodes-base/nodes/QuestDb
 # packages/nodes-base/nodes/QuickBase
 # packages/nodes-base/nodes/QuickBooks
-packages/nodes-base/nodes/RabbitMQ
-packages/nodes-base/nodes/Raindrop
-packages/nodes-base/nodes/ReadBinaryFile
-packages/nodes-base/nodes/ReadBinaryFiles
-packages/nodes-base/nodes/ReadPdf
-packages/nodes-base/nodes/Reddit
-packages/nodes-base/nodes/Redis
-packages/nodes-base/nodes/RenameKeys
-packages/nodes-base/nodes/RespondToWebhook
-packages/nodes-base/nodes/Rocketchat
-packages/nodes-base/nodes/RssFeedRead
-packages/nodes-base/nodes/Rundeck
+# packages/nodes-base/nodes/RabbitMQ
+# packages/nodes-base/nodes/Raindrop
+# packages/nodes-base/nodes/ReadBinaryFile
+# packages/nodes-base/nodes/ReadBinaryFiles
+# packages/nodes-base/nodes/ReadPdf
+# packages/nodes-base/nodes/Reddit
+# packages/nodes-base/nodes/Redis
+# packages/nodes-base/nodes/RenameKeys
+# packages/nodes-base/nodes/RespondToWebhook
+# packages/nodes-base/nodes/Rocketchat
+# packages/nodes-base/nodes/RssFeedRead
+# packages/nodes-base/nodes/Rundeck
 packages/nodes-base/nodes/S3
 packages/nodes-base/nodes/Salesforce
 packages/nodes-base/nodes/Salesmate
