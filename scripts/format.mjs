@@ -6,15 +6,10 @@ import { execSync } from 'child_process';
 
 const prettier = path.resolve('node_modules', 'prettier', 'bin-prettier.js');
 
-try {
-	if (!fs.existsSync(prettier)) {
-		throw new Error(
-			[`Prettier not found at path: ${prettier}`, 'Please run `npm i` first'].join('\n'),
-		);
-	}
-} catch (error) {
-	console.error(error);
-	process.exit(1);
+if (!fs.existsSync(prettier)) {
+	throw new Error(
+		[`Prettier not found at path: ${prettier}`, 'Please run `npm i` first'].join('\n'),
+	);
 }
 
 const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages'];
