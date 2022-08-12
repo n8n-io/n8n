@@ -32,27 +32,11 @@ spec:
             - name: DB_POSTGRESDB_DATABASE
               value: n8n
             - name: DB_POSTGRESDB_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_NON_ROOT_USER
+              value: "changeme"
             - name: DB_POSTGRESDB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_NON_ROOT_PASSWORD
+              value: "changeme"
             - name: N8N_BASIC_AUTH_ACTIVE
-              value: "true"
-            - name: N8N_BASIC_AUTH_USER
-              valueFrom:
-                secretKeyRef:
-                  name: n8n-secret
-                  key: N8N_BASIC_AUTH_USER
-            - name: N8N_BASIC_AUTH_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: n8n-secret
-                  key: N8N_BASIC_AUTH_PASSWORD
+              value: "false"
             - name: N8N_PROTOCOL
               value: http
             - name: N8N_PORT

@@ -24,43 +24,28 @@ spec:
           ports:
             - containerPort: 5432
           volumeMounts:
-            - name: postgres-claim0
-              mountPath: /var/lib/postgresql/data
-            - name: init-data
-              mountPath: /docker-entrypoint-initdb.d/init-data.sh
-              subPath: init-data.sh
+            - name: postgresql-pv
+              mountPath: /var/lib/postgresql/data2
           env:
             - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
+              value: "changeme"
             - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
+              value: "changeme"
             - name: POSTGRES_DB
               value: n8n
             - name: POSTGRES_NON_ROOT_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_NON_ROOT_USER
+              value: "changeme"
             - name: POSTGRES_NON_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_NON_ROOT_PASSWORD
+              value: "changeme"
             - name:   POSTGRES_HOST
               value: postgres-service
             - name: POSTGRES_PORT
               value: '5432'
       restartPolicy: Always
       volumes:
-        - name: postgres-claim0
+        - name: postgresql-pv
           persistentVolumeClaim:
-            claimName: postgres-claim0
+            claimName: postgresql-pv
         - name: postgres-secret
           secret:
             secretName: postgres-secret
