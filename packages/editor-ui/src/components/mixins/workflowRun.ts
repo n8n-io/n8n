@@ -60,7 +60,7 @@ export const workflowRun = mixins(
 			return response;
 		},
 		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
-			const workflow = this.getWorkflow();
+			const workflow = this.getCurrentWorkflow();
 
 			if (this.$store.getters.isActionActive('workflowRunning') === true) {
 				return;

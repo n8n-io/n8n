@@ -385,7 +385,7 @@ export default mixins(
 			}
 		},
 		setSubtitle() {
-			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getWorkflow()) || '';
+			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
 
 			this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY)
 				? ''
