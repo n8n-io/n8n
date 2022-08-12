@@ -19,16 +19,16 @@ packages/design-system
 # packages/nodes-base/nodes/GraphQL
 # packages/nodes-base/nodes/Grist
 # packages/nodes-base/nodes/Gumroad
-packages/nodes-base/nodes/HackerNews
-packages/nodes-base/nodes/HaloPSA
-packages/nodes-base/nodes/Harvest
-packages/nodes-base/nodes/HelpScout
-packages/nodes-base/nodes/HomeAssistant
-packages/nodes-base/nodes/HtmlExtract
-packages/nodes-base/nodes/HttpRequest
-packages/nodes-base/nodes/Hubspot
-packages/nodes-base/nodes/HumanticAI
-packages/nodes-base/nodes/Hunter
+# packages/nodes-base/nodes/HackerNews
+# packages/nodes-base/nodes/HaloPSA
+# packages/nodes-base/nodes/Harvest
+# packages/nodes-base/nodes/HelpScout
+# packages/nodes-base/nodes/HomeAssistant
+# packages/nodes-base/nodes/HtmlExtract
+# packages/nodes-base/nodes/HttpRequest
+# packages/nodes-base/nodes/Hubspot
+# packages/nodes-base/nodes/HumanticAI
+# packages/nodes-base/nodes/Hunter
 packages/nodes-base/nodes/ICalendar
 packages/nodes-base/nodes/If
 packages/nodes-base/nodes/Intercom

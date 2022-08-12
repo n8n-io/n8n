@@ -1,16 +1,6 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import {
-	hunterApiRequest,
-	hunterApiRequestAllItems,
-} from './GenericFunctions';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { hunterApiRequest, hunterApiRequestAllItems } from './GenericFunctions';
 
 export class Hunter implements INodeType {
 	description: INodeTypeDescription = {
@@ -43,14 +33,18 @@ export class Hunter implements INodeType {
 					{
 						name: 'Domain Search',
 						value: 'domainSearch',
-						description: 'Get every email address found on the internet using a given domain name, with sources',
-						action: 'Get every email address found on the internet using a given domain name, with sources',
+						description:
+							'Get every email address found on the internet using a given domain name, with sources',
+						action:
+							'Get every email address found on the internet using a given domain name, with sources',
 					},
 					{
 						name: 'Email Finder',
 						value: 'emailFinder',
-						description: 'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
-						action: 'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
+						description:
+							'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
+						action:
+							'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
 					},
 					{
 						name: 'Email Verifier',
@@ -68,14 +62,13 @@ export class Hunter implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
+						operation: ['domainSearch'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Domain name from which you want to find the email addresses. For example, "stripe.com".',
+				description:
+					'Domain name from which you want to find the email addresses. For example, "stripe.com".',
 			},
 			{
 				displayName: 'Only Emails',
@@ -83,9 +76,7 @@ export class Hunter implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
+						operation: ['domainSearch'],
 					},
 				},
 				default: true,
@@ -97,9 +88,7 @@ export class Hunter implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
+						operation: ['domainSearch'],
 					},
 				},
 				default: false,
@@ -111,12 +100,8 @@ export class Hunter implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['domainSearch'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -134,9 +119,7 @@ export class Hunter implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
+						operation: ['domainSearch'],
 					},
 				},
 				options: [
@@ -233,13 +216,12 @@ export class Hunter implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'emailFinder',
-						],
+						operation: ['emailFinder'],
 					},
 				},
 				required: true,
-				description: 'Domain name from which you want to find the email addresses. For example, "stripe.com".',
+				description:
+					'Domain name from which you want to find the email addresses. For example, "stripe.com".',
 			},
 			{
 				displayName: 'First Name',
@@ -247,14 +229,12 @@ export class Hunter implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'emailFinder',
-						],
+						operation: ['emailFinder'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'The person\'s first name. It doesn\'t need to be in lowercase.',
+				description: "The person's first name. It doesn't need to be in lowercase.",
 			},
 			{
 				displayName: 'Last Name',
@@ -262,14 +242,12 @@ export class Hunter implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'emailFinder',
-						],
+						operation: ['emailFinder'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'The person\'s last name. It doesn\'t need to be in lowercase.',
+				description: "The person's last name. It doesn't need to be in lowercase.",
 			},
 			{
 				displayName: 'Email',
@@ -278,9 +256,7 @@ export class Hunter implements INodeType {
 				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						operation: [
-							'emailVerifier',
-						],
+						operation: ['emailVerifier'],
 					},
 				},
 				default: '',
@@ -307,17 +283,24 @@ export class Hunter implements INodeType {
 					const onlyEmails = this.getNodeParameter('onlyEmails', i, false) as boolean;
 
 					qs.domain = domain;
-					if (filters.type){
+					if (filters.type) {
 						qs.type = filters.type;
 					}
-					if (filters.seniority){
+					if (filters.seniority) {
 						qs.seniority = (filters.seniority as string[]).join(',');
 					}
-					if (filters.department){
+					if (filters.department) {
 						qs.department = (filters.department as string[]).join(',');
 					}
 					if (returnAll) {
-						responseData = await hunterApiRequestAllItems.call(this, 'data', 'GET', '/domain-search', {}, qs);
+						responseData = await hunterApiRequestAllItems.call(
+							this,
+							'data',
+							'GET',
+							'/domain-search',
+							{},
+							qs,
+						);
 
 						// Make sure that the company information is there only once and
 						// the emails are combined underneath it.
@@ -329,7 +312,10 @@ export class Hunter implements INodeType {
 									tempReturnData = responseData[i];
 									continue;
 								}
-								((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(tempReturnData.emails, responseData[i].emails);
+								((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(
+									tempReturnData.emails,
+									responseData[i].emails,
+								);
 							}
 
 							responseData = tempReturnData;
