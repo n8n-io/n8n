@@ -2617,29 +2617,26 @@ class App {
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
 			if (this.frontendSettings.telemetry.enabled) {
-				const { createPostHogLoadingScript, getPostHogHooksScript } = telemetryScripts;
+				const hooksPath = config.getEnv('externalFrontendHooksPath');
+				const hooksScript = `<script src="${hooksPath}"></script>`;
 
-				const postHogHooksScript = getPostHogHooksScript();
+				const SESSION_RECORDED_PLATFORMS = ['desktop_mac', 'desktop_win', 'cloud'];
+				const deploymentType = config.getEnv('deployment.type');
 
-				if (postHogHooksScript) {
-					const SESSION_RECORDED_PLATFORMS = ['desktop_mac', 'desktop_win', 'cloud'];
-					const deploymentType = config.getEnv('deployment.type');
+				const phLoadingScript = telemetryScripts.createPostHogLoadingScript({
+					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+					autocapture: false,
+					disableSessionRecording: !SESSION_RECORDED_PLATFORMS.includes(deploymentType),
+					debug: config.getEnv('logs.level') === 'debug',
+				});
 
-					const postHogLoadingScript = createPostHogLoadingScript({
-						apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
-						apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-						autocapture: false,
-						disableSessionRecording: !SESSION_RECORDED_PLATFORMS.includes(deploymentType),
-						debug: config.getEnv('logs.level') === 'debug',
-					});
+				const firstLinkedScriptSegment = '<link href="/js/';
 
-					const firstLinkedScriptSegment = '<link href="/js/';
-
-					readIndexFile = readIndexFile.replace(
-						firstLinkedScriptSegment,
-						postHogLoadingScript + postHogHooksScript + firstLinkedScriptSegment,
-					);
-				}
+				readIndexFile = readIndexFile.replace(
+					firstLinkedScriptSegment,
+					phLoadingScript + hooksScript + firstLinkedScriptSegment,
+				);
 			}
 
 			// Serve the altered index.html file separately

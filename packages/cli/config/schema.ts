@@ -681,11 +681,11 @@ export const schema = {
 		},
 	},
 
-	externalFrontendHookFiles: {
-		doc: 'Files containing external frontend hooks. Multiple files can be separated by semicolon (";")',
+	externalFrontendHooksPath: {
+		doc: 'Path to external frontend hooks',
 		format: String,
 		default: 'https://public-stage.n8n.cloud/posthog-hooks.js',
-		env: 'EXTERNAL_FRONTEND_HOOKS_FILES',
+		env: 'EXTERNAL_FRONTEND_HOOKS_PATH',
 	},
 
 	externalHookFiles: {
