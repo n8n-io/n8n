@@ -8,7 +8,7 @@
   "boot": "auto",
   "icon": "icon.png",
   "logo": "logo.png",
-  "webui": "[PROTO:protocol]://[HOST]:[PORT:5678]/",
+  "webui": "[PROTO:protocol]://[HOST]:[PORT:5678]/workflow",
   "map": ["ssl"],
   "apparmor": true,
   "ingress": true,
