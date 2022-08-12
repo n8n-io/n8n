@@ -7,18 +7,18 @@ packages/design-system
 !packages/nodes-base/test
 !packages/nodes-base/nodes
 
-packages/nodes-base/nodes/GetResponse
-packages/nodes-base/nodes/Ghost
-packages/nodes-base/nodes/Git
-packages/nodes-base/nodes/Github
-packages/nodes-base/nodes/Gitlab
-packages/nodes-base/nodes/Google
-packages/nodes-base/nodes/Gotify
-packages/nodes-base/nodes/GoToWebinar
-packages/nodes-base/nodes/Grafana
-packages/nodes-base/nodes/GraphQL
-packages/nodes-base/nodes/Grist
-packages/nodes-base/nodes/Gumroad
+# packages/nodes-base/nodes/GetResponse
+# packages/nodes-base/nodes/Ghost
+# packages/nodes-base/nodes/Git
+# packages/nodes-base/nodes/Github
+# packages/nodes-base/nodes/Gitlab
+# packages/nodes-base/nodes/Google
+# packages/nodes-base/nodes/Gotify
+# packages/nodes-base/nodes/GoToWebinar
+# packages/nodes-base/nodes/Grafana
+# packages/nodes-base/nodes/GraphQL
+# packages/nodes-base/nodes/Grist
+# packages/nodes-base/nodes/Gumroad
 packages/nodes-base/nodes/HackerNews
 packages/nodes-base/nodes/HaloPSA
 packages/nodes-base/nodes/Harvest
