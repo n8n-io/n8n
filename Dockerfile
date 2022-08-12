@@ -26,7 +26,7 @@ ENV \
 COPY rootfs /
 
 # Set shell
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install base system
 ARG BUILD_ARCH=amd64
@@ -86,8 +86,6 @@ RUN \
         /tmp/*
 
 #####		
-
-FROM base
 
 ARG N8N_VERSION=0.190.0
 
