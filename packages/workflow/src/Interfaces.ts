@@ -1437,10 +1437,14 @@ export interface IWorkflowExecuteAdditionalData {
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
-		inputData?: INodeExecutionData[],
-		parentExecutionId?: string,
-		loadedWorkflowData?: IWorkflowBase,
-		loadedRunData?: any,
+		options?: {
+			parentWorkflowId?: string;
+			inputData?: INodeExecutionData[];
+			parentExecutionId?: string;
+			loadedWorkflowData?: IWorkflowBase;
+			loadedRunData?: any;
+			parentWorkflowSettings?: IWorkflowSettings;
+		},
 	) => Promise<any>;
 	// hooks?: IWorkflowExecuteHooks;
 	executionId?: string;
