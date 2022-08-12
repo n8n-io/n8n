@@ -11,7 +11,10 @@ spec:
     matchLabels:
       service: postgres-n8n
   strategy:
-    type: Recreate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:
@@ -25,18 +28,32 @@ spec:
             - containerPort: 5432
           volumeMounts:
             - name: postgresql-pv
-              mountPath: /var/lib/postgresql/data2
+              mountPath: /var/lib/postgresql/data
           env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata      
             - name: POSTGRES_USER
-              value: "changeme"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
-              value: "changeme"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
             - name: POSTGRES_DB
               value: n8n
             - name: POSTGRES_NON_ROOT_USER
-              value: "changeme"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_NON_ROOT_USER
             - name: POSTGRES_NON_ROOT_PASSWORD
-              value: "changeme"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_NON_ROOT_PASSWORD
             - name:   POSTGRES_HOST
               value: postgres-service
             - name: POSTGRES_PORT
