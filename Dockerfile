@@ -4,9 +4,6 @@ FROM node:16-alpine
 
 ARG N8N_VERSION=0.190.0
 
-# Set shell
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
 RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
 
 
@@ -57,6 +54,8 @@ ENV \
 # Copy root filesystem
 COPY rootfs /
 
+# Set shell
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install base system
 ARG BUILD_ARCH=amd64
