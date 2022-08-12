@@ -18,12 +18,9 @@ export class RundeckApi {
 
 
 	protected async request(method: string, endpoint: string, body: IDataObject, query: object) {
+		let credentialType = "rundeckApi"
 
 		const options: OptionsWithUri = {
-			headers: {
-				'user-agent': 'n8n',
-				'X-Rundeck-Auth-Token': this.credentials?.token,
-			},
 			rejectUnauthorized: false,
 			method,
 			qs: query,
@@ -33,7 +30,7 @@ export class RundeckApi {
 		};
 
 		try {
-			return await this.executeFunctions.helpers.request!(options);
+			return this.executeFunctions.helpers.requestWithAuthentication.call(this.executeFunctions, credentialType, options)
 		} catch (error) {
 			throw new NodeApiError(this.executeFunctions.getNode(), error);
 		}
