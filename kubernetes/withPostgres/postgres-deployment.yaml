@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    service: postgres-n8n
+  name: postgres
+  namespace: n8n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: postgres-n8n
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        service: postgres-n8n
+    spec:
+      containers:
+        - image: postgres:11
+          name: postgres
+          resources: {}
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgresql-pv
+              mountPath: /var/lib/postgresql/data2
+          env:
+            - name: POSTGRES_USER
+              value: "changeme"
+            - name: POSTGRES_PASSWORD
+              value: "changeme"
+            - name: POSTGRES_DB
+              value: n8n
+            - name: POSTGRES_NON_ROOT_USER
+              value: "changeme"
+            - name: POSTGRES_NON_ROOT_PASSWORD
+              value: "changeme"
+            - name:   POSTGRES_HOST
+              value: postgres-service
+            - name: POSTGRES_PORT
+              value: '5432'
+      restartPolicy: Always
+      volumes:
+        - name: postgresql-pv
+          persistentVolumeClaim:
+            claimName: postgresql-pv
+        - name: postgres-secret
+          secret:
+            secretName: postgres-secret
+        - name: init-data
+          configMap:
+            name: init-data
+            defaultMode: 0744
