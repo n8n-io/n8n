@@ -145,11 +145,13 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						const document = { fields: {} };
 						columnList.map((column) => {
 							// @ts-ignore
-							document.fields[column] = item['json'][column]
-								? // @ts-ignore
-								  jsonToDocument(item['json'][column])
-								: // @ts-ignore
-								  jsonToDocument(null);
+							if (item['json'][column]) {
+								// @ts-ignore
+								document.fields[column] = jsonToDocument(item['json'][column]);
+							} else {
+								// @ts-ignore
+								document.fields[column] = jsonToDocument(null);
+							}
 						});
 						responseData = await googleApiRequest.call(
 							this,
@@ -238,11 +240,13 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					const document = {};
 					columnList.map((column) => {
 						// @ts-ignore
-						document[column] = item['json'].hasOwnProperty(column)
-							? // @ts-ignore
-							  jsonToDocument(item['json'][column])
-							: // @ts-ignore
-							  jsonToDocument(null);
+						if (item['json'].hasOwnProperty(column)) {
+							// @ts-ignore
+							document[column] = jsonToDocument(item['json'][column]);
+						} else {
+							// @ts-ignore
+							document[column] = jsonToDocument(null);
+						}
 					});
 
 					return {
