@@ -5,6 +5,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 
 const prettier = path.resolve('node_modules', 'prettier', 'bin-prettier.js');
+const config = path.resolve('.prettierrc.js');
 
 if (!fs.existsSync(prettier)) {
 	throw new Error(
@@ -40,6 +41,6 @@ const targets = fs
 	}, [])
 	.join(' ');
 
-const command = [prettier, '--write', targets].join(' ');
+const command = [prettier, '--config', config, '--write', targets].join(' ');
 
 execSync(command);
