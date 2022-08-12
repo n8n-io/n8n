@@ -1,6 +1,6 @@
-ARG BUILD_FROM=node:16-alpine
+# ARG BUILD_FROM=node:16-alpine
 # ARG BUILD_FROM=ghcr.io/hassio-addons/base/amd64-base-python:3.16
-FROM $BUILD_FROM
+FROM node:16-alpine
 
 ARG N8N_VERSION=0.190.0
 
