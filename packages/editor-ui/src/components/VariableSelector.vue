@@ -75,7 +75,7 @@ export default mixins(
 				return this.getFilterResults(this.variableFilter.toLowerCase(), 0);
 			},
 			workflow (): Workflow {
-				return this.getWorkflow();
+				return this.getCurrentWorkflow();
 			},
 		},
 		methods: {

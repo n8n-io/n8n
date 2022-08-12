@@ -51,7 +51,7 @@ export default mixins(
 				let runIndex = 0;
 
 				const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
-				const workflow = this.getWorkflow();
+				const workflow = this.getCurrentWorkflow();
 				const activeNode: INodeUi | null = this.$store.getters.activeNode;
 				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]) || {
