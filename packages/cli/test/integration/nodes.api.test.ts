@@ -13,15 +13,17 @@ import {
 	isNpmError,
 } from '../../src/CommunityNodes/helpers';
 import { findInstalledPackage, isPackageInstalled } from '../../src/CommunityNodes/packageModel';
-import { CURRENT_PACKAGE_VERSION, UPDATED_PACKAGE_VERSION } from './shared/constants';
 import { LoadNodesAndCredentials } from '../../src/LoadNodesAndCredentials';
 import { InstalledPackages } from '../../src/databases/entities/InstalledPackages';
 
 import type { Role } from '../../src/databases/entities/Role';
 import type { AuthAgent } from './shared/types';
 import type { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
+import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 
 jest.mock('../../src/telemetry');
+
+jest.mock('../../src/Push');
 
 jest.mock('../../src/CommunityNodes/helpers', () => {
 	return {
@@ -64,7 +66,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['InstalledNodes', 'InstalledPackages'], testDbName);
+	await testDb.truncate(['InstalledNodes', 'InstalledPackages', 'User'], testDbName);
 
 	mocked(executeCommand).mockReset();
 	mocked(findInstalledPackage).mockReset();
@@ -164,9 +166,9 @@ test('GET /nodes should report package updates if available', async () => {
 			code: 1,
 			stdout: JSON.stringify({
 				[packageName]: {
-					current: CURRENT_PACKAGE_VERSION,
-					wanted: CURRENT_PACKAGE_VERSION,
-					latest: UPDATED_PACKAGE_VERSION,
+					current: COMMUNITY_PACKAGE_VERSION.CURRENT,
+					wanted: COMMUNITY_PACKAGE_VERSION.CURRENT,
+					latest: COMMUNITY_PACKAGE_VERSION.UPDATED,
 					location: path.join('node_modules', packageName),
 				},
 			}),
@@ -179,8 +181,8 @@ test('GET /nodes should report package updates if available', async () => {
 		body: { data },
 	} = await authAgent(ownerShell).get('/nodes');
 
-	expect(data[0].installedVersion).toBe(CURRENT_PACKAGE_VERSION);
-	expect(data[0].updateAvailable).toBe(UPDATED_PACKAGE_VERSION);
+	expect(data[0].installedVersion).toBe(COMMUNITY_PACKAGE_VERSION.CURRENT);
+	expect(data[0].updateAvailable).toBe(COMMUNITY_PACKAGE_VERSION.UPDATED);
 });
 
 /**
@@ -220,9 +222,7 @@ test('POST /nodes should allow installing packages that could not be loaded', as
 	mocked(hasPackageLoaded).mockReturnValueOnce(false);
 	mocked(checkNpmPackageStatus).mockResolvedValueOnce({ status: 'OK' });
 
-	jest
-		.spyOn(LoadNodesAndCredentials(), 'loadNpmModule')
-		.mockImplementationOnce(mockedEmptyPackage);
+	jest.spyOn(LoadNodesAndCredentials(), 'loadNpmModule').mockImplementationOnce(mockedEmptyPackage);
 
 	const { statusCode } = await authAgent(ownerShell).post('/nodes').send({
 		name: utils.installedPackagePayload().packageName,
