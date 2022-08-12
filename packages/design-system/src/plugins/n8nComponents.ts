@@ -39,7 +39,7 @@ import N8nUsersList from '../components/N8nUsersList';
 import N8nUserSelect from '../components/N8nUserSelect';
 
 export default {
-	install: (app: typeof Vue, options?: any) => {
+	install: (app: typeof Vue, options?: {}) => {
 		app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-action-box', N8nActionBox);
 		app.component('n8n-action-toggle', N8nActionToggle);

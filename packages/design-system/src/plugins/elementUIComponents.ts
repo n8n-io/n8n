@@ -32,7 +32,7 @@ import Container from 'element-ui/lib/container';
 import Popover from 'element-ui/lib/popover';
 
 export default {
-	install: (app: typeof Vue, options?: any) => {
+	install: (app: typeof Vue, options?: {}) => {
 		app.component('ElCollapseTransition', CollapseTransition);
 		app.component('ElDialog', Dialog);
 		app.component('ElDrawer', Drawer);
