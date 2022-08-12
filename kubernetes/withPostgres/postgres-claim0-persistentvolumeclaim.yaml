@@ -1,12 +1,14 @@
-kind: PersistentVolumeClaim
 apiVersion: v1
+kind: PersistentVolumeClaim
 metadata:
-  name: postgresql-pv
+  labels:
+    service: postgres-claim0
+  name: postgres-claim0
   namespace: n8n
 spec:
-  storageClassName: regionalpd-storageclass
+  storageClassName: "default"
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 300Gi
+      storage: 2Gi

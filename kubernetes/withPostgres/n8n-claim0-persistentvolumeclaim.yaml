@@ -6,6 +6,7 @@ metadata:
   name: n8n-claim0
   namespace: n8n
 spec:
+  storageClassName: "default"
   accessModes:
     - ReadWriteOnce
   resources:
