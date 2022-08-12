@@ -1,6 +1,6 @@
 {
   "name": "Hass n8n",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "slug": "hass-n8n",
   "description": "Home Assistant n8n instance with ingress",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
@@ -15,7 +15,11 @@
   "ingress_port": 5678,
   "ingress_stream": true,
 	"host_network": true,
+	"hassio_api": true,
+	"hassio_role": "manager",
+	"homeassistant_api": true,
 	"panel_icon": "mdi:hexagon-multiple",
+	"init": false,
   "ports": {
     "5678/tcp": 5678
   },
