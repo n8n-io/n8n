@@ -4,6 +4,9 @@ FROM $BUILD_FROM
 
 ARG N8N_VERSION=0.190.0
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+
 RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
 
 # Update everything and install needed dependencies
