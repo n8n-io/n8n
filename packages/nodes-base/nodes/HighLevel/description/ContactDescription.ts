@@ -289,8 +289,9 @@ const createProperties: INodeProperties[] = [
 			},
 			customFields,
 			{
-				displayName: 'DND',
+				displayName: 'Do Not Disturb',
 				name: 'dnd',
+				description: 'Whether automated/manual outbound messages are permitted to go out or not. True means NO outbound messages are permitted.',
 				type: 'boolean',
 				default: false,
 				routing: {
