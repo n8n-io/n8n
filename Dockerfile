@@ -1,4 +1,6 @@
-FROM node:16-alpine
+#FROM node:16-alpine
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
 ARG N8N_VERSION=0.190.0
 
