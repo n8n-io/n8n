@@ -171,4 +171,4 @@ const allCurrencies = [
 	{ name: 'Zambian Kwacha', value: 'zmw' },
 	{ name: 'Zimbabwean Dollar', value: 'zwl' },
 	// tslint:disable-next-line: semicolon
-]
+];

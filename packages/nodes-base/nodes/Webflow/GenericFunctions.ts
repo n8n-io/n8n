@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,10 +7,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function webflowApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -33,7 +28,6 @@ export async function webflowApiRequest(
 	if (authenticationMethod === 'oAuth2') {
 		credentialsType = 'webflowOAuth2Api';
 	}
-
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -68,7 +62,6 @@ export async function webflowApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -82,10 +75,7 @@ export async function webflowApiRequestAllItems(
 			query.offset += query.limit;
 		}
 		returnData.push.apply(returnData, responseData.items);
-	} while (
-		returnData.length < responseData.total
-	);
+	} while (returnData.length < responseData.total);
 
 	return returnData;
 }
-

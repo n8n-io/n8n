@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const organizationDescription: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const organizationDescription: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
+				resource: ['organization'],
 			},
 		},
 		options: [
@@ -64,12 +60,8 @@ export const organizationDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'organization',
-				],
+				operation: ['create'],
+				resource: ['organization'],
 			},
 		},
 	},
@@ -77,17 +69,14 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to update. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Organization to update. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['organization'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -95,17 +84,14 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Organization to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['organization'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -113,17 +99,14 @@ export const organizationDescription: INodeProperties[] = [
 		displayName: 'Organization ID',
 		name: 'id',
 		type: 'string',
-		description: 'Organization to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Organization to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['organization'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -133,12 +116,8 @@ export const organizationDescription: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'organization',
-				],
+				operation: ['create'],
+				resource: ['organization'],
 			},
 		},
 		default: {},
@@ -172,7 +151,8 @@ export const organizationDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadOrganizationCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -202,12 +182,8 @@ export const organizationDescription: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'organization',
-				],
+				operation: ['update'],
+				resource: ['organization'],
 			},
 		},
 		default: {},
@@ -241,7 +217,8 @@ export const organizationDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadOrganizationCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								description:
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -279,12 +256,8 @@ export const organizationDescription: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['organization'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -299,15 +272,9 @@ export const organizationDescription: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['organization'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

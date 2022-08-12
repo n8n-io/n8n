@@ -1,15 +1,8 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function urlScanIoApiRequest(
 	this: IExecuteFunctions,
@@ -35,12 +28,11 @@ export async function urlScanIoApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi',options);
+		return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
-
 
 export async function handleListing(
 	this: IExecuteFunctions,
@@ -64,17 +56,16 @@ export async function handleListing(
 		}
 
 		if (responseData.results.length) {
-			const lastResult = responseData.results[responseData.results.length -1];
+			const lastResult = responseData.results[responseData.results.length - 1];
 			qs.search_after = lastResult.sort;
 		}
-
 	} while (responseData.total > returnData.length);
 
 	return returnData;
 }
 
 export const normalizeId = ({ _id, uuid, ...rest }: IDataObject) => {
-	if (_id) return ({ scanId: _id, ...rest });
-	if (uuid) return ({ scanId: uuid, ...rest });
+	if (_id) return { scanId: _id, ...rest };
+	if (uuid) return { scanId: uuid, ...rest };
 	return rest;
 };

@@ -157,44 +157,44 @@ packages/nodes-base/nodes/Supabase
 packages/nodes-base/nodes/SurveyMonkey
 packages/nodes-base/nodes/Switch
 packages/nodes-base/nodes/SyncroMSP
-packages/nodes-base/nodes/Taiga
-packages/nodes-base/nodes/Tapfiliate
-packages/nodes-base/nodes/Telegram
-packages/nodes-base/nodes/TheHive
-packages/nodes-base/nodes/TimescaleDb
-packages/nodes-base/nodes/Todoist
-packages/nodes-base/nodes/Toggl
-packages/nodes-base/nodes/TravisCi
-packages/nodes-base/nodes/Trello
-packages/nodes-base/nodes/Twake
-packages/nodes-base/nodes/Twilio
-packages/nodes-base/nodes/Twist
-packages/nodes-base/nodes/Twitter
-packages/nodes-base/nodes/Typeform
-packages/nodes-base/nodes/UnleashedSoftware
-packages/nodes-base/nodes/Uplead
+# packages/nodes-base/nodes/Taiga
+# packages/nodes-base/nodes/Tapfiliate
+# packages/nodes-base/nodes/Telegram
+# packages/nodes-base/nodes/TheHive
+# packages/nodes-base/nodes/TimescaleDb
+# packages/nodes-base/nodes/Todoist
+# packages/nodes-base/nodes/Toggl
+# packages/nodes-base/nodes/TravisCi
+# packages/nodes-base/nodes/Trello
+# packages/nodes-base/nodes/Twake
+# packages/nodes-base/nodes/Twilio
+# packages/nodes-base/nodes/Twist
+# packages/nodes-base/nodes/Twitter
+# packages/nodes-base/nodes/Typeform
+# packages/nodes-base/nodes/UnleashedSoftware
+# packages/nodes-base/nodes/Uplead
 packages/nodes-base/nodes/UProc
-packages/nodes-base/nodes/UptimeRobot
-packages/nodes-base/nodes/UrlScanIo
-packages/nodes-base/nodes/utils
-packages/nodes-base/nodes/Vero
-packages/nodes-base/nodes/Vonage
-packages/nodes-base/nodes/Wait
-packages/nodes-base/nodes/Webflow
-packages/nodes-base/nodes/Webhook
-packages/nodes-base/nodes/Wekan
-packages/nodes-base/nodes/Wise
-packages/nodes-base/nodes/WooCommerce
-packages/nodes-base/nodes/Wordpress
-packages/nodes-base/nodes/Workable
-packages/nodes-base/nodes/WorkflowTrigger
-packages/nodes-base/nodes/WriteBinaryFile
-packages/nodes-base/nodes/Wufoo
-packages/nodes-base/nodes/Xero
-packages/nodes-base/nodes/Xml
-packages/nodes-base/nodes/Yourls
-packages/nodes-base/nodes/Zammad
-packages/nodes-base/nodes/Zendesk
-packages/nodes-base/nodes/Zoho
-packages/nodes-base/nodes/Zoom
-packages/nodes-base/nodes/Zulip
+# packages/nodes-base/nodes/UptimeRobot
+# packages/nodes-base/nodes/UrlScanIo
+# packages/nodes-base/nodes/utils
+# packages/nodes-base/nodes/Vero
+# packages/nodes-base/nodes/Vonage
+# packages/nodes-base/nodes/Wait
+# packages/nodes-base/nodes/Webflow
+# packages/nodes-base/nodes/Webhook
+# packages/nodes-base/nodes/Wekan
+# packages/nodes-base/nodes/Wise
+# packages/nodes-base/nodes/WooCommerce
+# packages/nodes-base/nodes/Wordpress
+# packages/nodes-base/nodes/Workable
+# packages/nodes-base/nodes/WorkflowTrigger
+# packages/nodes-base/nodes/WriteBinaryFile
+# packages/nodes-base/nodes/Wufoo
+# packages/nodes-base/nodes/Xero
+# packages/nodes-base/nodes/Xml
+# packages/nodes-base/nodes/Yourls
+# packages/nodes-base/nodes/Zammad
+# packages/nodes-base/nodes/Zendesk
+# packages/nodes-base/nodes/Zoho
+# packages/nodes-base/nodes/Zoom
+# packages/nodes-base/nodes/Zulip
