@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const identityOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const identityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'identity',
-				],
+				resource: ['identity'],
 			},
 		},
 		options: [
@@ -27,7 +23,6 @@ export const identityOperations: INodeProperties[] = [
 ];
 
 export const identityFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 identity:create                            */
 	/* -------------------------------------------------------------------------- */
@@ -38,16 +33,12 @@ export const identityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'identity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identity'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The identity\'s distinct ID',
+		description: "The identity's distinct ID",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -56,12 +47,8 @@ export const identityFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'identity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identity'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -107,7 +94,7 @@ export const identityFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: 'If not set, it\'ll automatically be set to the current time',
+				description: "If not set, it'll automatically be set to the current time",
 			},
 		],
 	},

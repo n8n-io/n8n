@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	openThesaurusApiRequest,
-} from './GenericFunctions';
+import { openThesaurusApiRequest } from './GenericFunctions';
 
 export class OpenThesaurus implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,9 +44,7 @@ export class OpenThesaurus implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getSynonyms',
-						],
+						operation: ['getSynonyms'],
 					},
 				},
 			},
@@ -66,9 +55,7 @@ export class OpenThesaurus implements INodeType {
 				placeholder: 'Add Options',
 				displayOptions: {
 					show: {
-						operation: [
-							'getSynonyms',
-						],
+						operation: ['getSynonyms'],
 					},
 				},
 				default: {},
@@ -79,7 +66,8 @@ export class OpenThesaurus implements INodeType {
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'Specifies the basic form for the search term if it is not already a basic form',
+						description:
+							'Specifies the basic form for the search term if it is not already a basic form',
 					},
 					{
 						displayName: 'Similar',
@@ -87,7 +75,8 @@ export class OpenThesaurus implements INodeType {
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'This also returns up to five similarly written words for each answer. This is useful to be able to make a suggestion to the user in the event of a possible typing error.',
+						description:
+							'This also returns up to five similarly written words for each answer. This is useful to be able to make a suggestion to the user in the event of a possible typing error.',
 					},
 					{
 						displayName: 'Starts With',
@@ -95,21 +84,24 @@ export class OpenThesaurus implements INodeType {
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'Like substring = true, but only finds words that begin with the specified search term',
+						description:
+							'Like substring = true, but only finds words that begin with the specified search term',
 					},
 					{
 						displayName: 'Substring',
 						name: 'substring',
 						type: 'boolean',
 						default: false,
-						description: 'Whether up to ten words are returned for each answer that only contain the search term as a partial word',
+						description:
+							'Whether up to ten words are returned for each answer that only contain the search term as a partial word',
 					},
 					{
 						displayName: 'Substring From Results',
 						name: 'substringFromResults',
 						type: 'number',
 						default: 0,
-						description: 'Specifies from which entry the partial word hits are to be returned. Only works together with substring = true.',
+						description:
+							'Specifies from which entry the partial word hits are to be returned. Only works together with substring = true.',
 					},
 					{
 						displayName: 'Substring Max Results',
@@ -119,7 +111,8 @@ export class OpenThesaurus implements INodeType {
 							maxValue: 250,
 						},
 						default: 10,
-						description: 'Specifies how many partial word hits should be returned in total. Only works together with substring = true.',
+						description:
+							'Specifies how many partial word hits should be returned in total. Only works together with substring = true.',
 					},
 					{
 						displayName: 'Subsynsets',
@@ -158,7 +151,13 @@ export class OpenThesaurus implements INodeType {
 
 					Object.assign(qs, options);
 
-					responseData = await openThesaurusApiRequest.call(this, 'GET', `/synonyme/search`, {}, qs);
+					responseData = await openThesaurusApiRequest.call(
+						this,
+						'GET',
+						`/synonyme/search`,
+						{},
+						qs,
+					);
 					responseData = responseData.synsets;
 				}
 				if (Array.isArray(responseData)) {

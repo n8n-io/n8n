@@ -84,32 +84,32 @@ packages/design-system
 # packages/nodes-base/nodes/NocoDB
 # packages/nodes-base/nodes/NoOp
 # packages/nodes-base/nodes/Notion
-packages/nodes-base/nodes/Odoo
-packages/nodes-base/nodes/OneSimpleApi
-packages/nodes-base/nodes/Onfleet
-packages/nodes-base/nodes/OpenThesaurus
-packages/nodes-base/nodes/OpenWeatherMap
-packages/nodes-base/nodes/Orbit
-packages/nodes-base/nodes/Oura
-packages/nodes-base/nodes/Paddle
-packages/nodes-base/nodes/PagerDuty
-packages/nodes-base/nodes/PayPal
-packages/nodes-base/nodes/Peekalink
-packages/nodes-base/nodes/Phantombuster
-packages/nodes-base/nodes/PhilipsHue
-packages/nodes-base/nodes/Pipedrive
-packages/nodes-base/nodes/Plivo
-packages/nodes-base/nodes/PostBin
-packages/nodes-base/nodes/Postgres
-packages/nodes-base/nodes/PostHog
-packages/nodes-base/nodes/Postmark
-packages/nodes-base/nodes/ProfitWell
-packages/nodes-base/nodes/Pushbullet
-packages/nodes-base/nodes/Pushcut
-packages/nodes-base/nodes/Pushover
-packages/nodes-base/nodes/QuestDb
-packages/nodes-base/nodes/QuickBase
-packages/nodes-base/nodes/QuickBooks
+# packages/nodes-base/nodes/Odoo
+# packages/nodes-base/nodes/OneSimpleApi
+# packages/nodes-base/nodes/Onfleet
+# packages/nodes-base/nodes/OpenThesaurus
+# packages/nodes-base/nodes/OpenWeatherMap
+# packages/nodes-base/nodes/Orbit
+# packages/nodes-base/nodes/Oura
+# packages/nodes-base/nodes/Paddle
+# packages/nodes-base/nodes/PagerDuty
+# packages/nodes-base/nodes/PayPal
+# packages/nodes-base/nodes/Peekalink
+# packages/nodes-base/nodes/Phantombuster
+# packages/nodes-base/nodes/PhilipsHue
+# packages/nodes-base/nodes/Pipedrive
+# packages/nodes-base/nodes/Plivo
+# packages/nodes-base/nodes/PostBin
+# packages/nodes-base/nodes/Postgres
+# packages/nodes-base/nodes/PostHog
+# packages/nodes-base/nodes/Postmark
+# packages/nodes-base/nodes/ProfitWell
+# packages/nodes-base/nodes/Pushbullet
+# packages/nodes-base/nodes/Pushcut
+# packages/nodes-base/nodes/Pushover
+# packages/nodes-base/nodes/QuestDb
+# packages/nodes-base/nodes/QuickBase
+# packages/nodes-base/nodes/QuickBooks
 packages/nodes-base/nodes/RabbitMQ
 packages/nodes-base/nodes/Raindrop
 packages/nodes-base/nodes/ReadBinaryFile
