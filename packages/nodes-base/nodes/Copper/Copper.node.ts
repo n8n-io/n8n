@@ -113,7 +113,7 @@ export class Copper implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -622,11 +622,13 @@ export class Copper implements INodeType {
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				{ item: i },
+				this.helpers.returnJsonArray(responseData),
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }
