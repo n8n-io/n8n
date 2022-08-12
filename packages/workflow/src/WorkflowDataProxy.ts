@@ -592,7 +592,7 @@ export class WorkflowDataProxy {
 				if (previousNodeOutput >= taskData.data!.main.length) {
 					// `Could not resolve as the defined node-output is not valid on node '${sourceData.previousNode}'.`
 					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’',
+						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						nodeCause: nodeBeforeLast,
 						description: `Apologies, this is an internal error. See details for more information`,
 						causeDetailed: 'Referencing a non-existent output on a node, problem with source data',
@@ -603,7 +603,7 @@ export class WorkflowDataProxy {
 				if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
 					// `Could not resolve as the defined item index is not valid on node '${sourceData.previousNode}'.
 					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 						nodeCause: nodeBeforeLast,
 						description: `Item points to an item which does not exist`,
 						causeDetailed: `The pairedItem data points to an item ‘${pairedItem.item}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
@@ -617,7 +617,7 @@ export class WorkflowDataProxy {
 				if (itemPreviousNode.pairedItem === undefined) {
 					// `Could not resolve, as pairedItem data is missing on node '${sourceData.previousNode}'.`,
 					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 						nodeCause: sourceData.previousNode,
 						description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘${sourceData.previousNode}’`,
 						causeDetailed: `Missing pairedItem data (node ‘${sourceData.previousNode}’ probably didn’t supply it)`,
@@ -680,7 +680,7 @@ export class WorkflowDataProxy {
 					}
 					// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData.previousNode}'.`
 					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 						nodeCause: nodeBeforeLast,
 						description: `In node ‘${sourceData.previousNode}’, output item ${
 							currentPairedItem.item || 0
@@ -696,7 +696,7 @@ export class WorkflowDataProxy {
 			if (sourceData === null) {
 				// 'Could not resolve, proably no pairedItem exists.'
 				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 					nodeCause: nodeBeforeLast,
 					description: `Could not resolve, proably no pairedItem exists`,
 					type: 'no pairing info',
@@ -712,7 +712,7 @@ export class WorkflowDataProxy {
 			if (previousNodeOutput >= taskData.data!.main.length) {
 				// `Could not resolve pairedItem as the node output '${previousNodeOutput}' does not exist on node '${sourceData.previousNode}'`
 				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 					description: `Item points to a node output which does not exist`,
 					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
 					type: 'invalid pairing info',
@@ -722,7 +722,7 @@ export class WorkflowDataProxy {
 			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
 				// `Could not resolve pairedItem as the item with the index '${pairedItem.item}' does not exist on node '${sourceData.previousNode}'.`
 				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 					nodeCause: nodeBeforeLast,
 					// description: `Item points to an item which does not exist`,
 					description: `In node ‘${sourceData.previousNode}’, output item ${
@@ -766,7 +766,7 @@ export class WorkflowDataProxy {
 
 									if (pairedItem === undefined) {
 										throw new ExpressionError('Can’t get data for expression', {
-											messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
+											messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
 											description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘${that.activeNodeName}‘`,
 											causeDetailed: `Missing pairedItem data (node ‘${that.activeNodeName}‘ probably didn’t supply it)`,
 											runIndex: that.runIndex,
@@ -777,7 +777,7 @@ export class WorkflowDataProxy {
 
 									if (!that.executeData?.source) {
 										throw new ExpressionError('Can’t get data for expression', {
-											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’',
+											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 											description: `Apologies, this is an internal error. See details for more information`,
 											causeDetailed: `Missing sourceData (probably an internal error)`,
 											runIndex: that.runIndex,
