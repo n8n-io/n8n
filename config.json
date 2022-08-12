@@ -29,7 +29,7 @@
     "certfile": "fullchain.pem",
     "keyfile": "privkey.pem",
     "data_path": "/data/n8n",
-    "personalized": "false"
+    "personalized": false
   },
   "schema": {
     "auth": "bool",
