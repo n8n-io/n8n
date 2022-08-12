@@ -14,6 +14,8 @@
   "ingress": true,
   "ingress_port": 5678,
   "ingress_stream": true,
+	"host_network": true,
+	"panel_icon": "mdi:hexagon-multiple",
   "ports": {
     "5678/tcp": 5678
   },
