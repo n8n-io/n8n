@@ -36,7 +36,11 @@
 				<n8n-action-box
 					:heading="$locale.baseText('settings.communityNodes.empty.title')"
 					:description="getEmptyStateDescription"
-					:buttonText="$locale.baseText('settings.communityNodes.empty.installPackageLabel')"
+					:buttonText="
+						isNpmAvailable
+							? $locale.baseText('settings.communityNodes.empty.installPackageLabel')
+							: ''
+					"
 					:calloutText="actionBoxConfig.calloutText"
 					:calloutTheme="actionBoxConfig.calloutTheme"
 					@click="openInstallModal"
@@ -63,7 +67,11 @@ import SettingsView from './SettingsView.vue';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY, COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../constants';
+import {
+	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	COMMUNITY_NODES_NPM_INSTALLATION_URL,
+} from '../constants';
 import { PublicInstalledPackage } from 'n8n-workflow';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
@@ -123,7 +131,7 @@ export default mixins(
 		}
 	},
 	computed: {
-		...mapGetters('settings', ['isQueueModeEnabled']),
+		...mapGetters('settings', ['isNpmAvailable', 'isQueueModeEnabled']),
 		...mapGetters('communityNodes', ['getInstalledPackages']),
 		getEmptyStateDescription() {
 			const packageCount = this.$store.getters['communityNodes/availablePackageCount'];
@@ -141,13 +149,29 @@ export default mixins(
 				});
 		},
 		actionBoxConfig() {
-			return this.isQueueModeEnabled ? {
-				calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning', {
-					interpolate: { docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL },
-				}),
-				calloutTheme: 'warning',
-				hideButton: true,
-			} : {
+			if (!this.isNpmAvailable) {
+				return {
+					calloutText: this.$locale.baseText(
+						'settings.communityNodes.npmUnavailable.warning',
+						{ interpolate: { npmUrl: COMMUNITY_NODES_NPM_INSTALLATION_URL } },
+					),
+					calloutTheme: 'warning',
+					hideButton: true,
+				};
+			}
+
+			if (this.isQueueModeEnabled) {
+				return {
+					calloutText: this.$locale.baseText(
+						'settings.communityNodes.queueMode.warning',
+						{ interpolate: { docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } },
+					),
+					calloutTheme: 'warning',
+					hideButton: true,
+				};
+			}
+
+			return {
 				calloutText: '',
 				calloutTheme: '',
 				hideButton: false,
