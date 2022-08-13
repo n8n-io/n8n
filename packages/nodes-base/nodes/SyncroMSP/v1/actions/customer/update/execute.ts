@@ -1,22 +1,28 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, NodeApiError } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../../../transport';
+import { apiRequest } from '../../../transport';
 
-
-export async function updateCustomer(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function updateCustomer(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('customerId', index) as IDataObject;
-	const { address, businessName, email, firstName, getSms, invoiceCcEmails,
-		lastName, noEmail, notes, notificationEmail, phone, referredBy } = this.getNodeParameter('updateFields', index) as IDataObject;
+	const {
+		address,
+		businessName,
+		email,
+		firstName,
+		getSms,
+		invoiceCcEmails,
+		lastName,
+		noEmail,
+		notes,
+		notificationEmail,
+		phone,
+		referredBy,
+	} = this.getNodeParameter('updateFields', index) as IDataObject;
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
@@ -35,7 +41,7 @@ export async function updateCustomer(this: IExecuteFunctions, index: number): Pr
 		email,
 		firstname: firstName,
 		get_sms: getSms,
-		invoice_cc_emails: (invoiceCcEmails as string[] || []).join(','),
+		invoice_cc_emails: ((invoiceCcEmails as string[]) || []).join(','),
 		lastname: lastName,
 		no_email: noEmail,
 		notes,
@@ -47,7 +53,10 @@ export async function updateCustomer(this: IExecuteFunctions, index: number): Pr
 	let responseData;
 	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	if (!responseData.customer) {
-		throw new NodeApiError(this.getNode(), responseData, { httpCode: '404', message: 'Customer ID not found' });
+		throw new NodeApiError(this.getNode(), responseData, {
+			httpCode: '404',
+			message: 'Customer ID not found',
+		});
 	}
 	return this.helpers.returnJsonArray(responseData.customer);
 }
