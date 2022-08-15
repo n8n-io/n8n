@@ -9,7 +9,6 @@ import {
 	NodeParameterValue,
 } from 'n8n-workflow';
 
-
 interface CustomProperty {
 	name: string;
 	value: string;
@@ -22,7 +21,6 @@ interface FilterValue {
 interface FilterValues {
 	[key: string]: FilterValue[];
 }
-
 
 export class Chargebee implements INodeType {
 	description: INodeTypeDescription = {
@@ -68,8 +66,6 @@ export class Chargebee implements INodeType {
 				default: 'invoice',
 			},
 
-
-
 			// ----------------------------------
 			//         customer
 			// ----------------------------------
@@ -80,9 +76,7 @@ export class Chargebee implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'customer',
-						],
+						resource: ['customer'],
 					},
 				},
 				options: [
@@ -105,12 +99,8 @@ export class Chargebee implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'customer',
-						],
+						operation: ['create'],
+						resource: ['customer'],
 					},
 				},
 				default: {},
@@ -193,11 +183,8 @@ export class Chargebee implements INodeType {
 							},
 						],
 					},
-
 				],
 			},
-
-
 
 			// ----------------------------------
 			//         invoice
@@ -210,9 +197,7 @@ export class Chargebee implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'invoice',
-						],
+						resource: ['invoice'],
 					},
 				},
 				options: [
@@ -245,12 +230,8 @@ export class Chargebee implements INodeType {
 				default: 10,
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						resource: [
-							'invoice',
-						],
+						operation: ['list'],
+						resource: ['invoice'],
 					},
 				},
 				description: 'Max. amount of results to return(< 100).',
@@ -267,12 +248,8 @@ export class Chargebee implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						resource: [
-							'invoice',
-						],
+						operation: ['list'],
+						resource: ['invoice'],
 					},
 				},
 				options: [
@@ -302,7 +279,6 @@ export class Chargebee implements INodeType {
 										name: 'Before',
 										value: 'before',
 									},
-
 								],
 								default: 'after',
 								description: 'Operation to decide where the the data should be mapped to',
@@ -381,17 +357,11 @@ export class Chargebee implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'pdfUrl',
-						],
-						resource: [
-							'invoice',
-						],
+						operation: ['pdfUrl'],
+						resource: ['invoice'],
 					},
 				},
 			},
-
-
 
 			// ----------------------------------
 			//         subscription
@@ -403,9 +373,7 @@ export class Chargebee implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'subscription',
-						],
+						resource: ['subscription'],
 					},
 				},
 				options: [
@@ -437,12 +405,8 @@ export class Chargebee implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'cancel',
-						],
-						resource: [
-							'subscription',
-						],
+						operation: ['cancel'],
+						resource: ['subscription'],
 					},
 				},
 			},
@@ -453,15 +417,12 @@ export class Chargebee implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						operation: [
-							'cancel',
-						],
-						resource: [
-							'subscription',
-						],
+						operation: ['cancel'],
+						resource: ['subscription'],
 					},
 				},
-				description: 'Whether it will not cancel it directly in will instead schedule the cancelation for the end of the term',
+				description:
+					'Whether it will not cancel it directly in will instead schedule the cancelation for the end of the term',
 			},
 
 			// ----------------------------------
@@ -476,20 +437,13 @@ export class Chargebee implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'subscription',
-						],
+						operation: ['delete'],
+						resource: ['subscription'],
 					},
 				},
 			},
-
 		],
 	};
-
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -526,8 +480,12 @@ export class Chargebee implements INodeType {
 						const properties = this.getNodeParameter('properties', i, {}) as IDataObject;
 
 						for (const key of Object.keys(properties)) {
-							if (key === 'customProperties' && (properties.customProperties as IDataObject).property !== undefined) {
-								for (const customProperty of (properties.customProperties as IDataObject)!.property! as CustomProperty[]) {
+							if (
+								key === 'customProperties' &&
+								(properties.customProperties as IDataObject).property !== undefined
+							) {
+								for (const customProperty of (properties.customProperties as IDataObject)!
+									.property! as CustomProperty[]) {
 									qs[customProperty.name] = customProperty.value;
 								}
 							} else {
@@ -537,9 +495,12 @@ export class Chargebee implements INodeType {
 
 						endpoint = `customers`;
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'invoice') {
 					if (operation === 'list') {
 						// ----------------------------------
@@ -552,7 +513,11 @@ export class Chargebee implements INodeType {
 
 						qs.limit = this.getNodeParameter('maxResults', i, {});
 
-						const setFilters: FilterValues = this.getNodeParameter('filters', i, {}) as unknown as FilterValues;
+						const setFilters: FilterValues = this.getNodeParameter(
+							'filters',
+							i,
+							{},
+						) as unknown as FilterValues;
 
 						let filter: FilterValue;
 						let value: NodeParameterValue;
@@ -575,9 +540,12 @@ export class Chargebee implements INodeType {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
 						endpoint = `invoices/${invoiceId.trim()}/pdf`;
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'subscription') {
 					if (operation === 'cancel') {
 						// ----------------------------------
@@ -601,10 +569,16 @@ export class Chargebee implements INodeType {
 
 						endpoint = `subscriptions/${subscriptionId.trim()}/delete`;
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`, { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				const options = {

@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 // for companies, leads, persons
 export const addressFixedCollection: INodeProperties = {

@@ -21,7 +21,7 @@
 				class="node-view"
 				:style="workflowStyle"
 			>
-				<div v-for="nodeData in nodes" :key="getNodeIndex(nodeData.name)">
+				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node
 						v-if="nodeData.type !== STICKY_NODE_TYPE"
 						@duplicateNode="duplicateNode"
@@ -32,8 +32,7 @@
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						:id="'node-' + getNodeIndex(nodeData.name)"
-						:key="getNodeIndex(nodeData.name)"
+						:key="nodeData.id"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
 						:instance="instance"
@@ -46,7 +45,7 @@
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="removeNode"
-						:id="'node-' + getNodeIndex(nodeData.name)"
+						:key="nodeData.id"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
 						:instance="instance"
@@ -154,7 +153,24 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
-import { DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, NODE_NAME_PREFIX, NODE_OUTPUT_DEFAULT_KEY, PLACEHOLDER_EMPTY_WORKFLOW_ID, QUICKSTART_NOTE_NAME, START_NODE_TYPE, STICKY_NODE_TYPE, VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_OPEN_MODAL_KEY } from '@/constants';
+import {
+	DEFAULT_STICKY_HEIGHT,
+	DEFAULT_STICKY_WIDTH,
+	FIRST_ONBOARDING_PROMPT_TIMEOUT,
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRMED,
+	NODE_OUTPUT_DEFAULT_KEY,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+	ONBOARDING_PROMPT_TIMEBOX,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	QUICKSTART_NOTE_NAME,
+	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
+	WORKFLOW_OPEN_MODAL_KEY,
+} from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -177,7 +193,7 @@ import Sticky from '@/components/Sticky.vue';
 import * as CanvasHelpers from './canvasHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { v4 as uuidv4} from 'uuid';
+import { v4 as uuid } from 'uuid';
 import {
 	IConnection,
 	IConnections,
@@ -210,16 +226,18 @@ import {
 	ITag,
 	IWorkflowTemplate,
 	IExecutionsSummary,
+	IWorkflowToShare,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
 import {
 	addNodeTranslation,
-	addHeaders,
 } from '@/plugins/i18n';
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
+import { getAccountAge } from '@/modules/userHelpers';
+import { IUser } from 'n8n-design-system';
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 
 interface AddNodeOptions {
@@ -312,8 +330,14 @@ export default mixins(
 			}
 		},
 		computed: {
+			...mapGetters('users', [
+				'currentUser',
+			]),
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
+			]),
+			...mapGetters('settings', [
+				'isOnboardingCallPromptFeatureEnabled',
 			]),
 			defaultLocale (): string {
 				return this.$store.getters.defaultLocale;
@@ -614,6 +638,7 @@ export default mixins(
 				}
 				this.resetWorkspace();
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
+
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 
 				if (data.workflow.pinData) {
@@ -1069,7 +1094,14 @@ export default mixins(
 
 			copySelectedNodes (isCut: boolean) {
 				this.getSelectedNodesToSave().then((data) => {
-					const nodeData = JSON.stringify(data, null, 2);
+					const workflowToCopy: IWorkflowToShare = {
+						meta: {
+							instanceId: this.$store.getters.instanceId,
+						},
+						...data,
+					};
+
+					const nodeData = JSON.stringify(workflowToCopy, null, 2);
 					this.copyToClipboard(nodeData);
 					if (data.nodes.length > 0) {
 						if(!isCut){
@@ -1210,11 +1242,6 @@ export default mixins(
 					);
 					return;
 				}
-
-				this.$showMessage({
-					title: this.$locale.baseText('nodeView.showMessage.stopWaitingForWebhook.title'),
-					type: 'success',
-				});
 			},
 
 			/**
@@ -1265,11 +1292,7 @@ export default mixins(
 					}
 				}
 
-				this.$telemetry.track('User pasted nodes', {
-					workflow_id: this.$store.getters.workflowId,
-				});
-
-				return this.importWorkflowData(workflowData!, false);
+				return this.importWorkflowData(workflowData!, false, 'paste');
 			},
 
 			// Returns the workflow data from a given URL. If no data gets found or
@@ -1290,13 +1313,11 @@ export default mixins(
 				}
 				this.stopLoading();
 
-				this.$telemetry.track('User imported workflow', { source: 'url', workflow_id: this.$store.getters.workflowId });
-
 				return workflowData;
 			},
 
 			// Imports the given workflow data into the current workflow
-			async importWorkflowData (workflowData: IWorkflowDataUpdate, importTags = true): Promise<void> {
+			async importWorkflowData (workflowData: IWorkflowToShare, importTags = true, source: string): Promise<void> {
 				// If it is JSON check if it looks on the first look like data we can use
 				if (
 					!workflowData.hasOwnProperty('nodes') ||
@@ -1306,6 +1327,40 @@ export default mixins(
 				}
 
 				try {
+					const nodeIdMap: {[prev: string]: string} = {};
+					if (workflowData.nodes) {
+						// set all new ids when pasting/importing workflows
+						workflowData.nodes.forEach((node: INode) => {
+							if (node.id) {
+								const newId = uuid();
+								nodeIdMap[newId] = node.id;
+								node.id = newId;
+							}
+							else {
+								node.id = uuid();
+							}
+						});
+					}
+
+					const currInstanceId = this.$store.getters.instanceId;
+
+					const nodeGraph = JSON.stringify(
+						TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase,
+							this.getNodeTypes(),
+							{
+								nodeIdMap,
+								sourceInstanceId: workflowData.meta && workflowData.meta.instanceId !== currInstanceId? workflowData.meta.instanceId: '',
+							}).nodeGraph,
+					);
+					if (source === 'paste') {
+						this.$telemetry.track('User pasted nodes', {
+							workflow_id: this.$store.getters.workflowId,
+							node_graph_string: nodeGraph,
+						});
+					} else {
+						this.$telemetry.track('User imported workflow', { source, workflow_id: this.$store.getters.workflowId, node_graph_string: nodeGraph });
+					}
+
 					// By default we automatically deselect all the currently
 					// selected nodes and select the new ones
 					this.deselectAllNodes();
@@ -1455,7 +1510,7 @@ export default mixins(
 				});
 			},
 			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
-				const nodeTypeData: INodeTypeDescription | null = this.$store.getters.nodeType(nodeTypeName);
+				const nodeTypeData: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](nodeTypeName);
 
 				if (nodeTypeData === null) {
 					this.$showMessage({
@@ -1475,6 +1530,7 @@ export default mixins(
 				}
 
 				const newNodeData: INodeUi = {
+					id: uuid(),
 					name: nodeTypeData.defaults.name as string,
 					type: nodeTypeData.name,
 					typeVersion: Array.isArray(nodeTypeData.version)
@@ -1509,7 +1565,7 @@ export default mixins(
 						let yOffset = 0;
 
 						if (lastSelectedConnection) {
-							const sourceNodeType = this.$store.getters.nodeType(lastSelectedNode.type, lastSelectedNode.typeVersion) as INodeTypeDescription | null;
+							const sourceNodeType = this.$store.getters['nodeTypes/getNodeType'](lastSelectedNode.type, lastSelectedNode.typeVersion) as INodeTypeDescription | null;
 							const offsets = [[-100, 100], [-140, 0, 140], [-240, -100, 100, 240]];
 							if (sourceNodeType && sourceNodeType.outputs.length > 1) {
 								const offset = offsets[sourceNodeType.outputs.length - 2];
@@ -1539,7 +1595,7 @@ export default mixins(
 				});
 
 				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
-					newNodeData.webhookId = uuidv4();
+					newNodeData.webhookId = uuid();
 				}
 
 				await this.addNodes([newNodeData]);
@@ -1651,8 +1707,12 @@ export default mixins(
 					// Get the node and set it as active that new nodes
 					// which get created get automatically connected
 					// to it.
-					const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.sourceId.slice(NODE_NAME_PREFIX.length));
-					this.$store.commit('setLastSelectedNode', sourceNodeName);
+					const sourceNode = this.$store.getters.getNodeById(info.sourceId) as INodeUi | null;
+					if (!sourceNode) {
+						return;
+					}
+
+					this.$store.commit('setLastSelectedNode', sourceNode.name);
 					this.$store.commit('setLastSelectedNodeOutputIndex', info.index);
 					this.newNodeInsertPosition = null;
 
@@ -1671,7 +1731,8 @@ export default mixins(
 						}
 
 						if (this.pullConnActiveNodeName) {
-							const sourceNodeName = this.$store.getters.getNodeNameByIndex(connection.sourceId.slice(NODE_NAME_PREFIX.length));
+							const sourceNode = this.$store.getters.getNodeById(connection.sourceId);
+							const sourceNodeName = sourceNode.name;
 							const outputIndex = connection.getParameters().index;
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
@@ -1695,8 +1756,8 @@ export default mixins(
 						// @ts-ignore
 						const targetInfo = info.dropEndpoint.getParameters();
 
-						const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
-						const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+						const sourceNodeName = this.$store.getters.getNodeById(sourceInfo.nodeId).name;
+						const targetNodeName = this.$store.getters.getNodeById(targetInfo.nodeId).name;
 
 						// check for duplicates
 						if (this.getConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)) {
@@ -1720,8 +1781,8 @@ export default mixins(
 						const sourceInfo = info.sourceEndpoint.getParameters();
 						const targetInfo = info.targetEndpoint.getParameters();
 
-						const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
-						const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+						const sourceNodeName = this.$store.getters.getNodeById(sourceInfo.nodeId).name;
+						const targetNodeName = this.$store.getters.getNodeById(targetInfo.nodeId).name;
 
 						info.connection.__meta = {
 							sourceNodeName,
@@ -1847,12 +1908,12 @@ export default mixins(
 
 						const connectionInfo = [
 							{
-								node: this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex),
+								node: this.$store.getters.getNodeById(sourceInfo.nodeId).name,
 								type: sourceInfo.type,
 								index: sourceInfo.index,
 							},
 							{
-								node: this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex),
+								node: this.$store.getters.getNodeById(targetInfo.nodeId).name,
 								type: targetInfo.type,
 								index: targetInfo.index,
 							},
@@ -1871,7 +1932,8 @@ export default mixins(
 						this.__removeConnectionByConnectionInfo(info, false);
 
 						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
-							const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.connection.sourceId.slice(NODE_NAME_PREFIX.length));
+							const sourceNode = this.$store.getters.getNodeById(info.connection.sourceId);
+							const sourceNodeName = sourceNode.name;
 							const outputIndex = info.connection.getParameters().index;
 
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
@@ -1912,14 +1974,17 @@ export default mixins(
 									const nodeName = (element as HTMLElement).dataset['name'] as string;
 									const node = this.$store.getters.getNodeByName(nodeName) as INodeUi | null;
 									if (node) {
-										const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+										const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 										if (nodeType && nodeType.inputs && nodeType.inputs.length === 1) {
 											this.pullConnActiveNodeName = node.name;
-											const endpoint = this.instance.getEndpoint(this.getInputEndpointUUID(nodeName, 0));
+											const endpointUUID = this.getInputEndpointUUID(nodeName, 0);
+											if (endpointUUID) {
+												const endpoint = this.instance.getEndpoint(endpointUUID);
 
-											CanvasHelpers.showDropConnectionState(connection, endpoint);
+												CanvasHelpers.showDropConnectionState(connection, endpoint);
 
-											return true;
+												return true;
+											}
 										}
 									}
 								}
@@ -1967,7 +2032,10 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
-				await this.addNodes([{...CanvasHelpers.DEFAULT_START_NODE}]);
+				await this.addNodes([{
+					id: uuid(),
+					...CanvasHelpers.DEFAULT_START_NODE,
+				}]);
 
 				this.nodeSelectedByName(CanvasHelpers.DEFAULT_START_NODE.name, false);
 
@@ -1982,6 +2050,7 @@ export default mixins(
 						this.$nextTick(async () => {
 							await this.addNodes([
 								{
+									id: uuid(),
 									...CanvasHelpers.WELCOME_STICKY_NODE,
 									parameters: {
 										// Use parameters from the template but add translated content
@@ -2083,17 +2152,33 @@ export default mixins(
 					}
 				});
 			},
-			getOutputEndpointUUID(nodeName: string, index: number) {
-				return CanvasHelpers.getOutputEndpointUUID(this.getNodeIndex(nodeName), index);
+			getOutputEndpointUUID(nodeName: string, index: number): string | null {
+				const node = this.$store.getters.getNodeByName(nodeName);
+				if (!node) {
+					return null;
+				}
+
+				return CanvasHelpers.getOutputEndpointUUID(node.id, index);
 			},
 			getInputEndpointUUID(nodeName: string, index: number) {
-				return CanvasHelpers.getInputEndpointUUID(this.getNodeIndex(nodeName), index);
+				const node = this.$store.getters.getNodeByName(nodeName);
+				if (!node) {
+					return null;
+				}
+
+				return CanvasHelpers.getInputEndpointUUID(node.id, index);
 			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
+					const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
+					const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
+					if (!outputUuid || !inputUuid) {
+						return;
+					}
+
 					const uuid: [string, string] = [
-						this.getOutputEndpointUUID(connection[0].node, connection[0].index),
-						this.getInputEndpointUUID(connection[1].node, connection[1].index),
+						outputUuid,
+						inputUuid,
 					];
 
 					// Create connections in DOM
@@ -2115,10 +2200,12 @@ export default mixins(
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
 				if (removeVisualConnection === true) {
+					const sourceId = this.$store.getters.getNodeByName(connection[0].node);
+					const targetId = this.$store.getters.getNodeByName(connection[1].node);
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: NODE_NAME_PREFIX + this.getNodeIndex(connection[0].node),
-						target: NODE_NAME_PREFIX + this.getNodeIndex(connection[1].node),
+						source: sourceId,
+						target: targetId,
 					});
 
 					// @ts-ignore
@@ -2150,12 +2237,12 @@ export default mixins(
 
 				const connectionInfo = [
 					{
-						node: this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex),
+						node: this.$store.getters.getNodeById(sourceInfo.nodeId).name,
 						type: sourceInfo.type,
 						index: sourceInfo.index,
 					},
 					{
-						node: this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex),
+						node: this.$store.getters.getNodeById(targetInfo.nodeId).name,
 						type: targetInfo.type,
 						index: targetInfo.index,
 					},
@@ -2174,7 +2261,7 @@ export default mixins(
 
 				const node = this.$store.getters.getNodeByName(nodeName);
 
-				const nodeTypeData: INodeTypeDescription | null= this.$store.getters.nodeType(node.type, node.typeVersion);
+				const nodeTypeData: INodeTypeDescription | null= this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				if (nodeTypeData && nodeTypeData.maxNodes !== undefined && this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes) {
 					this.showMaxNodeTypeError(nodeTypeData);
 					return;
@@ -2183,6 +2270,7 @@ export default mixins(
 				// Deep copy the data so that data on lower levels of the node-properties do
 				// not share objects
 				const newNodeData = JSON.parse(JSON.stringify(this.getNodeDataToSave(node)));
+				newNodeData.id = uuid();
 
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName({
@@ -2198,7 +2286,7 @@ export default mixins(
 
 				if (newNodeData.webhookId) {
 					// Make sure that the node gets a new unique webhook-ID
-					newNodeData.webhookId = uuidv4();
+					newNodeData.webhookId = uuid();
 				}
 
 				await this.addNodes([newNodeData]);
@@ -2223,14 +2311,17 @@ export default mixins(
 				this.$telemetry.track('User duplicated node', { node_type: node.type, workflow_id: this.$store.getters.workflowId });
 			},
 			getJSPlumbConnection (sourceNodeName: string, sourceOutputIndex: number, targetNodeName: string, targetInputIndex: number): Connection | undefined {
-				const sourceIndex = this.getNodeIndex(sourceNodeName);
-				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
+				const sourceNode = this.$store.getters.getNodeByName(sourceNodeName) as INodeUi;
+				const targetNode = this.$store.getters.getNodeByName(targetNodeName) as INodeUi;
+				if (!sourceNode || !targetNode) {
+					return;
+				}
 
-				const targetIndex = this.getNodeIndex(targetNodeName);
-				const targetId = `${NODE_NAME_PREFIX}${targetIndex}`;
+				const sourceId = sourceNode.id;
+				const targetId = targetNode.id;
 
-				const sourceEndpoint = CanvasHelpers.getOutputEndpointUUID(sourceIndex, sourceOutputIndex);
-				const targetEndpoint = CanvasHelpers.getInputEndpointUUID(targetIndex, targetInputIndex);
+				const sourceEndpoint = CanvasHelpers.getOutputEndpointUUID(sourceId, sourceOutputIndex);
+				const targetEndpoint = CanvasHelpers.getInputEndpointUUID(targetId, targetInputIndex);
 
 				// @ts-ignore
 				const connections = this.instance.getConnections({
@@ -2244,9 +2335,8 @@ export default mixins(
 				});
 			},
 			getJSPlumbEndpoints (nodeName: string): Endpoint[] {
-				const nodeIndex = this.getNodeIndex(nodeName);
-				const nodeId = `${NODE_NAME_PREFIX}${nodeIndex}`;
-				return this.instance.getEndpoints(nodeId);
+				const node = this.$store.getters.getNodeByName(nodeName);
+				return this.instance.getEndpoints(node.id);
 			},
 			getPlusEndpoint (nodeName: string, outputIndex: number): Endpoint | undefined {
 				const endpoints = this.getJSPlumbEndpoints(nodeName);
@@ -2254,15 +2344,15 @@ export default mixins(
 				return endpoints.find((endpoint: Endpoint) => endpoint.type === 'N8nPlus' && endpoint.__meta && endpoint.__meta.index === outputIndex);
 			},
 			getIncomingOutgoingConnections(nodeName: string): {incoming: Connection[], outgoing: Connection[]} {
-				const name = `${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(nodeName)}`;
+				const node = this.$store.getters.getNodeByName(nodeName);
 				// @ts-ignore
 				const outgoing = this.instance.getConnections({
-					source: name,
+					source: node.id,
 				}) as Connection[];
 
 				// @ts-ignore
 				const incoming = this.instance.getConnections({
-					target: name,
+					target: node.id,
 				}) as Connection[];
 
 				return {
@@ -2280,8 +2370,8 @@ export default mixins(
 			},
 			onNodeRun ({name, data, waiting}: {name: string, data: ITaskData[] | null, waiting: boolean}) {
 				const sourceNodeName = name;
-				const sourceIndex = this.$store.getters.getNodeIndex(sourceNodeName);
-				const sourceId = `${NODE_NAME_PREFIX}${sourceIndex}`;
+				const sourceNode = this.$store.getters.getNodeByName(sourceNodeName);
+				const sourceId = sourceNode.id;
 
 				if (data === null || data.length === 0 || waiting) {
 					// @ts-ignore
@@ -2386,7 +2476,7 @@ export default mixins(
 
 				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
-				const nodeType: INodeTypeDescription | null = this.$store.getters.nodeType(node.type, node.typeVersion);
+				const nodeType: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				if (nodeType && nodeType.outputs.length === 1
 					&& nodeType.inputs.length === 1) {
 					const {incoming, outgoing} = this.getIncomingOutgoingConnections(node.name);
@@ -2413,18 +2503,15 @@ export default mixins(
 				}
 
 				setTimeout(() => {
-					const nodeIndex = this.$store.getters.getNodeIndex(nodeName);
-					const nodeIdName = `node-${nodeIndex}`;
-
 					// Suspend drawing
 					this.instance.setSuspendDrawing(true);
 
 					// Remove all endpoints and the connections in jsplumb
-					this.instance.removeAllEndpoints(nodeIdName);
+					this.instance.removeAllEndpoints(node.id);
 
 					// Remove the draggable
 					// @ts-ignore
-					this.instance.destroyDraggable(nodeIdName);
+					this.instance.destroyDraggable(node.id);
 
 					// Remove the connections in data
 					this.$store.commit('removeAllNodeConnection', node);
@@ -2440,10 +2527,6 @@ export default mixins(
 					// Remove node from selected index if found in it
 					this.$store.commit('removeNodeFromSelection', node);
 
-					// Remove from node index
-					if (nodeIndex !== -1) {
-						this.$store.commit('setNodeIndex', { index: nodeIndex, name: null });
-					}
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged (parameterData: IUpdateInformation) {
@@ -2532,7 +2615,7 @@ export default mixins(
 					try {
 						const nodes = this.$store.getters.allNodes as INodeUi[];
 						// @ts-ignore
-						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(`${NODE_NAME_PREFIX}${this.$store.getters.getNodeIndex(node.name)}`));
+						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(node.id));
 
 						this.instance.deleteEveryEndpoint();
 					} catch (e) {}
@@ -2596,7 +2679,11 @@ export default mixins(
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
-					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+					if (!node.id) {
+						node.id = uuid();
+					}
+
+					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {
@@ -2894,7 +2981,6 @@ export default mixins(
 				this.$store.commit('removeActiveAction', 'workflowRunning');
 				this.$store.commit('setExecutionWaitingForWebhook', false);
 
-				this.$store.commit('resetNodeIndex');
 				this.$store.commit('resetSelectedNodes');
 
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0], setStateDirty: false});
@@ -2906,8 +2992,7 @@ export default mixins(
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
 			async loadNodeTypes (): Promise<void> {
-				const nodeTypes = await this.restApi().getNodeTypes();
-				this.$store.commit('setNodeTypes', nodeTypes);
+				this.$store.dispatch('nodeTypes/getNodeTypes');
 			},
 			async loadCredentialTypes (): Promise<void> {
 				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
@@ -2916,7 +3001,7 @@ export default mixins(
 				await this.$store.dispatch('credentials/fetchAllCredentials');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
+				const allNodes:INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
 
 				const nodesToBeFetched:INodeTypeNameVersion[] = [];
 				allNodes.forEach(node => {
@@ -2934,21 +3019,7 @@ export default mixins(
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
-
-					const nodesInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
-
-					nodesInfo.forEach(nodeInfo => {
-						if (nodeInfo.translation) {
-							const nodeType = this.$locale.shortNodeType(nodeInfo.name);
-
-							addNodeTranslation(
-								{ [nodeType]: nodeInfo.translation },
-								this.$store.getters.defaultLocale,
-							);
-						}
-					});
-
-					this.$store.commit('updateNodeTypes', nodesInfo);
+					await this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
 					this.stopLoading();
 				}
 			},
@@ -2973,19 +3044,24 @@ export default mixins(
 				}
 			},
 			async onImportWorkflowDataEvent(data: IDataObject) {
-				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
+				await this.importWorkflowData(data.data as IWorkflowDataUpdate, undefined, 'file');
 			},
 			async onImportWorkflowUrlEvent(data: IDataObject) {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 				if (workflowData !== undefined) {
-					await this.importWorkflowData(workflowData);
+					await this.importWorkflowData(workflowData, undefined, 'url');
 				}
 			},
 			addPinDataConnections(pinData: IPinData) {
 				Object.keys(pinData).forEach((nodeName) => {
+					const node = this.$store.getters.getNodeByName(nodeName);
+					if (!node) {
+						return;
+					}
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+						source: node.id,
 					}) as Connection[];
 
 					connections.forEach((connection) => {
@@ -2998,9 +3074,14 @@ export default mixins(
 			},
 			removePinDataConnections(pinData: IPinData) {
 				Object.keys(pinData).forEach((nodeName) => {
+					const node = this.$store.getters.getNodeByName(nodeName);
+					if (!node) {
+						return;
+					}
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: NODE_NAME_PREFIX + this.getNodeIndex(nodeName),
+						source: node.id,
 					}) as Connection[];
 
 					connections.forEach(CanvasHelpers.resetConnection);
@@ -3060,6 +3141,35 @@ export default mixins(
 
 			this.$externalHooks().run('nodeView.mount');
 
+			if (
+				this.currentUser.personalizationAnswers !== null &&
+				this.isOnboardingCallPromptFeatureEnabled &&
+				getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
+			) {
+				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+
+				if (onboardingResponse.title && onboardingResponse.description) {
+					setTimeout(async () => {
+						this.$showToast({
+							type: 'info',
+							title: onboardingResponse.title,
+							message: onboardingResponse.description,
+							duration: 0,
+							customClass: 'clickable',
+							closeOnClick: true,
+							onClick: () => {
+								this.$telemetry.track('user clicked onboarding toast', {
+									seq_num: onboardingResponse.toast_sequence_number,
+									title: onboardingResponse.title,
+									description: onboardingResponse.description,
+								});
+								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
+							},
+						});
+					}, promptTimeout);
+				}
+			}
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},

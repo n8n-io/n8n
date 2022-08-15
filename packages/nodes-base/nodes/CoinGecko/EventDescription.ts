@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const eventOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -34,12 +30,8 @@ export const eventFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['getAll'],
+				resource: ['event'],
 			},
 		},
 		default: false,
@@ -51,15 +43,9 @@ export const eventFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['event'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -77,12 +63,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['getAll'],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -95,7 +77,8 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getEventCountryCodes',
 				},
 				default: '',
-				description: 'Country code of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Country code of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'From Date',
@@ -119,7 +102,8 @@ export const eventFields: INodeProperties[] = [
 					loadOptionsMethod: 'getEventTypes',
 				},
 				default: '',
-				description: 'Type of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Type of event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Upcoming Events Only',
