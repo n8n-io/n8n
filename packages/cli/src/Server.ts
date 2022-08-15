@@ -2616,10 +2616,16 @@ class App {
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-			if (this.frontendSettings.telemetry.enabled) {
-				const hooksPath = config.getEnv('externalFrontendHooksPath');
-				const hooksScript = `<script src="${hooksPath}"></script>`;
+			const hooksPath = config.getEnv('externalFrontendHooksPath');
 
+			let scriptsString = '';
+
+			if (hooksPath) {
+				const hooksScript = `<script src="${hooksPath}"></script>`;
+				scriptsString += hooksScript;
+			}
+
+			if (this.frontendSettings.telemetry.enabled) {
 				const phLoadingScript = telemetryScripts.createPostHogLoadingScript({
 					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
 					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
@@ -2630,13 +2636,14 @@ class App {
 					debug: config.getEnv('logs.level') === 'debug',
 				});
 
-				const firstLinkedScriptSegment = '<link href="/js/';
-
-				readIndexFile = readIndexFile.replace(
-					firstLinkedScriptSegment,
-					phLoadingScript + hooksScript + firstLinkedScriptSegment,
-				);
+				scriptsString += phLoadingScript;
 			}
+
+			const firstLinkedScriptSegment = '<link href="/js/';
+			readIndexFile = readIndexFile.replace(
+				firstLinkedScriptSegment,
+				scriptsString + firstLinkedScriptSegment,
+			);
 
 			// Serve the altered index.html file separately
 			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
