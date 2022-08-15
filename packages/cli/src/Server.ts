@@ -2620,14 +2620,13 @@ class App {
 				const hooksPath = config.getEnv('externalFrontendHooksPath');
 				const hooksScript = `<script src="${hooksPath}"></script>`;
 
-				const SESSION_RECORDED_PLATFORMS = ['desktop_mac', 'desktop_win', 'cloud'];
-				const deploymentType = config.getEnv('deployment.type');
-
 				const phLoadingScript = telemetryScripts.createPostHogLoadingScript({
 					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
 					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
 					autocapture: false,
-					disableSessionRecording: !SESSION_RECORDED_PLATFORMS.includes(deploymentType),
+					disableSessionRecording: config.getEnv(
+						'diagnostics.config.posthog.disableSessionRecording',
+					),
 					debug: config.getEnv('logs.level') === 'debug',
 				});
 
