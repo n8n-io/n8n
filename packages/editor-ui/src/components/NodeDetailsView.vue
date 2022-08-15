@@ -228,7 +228,7 @@ export default mixins(
 			);
 		},
 		workflow(): Workflow {
-			return this.getWorkflow();
+			return this.getCurrentWorkflow();
 		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
@@ -350,7 +350,7 @@ export default mixins(
 
 				this.$store.commit('ui/setNDVSessionId');
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
-					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getWorkflow()),
+					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
 				setTimeout(() => {
