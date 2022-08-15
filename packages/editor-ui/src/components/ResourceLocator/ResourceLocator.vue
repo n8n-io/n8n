@@ -21,14 +21,17 @@
 					v-for="mode in sortedModes"
 					:key="mode.name"
 					:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
-					:value="mode.name">
+					:value="mode.name"
+					:disabled="isValueExpression && mode.name === 'list'"
+					:title="isValueExpression && mode.name === 'list' ? $locale.baseText('resourceLocator.modeSelector.listMode.disabled.title') : ''"
+				>
 				</n8n-option>
 			</n8n-select>
 		</div>
 		<div :class="inputClasses">
 			<DraggableTarget
 				type="mapping"
-				:disabled="false"
+				:disabled="hasOnlyListMode"
 				:sticky="true"
 				:stickyOffset="4"
 				@drop="onDrop"
@@ -49,6 +52,7 @@
 					type="text"
 					:value="displayValue"
 					:disabled="isReadOnly"
+					:readonly="selectedMode === 'list'"
 					:title="displayTitle"
 					:placeholder="currentMode.placeholder ? currentMode.placeholder : ''"
 					@change="onInputChange"
@@ -57,7 +61,7 @@
 					@blur="onBlur"
 					@click.native="listModeDropDownToggle"
 				>
-					<div slot="suffix" :class="$style['list-mode-icon-container']">
+					<div slot="suffix" :class="$style['list-mode-icon-contapiner']">
 						<i
 							v-if="currentMode.name === 'list'"
 							:class="{
@@ -92,7 +96,7 @@
 import mixins from 'vue-typed-mixins';
 
 import { INodeProperties, INodePropertyMode } from 'n8n-workflow';
-import { getParameterModeLabel, validateResourceLocatorParameter } from './helpers';
+import { getParameterModeLabel, hasOnlyListMode, validateResourceLocatorParameter } from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -212,6 +216,9 @@ export default mixins().extend({
 		hasMultipleModes (): boolean {
 			return (this.parameter.modes && this.parameter.modes.length > 1) ? true : false;
 		},
+		hasOnlyListMode (): boolean {
+			return hasOnlyListMode(this.parameter);
+		},
 		inputClasses (): {[c: string]: boolean} {
 			const classes = {
 				...this.parameterInputClasses,
@@ -231,9 +238,14 @@ export default mixins().extend({
 		hasMultipleModes (newValue: boolean) {
 			this.setDefaultMode();
 		},
-		value (newValue: string) {
+		value () {
 			this.tempValue = this.displayValue as string;
 			this.validate();
+		},
+		isValueExpression (newValue: boolean) {
+			if (newValue === true) {
+				this.switchFromListMode();
+			}
 		},
 	},
 	mounted () {
@@ -272,6 +284,7 @@ export default mixins().extend({
 			this.$emit('modeChanged', { mode: value, value: this.value });
 		},
 		onDrop(data: string) {
+			this.switchFromListMode();
 			this.$emit('drop', data);
 		},
 		onBlur (): void {
@@ -280,8 +293,17 @@ export default mixins().extend({
 		onFocus (): void {
 			this.$emit('focus');
 		},
-		listModeDropDownToggle() {
+		listModeDropDownToggle (): void {
 			this.listModeDropdownOpen = !this.listModeDropdownOpen;
+		},
+		switchFromListMode (): void {
+			if (this.selectedMode === 'list') {
+				// Find the first mode that's not list mode
+				const mode = this.sortedModes.find(m => m.name !== 'list');
+				if (mode) {
+					this.selectedMode = mode.name;
+				}
+			}
 		},
 	},
 });

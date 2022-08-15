@@ -7,7 +7,7 @@
 		:bold="false"
 		size="small"
 	>
-		<template #options>
+		<template #options v-if="areOptionsEnabled">
 			<parameter-options
 				:parameter="parameter"
 				:value="value"
@@ -66,6 +66,7 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { hasExpressionMapping, isValueExpression } from './helpers';
+import { hasOnlyListMode } from './ResourceLocator/helpers';
 
 export default mixins(
 	showMessage,
@@ -102,6 +103,9 @@ export default mixins(
 			},
 			isDropDisabled (): boolean {
 				return this.parameter.noDataExpression || this.isReadOnly || this.isResourceLocator;
+			},
+			areOptionsEnabled (): boolean {
+				return this.isResourceLocator && !hasOnlyListMode(this.parameter);
 			},
 			isValueExpression (): boolean {
 				return isValueExpression(this.parameter, this.value);
