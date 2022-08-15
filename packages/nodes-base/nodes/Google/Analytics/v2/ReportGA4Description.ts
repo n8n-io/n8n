@@ -99,7 +99,7 @@ export const reportGA4Fields: INodeProperties[] = [
 		default: defaultStartDate(),
 		displayOptions: {
 			show: {
-				resource: ['report'],
+				resource: ['reportGA4'],
 				operation: ['get'],
 				dateRange: ['custom'],
 			},
@@ -113,7 +113,7 @@ export const reportGA4Fields: INodeProperties[] = [
 		default: defaultEndDate(),
 		displayOptions: {
 			show: {
-				resource: ['report'],
+				resource: ['reportGA4'],
 				operation: ['get'],
 				dateRange: ['custom'],
 			},

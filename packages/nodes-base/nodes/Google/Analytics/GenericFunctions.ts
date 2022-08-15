@@ -419,6 +419,6 @@ export function prepareDateRange(this: IExecuteFunctions | ILoadOptionsFunctions
 	return dateRanges;
 }
 
-export const defaultStartDate = () => DateTime.local().startOf('day').minus({ days: 8 }).toISODate();
+export const defaultStartDate = () => DateTime.now().startOf('day').minus({ days: 8 }).toISO();
 
-export const defaultEndDate = () => DateTime.local().startOf('day').minus({ days: 1 }).toISODate();
+export const defaultEndDate = () => DateTime.now().startOf('day').minus({ days: 1 }).toISO();
