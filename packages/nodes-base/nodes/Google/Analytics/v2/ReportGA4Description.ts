@@ -169,7 +169,7 @@ export const reportGA4Fields: INodeProperties[] = [
 		displayName: 'Metrics',
 		name: 'metricUi',
 		type: 'fixedCollection',
-		default: {},
+		default: {metricValues: [{metricListName: 'totalUsers'}]},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -182,8 +182,45 @@ export const reportGA4Fields: INodeProperties[] = [
 				name: 'metricValues',
 				values: [
 					{
+						displayName: 'Name',
+						name: 'metricListName',
+						type: 'options',
+						default: 'totalUsers',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{
+								name: 'Average Session Duration',
+								value: 'averageSessionDuration',
+							},
+							{
+								name: 'Conversions',
+								value: 'conversions',
+							},
+							{
+								name: 'Page Views',
+								value: 'screenPageViews',
+							},
+							{
+								name: 'Page Views Per Session',
+								value: 'screenPageViewsPerSession',
+							},
+							{
+								name: 'Sessions',
+								value: 'sessions',
+							},
+							{
+								name: 'Total Users',
+								value: 'totalUsers',
+							},
+							{
+								name: 'More…',
+								value: 'more',
+							},
+						],
+					},
+					{
 						displayName: 'Name or ID',
-						name: 'name',
+						name: 'metricLoadedName',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getMetricsGA4',
@@ -192,6 +229,11 @@ export const reportGA4Fields: INodeProperties[] = [
 						default: '',
 						description:
 							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						displayOptions: {
+							show: {
+								metricListName: ['more'],
+							},
+						},
 					},
 				],
 			},
@@ -207,7 +249,7 @@ export const reportGA4Fields: INodeProperties[] = [
 		displayName: 'Dimensions',
 		name: 'dimensionUi',
 		type: 'fixedCollection',
-		default: {},
+		default: {dimensionValues: [{name: 'achievementId'}]},
 		typeOptions: {
 			multipleValues: true,
 		},
