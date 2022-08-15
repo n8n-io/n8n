@@ -244,7 +244,7 @@ export class MySql implements INodeType {
 		const connection = await mysql2.createConnection(baseCredentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let returnItems = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -258,19 +258,20 @@ export class MySql implements INodeType {
 					return connection.query(rawQuery);
 				});
 
-				const queryResult = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result) => {
-					const [rows, fields] = result;
+				returnItems = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result, index) => {
+					const [rows] = result;
 
-					if (Array.isArray(rows)) {
-						return collection.concat(rows);
-					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						{
+							item: index
+						},
+						this.helpers.returnJsonArray(rows as unknown as IDataObject[])
+					);
 
-					collection.push(rows);
+					collection.push(...executionData);
 
 					return collection;
-				}, []);
-
-				returnItems = this.helpers.returnJsonArray(queryResult as unknown as IDataObject[]);
+				}, [] as INodeExecutionData[]);
 
 			} catch (error) {
 				if (this.continueOnFail()) {
