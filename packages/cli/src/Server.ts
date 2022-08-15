@@ -2616,13 +2616,14 @@ class App {
 			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
 			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
-			const hooksPath = config.getEnv('externalFrontendHooksPath');
+			const hooksURLs = config.getEnv('externalFrontendHooksURLs');
 
 			let scriptsString = '';
 
-			if (hooksPath) {
-				const hooksScript = `<script src="${hooksPath}"></script>`;
-				scriptsString += hooksScript;
+			if (hooksURLs) {
+				hooksURLs.split(';').forEach((hooksURL) => {
+					scriptsString += `<script src="${hooksURL}"></script>`;
+				});
 			}
 
 			if (this.frontendSettings.telemetry.enabled) {

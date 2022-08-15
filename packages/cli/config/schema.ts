@@ -681,11 +681,11 @@ export const schema = {
 		},
 	},
 
-	externalFrontendHooksPath: {
-		doc: 'Path to external frontend hooks',
+	externalFrontendHooksURLs: {
+		doc: 'URLs to external frontend hooks files, ; separated',
 		format: String,
 		default: 'https://public-stage.n8n.cloud/posthog-hooks.js',
-		env: 'EXTERNAL_FRONTEND_HOOKS_PATH',
+		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
 	externalHookFiles: {
