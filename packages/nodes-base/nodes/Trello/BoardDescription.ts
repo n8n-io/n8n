@@ -546,7 +546,7 @@ export const boardFields: INodeProperties[] = [
 					},
 				},
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Update Fields',
