@@ -2,7 +2,9 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import { DateTime } from 'luxon';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -355,3 +357,68 @@ export async function getMetricsGA4(this: ILoadOptionsFunctions): Promise<INodeP
 	}
 	return sortLoadOptions(returnData);
 }
+
+export function prepareDateRange(this: IExecuteFunctions | ILoadOptionsFunctions, period: string, itemIndex: number) {
+	const dateRanges: IDataObject[] = [];
+
+	switch (period) {
+		case 'today':
+			dateRanges.push({
+				startDate: DateTime.local().startOf('day').toISODate(),
+				endDate: DateTime.now().toISODate(),
+			});
+			break;
+		case 'yesterday':
+			dateRanges.push({
+				startDate: DateTime.local().startOf('day').minus({ days: 1 }).toISODate(),
+				endDate: DateTime.local().endOf('day').minus({ days: 1 }).toISODate(),
+			});
+			break;
+		case 'lastCalendarWeek':
+			dateRanges.push({
+				startDate: DateTime.local().startOf('week').toISODate(),
+				endDate: DateTime.now().toISODate(),
+			});
+			break;
+		case 'lastCalendarMonth':
+			dateRanges.push({
+				startDate: DateTime.local().startOf('month').toISODate(),
+				endDate: DateTime.now().toISODate(),
+			});
+			break;
+		case 'last7days':
+			dateRanges.push({
+				startDate: DateTime.now().minus({ days: 7 }).toISODate(),
+				endDate: DateTime.now().toISODate(),
+			});
+			break;
+		case 'last30days':
+			dateRanges.push({
+				startDate: DateTime.now().minus({ days: 30 }).toISODate(),
+				endDate: DateTime.now().toISODate(),
+			});
+			break;
+		case 'custom':
+			const start = DateTime.fromISO(this.getNodeParameter('startDate', itemIndex, '') as string);
+			const end = DateTime.fromISO(this.getNodeParameter('endDate', itemIndex, '') as string);
+
+			if (start > end) {
+				throw new NodeOperationError(this.getNode(), `Parameter Start: ${start.toISO()} cannot be after End: ${end.toISO()}`);
+			}
+
+			dateRanges.push({
+				startDate: start.toISODate(),
+				endDate: end.toISODate(),
+			});
+
+			break;
+		default:
+			throw new NodeOperationError(this.getNode(), `The period '${period}' is not supported, to specify own period use 'custom' option`);
+	}
+
+	return dateRanges;
+}
+
+export const defaultStartDate = () => DateTime.local().startOf('day').minus({ days: 8 }).toISODate();
+
+export const defaultEndDate = () => DateTime.local().startOf('day').minus({ days: 1 }).toISODate();

@@ -22,6 +22,7 @@ import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 	merge,
+	prepareDateRange,
 	processFilters,
 	simplify,
 	simplifyGA4,
@@ -128,7 +129,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const dateRangesUi = this.getNodeParameter('dateRangesUi', i) as IDataObject;
+						const dateRange = this.getNodeParameter('dateRange', i) as string;
 						const metricsUi = this.getNodeParameter('metricsUi', i) as IDataObject;
 						const dimensionsUi = this.getNodeParameter('dimensionsUi', i) as IDataObject;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -137,23 +138,8 @@ export class GoogleAnalyticsV2 implements INodeType {
 						const qs: IDataObject = {};
 						const body: IData = {
 							viewId,
+							dateRanges: prepareDateRange.call(this, dateRange, i),
 						};
-
-						if (dateRangesUi.dateRanges) {
-							const dateValues = dateRangesUi.dateRanges as IDataObject;
-							if (dateValues) {
-								const start = dateValues.startDate as string;
-								const end = dateValues.endDate as string;
-								Object.assign(body, {
-									dateRanges: [
-										{
-											startDate: moment(start).utc().format('YYYY-MM-DD'),
-											endDate: moment(end).utc().format('YYYY-MM-DD'),
-										},
-									],
-								});
-							}
-						}
 
 						if (metricsUi.metricValues && (metricsUi.metricValues as IDataObject[]).length > 0) {
 							const metrics = metricsUi.metricValues as IDataObject[];
@@ -227,35 +213,15 @@ export class GoogleAnalyticsV2 implements INodeType {
 						const propertyId = this.getNodeParameter('propertyId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const dateRangesUi = this.getNodeParameter('dateRangesUi', i, {}) as IDataObject;
+						const dateRange = this.getNodeParameter('dateRange', i) as string;
 						const metricUi = this.getNodeParameter('metricUi', i, {}) as IDataObject;
 						const dimensionUi = this.getNodeParameter('dimensionUi', i, {}) as IDataObject;
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						const qs: IDataObject = {};
-						const body: IDataObject = {};
-
-						if (dateRangesUi.dateRanges ) {
-							const dateRanges = dateRangesUi.dateRanges as IDataObject[];
-							if (dateRanges.length) {
-								body.dateRanges = dateRanges.map((range) => {
-									const dateRange: IDataObject = {
-										startDate: moment(range.startDate as string)
-											.utc()
-											.format('YYYY-MM-DD'),
-										endDate: moment(range.endDate as string)
-											.utc()
-											.format('YYYY-MM-DD'),
-									};
-
-									if (range.name) {
-										dateRange.name = range.name;
-									}
-
-									return dateRange;
-								});
-							}
-						}
+						const body: IDataObject = {
+							dateRanges: prepareDateRange.call(this, dateRange, i),
+						};
 
 						if (metricUi.metricValues) {
 							const metrics = metricUi.metricValues as IDataObject[];

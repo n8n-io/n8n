@@ -1,5 +1,7 @@
 import { INodeProperties } from 'n8n-workflow';
 
+import { defaultEndDate, defaultStartDate } from '../GenericFunctions';
+
 import { dimensionFilterField, metricsFilterField } from './FiltersDescription';
 
 export const reportGA4Operations: INodeProperties[] = [
@@ -46,44 +48,42 @@ export const reportGA4Fields: INodeProperties[] = [
 			'The Property ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Date Ranges',
-		name: 'dateRangesUi',
-		placeholder: 'Add Date Range',
-		type: 'fixedCollection',
-		default: {},
-		typeOptions: {
-			multipleValues: true,
-		},
-		description: 'Date ranges in the request',
+		displayName: 'Date Range',
+		name: 'dateRange',
+		type: 'options',
+		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				displayName: 'Date Range',
-				name: 'dateRanges',
-				values: [
-					{
-						displayName: 'Start Date',
-						name: 'startDate',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'End Date',
-						name: 'endDate',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						hint: 'Optional name to this date range',
-						description:
-							'If set, cannot begin with date_range_ or RESERVED_. If not set, date ranges are named by their zero based index in the request: date_range_0, date_range_1, etc.',
-					},
-				],
+				name: 'Today',
+				value: 'today',
+			},
+			{
+				name: 'Yesterday',
+				value: 'yesterday',
+			},
+			{
+				name: 'Last Calendar Week',
+				value: 'lastCalendarWeek',
+			},
+			{
+				name: 'Last Calendar Month',
+				value: 'lastCalendarMonth',
+			},
+			{
+				name: 'Last 7 Days',
+				value: 'last7days',
+			},
+			{
+				name: 'Last 30 Days',
+				value: 'last30days',
+			},
+			{
+				name: 'Custom',
+				value: 'custom',
 			},
 		],
+		default: 'today',
 		displayOptions: {
 			show: {
 				resource: ['reportGA4'],
@@ -91,6 +91,80 @@ export const reportGA4Fields: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Start',
+		name: 'startDate',
+		type: 'dateTime',
+		required: true,
+		default: defaultStartDate(),
+		displayOptions: {
+			show: {
+				resource: ['report'],
+				operation: ['get'],
+				dateRange: ['custom'],
+			},
+		},
+	},
+	{
+		displayName: 'End',
+		name: 'endDate',
+		type: 'dateTime',
+		required: true,
+		default: defaultEndDate(),
+		displayOptions: {
+			show: {
+				resource: ['report'],
+				operation: ['get'],
+				dateRange: ['custom'],
+			},
+		},
+	},
+	// {
+	// 	displayName: 'Date Ranges',
+	// 	name: 'dateRangesUi',
+	// 	placeholder: 'Add Date Range',
+	// 	type: 'fixedCollection',
+	// 	default: {},
+	// 	typeOptions: {
+	// 		multipleValues: true,
+	// 	},
+	// 	description: 'Date ranges in the request',
+	// 	options: [
+	// 		{
+	// 			displayName: 'Date Range',
+	// 			name: 'dateRanges',
+	// 			values: [
+	// 				{
+	// 					displayName: 'Start Date',
+	// 					name: 'startDate',
+	// 					type: 'dateTime',
+	// 					default: '',
+	// 				},
+	// 				{
+	// 					displayName: 'End Date',
+	// 					name: 'endDate',
+	// 					type: 'dateTime',
+	// 					default: '',
+	// 				},
+	// 				{
+	// 					displayName: 'Name',
+	// 					name: 'name',
+	// 					type: 'string',
+	// 					default: '',
+	// 					hint: 'Optional name to this date range',
+	// 					description:
+	// 						'If set, cannot begin with date_range_ or RESERVED_. If not set, date ranges are named by their zero based index in the request: date_range_0, date_range_1, etc.',
+	// 				},
+	// 			],
+	// 		},
+	// 	],
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: ['reportGA4'],
+	// 			operation: ['get'],
+	// 		},
+	// 	},
+	// },
 	{
 		displayName: 'Metrics',
 		name: 'metricUi',

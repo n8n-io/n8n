@@ -1,5 +1,7 @@
 import { INodeProperties } from 'n8n-workflow';
 
+import { defaultEndDate, defaultStartDate } from '../GenericFunctions';
+
 export const reportUAOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -44,36 +46,74 @@ export const reportUAFields: INodeProperties[] = [
 			'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Date Ranges',
-		name: 'dateRangesUi',
-		placeholder: 'Add Date Range',
-		type: 'fixedCollection',
-		default: {},
-		description: 'Date ranges in the request',
+		displayName: 'Date Range',
+		name: 'dateRange',
+		type: 'options',
+		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				displayName: 'Date Range',
-				name: 'dateRanges',
-				values: [
-					{
-						displayName: 'Start Date',
-						name: 'startDate',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'End Date',
-						name: 'endDate',
-						type: 'dateTime',
-						default: '',
-					},
-				],
+				name: 'Today',
+				value: 'today',
+			},
+			{
+				name: 'Yesterday',
+				value: 'yesterday',
+			},
+			{
+				name: 'Last Calendar Week',
+				value: 'lastCalendarWeek',
+			},
+			{
+				name: 'Last Calendar Month',
+				value: 'lastCalendarMonth',
+			},
+			{
+				name: 'Last 7 Days',
+				value: 'last7days',
+			},
+			{
+				name: 'Last 30 Days',
+				value: 'last30days',
+			},
+			{
+				name: 'Custom',
+				value: 'custom',
 			},
 		],
+		default: 'today',
 		displayOptions: {
 			show: {
 				resource: ['report'],
 				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Start',
+		name: 'startDate',
+		type: 'dateTime',
+		required: true,
+		default: defaultStartDate(),
+		displayOptions: {
+			show: {
+				resource: ['report'],
+				operation: ['get'],
+				dateRange: ['custom'],
+			},
+		},
+	},
+	{
+		displayName: 'End',
+		name: 'endDate',
+		type: 'dateTime',
+		required: true,
+		default: defaultEndDate(),
+		displayOptions: {
+			show: {
+				resource: ['report'],
+				operation: ['get'],
+				dateRange: ['custom'],
 			},
 		},
 	},
