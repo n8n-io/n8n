@@ -87,7 +87,6 @@ import axios, {
 } from 'axios';
 import url, { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
-import { isIterator } from './Utils';
 // eslint-disable-next-line import/no-cycle
 import {
 	ICredentialTestFunctions,
@@ -676,6 +675,10 @@ async function proxyRequestToAxios(
 				reject(error);
 			});
 	});
+}
+
+function isIterator(obj: unknown): boolean {
+	return obj instanceof Object && Symbol.iterator in obj;
 }
 
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
