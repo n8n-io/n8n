@@ -63,7 +63,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'reportGA4',
 				},
 				{
-					name: 'Report for Uinversal Analytic',
+					name: 'Report for Universal Analytic',
 					value: 'report',
 				},
 				{
@@ -128,6 +128,9 @@ export class GoogleAnalyticsV2 implements INodeType {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const dateRangesUi = this.getNodeParameter('dateRangesUi', i) as IDataObject;
+						const metricsUi = this.getNodeParameter('metricsUi', i) as IDataObject;
+						const dimensionsUi = this.getNodeParameter('dimensionsUi', i) as IDataObject;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
@@ -136,12 +139,8 @@ export class GoogleAnalyticsV2 implements INodeType {
 							viewId,
 						};
 
-						if (additionalFields.useResourceQuotas) {
-							qs.useResourceQuotas = additionalFields.useResourceQuotas;
-						}
-						if (additionalFields.dateRangesUi) {
-							const dateValues = (additionalFields.dateRangesUi as IDataObject)
-								.dateRanges as IDataObject;
+						if (dateRangesUi.dateRanges) {
+							const dateValues = dateRangesUi.dateRanges as IDataObject;
 							if (dateValues) {
 								const start = dateValues.startDate as string;
 								const end = dateValues.endDate as string;
@@ -156,18 +155,22 @@ export class GoogleAnalyticsV2 implements INodeType {
 							}
 						}
 
-						if (additionalFields.metricsUi) {
-							const metrics = (additionalFields.metricsUi as IDataObject)
-								.metricValues as IDataObject[];
+						if (metricsUi.metricValues && (metricsUi.metricValues as IDataObject[]).length > 0) {
+							const metrics = metricsUi.metricValues as IDataObject[];
 							body.metrics = metrics;
 						}
-						if (additionalFields.dimensionUi) {
-							const dimensions = (additionalFields.dimensionUi as IDataObject)
-								.dimensionValues as IDataObject[];
+
+						if (dimensionsUi.dimensionValues && (dimensionsUi.dimensionValues as IDataObject[]).length > 0) {
+							const dimensions = dimensionsUi.dimensionValues as IDataObject[];
 							if (dimensions) {
 								body.dimensions = dimensions;
 							}
 						}
+
+						if (additionalFields.useResourceQuotas) {
+							qs.useResourceQuotas = additionalFields.useResourceQuotas;
+						}
+
 						if (additionalFields.dimensionFiltersUi) {
 							const dimensionFilters = (additionalFields.dimensionFiltersUi as IDataObject)
 								.filterValues as IDataObject[];

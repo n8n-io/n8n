@@ -43,7 +43,147 @@ export const reportUAFields: INodeProperties[] = [
 		description:
 			'The View ID of Google Analytics. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-
+	{
+		displayName: 'Date Ranges',
+		name: 'dateRangesUi',
+		placeholder: 'Add Date Range',
+		type: 'fixedCollection',
+		default: {},
+		description: 'Date ranges in the request',
+		options: [
+			{
+				displayName: 'Date Range',
+				name: 'dateRanges',
+				values: [
+					{
+						displayName: 'Start Date',
+						name: 'startDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'End Date',
+						name: 'endDate',
+						type: 'dateTime',
+						default: '',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['report'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Metrics',
+		name: 'metricsUi',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Metrics',
+		description: 'Metrics in the request',
+		options: [
+			{
+				displayName: 'Metric',
+				name: 'metricValues',
+				values: [
+					{
+						displayName: 'Alias',
+						name: 'alias',
+						type: 'string',
+						default: '',
+						description:
+							'An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting.',
+					},
+					{
+						displayName: 'Expression',
+						name: 'expression',
+						type: 'string',
+						default: 'ga:newUsers',
+						description:
+							'<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>.',
+					},
+					{
+						displayName: 'Formatting Type',
+						name: 'formattingType',
+						type: 'options',
+						default: 'INTEGER',
+						description: 'Specifies how the metric expression should be formatted',
+						options: [
+							{
+								name: 'Currency',
+								value: 'CURRENCY',
+							},
+							{
+								name: 'Float',
+								value: 'FLOAT',
+							},
+							{
+								name: 'Integer',
+								value: 'INTEGER',
+							},
+							{
+								name: 'Percent',
+								value: 'PERCENT',
+							},
+							{
+								name: 'Time',
+								value: 'TIME',
+							},
+						],
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['report'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Dimensions',
+		name: 'dimensionsUi',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Dimension',
+		description:
+			'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
+		options: [
+			{
+				displayName: 'Dimension',
+				name: 'dimensionValues',
+				values: [
+					{
+						displayName: 'Name or ID',
+						name: 'name',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getDimensions',
+						},
+						default: '',
+						description:
+							'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['report'],
+				operation: ['get'],
+			},
+		},
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -102,65 +242,6 @@ export const reportUAFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Date Ranges',
-				name: 'dateRangesUi',
-				placeholder: 'Add Date Range',
-				type: 'fixedCollection',
-				default: {},
-				description: 'Date ranges in the request',
-				options: [
-					{
-						displayName: 'Date Range',
-						name: 'dateRanges',
-						values: [
-							{
-								displayName: 'Start Date',
-								name: 'startDate',
-								type: 'dateTime',
-								default: '',
-							},
-							{
-								displayName: 'End Date',
-								name: 'endDate',
-								type: 'dateTime',
-								default: '',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Dimensions',
-				name: 'dimensionUi',
-				type: 'fixedCollection',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Dimension',
-				description:
-					'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
-				options: [
-					{
-						displayName: 'Dimension',
-						name: 'dimensionValues',
-						values: [
-							{
-								displayName: 'Name or ID',
-								name: 'name',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getDimensions',
-								},
-								default: '',
-								description:
-									'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-							},
-						],
-					},
-				],
-			},
-			{
 				displayName: 'Dimension Filters',
 				name: 'dimensionFiltersUi',
 				type: 'fixedCollection',
@@ -203,11 +284,11 @@ export const reportUAFields: INodeProperties[] = [
 										value: 'ENDS_WITH',
 									},
 									{
-										name: 'Equal (Number)',
+										name: 'Equals (Number)',
 										value: 'NUMERIC_EQUAL',
 									},
 									{
-										name: 'Exact',
+										name: 'Exactly Matches',
 										value: 'EXACT',
 									},
 									{
@@ -219,7 +300,7 @@ export const reportUAFields: INodeProperties[] = [
 										value: 'NUMERIC_LESS_THAN',
 									},
 									{
-										name: 'Partial',
+										name: 'Partly Matches',
 										value: 'PARTIAL',
 									},
 									{
@@ -248,6 +329,11 @@ export const reportUAFields: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to hide the total of all metrics for all the matching rows, for every date range',
+				displayOptions: {
+					show: {
+						'/simple': [false],
+					},
+				},
 			},
 			{
 				displayName: 'Hide Value Ranges',
@@ -255,6 +341,11 @@ export const reportUAFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to hide the minimum and maximum across all matching rows',
+				displayOptions: {
+					show: {
+						'/simple': [false],
+					},
+				},
 			},
 			{
 				displayName: 'Include Empty Rows',
@@ -265,75 +356,16 @@ export const reportUAFields: INodeProperties[] = [
 					'Whether the response exclude rows if all the retrieved metrics are equal to zero',
 			},
 			{
-				displayName: 'Metrics',
-				name: 'metricsUi',
-				type: 'fixedCollection',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Metrics',
-				description: 'Metrics in the request',
-				options: [
-					{
-						displayName: 'Metric',
-						name: 'metricValues',
-						values: [
-							{
-								displayName: 'Alias',
-								name: 'alias',
-								type: 'string',
-								default: '',
-								description:
-									'An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting.',
-							},
-							{
-								displayName: 'Expression',
-								name: 'expression',
-								type: 'string',
-								default: 'ga:newUsers',
-								description:
-									'<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>.',
-							},
-							{
-								displayName: 'Formatting Type',
-								name: 'formattingType',
-								type: 'options',
-								default: 'INTEGER',
-								description: 'Specifies how the metric expression should be formatted',
-								options: [
-									{
-										name: 'Currency',
-										value: 'CURRENCY',
-									},
-									{
-										name: 'Float',
-										value: 'FLOAT',
-									},
-									{
-										name: 'Integer',
-										value: 'INTEGER',
-									},
-									{
-										name: 'Percent',
-										value: 'PERCENT',
-									},
-									{
-										name: 'Time',
-										value: 'TIME',
-									},
-								],
-							},
-						],
-					},
-				],
-			},
-			{
 				displayName: 'Use Resource Quotas',
 				name: 'useResourceQuotas',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to enable resource based quotas',
+				displayOptions: {
+					show: {
+						'/simple': [false],
+					},
+				},
 			},
 		],
 	},
