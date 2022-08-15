@@ -418,7 +418,7 @@ export class Airtable implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -483,14 +483,17 @@ export class Airtable implements INodeType {
 						body['records'] = rows;
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray(responseData.records)
+						);
+						returnData.push(...executionData);
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({json: { error: error.message }});
 						continue;
 					}
 					throw error;
@@ -524,13 +527,18 @@ export class Airtable implements INodeType {
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray(responseData.records)
+						);
+
+						returnData.push(...executionData);
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({json:{ error: error.message }});
 						continue;
 					}
 					throw error;
@@ -588,7 +596,7 @@ export class Airtable implements INodeType {
 				];
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({json:{ error: error.message }});
 				} else {
 					throw error;
 				}
@@ -615,10 +623,15 @@ export class Airtable implements INodeType {
 				try {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						{item: i},
+						this.helpers.returnJsonArray(responseData)
+					);
+
+					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({json:{ error: error.message }});
 						continue;
 					}
 					throw error;
@@ -693,14 +706,19 @@ export class Airtable implements INodeType {
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
 
-						returnData.push(...responseData.records);
+						const executionData = this.helpers.constructExecutionMetaData(
+							{item: i},
+							this.helpers.returnJsonArray(responseData.records)
+						);
+
+						returnData.push(...executionData);
 
 						// empty rows
 						rows.length = 0;
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						returnData.push({json:{ error: error.message }});
 						continue;
 					}
 					throw error;
@@ -710,6 +728,6 @@ export class Airtable implements INodeType {
 			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
