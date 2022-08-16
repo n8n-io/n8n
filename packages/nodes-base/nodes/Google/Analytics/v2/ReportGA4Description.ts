@@ -119,57 +119,12 @@ export const reportGA4Fields: INodeProperties[] = [
 			},
 		},
 	},
-	// {
-	// 	displayName: 'Date Ranges',
-	// 	name: 'dateRangesUi',
-	// 	placeholder: 'Add Date Range',
-	// 	type: 'fixedCollection',
-	// 	default: {},
-	// 	typeOptions: {
-	// 		multipleValues: true,
-	// 	},
-	// 	description: 'Date ranges in the request',
-	// 	options: [
-	// 		{
-	// 			displayName: 'Date Range',
-	// 			name: 'dateRanges',
-	// 			values: [
-	// 				{
-	// 					displayName: 'Start Date',
-	// 					name: 'startDate',
-	// 					type: 'dateTime',
-	// 					default: '',
-	// 				},
-	// 				{
-	// 					displayName: 'End Date',
-	// 					name: 'endDate',
-	// 					type: 'dateTime',
-	// 					default: '',
-	// 				},
-	// 				{
-	// 					displayName: 'Name',
-	// 					name: 'name',
-	// 					type: 'string',
-	// 					default: '',
-	// 					hint: 'Optional name to this date range',
-	// 					description:
-	// 						'If set, cannot begin with date_range_ or RESERVED_. If not set, date ranges are named by their zero based index in the request: date_range_0, date_range_1, etc.',
-	// 				},
-	// 			],
-	// 		},
-	// 	],
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: ['reportGA4'],
-	// 			operation: ['get'],
-	// 		},
-	// 	},
-	// },
 	{
 		displayName: 'Metrics',
 		name: 'metricUi',
 		type: 'fixedCollection',
-		default: {metricValues: [{metricListName: 'totalUsers'}]},
+		default: { metricValues: [{ listName: 'activeUsers' }] },
+		// default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -178,27 +133,43 @@ export const reportGA4Fields: INodeProperties[] = [
 			'The quantitative measurements of a report. For example, the metric eventCount is the total number of events. Requests are allowed up to 10 metrics.',
 		options: [
 			{
-				displayName: 'Metric',
+				displayName: 'Values',
 				name: 'metricValues',
 				values: [
 					{
-						displayName: 'Name',
-						name: 'metricListName',
+						displayName: 'Metric',
+						name: 'listName',
 						type: 'options',
-						default: 'totalUsers',
+						default: 'activeUsers',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
+								name: 'Active Users',
+								value: 'activeUsers',
+							},
+							{
 								name: 'Average Session Duration',
 								value: 'averageSessionDuration',
+							},
+							{
+								name: 'Bounce Rate',
+								value: 'bounceRate',
 							},
 							{
 								name: 'Conversions',
 								value: 'conversions',
 							},
 							{
+								name: 'Engagement Rate',
+								value: 'engagementRate',
+							},
+							{
 								name: 'Page Views',
 								value: 'screenPageViews',
+							},
+							{
+								name: 'Publisher Ad Clicks',
+								value: 'publisherAdClicks',
 							},
 							{
 								name: 'Page Views Per Session',
@@ -220,7 +191,7 @@ export const reportGA4Fields: INodeProperties[] = [
 					},
 					{
 						displayName: 'Name or ID',
-						name: 'metricLoadedName',
+						name: 'name',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getMetricsGA4',
@@ -231,9 +202,36 @@ export const reportGA4Fields: INodeProperties[] = [
 							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						displayOptions: {
 							show: {
-								metricListName: ['more'],
+								listName: ['more'],
 							},
 						},
+					},
+					{
+						displayName: 'Expression',
+						name: 'expression',
+						type: 'string',
+						default: '',
+						description:
+							'A mathematical expression for derived metrics. For example, the metric Event count per user is eventCount/totalUsers.',
+						placeholder: 'e.g. eventCount/totalUsers',
+						displayOptions: {
+							show: {
+								listName: ['more'],
+							},
+						},
+					},
+					{
+						displayName: 'Invisible',
+						name: 'invisible',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								listName: ['more'],
+							},
+						},
+						description:
+							'Whether a metric is invisible in the report response. If a metric is invisible, the metric will not produce a column in the response, but can be used in metricFilter, orderBys, or a metric expression.',
 					},
 				],
 			},
@@ -249,7 +247,8 @@ export const reportGA4Fields: INodeProperties[] = [
 		displayName: 'Dimensions',
 		name: 'dimensionUi',
 		type: 'fixedCollection',
-		default: {dimensionValues: [{name: 'achievementId'}]},
+		default: { dimensionValues: [{ listName: 'deviceCategory' }] },
+		// default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -258,9 +257,62 @@ export const reportGA4Fields: INodeProperties[] = [
 			'Dimensions are attributes of your data. For example, the dimension city indicates the city from which an event originates. Dimension values in report responses are strings; for example, the city could be "Paris" or "New York". Requests are allowed up to 9 dimensions.',
 		options: [
 			{
-				displayName: 'Dimension',
+				displayName: 'Values',
 				name: 'dimensionValues',
 				values: [
+					{
+						displayName: 'Dimension',
+						name: 'listName',
+						type: 'options',
+						default: 'deviceCategory',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{
+								name: 'Browser',
+								value: 'browser',
+							},
+							{
+								name: 'Campaign',
+								value: 'campaignName',
+							},
+							{
+								name: 'City',
+								value: 'city',
+							},
+							{
+								name: 'Country',
+								value: 'country',
+							},
+							{
+								name: 'Date',
+								value: 'date',
+							},
+							{
+								name: 'Device Category',
+								value: 'deviceCategory',
+							},
+							{
+								name: 'Item Name',
+								value: 'itemName',
+							},
+							{
+								name: 'Language',
+								value: 'language',
+							},
+							{
+								name: 'Page Location',
+								value: 'pageLocation',
+							},
+							{
+								name: 'Source / Medium',
+								value: 'sourceMedium',
+							},
+							{
+								name: 'More…',
+								value: 'more',
+							},
+						],
+					},
 					{
 						displayName: 'Name or ID',
 						name: 'name',
@@ -272,6 +324,11 @@ export const reportGA4Fields: INodeProperties[] = [
 						default: '',
 						description:
 							'The name of the dimension. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						displayOptions: {
+							show: {
+								listName: ['more'],
+							},
+						},
 					},
 				],
 			},

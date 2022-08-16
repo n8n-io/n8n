@@ -358,7 +358,11 @@ export async function getMetricsGA4(this: ILoadOptionsFunctions): Promise<INodeP
 	return sortLoadOptions(returnData);
 }
 
-export function prepareDateRange(this: IExecuteFunctions | ILoadOptionsFunctions, period: string, itemIndex: number) {
+export function prepareDateRange(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	period: string,
+	itemIndex: number,
+) {
 	const dateRanges: IDataObject[] = [];
 
 	switch (period) {
@@ -403,7 +407,10 @@ export function prepareDateRange(this: IExecuteFunctions | ILoadOptionsFunctions
 			const end = DateTime.fromISO(this.getNodeParameter('endDate', itemIndex, '') as string);
 
 			if (start > end) {
-				throw new NodeOperationError(this.getNode(), `Parameter Start: ${start.toISO()} cannot be after End: ${end.toISO()}`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`Parameter Start: ${start.toISO()} cannot be after End: ${end.toISO()}`,
+				);
 			}
 
 			dateRanges.push({
@@ -413,7 +420,10 @@ export function prepareDateRange(this: IExecuteFunctions | ILoadOptionsFunctions
 
 			break;
 		default:
-			throw new NodeOperationError(this.getNode(), `The period '${period}' is not supported, to specify own period use 'custom' option`);
+			throw new NodeOperationError(
+				this.getNode(),
+				`The period '${period}' is not supported, to specify own period use 'custom' option`,
+			);
 	}
 
 	return dateRanges;

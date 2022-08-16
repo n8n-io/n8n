@@ -146,7 +146,10 @@ export class GoogleAnalyticsV2 implements INodeType {
 							body.metrics = metrics;
 						}
 
-						if (dimensionsUi.dimensionValues && (dimensionsUi.dimensionValues as IDataObject[]).length > 0) {
+						if (
+							dimensionsUi.dimensionValues &&
+							(dimensionsUi.dimensionValues as IDataObject[]).length > 0
+						) {
 							const dimensions = dimensionsUi.dimensionValues as IDataObject[];
 							if (dimensions) {
 								body.dimensions = dimensions;
@@ -224,14 +227,44 @@ export class GoogleAnalyticsV2 implements INodeType {
 						};
 
 						if (metricUi.metricValues) {
-							const metrics = metricUi.metricValues as IDataObject[];
+							const metrics = (metricUi.metricValues as IDataObject[]).map((metric) => {
+								if (metric.listName !== 'more') {
+									return { name: metric.listName };
+								} else {
+									const newMetric = {
+										name: metric.name,
+										expression: metric.expression,
+										invisible: metric.invisible,
+									};
+
+									if (newMetric.invisible === false) {
+										delete newMetric.invisible;
+									}
+
+									if (newMetric.expression === '') {
+										delete newMetric.expression;
+									}
+
+									return newMetric;
+								}
+							});
 							if (metrics.length) {
 								body.metrics = metrics;
 							}
 						}
 
 						if (dimensionUi.dimensionValues) {
-							const dimensions = dimensionUi.dimensionValues as IDataObject[];
+							const dimensions = (dimensionUi.dimensionValues as IDataObject[]).map((dimension) => {
+								if (dimension.listName !== 'more') {
+									return { name: dimension.listName };
+								} else {
+									const newDimension = {
+										name: dimension.name,
+									};
+
+									return newDimension;
+								}
+							});
 							if (dimensions.length) {
 								body.dimensions = dimensions;
 							}
