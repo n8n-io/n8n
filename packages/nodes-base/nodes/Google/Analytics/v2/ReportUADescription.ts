@@ -119,7 +119,7 @@ export const reportUAFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Metrics',
-		name: 'metricsUi',
+		name: 'metricsUA',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -133,21 +133,101 @@ export const reportUAFields: INodeProperties[] = [
 				name: 'metricValues',
 				values: [
 					{
-						displayName: 'Alias',
-						name: 'alias',
-						type: 'string',
-						default: '',
+						displayName: 'Metric',
+						name: 'listName',
+						type: 'options',
+						default: 'ga:sessions',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							// {
+							// 	name: '1 Day Active Users',
+							// 	value: 'ga:1dayUsers',
+							// },
+							// {
+							// 	name: '28 Day Active Users',
+							// 	value: 'ga:28dayUsers',
+							// },
+							// {
+							// 	name: '7 Day Active Users',
+							// 	value: 'ga:7dayUsers',
+							// },
+							{
+								name: 'Checkouts',
+								value: 'ga:productCheckouts',
+							},
+							{
+								name: 'Number of Sessions per User',
+								value: 'ga:sessionsPerUser',
+							},
+							{
+								name: 'Page Views',
+								value: 'ga:pageviews',
+							},
+							{
+								name: 'Session Duration',
+								value: 'ga:sessionDuration',
+							},
+							{
+								name: 'Sessions',
+								value: 'ga:sessions',
+							},
+							{
+								name: 'Total Events',
+								value: 'ga:totalEvents',
+							},
+							{
+								name: 'Total Users',
+								value: 'ga:users',
+							},
+							{
+								name: 'More…',
+								value: 'more',
+							},
+						],
+					},
+					{
+						displayName: 'Name or ID',
+						name: 'name',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getMetrics',
+						},
+						default: 'ga:newUsers',
 						description:
-							'An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting.',
+							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						displayOptions: {
+							show: {
+								listName: ['more'],
+							},
+						},
 					},
 					{
 						displayName: 'Expression',
 						name: 'expression',
 						type: 'string',
-						default: 'ga:newUsers',
+						default: '',
+						placeholder: 'e.g. ga:totalRefunds/ga:users',
 						description:
-							'<p>A metric expression in the request. An expression is constructed from one or more metrics and numbers.</p><p>Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis, Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters.</p><p>Example ga:totalRefunds/ga:users, in most cases the metric expression is just a single metric name like ga:users.</p><p>Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE) metrics will result in unexpected results.</p>.',
+							'Learn more about Google Analytics <a href="https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet#Metric">metric expressions</a>',
+						displayOptions: {
+							show: {
+								listName: ['more'],
+							},
+						},
 					},
+					// {
+					// 	displayName: 'Alias',
+					// 	name: 'alias',
+					// 	type: 'string',
+					// 	default: '',
+					// 	description:
+					// 		'An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting.',
+					// 	displayOptions: {
+					// 		show: {
+					// 			listName: ['more'],
+					// 		},
+					// 	},
+					// },
 					{
 						displayName: 'Formatting Type',
 						name: 'formattingType',
@@ -176,6 +256,11 @@ export const reportUAFields: INodeProperties[] = [
 								value: 'TIME',
 							},
 						],
+						displayOptions: {
+							show: {
+								listName: ['more'],
+							},
+						},
 					},
 				],
 			},
@@ -189,7 +274,7 @@ export const reportUAFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Dimensions',
-		name: 'dimensionsUi',
+		name: 'dimensionsUA',
 		type: 'fixedCollection',
 		default: {},
 		typeOptions: {
@@ -200,9 +285,62 @@ export const reportUAFields: INodeProperties[] = [
 			'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
 		options: [
 			{
-				displayName: 'Dimension',
+				displayName: 'Values',
 				name: 'dimensionValues',
 				values: [
+					{
+						displayName: 'Dimension',
+						name: 'listName',
+						type: 'options',
+						default: 'ga:deviceCategory',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{
+								name: 'Browser',
+								value: 'ga:browser',
+							},
+							{
+								name: 'Campaign',
+								value: 'ga:campaign',
+							},
+							{
+								name: 'City',
+								value: 'ga:city',
+							},
+							{
+								name: 'Country',
+								value: 'ga:country',
+							},
+							{
+								name: 'Date',
+								value: 'ga:date',
+							},
+							{
+								name: 'Device Category',
+								value: 'ga:deviceCategory',
+							},
+							{
+								name: 'Item Name',
+								value: 'ga:productName',
+							},
+							{
+								name: 'Language',
+								value: 'ga:language',
+							},
+							{
+								name: 'Page',
+								value: 'ga:pagePath',
+							},
+							{
+								name: 'Source / Medium',
+								value: 'ga:sourceMedium',
+							},
+							{
+								name: 'More…',
+								value: 'more',
+							},
+						],
+					},
 					{
 						displayName: 'Name or ID',
 						name: 'name',
@@ -213,6 +351,11 @@ export const reportUAFields: INodeProperties[] = [
 						default: '',
 						description:
 							'Name of the dimension to fetch, for example ga:browser. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						displayOptions: {
+							show: {
+								listName: ['more'],
+							},
+						},
 					},
 				],
 			},

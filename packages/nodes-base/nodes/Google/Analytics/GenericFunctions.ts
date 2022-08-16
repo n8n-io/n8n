@@ -131,6 +131,7 @@ export function simplify(responseData: any | [any]) {
 			response.push(data);
 		}
 	}
+
 	return response;
 }
 
@@ -252,6 +253,29 @@ export async function getDimensions(this: ILoadOptionsFunctions): Promise<INodeP
 				name: dimesion.attributes.uiName,
 				value: dimesion.id,
 				description: dimesion.attributes.description,
+			});
+		}
+	}
+	return sortLoadOptions(returnData);
+}
+
+export async function getMetrics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const { items: metrics } = await googleApiRequest.call(
+		this,
+		'GET',
+		'',
+		{},
+		{},
+		'https://www.googleapis.com/analytics/v3/metadata/ga/columns',
+	);
+
+	for (const metric of metrics) {
+		if (metric.attributes.type === 'METRIC' && metric.attributes.status !== 'DEPRECATED') {
+			returnData.push({
+				name: metric.attributes.uiName,
+				value: metric.id,
+				description: metric.attributes.description,
 			});
 		}
 	}

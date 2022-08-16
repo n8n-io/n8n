@@ -121,7 +121,7 @@ export const reportGA4Fields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Metrics',
-		name: 'metricUi',
+		name: 'metricsGA4',
 		type: 'fixedCollection',
 		default: { metricValues: [{ listName: 'activeUsers' }] },
 		// default: {},
@@ -140,44 +140,44 @@ export const reportGA4Fields: INodeProperties[] = [
 						displayName: 'Metric',
 						name: 'listName',
 						type: 'options',
-						default: 'activeUsers',
+						default: 'active7DayUsers',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
-								name: 'Active Users',
-								value: 'activeUsers',
+								name: '1 Day Active Users',
+								value: 'active1DayUsers',
 							},
 							{
-								name: 'Average Session Duration',
-								value: 'averageSessionDuration',
+								name: '28 Day Active Users',
+								value: 'active28DayUsers',
 							},
 							{
-								name: 'Bounce Rate',
-								value: 'bounceRate',
+								name: '7 Day Active Users',
+								value: 'active7DayUsers',
 							},
 							{
-								name: 'Conversions',
-								value: 'conversions',
+								name: 'Checkouts',
+								value: 'checkouts',
 							},
 							{
-								name: 'Engagement Rate',
-								value: 'engagementRate',
+								name: 'Number of Sessions per User',
+								value: 'sessionsPerUser',
 							},
 							{
 								name: 'Page Views',
 								value: 'screenPageViews',
 							},
 							{
-								name: 'Publisher Ad Clicks',
-								value: 'publisherAdClicks',
-							},
-							{
-								name: 'Page Views Per Session',
-								value: 'screenPageViewsPerSession',
+								name: 'Session Duration',
+								value: 'userEngagementDuration',
 							},
 							{
 								name: 'Sessions',
 								value: 'sessions',
+							},
+							{
+								name: 'Total Events',
+								value: 'eventCount',
 							},
 							{
 								name: 'Total Users',
@@ -245,7 +245,7 @@ export const reportGA4Fields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Dimensions',
-		name: 'dimensionUi',
+		name: 'dimensionsGA4',
 		type: 'fixedCollection',
 		default: { dimensionValues: [{ listName: 'deviceCategory' }] },
 		// default: {},

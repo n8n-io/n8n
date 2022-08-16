@@ -16,6 +16,7 @@ import { userActivityFields, userActivityOperations } from './UserActivityDescri
 import {
 	getDimensions,
 	getDimensionsGA4,
+	getMetrics,
 	getMetricsGA4,
 	getProperties,
 	getViews,
@@ -28,9 +29,8 @@ import {
 	simplifyGA4,
 } from '../GenericFunctions';
 
-import moment from 'moment-timezone';
 
-import { IData } from '../Interfaces';
+import { IData, IDimension, IMetric } from '../Interfaces';
 import { reportGA4Fields, reportGA4Operations } from './ReportGA4Description';
 
 const versionDescription: INodeTypeDescription = {
@@ -106,10 +106,11 @@ export class GoogleAnalyticsV2 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			getDimensions,
-			getDimensionsGA4,
 			getViews,
+			getDimensions,
+			getMetrics,
 			getProperties,
+			getDimensionsGA4,
 			getMetricsGA4,
 		},
 	};
@@ -130,8 +131,8 @@ export class GoogleAnalyticsV2 implements INodeType {
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const dateRange = this.getNodeParameter('dateRange', i) as string;
-						const metricsUi = this.getNodeParameter('metricsUi', i) as IDataObject;
-						const dimensionsUi = this.getNodeParameter('dimensionsUi', i) as IDataObject;
+						const metricsUA = this.getNodeParameter('metricsUA', i) as IDataObject;
+						const dimensionsUA = this.getNodeParameter('dimensionsUA', i) as IDataObject;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
@@ -141,18 +142,41 @@ export class GoogleAnalyticsV2 implements INodeType {
 							dateRanges: prepareDateRange.call(this, dateRange, i),
 						};
 
-						if (metricsUi.metricValues && (metricsUi.metricValues as IDataObject[]).length > 0) {
-							const metrics = metricsUi.metricValues as IDataObject[];
-							body.metrics = metrics;
+						if (metricsUA.metricValues) {
+							const metrics = (metricsUA.metricValues as IDataObject[]).map((metric) => {
+								if (metric.listName !== 'more') {
+									return { expression: metric.listName };
+								} else {
+									const newMetric = {
+										alias: metric.name,
+										expression: metric.expression || metric.name,
+										formattingType: metric.formattingType,
+									};
+
+									return newMetric;
+								}
+							});
+							if (metrics.length) {
+								body.metrics = metrics as IMetric[];
+							}
 						}
 
-						if (
-							dimensionsUi.dimensionValues &&
-							(dimensionsUi.dimensionValues as IDataObject[]).length > 0
-						) {
-							const dimensions = dimensionsUi.dimensionValues as IDataObject[];
-							if (dimensions) {
-								body.dimensions = dimensions;
+						if (dimensionsUA.dimensionValues) {
+							const dimensions = (dimensionsUA.dimensionValues as IDataObject[]).map(
+								(dimension) => {
+									if (dimension.listName !== 'more') {
+										return { name: dimension.listName };
+									} else {
+										const newDimension = {
+											name: dimension.name,
+										};
+
+										return newDimension;
+									}
+								},
+							);
+							if (dimensions.length) {
+								body.dimensions = dimensions as IDimension[];
 							}
 						}
 
@@ -217,8 +241,8 @@ export class GoogleAnalyticsV2 implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const dateRange = this.getNodeParameter('dateRange', i) as string;
-						const metricUi = this.getNodeParameter('metricUi', i, {}) as IDataObject;
-						const dimensionUi = this.getNodeParameter('dimensionUi', i, {}) as IDataObject;
+						const metricsGA4 = this.getNodeParameter('metricsGA4', i, {}) as IDataObject;
+						const dimensionsGA4 = this.getNodeParameter('dimensionsGA4', i, {}) as IDataObject;
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						const qs: IDataObject = {};
@@ -226,8 +250,8 @@ export class GoogleAnalyticsV2 implements INodeType {
 							dateRanges: prepareDateRange.call(this, dateRange, i),
 						};
 
-						if (metricUi.metricValues) {
-							const metrics = (metricUi.metricValues as IDataObject[]).map((metric) => {
+						if (metricsGA4.metricValues) {
+							const metrics = (metricsGA4.metricValues as IDataObject[]).map((metric) => {
 								if (metric.listName !== 'more') {
 									return { name: metric.listName };
 								} else {
@@ -253,18 +277,20 @@ export class GoogleAnalyticsV2 implements INodeType {
 							}
 						}
 
-						if (dimensionUi.dimensionValues) {
-							const dimensions = (dimensionUi.dimensionValues as IDataObject[]).map((dimension) => {
-								if (dimension.listName !== 'more') {
-									return { name: dimension.listName };
-								} else {
-									const newDimension = {
-										name: dimension.name,
-									};
+						if (dimensionsGA4.dimensionValues) {
+							const dimensions = (dimensionsGA4.dimensionValues as IDataObject[]).map(
+								(dimension) => {
+									if (dimension.listName !== 'more') {
+										return { name: dimension.listName };
+									} else {
+										const newDimension = {
+											name: dimension.name,
+										};
 
-									return newDimension;
-								}
-							});
+										return newDimension;
+									}
+								},
+							);
 							if (dimensions.length) {
 								body.dimensions = dimensions;
 							}
