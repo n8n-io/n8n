@@ -64,7 +64,6 @@ import {
 	IGetNodeParameterOptions,
 	NodeParameterValueType,
 	INodePropertyMode,
-	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
