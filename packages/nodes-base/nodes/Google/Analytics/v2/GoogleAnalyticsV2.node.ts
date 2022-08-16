@@ -9,10 +9,6 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { reportUAFields, reportUAOperations } from './ReportUADescription';
-
-import { userActivityFields, userActivityOperations } from './UserActivityDescription';
-
 import {
 	getDimensions,
 	getDimensionsGA4,
@@ -29,9 +25,13 @@ import {
 	simplifyGA4,
 } from '../GenericFunctions';
 
+import { userActivityFields, userActivityOperations } from './UserActivityDescription';
+
+import { reportGA4Fields } from './ReportGA4Description';
+
+import { reportUAFields } from './ReportUADescription';
 
 import { IData, IDimension, IMetric } from '../Interfaces';
-import { reportGA4Fields, reportGA4Operations } from './ReportGA4Description';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',
@@ -60,11 +60,7 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Report for Google Analytics 4',
-					value: 'reportGA4',
-				},
-				{
-					name: 'Report for Universal Analytic',
+					name: 'Report',
 					value: 'report',
 				},
 				{
@@ -74,21 +70,54 @@ const versionDescription: INodeTypeDescription = {
 			],
 			default: 'report',
 		},
-		//-------------------------------
-		// Reports Google Analytics 4
-		//-------------------------------
-		...reportGA4Operations,
+		{
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options',
+			noDataExpression: true,
+			displayOptions: {
+				show: {
+					resource: ['report', 'reportGA4'],
+				},
+			},
+			options: [
+				{
+					name: 'Get',
+					value: 'get',
+					description: 'Return the analytics data',
+					action: 'Get a report',
+				},
+			],
+			default: 'get',
+		},
+		{
+			displayName: 'Access Data For',
+			name: 'accessDataFor',
+			type: 'options',
+			noDataExpression: true,
+			description:
+				'Universal Analytics will no longer process new data in standard properties beginning July 1, 2023. Prepare now by setting up and switching over to a Google Analytics 4 property.',
+			options: [
+				{
+					name: 'Google Analytics 4',
+					value: 'ga4',
+				},
+				{
+					name: 'Universal Analytics',
+					value: 'universal',
+				},
+			],
+			default: 'ga4',
+			displayOptions: {
+				show: {
+					resource: ['report'],
+					operation: ['get'],
+				},
+			},
+		},
+
 		...reportGA4Fields,
-
-		//-------------------------------
-		// Reports Uinversal Analytic
-		//-------------------------------
-		...reportUAOperations,
 		...reportUAFields,
-
-		//-------------------------------
-		// User Activity Operations
-		//-------------------------------
 		...userActivityOperations,
 		...userActivityFields,
 	],
@@ -120,12 +149,13 @@ export class GoogleAnalyticsV2 implements INodeType {
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const accessDataFor = this.getNodeParameter('accessDataFor', 0) as string;
 
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				if (resource === 'report') {
+				if (resource === 'report' && accessDataFor === 'universal') {
 					if (operation === 'get') {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 						const viewId = this.getNodeParameter('viewId', i) as string;
@@ -234,7 +264,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 					}
 				}
 
-				if (resource === 'reportGA4') {
+				if (resource === 'report' && accessDataFor === 'ga4') {
 					if (operation === 'get') {
 						//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
 						const propertyId = this.getNodeParameter('propertyId', i) as string;

@@ -2,29 +2,6 @@ import { INodeProperties } from 'n8n-workflow';
 
 import { defaultEndDate, defaultStartDate } from '../GenericFunctions';
 
-export const reportUAOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['report'],
-			},
-		},
-		options: [
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Return the analytics data',
-				action: 'Get a report',
-			},
-		],
-		default: 'get',
-	},
-];
-
 export const reportUAFields: INodeProperties[] = [
 	{
 		displayName: 'View Name or ID',
@@ -39,6 +16,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['universal'],
 			},
 		},
 		placeholder: '123456',
@@ -86,6 +64,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['universal'],
 			},
 		},
 	},
@@ -99,6 +78,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['universal'],
 				dateRange: ['custom'],
 			},
 		},
@@ -113,6 +93,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['universal'],
 				dateRange: ['custom'],
 			},
 		},
@@ -121,7 +102,8 @@ export const reportUAFields: INodeProperties[] = [
 		displayName: 'Metrics',
 		name: 'metricsUA',
 		type: 'fixedCollection',
-		default: {},
+		// default: {},
+		default: { metricValues: [{ listName: 'ga:sessions' }] },
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -139,18 +121,6 @@ export const reportUAFields: INodeProperties[] = [
 						default: 'ga:sessions',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
-							// {
-							// 	name: '1 Day Active Users',
-							// 	value: 'ga:1dayUsers',
-							// },
-							// {
-							// 	name: '28 Day Active Users',
-							// 	value: 'ga:28dayUsers',
-							// },
-							// {
-							// 	name: '7 Day Active Users',
-							// 	value: 'ga:7dayUsers',
-							// },
 							{
 								name: 'Checkouts',
 								value: 'ga:productCheckouts',
@@ -215,19 +185,6 @@ export const reportUAFields: INodeProperties[] = [
 							},
 						},
 					},
-					// {
-					// 	displayName: 'Alias',
-					// 	name: 'alias',
-					// 	type: 'string',
-					// 	default: '',
-					// 	description:
-					// 		'An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting.',
-					// 	displayOptions: {
-					// 		show: {
-					// 			listName: ['more'],
-					// 		},
-					// 	},
-					// },
 					{
 						displayName: 'Formatting Type',
 						name: 'formattingType',
@@ -269,6 +226,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['universal'],
 			},
 		},
 	},
@@ -276,7 +234,8 @@ export const reportUAFields: INodeProperties[] = [
 		displayName: 'Dimensions',
 		name: 'dimensionsUA',
 		type: 'fixedCollection',
-		default: {},
+		default: { dimensionValues: [{ listName: 'ga:deviceCategory' }] },
+		// default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -364,6 +323,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['universal'],
 			},
 		},
 	},
@@ -375,6 +335,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
+				accessDataFor: ['universal'],
 			},
 		},
 		default: false,
@@ -388,6 +349,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
+				accessDataFor: ['universal'],
 				returnAll: [false],
 			},
 		},
@@ -406,6 +368,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['report'],
+				accessDataFor: ['universal'],
 			},
 		},
 		default: true,
@@ -421,6 +384,7 @@ export const reportUAFields: INodeProperties[] = [
 			show: {
 				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['universal'],
 			},
 		},
 		options: [

@@ -15,9 +15,9 @@ export async function googleApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const accessDataFor = this.getNodeParameter('accessDataFor', 0, 'universal') as string;
 	const baseURL =
-		resource === 'reportGA4'
+		accessDataFor === 'ga4'
 			? 'https://analyticsdata.googleapis.com'
 			: 'https://analyticsreporting.googleapis.com';
 
@@ -65,12 +65,12 @@ export async function googleApiRequestAllItems(
 	query: IDataObject = {},
 	uri?: string,
 ) {
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const accessDataFor = this.getNodeParameter('accessDataFor', 0, 'universal') as string;
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
-	if (resource === 'reportGA4') {
+	if (accessDataFor === 'ga4') {
 		let rows: IDataObject[] = [];
 		query.limit = 100000;
 		query.offset = 0;

@@ -4,29 +4,6 @@ import { defaultEndDate, defaultStartDate } from '../GenericFunctions';
 
 import { dimensionFilterField, metricsFilterField } from './FiltersDescription';
 
-export const reportGA4Operations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['reportGA4'],
-			},
-		},
-		options: [
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Return the analytics data',
-				action: 'Get a report',
-			},
-		],
-		default: 'get',
-	},
-];
-
 export const reportGA4Fields: INodeProperties[] = [
 	{
 		displayName: 'Property Name or ID',
@@ -39,8 +16,9 @@ export const reportGA4Fields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['reportGA4'],
+				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['ga4'],
 			},
 		},
 		placeholder: '123456',
@@ -86,8 +64,9 @@ export const reportGA4Fields: INodeProperties[] = [
 		default: 'today',
 		displayOptions: {
 			show: {
-				resource: ['reportGA4'],
+				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['ga4'],
 			},
 		},
 	},
@@ -99,9 +78,10 @@ export const reportGA4Fields: INodeProperties[] = [
 		default: defaultStartDate(),
 		displayOptions: {
 			show: {
-				resource: ['reportGA4'],
+				resource: ['report'],
 				operation: ['get'],
 				dateRange: ['custom'],
+				accessDataFor: ['ga4'],
 			},
 		},
 	},
@@ -113,9 +93,10 @@ export const reportGA4Fields: INodeProperties[] = [
 		default: defaultEndDate(),
 		displayOptions: {
 			show: {
-				resource: ['reportGA4'],
+				resource: ['report'],
 				operation: ['get'],
 				dateRange: ['custom'],
+				accessDataFor: ['ga4'],
 			},
 		},
 	},
@@ -123,7 +104,7 @@ export const reportGA4Fields: INodeProperties[] = [
 		displayName: 'Metrics',
 		name: 'metricsGA4',
 		type: 'fixedCollection',
-		default: { metricValues: [{ listName: 'activeUsers' }] },
+		default: { metricValues: [{ listName: 'active7DayUsers' }] },
 		// default: {},
 		typeOptions: {
 			multipleValues: true,
@@ -238,8 +219,9 @@ export const reportGA4Fields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: ['reportGA4'],
+				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['ga4'],
 			},
 		},
 	},
@@ -335,8 +317,9 @@ export const reportGA4Fields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: ['reportGA4'],
+				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['ga4'],
 			},
 		},
 	},
@@ -347,7 +330,8 @@ export const reportGA4Fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['get'],
-				resource: ['reportGA4'],
+				resource: ['report'],
+				accessDataFor: ['ga4'],
 			},
 		},
 		default: false,
@@ -360,7 +344,8 @@ export const reportGA4Fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['get'],
-				resource: ['reportGA4'],
+				resource: ['report'],
+				accessDataFor: ['ga4'],
 				returnAll: [false],
 			},
 		},
@@ -378,7 +363,8 @@ export const reportGA4Fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['get'],
-				resource: ['reportGA4'],
+				resource: ['report'],
+				accessDataFor: ['ga4'],
 			},
 		},
 		default: true,
@@ -393,8 +379,9 @@ export const reportGA4Fields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['reportGA4'],
+				resource: ['report'],
 				operation: ['get'],
+				accessDataFor: ['ga4'],
 			},
 		},
 		options: [
