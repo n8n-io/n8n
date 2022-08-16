@@ -12,13 +12,14 @@ import {
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
+	TriggerTime,
+	triggerToCronExpression,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowActivationError,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { TriggerTime, triggerToCronExpression } from './Cron';
 // eslint-disable-next-line import/no-cycle
 import { IWorkflowData } from '.';
 

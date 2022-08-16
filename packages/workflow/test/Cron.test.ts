@@ -1,4 +1,4 @@
-import { triggerToCronExpression } from "../src"
+import { triggerToCronExpression } from "../src/Cron"
 
 describe('Cron', () => {
   describe('triggerToCronExpression', () => {

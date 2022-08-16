@@ -8,7 +8,7 @@ import { URL } from 'url';
 import bodyParser from 'body-parser';
 import { set } from 'lodash';
 import { CronJob } from 'cron';
-import { BinaryDataManager, TriggerTime, triggerToCronExpression, UserSettings } from 'n8n-core';
+import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
 	IDataObject,
@@ -21,6 +21,8 @@ import {
 	ITriggerResponse,
 	LoggerProxy,
 	NodeHelpers,
+	TriggerTime,
+	triggerToCronExpression,
 } from 'n8n-workflow';
 
 import config from '../../../config';
