@@ -168,7 +168,7 @@ export class Zoom implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -223,6 +223,7 @@ export class Zoom implements INodeType {
 							responseData = await zoomApiRequest.call(this, 'GET', '/users/me/meetings', {}, qs);
 							responseData = responseData.meetings;
 						}
+						responseData = this.helpers.constructExecutionMetaData({item: i }, responseData);
 
 					}
 					if (operation === 'delete') {
@@ -809,13 +810,18 @@ export class Zoom implements INodeType {
 				// 	}
 				// }
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData.push.apply(returnData, responseData);
 				} else {
-					returnData.push(responseData as IDataObject);
+					returnData.push(responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = {
+						json: {} as IDataObject,
+						error: error.message,
+						itemIndex: i,
+					};
+					returnData.push(executionErrorData as INodeExecutionData);
 					continue;
 				}
 				throw error;
