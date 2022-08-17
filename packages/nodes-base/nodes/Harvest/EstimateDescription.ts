@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'estimate',
-];
+const resource = ['estimate'];
 
 export const estimateOperations: INodeProperties[] = [
 	{
@@ -51,11 +47,9 @@ export const estimateOperations: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const estimateFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                estimate:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -67,9 +61,7 @@ export const estimateFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -82,12 +74,8 @@ export const estimateFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -106,9 +94,7 @@ export const estimateFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -131,7 +117,8 @@ export const estimateFields: INodeProperties[] = [
 				name: 'state',
 				type: 'string',
 				default: '',
-				description: 'Only return estimates with a state matching the value provided. Options: draft, sent, accepted, or declined.',
+				description:
+					'Only return estimates with a state matching the value provided. Options: draft, sent, accepted, or declined.',
 			},
 			{
 				displayName: 'To',
@@ -145,7 +132,8 @@ export const estimateFields: INodeProperties[] = [
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries that have been updated since the given date and time',
+				description:
+					'Only return time entries that have been updated since the given date and time',
 			},
 			{
 				displayName: 'Page',
@@ -155,7 +143,8 @@ export const estimateFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
+				description:
+					'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
 			},
 		],
 	},
@@ -171,9 +160,7 @@ export const estimateFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
@@ -191,9 +178,7 @@ export const estimateFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
@@ -209,9 +194,7 @@ export const estimateFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -226,9 +209,7 @@ export const estimateFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -239,14 +220,16 @@ export const estimateFields: INodeProperties[] = [
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
+				description:
+					'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Discount',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Issue Date',
@@ -288,14 +271,16 @@ export const estimateFields: INodeProperties[] = [
 				name: 'tax',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Tax2',
 				name: 'tax2',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 		],
 	},
@@ -311,9 +296,7 @@ export const estimateFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -326,9 +309,7 @@ export const estimateFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -346,14 +327,16 @@ export const estimateFields: INodeProperties[] = [
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
+				description:
+					'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Discount',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Issue Date',
@@ -395,16 +378,17 @@ export const estimateFields: INodeProperties[] = [
 				name: 'tax',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Tax2',
 				name: 'tax2',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
+				description:
+					'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 		],
 	},
-
 ];

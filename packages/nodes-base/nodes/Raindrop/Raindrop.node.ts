@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryData,
@@ -12,14 +10,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	isEmpty,
-	omit,
-} from 'lodash';
+import { isEmpty, omit } from 'lodash';
 
-import {
-	raindropApiRequest,
-} from './GenericFunctions';
+import { raindropApiRequest } from './GenericFunctions';
 
 import {
 	bookmarkFields,
@@ -93,7 +86,7 @@ export class Raindrop implements INodeType {
 		loadOptions: {
 			async getCollections(this: ILoadOptionsFunctions) {
 				const responseData = await raindropApiRequest.call(this, 'GET', '/collections', {}, {});
-				return responseData.items.map((item: { title: string, _id: string }) => ({
+				return responseData.items.map((item: { title: string; _id: string }) => ({
 					name: item.title,
 					value: item._id,
 				}));
@@ -113,7 +106,6 @@ export class Raindrop implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'bookmark') {
-
 					// *********************************************************************
 					//                              bookmark
 					// *********************************************************************
@@ -121,7 +113,6 @@ export class Raindrop implements INodeType {
 					// https://developer.raindrop.io/v1/raindrops
 
 					if (operation === 'create') {
-
 						// ----------------------------------
 						//         bookmark: create
 						// ----------------------------------
@@ -129,7 +120,7 @@ export class Raindrop implements INodeType {
 						const body: IDataObject = {
 							link: this.getNodeParameter('link', i),
 							collection: {
-								'$id': this.getNodeParameter('collectionId', i),
+								$id: this.getNodeParameter('collectionId', i),
 							},
 						};
 
@@ -145,15 +136,15 @@ export class Raindrop implements INodeType {
 						}
 
 						if (additionalFields.tags) {
-							body.tags = (additionalFields.tags as string).split(',').map(tag => tag.trim()) as string[];
+							body.tags = (additionalFields.tags as string)
+								.split(',')
+								.map((tag) => tag.trim()) as string[];
 						}
 
 						const endpoint = `/raindrop`;
 						responseData = await raindropApiRequest.call(this, 'POST', endpoint, {}, body);
 						responseData = responseData.item;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------
 						//         bookmark: delete
 						// ----------------------------------
@@ -161,9 +152,7 @@ export class Raindrop implements INodeType {
 						const bookmarkId = this.getNodeParameter('bookmarkId', i);
 						const endpoint = `/raindrop/${bookmarkId}`;
 						responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------
 						//         bookmark: get
 						// ----------------------------------
@@ -172,9 +161,7 @@ export class Raindrop implements INodeType {
 						const endpoint = `/raindrop/${bookmarkId}`;
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.item;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//         bookmark: getAll
 						// ----------------------------------
@@ -185,14 +172,11 @@ export class Raindrop implements INodeType {
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.items;
 
-
 						if (returnAll === false) {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							responseData = responseData.slice(0, limit);
 						}
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------
 						//         bookmark: update
 						// ----------------------------------
@@ -204,14 +188,18 @@ export class Raindrop implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (isEmpty(updateFields)) {
-							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								`Please enter at least one field to update for the ${resource}.`,
+								{ itemIndex: i },
+							);
 						}
 
 						Object.assign(body, updateFields);
 
 						if (updateFields.collectionId) {
 							body.collection = {
-								'$id': updateFields.collectionId,
+								$id: updateFields.collectionId,
 							};
 							delete updateFields.collectionId;
 						}
@@ -220,7 +208,9 @@ export class Raindrop implements INodeType {
 							delete updateFields.pleaseParse;
 						}
 						if (updateFields.tags) {
-							body.tags = (updateFields.tags as string).split(',').map(tag => tag.trim()) as string[];
+							body.tags = (updateFields.tags as string)
+								.split(',')
+								.map((tag) => tag.trim()) as string[];
 						}
 
 						const endpoint = `/raindrop/${bookmarkId}`;
@@ -228,7 +218,6 @@ export class Raindrop implements INodeType {
 						responseData = responseData.item;
 					}
 				} else if (resource === 'collection') {
-
 					// *********************************************************************
 					//                             collection
 					// *********************************************************************
@@ -236,7 +225,6 @@ export class Raindrop implements INodeType {
 					// https://developer.raindrop.io/v1/collections/methods
 
 					if (operation === 'create') {
-
 						// ----------------------------------
 						//       collection: create
 						// ----------------------------------
@@ -262,9 +250,7 @@ export class Raindrop implements INodeType {
 
 						responseData = await raindropApiRequest.call(this, 'POST', `/collection`, {}, body);
 						responseData = responseData.item;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------
 						//        collection: delete
 						// ----------------------------------
@@ -272,9 +258,7 @@ export class Raindrop implements INodeType {
 						const collectionId = this.getNodeParameter('collectionId', i);
 						const endpoint = `/collection/${collectionId}`;
 						responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------
 						//        collection: get
 						// ----------------------------------
@@ -283,18 +267,17 @@ export class Raindrop implements INodeType {
 						const endpoint = `/collection/${collectionId}`;
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.item;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//        collection: getAll
 						// ----------------------------------
 
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
-						const endpoint = this.getNodeParameter('type', i) === 'parent'
-							? '/collections'
-							: '/collections/childrens';
+						const endpoint =
+							this.getNodeParameter('type', i) === 'parent'
+								? '/collections'
+								: '/collections/childrens';
 
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.items;
@@ -303,9 +286,7 @@ export class Raindrop implements INodeType {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							responseData = responseData.slice(0, limit);
 						}
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------
 						//        collection: update
 						// ----------------------------------
@@ -317,7 +298,11 @@ export class Raindrop implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (isEmpty(updateFields)) {
-							throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`, { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								`Please enter at least one field to update for the ${resource}.`,
+								{ itemIndex: i },
+							);
 						}
 
 						if (updateFields.parentId) {
@@ -334,13 +319,18 @@ export class Raindrop implements INodeType {
 						// cover-specific endpoint
 
 						if (updateFields.cover) {
-
 							if (!items[i].binary) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+									itemIndex: i,
+								});
 							}
 
 							if (!updateFields.cover) {
-								throw new NodeOperationError(this.getNode(), 'Please enter a binary property to upload a cover image.', { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									'Please enter a binary property to upload a cover image.',
+									{ itemIndex: i },
+								);
 							}
 
 							const binaryPropertyName = updateFields.cover as string;
@@ -359,13 +349,18 @@ export class Raindrop implements INodeType {
 							};
 
 							const endpoint = `/collection/${collectionId}/cover`;
-							responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, {}, { 'Content-Type': 'multipart/form-data', formData });
+							responseData = await raindropApiRequest.call(
+								this,
+								'PUT',
+								endpoint,
+								{},
+								{},
+								{ 'Content-Type': 'multipart/form-data', formData },
+							);
 							responseData = responseData.item;
 						}
 					}
-
 				} else if (resource === 'user') {
-
 					// *********************************************************************
 					//                                user
 					// *********************************************************************
@@ -373,7 +368,6 @@ export class Raindrop implements INodeType {
 					// https://developer.raindrop.io/v1/user
 
 					if (operation === 'get') {
-
 						// ----------------------------------
 						//           user: get
 						// ----------------------------------
@@ -388,11 +382,8 @@ export class Raindrop implements INodeType {
 
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.user;
-
 					}
-
 				} else if (resource === 'tag') {
-
 					// *********************************************************************
 					//                              tag
 					// *********************************************************************
@@ -400,7 +391,6 @@ export class Raindrop implements INodeType {
 					// https://developer.raindrop.io/v1/tags
 
 					if (operation === 'delete') {
-
 						// ----------------------------------
 						//           tag: delete
 						// ----------------------------------
@@ -418,9 +408,7 @@ export class Raindrop implements INodeType {
 						}
 
 						responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, body);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//           tag: getAll
 						// ----------------------------------
@@ -458,6 +446,5 @@ export class Raindrop implements INodeType {
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
-
 	}
 }

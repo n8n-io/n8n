@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const groupOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
+				resource: ['group'],
 			},
 		},
 		options: [
@@ -63,16 +59,13 @@ export const groupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['create'],
+				resource: ['group'],
 			},
 		},
 		default: '',
-		description: 'The group\'s email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique',
+		description:
+			"The group's email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -82,12 +75,8 @@ export const groupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['create'],
+				resource: ['group'],
 			},
 		},
 		options: [
@@ -96,14 +85,15 @@ export const groupFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
+				description:
+					'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The group\'s display name',
+				description: "The group's display name",
 			},
 		],
 	},
@@ -117,16 +107,13 @@ export const groupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['delete'],
+				resource: ['group'],
 			},
 		},
 		default: '',
-		description: 'Identifies the group in the API request. The value can be the group\'s email address, group alias, or the unique group ID.',
+		description:
+			"Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:get                                  */
@@ -138,16 +125,13 @@ export const groupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['get'],
+				resource: ['group'],
 			},
 		},
 		default: '',
-		description: 'Identifies the group in the API request. The value can be the group\'s email address, group alias, or the unique group ID.',
+		description:
+			"Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:getAll                               */
@@ -158,12 +142,8 @@ export const groupFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['getAll'],
+				resource: ['group'],
 			},
 		},
 		default: false,
@@ -175,15 +155,9 @@ export const groupFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'group',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['group'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -201,12 +175,8 @@ export const groupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['getAll'],
+				resource: ['group'],
 			},
 		},
 		options: [
@@ -215,7 +185,8 @@ export const groupFields: INodeProperties[] = [
 				name: 'customer',
 				type: 'string',
 				default: '',
-				description: 'The unique ID for the customer\'s G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.',
+				description:
+					"The unique ID for the customer's G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.",
 			},
 			{
 				displayName: 'Domain',
@@ -242,7 +213,8 @@ export const groupFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups">at</a>.',
+				description:
+					'Query string search. Complete documentation is <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-groups">at</a>.',
 			},
 			{
 				displayName: 'Sort Order',
@@ -266,7 +238,8 @@ export const groupFields: INodeProperties[] = [
 				name: 'userId',
 				type: 'string',
 				default: '',
-				description: 'Email or immutable ID of the user if only those groups are to be listed, the given user is a member of. If it\'s an ID, it should match with the ID of the user object.',
+				description:
+					"Email or immutable ID of the user if only those groups are to be listed, the given user is a member of. If it's an ID, it should match with the ID of the user object.",
 			},
 		],
 	},
@@ -280,16 +253,13 @@ export const groupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['update'],
+				resource: ['group'],
 			},
 		},
 		default: '',
-		description: 'Identifies the group in the API request. The value can be the group\'s email address, group alias, or the unique group ID.',
+		description:
+			"Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.",
 	},
 	{
 		displayName: 'Update Fields',
@@ -299,12 +269,8 @@ export const groupFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['update'],
+				resource: ['group'],
 			},
 		},
 		options: [
@@ -313,7 +279,8 @@ export const groupFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
+				description:
+					'An extended description to help users determine the purpose of a group. For example, you can include information about who should join the group, the types of messages to send to the group, links to FAQs about the group, or related groups.',
 			},
 			{
 				displayName: 'Email',
@@ -321,14 +288,15 @@ export const groupFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'name@email.com',
 				default: '',
-				description: 'The group\'s email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique.',
+				description:
+					"The group's email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique.",
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The group\'s display name',
+				description: "The group's display name",
 			},
 		],
 	},

@@ -1,6 +1,4 @@
-import {
-	CustomerProperties,
-} from '../../Interfaces';
+import { CustomerProperties } from '../../Interfaces';
 
 export const customerGetAllDescription: CustomerProperties = [
 	{
@@ -9,12 +7,8 @@ export const customerGetAllDescription: CustomerProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -30,15 +24,9 @@ export const customerGetAllDescription: CustomerProperties = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 25,
@@ -51,12 +39,8 @@ export const customerGetAllDescription: CustomerProperties = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},

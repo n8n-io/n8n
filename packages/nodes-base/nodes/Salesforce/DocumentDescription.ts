@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const documentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const documentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
+				resource: ['document'],
 			},
 		},
 		options: [
@@ -28,7 +24,6 @@ export const documentOperations: INodeProperties[] = [
 ];
 
 export const documentFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                document:upload                             */
 	/* -------------------------------------------------------------------------- */
@@ -40,12 +35,8 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['document'],
+				operation: ['upload'],
 			},
 		},
 		description: 'Name of the file',
@@ -58,12 +49,8 @@ export const documentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['document'],
+				operation: ['upload'],
 			},
 		},
 		placeholder: '',
@@ -77,12 +64,8 @@ export const documentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['document'],
+				operation: ['upload'],
 			},
 		},
 		options: [
@@ -92,7 +75,8 @@ export const documentFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'pdf',
-				description: 'File extension to use. If none is set, the value from the binary data will be used.',
+				description:
+					'File extension to use. If none is set, the value from the binary data will be used.',
 			},
 			{
 				displayName: 'Link To Object ID',
@@ -109,7 +93,8 @@ export const documentFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the owner of this document. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the owner of this document. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -18,7 +16,6 @@ import { router } from './actions/router';
 import { validateCredentials } from './transport';
 
 export class SyncroMspV1 implements INodeType {
-
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -31,7 +28,10 @@ export class SyncroMspV1 implements INodeType {
 	methods = {
 		loadOptions,
 		credentialTest: {
-			async syncroMspApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async syncroMspApiCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {

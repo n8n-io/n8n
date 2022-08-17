@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const paymentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const paymentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
+				resource: ['payment'],
 			},
 		},
 		options: [
@@ -43,12 +39,8 @@ export const paymentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'payment',
-				],
+				operation: ['getAll'],
+				resource: ['payment'],
 			},
 		},
 		default: false,
@@ -60,15 +52,9 @@ export const paymentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'payment',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['payment'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -85,12 +71,8 @@ export const paymentFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['payment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -104,15 +86,9 @@ export const paymentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['payment'],
+				operation: ['getAll'],
+				jsonParameters: [true],
 			},
 		},
 		description: 'Attributes in JSON form',
@@ -124,15 +100,9 @@ export const paymentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['payment'],
+				operation: ['getAll'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -177,7 +147,8 @@ export const paymentFields: INodeProperties[] = [
 				name: 'state',
 				type: 'options',
 				default: 'active',
-				description: 'Filter: The user subscription status. Returns all active, past_due, trialing and paused subscription plans if not specified.',
+				description:
+					'Filter: The user subscription status. Returns all active, past_due, trialing and paused subscription plans if not specified.',
 				options: [
 					{
 						name: 'Active',
@@ -219,15 +190,12 @@ export const paymentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'reschedule',
-				],
+				resource: ['payment'],
+				operation: ['reschedule'],
 			},
 		},
-		description: 'The upcoming subscription payment ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The upcoming subscription payment ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Date',
@@ -236,12 +204,8 @@ export const paymentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'reschedule',
-				],
+				resource: ['payment'],
+				operation: ['reschedule'],
 			},
 		},
 		description: 'Date you want to move the payment to',
