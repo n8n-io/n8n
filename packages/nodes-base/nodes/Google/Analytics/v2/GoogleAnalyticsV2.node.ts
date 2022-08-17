@@ -272,7 +272,10 @@ export class GoogleAnalyticsV2 implements INodeType {
 				if (resource === 'report' && accessDataFor === 'ga4') {
 					if (operation === 'get') {
 						//migration guide: https://developers.google.com/analytics/devguides/migration/api/reporting-ua-to-ga4#core_reporting
-						const propertyId = this.getNodeParameter('propertyId', i) as string;
+						let propertyId = this.getNodeParameter('propertyId', i) as string;
+						if (!propertyId.includes('properties/')) {
+							propertyId = `properties/${propertyId}`;
+						}
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const dateRange = this.getNodeParameter('dateRange', i) as string;
