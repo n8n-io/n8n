@@ -1,8 +1,4 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	GenericValue,
@@ -44,7 +40,6 @@ export async function apiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -55,9 +50,7 @@ export async function apiRequestAllItems(
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.page++;
 		returnData.push.apply(returnData, responseData);
-	} while (
-		responseData.length !== 0
-	);
+	} while (responseData.length !== 0);
 
 	return returnData;
 }

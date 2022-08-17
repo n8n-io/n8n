@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -19,9 +17,7 @@ export const salesOrderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
+				resource: ['salesOrder'],
 			},
 		},
 		options: [
@@ -75,20 +71,16 @@ export const salesOrderFields: INodeProperties[] = [
 		name: 'accountId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getAccounts',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['salesOrder'],
+				operation: ['create', 'upsert'],
 			},
 		},
 	},
@@ -105,12 +97,8 @@ export const salesOrderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['salesOrder'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -121,18 +109,15 @@ export const salesOrderFields: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
-		description: 'Subject or title of the sales order. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Subject or title of the sales order. If a record with this subject exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['salesOrder'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -153,13 +138,8 @@ export const salesOrderFields: INodeProperties[] = [
 		options: productDetailsOptions,
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['salesOrder'],
+				operation: ['create', 'upsert'],
 			},
 		},
 	},
@@ -171,13 +151,8 @@ export const salesOrderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['salesOrder'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -203,7 +178,8 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Contact Name or ID',
 				name: 'contactId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -222,7 +198,8 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getDeals',
@@ -285,7 +262,8 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
+				description:
+					'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{
@@ -296,7 +274,8 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
-				description: 'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -340,12 +319,8 @@ export const salesOrderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['salesOrder'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -362,12 +337,8 @@ export const salesOrderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['salesOrder'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -389,12 +360,8 @@ export const salesOrderFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['salesOrder'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -406,12 +373,8 @@ export const salesOrderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['salesOrder'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -423,7 +386,8 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the account associated with this invoice. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -447,7 +411,8 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Contact Name or ID',
 				name: 'contactId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getContacts',
@@ -466,7 +431,8 @@ export const salesOrderFields: INodeProperties[] = [
 				displayName: 'Deal Name or ID',
 				name: 'dealId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getDeals',
@@ -528,7 +494,8 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
+				description:
+					'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{
@@ -539,7 +506,8 @@ export const salesOrderFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getSalesOrderStatus',
 				},
-				description: 'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Status of the sales order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',

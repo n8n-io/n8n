@@ -1,7 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 /**
  * Options to be displayed
@@ -86,9 +84,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			displayOptions: {
 				show: {
-					operation: [
-						'aggregate',
-					],
+					operation: ['aggregate'],
 				},
 			},
 			default: '',
@@ -110,9 +106,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			displayOptions: {
 				show: {
-					operation: [
-						'delete',
-					],
+					operation: ['delete'],
 				},
 			},
 			default: '{}',
@@ -146,7 +140,8 @@ export const nodeDescription: INodeTypeDescription = {
 					},
 					default: 0,
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-limit
-					description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents',
+					description:
+						'Use limit to specify the maximum number of documents or 0 for unlimited documents',
 				},
 				{
 					displayName: 'Skip',
@@ -177,9 +172,7 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			displayOptions: {
 				show: {
-					operation: [
-						'find',
-					],
+					operation: ['find'],
 				},
 			},
 			default: '{}',
@@ -197,9 +190,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: [
-						'insert',
-					],
+					operation: ['insert'],
 				},
 			},
 			default: '',
@@ -216,15 +207,14 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: [
-						'update',
-					],
+					operation: ['update'],
 				},
 			},
 			default: 'id',
 			required: true,
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-			description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+			description:
+				'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 		},
 		{
 			displayName: 'Fields',
@@ -232,9 +222,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: [
-						'update',
-					],
+					operation: ['update'],
 				},
 			},
 			default: '',
@@ -259,10 +247,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'collection',
 			displayOptions: {
 				show: {
-					operation: [
-						'update',
-						'insert',
-					],
+					operation: ['update', 'insert'],
 				},
 			},
 			placeholder: 'Add Option',
@@ -276,7 +261,7 @@ export const nodeDescription: INodeTypeDescription = {
 					description: 'Comma separeted list of fields that will be parse as Mongo Date type',
 				},
 				{
-					displayName:'Use Dot Notation',
+					displayName: 'Use Dot Notation',
 					name: 'useDotNotation',
 					type: 'boolean',
 					default: false,

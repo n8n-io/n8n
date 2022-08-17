@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const mediaOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const mediaOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
+				resource: ['media'],
 			},
 		},
 		options: [
@@ -28,7 +24,6 @@ export const mediaOperations: INodeProperties[] = [
 ];
 
 export const mediaFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                               media:upload                                 */
 	/* -------------------------------------------------------------------------- */
@@ -42,15 +37,12 @@ export const mediaFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['media'],
+				operation: ['upload'],
 			},
 		},
-		description: 'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -61,12 +53,8 @@ export const mediaFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['media'],
+				operation: ['upload'],
 			},
 		},
 	},
@@ -77,12 +65,8 @@ export const mediaFields: INodeProperties[] = [
 		default: 'image',
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['media'],
+				operation: ['upload'],
 			},
 		},
 		options: [

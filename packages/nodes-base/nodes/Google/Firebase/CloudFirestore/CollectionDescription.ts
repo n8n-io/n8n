@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const collectionOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const collectionOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
+				resource: ['collection'],
 			},
 		},
 		options: [
@@ -41,15 +37,12 @@ export const collectionFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'As displayed in firebase console URL. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -59,12 +52,8 @@ export const collectionFields: INodeProperties[] = [
 		default: '(default)',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Usually the provided default value will work',
@@ -77,12 +66,8 @@ export const collectionFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -94,15 +79,9 @@ export const collectionFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['collection'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
