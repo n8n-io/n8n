@@ -404,6 +404,13 @@ export const boardFields: INodeProperties[] = [
 							throw new Error("No valid URL got entered.");
 						}
 					},
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?:\/\/api.trello.com\/1\/boards\/[a-zA-Z0-9]+',
+							errorMessage: 'URL has to be in the format: http(s)://api.trello.com/1/boards/<board ID>',
+						},
+					},
 				],
 				extractValue: {
 					type: 'regex',
@@ -488,8 +495,8 @@ export const boardFields: INodeProperties[] = [
 	{
 		displayName: 'Board ID',
 		name: 'id',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
 		displayOptions: {
 			show: {
@@ -502,6 +509,44 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		description: 'The ID of the board to update',
+		modes: [
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: "From List",
+				name: "list",
+				type: "list",
+				hint: "Select a board from the list",
+				placeholder: "Choose...",
+				initType: "board",
+				entryTypes: {
+					board: {
+						selectable: true,
+						queryable: true,
+						data: {
+							request: {
+								baseURL: "https://api.trello.com/1",
+								url: "/members/me/boards",
+								method: "GET",
+							},
+						},
+					},
+				},
+				search: {
+					send: {
+						paginate: true,
+					},
+					request: {
+						baseURL: "https://api.trello.com/1",
+						url: "/search",
+						qs: {
+							query: "={{$value}}", // TODO: See what goes here
+							modelTypes: "=boards", // Search only boards
+							idBoards: "=mine",	  // That belong to current user
+						},
+					},
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Update Fields',
