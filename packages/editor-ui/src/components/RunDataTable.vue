@@ -213,6 +213,7 @@ export default Vue.extend({
 		overflow-wrap: break-word;
 		max-width: 300px;
 		white-space: pre-wrap;
+		vertical-align:top;
 	}
 
 	th:last-child,
