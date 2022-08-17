@@ -859,7 +859,7 @@ export interface INodeExecuteFunctions {
 
 export type NodeParameterValue = string | number | boolean | undefined | null;
 
-export type ResourceLocatorModes = 'id' | 'url';
+export type ResourceLocatorModes = 'id' | 'url' | 'list' | string;
 
 export interface INodeParameterResourceLocator {
 	mode: ResourceLocatorModes;
@@ -1463,10 +1463,14 @@ export interface IWorkflowExecuteAdditionalData {
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
-		inputData?: INodeExecutionData[],
-		parentExecutionId?: string,
-		loadedWorkflowData?: IWorkflowBase,
-		loadedRunData?: any,
+		options?: {
+			parentWorkflowId?: string;
+			inputData?: INodeExecutionData[];
+			parentExecutionId?: string;
+			loadedWorkflowData?: IWorkflowBase;
+			loadedRunData?: any;
+			parentWorkflowSettings?: IWorkflowSettings;
+		},
 	) => Promise<any>;
 	// hooks?: IWorkflowExecuteHooks;
 	executionId?: string;

@@ -100,14 +100,16 @@
 						</n8n-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
-							<n8n-icon-button
-								v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
-								:type="scope.row.stoppedAt === null ? 'warning': 'danger'"
-								class="ml-3xs"
-								size="mini"
-								:title="$locale.baseText('executionsList.retryExecution')"
-								icon="redo"
-							/>
+							<span class="retry-button">
+								<n8n-icon-button
+									v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
+									:type="scope.row.stoppedAt === null ? 'warning': 'danger'"
+									class="ml-3xs"
+									size="mini"
+									:title="$locale.baseText('executionsList.retryExecution')"
+									icon="redo"
+								/>
+							</span>
 							<el-dropdown-menu slot="dropdown">
 								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">
 									{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
