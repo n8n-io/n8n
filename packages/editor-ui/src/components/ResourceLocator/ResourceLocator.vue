@@ -18,7 +18,7 @@
 				@change="onModeSelected"
 			>
 				<n8n-option
-					v-for="mode in sortedModes"
+					v-for="mode in parameter.modes"
 					:key="mode.name"
 					:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
 					:value="mode.name">
@@ -167,19 +167,6 @@ export default mixins().extend({
 		};
 	},
 	computed: {
-		sortedModes (): INodePropertyMode[] {
-			// Display modes in this order regardless of how they are set in node definition
-			const priorityQueue: string[] = ['list', 'id', 'url', 'custom'];
-			const sorted: INodePropertyMode[] = [];
-
-			for (const modeName of priorityQueue) {
-				const mode = this.findModeByName(modeName);
-				if (mode) {
-					sorted.push(mode);
-				}
-			}
-			return sorted;
-		},
 		inputPlaceholder (): string {
 			return this.currentMode.placeholder ? this.currentMode.placeholder : '';
 		},

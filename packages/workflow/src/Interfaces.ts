@@ -859,7 +859,7 @@ export interface INodeExecuteFunctions {
 
 export type NodeParameterValue = string | number | boolean | undefined | null;
 
-export type ResourceLocatorModes = 'id' | 'url';
+export type ResourceLocatorModes = 'id' | 'url' | 'list' | string;
 
 export interface INodeParameterResourceLocator {
 	mode: ResourceLocatorModes;

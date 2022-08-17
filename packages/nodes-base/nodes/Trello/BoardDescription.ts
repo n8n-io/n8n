@@ -330,6 +330,7 @@ export const boardFields: INodeProperties[] = [
 		description: 'The ID of the board to delete',
 		modes: [
 			// TODO: This rule should only apply for direct node properties, not their children
+			// TODO: We should also add a lint rule to enforce mode order
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'By ID',
@@ -375,6 +376,42 @@ export const boardFields: INodeProperties[] = [
 			// TODO: This rule should only apply for direct node properties, not their children
 			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
+				displayName: "From List",
+				name: "list",
+				type: "list",
+				hint: "Select a board from the list",
+				placeholder: "Choose...",
+				initType: "board",
+				entryTypes: {
+					board: {
+						selectable: true,
+						queryable: true,
+						data: {
+							request: {
+								baseURL: "https://api.trello.com/1",
+								url: "/members/me/boards",
+								method: "GET",
+							},
+						},
+					},
+				},
+				search: {
+					send: {
+						paginate: true,
+					},
+					request: {
+						baseURL: "https://api.trello.com/1",
+						url: "/search",
+						qs: {
+							query: "={{$value}}", // TODO: See what goes here
+							modelTypes: "=boards", // Search only boards
+							idBoards: "=mine",	  // That belong to current user
+						},
+					},
+				},
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
@@ -415,42 +452,6 @@ export const boardFields: INodeProperties[] = [
 				extractValue: {
 					type: 'regex',
 					regex: 'https:\/\/api\.trello\.com\/1\/boards\/([a-zA-Z0-9]+)',
-				},
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: "From List",
-				name: "list",
-				type: "list",
-				hint: "Select a board from the list",
-				placeholder: "Choose...",
-				initType: "board",
-				entryTypes: {
-					board: {
-						selectable: true,
-						queryable: true,
-						data: {
-							request: {
-								baseURL: "https://api.trello.com/1",
-								url: "/members/me/boards",
-								method: "GET",
-							},
-						},
-					},
-				},
-				search: {
-					send: {
-						paginate: true,
-					},
-					request: {
-						baseURL: "https://api.trello.com/1",
-						url: "/search",
-						qs: {
-							query: "={{$value}}", // TODO: See what goes here
-							modelTypes: "=boards", // Search only boards
-							idBoards: "=mine",	  // That belong to current user
-						},
-					},
 				},
 			},
 		],
