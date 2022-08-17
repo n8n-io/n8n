@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,28 +9,15 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	reportFields,
-	reportOperations,
-} from './ReportDescription';
+import { reportFields, reportOperations } from './ReportDescription';
 
-import {
-	userActivityFields,
-	userActivityOperations,
-} from './UserActivityDescription';
+import { userActivityFields, userActivityOperations } from './UserActivityDescription';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-	merge,
-	simplify,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
 
 import moment from 'moment-timezone';
 
-import {
-	IData,
-} from './Interfaces';
+import { IData } from './Interfaces';
 
 export class GoogleAnalytics implements INodeType {
 	description: INodeTypeDescription = {
@@ -90,9 +75,7 @@ export class GoogleAnalytics implements INodeType {
 		loadOptions: {
 			// Get all the dimensions to display them to user so that he can
 			// select them easily
-			async getDimensions(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getDimensions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { items: dimensions } = await googleApiRequest.call(
 					this,
@@ -104,7 +87,10 @@ export class GoogleAnalytics implements INodeType {
 				);
 
 				for (const dimesion of dimensions) {
-					if (dimesion.attributes.type === 'DIMENSION' && dimesion.attributes.status !== 'DEPRECATED') {
+					if (
+						dimesion.attributes.type === 'DIMENSION' &&
+						dimesion.attributes.status !== 'DEPRECATED'
+					) {
 						returnData.push({
 							name: dimesion.attributes.uiName,
 							value: dimesion.id,
@@ -114,10 +100,14 @@ export class GoogleAnalytics implements INodeType {
 				}
 
 				returnData.sort((a, b) => {
-					const aName= a.name.toLowerCase();
-					const bName= b.name.toLowerCase();
-					if (aName < bName) { return -1; }
-					if (aName > bName) { return 1; }
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) {
+						return -1;
+					}
+					if (aName > bName) {
+						return 1;
+					}
 					return 0;
 				});
 
@@ -125,9 +115,7 @@ export class GoogleAnalytics implements INodeType {
 			},
 			// Get all the views to display them to user so that he can
 			// select them easily
-			async getViews(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { items } = await googleApiRequest.call(
 					this,
@@ -151,7 +139,6 @@ export class GoogleAnalytics implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -163,17 +150,14 @@ export class GoogleAnalytics implements INodeType {
 		let responseData;
 		for (let i = 0; i < items.length; i++) {
 			try {
-				if(resource === 'report') {
-					if(operation === 'get') {
+				if (resource === 'report') {
+					if (operation === 'get') {
 						//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 						method = 'POST';
 						endpoint = '/v4/reports:batchGet';
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						const body: IData = {
@@ -184,39 +168,39 @@ export class GoogleAnalytics implements INodeType {
 							qs.useResourceQuotas = additionalFields.useResourceQuotas;
 						}
 						if (additionalFields.dateRangesUi) {
-							const dateValues = (additionalFields.dateRangesUi as IDataObject).dateRanges as IDataObject;
+							const dateValues = (additionalFields.dateRangesUi as IDataObject)
+								.dateRanges as IDataObject;
 							if (dateValues) {
 								const start = dateValues.startDate as string;
 								const end = dateValues.endDate as string;
-								Object.assign(
-									body,
-									{
-										dateRanges:
-											[
-												{
-													startDate: moment(start).utc().format('YYYY-MM-DD'),
-													endDate: moment(end).utc().format('YYYY-MM-DD'),
-												},
-											],
-									},
-								);
+								Object.assign(body, {
+									dateRanges: [
+										{
+											startDate: moment(start).utc().format('YYYY-MM-DD'),
+											endDate: moment(end).utc().format('YYYY-MM-DD'),
+										},
+									],
+								});
 							}
 						}
 
 						if (additionalFields.metricsUi) {
-							const metrics = (additionalFields.metricsUi as IDataObject).metricValues as IDataObject[];
+							const metrics = (additionalFields.metricsUi as IDataObject)
+								.metricValues as IDataObject[];
 							body.metrics = metrics;
 						}
 						if (additionalFields.dimensionUi) {
-							const dimensions = (additionalFields.dimensionUi as IDataObject).dimensionValues as IDataObject[];
+							const dimensions = (additionalFields.dimensionUi as IDataObject)
+								.dimensionValues as IDataObject[];
 							if (dimensions) {
 								body.dimensions = dimensions;
 							}
 						}
 						if (additionalFields.dimensionFiltersUi) {
-							const dimensionFilters = (additionalFields.dimensionFiltersUi as IDataObject).filterValues as IDataObject[];
+							const dimensionFilters = (additionalFields.dimensionFiltersUi as IDataObject)
+								.filterValues as IDataObject[];
 							if (dimensionFilters) {
-								dimensionFilters.forEach(filter => filter.expressions = [filter.expressions]);
+								dimensionFilters.forEach((filter) => (filter.expressions = [filter.expressions]));
 								body.dimensionFilterClauses = { filters: dimensionFilters };
 							}
 						}
@@ -232,9 +216,22 @@ export class GoogleAnalytics implements INodeType {
 						}
 
 						if (returnAll === true) {
-							responseData = await googleApiRequestAllItems.call(this, 'reports', method, endpoint, { reportRequests: [body] }, qs);
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'reports',
+								method,
+								endpoint,
+								{ reportRequests: [body] },
+								qs,
+							);
 						} else {
-							responseData = await googleApiRequest.call(this, method, endpoint, { reportRequests: [body] }, qs);
+							responseData = await googleApiRequest.call(
+								this,
+								method,
+								endpoint,
+								{ reportRequests: [body] },
+								qs,
+							);
 							responseData = responseData.reports;
 						}
 
@@ -253,10 +250,7 @@ export class GoogleAnalytics implements INodeType {
 						const viewId = this.getNodeParameter('viewId', i);
 						const userId = this.getNodeParameter('userId', i);
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const body: IDataObject = {
 							viewId,
 							user: {
@@ -268,7 +262,13 @@ export class GoogleAnalytics implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await googleApiRequestAllItems.call(this, 'sessions', method, endpoint, body);
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'sessions',
+								method,
+								endpoint,
+								body,
+							);
 						} else {
 							body.pageSize = this.getNodeParameter('limit', 0) as number;
 							responseData = await googleApiRequest.call(this, method, endpoint, body);

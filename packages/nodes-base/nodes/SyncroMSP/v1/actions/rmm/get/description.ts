@@ -1,6 +1,4 @@
-import {
-	RmmProperties,
-} from '../../Interfaces';
+import { RmmProperties } from '../../Interfaces';
 
 export const rmmGetDescription: RmmProperties = [
 	{
@@ -10,12 +8,8 @@ export const rmmGetDescription: RmmProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['rmm'],
+				operation: ['get'],
 			},
 		},
 		default: '',

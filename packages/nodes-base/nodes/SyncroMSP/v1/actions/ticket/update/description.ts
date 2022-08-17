@@ -1,6 +1,4 @@
-import {
-	TicketProperties,
-} from '../../Interfaces';
+import { TicketProperties } from '../../Interfaces';
 
 export const ticketUpdateDescription: TicketProperties = [
 	{
@@ -10,12 +8,8 @@ export const ticketUpdateDescription: TicketProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -27,12 +21,8 @@ export const ticketUpdateDescription: TicketProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 		default: {},

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const webinarOperations: INodeProperties[] = [
 	{
@@ -37,9 +35,7 @@ export const webinarOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
+				resource: ['webinar'],
 			},
 		},
 	},
@@ -57,12 +53,8 @@ export const webinarFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['webinar'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -78,12 +70,8 @@ export const webinarFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['webinar'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -116,12 +104,8 @@ export const webinarFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['webinar'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -171,7 +155,8 @@ export const webinarFields: INodeProperties[] = [
 				displayName: 'Timezone Name or ID',
 				name: 'timezone',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
@@ -194,12 +179,14 @@ export const webinarFields: INodeProperties[] = [
 					{
 						name: 'Series',
 						value: 'series',
-						description: 'Webinar with multiple meetings times where attendees choose only one to attend',
+						description:
+							'Webinar with multiple meetings times where attendees choose only one to attend',
 					},
 					{
 						name: 'Sequence',
 						value: 'sequence',
-						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions',
+						description:
+							'Webinar with multiple meeting times where attendees are expected to be the same for all sessions',
 					},
 				],
 			},
@@ -218,12 +205,8 @@ export const webinarFields: INodeProperties[] = [
 		description: 'Key of the webinar to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['webinar'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -234,12 +217,8 @@ export const webinarFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['webinar'],
+				operation: ['delete'],
 			},
 		},
 		default: {},
@@ -265,12 +244,8 @@ export const webinarFields: INodeProperties[] = [
 		description: 'Key of the webinar to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['webinar'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -286,12 +261,8 @@ export const webinarFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['webinar'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -307,15 +278,9 @@ export const webinarFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['webinar'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -326,12 +291,8 @@ export const webinarFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['webinar'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -381,12 +342,8 @@ export const webinarFields: INodeProperties[] = [
 		description: 'Key of the webinar to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['webinar'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -398,12 +355,8 @@ export const webinarFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['webinar'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -414,12 +367,8 @@ export const webinarFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['webinar'],
+				operation: ['update'],
 			},
 		},
 		default: {},
@@ -514,7 +463,8 @@ export const webinarFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
-				description: 'Timezone where the webinar is to take place. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Timezone where the webinar is to take place. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					loadOptionsMethod: 'getTimezones',
@@ -534,12 +484,14 @@ export const webinarFields: INodeProperties[] = [
 					{
 						name: 'Series',
 						value: 'series',
-						description: 'Webinar with multiple meetings times where attendees choose only one to attend',
+						description:
+							'Webinar with multiple meetings times where attendees choose only one to attend',
 					},
 					{
 						name: 'Sequence',
 						value: 'sequence',
-						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions',
+						description:
+							'Webinar with multiple meeting times where attendees are expected to be the same for all sessions',
 					},
 				],
 			},

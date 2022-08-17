@@ -1,6 +1,4 @@
-import {
-	TicketProperties,
-} from '../../Interfaces';
+import { TicketProperties } from '../../Interfaces';
 
 export const ticketDeleteDescription: TicketProperties = [
 	{
@@ -10,12 +8,8 @@ export const ticketDeleteDescription: TicketProperties = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['ticket'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
