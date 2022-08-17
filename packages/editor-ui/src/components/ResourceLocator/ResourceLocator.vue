@@ -284,9 +284,9 @@ export default mixins().extend({
 			this.listModeDropdownOpen = !this.listModeDropdownOpen;
 		},
 		switchFromListMode (): void {
-			if (this.selectedMode === 'list') {
+			if (this.selectedMode === 'list' && this.parameter.modes) {
 				// Find the first mode that's not list mode
-				const mode = this.sortedModes.find(m => m.name !== 'list');
+				const mode = this.parameter.modes.find(m => m.name !== 'list');
 				if (mode) {
 					this.selectedMode = mode.name;
 				}
