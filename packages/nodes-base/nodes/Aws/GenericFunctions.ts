@@ -40,20 +40,30 @@ export async function awsApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
-	const requestOptions = {
-		qs: {
-			service,
-			path,
-		},
+	// Concatenate path and instantiate URL object so it parses correctly query strings
+	const endpoint = new URL(getEndpointForService(service, credentials) + path);
+
+	// Sign AWS API request with the user credentials
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
+	const securityHeaders = {
+		accessKeyId: `${credentials.accessKeyId}`.trim(),
+		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+		sessionToken: credentials.temporaryCredentials
+			? `${credentials.sessionToken}`.trim()
+			: undefined,
+	};
+
+	sign(signOpts, securityHeaders);
+
+	const options: OptionsWithUri = {
+		headers: signOpts.headers,
 		method,
-		body: JSON.stringify(body),
-		url: '',
-		headers,
-		region: credentials?.region as string,
-	} as IHttpRequestOptions;
+		uri: endpoint.href,
+		body: signOpts.body,
+	};
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this,'aws', requestOptions);
+		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}

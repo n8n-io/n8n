@@ -1,6 +1,4 @@
-import {Request, sign } from 'aws4';
-import { IHttpRequestMethods } from 'n8n-workflow';
-import { ICredentialDataDecryptedObject, ICredentialType, IDataObject, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export const regions = [
 	{
@@ -261,64 +259,4 @@ export class Aws implements ICredentialType {
 			placeholder: 'https://s3.{region}.amazonaws.com',
 		},
 	];
-
-
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		let endpoint;
-		const service = requestOptions.qs?.service;
-		let path = requestOptions.qs?.path;
-		const method = requestOptions.method;
-		const body = requestOptions.body;
-		const region = credentials.region;
-		const query = requestOptions.qs?.query as IDataObject;
-
-		if (service === 'lambda' && credentials.lambdaEndpoint) {
-			endpoint = credentials.lambdaEndpoint;
-		} else if (service === 'sns' && credentials.snsEndpoint) {
-			endpoint = credentials.snsEndpoint;
-		} else if (service === 'sqs' && credentials.sqsEndpoint) {
-			endpoint = credentials.sqsEndpoint;
-		} else if (service === 's3' && credentials.s3Endpoint) {
-			endpoint = credentials.s3Endpoint;
-		}
-		else if (service === 'ses' && credentials.sesEndpoint) {
-			endpoint = credentials.sesEndpoint;
-		}
-		else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
-			endpoint = credentials.rekognitionEndpoint;
-		}
-		else if (service === 'sqs' && credentials.sqsEndpoint) {
-			endpoint = credentials.sqsEndpoint;
-		}
-		else {
-			console.log('ERROR SQS ', service);
-			endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
-		}
-		endpoint = new URL((endpoint as string).replace('{region}', credentials.region as string));
-
-	if(service === 's3' && credentials.s3Endpoint) {
-		 path = `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`;
-	}
-	const signOpts = { headers: requestOptions.headers, host: endpoint.host, method, path, body, region} as Request;
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials ? `${credentials.sessionToken}`.trim() : undefined,
-	};
-
-	sign(signOpts, securityHeaders);
-	const options: IHttpRequestOptions = {
-		headers: signOpts.headers,
-		method,
-		url: endpoint.href + path,
-		body: signOpts.body,
-	};
-		return options;
-	}
-}
-
-function queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
 }
