@@ -207,7 +207,7 @@ export class OpenWeatherMap implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const credentials = await this.getCredentials('openWeatherMapApi');
 
@@ -280,9 +280,11 @@ export class OpenWeatherMap implements INodeType {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
-
-				returnData.push(responseData as IDataObject);
-
+				const executionData = this.helpers.constructExecutionMetaData(
+					{item: i},
+					this.helpers.returnJsonArray(responseData)
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({json:{ error: error.message }});
@@ -292,6 +294,6 @@ export class OpenWeatherMap implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
