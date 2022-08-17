@@ -1736,10 +1736,10 @@ function extractValueRLC(
 	}
 	const modeProp = findPropertyInArray(value.mode as string, property.modes || []);
 	if (!modeProp) {
-		return value;
+		return value.value;
 	}
 	if (!('extractValue' in modeProp) || !modeProp.extractValue) {
-		return value;
+		return value.value;
 	}
 
 	if (typeof value.value !== 'string') {
