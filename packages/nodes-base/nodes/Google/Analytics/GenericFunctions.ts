@@ -456,3 +456,20 @@ export function prepareDateRange(
 export const defaultStartDate = () => DateTime.now().startOf('day').minus({ days: 8 }).toISO();
 
 export const defaultEndDate = () => DateTime.now().startOf('day').minus({ days: 1 }).toISO();
+
+export function checkDuplicates(
+	this: IExecuteFunctions,
+	data: IDataObject[],
+	key: string,
+	type: string,
+) {
+	const fields = data.map((item) => item[key] as string);
+	const duplicates = fields.filter((field, i) => fields.indexOf(field) !== i);
+	const unique = Array.from(new Set(duplicates));
+	if (unique.length) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Duplicates for ${type} found: ${unique.join(', ')}`,
+		);
+	}
+}

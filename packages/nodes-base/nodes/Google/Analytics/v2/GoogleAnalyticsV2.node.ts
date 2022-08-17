@@ -10,6 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	checkDuplicates,
 	getDimensions,
 	getDimensionsGA4,
 	getMetrics,
@@ -77,7 +78,7 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			displayOptions: {
 				show: {
-					resource: ['report', 'reportGA4'],
+					resource: ['report'],
 				},
 			},
 			options: [
@@ -91,7 +92,7 @@ const versionDescription: INodeTypeDescription = {
 			default: 'get',
 		},
 		{
-			displayName: 'Access Data For',
+			displayName: 'Access data for',
 			name: 'accessDataFor',
 			type: 'options',
 			noDataExpression: true,
@@ -175,18 +176,21 @@ export class GoogleAnalyticsV2 implements INodeType {
 						if (metricsUA.metricValues) {
 							const metrics = (metricsUA.metricValues as IDataObject[]).map((metric) => {
 								if (metric.listName !== 'more') {
-									return { expression: metric.listName };
+									return {
+										alias: metric.listName,
+										expression: metric.listName,
+									};
 								} else {
 									const newMetric = {
 										alias: metric.name,
 										expression: metric.expression || metric.name,
 										formattingType: metric.formattingType,
 									};
-
 									return newMetric;
 								}
 							});
 							if (metrics.length) {
+								checkDuplicates.call(this, metrics, 'alias', 'metrics');
 								body.metrics = metrics as IMetric[];
 							}
 						}
@@ -206,6 +210,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 								},
 							);
 							if (dimensions.length) {
+								checkDuplicates.call(this, dimensions, 'name', 'dimensions');
 								body.dimensions = dimensions as IDimension[];
 							}
 						}
@@ -303,6 +308,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 								}
 							});
 							if (metrics.length) {
+								checkDuplicates.call(this, metrics, 'name', 'metrics');
 								body.metrics = metrics;
 							}
 						}
@@ -322,6 +328,7 @@ export class GoogleAnalyticsV2 implements INodeType {
 								},
 							);
 							if (dimensions.length) {
+								checkDuplicates.call(this, dimensions, 'name', 'dimensions');
 								body.dimensions = dimensions;
 							}
 						}

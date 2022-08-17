@@ -59,7 +59,7 @@ export const reportUAFields: INodeProperties[] = [
 				value: 'custom',
 			},
 		],
-		default: 'today',
+		default: 'last7days',
 		displayOptions: {
 			show: {
 				resource: ['report'],
@@ -163,6 +163,7 @@ export const reportUAFields: INodeProperties[] = [
 							loadOptionsMethod: 'getMetrics',
 						},
 						default: 'ga:newUsers',
+						hint: 'If expression is specified, name can be any string that you would like',
 						description:
 							'The name of the metric. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 						displayOptions: {
@@ -231,7 +232,8 @@ export const reportUAFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Dimensions',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Dimensions to split by',
 		name: 'dimensionsUA',
 		type: 'fixedCollection',
 		default: { dimensionValues: [{ listName: 'ga:deviceCategory' }] },
