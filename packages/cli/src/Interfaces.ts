@@ -46,20 +46,6 @@ export interface IActivationError {
 	};
 }
 
-export interface IBullJobData {
-	executionId: string;
-	loadStaticData: boolean;
-}
-
-export interface IBullJobResponse {
-	success: boolean;
-}
-
-export interface IBullWebhookResponse {
-	executionId: string;
-	response: IExecuteResponsePromiseData;
-}
-
 export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
 }
