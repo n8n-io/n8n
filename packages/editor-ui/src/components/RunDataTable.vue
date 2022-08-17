@@ -15,7 +15,7 @@
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
 						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
-							<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
+							<div slot="content" v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"></div>
 							<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
 								<template v-slot:preview="{ canDrop }">
 									<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
