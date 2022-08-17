@@ -103,7 +103,7 @@ export class Twitter implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -243,6 +243,7 @@ export class Twitter implements INodeType {
 							responseData = await twitterApiRequest.call(this, 'GET', '/search/tweets.json', {}, qs);
 							responseData = responseData.statuses;
 						}
+						responseData = this.helpers.constructExecutionMetaData({ item: i }, responseData);
 					}
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-favorites-create
 					if (operation === 'like') {
@@ -276,13 +277,18 @@ export class Twitter implements INodeType {
 					}
 				}
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
+					returnData.push.apply(returnData, responseData);
 				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
+					returnData.push(responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = {
+						json: {} as IDataObject,
+						error: error.message,
+						itemIndex: i,
+					};
+					returnData.push(executionErrorData as INodeExecutionData);
 					continue;
 				}
 				throw error;
