@@ -30,13 +30,23 @@ export class UProcApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		const token = Buffer.from(`${credentials.email}:${credentials.apiKey}`).toString('base64');
-		requestOptions.headers!['Authorization'] = `Basic ${token}`;
+		requestOptions.headers = {
+			...requestOptions.headers,
+			Authorization: `Basic ${token}`,
+		};
 		return requestOptions;
 	}
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.uproc.io/api/v2/process',
-			url: '/me',
+			baseURL: 'https://api.uproc.io/api/v2',
+			url: '/process',
+			method: 'POST',
+			body: {
+				processor: 'check-domain-exist',
+				params: {
+					domain: 'uproc.io',
+				},
+			},
 		},
 	};
 }
