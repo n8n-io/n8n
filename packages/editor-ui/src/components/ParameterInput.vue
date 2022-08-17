@@ -697,7 +697,7 @@ export default mixins(
 				return shortPath.join('.');
 			},
 			workflow (): Workflow {
-				return this.getWorkflow();
+				return this.getCurrentWorkflow();
 			},
 			isResourceLocatorParameter (): boolean {
 				return this.parameter.type === 'resourceLocator';
