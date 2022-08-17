@@ -28,7 +28,7 @@ async function getAccessToken(
 			username: credentials.email,
 			password: credentials.password,
 		},
-		uri: 'https://auth.triskel.trileuco.com/auth/realms/yepcode/protocol/openid-connect/token',
+		uri: 'https://cloud.yepcode.io/auth/realms/yepcode/protocol/openid-connect/token',
 		json: true,
 	};
 
