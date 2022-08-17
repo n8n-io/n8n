@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { BINARY_ENCODING, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function freshdeskApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -13,8 +13,7 @@ export async function freshdeskApiRequest(
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('freshdeskApi');
 
 	const apiKey = `${credentials.apiKey}:X`;
@@ -42,7 +41,21 @@ export async function freshdeskApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		const errorData = (error.message || '').split(' - ')[1] as string;
+		if (errorData) {
+			const parsedError = JSON.parse(errorData.trim());
+			console.log(parsedError);
+			let { message } = parsedError;
+			const { errors, description } = parsedError;
+			if (!message) {
+				message =
+					((errors as IDataObject[]) || [])
+						.map((error: IDataObject) => error.message as string)
+						.join(', ') || error.message;
+			}
+			throw new NodeApiError(this.getNode(), error, { message, description });
+		}
+		throw new NodeApiError(this.getNode(), error, { message: error.message });
 	}
 }
 
@@ -53,8 +66,7 @@ export async function freshdeskApiRequestAllItems(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;

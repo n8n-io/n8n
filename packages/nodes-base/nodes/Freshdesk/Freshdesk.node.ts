@@ -683,7 +683,7 @@ export class Freshdesk implements INodeType {
 						displayName: 'Priority',
 						name: 'priority',
 						type: 'options',
-						required: true,
+						// required: true,
 						options: [
 							{
 								name: 'Low',
@@ -759,7 +759,7 @@ export class Freshdesk implements INodeType {
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
-						required: true,
+						// required: true,
 						options: [
 							{
 								name: 'Open',
