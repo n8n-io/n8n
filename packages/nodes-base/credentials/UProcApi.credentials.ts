@@ -39,14 +39,8 @@ export class UProcApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.uproc.io/api/v2',
-			url: '/process',
-			method: 'POST',
-			body: {
-				processor: 'check-domain-exist',
-				params: {
-					domain: 'uproc.io',
-				},
-			},
+			url: '/profile',
+			method: 'GET',
 		},
 	};
 }
